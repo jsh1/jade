@@ -99,7 +99,8 @@ when set to the symbol `invalid'.")
   "R" '(rm-reply t)
   "f" 'rm-followup
   "F" '(rm-followup t)
-  "z" 'rm-forward)
+  "z" 'rm-forward
+  "*" 'rm-burst-message)
   
 (defvar rm-last-folder mail-folder-dir
   "File name of the most recently opened folder. Used as a default value for
@@ -138,8 +139,10 @@ the next prompt.")
 (defun read-mail-mode ()
   "Read-Mail Mode:\n
 Major mode for viewing mail folders. Commands include:\n
-  `n'			Display the next message.
-  `p'			Display the previous message.
+  `n'			Display the next undeleted message.
+  `p'			Display the previous undeleted message.
+  `N', 'P'		Display the next or previous message, including
+			 those that have been marked for deletion.
   `t'			Toggle between showing all headers and just
 			 showing important headers in the current msg.
   `SPC'			Display the next page of the message.
@@ -149,7 +152,15 @@ Major mode for viewing mail folders. Commands include:\n
   `x', `#'		Delete marked messages.
   `g'			Get new mail.
   `v'			Visit a different folder.
-  `q'			Quit."
+  `q'			Quit.
+  `r'			Reply to the current message.
+  `R'			Reply quoting the current message.
+  `f'			Follow-up to the current message (reply including
+			 all recipients of the original message).
+  `F'			Follow-up quoting the current message.
+  `z'			Forward the current message to someone else.
+  `*'			Burst an RFC-934 digest message into its
+			 constituent messages."
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Mail:"
@@ -542,6 +553,22 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Getting mail from inbox
 
+;; Ensure that there's two newlines at the end of the buffer, or that
+;; the end of the buffer is the start of the buffer ;-) Leaves the
+;; cursor at the end of the buffer
+;; The buffer should be unrestricted
+(defun rm-enforce-msg-separator ()
+  (if (equal (buffer-end) (buffer-start))
+      (goto-buffer-end)
+    (if (find-prev-regexp "^.+\n" (buffer-end))
+	(progn
+	  (goto-char (match-end))
+	  (unless (looking-at "^\n")
+	    (insert "\n"))
+	  (goto-buffer-end))
+      (goto-buffer-end)
+      (insert "\n\n"))))
+  
 ;; Insert the contents of file INBOX at the end of the current folder, fix
 ;; the message lists and display the first new message. Returns the number
 ;; of messages read if it's okay to try and read more inboxes, nil if it's
@@ -576,16 +603,7 @@ Major mode for viewing mail folders. Commands include:\n
 	      (while rm-after-msg-list
 		(rm-move-forwards))
 	      ;; Ensure that there's a blank line at the end of the buffer
-	      (if (equal (buffer-end) (buffer-start))
-		  (goto-buffer-end)
-		(if (find-prev-regexp "^.+\n" (buffer-end))
-		    (progn
-		      (goto-char (match-end))
-		      (unless (looking-at "^\n")
-			(insert "\n"))
-		      (goto-buffer-end))
-		  (goto-buffer-end)
-		  (insert "\n\n")))
+	      (rm-enforce-msg-separator)
 	      (setq start (cursor-pos))
 	      (insert-file tofile)
 	      (error-protect
@@ -678,7 +696,8 @@ Major mode for viewing mail folders. Commands include:\n
   "R" '(rm-in-folder (rm-reply t))
   "f" '(rm-in-folder (rm-followup))
   "F" '(rm-in-folder (rm-followup t))
-  "z" '(rm-in-folder (rm-forward nil current-prefix-arg)))
+  "z" '(rm-in-folder (rm-forward nil current-prefix-arg))
+  "*" '(rm-with-folder (rm-burst-message)))
 
 (defvar rm-summary-functions '((select . rm-summary-select-item)
 			       (list . rm-summary-list)
@@ -772,7 +791,8 @@ the summary buffer.")
 
 (defun rm-summary-mode ()
   "Mail Summary Mode:\n
-Major mode for displaying a summary of a mail folder.")
+Major mode for displaying a summary of a mail folder. See read-mail-mode
+documentation for command list.")
 
 (defun rm-summary-list ()
   (rm-with-folder
@@ -833,7 +853,6 @@ Major mode for displaying a summary of a mail folder.")
     (if msg
 	(progn
 	  (summary-update-item msg)
-	  (summary-highlight-index index)
 	  (summary-goto-item index))
       ;; No messages, call update to clear everything
       (summary-update))))
