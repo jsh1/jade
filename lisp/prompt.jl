@@ -419,7 +419,7 @@ is rejected.")
        (dst ()))
     (while src
       (when (string-match (concat ?^ (quote-regexp word))
-			  (car src) prompt-list-fold-case)
+			  (car src) nil prompt-list-fold-case)
 	(setq dst (cons (car src) dst)))
       (setq src (cdr src)))
     dst))
@@ -432,7 +432,7 @@ is rejected.")
 	((list prompt-list))
       (while list
 	(when (string-match (concat ?^ (quote-regexp name) ?$)
-			    (car list) t)
+			    (car list) nil t)
 	  (return t))
 	(setq list (cdr list))))))
 

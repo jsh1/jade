@@ -129,7 +129,7 @@ returning the initialisation function of that mode (a symbol) or nil."
       ((list mode-alist)
        (elt nil))
     (while (setq elt (car list))
-      (when (string-match (car elt) name t)
+      (when (string-match (car elt) name nil t)
 	(return (cdr elt)))
       (setq list (cdr list)))))
 
