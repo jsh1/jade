@@ -29,11 +29,10 @@
 #endif
 
 _PR void make_window_glyphs(glyph_buf *g, WIN *w);
-
 _PR bool skip_glyph_rows_forwards(VW *, long, long, long, long *, long *);
 _PR bool skip_glyph_rows_backwards(VW *, long, long, long, long *, long *);
+_PR void recenter_cursor(VW *vw);
 
-static void recenter_cursor(VW *vw);
 static long line_glyph_length(TX *tx, long line);
 
 _PR long glyph_col(TX *, long, long);
@@ -569,7 +568,7 @@ skip_glyph_rows_backwards(VW *vw, long count,
 /* Do the necessary checks to ensure that the cursor is within the
    visible region of the buffer (in this view)
    TODO: set VWFF_AT_BOTTOM when appropriate. */
-static void
+void
 recenter_cursor(VW *vw)
 {
     TX *tx = vw->vw_Tx;
