@@ -81,6 +81,6 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
       (when (looking-at ".*;;[\t ]*$" (forward-line -1 pos))
 	(setq indent (- indent sh-basic-indent)))
       ;; Look at the contents of this line
-      (when (looking-at "[ \t]*(done|else|elif|fi|esac|\})" pos)
+      (when (looking-at "[ \t]*(\\bdone\\b|\\belse\\b|\\belif\\b|\\bfi\\b|\\besac\\b|\})" pos)
 	(setq indent (- indent sh-basic-indent))))
     (set-indent-pos (pos indent (pos-line pos)))))
