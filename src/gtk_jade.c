@@ -475,13 +475,6 @@ gtk_jade_enter_notify (GtkWidget *widget, GdkEventCrossing *event)
     jade = GTK_JADE (widget);
 
     gtk_jade_last_event_time = event->time;
-
-    jade->has_focus = 1;
-    /* Impolite?! */
-    gtk_widget_grab_focus (GTK_WIDGET (jade));
-    if (jade->win != 0)
-	Fredisplay_window (rep_VAL(jade->win), Qnil);
-
     return FALSE;
 }
 
@@ -495,11 +488,6 @@ gtk_jade_leave_notify (GtkWidget *widget, GdkEventCrossing *event)
     jade = GTK_JADE (widget);
 
     gtk_jade_last_event_time = event->time;
-
-    jade->has_focus = 0;
-    if (jade->win != 0)
-	Fredisplay_window (rep_VAL(jade->win), Qnil);
-
     return FALSE;
 }
 
@@ -644,6 +632,33 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 }
 
 
+/* Map a function over all GtkJade widgets under a container */
+
+struct map_data {
+    GtkCallback fun;
+    void *data;
+};
+
+static void
+map_callback (GtkWidget *root, gpointer data)
+{
+    struct map_data *mdata = data;
+    if (GTK_IS_JADE (root))
+	mdata->fun (root, mdata->data);
+    else if (GTK_IS_CONTAINER (root))
+	gtk_container_foreach (GTK_CONTAINER (root), map_callback, data);
+}
+
+void
+gtk_jade_foreach (GtkContainer *root, GtkCallback fun, gpointer data)
+{
+    struct map_data mdata;
+    mdata.fun = fun;
+    mdata.data = data;
+    gtk_container_foreach (root, map_callback, &mdata);
+}
+
+
 /* System-dependent jade functions */
 
 void
@@ -675,6 +690,28 @@ window_deleted_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
 {
     Fdelete_window (rep_VAL(data));
     GTK_JADE_CALLBACK_POSTFIX;
+    return TRUE;
+}
+
+static void
+focus_callback (GtkJade *jade, gpointer data)
+{
+    jade->has_focus = (data != 0);
+    if (jade->win != 0 && jade->win->w_CurrVW != 0)
+	Fredisplay_window (rep_VAL(jade->win), Qnil);
+}    
+
+static gint
+focus_in_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
+{
+    gtk_jade_foreach (GTK_CONTAINER (widget), focus_callback, (gpointer) 1);
+    return TRUE;
+}
+
+static gint
+focus_out_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
+{
+    gtk_jade_foreach (GTK_CONTAINER(widget), focus_callback, (gpointer) 0);
     return TRUE;
 }
 
@@ -711,6 +748,10 @@ sys_new_window(WIN *oldW, WIN *w, bool use_default_dims)
 	gtk_container_set_border_width (GTK_CONTAINER (frame), 2);
 	gtk_signal_connect (GTK_OBJECT (frame), "delete_event",
 			    GTK_SIGNAL_FUNC (window_deleted_callback), w);
+	gtk_signal_connect (GTK_OBJECT (frame), "focus_in_event",
+			    GTK_SIGNAL_FUNC (focus_in_callback), 0);
+	gtk_signal_connect (GTK_OBJECT (frame), "focus_out_event",
+			    GTK_SIGNAL_FUNC (focus_out_callback), 0);
 	if (x > 0 && y > 0)
 	    gtk_widget_set_uposition (frame, x, y);
     }
