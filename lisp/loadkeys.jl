@@ -197,7 +197,7 @@ of SYMBOL is non-nil, KEYMAP is used to search for bindings.")
   "C-Button1-Move" 'mouse-select-drag-rect
   "Button2-Click1" 'yank-to-mouse
   "Button3-Click1" 'popup-menu
-  "M-z"		'popup-menu)
+  "M-z"		'popup-menu-from-kbd)
 
 (bind-keys ctrl-x-keymap
   "C-b"		'buffer-summary
