@@ -269,7 +269,7 @@ is split.")
 	      (if (null list)
 		  ;; No indirect list
 		  (setq offset (+ offset 2)
-			subfile (file-name-nondirectory file-location))
+			subfile file-location)
 		;; Indirect list, chase down the list for the
 		;; correct file to use
 		(catch 'info
