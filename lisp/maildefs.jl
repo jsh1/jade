@@ -130,7 +130,8 @@ the current year, i.e. 1997 -> \"19\", 2001 -> \"20\".")
 
 (defvar mail-display-summary nil
   "When non-nil a summary of the current folder is always displayed when
-reading mail.")
+reading mail. If set to the symbol `bottom' the summary will be displayed
+at the bottom of the screen, otherwise it will be shown at the top.")
 
 (defvar mail-message-start "^From "
   "The regular expression separating each message. Actually it's interpreted
