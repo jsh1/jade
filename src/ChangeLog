@@ -1,3 +1,24 @@
+1999-04-26  John Harper  <john@dcs.warwick.ac.uk>
+
+	* jade.h: undef MAX and MIN before redefining them
+
+1999-04-24  John Harper  <john@dcs.warwick.ac.uk>
+
+	* edit.h (WIN): made the w_MouseExtent field into a static
+	array w_MouseExtents
+	* extent.c (find_visible_extent): renamed
+	`map_visible_extents', now calls a given function for all
+	visible extents containing the specified position
+	(update_mouse_extent): handle the vector of mouse extents
+	* faces.c (merge_faces): handle the vector of mouse extents
+
+	* extent.c (start_visible_extent, end_visible_extent): merge
+	extent fragments
+	* faces.c (merge_faces): handle merged extent frags
+
+	* windows.c (Fmake_window, delete_window): remember to call
+	free_visible_extents when necessary
+
 1999-04-23  John Harper  <john@dcs.warwick.ac.uk>
 
 	* edit.h (struct visible_extent): structure to track which

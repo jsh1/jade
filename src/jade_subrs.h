@@ -190,7 +190,8 @@ extern void start_visible_extent (WIN *w, Lisp_Extent *e,
 extern void end_visible_extent (WIN *w, Lisp_Extent *e,
 				long end_col, long end_row);
 extern void free_visible_extents (WIN *w);
-extern struct visible_extent *find_visible_extent (WIN *w, long col, long row);
+extern void map_visible_extents (WIN *w, long col, long row,
+				 void (*fun)(struct visible_extent *x));
 extern void mark_visible_extents (WIN *w);
 extern bool update_mouse_extent (WIN *w, long mouse_col, long mouse_row);
 

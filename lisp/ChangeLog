@@ -1,4 +1,21 @@
+1999-04-25  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gdb.jl: split the GDB specific parts into their own page;
+	it's still pretty GDB based, but is general enough to allow the
+	Perl debugger to work pretty seamlessly (M-x perldb)
+
+1999-04-24  John Harper  <john@dcs.warwick.ac.uk>
+
+	* info.jl (info-goto-link): fix last change
+
 1999-04-23  John Harper  <john@dcs.warwick.ac.uk>
+
+	* ispell.jl (ispell-start-process): try to catch errors from
+	ispell
+	(ispell-kill-process): give the sentinel a chance to be called
+	before killing the process
+	(ispell-check-word): always release the mutex, even after an
+	error
 
 	* windows.jl (active-face): face that will normally be put in
 	the mouse-face property to signal "clickable" text

@@ -36,6 +36,7 @@
 (autoload 'add-autoloads "find-autoloads" t)
 (autoload 'remove-autoloads "find-autoloads" t)
 (autoload 'gdb "gdb" t)
+(autoload 'perldb "gdb" t)
 (autoload 'help "help" t)
 (autoload 'describe-mode "help" t)
 (autoload 'substitute-command-keys "help")
