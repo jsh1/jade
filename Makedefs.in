@@ -85,5 +85,5 @@ lib%.la : %.lo
 
 # This rule builds dependancy files from C source files.
 .%.d : %.c
-	$(SHELL) -ec '$(CC) -MM $(CPPFLAGS) $< \
+	$(SHELL) -ec '$(CC) -MM $(CPPFLAGS) $(CFLAGS) $< \
 	| sed '\''s/$*\.o/& $*.lo .$*\.d/g'\'' > $@'
