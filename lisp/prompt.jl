@@ -472,7 +472,8 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
       ((prompt-completion-function 'prompt-complete-from-list)
        (prompt-validate-function (if dont-validate
 				     nil
-				   'prompt-validate-from-list)))
+				   'prompt-validate-from-list))
+       (completion-fold-case prompt-list-fold-case))
   (prompt prompt start)))
 
 ;;;###autoload

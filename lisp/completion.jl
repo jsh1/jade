@@ -38,6 +38,8 @@ string if desirable.")
 matching strings.")
 (make-variable-buffer-local 'completion-hooks)
 
+(defvar completion-fold-case nil)
+
 ;; t when the view displaying this buffer was created specially
 (defvar completion-deletable-view nil)
 (make-variable-buffer-local 'completion-deletable-view)
@@ -115,21 +117,24 @@ matching strings.")
 	(when completion-deletable-view
 	  (shrink-view-if-larger-than-buffer))))))
 
-(defun completion-insert (completions word &optional only-display)
+(defun completion-insert (completions word &optional only-display fold-case)
   (let
-      ((count (length completions)))
+      ((count (length completions))
+       (word-start (forward-char (- (length word)))))
     (if (zerop count)
 	(progn
 	  (completion-remove-view)
 	  (message "[No completions!]"))
       (if (and (not only-display) (= count 1))
 	  (progn
-	    (insert (substring (car completions) (length word)))
+	    (goto (replace-string word (car completions) word-start))
 	    (completion-remove-view)
 	    (message "[Unique completion]"))
 	(unless only-display
-	  (insert (substring (complete-string word completions)
-			     (length word))))
+	  (goto (replace-string word
+				(complete-string word completions
+						 completion-fold-case)
+				word-start)))
 	(completion-list completions)
 	(message (format nil "[%d completion(s)]" count))))))
 
@@ -140,7 +145,7 @@ matching strings.")
   (let
       ((point (start-of-buffer))
        completions tem)
-    (while (search-forward word point)
+    (while (search-forward word point nil completion-fold-case)
       (setq point (match-end))
       (unless (equal point (cursor-pos))
 	(setq tem (copy-area (match-start)
