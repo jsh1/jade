@@ -127,18 +127,20 @@ functions that operate as filters on their argument streams.")
 				content-disp)
  (let
      ((out-start (cursor-pos))
+      (filename (cdr (or (assq 'filename (cdr content-disp))
+			 ;; seems some mailers (sun dtmail) put the filename
+			 ;; in the content-type parameters!?
+			 (assq 'name (nthcdr 2 content-type)))))
       tem)
-   (insert "[[")
+   (insert "[[ ")
    (when content-disp
-     (format (current-buffer) "%s:" (car content-disp))
-     (when (cdr content-disp)
-       (format (current-buffer) " filename=%s"
-	       (cdr (assq 'filename (cdr content-disp))))))
-   (format (current-buffer) "%s%s/%s"
-	   (if content-disp " " "") (car content-type) (nth 1 content-type))
+     (format (current-buffer) "%s: " (car content-disp)))
+   (when filename
+     (format (current-buffer) "filename=%s " filename))
+   (format (current-buffer) "%s/%s " (car content-type) (nth 1 content-type))
 ;  (when (nth 2 content-type)
-;    (format (current-buffer) " params: %S" (nth 2 content-type)))
-   (format (current-buffer) " (%s encoding)" content-xfer-enc)
+;    (format (current-buffer) "params: %S " (nth 2 content-type)))
+   (format (current-buffer) "(%s encoding) " content-xfer-enc)
    (insert "]]\n")
    (setq tem (forward-char 2 out-start))
    (make-extent tem (forward-char -2 (end-of-line tem))
@@ -157,9 +159,10 @@ functions that operate as filters on their argument streams.")
       ((tem (assq encoding mime-xfer-encodings-alist)))
     (if (null tem)
 	;; Just copy verbatim
-	(insert (copy-area (start-of-buffer src-buffer)
-			   (end-of-buffer src-buffer)
-			   src-buffer))
+	(write output (copy-area (start-of-buffer src-buffer)
+				 (end-of-buffer src-buffer)
+				 src-buffer))
+      ;; apply the decoder
       (when (nth 1 tem)
 	(require (nth 1 tem)))
       (funcall (nth 3 tem)
@@ -278,17 +281,18 @@ functions that operate as filters on their argument streams.")
 	       (type (nth 3 (car parts)))
 	       (disp (nth 4 (car parts)))
 	       (dest (current-buffer)))
-	    (unless type
-	      ;; implicit type of part
-	      (setq type (if (eq (nth 1 content-type) 'digest)
-			     (list 'message 'rfc822)
-			   (list 'text 'plain))))
-	    (with-buffer actual-src
-	      (save-restriction
-		(restrict-buffer start (forward-char -1 end))
-		(with-buffer dest
-		  ;; Recursively decode each part
-		  (mime-decode actual-src type enc disp t))))
+	    (when (> end start)
+	      (unless type
+		;; implicit type of part
+		(setq type (if (eq (nth 1 content-type) 'digest)
+			       (list 'message 'rfc822)
+			     (list 'text 'plain))))
+	      (with-buffer actual-src
+		(save-restriction
+		  (restrict-buffer start (forward-char -1 end))
+		  (with-buffer dest
+		    ;; Recursively decode each part
+		    (mime-decode actual-src type enc disp t)))))
 	    (setq parts (cdr parts))))))
      ;; end of multipart
      (t
@@ -320,8 +324,10 @@ FILE-NAME is prompted for."
   (unless file-name
     (setq file-name (prompt-for-file
 		     "Save attachment to file:" nil
-		     (cdr (assq 'filename
-				(cdr (extent-get extent 'content-disp)))))))
+		     (cdr (or (assq 'filename (cdr (extent-get extent
+							       'content-disp)))
+			      (assq 'name (cdr (extent-get
+						extent 'content-type))))))))
   (with-buffer (extent-get extent 'buffer)
     (save-restriction
       (unrestrict-buffer)
@@ -372,7 +378,13 @@ interactively the MIME part under the cursor is used."
   "Display the unencoded form of the current MIME part in a temporary buffer."
   (interactive (list (mime-current-part)))
   (let
-      ((buffer (make-buffer "*decoded-mime-part*")))
+      ((buffer (make-buffer (or (cdr (assq 'filename
+					   (cdr (extent-get extent
+							    'content-disp))))
+				(cdr (assq 'name
+					   (cdr (extent-get extent
+							    'content-type))))
+				"*decoded-mime-part*"))))
     (with-buffer (extent-get extent 'buffer)
       (save-restriction
 	(unrestrict-buffer)
