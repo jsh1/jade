@@ -245,7 +245,8 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 		  (y-or-n-p "Okay to lose contents of *mail* buffer?")))
 	    (progn
 	      (set-buffer-read-only buffer nil)
-	      (clear-buffer buffer))
+	      (clear-buffer buffer)
+	      (kill-all-local-variables buffer))
 	  (error "Mail buffer in use"))
       (setq buffer (open-buffer "*mail*")))
     (goto-buffer buffer)))
