@@ -54,7 +54,12 @@ the variable to the symbol `t' to recognize all C sections, if otherwise
 non-nil only the declarations at the start of the grammar and the additional
 C code at the end are recognized.
 
-The \\[yacc-mode-make-c-minor] command reparses the buffer for C sections."
+The \\[yacc-mode-make-c-minor] command reparses the buffer for C sections.
+
+If the `yacc-mode-scan-when-idle' variable is non-nil (the default), the
+buffer will automatically be rescanned each time the editor is idle for
+a second or more, providing the buffer has been modified since the previous
+scan."
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill))
