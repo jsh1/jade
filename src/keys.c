@@ -416,18 +416,21 @@ lookup_event_name(u_char *buf, u_long code, u_long mods)
 {
     int i;
     struct key_def *x;
+    u_long type = mods & EV_TYPE_MASK;
 
     char *end = buf;
     *buf = 0;
 
     if(mods & WINDOW_META(curr_win))
 	mods = (mods & ~WINDOW_META(curr_win)) | EV_MOD_META;
+    mods &= ~EV_TYPE_MASK;
 
-    for(i = 2; i < 32; i++)		/* 2's a magic number? */
+    for(i = 2; i < 32 && mods != 0; i++)	/* magic numbers!? */
     {
 	u_long mask = 1 << i;
 	if(mods & mask)
 	{
+	    mods &= ~mask;
 	    x = default_mods;
 	    while(x->name != 0)
 	    {
@@ -447,14 +450,14 @@ lookup_event_name(u_char *buf, u_long code, u_long mods)
     x = default_codes;
     while(x->name != 0)
     {
-	if((mods & EV_TYPE_MASK) == x->mods && code == x->code)
+	if(type == x->mods && code == x->code)
 	{
 	    strcpy(end, x->name);
 	    return TRUE;
 	}
 	x++;
     }
-    return sys_lookup_code_name(end, code, mods & EV_TYPE_MASK);
+    return sys_lookup_code_name(end, code, type);
 }
 
 
