@@ -247,7 +247,7 @@ char_col(TX *tx, long col, long linenum)
     long srclen = line->ln_Strlen - 1;
     glyph_widths_t *width_table = &VGLYPHTAB(tx->tx_GlyphTable)->gt_Widths;
     register long w = 0;
-    while((w < col) && (srclen-- != 0))
+    while((w < col) && (srclen-- > 0))
     {
 	register int w1 = (*width_table)[*src++];
 	if(w1 == 0)
@@ -255,7 +255,7 @@ char_col(TX *tx, long col, long linenum)
 	else
 	    w += w1;
     }
-    if(srclen == -1)
+    if(srclen < 0)
 	return((line->ln_Strlen - 1) + (col - w));
     else
 	return(src - line->ln_Line);
