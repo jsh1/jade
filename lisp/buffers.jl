@@ -590,6 +590,12 @@ numeric it's used as the exit status of the editor process."
   (when (or no-query
 	    (save-some-buffers)
 	    (yes-or-no-p "Unsaved buffers exist; quit anyway?"))
+    ;; we want before-exit-hook to run while the top-level recursive
+    ;; edit is still present (otherwise things stop working..)
+    (condition-case nil
+	(call-hook 'before-exit-hook)
+      (error))
+    (setq before-exit-hook nil)
     (throw 'quit (if (numberp no-query) no-query 0))))
 
 (defun buffer-read-only-p (&optional buffer)
