@@ -206,7 +206,7 @@ such buffer could be made."
   (interactive "FFind file: ")
   (let
       ((buf (get-file-buffer name)))
-    (unless buf
+    (unless (or buf (setq buf (call-hook 'find-file-hook (list name) 'or)))
       (when (setq buf (make-buffer (file-name-nondirectory name)))
 	(add-buffer buf)
 	(with-buffer buf
@@ -218,7 +218,7 @@ such buffer could be made."
 (defun read-file-into-buffer (file-name)
   "Reads the file FILE-NAME into the current buffer, overwriting anything
 else in the buffer. Everything will be set up as required. Before calling
-init-mode, the hook find-file-hook is dispatch."
+init-mode, the hook after-find-file-hook is dispatched."
   (interactive "fFile to read into buffer:")
   (let ((buf (current-buffer)))
     (clear-buffer)
@@ -240,7 +240,7 @@ init-mode, the hook find-file-hook is dispatch."
       (beep))
     (set-buffer-read-only buf (and (file-exists-p file-name)
 				   (not (file-writable-p file-name))))
-    (call-hook 'find-file-hook (list buf))
+    (call-hook 'after-read-file-hook (list buf))
     (init-mode buf)))
 
 ;; Scans the end of a file for any local-variable definitions
