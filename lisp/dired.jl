@@ -134,19 +134,13 @@ is used with the following commands that are specific to Dired:
 
 ;; Marking
 
-(defun dired-mark-if (pred &optional op)
-  (mapc #'(lambda (x)
-	    (when (funcall pred x)
-	      (summary-mark-item (or op 'mark) x)))
-	summary-items))
-
 (defun dired-mark-directories ()
   (interactive)
-  (dired-mark-if 'file-directory-p))
+  (summary-mark-if 'file-directory-p))
 
 (defun dired-mark-by-regexp (regexp &optional op)
   (interactive "sMark files matching regexp:")
-  (dired-mark-if #'(lambda (f) (string-match regexp f)) op))
+  (summary-mark-if #'(lambda (f) (string-match regexp f)) op))
 
 (defun dired-delete-by-regexp (regexp)
   (interactive "sDelete files matching regexp:")

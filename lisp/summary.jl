@@ -381,6 +381,14 @@ item."
 	(setq item (cdr item)
 	      count (1- count))))))
 
+(defun summary-mark-if (pred &optional op)
+  "Mark all items that satisfy the predicate function PRED, optionally
+using tag OP (by default the `mark' tag)."
+  (mapc #'(lambda (x)
+	    (when (funcall pred x)
+	      (summary-mark-item (or op 'mark) x)))
+	summary-items))
+
 (defun summary-mark-delete (&optional item count)
   "Mark that ITEM, or the current item, should be deleted."
   (interactive "\np")
