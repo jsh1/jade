@@ -103,6 +103,7 @@ inline) to be saved or manipulated."
 ;; Extra bindings in read-mail folders
 (bind-keys rm-keymap
   "RET" 'mime-decode-part
+  "C-RET" 'mime-display-part
   "C-w" 'mime-save-part
   "TAB" 'mime-next-part
   "M-TAB" 'mime-previous-part
