@@ -23,6 +23,7 @@
 
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
+#include <string.h>
 
 #ifdef HAVE_UNIX
 # include <fcntl.h>
@@ -58,7 +59,6 @@ _PR char **x11_argv;
 _PR int x11_argc;
 char **x11_argv;
 int x11_argc;
-int x11_opt_sync = 0;
 
 /* Command line options, and their default values. */
 static char *display_name = NULL;
@@ -66,7 +66,11 @@ static char *bg_str = "white";
 static char *fg_str = "black";
 static char *hl_str = "skyblue3";
 static char *geom_str = "80x24";
+static int x11_opt_sync = 0;
 static char *prog_name;
+
+_PR bool x11_opt_reverse_video;
+bool x11_opt_reverse_video = FALSE;
 
 /* Default font name. */
 DEFSTRING(def_font_str_data, DEFAULT_FONT);
@@ -124,20 +128,23 @@ get_resources(struct x11_display *xdisplay)
 {
     char *s;
     if((s = XGetDefault(xdisplay->display, prog_name, "geometry"))
-       || (s = XGetDefault(xdisplay->display, "Jade", "geometry")))
+       || (s = XGetDefault(xdisplay->display, "Jade", "Geometry")))
 	geom_str = s;
     if((s = XGetDefault(xdisplay->display, prog_name, "foreground"))
-       || (s = XGetDefault(xdisplay->display, "Jade", "foreground")))
+       || (s = XGetDefault(xdisplay->display, "Jade", "Foreground")))
 	fg_str = s;
     if((s = XGetDefault(xdisplay->display, prog_name, "background"))
-       || (s = XGetDefault(xdisplay->display, "Jade", "background")))
+       || (s = XGetDefault(xdisplay->display, "Jade", "Background")))
 	bg_str = s;
     if((s = XGetDefault(xdisplay->display, prog_name, "highlight"))
-       || (s = XGetDefault(xdisplay->display, "Jade", "highlight")))
+       || (s = XGetDefault(xdisplay->display, "Jade", "Highlight")))
 	hl_str = s;
     if((s = XGetDefault(xdisplay->display, prog_name, "font"))
-       || (s = XGetDefault(xdisplay->display, "Jade", "font")))
+       || (s = XGetDefault(xdisplay->display, "Jade", "Font")))
 	def_font_str = string_dup(s);
+    if((s = XGetDefault(xdisplay->display, prog_name, "reverseVideo"))
+       || (s = XGetDefault(xdisplay->display, "Jade", "ReverseVideo")))
+	x11_opt_reverse_video = (strcasecmp(s, "true") == 0);
 }
 
 /* Print the X11 options. */
@@ -151,6 +158,7 @@ sys_usage(void)
 	  "    -fg FOREGROUND-COLOUR\n"
 	  "    -bg BACKGROUND-COLOUR\n"
 	  "    -hl HIGHLIGHT-COLOUR\n"
+	  "    -rv\n"
 	  "    -font FONT-NAME\n"
 	  "    -sync\n" , stderr);
 }
@@ -168,6 +176,8 @@ get_options(int *argc_p, char ***argv_p)
     {
 	if(!strcmp("-sync", *argv))
 	    x11_opt_sync = 1;
+	else if(!strcmp("-rv", *argv))
+	    x11_opt_reverse_video = !x11_opt_reverse_video;
 	else if(argc >= 2)
 	{
 	    if(!strcmp("-display", *argv))
