@@ -51,6 +51,14 @@ coalesce_undo(TX *tx)
 	repv tmp = Fnreverse(tx->tx_UndoneList);
 	if(tmp)
 	{
+	    if (rep_CONSP(tmp) && rep_CAR(tmp) != Qnil)
+		tmp = Fcons (Qnil, tmp);
+	    if (rep_CONSP(tx->tx_ToUndoList)
+		&& rep_CAR(tx->tx_ToUndoList) != Qnil)
+	    {
+		tx->tx_ToUndoList = Fcons (Qnil, tx->tx_ToUndoList);
+	    }
+
 	    tx->tx_UndoList = Fnconc(rep_list_3(tx->tx_UndoList,
 					       tmp,
 					       tx->tx_ToUndoList));
@@ -372,7 +380,12 @@ This buffer's list of undo information.
 void
 undo_trim(void)
 {
-    TX *tx = buffer_chain;
+    TX *tx;
+
+    if (in_undo)
+	return;
+
+    tx = buffer_chain;
     while(tx)
     {
 	repv *undo_list;
