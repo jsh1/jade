@@ -114,7 +114,7 @@ matches or is specified.")
 to strings in the mode line.")
 
 (defvar mode-line-format
-  '("-%*%+-%B %(" mode-name minor-mode-alist "%) %p %[%c, %l%]%-")
+  '("%m%*%+-%B %(" mode-name minor-mode-alist "%) %p %[%c, %l%]%-")
   "Value defining how the status-line of each view is formatted.")
 (make-variable-buffer-local 'mode-line-format)
 
