@@ -106,6 +106,7 @@ doesn't exist."
 else in the buffer. Everything will be set up as required."
   (interactive "fFile to read into buffer:")
   (let ((buf (current-buffer)))
+    (clear-buffer)
     (unless (eval-hook 'read-file-hook file-name buf)
       (set-buffer-file-name buf file-name)
       (if (file-exists-p file-name)
