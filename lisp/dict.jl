@@ -65,6 +65,28 @@ strategy."
   (or word (error "Null word to dictionary lookup"))
   ;; Maybe this should be run asynchronously? It could take a while..
   (message "Querying the DICT server..." t)
-  (shell-command (concat dict-program " -s "
-			 (symbol-name (or strategy dict-strategy))
-			 (or dict-options "") " '" word "'")))
+  (and (shell-command (concat dict-program " -s "
+			      (symbol-name (or strategy dict-strategy))
+			      (or dict-options "") " '" word "'"))
+       (with-buffer (get-buffer "*shell-output*")
+	 (dict-mark-xrefs))))
+
+(defvar dict-xref-map (bind-keys (make-sparse-keymap)
+			"Button2-Click1" 'goto-mouse
+			"Button2-Move" 'goto-mouse
+			"Button2-Off" 'dict-follow-xref))
+
+(defun dict-mark-xrefs ()
+  (let
+      ((point (start-of-buffer)))
+    (while (re-search-forward "{([a-zA-Z-]+)}" point)
+      (setq point (match-end))
+      (make-extent (match-start 1) (match-end 1)
+		   (list 'face underline-face
+			 'mouse-face active-face
+			 'mouse-keymap dict-xref-map)))))
+
+(defun dict-follow-xref ()
+  (interactive)
+  (when (looking-at "{([a-zA-Z-]+)}" (char-search-backward ?\{))
+    (dict-lookup (expand-last-match "\\1"))))
