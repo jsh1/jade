@@ -40,8 +40,6 @@ Outstanding bugs
 General programming tasks:
 ==========================
 
- + Add mouse-keymap extent property?
-
  + Allow redisplay to be preempted by input becoming available (test
    where in the redisplay algorithms though, in the diff, or the
    drawing, or both!?)
@@ -71,11 +69,6 @@ General programming tasks:
    change. E.g. if the rule sets the summary-face depending on whether
    the message is unread or not, when the message becomes read we want
    the face to return to normal
-
-   Better rule handling. Anonymous rules? Use messages as templates for
-   creating new rules--i.e. sender, subject, etc.. Have a menu of all
-   available rules. Function to describe a pre-defined rule
-   (pretty-printing)
 
  - Syntax highlighting
 

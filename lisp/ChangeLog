@@ -1,3 +1,9 @@
+1999-05-21  John Harper  <john@dcs.warwick.ac.uk>
+
+	* edit.jl (dnd-drop-uri-list): new function, currently only
+	called by the GTK window-system when files are dropped on an
+	editor window
+
 1999-05-12  John Harper  <john@dcs.warwick.ac.uk>
 
 	* buffer-summary.jl: use the with-extent vector to give each

@@ -1,3 +1,8 @@
+1999-05-21  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gtk_jade.c: handle files being dropped onto one of our
+	windows, calls the Lisp function dnd-drop-uri-list
+
 1999-04-27  John Harper  <john@dcs.warwick.ac.uk>
 
 	* keys.c: implement the mouse-keymap extent property
