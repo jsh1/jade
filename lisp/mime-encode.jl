@@ -24,16 +24,37 @@
 (defconst mime-encode-boundary-alphabet
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
 
+;; some of these may be more dubious than others
 (defvar mime-encode-auto-type-alist
-  '(("\\.jpe?g$" . "image/jpeg")
+  '(("\\.html?$" . "text/html")
+    ("\\.txt?$" . "text/plain")
+    ;; image types
+    ("\\.jpe?g$" . "image/jpeg")
     ("\\.gif$" . "image/gif")
     ("\\.tiff$" . "image/tiff")
-    ("\\.png$" . "image/png")
-    ("\\.e?ps$" . "application/postscript")
-    ("\\.html?$" . "text/html")
-    ("\\.txt?$" . "text/plain")
+    ("\\.png$" . "image/png") 
+    ("\\.pbm$" . "image/x-pbm")
+    ("\\.pnm$" . "image/x-pnm")
+    ("\\.pict$" . "image/x-pict")
+    ("\\.ppm$" . "image/x-ppm")
+    ("\\.xbm$" . "image/x-xbm")
+    ("\\.xpm$" . "image/x-xpm")
+    ("\\.xwd$" . "image/x-xwd")
+    ;; video types
     ("\\.mpe?g$" . "video/mpeg")
-    ("\\.au$" . "audio/basic"))
+    ;; audio types
+    ("\\.au$" . "audio/basic")
+    ("\\.aiff$" . "audio/x-aiff")
+    ("\\.wav$" . "audio/x-wav")
+    ;; application types
+    ("\\.e?ps$" . "application/postscript")
+    ("\\.pdf$" . "application/pdf")
+    ("\\.dvi$" . "application/x-dvi")
+    ("\\.gz$" . "application/x-gzip")
+    ("\\.bz2$" . "application/x-bzip2")
+    ("\\.tar$" . "application/x-tar")
+    ("\\.tex$" . "application/x-tex")
+    ("\\.texi(nfo)?$" . "application/x-texinfo"))
   "Alist of (REGEXP . CONTENT-TYPE-STRING).")
 
 (defvar mime-encode-keymap (bind-keys (make-sparse-keymap)
@@ -74,8 +95,7 @@
       (format (current-buffer) " filename=%s"
 	      (cdr (assq 'filename (cdr content-disp)))))
     (format (current-buffer) "]]\n")
-    (setq extent (make-extent (forward-char 2 start)
-			      (forward-char -3 (cursor-pos))
+    (setq extent (make-extent start (cursor-pos)
 			      (list* 'face mime-highlight-face
 				     'content-type content-type
 				     'content-disp content-disp
@@ -197,71 +217,70 @@
       (mime-encode-content-type (list 'text 'plain))
       (insert "\n")
       (let
-	  (attachments)
+	  (attachments next-start)
 	;; First locate all attachments (can't delete extents while
 	;; map-extent'ing)
 	(map-extents #'(lambda (e)
 			 (when (extent-get e 'content-type)
 			   ;; Found an attachment
 			   (setq attachments
-				 (cons (list*
-					;; Include the [[..]] surrounding
-					;; the extent
-					'start
-					(forward-char -2 (extent-start e))
-					'end
-					(forward-char 3 (extent-end e))
-					(extent-plist e))
-				       attachments))
+				 (cons (list* 'start (extent-start e)
+					      'end (extent-end e)
+					      (extent-plist e)) attachments))
 			   (set-extent-plist e nil)))
 		     (start-of-buffer) (end-of-buffer))
 	;; Then convert them to MIME format
 	;; Working from bottom to top of the buffer to avoid screwing with
 	;; the positions of the unencoded attachments
-	(mapc #'(lambda (att)
-		  (let*
-		      ((start (car (cdr (memq 'start att))))
-		       (end (car (cdr (memq 'end att))))
-		       (content-type (car (cdr (memq 'content-type att))))
-		       (content-disp (car (cdr (memq 'content-disp att))))
-		       (content-xfer-enc (if (eq (car content-type) 'text)
-					     'quoted-printable 'base64))
-		       (source (car (cdr (memq 'content-source att)))))
-		    (goto start)
-		    (delete-area start end)
-		    (unless (zerop (pos-col (cursor-pos)))
-		      (insert "\n"))
-		    (insert "--\n")
-		    (setq boundaries (cons (make-mark (forward-char -1))
-					   boundaries))
-		    (mime-encode-content-type content-type)
-		    (mime-encode-content-disp content-disp)
-		    (format (current-buffer) "Content-transfer-encoding: %s\n"
-			    content-xfer-enc)
-		    (insert "\n")
-		    (cond
-		     ((stringp source)
-		      ;; Assume SOURCE is a file name
-		      (let
-			  ((file (open-file source 'read)))
-			(unwind-protect
-			    (mime-encode-stream content-xfer-enc file)
-			  (close-file file))))
-		     ((bufferp source)
-		      (mime-encode-stream
-		       content-xfer-enc
-		       (cons source (start-of-buffer source))))
-		     ((streamp source)
-		      (mime-encode-stream content-xfer-enc source))
-		     (t
-		      (error "Don't know how to access source: %s" source)))
-		    ;; XXX: this is truly fucked up, right here
-		    (insert "\n--\n")
-		    (setq boundaries (cons (make-mark (forward-char -1))
-					   boundaries))
-		    (mime-encode-content-type (list 'text 'plain))
-		    (insert "\n")))
-	      attachments))
+	(while attachments
+	  (let*
+	      ((att (car attachments))
+	       (start (car (cdr (memq 'start att))))
+	       (end (car (cdr (memq 'end att))))
+	       (content-type (car (cdr (memq 'content-type att))))
+	       (content-disp (car (cdr (memq 'content-disp att))))
+	       (content-xfer-enc (if (eq (car content-type) 'text)
+				     'quoted-printable 'base64))
+	       (source (car (cdr (memq 'content-source att)))))
+	    ;; if necessary mark the start of the following body part
+	    (unless (or (>= end (end-of-buffer))
+			(and next-start (>= end next-start)))
+	      (goto end)
+	      (insert "--\n")
+	      (setq boundaries (cons (make-mark (forward-char -1)) boundaries))
+	      (mime-encode-content-type (list 'text 'plain))
+	      (insert "\n"))
+	    (goto start)
+	    (delete-area start end)
+	    (unless (zerop (pos-col (cursor-pos)))
+	      (insert "\n"))
+	    (insert "--\n")
+	    (setq boundaries (cons (make-mark (forward-char -1))
+				   boundaries))
+	    (mime-encode-content-type content-type)
+	    (mime-encode-content-disp content-disp)
+	    (format (current-buffer) "Content-transfer-encoding: %s\n"
+		    content-xfer-enc)
+	    (insert "\n")
+	    (cond
+	     ((stringp source)
+	      ;; Assume SOURCE is a file name
+	      (let
+		  ((file (open-file source 'read)))
+		(unwind-protect
+		    (mime-encode-stream content-xfer-enc file)
+		  (close-file file))))
+	     ((bufferp source)
+	      (mime-encode-stream
+	       content-xfer-enc
+	       (cons source (start-of-buffer source))))
+	     ((streamp source)
+	      (mime-encode-stream content-xfer-enc source))
+	     (t
+	      (error "Don't know how to access source: %s" source)))
+	    (insert "\n")
+	    (setq next-start start)
+	    (setq attachments (cdr attachments)))))
       ;; Add the trailing boundary
       (goto (end-of-buffer))
       (unless (zerop (pos-col (cursor-pos)))
@@ -282,5 +301,4 @@
 (defun mime-encode-delete-part (extent)
   (interactive (list (mime-current-part)))
   (extent-set extent 'read-only nil)
-  (delete-area (forward-char -2 (extent-start extent))
-	       (forward-char 3 (extent-end extent))))
+  (delete-area (extent-start extent) (extent-end extent)))
