@@ -81,9 +81,9 @@ buffer as the first substring.")
 (make-variable-buffer-local 'rm-current-msg-visible-start)
 (make-variable-buffer-local 'rm-current-msg-body)
 
-(defvar rm-cached-msg-list t
+(defvar rm-cached-msg-list 'invalid
   "A cached copy of the message list, used by the summary buffer. Invalid
-when set to the symbol t.")
+when set to the symbol `invalid'.")
 (make-variable-buffer-local 'rm-cached-msg-list)
 
 (defvar rm-summary-buffer nil
@@ -171,6 +171,20 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Local functions
 
+;; Twiddle the message lists so that the next message is current
+(defmacro rm-move-forwards ()
+  '(setq rm-before-msg-list (cons rm-current-msg rm-before-msg-list)
+	 rm-current-msg (car rm-after-msg-list)
+	 rm-after-msg-list (cdr rm-after-msg-list)
+	 rm-current-msg-index (1+ rm-current-msg-index)))
+
+;; Twiddle the message lists so that the previous message is current
+(defmacro rm-move-backwards ()
+  '(setq rm-after-msg-list (cons rm-current-msg rm-after-msg-list)
+	 rm-current-msg (car rm-before-msg-list)
+	 rm-before-msg-list (cdr rm-before-msg-list)
+	 rm-current-msg-index (1- rm-current-msg-index)))
+
 ;; Create the lists of messages. The buffer should be unrestricted when
 ;; calling this. Returns the current message.
 (defun rm-build-message-lists ()
@@ -191,7 +205,7 @@ Major mode for viewing mail folders. Commands include:\n
 	  rm-before-msg-list (cdr msgs)
 	  rm-after-msg-list '()
 	  rm-current-msg-index (1- count)
-	  rm-cached-msg-list t)
+	  rm-cached-msg-list 'invalid)
     rm-current-msg))
 
 ;; Parse one message and return a message structure. The buffer
@@ -264,61 +278,59 @@ Major mode for viewing mail folders. Commands include:\n
 			  (copy-area (match-start 4) (match-end 4)))))
     (unrestrict-buffer)
     msg))
-	
+
+;; Returns the position of the start of the last line in the current message.
+;; Works no matter what the restriction is set to.
+(defun rm-current-message-end ()
+  (if rm-after-msg-list
+      (prev-line 1 (copy-pos (mark-pos (rm-get-msg-field
+					(car rm-after-msg-list) rm-msg-mark))))
+    (buffer-end nil t)))
+
 ;; Display the current message
 (defun rm-display-current-message ()
-  (let
-      ((header-start (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark))))
     (unrestrict-buffer)
-    (unless (regexp-match-line mail-message-start header-start nil t)
-      (error "Position isn't start of header: %s" header-start))
-    (let
-	((end-of-hdrs (find-next-regexp "^$" header-start))
-	 (inhibit-read-only t))
-      (setq rm-current-msg-body end-of-hdrs)
-      ;; Just operate on the headers
-      (restrict-buffer header-start (prev-line 1 (copy-pos end-of-hdrs)))
-      ;; First of all, move all visible headers after non-visible ones
-      (setq rm-current-msg-visible-start (rm-coalesce-visible-headers))
-      (unrestrict-buffer)
-      ;; Find the start of the next message (or the end of the file)
-      (catch 'foo
+    (when rm-current-msg
+      (let
+	  ((header-start (mark-pos (rm-get-msg-field rm-current-msg
+						     rm-msg-mark))))
+	(unless (regexp-match-line mail-message-start header-start nil t)
+	  (error "Position isn't start of header: %s" header-start))
 	(let
-	    ((next (copy-pos end-of-hdrs)))
-	  (while (setq next (find-next-regexp mail-message-start
-					      (next-line 1 (copy-pos next))
-					      nil t))
-	    (when (rm-message-start-p next)
-	      ;; Found it
-	      (setq rm-current-msg-end (prev-line 1 next))
-	      (throw 'foo)))
-	  (setq rm-current-msg-end (buffer-end))))
-      (goto-char end-of-hdrs)
-      (rm-restrict-to-message)
-      ;; Fix the summary buffer if it exists
-      (when rm-summary-buffer
-	(let
-	    ((sum-buf rm-summary-buffer))
-	  (with-view (other-view mail-summary-lines)
-	    (goto-buffer sum-buf)
-	    (rm-summary-update-current)))))))
+	    ((end-of-hdrs (find-next-regexp "^$" header-start))
+	     (inhibit-read-only t))
+	  (setq rm-current-msg-body end-of-hdrs)
+	  ;; Just operate on the headers
+	  (restrict-buffer header-start (prev-line 1 (copy-pos end-of-hdrs)))
+	  ;; First of all, move all visible headers after non-visible ones
+	  (setq rm-current-msg-visible-start (rm-coalesce-visible-headers))
+	  (unrestrict-buffer)
+	  (setq rm-current-msg-end (rm-current-message-end))
+	  (goto-char end-of-hdrs)
+	  (rm-restrict-to-message)
+	  ;; Called when the current restriction is about to be
+	  ;; displayed
+	  (eval-hook 'read-mail-display-message-hook rm-current-msg))))
+    ;; Fix the summary buffer if it exists
+    (when rm-summary-buffer
+      (let
+	  ((sum-buf rm-summary-buffer))
+	(with-view (other-view mail-summary-lines)
+	  (goto-buffer sum-buf)
+	  (rm-summary-update-current)))))
 
 ;; Make MSG the current message, rejigging the message lists as necessary
+;; Doesn't fix the variables defining some of the positions in the current
+;; message.
 (defun rm-make-message-current (msg)
   (unless (eq msg rm-current-msg)
     (if (memq msg rm-after-msg-list)
 	;; Move forwards
 	(while (not (eq rm-current-msg msg))
-	  (setq rm-before-msg-list (cons rm-current-msg rm-before-msg-list)
-		rm-current-msg (car rm-after-msg-list)
-		rm-after-msg-list (cdr rm-after-msg-list)
-		rm-current-msg-index (1+ rm-current-msg-index)))
+	  (rm-move-forwards))
       ;; Move backwards
       (while (not (eq rm-current-msg msg))
-	(setq rm-after-msg-list (cons rm-current-msg rm-after-msg-list)
-	      rm-current-msg (car rm-before-msg-list)
-	      rm-before-msg-list (cdr rm-before-msg-list)
-	      rm-current-msg-index (1- rm-current-msg-index))))))
+	(rm-move-backwards)))))
 
 ;; Display an arbitrary MSG
 (defun rm-display-message (msg)
@@ -366,10 +378,8 @@ Major mode for viewing mail folders. Commands include:\n
 	    ;; means that the end of the headers has been reached!
 	    (setq first-visible (insert "\n" first-visible)
 		  current-hdr nil)
-	  (setq current-hdr next-hdr)))))
-  ;; Now find the start of the first visible header
-  (unless (find-next-regexp mail-visible-headers header-start nil t)
-    header-start))
+	  (setq current-hdr next-hdr))))
+    first-visible))
 
 ;; Sets up the buffer restriction to just show the current message
 ;; When SHOW-ALL-HDRS-P is non-nil the whole message is shown
@@ -401,6 +411,76 @@ Major mode for viewing mail folders. Commands include:\n
       pos
     nil))
 
+;; Delete the current message. Unless GO-BACKWARDS-P is t the next
+;; message is displayed (unless there is no next message). NO-REDISPLAY-P
+;; controls whether or not to display the new current message.
+(defun rm-delete-current-message (&optional go-backwards-p no-redisplay-p)
+  (unless rm-current-msg
+    (error "No message to delete"))
+  ;; When this hook returns t the message isn't deleted.
+  (unless (eval-hook 'read-mail-delete-message-hook rm-current-msg)
+    (let
+	((inhibit-read-only t)
+	 ;; Don't use rm-curr-msg-end, it may not be initialised.
+	 (end (rm-current-message-end)))
+      (unrestrict-buffer)
+      (unless (equal end (buffer-end))
+	;; Now this points to the first character of the next message
+	(next-line 1 end))
+      (delete-area (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark))
+		   end)
+      (if (and rm-before-msg-list
+	       (or go-backwards-p (null rm-after-msg-list)))
+	  (setq rm-current-msg (car rm-before-msg-list)
+		rm-before-msg-list (cdr rm-before-msg-list)
+		rm-current-msg-index (1- rm-current-msg-index))
+	;; Even if this list is empty things will still work out
+	(setq rm-current-msg (car rm-after-msg-list)
+	      rm-after-msg-list (cdr rm-after-msg-list)))
+      (setq rm-cached-msg-list 'invalid)
+      (unless no-redisplay-p
+	(rm-display-current-message)))))
+
+;; Delete all messages in the list DEL-MSGS as efficiently as possible
+(defun rm-delete-messages (del-msgs)
+  ;; Need to delete del-msgs in the most efficient order, to
+  ;; minimise the amount of list thrashing. The current method
+  ;; isn't that great.
+  ;; Having said that, it's a lot better than what could happen if we
+  ;; just deleted messages in the order thrown at us by summary-execute
+  (let
+      ((old-curr-msg rm-current-msg))
+    ;; 1. Delete the current message as long as it's in the list
+    (while (and del-msgs rm-current-msg (memq rm-current-msg del-msgs))
+      (setq del-msgs (delq rm-current-msg del-msgs))
+      (rm-delete-current-message nil t))
+    ;; 2. Work forwards down the rm-after-msg-list looking for
+    ;; messages
+    (when (and del-msgs rm-after-msg-list)
+      (rm-move-forwards)
+      (while (and del-msgs rm-after-msg-list)
+	(if (memq rm-current-msg del-msgs)
+	    (progn
+	      (setq del-msgs (delq rm-current-msg del-msgs))
+	      (rm-delete-current-message nil t))
+	  (rm-move-forwards))))
+    ;; 3. Work backwards down the rm-before-list
+    (when (and del-msgs rm-before-msg-list)
+      (rm-move-backwards)
+      (while (and del-msgs rm-before-msg-list)
+	(if (memq rm-current-msg del-msgs)
+	    (progn
+	      (setq del-msgs (delq rm-current-msg del-msgs))
+	      (rm-delete-current-message t t))
+	  (rm-move-backwards))))
+    ;; If possible, try to display the original current message. Otherwise
+    ;; leave it how it is..
+    (if (or (eq old-curr-msg rm-current-msg)
+	      (memq old-curr-msg rm-after-msg-list)
+	      (memq old-curr-msg rm-before-msg-list))
+	(rm-display-message old-curr-msg)
+      (rm-display-current-message))))
+
 
 ;; Commands
 
@@ -409,10 +489,7 @@ Major mode for viewing mail folders. Commands include:\n
   (interactive)
   (unless rm-after-msg-list
     (error "No more messages"))
-  (setq rm-before-msg-list (cons rm-current-msg rm-before-msg-list)
-	rm-current-msg (car rm-after-msg-list)
-	rm-after-msg-list (cdr rm-after-msg-list)
-	rm-current-msg-index (1+ rm-current-msg-index))
+  (rm-move-forwards)
   (rm-display-current-message))
 
 (defun rm-previous-message ()
@@ -420,10 +497,7 @@ Major mode for viewing mail folders. Commands include:\n
   (interactive)
   (unless rm-before-msg-list
     (error "No previous message"))
-  (setq rm-after-msg-list (cons rm-current-msg rm-after-msg-list)
-	rm-current-msg (car rm-before-msg-list)
-	rm-before-msg-list (cdr rm-before-msg-list)
-	rm-current-msg-index (1- rm-current-msg-index))
+  (rm-move-backwards)
   (rm-display-current-message))
 
 (defun rm-toggle-all-headers ()
@@ -447,10 +521,11 @@ current message."
   "p" 'rm-summary-previous
   "SPC" 'summary-select-item)
 
-(defvar rm-summary-functions '((select . rm-select-summary-item)
-			       (delete . rm-delete-summary-item)
-			       (print . rm-print-summary-item)
-			       (list . rm-list-summary))
+(defvar rm-summary-functions '((select . rm-summary-select-item)
+			       (list . rm-summary-list)
+			       (print . rm-summary-print-item)
+			       (delete . rm-summary-delete-item)
+			       (execute-end . rm-summary-execute-end))
   "Function vector for summary-mode.")
 
 (defvar rm-summary-mail-buffer nil
@@ -461,39 +536,47 @@ current message."
   "The message with a `->' mark next to it.")
 (make-variable-buffer-local 'rm-summary-current-marked)
 
+(defvar rm-summary-msgs-to-delete nil
+  "List of messages to be deleted. Build up during the execute phase of
+the summary buffer.")
+(make-variable-buffer-local 'rm-summary-msgs-to-delete)
+
 (defun rm-summary ()
   "Display a summary of all messages in a separate view."
   (interactive)
   (if rm-summary-buffer
       (progn
-	(with-view (other-view mail-summary-lines)
-	  (goto-buffer rm-summary-buffer)
-	  (summary-update)
-	  (rm-summary-update-current)))
+	(set-current-view (other-view mail-summary-lines))
+	(goto-buffer rm-summary-buffer)
+	(summary-update)
+	(rm-summary-update-current))
     (setq rm-summary-buffer (make-buffer (concat "*summary of "
 						 (buffer-name) ?*)))
     (let
 	((mail-buf (current-buffer)))
-      (with-view (other-view mail-summary-lines)
-	(goto-buffer rm-summary-buffer)
-	(setq rm-summary-mail-buffer mail-buf)
-	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
-	(setq major-mode 'rm-summary-mode)
-	(rm-summary-update-current)))))
+      (set-current-view (other-view mail-summary-lines))
+      (goto-buffer rm-summary-buffer)
+      (setq rm-summary-mail-buffer mail-buf)
+      (summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
+      (setq major-mode 'rm-summary-mode)
+      (rm-summary-update-current))))
 
 (defun rm-summary-mode ()
   "Mail Summary Mode:\n
 Major mode for displaying a summary of a mail folder.")
 
-(defun rm-list-summary ()
+(defun rm-summary-list ()
   (with-buffer rm-summary-mail-buffer
-    (if (eq rm-cached-msg-list t)
+    (if (eq rm-cached-msg-list 'invalid)
 	(setq rm-cached-msg-list
-	      (nconc (reverse rm-before-msg-list)
-		     (cons rm-current-msg (copy-sequence rm-after-msg-list))))
+	      (if rm-current-msg
+		  (nconc (reverse rm-before-msg-list)
+			 (cons rm-current-msg
+			       (copy-sequence rm-after-msg-list)))
+		'()))
       rm-cached-msg-list)))
 
-(defun rm-print-summary-item (item)
+(defun rm-summary-print-item (item)
   (let
       ((pending-ops (summary-get-pending-ops item)))
     (format (current-buffer) "%s %c  %s %s %s "
@@ -513,23 +596,35 @@ Major mode for displaying a summary of a mail folder.")
     (indent-to 40)
     (insert (or (rm-get-msg-field item rm-msg-subject) ""))))
 
-(defun rm-select-summary-item (item)
+(defun rm-summary-select-item (item)
   (let
       ((mail-buf rm-summary-mail-buffer))
     (with-view (other-view)
       (goto-buffer mail-buf)
       (rm-display-message item))))
 
-(defun rm-delete-summary-item (item)
-  ;; ...
-  )
+(defun rm-summary-delete-item (item)
+  (setq rm-summary-msgs-to-delete (cons item rm-summary-msgs-to-delete)))
 
+(defun rm-summary-execute-end ()
+  (let
+      ((del-msgs rm-summary-msgs-to-delete)
+       (mail-buf rm-summary-mail-buffer))
+    (setq rm-summary-msgs-to-delete nil)
+    (with-view (other-view)
+      (goto-buffer mail-buf)
+      (rm-delete-messages del-msgs))))
+    
 (defun rm-summary-update-current ()
-  (summary-update-item rm-summary-current-marked)
-  (summary-update-item (with-buffer rm-summary-mail-buffer
-			 rm-current-msg))
-  (summary-goto-item (with-buffer rm-summary-mail-buffer
-		       rm-current-msg-index)))
+  (if rm-current-msg
+      (progn
+	(summary-update-item rm-summary-current-marked)
+	(summary-update-item (with-buffer rm-summary-mail-buffer
+			       rm-current-msg))
+	(summary-goto-item (with-buffer rm-summary-mail-buffer
+			     rm-current-msg-index)))
+    ;; No messages, call update to clear everything
+    (summary-update)))
 
 (defun rm-summary-next ()
   (interactive)
