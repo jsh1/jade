@@ -40,6 +40,7 @@ static int redisplay_max_d = 0;
 _PR glyph_buf *alloc_glyph_buf(int cols, int rows);
 _PR void free_glyph_buf(glyph_buf *gb);
 _PR void garbage_glyphs(WIN *w, int x, int y, int width, int height);
+_PR void redisplay_message(WIN *w);
 _PR void redisplay_init(void);
 
 
@@ -637,6 +638,24 @@ aborted and each row of the window is redisplayed manually.
 ::end:: */
 {
     return handle_var_int(val, &redisplay_max_d);
+}
+
+/* Just refresh the contents of the message displayed at the bottom
+   of window W. */
+void
+redisplay_message(WIN *w)
+{
+    if(w->w_Window == 0 || !(w->w_Flags & WINFF_MESSAGE))
+	return;
+
+    /* Copy existing contents of the message to w_NewContent */
+    memcpy(GLYPH_BUF_CODES(w->w_NewContent, w->w_MaxY - 1),
+	   GLYPH_BUF_CODES(w->w_Content, w->w_MaxY - 1),
+	   w->w_MaxX);
+
+    make_message_glyphs(w->w_Content, w);
+    redisplay_do_draw(w, w->w_NewContent, w->w_Content, w->w_MaxY);
+    cmd_flush_output();
 }
 
 void
