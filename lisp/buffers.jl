@@ -18,16 +18,21 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+;; Variables
+
 (defvar auto-save-p t
   "When t files are auto-save'd regularly.")
+
 (defvar default-auto-save-interval 120
   "The number of seconds between each auto-save.")
 
 (defvar make-backup-files t
   "When non-nil backups of files are made when they are saved.")
+
 (defvar backup-by-copying nil
   "When non-nil all file backups are made by copying the file, not by
 renaming it.")
+
 (defvar else-backup-by-copying t
   "Non-nil means make file backups by copying the file if it's not a good
 idea to rename it. If `backup-by-copying' is non-nil this variable has no
@@ -36,11 +41,9 @@ effect.")
 (defvar default-buffer (current-buffer)
   "The `*jade*' buffer.")
 
-;; Initialise the first window's buffer-list
-(setq buffer-list (cons default-buffer nil))
-
 (defvar standard-output default-buffer
   "Stream that `prin?' writes its output to by default")
+
 (defvar standard-input default-buffer
   "Stream that `read' takes it's input from by default")
 
@@ -53,6 +56,8 @@ effect.")
 it totally if this variable is non-nil.")
 (make-variable-buffer-local 'mildly-special-buffer)
 
+(defvar kill-buffer-hook nil
+  "Buffer-local hook called when the current buffer is killed.")
 (make-variable-buffer-local 'kill-buffer-hook)
 
 (defvar enable-local-variables t
@@ -67,6 +72,26 @@ with `enable-local-variables'.")
 (defvar local-variable-lines 20
   "This variable defines how many of the bottom-most lines in a file are
 searched for a `Local Variables:' section.")
+
+(defvar before-exit-hook nil
+  "Hook called immediately prior to the editor finishing execution.")
+
+;; Initialise the first window's buffer-list
+(setq buffer-list (list (current-buffer)))
+
+
+;; Buffer manipulation
+
+(defun open-buffer (name &optional always-create)
+  "If no buffer called NAME exists, creates one and adds it to the main
+buffer-list. Always returns the buffer. If ALWAYS-CREATE is non-nil never
+return an existing buffer, always create a new one."
+  (let
+      ((buf (if always-create nil (get-buffer name))))
+    (unless buf
+      (when (setq buf (make-buffer name))
+	(add-buffer buf)))
+    buf))
 
 (defun goto-buffer (buffer &optional view)
   "Switch the current buffer to BUFFER which can either be a buffer-object
@@ -84,6 +109,86 @@ is non-nil it defines the view to display the buffer in."
       (signal 'bad-arg (list buffer 1)))
     (setq buffer-list (cons buffer (delq buffer buffer-list)))
     (set-current-buffer buffer)))
+
+(defun kill-buffer (buffer)
+  "Destroys BUFFER (can be an actual buffer or name of a buffer), first
+checks whether or not we're allowed to with the function `check-changes'.
+  If it can be deleted, all windows displaying this buffer are switched
+to the buffer at the head of the buffer-list, and BUFFER is removed
+from the buffer-list (if it was in it)."
+  (interactive "bBuffer to kill:")
+  (cond
+   ((bufferp buffer))
+   ((stringp buffer)
+    (setq buffer (get-buffer buffer))))
+  (when (and buffer (check-changes buffer))
+    (eval-hook 'kill-buffer-hook buffer)
+    (unless (and (buffer-special-p buffer)
+		 (null (with-buffer buffer mildly-special-buffer)))
+      (kill-mode buffer)
+      (destroy-buffer buffer))
+    (remove-buffer buffer)
+    t))
+
+(defun bury-buffer (&optional buffer all-windows)
+  "Puts BUFFER (or the currently displayed buffer) at the end of the current
+window's buffer-list then switch to the buffer at the head of the list.
+If ALL-WINDOWS is non-nil this is done in all windows (the same buffer
+will be buried in each window though)."
+  (interactive)
+  (unless buffer
+    (setq buffer (current-buffer)))
+  (let
+      ((list (if all-windows
+		 window-list
+	       (cons (current-window) nil))))
+    (while list
+      (with-window (car list)
+	(let
+	    ((old-list (copy-sequence buffer-list)))
+	  (setq buffer-list (nconc (delq buffer buffer-list)
+				   (cons buffer nil)))
+	  (set-current-buffer (car buffer-list))
+	  ;; It seems that buffer-list sometimes?
+	  (when (/= (length buffer-list) (length old-list))
+	    (error "buffer-list changed length!"))))
+      (setq list (cdr list)))))
+
+(defun switch-to-buffer ()
+  "Prompt the user for the name of a buffer, then display it."
+  (interactive)
+  (let*
+      ((default (or (nth 1 buffer-list) (current-buffer)))
+       (buffer (prompt-for-buffer (concat "Switch to buffer (default: "
+					  (buffer-name default)
+					  "):")
+				  nil
+				  default)))
+    (goto-buffer buffer)))
+
+(defun rotate-buffers-forward ()
+  "Moves the buffer at the head of the buffer-list to be last in the list, the
+new head of the buffer-list is displayed in the current window."
+  (interactive)
+  (let
+      ((head (car buffer-list))
+	(end (nthcdr (1- (length buffer-list)) buffer-list)))
+    (rplacd end (cons head nil))
+    (setq buffer-list (cdr buffer-list))
+    (set-current-buffer (car buffer-list))))
+
+;(defun rotate-buffers-backward (&aux end)
+;  "(rotate-buffers-backward)
+;Moves the buffer at the end of the buffer-list to be first in the list, the
+;new head of the buffer-list is displayed in the current window."
+;  (setq
+;    end (nthcdr (- 2 (length buffer-list)) buffer-list)
+;    buffer-list (cons (last buffer-list) buffer-list))
+;  (rplacd end nil)
+;  (set-current-buffer (car buffer-list)))
+
+
+;; Storing files in buffers
 
 (defun open-file (name)
   "If no buffer containing file NAME exits try to create one.
@@ -229,8 +334,7 @@ that it is associated with."
 (defun save-file (&optional buffer &aux name)
   "Saves the buffer BUFFER, or the current buffer, to the file that it is
 associated with, then sets the number of modifications made to this file
-to zero.
-Note: if no changes have been made to this buffer, it won't be saved."
+to zero. If no changes have been made to the buffer, it won't be saved."
   (interactive)
   (unless (bufferp buffer)
     (setq buffer (current-buffer)))
@@ -281,145 +385,53 @@ the cursor position."
     (unless (eval-hook 'insert-file-hook name)
       (insert (read-file name)))))
 
-(defun open-buffer (name &optional always-create)
-  "If no buffer called NAME exists, creates one and adds it to the main
-buffer-list. Always returns the buffer. If ALWAYS-CREATE is non-nil never
-return an existing buffer, always create a new one."
-  (let
-      ((buf (if always-create nil (get-buffer name))))
-    (unless buf
-      (when (setq buf (make-buffer name))
-	(add-buffer buf)))
-    buf))
-
-(defun kill-buffer (buffer)
-  "Destroys BUFFER (can be an actual buffer or name of a buffer), first
-checks whether or not we're allowed to with the function `check-changes'.
-  If it can be deleted, all windows displaying this buffer are switched
-to the buffer at the head of the buffer-list, and BUFFER is removed
-from the buffer-list (if it was in it)."
-  (interactive "bBuffer to kill:")
-  (cond
-   ((bufferp buffer))
-   ((stringp buffer)
-    (setq buffer (get-buffer buffer))))
-  (when (and buffer (check-changes buffer))
-    (eval-hook 'kill-buffer-hook buffer)
-    (unless (and (buffer-special-p buffer)
-		 (null (with-buffer buffer mildly-special-buffer)))
-      (kill-mode buffer)
-      (destroy-buffer buffer))
-    (remove-buffer buffer)
-    t))
-
-(defun bury-buffer (&optional buffer all-windows)
-  "Puts BUFFER (or the currently displayed buffer) at the end of the current
-window's buffer-list then switch to the buffer at the head of the list.
-If ALL-WINDOWS is non-nil this is done in all windows (the same buffer
-will be buried in each window though)."
-  (interactive)
-  (unless buffer
-    (setq buffer (current-buffer)))
-  (let
-      ((list (if all-windows
-		 window-list
-	       (cons (current-window) nil))))
-    (while list
-      (with-window (car list)
-	(let
-	    ((old-list (copy-sequence buffer-list)))
-	  (setq buffer-list (nconc (delq buffer buffer-list)
-				   (cons buffer nil)))
-	  (set-current-buffer (car buffer-list))
-	  ;; It seems that buffer-list sometimes?
-	  (when (/= (length buffer-list) (length old-list))
-	    (error "buffer-list changed length!"))))
-      (setq list (cdr list)))))
-
-(defun switch-to-buffer ()
-  "Prompt the user for the name of a buffer, then display it."
-  (interactive)
-  (let*
-      ((default (or (nth 1 buffer-list) (current-buffer)))
-       (buffer (prompt-for-buffer (concat "Switch to buffer (default: "
-					  (buffer-name default)
-					  "):")
-				  nil
-				  default)))
-    (goto-buffer buffer)))
-
-(defun rotate-buffers-forward ()
-  "Moves the buffer at the head of the buffer-list to be last in the list, the
-new head of the buffer-list is displayed in the current window."
-  (interactive)
-  (let
-      ((head (car buffer-list))
-	(end (nthcdr (1- (length buffer-list)) buffer-list)))
-    (rplacd end (cons head nil))
-    (setq buffer-list (cdr buffer-list))
-    (set-current-buffer (car buffer-list))))
-
-;(defun rotate-buffers-backward (&aux end)
-;  "(rotate-buffers-backward)
-;Moves the buffer at the end of the buffer-list to be first in the list, the
-;new head of the buffer-list is displayed in the current window."
-;  (setq
-;    end (nthcdr (- 2 (length buffer-list)) buffer-list)
-;    buffer-list (cons (last buffer-list) buffer-list))
-;  (rplacd end nil)
-;  (set-current-buffer (car buffer-list)))
-
 (defun check-changes (&optional buffer)
   "Returns t if it is ok to kill BUFFER, or the current buffer. If unsaved
-changes have been made to it the user is asked whether (s)he minds losing
+changes have been made to it the user is asked whether they mind losing
 them."
   (or (not (buffer-modified-p buffer))
       (yes-or-no-p (format nil "OK to lose change(s) to buffer `%s'"
 			   (file-name-nondirectory (buffer-name buffer))))))
 
-(defun goto-mark (mark)
-  "Switches (if necessary) to the buffer containing MARK at the position
-of the mark. If the file containing MARK is not in memory then we
-attempt to load it with `open-file'."
-  (when (markp mark)
-    (let
-	((file (mark-file mark))
-	 (pos (mark-pos mark)))
-      (when (stringp file)
-	(setq file (open-file file)))
-      (set-auto-mark)
-      (goto-buffer file)
-      (goto pos))))
-
-(defun set-auto-mark ()
-  "Sets the mark `auto-mark' to the current position (buffer & cursor-pos)."
+(defun revert-buffer (&optional buffer)
+  "Restores the contents of BUFFER (or current buffer) to the contents of the
+file it was loaded from."
   (interactive)
-  (set-mark auto-mark (cursor-pos) (current-buffer))
-  (message "Set auto-mark."))
+  (unless buffer
+    (setq buffer (current-buffer)))
+  (when (check-changes buffer)
+    (with-buffer buffer
+      (delete-auto-save-file)
+      (read-file-into-buffer (buffer-file-name buffer)))))
 
-(defun swap-cursor-and-auto-mark ()
-  "Sets the `auto-mark' to the current position and then sets the current
-position (buffer and cursor-pos) to the old value of `auto-mark'."
+(defun save-some-buffers ()
+  "Asks whether or not to save any modified buffers, returns t if no modified
+buffers exist on exit."
   (interactive)
   (let
-      ((a-m-file (mark-file auto-mark))
-       (a-m-pos (mark-pos auto-mark)))
-    (set-auto-mark)
-    (when (stringp a-m-file)
-      (setq a-m-file (open-file a-m-file)))
-    (goto-buffer a-m-file)
-    (goto a-m-pos)))
+      ((bufs buffer-list)
+       buf
+       (unsaved-files-p nil))
+    (while (consp bufs)
+      (setq buf (car bufs))
+      (when (and (buffer-modified-p buf) (not (buffer-special-p buf)))
+	(if (y-or-n-p (concat "Save buffer " (buffer-name buf)))
+	    (unless (save-file buf)
+	      (setq unsaved-files-p t))
+	  (setq unsaved-files-p t)))
+      (setq bufs (cdr bufs)))
+    (not unsaved-files-p)))
 
-(defun split-line-indent ()
-  "Inserts a newline at the cursor position and then indents the new line
-created to the indentation of the one above it."
-  (interactive)
-  (let
-      ((old-indent-pos (forward-line 1 (indent-pos))))
-    (split-line)
-    (if (empty-line-p)
-	(goto-glyph old-indent-pos)
-      (set-indent-pos old-indent-pos))))
+(defun maybe-save-buffer (buffer)
+  "If BUFFER has been modified, ask whether or not to save it."
+  (when (and (buffer-modified-p buffer) (not (buffer-special-p buffer)))
+    (if (y-or-n-p (concat "Save buffer " (buffer-name buffer)))
+	(unless (save-file buffer)
+	  (setq unsaved-files-p t))
+      (setq unsaved-files-p t))))
+
+
+;; Auto saving
 
 (defun make-auto-save-name (name)
   "Returns a string naming the file used to hold the auto-save'd file for
@@ -457,6 +469,18 @@ is newer than NAME."
       ((recover-name (make-auto-save-name name)))
     (time-later-p (file-modtime recover-name) (file-modtime name))))
 
+(defun auto-save-mode (&optional disable)
+  "When this mode is enabled files are autosaved regularly if they've been
+modified."
+  (interactive "P")
+  (if (or (/= auto-save-interval 0)
+	  disable)
+      (progn
+	(setq auto-save-interval 0)
+	(message "Auto-save is now disabled in this buffer."))
+    (setq auto-save-interval default-auto-save-interval)
+    (message "Auto-save is now enabled for this buffer.")))
+
 (defun recover-file (&optional buffer)
   "Loads the auto-saved copy of the file stored in BUFFER into BUFFER
 overwriting its current contents (if any changes are to be lost the user
@@ -475,69 +499,57 @@ will have to agree to this)."
 			 (buffer-file-name buffer)))))
     buffer))
 
-(defun revert-buffer (&optional buffer)
-  "Restores the contents of BUFFER (or current buffer) to the contents of the
-file it was loaded from."
-  (interactive)
-  (unless buffer
-    (setq buffer (current-buffer)))
-  (when (check-changes buffer)
-    (with-buffer buffer
-      (delete-auto-save-file)
-      (read-file-into-buffer (buffer-file-name buffer)))))
+
+;; Marks
 
-(defun goto-line (line)
-  "Goto line number LINE. LINE counts from 1."
-  (interactive "NLine: ")
-  (set-auto-mark)
-  (goto (pos nil (1- line))))
+(defun goto-mark (mark)
+  "Switches (if necessary) to the buffer containing MARK at the position
+of the mark. If the file containing MARK is not in memory then we
+attempt to load it with `open-file'."
+  (when (markp mark)
+    (let
+	((file (mark-file mark))
+	 (pos (mark-pos mark)))
+      (when (stringp file)
+	(setq file (open-file file)))
+      (set-auto-mark)
+      (goto-buffer file)
+      (goto pos))))
+
+(defun set-auto-mark ()
+  "Sets the mark `auto-mark' to the current position (buffer & cursor-pos)."
+  (interactive)
+  (set-mark auto-mark (cursor-pos) (current-buffer))
+  (message "Set auto-mark."))
+
+(defun swap-cursor-and-auto-mark ()
+  "Sets the `auto-mark' to the current position and then sets the current
+position (buffer and cursor-pos) to the old value of `auto-mark'."
+  (interactive)
+  (let
+      ((a-m-file (mark-file auto-mark))
+       (a-m-pos (mark-pos auto-mark)))
+    (set-auto-mark)
+    (when (stringp a-m-file)
+      (setq a-m-file (open-file a-m-file)))
+    (goto-buffer a-m-file)
+    (goto a-m-pos)))
+
+
+;; Misc
 
 (defun file-newer-than-file-p (file1 file2)
   "Returns t when FILE1 was modified more recently than FILE2."
   (time-later-p (file-modtime file1) (file-modtime file2)))
 
-(defun save-some-buffers ()
-  "Asks whether or not to save any modified buffers, returns t if no modified
-buffers are left."
-  (interactive)
-  (let
-      ((bufs buffer-list)
-       buf
-       (unsaved-files-p nil))
-    (while (consp bufs)
-      (setq buf (car bufs))
-      (when (and (buffer-modified-p buf) (not (buffer-special-p buf)))
-	(if (y-or-n-p (concat "Save buffer " (buffer-name buf)))
-	    (unless (save-file buf)
-	      (setq unsaved-files-p t))
-	  (setq unsaved-files-p t)))
-      (setq bufs (cdr bufs)))
-    (not unsaved-files-p)))
-
-(defun maybe-save-buffer (buffer)
-  "If BUFFER has been modified, ask whether or not to save it."
-  (when (and (buffer-modified-p buffer) (not (buffer-special-p buffer)))
-    (if (y-or-n-p (concat "Save buffer " (buffer-name buffer)))
-	(unless (save-file buffer)
-	  (setq unsaved-files-p t))
-      (setq unsaved-files-p t))))
-
-(defun save-and-quit ()
-  "Calls `save-some-buffers' and quits (after asking whether it's ok to lose
-any unsaved buffers)."
-  (interactive)
-  (when (or (save-some-buffers)
-	    (yes-or-no-p "Unsaved buffers exist; quit anyway?"))
-    (throw 'quit 0)))
-
-(defun auto-save-mode (&optional disable)
-  "When this mode is enabled files are autosaved regularly if they've been
-modified."
+(defun save-and-quit (&optional no-query)
+  "Exit the editor. Unless NO-QUERY is non-nil, ask the user whether or
+not to save any buffers with outstanding modifications. When NO-QUERY is
+numeric it's used as the exit status of the editor process.
+Immediately prior to exiting, calls `before-exit-hook'."
   (interactive "P")
-  (if (or (/= auto-save-interval 0)
-	  disable)
-      (progn
-	(setq auto-save-interval 0)
-	(message "Auto-save is now disabled in this buffer."))
-    (setq auto-save-interval default-auto-save-interval)
-    (message "Auto-save is now enabled for this buffer.")))
+  (when (or no-query
+	    (save-some-buffers)
+	    (yes-or-no-p "Unsaved buffers exist; quit anyway?"))
+    (eval-hook 'before-exit-hook)
+    (throw 'quit (if (numberp no-query) no-query 0))))
