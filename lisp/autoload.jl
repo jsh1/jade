@@ -32,8 +32,6 @@
 (autoload 'next-error "compile" t)
 (autoload 'grep "compile" t)
 (autoload 'grep-buffer "compile" t)
-(autoload 'debug-entry "debug")
-(autoload 'debug-error-entry "debug")
 (autoload 'add-autoloads "find-autoloads" t)
 (autoload 'remove-autoloads "find-autoloads" t)
 (autoload 'gdb "gdb" t)
@@ -154,6 +152,9 @@
 (autoload 'find-url "find-url" t)
 (autoload 'find-file-as-url "find-url" t)
 (autoload 'pwd-prompt "pwd-prompt")
+(structure () (open rep rep.structures)
+  (structure-define (get-structure 'rep.system) 'pwd-prompt
+		    (%structure-ref (get-structure 'jade) 'pwd-prompt)))
 (autoload 'telnet "telnet" t)
 (autoload 'rlogin "telnet" t)
 (autoload 'cvs-update "cvs" t)
@@ -244,4 +245,6 @@
 (autoload 'php3-mode "php3-mode" t)
 (autoload 'sawmill-minor-mode "sawmill-minor-mode" t)
 (autoload 'sawmill-console "sawmill-minor-mode" t)
+(setq debug-entry (make-autoload 'debug-entry "debug"))
+(setq debug-error-entry (make-autoload 'debug-error-entry "debug"))
 ;;; ::autoload-end::

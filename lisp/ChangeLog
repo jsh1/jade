@@ -1,3 +1,23 @@
+2001-02-13  John Harper  <jsh@eazel.com>
+
+	* pwd-prompt.jl: structure magic to replace the default
+	pwd-prompt function with Jade's own version that works in a
+	mini buffer, not on standard input
+
+	* debug.jl: hacked this so it in installs correctly again (the
+	debug-entry, etc, vectors were made special variables a while
+	ago, so autoloading and initialization needed fixing)
+
+2001-02-12  John Harper  <jsh@eazel.com>
+
+	* tags.jl (tags-file-list): new function, extracts, uniqifies,
+	sorts and caches the list of files in the TAGS list. The
+	uniquify step is all-important - it will avoid circular loops
+	in tags-map-buffers
+
+	(tags-next-file): use tags-file-list instead of hand-parsing
+	the TAGS buffer
+
 2000-12-03  John Harper  <jsh@eazel.com>
 
 	* python-mode.jl: new module, contributed by Andrew Rodionoff

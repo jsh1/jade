@@ -1,3 +1,20 @@
+2001-02-13  John Harper  <jsh@eazel.com>
+
+	* extent.c: include <string.h> and <memory.h>
+
+	* x11_keys.c, gtk_keys.c: backported code from sawfish to
+	ignore lock modifiers (Caps_Lock, Num_Lock, Scroll_Lock)
+
+	* gtk_jade.c (gtk_jade_realize): when creating the GC, tell it
+	to emit GraphicsExposure events (fixes the bug where scrolling
+	with the window partly obscured leaves undrawn patches)
+
+	* gtk_jade.c (focus_in_callback, focus_out_callback):
+	remembered to set and clear the GTK_HAS_FOCUS flag
+
+	* gtk_jade.c (gtk_jade_set_font): force w_FontX and w_FontY to
+	be positive
+
 2000-11-14  John Harper  <jsh@eazel.com>
 
 	Integrated some i18n patches from Andrew Rodionoff
