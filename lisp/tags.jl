@@ -47,6 +47,10 @@
 
 (defvar tags-history-length 16)
 
+;; list of all files referenced in this TAGS file, or nil
+(defvar tags-cached-file-list nil)
+(make-variable-buffer-local 'tags-cached-file-list)
+
 
 ;; Code
 
@@ -178,27 +182,40 @@ move back to the previously found tag."
 
 ;; Tags searching
 
+(define (tags-file-list)
+  (define (uniquify lst)
+    (let (out)
+      (mapc (lambda (x)
+	      (unless (member x out)
+		(setq out (cons x out)))) lst)
+      out))
+  (tags-find-table)
+  (with-buffer (find-file tags-file-name t)
+    (unless tags-cached-file-list
+      (let ((point (start-of-buffer))
+	    (files '()))
+	(while (and (setq point (char-search-forward #\page point))
+		    (looking-at "\f\n([^,]+)" point))
+	  (setq point (match-end))
+	  (setq files (cons (expand-last-match "\\1") files)))
+	(setq tags-cached-file-list (sort (uniquify files)))))
+    tags-cached-file-list))
+
 ;; Returns the next file in tag table (after CURRENT-FILE if defined), or nil
 (defun tags-next-file (#!optional current-file)
   (tags-find-table)
-  (let*
-      ((tags-buffer (find-file tags-file-name t))
-       (point (start-of-buffer tags-buffer)))
-    (with-buffer tags-buffer
-      (when current-file
-	;; Try to make current file relative to tags table location
-	(when (string-match
-	       (concat ?^ (quote-regexp
-			   (canonical-file-name default-directory))
-		       "(.*)$")
-	       (canonical-file-name current-file))
-	  (setq current-file (expand-last-match "\\1")))
-	(when (re-search-forward
-	       (concat "\f\n" (quote-regexp current-file) ",.*\n") point)
-	  (setq point (match-end))))
-      (when (and (setq point (char-search-forward ?\f point))
-		 (looking-at "\f\n([^,]+)" point))
-	(expand-file-name (expand-last-match "\\1") default-directory)))))
+  (with-buffer (find-file tags-file-name t)
+    (if current-file
+	(progn
+	  ;; Try to make current file relative to tags table location
+	  (when (string-match
+		 (concat ?^ (quote-regexp
+			     (canonical-file-name default-directory))
+			 "(.*)$")
+		 (canonical-file-name current-file))
+	    (setq current-file (expand-last-match "\\1")))
+	  (expand-file-name (cadr (member current-file (tags-file-list)))))
+      (expand-file-name (car (tags-file-list))))))
 
 ;; Map (FUNCTION BUFFER POINT) over all files in the current tags-table.
 ;; MARK provides an optional start point
