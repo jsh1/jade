@@ -29,7 +29,7 @@
 
 _PR void kill_all_views(WIN *w);
 _PR void update_views_dimensions(WIN *w);
-_PR void update_status_buffer(VW *vw);
+_PR void update_status_buffer(VW *vw, char *status_buf, u_long buflen);
 _PR void views_init(void);
 _PR void views_kill(void);
 _PR void view_sweep(void);
@@ -169,7 +169,6 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	copy_view_prefs(vw, sibling ? sibling : curr_vw);
 	vw->vw_BlockStatus = -1;
 	vw->vw_BufferList = sym_nil;
-	vw->vw_StatusBuf = str_alloc(STATUS_BUFSIZ);
 
 	/* Initialise the size of the new view, and resize its
 	   SIBLING if it has one. */
@@ -433,63 +432,108 @@ update_views_dimensions(WIN *w)
 /* Reformat the status string of VW, and flag that it needs to be
    redrawn. */
 void
-update_status_buffer(VW *vw)
+update_status_buffer(VW *vw, char *status_buf, u_long buflen)
 {
     TX *tx = vw->vw_Tx;
-    u_char *block;
     bool restriction = (tx->tx_LogicalStart != 0)
 			|| (tx->tx_LogicalEnd != tx->tx_NumLines);
     long lines = tx->tx_LogicalEnd - tx->tx_LogicalStart;
     long glyph_col = get_cursor_column(vw);
-    char *position, position_buf[5];
+    char *ptr = status_buf;
 
-    if(vw->vw_Flags & VWFF_MINIBUF
-       || vw->vw_Flags & VWFF_CUSTOM_STATUS)
+    if(vw->vw_Flags & VWFF_MINIBUF)
 	return;
+    if(vw->vw_StatusOverride != LISP_NULL)
+    {
+	u_long len = STRING_LEN(vw->vw_StatusOverride);
+	memcpy(status_buf, VSTR(vw->vw_StatusOverride), MIN(len, buflen));
+	if(len < buflen)
+	    memset(status_buf + len, ' ', buflen - len);
+	return;
+    }
 
+    *ptr++ = '-';
+
+    /* Block status character */
     if(vw->vw_BlockStatus >= 0)
     {
 	if(vw->vw_BlockStatus == 0)
-	    block = "B";
+	    *ptr++ = 'B';
 	else
-	    block = "b";
+	    *ptr++ = 'b';
     }
     else
-	block = "";
+	*ptr++ = '-';
 
-    if(VROW(vw->vw_DisplayOrigin) <= tx->tx_LogicalStart)
+    /* Read-only, modified status */
+    if(tx->tx_Flags & TXFF_RDONLY)
     {
-	if(vw->vw_Flags & VWFF_AT_BOTTOM)
-	    position = "All";
-	else
-	    position = "Top";
+	*ptr++ = '%';
+	*ptr++ = (tx->tx_Changes != tx->tx_ProperSaveChanges) ? '*' : '%';
     }
-    else if(vw->vw_Flags & VWFF_AT_BOTTOM)
-	position = "Bottom";
+    else if(tx->tx_Changes != tx->tx_ProperSaveChanges)
+    {
+	*ptr++ = '*';
+	*ptr++ = '*';
+    }
     else
     {
-	sprintf(position_buf, "%ld%%",
-		((VROW(vw->vw_DisplayOrigin) - tx->tx_LogicalStart)
-		 * 100) / lines);
-	position = position_buf;
+	*ptr++ = '-';
+	*ptr++ = '-';
+    }
+    *ptr++ = '-';
+
+    if(STRINGP(tx->tx_StatusId))
+    {
+	int len = STRING_LEN(tx->tx_StatusId);
+	memcpy(ptr, VSTR(tx->tx_StatusId), MIN(len, 24));
+	if(len < 24)
+	    memset(ptr + len, ' ', 24 - len);
+	ptr += 24;
+	*ptr++ = ' ';
     }
 
-    /* TODO: allow customisation via mode-line-format and % formatters */
+    *ptr++ = (recurse_depth > 0) ? '[' : '(';
+    ptr = stpcpy(ptr, tx->tx_ModeName ? (char *)VSTR(tx->tx_ModeName)
+		 : "Fundamental");
+    ptr = stpcpy(ptr, VSTR(tx->tx_MinorModeNameString));
+    *ptr++ = (recurse_depth > 0) ? ']' : ')';
+    *ptr++ = '-'; *ptr++ = '-';
 
-    sprintf(vw->vw_StatusBuf, "%s%s %c%s%s%c %c%ld,%ld%c %s of %ld %s %s",
-	    VSTR(tx->tx_BufferName),
-	    (tx->tx_Flags & TXFF_RDONLY ? "-" :
-	     (tx->tx_Changes != tx->tx_ProperSaveChanges) ? "+" : " "),
-	    (recurse_depth ? '[' : '('),
-	    (tx->tx_ModeName ? (char *)VSTR(tx->tx_ModeName) : "Fundamental"),
-	    VSTR(tx->tx_MinorModeNameString),
-	    (recurse_depth ? ']' : ')'),
-	    restriction ? '[' : '(',
+    {
+	char *position, position_buf[4];
+	if(VROW(vw->vw_DisplayOrigin) <= tx->tx_LogicalStart)
+	{
+	    if(vw->vw_Flags & VWFF_AT_BOTTOM)
+		position = "All";
+	    else
+		position = "Top";
+	}
+	else if(vw->vw_Flags & VWFF_AT_BOTTOM)
+	    position = "Bottom";
+	else
+	{
+	    int percent = ((VROW(vw->vw_DisplayOrigin)
+			    - tx->tx_LogicalStart) * 100) / lines;
+	    position_buf[0] = (percent / 10) + '0';
+	    position_buf[1] = (percent % 10) + '0';
+	    position_buf[2] = '%';
+	    position = position_buf;
+	}
+	memcpy(ptr, position, 3);
+	ptr += 3;
+    }
+
+    sprintf(ptr, "--%c%ld,%ld%c--", restriction ? '[' : '(',
 	    glyph_col + 1, VROW(vw->vw_CursorPos) - tx->tx_LogicalStart + 1,
-	    restriction ? ']' : ')',
-	    position,
-	    lines, lines != 1 ? "lines" : "line",
-	    block);
+	    restriction ? ']' : ')');
+    ptr += strlen(ptr);
+
+    {
+	int left = buflen - (ptr - status_buf);
+	memset(ptr, '-', left);
+	ptr[left] = 0;
+    }
 }
 
 _PR VALUE var_y_scroll_step_ratio(VALUE val);
@@ -977,24 +1021,16 @@ view), displaying the string TEXT instead of the normal status information.
 If TEXT is the symbol nil, the normal behaviour is reinstated.
 ::end:: */
 {
-    VALUE res = sym_nil;
+    VALUE res;
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
 
-    if(VVIEW(vw)->vw_Flags & VWFF_CUSTOM_STATUS)
-	res = string_dup(VVIEW(vw)->vw_StatusBuf);
-
+    res = (VVIEW(vw)->vw_StatusOverride
+	   ? VVIEW(vw)->vw_StatusOverride : sym_nil);
     if(STRINGP(text))
-    {
-	int len = STRING_LEN(text);
-	if(len >= STATUS_BUFSIZ)
-	    len = STATUS_BUFSIZ - 1;
-	memcpy(VVIEW(vw)->vw_StatusBuf, VSTR(text), len);
-	VVIEW(vw)->vw_StatusBuf[len] = 0;
-	VVIEW(vw)->vw_Flags |= VWFF_CUSTOM_STATUS;
-    }
+	VVIEW(vw)->vw_StatusOverride = text;
     else
-	VVIEW(vw)->vw_Flags &= ~VWFF_CUSTOM_STATUS;
+	VVIEW(vw)->vw_StatusOverride = LISP_NULL;
     return res;
 }
 	
