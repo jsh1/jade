@@ -20,6 +20,9 @@
 
 (require 'read-mail)
 
+;; Suppress annoying compiler warnings
+(eval-when-compile (require 'send-mail))
+
 
 ;; Replying to messages
 
@@ -56,8 +59,9 @@
 		(list (cons #'(lambda (buffer message)
 				(rm-set-flag message 'replied)
 				(with-buffer buffer
-				  (rm-with-summary
-				   (summary-update-item message))))
+				  (when rm-summary-buffer
+				    (rm-with-summary
+				     (summary-update-item message)))))
 			    (list (current-buffer) message))))
     (setq rm-reply-message message)
     (when yankp
@@ -139,8 +143,9 @@ headers will be included."
 		(list (cons #'(lambda (buffer message)
 				(rm-set-flag message 'forwarded)
 				(with-buffer buffer
-				  (rm-with-summary
-				   (summary-update-item message))))
+				  (when rm-summary-buffer
+				    (rm-with-summary
+				     (summary-update-item message)))))
 			    (list (current-buffer) message))))
     (insert "----- begin forwarded message -----\n")
     (setq start (cursor-pos))
@@ -256,8 +261,9 @@ headers will be included."
 	    rm-after-msg-list (cdr msgs)
 	    rm-message-count (+ rm-message-count count)
 	    rm-cached-msg-list 'invalid))
-    (rm-with-summary
-     (summary-update))
+    (when rm-summary-buffer
+      (rm-with-summary
+       (summary-update)))
     (rm-display-current-message)))
   
 ;;;###autoload

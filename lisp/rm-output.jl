@@ -80,8 +80,9 @@
       (write dest text)))
     (rm-set-flag msg 'filed)
     (when rm-delete-after-output
-      (rm-with-summary
-       (summary-mark-delete msg)))))
+      (if (eq msg rm-current-msg)
+	  (rm-mark-message-deletion)
+	(rm-set-flag msg 'deleted)))))
 
 ;;;###autoload
 (defun rm-output (count dest)
@@ -110,9 +111,10 @@ otherwise write straight to the folder's file."
 	    (close-file real-dest))
 	   ((bufferp real-dest)
 	    (with-buffer real-dest
-	      (when (eq major-mode 'read-mail-mode)
+	      (when (and (eq major-mode 'read-mail-mode) rm-summary-buffer)
 		(rm-with-summary
 		 (summary-update))))))))))
-  (rm-with-summary
-   (summary-update))
+  (when rm-summary-buffer
+    (rm-with-summary
+     (summary-update)))
   (rm-fix-status-info))
