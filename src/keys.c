@@ -203,6 +203,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 	    result = cmd_call_command(cmd, sym_nil);
 	}
 	else if(orig_next_keymap_path != LISP_NULL
+		&& !NILP(orig_next_keymap_path)
 		&& (tem = cmd_symbol_value(sym_keymap_path, sym_t))
 		&& orig_next_keymap_path != tem)
 	{
