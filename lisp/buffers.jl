@@ -232,7 +232,12 @@ such buffer could be made."
       ;; No buffer exists
       (unless (setq buf (call-hook 'find-file-hook (list name) 'or))
 	;; find-file-hook didn't; do keep going
-	(setq buf (open-buffer (file-name-nondirectory name) t))
+	(let
+	    ((buffer-name (file-name-nondirectory name)))
+	  (when (string= buffer-name "")
+	    (setq buffer-name (file-name-nondirectory
+			       (directory-file-name name))))
+	  (setq buf (open-buffer (file-name-nondirectory buffer-name) t)))
 	(with-buffer buf
 	  (read-file-into-buffer name))))
     (unless dont-activate
