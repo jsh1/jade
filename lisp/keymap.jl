@@ -51,7 +51,12 @@ keymaps, i.e. all prefix keys are ignored.")
 	(setq maps (cons local-keymap maps)))
       (when global-keymap
 	(setq maps (cons global-keymap maps)))
-      (nreverse maps))))
+      (mapcar #'(lambda (km)
+		  (if (symbolp km)
+		      ;; dereference the symbol in the correct buffer
+		      (symbol-value km)
+		    km))
+	      (nreverse maps)))))
 
 ;;;###autoload
 (defun map-keymap (function &optional keymap buffer)
@@ -102,7 +107,8 @@ binding, or nil if there was no prefix."
 	      (when map-keymap-recursively
 		(let
 		    ((this-list (if (symbolp (car k))
-				    (list (symbol-value (car k) t))
+				    (list (with-buffer buffer
+					    (symbol-value (car k) t)))
 				  (with-buffer buffer (eval (nth 1 (car k))))))
 		     (event-str (event-name (cdr k))))
 		  (when (listp this-list)
@@ -218,7 +224,6 @@ is bound to be the operating system, not the event itself."
 (defun next-event (&optional cooked)
   "Wait for the next input event, then return it. If COOKED is non-nil, return
 the string that the operating system would normally insert for that event."
-  (next-keymap-path nil)
   (let
       ((old-ukh unbound-key-hook)
        (read-event-cooked cooked))
@@ -241,7 +246,7 @@ would invoke."
       (setq event (read-event (concat "Enter a key sequence: " names))
 	    names (concat names (if names ?\ ) (event-name event)))
       (next-keymap-path path)
-      (setq command (lookup-event-binding event t))
+      (setq command (lookup-event-binding event))
       (if command
 	  (cond ((and (symbolp command)
 		      (eq (symbol-function command t) 'keymap))
@@ -249,8 +254,7 @@ would invoke."
 		 (setq path (list command)))
 		((eq (car command) 'next-keymap-path)
 		 ;; A link to another keymap
-		 (call-command command)
-		 (setq path (next-keymap-path t)))
+		 (setq path (eval (nth 1 command))))
 		(t
 		 ;; End of the chain
 		 (help-wrapper
@@ -261,5 +265,4 @@ would invoke."
 			    (or (documentation command) ""))))
 		 (setq done t)))
 	(message (concat names " is unbound. "))
-	(setq done t)
-	(next-keymap-path 'global-keymap)))))
+	(setq done t)))))
