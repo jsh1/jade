@@ -341,6 +341,9 @@ find_extent_forwards(Lisp_Extent *root, Pos *pos)
     return root;
 }
 
+/* Cache stats */
+static int extent_cache_misses, extent_cache_hits, extent_cache_near_misses;
+
 /* Return the innermost extent containing position POS. */
 Lisp_Extent *
 find_extent(Lisp_Extent *root, Pos *pos)
@@ -360,6 +363,7 @@ find_extent(Lisp_Extent *root, Pos *pos)
 	    if(PPOS_EQUAL_P(pos, &ce->pos))
 	    {
 		/* Bingo! direct hit */
+		extent_cache_hits++;
 		ce->lru_clock = ++lru_time;
 		return ce->extent;
 	    }
@@ -387,9 +391,15 @@ find_extent(Lisp_Extent *root, Pos *pos)
     }
     /* No direct hits. Any containing POS. */
     if(out >= 0)
+    {
+	extent_cache_near_misses++;
 	x = find_extent_forwards(tx->tx_ExtentCache[out].extent, pos);
+    }
     else
+    {
+	extent_cache_misses++;
 	x = find_extent_forwards(tx->tx_GlobalExtent, pos);
+    }
 
     /* Add X to the cache in place of OLDEST. */
     tx->tx_ExtentCache[oldest].extent = x;
