@@ -159,6 +159,10 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
     {
 	UPD(VPOS(thismark->mk_Pos).pos_Line);
     }
+
+    UPD(tx->tx_LogicalStart);
+    UPD(tx->tx_LogicalEnd);
+
     UPD(tx->tx_SavedCPos.pos_Line);
     UPD(tx->tx_SavedWPos.pos_Line);
     UPD(tx->tx_SavedBlockPos[0].pos_Line);
@@ -228,6 +232,10 @@ adjust_marks_sub_y(TX *tx, long suby, long ypos)
     {
 	UPD2(VPOS(thismark->mk_Pos).pos_Col, VPOS(thismark->mk_Pos).pos_Line);
     }
+
+    UPD(tx->tx_LogicalStart);
+    UPD(tx->tx_LogicalEnd);
+
     UPD2(tx->tx_SavedCPos.pos_Col, tx->tx_SavedCPos.pos_Line);
     UPD2(tx->tx_SavedWPos.pos_Col, tx->tx_SavedWPos.pos_Line);
     UPD2(tx->tx_SavedBlockPos[0].pos_Col, tx->tx_SavedBlockPos[0].pos_Line);
@@ -300,6 +308,10 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
     {
 	UPD2(VPOS(thismark->mk_Pos).pos_Col, VPOS(thismark->mk_Pos).pos_Line);
     }
+
+    UPD(tx->tx_LogicalStart);
+    UPD(tx->tx_LogicalEnd);
+
     UPD2(tx->tx_SavedCPos.pos_Col, tx->tx_SavedCPos.pos_Line);
     UPD2(tx->tx_SavedWPos.pos_Col, tx->tx_SavedWPos.pos_Line);
     UPD2(tx->tx_SavedBlockPos[0].pos_Col, tx->tx_SavedBlockPos[0].pos_Line);
@@ -372,6 +384,10 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
     {
 	UPD2(VPOS(thismark->mk_Pos).pos_Col, VPOS(thismark->mk_Pos).pos_Line);
     }
+
+    UPD(tx->tx_LogicalStart);
+    UPD(tx->tx_LogicalEnd);
+
     UPD2(tx->tx_SavedCPos.pos_Col, tx->tx_SavedCPos.pos_Line);
     UPD2(tx->tx_SavedWPos.pos_Col, tx->tx_SavedWPos.pos_Line);
     UPD2(tx->tx_SavedBlockPos[0].pos_Col, tx->tx_SavedBlockPos[0].pos_Line);
@@ -410,28 +426,42 @@ static void
 resync_y(VW *vw)
 {
     TX *tx = vw->vw_Tx;
-    long y = vw->vw_CursorPos.pos_Line - vw->vw_StartLine;
-    if(y < 0)
+    long y;
+
+    if(vw->vw_CursorPos.pos_Line < tx->tx_LogicalStart)
+    {
+	vw->vw_CursorPos.pos_Line = tx->tx_LogicalStart;
+	vw->vw_CursorPos.pos_Col = 0;
+    }
+    if(vw->vw_CursorPos.pos_Line >= tx->tx_LogicalEnd)
+    {
+	vw->vw_CursorPos.pos_Line = tx->tx_LogicalEnd - 1;
+	vw->vw_CursorPos.pos_Col
+	    = tx->tx_Lines[vw->vw_CursorPos.pos_Line].ln_Strlen - 1;
+    }
+
+    y = vw->vw_CursorPos.pos_Line - vw->vw_StartLine;
+    if(y < 0 || vw->vw_StartLine < tx->tx_LogicalStart)
     {
 	if(-y > vw->vw_YStep)
 	    vw->vw_StartLine = vw->vw_CursorPos.pos_Line - (vw->vw_MaxY / 2);
 	else
 	    vw->vw_StartLine -= vw->vw_YStep;
-	if(vw->vw_StartLine < 0)
-	    vw->vw_StartLine = 0;
-	else if(vw->vw_StartLine >= tx->tx_NumLines)
-	    vw->vw_StartLine = tx->tx_NumLines - 1;
+	if(vw->vw_StartLine < tx->tx_LogicalStart)
+	    vw->vw_StartLine = tx->tx_LogicalStart;
+	else if(vw->vw_StartLine >= tx->tx_LogicalEnd)
+	    vw->vw_StartLine = tx->tx_LogicalEnd - 1;
     }
-    else if(y >= vw->vw_MaxY)
+    else if(y >= vw->vw_MaxY || vw->vw_StartLine >= tx->tx_LogicalEnd)
     {
 	if((vw->vw_MaxY + vw->vw_YStep) <= y)
 	    vw->vw_StartLine = vw->vw_CursorPos.pos_Line - (vw->vw_MaxY / 2);
 	else
 	    vw->vw_StartLine += vw->vw_YStep;
-	if(vw->vw_StartLine < 0)
-	    vw->vw_StartLine = 0;
-	else if(vw->vw_StartLine >= tx->tx_NumLines)
-	    vw->vw_StartLine = tx->tx_NumLines - 1;
+	if(vw->vw_StartLine < tx->tx_LogicalStart)
+	    vw->vw_StartLine = tx->tx_LogicalStart;
+	else if(vw->vw_StartLine >= tx->tx_LogicalEnd)
+	    vw->vw_StartLine = tx->tx_LogicalEnd - 1;
 	/* Check for a `gap' at the bottom of the display */
 	if((tx->tx_NumLines >= vw->vw_MaxY)
 	   && ((tx->tx_NumLines - vw->vw_StartLine) < vw->vw_MaxY))
@@ -469,32 +499,9 @@ set_start_line(VW *vw, long line)
     {
 	long yord = vw->vw_CursorPos.pos_Line - cline;
 	vw->vw_StartLine = line;
-#if 0
-	/* This is done in vert_scroll() now; doing it here as
-	   well means it's done twice!  */
-	if(!(vw->vw_Flags & VWFF_FORCE_REFRESH))
-	{
-	    long diff = line - cline;
-	    if((diff > 0) && (diff <= vw->vw_MaxScroll))
-	    {
-		long ypos = vw->vw_MaxY - 1;
-		scroll_vw(vw, diff);
-		redraw_lines(vw, cline + ypos, line + ypos + 1);
-	    }
-	    else if((diff < 0) && (diff >= -vw->vw_MaxScroll))
-	    {
-		scroll_vw(vw, diff);
-		redraw_lines(vw, line, cline);
-	    }
-	    else
-		vw->vw_Flags |= VWFF_FORCE_REFRESH;
-	}
-	else
-	    vw->vw_Flags |= VWFF_FORCE_REFRESH;
-#endif
 	vw->vw_CursorPos.pos_Line = line + yord;
-	if(vw->vw_CursorPos.pos_Line >= vw->vw_Tx->tx_NumLines)
-	    vw->vw_CursorPos.pos_Line = vw->vw_Tx->tx_NumLines - 1;
+	if(vw->vw_CursorPos.pos_Line >= vw->vw_Tx->tx_LogicalEnd)
+	    vw->vw_CursorPos.pos_Line = vw->vw_Tx->tx_LogicalEnd - 1;
     }
 }
 
