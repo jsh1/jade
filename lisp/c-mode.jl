@@ -149,7 +149,8 @@ Commands defined by this mode are:\n
 	(while (setq p (c-backward-exp 1 p (not skip-blocks)))
 	  (cond
 	   ((null back-1-pos)
-	    (setq back-1-pos p))
+	    (unless (= (get-char p) #\{)
+	      (setq back-1-pos p)))
 	   ((/= (pos-line back-1-pos) (pos-line p))
 	    ;; Gone past the start of this line, break the loop
 	    (error "Ignored")))
@@ -211,6 +212,13 @@ Commands defined by this mode are:\n
 	;; An opening brace
 	(setq exp-ind (right-char c-body-indent (indent-pos exp-pos))))
 
+       ((and (/= (pos-col exp-pos) 0)
+	     (or (looking-at "(struct|union|enum)\\s" exp-pos)
+		 (looking-at "(static|const)\\s.*\\s=\\s*$" exp-pos)))
+	;; Something else that causes the next statement to be
+	;; indented one level
+	(setq exp-ind (right-char c-body-indent exp-ind)))
+
        ((looking-at
 	 "(if|for|while|switch)[\t ]*\\(.*$|(else|do)([^a-zA-Z0-9_]|$)"
 	 exp-pos)
@@ -222,7 +230,7 @@ Commands defined by this mode are:\n
 	;; A full expression, indent to the level of the first
 	;; line in the expression
 	(let
-	    ((prev (c-backward-stmt exp-pos)))
+	    ((prev (c-backward-stmt exp-pos t)))
 	  ;; *Need to loop here searching back to the correct level*
 	  (when (and prev (/= (pos-col prev) (pos-col exp-pos))
 		     (not (looking-at "case .*:|default[\t ]*:|[a-zA-Z_][a-zA-Z0-9_]+:|.*;[\t ]*(\n|/\\*)" prev)))
