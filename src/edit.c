@@ -92,6 +92,8 @@ clear_line_list(TX *tx)
 	else
 	    tx->tx_Lines[0].ln_Strlen = 0;
 	tx->tx_NumLines = 1;
+	tx->tx_LogicalStart = 0;
+	tx->tx_LogicalEnd = 1;
 	return(TRUE);
     }
     return(FALSE);
