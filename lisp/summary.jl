@@ -66,7 +66,8 @@
 ;;	Called after executing pending actions
 ;;
 ;;   after-marking ITEM
-;;	Called after marking ITEM in some way
+;;	Called after marking ITEM in some way (i.e. after adding
+;;	a pending operation)
 ;;
 ;;   after-move INDEX
 ;;	Called after moving the cursor to the item at position INDEX
@@ -220,7 +221,8 @@ items to be displayed and manipulated."
 	  (summary-update-item item))
       (setq summary-pending-ops (cons (cons item (cons op nil))
 				      summary-pending-ops))
-      (summary-update-item item))))
+      (summary-update-item item))
+    (summary-maybe-dispatch 'after-marking item)))
 
 (defun summary-unmark-item (item)
   "Discard all operations pending on ITEM."
@@ -329,12 +331,12 @@ non-nil it should be a list containing the operations which may be performed."
   (if (assq 'delete summary-functions)
       (let
 	  ((item (summary-current-item)))
-	(summary-add-pending-op item 'delete)
-	(summary-maybe-dispatch 'after-marking item))
+	(summary-add-pending-op item 'delete))
     (error "No delete operation in the menu.")))
 
 (defun summary-quit ()
   "Leave the summary buffer."
   (interactive)
-  (bury-buffer (current-buffer))
-  (summary-maybe-dispatch 'on-quit))
+  (if (summary-function-exists-p 'on-quit)
+      (summary-dispatch 'on-quit)
+    (bury-buffer (current-buffer))))
