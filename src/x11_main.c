@@ -24,6 +24,7 @@
 #include <X11/keysym.h>
 #include <string.h>
 #include <assert.h>
+#include <locale.h>
 
 #ifdef HAVE_UNIX
 # ifdef HAVE_FCNTL_H
@@ -76,6 +77,15 @@ sys_init(char *program_name)
     struct x11_display *xdisplay;
     char *display_name = 0;
     repv opt;
+
+    if (setlocale (LC_ALL, "") == 0)
+	fputs ("warning: locale not supported by C library\n", stderr);
+
+    if (!XSupportsLocale ())
+    {
+	fputs ("locale not supported by Xlib, locate set to C\n", stderr);
+	setlocale (LC_ALL, "C");
+    }
 
 #ifdef HAVE_UNIX
     if (!batch_mode_p ())

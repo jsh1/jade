@@ -182,6 +182,8 @@ sys_init(char *program_name)
     char **argv;
     repv head, *last;
 
+    gtk_set_locale ();
+
 #ifdef HAVE_UNIX
     if (!batch_mode_p ())
 	setpgid (0, 0);

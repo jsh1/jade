@@ -351,9 +351,9 @@ extern int regmatch_tx(rep_regexp *prog, TX *tx, repv start, int flags);
 
 /* from regsub.c */
 extern void jade_regsub(int lasttype, rep_regsubs *matches,
-			char *source, char *dest, void *data);
+			u_char *source, u_char *dest, void *data);
 extern int jade_regsublen(int lasttype, rep_regsubs *matches,
-			  char *source, void *data);
+			  u_char *source, void *data);
 
 /* from undo.c */
 extern void undo_record_unmodified(TX *tx);
