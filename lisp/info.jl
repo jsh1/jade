@@ -27,8 +27,7 @@
 ;;;   makeinfo has to be used.
 ;;; - No editing of nodes.
 
-(defvar info-directory-list
-  (if (amiga-p) '("INFO:") '("/usr/info" "/usr/local/info/" "~/info"))
+(defvar info-directory-list '("/usr/info" "/usr/local/info/" "~/info")
   "List of directories to search for info files if they can't be found as-is.")
 
 (defvar info-suffixes '(("" . nil)
@@ -164,7 +163,7 @@ is split.")
     (clear-buffer)
     (while path
       (let
-	  ((name (file-name-concat (expand-file-name (car path)) "dir")))
+	  ((name (expand-file-name "dir" (car path))))
 	(when (file-exists-p name)
 	  (if read-dir
 	      (let
@@ -213,12 +212,12 @@ is split.")
 	 suffixes files)
       (catch 'foo
 	(while path
-	  (setq files (list (file-name-concat (car path) filename)
-			    (file-name-concat (car path) (concat filename
-								 ".info"))
-			    (file-name-concat (car path) lcase-name)
-			    (file-name-concat (car path) (concat lcase-name
-								 ".info"))))
+	  (setq files (list (expand-file-name filename (car path))
+			    (expand-file-name (concat filename ".info")
+					      (car path))
+			    (expand-file-name lcase-name (car path))
+			    (expand-file-name (concat lcase-name ".info")
+					      (car path))))
 	  (while files
 	    (setq suffixes info-suffixes)
 	    (while suffixes
@@ -239,27 +238,29 @@ is split.")
 ;; with `makeinfo' generated files.
 (defun info-find-node (nodename)
   (let
-      ((filename (and (string-match "^\\((.*)\\).*$" nodename)
-		      (expand-last-match "\\1")))
-       (inhibit-read-only t)
-       offset)
+      ((inhibit-read-only t)
+       filename file-location offset)
     (unrestrict-buffer)
-    (when filename
-      (unless (setq nodename (and (string-match "^\\(.*\\)(.+)$" nodename)
-				  (expand-last-match "\\1")))
-	(setq nodename "Top")))
-    (if (and filename (member filename '("dir" "DIR" "Dir")))
+    (if (string-match "^\\((.*)\\)(.*)$" nodename)
+	(setq filename (expand-last-match "\\1")
+	      nodename (expand-last-match "\\2"))
+      (unless (setq filename info-file-name)
+	(error "File containing node `%s' isn't specified" nodename)))
+    (when (string= nodename "")
+      (setq nodename "Top"))
+    (if (string-match "^dir$" filename nil t)
 	(info-read-dir)
-      (setq filename (info-locate-file filename))
+      (setq file-location (info-locate-file filename))
       (when (or (not (equal info-file-name filename))
-		(time-later-p (file-modtime filename) buffer-file-modtime))
-	(info-read-tags filename info-file-suffix)
+		(time-later-p (file-modtime file-location)
+			      buffer-file-modtime))
+	(info-read-tags file-location info-file-suffix)
 	(setq info-file-name filename))
       (if (not info-has-tags-p)
 	  (progn
 	    ;; No tag list
 	    (unless (string= info-file-name filename)
-	      (read-file-into-buffer (concat filename info-file-suffix)))
+	      (read-file-into-buffer (concat file-location info-file-suffix)))
 	    (when (re-search-forward (concat "^File:.* Node: *"
 					    (quote-regexp nodename))
 				    (start-of-buffer))
@@ -275,7 +276,7 @@ is split.")
 	      (if (null list)
 		  ;; No indirect list
 		  (setq offset (+ offset 2)
-			subfile info-file-name)
+			subfile (file-name-nondirectory file-location))
 		;; Indirect list, chase down the list for the
 		;; correct file to use
 		(catch 'info
@@ -292,7 +293,7 @@ is split.")
 		  (setq offset (+ (- offset (car subfile))
 				  (car (car info-indirect-list)) 2)))
 		(setq subfile (cdr subfile)))
-	      (unless (string= (buffer-file-name)
+	      (unless (string= (file-name-nondirectory (buffer-file-name))
 			       (concat subfile info-file-suffix))
 		(read-file-into-buffer (concat subfile info-file-suffix)))
 	      (goto (offset-to-pos offset)))
@@ -308,8 +309,7 @@ is split.")
 		    (end-of-buffer nil t)))
       (restrict-buffer (cursor-pos) pos))
     (setq info-node-name nodename
-	  mode-name (concat ?( (file-name-nondirectory info-file-name)
-			    ?) info-node-name))
+	  mode-name (concat ?( info-file-name ?) info-node-name))
     t))
 
 ;; Return a list of all node names matching START in the current tag table
@@ -367,7 +367,7 @@ time that `info' has been called)."
     (info-find-node start-node))
    ((and (buffer-file-name) info-node-name)
     (when (time-later-p (file-modtime (buffer-file-name)) buffer-file-modtime)
-      (info-find-node info-node-name)))
+      (info-find-node (concat info-node-name))))
    (t
     (info-find-node "(dir)"))))
 
