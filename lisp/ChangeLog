@@ -1,3 +1,8 @@
+2000-01-07  John Harper  <john@dcs.warwick.ac.uk>
+
+	* debug.jl, summary.jl (debug-mode, summary-mode): set
+	truncate-lines to t
+
 1999-12-31  John Harper  <john@dcs.warwick.ac.uk>
 
 	* buffer-summary.jl (bs-select-other-view): fixed for lexical
