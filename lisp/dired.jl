@@ -104,7 +104,7 @@ bindings is:\n
       ((inhibit-read-only t))
     (if (eq major-mode 'dired-mode)
 	(summary-update)
-      (format buffer "[Dired] %s:\n\n" (buffer-file-name))
+      (format (current-buffer) "[Dired] %s:\n\n" (buffer-file-name))
       (summary-mode "Dired" dired-functions dired-keymap)
       (setq summary-assoc-item-function 'assoc)
       (setq major-mode 'dired-mode))))
