@@ -19,31 +19,10 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-#include "revision.h"
-
 #include <string.h>
 #include <X11/Xutil.h>
 #include <assert.h>
 
-_PR int sys_sleep_win(WIN *);
-_PR int sys_unsleep_win(WIN *);
-_PR void sys_new_vw(VW *);
-_PR void sys_kill_vw(VW *);
-_PR void sys_update_dimensions(WIN *);
-_PR void x11_update_dimensions(WIN *, int, int);
-_PR Window sys_new_window(WIN *, WIN *, bool);
-_PR void sys_kill_window(WIN *);
-_PR void sys_activate_win(WIN *);
-_PR void sys_set_win_name(WIN *win, char *name);
-_PR void sys_set_win_pos(WIN *, long, long, long, long);
-_PR WIN *x11_find_window(Window);
-_PR void sys_draw_glyphs(WIN *, int, int, glyph_attr, char *, int, bool);
-_PR int sys_set_font(WIN *);
-_PR void sys_unset_font(WIN *);
-_PR void sys_reset_sleep_titles(TX *);
-_PR VALUE sys_get_mouse_pos(WIN *);
-_PR void sys_windows_init(void);
 
 #define INPUT_EVENTS ButtonPressMask | ButtonReleaseMask | KeyPressMask \
 		     | ExposureMask | StructureNotifyMask | FocusChangeMask \
@@ -123,7 +102,7 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
     unsigned int x, y, width, height;
     Window win;
     struct x11_display *dpy;
-    VALUE face;
+    repv face;
     struct x11_color *bg, *fg;
 
     if(pending_display != 0)
@@ -175,7 +154,7 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	height = (w->w_FontY * (height + 2));
     }
 
-    face = cmd_symbol_value(sym_default_face, sym_t);
+    face = Fsymbol_value(Qdefault_face, Qt);
     if(FACEP(face))
     {
 	fg = x11_get_color_dpy(VCOLOR(VFACE(face)->foreground), dpy);
@@ -231,7 +210,7 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 			 &class_hints);
 	XSetIconName(dpy->display, win, "jade");
 	XSetWMProtocols(dpy->display, win, &dpy->wm_delete_window, 1);
-	if(!opt_batch_mode)
+	if(rep_SYM(Qbatch_mode)->value == Qnil)
 	{
 	    XSelectInput(dpy->display, win, INPUT_EVENTS);
 	    XMapWindow(dpy->display, win);
@@ -402,7 +381,7 @@ sys_set_font(WIN *w)
     else
 	dpy = x11_display_list;
 
-    if((font = XLoadQueryFont(dpy->display, VSTR(w->w_FontName)))
+    if((font = XLoadQueryFont(dpy->display, rep_STR(w->w_FontName)))
        || (font = XLoadQueryFont(dpy->display, DEFAULT_FONT)))
     {
 	if(w->w_WindowSys.ws_Font)
@@ -493,9 +472,8 @@ sys_unset_font(WIN *w)
 
 DEFSTRING(no_font, "Can't open font");
 
-_PR VALUE cmd_set_font(VALUE fontname, VALUE win);
-DEFUN_INT("set-font", cmd_set_font, subr_set_font, (VALUE fontname, VALUE win), V_Subr2, DOC_set_font, "sFont name: ") /*
-::doc:set_font::
+DEFUN_INT("set-font", Fset_font, Sset_font, (repv fontname, repv win), rep_Subr2, "sFont name: ") /*
+::doc:Sset-font::
 set-font FONT-NAME [WINDOW]
 
 FONT-NAME specifies the font to use in WINDOW (or the active one).
@@ -504,10 +482,10 @@ name of the font followed by a dash and then the point size to use (for
 example "topaz.font-8" to get an 8-point topaz font).
 ::end:: */
 {
-    VALUE oldfont;
-    DECLARE1(fontname, STRINGP);
+    repv oldfont;
+    rep_DECLARE1(fontname, rep_STRINGP);
     if(!WINDOWP(win))
-	win = VAL(curr_win);
+	win = rep_VAL(curr_win);
     oldfont = VWIN(win)->w_FontName;
     VWIN(win)->w_FontName = fontname;
     if(sys_set_font(VWIN(win)))
@@ -516,13 +494,13 @@ example "topaz.font-8" to get an 8-point topaz font).
 #if 0
 	VWIN(win)->w_DeferRefresh++;
 #endif
-	return(sym_t);
+	return(Qt);
     }
     else
     {
-	cmd_signal(sym_error, list_2(VAL(&no_font), fontname));
+	Fsignal(Qerror, rep_list_2(rep_VAL(&no_font), fontname));
 	VWIN(win)->w_FontName = oldfont;
-	return LISP_NULL;
+	return rep_NULL;
     }
 }
 
@@ -533,7 +511,7 @@ sys_reset_sleep_titles(TX *tx)
 
 /* Now this returns the glyph position in the window of the cursor;
    it doesn't worry about the views in the window. */
-VALUE
+repv
 sys_get_mouse_pos(WIN *w)
 {
     if(w != x11_current_event_win)
@@ -549,15 +527,14 @@ sys_get_mouse_pos(WIN *w)
 			    (y - w->w_TopPix) / w->w_FontY);
 	}
 	else
-	    return LISP_NULL;
+	    return rep_NULL;
     }
     else
 	return make_pos(x11_current_mouse_x, x11_current_mouse_y);
 }
 
-_PR VALUE cmd_flush_output(void);
-DEFUN("flush-output", cmd_flush_output, subr_flush_output, (void), V_Subr0, DOC_flush_output) /*
-::doc:flush_output::
+DEFUN("flush-output", Fflush_output, Sflush_output, (void), rep_Subr0) /*
+::doc:Sflush-output::
 flush-output
 
 Forces any cached window output to be drawn. This is usually unnecessary.
@@ -569,15 +546,14 @@ Forces any cached window output to be drawn. This is usually unnecessary.
 	XFlush(dpy->display);
 	dpy = dpy->next;
     }
-    return sym_t;
+    return Qt;
 }
 
 DEFSTRING(no_display, "Can't open display");
-_PR VALUE cmd_make_window_on_display(VALUE display);
-DEFUN_INT("make-window-on-display", cmd_make_window_on_display,
-	  subr_make_window_on_display, (VALUE display), V_Subr1,
-	  DOC_make_window_on_display, "sDisplay to open window on:") /*
-::doc:make_window_on_display::
+DEFUN_INT("make-window-on-display", Fmake_window_on_display,
+	  Smake_window_on_display, (repv display), rep_Subr1,
+	  "sDisplay to open window on:") /*
+::doc:Smake-window-on-display::
 make-window-on-display DISPLAY-NAME
 
 Create a new window, as with make-window, but opened on the X11 display
@@ -587,26 +563,28 @@ When called interactively, DISPLAY-NAME is prompted for.
 ::end:: */
 {
     struct x11_display *xdisplay;
-    DECLARE1(display, STRINGP);
-    xdisplay = x11_open_display(VSTR(display));
+    rep_DECLARE1(display, rep_STRINGP);
+    xdisplay = x11_open_display(rep_STR(display));
     if(xdisplay != 0)
     {
-	VALUE win;
+	repv win;
 	pending_display = xdisplay;
-	win = cmd_make_window(sym_nil, sym_nil, sym_nil, sym_nil);
+	win = Fmake_window(Qnil, Qnil, Qnil, Qnil);
 	pending_display = 0;
 	return win;
     }
     else
-	return cmd_signal(sym_window_error, LIST_2(VAL(&no_display), display));
+	return Fsignal(Qwindow_error, rep_LIST_2(rep_VAL(&no_display), display));
 }
 
 void
 sys_windows_init(void)
 {
-    ADD_SUBR_INT(subr_set_font);
-    ADD_SUBR(subr_flush_output);
-    ADD_SUBR_INT(subr_make_window_on_display);
+    rep_ADD_SUBR_INT(Sset_font);
+    rep_ADD_SUBR(Sflush_output);
+    rep_ADD_SUBR_INT(Smake_window_on_display);
+
+    rep_test_int_fun = x11_handle_async_input;
 
     x11_misc_init();
 }

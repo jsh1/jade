@@ -19,23 +19,14 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-
 #include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
 
-_PR void beep(VW *);
-
-_PR void x11_convert_selection(XSelectionRequestEvent *ev);
-_PR void x11_lose_selection(XSelectionClearEvent *ev);
-_PR void x11_window_lose_selections(WIN *w);
-_PR void x11_misc_init(void);
-
 void
-beep(VW *vw)
+x11_beep(void)
 {
-    XBell(WINDOW_XDPY(vw->vw_Win)->display, 0);
+    XBell(WINDOW_XDPY(curr_win)->display, 0);
 }
 
 
@@ -48,12 +39,11 @@ enum Sel_type {
 static struct selection_info {
     Window owner;
     Time birthdate;
-    VALUE data;				/* either a string or a buffer */
-    VALUE start, end;
+    repv data;				/* either a string or a buffer */
+    repv start, end;
     enum Sel_type type;
 } selection_info[2];
 
-_PR VALUE sym_xa_primary, sym_xa_secondary;
 DEFSYM(xa_primary, "xa-primary");
 DEFSYM(xa_secondary, "xa-secondary");
 
@@ -66,19 +56,18 @@ selection_atom_to_index(Atom atom)
 }
 
 static Atom
-symbol_to_atom(VALUE sym)
+symbol_to_atom(repv sym)
 {
-    if(sym == sym_xa_primary)
+    if(sym == Qxa_primary)
 	return XA_PRIMARY;
-    else if(sym == sym_xa_secondary)
+    else if(sym == Qxa_secondary)
 	return XA_SECONDARY;
     else
 	return (Atom) 0;
 }
 
-_PR VALUE cmd_x11_set_selection(VALUE sel, VALUE start, VALUE end, VALUE buffer);
-DEFUN("x11-set-selection", cmd_x11_set_selection, subr_x11_set_selection, (VALUE sel, VALUE start, VALUE end, VALUE buffer), V_Subr4, DOC_x11_set_selection) /*
-::doc:x11_set_selection::
+DEFUN("x11-set-selection", Fx11_set_selection, Sx11_set_selection, (repv sel, repv start, repv end, repv buffer), rep_Subr4) /*
+::doc:Sx11-set-selection::
 x11-set-selection SELECTION [ STRING | START END [BUFFER] ]
 
 Defines the X11 selection whose name corresponds to the symbol SELECTION
@@ -94,16 +83,16 @@ otherwise.
     Atom selection;
     enum Sel_type type;
 
-    DECLARE1(sel, SYMBOLP);
+    rep_DECLARE1(sel, rep_SYMBOLP);
 
-    if(STRINGP(start))
+    if(rep_STRINGP(start))
 	type = Sel_string;
     else
     {
-	DECLARE2(start, POSP);
-	DECLARE3(end, POSP);
+	rep_DECLARE2(start, POSP);
+	rep_DECLARE3(end, POSP);
 	if(!BUFFERP(buffer))
-	    buffer = VAL(curr_vw->vw_Tx);
+	    buffer = rep_VAL(curr_vw->vw_Tx);
 	type = Sel_area;
     }
     selection = symbol_to_atom(sel);
@@ -127,16 +116,16 @@ otherwise.
 	    }
 	    else
 		selection_info[selno].data = start;
-	    return sym_t;
+	    return Qt;
 	}
 	else
 	{
 	    selection_info[selno].owner = WINDOW_NIL;
-	    selection_info[selno].data = sym_nil;
-	    return sym_nil;
+	    selection_info[selno].data = Qnil;
+	    return Qnil;
 	}
     }
-    return cmd_signal(sym_error, list_2(VAL(&no_atom), sel));
+    return Fsignal(Qerror, rep_list_2(rep_VAL(&no_atom), sel));
 }
 
 static Bool
@@ -145,9 +134,8 @@ selnotify_pred(Display *dpy, XEvent *ev, XPointer arg)
     return ev->type == SelectionNotify;
 }
 
-_PR VALUE cmd_x11_selection_active_p(VALUE sel);
-DEFUN("x11-selection-active-p", cmd_x11_selection_active_p, subr_x11_selection_active_p, (VALUE sel), V_Subr1, DOC_x11_selection_active_p) /*
-::doc:x11_selection_active_p::
+DEFUN("x11-selection-active-p", Fx11_selection_active_p, Sx11_selection_active_p, (repv sel), rep_Subr1) /*
+::doc:Sx11-selection-active-p::
 x11-selection-active-p SELECTION
 
 Returns t if the X11 selection defined by the symbol SELECTION (either
@@ -155,7 +143,7 @@ Returns t if the X11 selection defined by the symbol SELECTION (either
 ::end:: */
 {
     Atom selection;
-    DECLARE1(sel, SYMBOLP);
+    rep_DECLARE1(sel, rep_SYMBOLP);
     selection = symbol_to_atom(sel);
     if(selection == XA_PRIMARY || selection == XA_SECONDARY)
     {
@@ -164,15 +152,14 @@ Returns t if the X11 selection defined by the symbol SELECTION (either
 	   || XGetSelectionOwner(WINDOW_XDPY(curr_win)->display,
 				 selection) != None)
 	{
-	    return sym_t;
+	    return Qt;
 	}
     }
-    return sym_nil;
+    return Qnil;
 }
 
-_PR VALUE cmd_x11_own_selection_p(VALUE sel);
-DEFUN("x11-own-selection-p", cmd_x11_own_selection_p, subr_x11_own_selection_p, (VALUE sel), V_Subr1, DOC_x11_own_selection_p) /*
-::doc:x11_own_selection_p::
+DEFUN("x11-own-selection-p", Fx11_own_selection_p, Sx11_own_selection_p, (repv sel), rep_Subr1) /*
+::doc:Sx11-own-selection-p::
 x11-own-selection-p SELECTION
 
 Returns t if the X11 selection defined by the symbol SELECTION (either
@@ -180,20 +167,19 @@ Returns t if the X11 selection defined by the symbol SELECTION (either
 ::end:: */
 {
     Atom selection;
-    DECLARE1(sel, SYMBOLP);
+    rep_DECLARE1(sel, rep_SYMBOLP);
     selection = symbol_to_atom(sel);
     if(selection == XA_PRIMARY || selection == XA_SECONDARY)
     {
 	int selno = selection_atom_to_index(selection);
 	if(selection_info[selno].owner != WINDOW_NIL)
-	    return sym_t;
+	    return Qt;
     }
-    return sym_nil;
+    return Qnil;
 }
 
-_PR VALUE cmd_x11_get_selection(VALUE sel);
-DEFUN("x11-get-selection", cmd_x11_get_selection, subr_x11_get_selection, (VALUE sel), V_Subr1, DOC_x11_get_selection) /*
-::doc:x11_get_selection::
+DEFUN("x11-get-selection", Fx11_get_selection, Sx11_get_selection, (repv sel), rep_Subr1) /*
+::doc:Sx11-get-selection::
 x11-get-selection SELECTION
 
 Returns the string corresponding to the current value of the X11 selection
@@ -203,12 +189,12 @@ If the selection currently has no value, nil is returned.
 ::end:: */
 {
     Atom selection;
-    DECLARE1(sel, SYMBOLP);
+    rep_DECLARE1(sel, rep_SYMBOLP);
     selection = symbol_to_atom(sel);
     if(selection == XA_PRIMARY || selection == XA_SECONDARY)
     {
 	int selno = selection_atom_to_index(selection);
-	VALUE res = sym_nil;
+	repv res = Qnil;
 	if(selection_info[selno].owner != WINDOW_NIL)
 	{
 	    /* We own this selection, avoid the server. */
@@ -223,13 +209,13 @@ If the selection currently has no value, nil is returned.
 		    long tlen = section_length(VTX(selection_info[selno].data),
 					       selection_info[selno].start,
 					       selection_info[selno].end);
-		    res = make_string(tlen + 1);
+		    res = rep_make_string(tlen + 1);
 		    if(res)
 		    {
 			copy_section(VTX(selection_info[selno].data),
 				     selection_info[selno].start,
-				     selection_info[selno].end, VSTR(res));
-			VSTR(res)[tlen] = 0;
+				     selection_info[selno].end, rep_STR(res));
+			rep_STR(res)[tlen] = 0;
 		    }
 		}
 	    }
@@ -263,13 +249,13 @@ If the selection currently has no value, nil is returned.
 					   &actual_format, &nitems,
 					   &bytes_after, &prop);
 		    if(r != Success)
-			return sym_nil;
+			return Qnil;
 		    XFree(prop);
 		    if(actual_type == None || actual_format != 8)
-			return sym_nil;
-		    res = make_string(bytes_after + 1);
+			return Qnil;
+		    res = rep_make_string(bytes_after + 1);
 		    if(!res)
-			return mem_error();
+			return rep_mem_error();
 		    offset = 0;
 		    while(bytes_after > 0)
 		    {
@@ -281,20 +267,20 @@ If the selection currently has no value, nil is returned.
 					       &actual_type, &actual_format,
 					       &nitems, &bytes_after, &prop);
 			if(r != Success)
-			    return sym_nil;
-			memcpy(VSTR(res) + offset, prop, nitems);
+			    return Qnil;
+			memcpy(rep_STR(res) + offset, prop, nitems);
 			XFree(prop);
 			offset += nitems;
 		    }
 		    XDeleteProperty(dpy->display, curr_win->w_Window,
 				    dpy->jade_selection);
-		    VSTR(res)[offset] = 0;
+		    rep_STR(res)[offset] = 0;
 		}
 	    }
 	}
 	return res;
     }
-    return cmd_signal(sym_error, list_2(VAL(&no_atom), sel));
+    return Fsignal(Qerror, rep_list_2(rep_VAL(&no_atom), sel));
 }
 
 void
@@ -315,8 +301,8 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 	{
 	    XChangeProperty(ev->display, ev->requestor, ev->property,
 			    XA_STRING, 8, PropModeReplace,
-			    VSTR(selection_info[selno].data),
-			    STRING_LEN(selection_info[selno].data));
+			    rep_STR(selection_info[selno].data),
+			    rep_STRING_LEN(selection_info[selno].data));
 	}
 	else if(selection_info[selno].type == Sel_area)
 	{
@@ -327,7 +313,7 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 		long tlen = section_length(VTX(selection_info[selno].data),
 					   selection_info[selno].start,
 					   selection_info[selno].end);
-		char *string = sys_alloc(tlen + 1);
+		char *string = rep_alloc(tlen + 1);
 		if(string)
 		{
 		    copy_section(VTX(selection_info[selno].data),
@@ -337,7 +323,7 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 		    XChangeProperty(ev->display, ev->requestor, ev->property,
 				    XA_STRING, 8, PropModeReplace,
 				    string, tlen);
-		    sys_free(string);
+		    rep_free(string);
 		}
 	    }
 	}
@@ -356,7 +342,7 @@ x11_lose_selection(XSelectionClearEvent *ev)
        && ev->time > selection_info[selno].birthdate)
     {
 	selection_info[selno].owner = WINDOW_NIL;
-	selection_info[selno].data = sym_nil;
+	selection_info[selno].data = Qnil;
     }
 }
 
@@ -369,7 +355,7 @@ x11_window_lose_selections(WIN *w)
 	if(selection_info[i].owner == w->w_Window)
 	{
 	    selection_info[i].owner = WINDOW_NIL;
-	    selection_info[i].data = sym_nil;
+	    selection_info[i].data = Qnil;
 	    XSetSelectionOwner(WINDOW_XDPY(w)->display,
 			       (i == 0) ? XA_PRIMARY : XA_SECONDARY,
 			       None, CurrentTime);
@@ -377,9 +363,8 @@ x11_window_lose_selections(WIN *w)
     }
 }
 
-_PR VALUE cmd_x11_lose_selection(VALUE sel);
-DEFUN("x11-lose-selection", cmd_x11_lose_selection, subr_x11_lose_selection, (VALUE sel), V_Subr1, DOC_x11_lose_selection) /*
-::doc:x11_lose_selection::
+DEFUN("x11-lose-selection", Fx11_lose_selection, Sx11_lose_selection, (repv sel), rep_Subr1) /*
+::doc:Sx11-lose-selection::
 x11-lose-selection SELECTION
 
 If the X11 selection specified by the symbol SELECTION is currently owned
@@ -387,7 +372,7 @@ by Jade, relinquish ownership.
 ::end:: */
 {
     Atom selection;
-    DECLARE1(sel, SYMBOLP);
+    rep_DECLARE1(sel, rep_SYMBOLP);
     selection = symbol_to_atom(sel);
     if(selection == XA_PRIMARY || selection == XA_SECONDARY)
     {
@@ -397,12 +382,12 @@ by Jade, relinquish ownership.
 	    XSetSelectionOwner(curr_win->w_WindowSys.ws_Display->display,
 			       selection, None, x11_last_event_time);
 	    selection_info[selno].owner = WINDOW_NIL;
-	    selection_info[selno].data = sym_nil;
-	    return sym_t;
+	    selection_info[selno].data = Qnil;
+	    return Qt;
 	}
-	return sym_nil;
+	return Qnil;
     }
-    return cmd_signal(sym_error, list_2(VAL(&no_atom), sel));
+    return Fsignal(Qerror, rep_list_2(rep_VAL(&no_atom), sel));
 }
 
 void
@@ -411,15 +396,17 @@ x11_misc_init(void)
     int i;
     for(i = 0; i < 2; i++)
     {
-	mark_static(&selection_info[i].data);
-	mark_static(&selection_info[i].start);
-	mark_static(&selection_info[i].end);
+	rep_mark_static(&selection_info[i].data);
+	rep_mark_static(&selection_info[i].start);
+	rep_mark_static(&selection_info[i].end);
     }
-    INTERN(xa_primary);
-    INTERN(xa_secondary);
-    ADD_SUBR(subr_x11_set_selection);
-    ADD_SUBR(subr_x11_selection_active_p);
-    ADD_SUBR(subr_x11_own_selection_p);
-    ADD_SUBR(subr_x11_get_selection);
-    ADD_SUBR(subr_x11_lose_selection);
+    rep_INTERN(xa_primary);
+    rep_INTERN(xa_secondary);
+    rep_ADD_SUBR(Sx11_set_selection);
+    rep_ADD_SUBR(Sx11_selection_active_p);
+    rep_ADD_SUBR(Sx11_own_selection_p);
+    rep_ADD_SUBR(Sx11_get_selection);
+    rep_ADD_SUBR(Sx11_lose_selection);
+
+    rep_beep_fun = x11_beep;
 }

@@ -58,13 +58,13 @@
 #define EV_CODE_MOUSE_UP     4
 
 /* An event object is (CODE . MODS) */
-#define EVENTP(v)	(CONSP(v) && INTP(VCAR(v)) && INTP(VCDR(v)))
-#define MAKE_EVENT(c, m) cmd_cons(c, m)
-#define EVENT_CODE(v)	VCAR(v)
-#define EVENT_MODS(v)	VCDR(v)
+#define EVENTP(v)	(rep_CONSP(v) && rep_INTP(rep_CAR(v)) && rep_INTP(rep_CDR(v)))
+#define MAKE_EVENT(c, m) Fcons(c, m)
+#define EVENT_CODE(v)	rep_CAR(v)
+#define EVENT_MODS(v)	rep_CDR(v)
 
 /* A `key' is (COMMAND . EVENT) */
-#define KEYP(v)		(CONSP(v) && CONSP(VCDR(v)))
-#define KEY_COMMAND(v)	VCAR(v)
-#define KEY_EVENT(v)	VCDR(v)
-#define MAKE_KEY(e, c)	cmd_cons(c, e)
+#define KEYP(v)		(rep_CONSP(v) && rep_CONSP(rep_CDR(v)))
+#define KEY_COMMAND(v)	rep_CAR(v)
+#define KEY_EVENT(v)	rep_CDR(v)
+#define MAKE_KEY(e, c)	Fcons(c, e)

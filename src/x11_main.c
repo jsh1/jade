@@ -19,8 +19,6 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
@@ -31,60 +29,36 @@
 # include <fcntl.h>
 #endif
 
-_PR struct x11_display *x11_get_display(char *display_name);
-_PR struct x11_display *x11_open_display(char *display_name);
-_PR void x11_close_display(struct x11_display *xdisplay);
-_PR void x11_close_all_displays(void);
-_PR struct x11_color *x11_make_color_dpy(Lisp_Color *c, struct x11_display *);
-_PR VALUE sys_make_color(Lisp_Color *c);
-_PR struct x11_color *x11_get_color_dpy(Lisp_Color *c, struct x11_display *);
-_PR void sys_free_color(Lisp_Color *c);
-_PR void x11_free_dpy_colors(struct x11_display *dpy);
-_PR void sys_recolor_cursor(VALUE face);
-
 static void x11_handle_sync_input(int fd);
-_PR void x11_handle_async_input(void);
-
-_PR void sys_usage(void);
-_PR int sys_init(int, char **);
 
 /* The window in which the current event occurred. */
-_PR WIN *x11_current_event_win;
 WIN *x11_current_event_win;
 
 /* The mouse position of the current event, relative to the origin of
    the window that the event occurred in, measured in glyphs. */
-_PR long x11_current_mouse_x, x11_current_mouse_y;
 long x11_current_mouse_x, x11_current_mouse_y;
 
 /* The last event received which had a timestamp, was at this time. */
-_PR Time x11_last_event_time;
 Time x11_last_event_time;
 
 /* List of in-use displays */
-_PR struct x11_display *x11_display_list;
 struct x11_display *x11_display_list;
 
 /* Command line arguments. */
-_PR char **x11_argv;
-_PR int x11_argc;
 char **x11_argv;
 int x11_argc;
 
 /* Command line options, and their default values. */
-static char *display_name = NULL;
 static char *geom_str = "80x24";
 static int x11_opt_sync = 0;
 static char *prog_name;
 static char *visual_name;
 
-_PR bool x11_opt_reverse_video;
 bool x11_opt_reverse_video = FALSE;
 
 /* Default font name. */
 DEFSTRING(def_font_str_data, DEFAULT_FONT);
-_PR VALUE def_font_str;
-VALUE def_font_str;
+repv def_font_str;
 
 
 /* Resource/option management */
@@ -93,45 +67,57 @@ static char **out_argv;
 static int out_argc;
 
 /* Called from main(). */
-int
-sys_init(int argc, char **argv)
+bool
+sys_init(char *program_name)
 {
-    int i;
     struct x11_display *xdisplay;
+    char *display_name = 0;
+    repv args = rep_SYM(Qcommand_line_args)->value;
+    repv *pred = &rep_SYM(Qcommand_line_args)->value;
 
-    prog_name = argv[0];
-    def_font_str = VAL(&def_font_str_data);
+    def_font_str = rep_VAL(&def_font_str_data);
+    prog_name = program_name;
 
-    for(i = 1; i < argc; i++)
+    while (rep_CONSP(args))
     {
-	/* These options have to be found *before* resources are looked
-	   for.	 */
-	if(!strcmp("-display", argv[i]) && (i+1 < argc))
-	    display_name = argv[++i];
-	else if(!strcmp("-name", argv[i]) && (i+1 < argc))
-	    prog_name = argv[++i];
+	if(!strcmp("--display", rep_STR(rep_CAR(args)))
+	   && rep_CONSP(rep_CDR(args)))
+	{
+	    display_name = rep_STR(rep_CAR(args));
+	    rep_CDR(args) = rep_CDR(rep_CDR(args));
+	    *pred = rep_CDR(args);
+	}
+	else if(!strcmp("--name", rep_STR(rep_CAR(args)))
+		&& rep_CONSP(rep_CDR(args)))
+	{
+	    prog_name = strdup(rep_STR(rep_CAR(args)));
+	    rep_CDR(args) = rep_CDR(rep_CDR(args));
+	    *pred = rep_CDR(args);
+	}
+	else
+	{
+	    pred = &rep_CDR(args);
+	    args = rep_CDR(args);
+	}
     }
-    x11_argc = out_argc = argc;
-    x11_argv = out_argv = argv;
-
     if (display_name == 0)
 	display_name = getenv("DISPLAY");
 
     xdisplay = x11_open_display(display_name);
     if(xdisplay != 0)
-    {
-	/* Call the main editor setup and event loop.  */
-	int rc = inner_main(out_argc, out_argv);
-
-	x11_close_all_displays();
-	return rc;
-    }
+	return TRUE;
     else
     {
 	fprintf(stderr, "jade: Can't open display: %s\n",
 		display_name ? display_name : "");
+	return FALSE;
     }
-    return 5;
+}
+
+void
+sys_kill (void)
+{
+    x11_close_all_displays ();
 }
 
 /* Scan the resource db for the entries we're interested in. */
@@ -159,7 +145,7 @@ get_resources(struct x11_display *xdisplay)
 	default_ml_color = s;
     if((s = XGetDefault(xdisplay->display, prog_name, "font"))
        || (s = XGetDefault(xdisplay->display, "Jade", "Font")))
-	def_font_str = string_dup(s);
+	def_font_str = rep_string_dup(s);
     if((s = XGetDefault(xdisplay->display, prog_name, "visual"))
        || (s = XGetDefault(xdisplay->display, "Jade", "Visual")))
 	visual_name = s;
@@ -172,19 +158,19 @@ get_resources(struct x11_display *xdisplay)
 void
 sys_usage(void)
 {
-    fputs("where SYSTEM-OPTIONS are,\n"
-	  "    -display DISPLAY-NAME\n"
-	  "    -name NAME\n"
-	  "    -geometry WINDOW-GEOMETRY\n"
-	  "    -visual VISUAL-NAME\n"
-	  "    -fg FOREGROUND-COLOUR\n"
-	  "    -bg BACKGROUND-COLOUR\n"
-	  "    -hl HIGHLIGHT-COLOUR\n"
-	  "    -ml MODELINE-COLOUR\n"
-	  "    -bl BLOCK-COLOUR\n"
-	  "    -rv\n"
-	  "    -font FONT-NAME\n"
-	  "    -sync\n" , stderr);
+    fputs("\nSYSTEM-OPTIONS are,\n"
+	  "    --display DISPLAY-NAME\n"
+	  "    --name NAME\n"
+	  "    --geometry WINDOW-GEOMETRY\n"
+	  "    --visual VISUAL-NAME\n"
+	  "    --fg FOREGROUND-COLOUR\n"
+	  "    --bg BACKGROUND-COLOUR\n"
+	  "    --hl HIGHLIGHT-COLOUR\n"
+	  "    --ml MODELINE-COLOUR\n"
+	  "    --bl BLOCK-COLOUR\n"
+	  "    --rv\n"
+	  "    --font FONT-NAME\n"
+	  "    --sync\n" , stderr);
 }
 
 /* Scan the command line for the X11 options. Updating ARGC-P and ARGV-P to
@@ -198,32 +184,32 @@ get_options(int *argc_p, char ***argv_p)
     argv++;
     while((argc >= 1) && (**argv == '-'))
     {
-	if(!strcmp("-sync", *argv))
+	if(!strcmp("--sync", *argv))
 	    x11_opt_sync = 1;
-	else if(!strcmp("-rv", *argv))
+	else if(!strcmp("--rv", *argv))
 	    x11_opt_reverse_video = !x11_opt_reverse_video;
 	else if(argc >= 2)
 	{
-	    if(!strcmp("-display", *argv))
+	    if(!strcmp("--display", *argv))
 		;
-	    else if(!strcmp("-name", *argv))
+	    else if(!strcmp("--name", *argv))
 		;
-	    else if(!strcmp("-geometry", *argv))
+	    else if(!strcmp("--geometry", *argv))
 		geom_str = argv[1];
-	    else if(!strcmp("-visual", *argv))
+	    else if(!strcmp("--visual", *argv))
 		visual_name = argv[1];
-	    else if(!strcmp("-fg", *argv))
+	    else if(!strcmp("--fg", *argv))
 		default_fg_color = argv[1];
-	    else if(!strcmp("-bg", *argv))
+	    else if(!strcmp("--bg", *argv))
 		default_bg_color = argv[1];
-	    else if(!strcmp("-bl", *argv))
+	    else if(!strcmp("--bl", *argv))
 		default_block_color = argv[1];
-	    else if(!strcmp("-hl", *argv))
+	    else if(!strcmp("--hl", *argv))
 		default_hl_color = argv[1];
-	    else if(!strcmp("-ml", *argv))
+	    else if(!strcmp("--ml", *argv))
 		default_ml_color = argv[1];
-	    else if(!strcmp("-font", *argv))
-		def_font_str = string_dup(argv[1]);
+	    else if(!strcmp("--font", *argv))
+		def_font_str = rep_string_dup(argv[1]);
 	    else
 		break;
 	    argc--; argv++;
@@ -362,10 +348,10 @@ x11_open_display(char *display_name)
     {
 	if (display_name == 0)
 	    display_name = DisplayString(display);
-	xdisplay = sys_alloc(sizeof(struct x11_display));
+	xdisplay = rep_alloc(sizeof(struct x11_display));
 	if(xdisplay != 0)
 	{
-	    xdisplay->name = sys_alloc(strlen(display_name) + 1);
+	    xdisplay->name = rep_alloc(strlen(display_name) + 1);
 	    if (xdisplay->name != 0)
 	    {
 		/* Add at end of list, since some functions grab the
@@ -381,7 +367,7 @@ x11_open_display(char *display_name)
 		xdisplay->display = display;
 		xdisplay->screen = DefaultScreen(display);
 
-		sys_register_input_fd(ConnectionNumber(display),
+		rep_register_input_fd(ConnectionNumber(display),
 				      x11_handle_sync_input);
 
 		if(is_first)
@@ -407,7 +393,7 @@ x11_open_display(char *display_name)
 		    return xdisplay;
 		}
 	    }
-	    sys_free(xdisplay);
+	    rep_free(xdisplay);
 	}
 	XCloseDisplay(display);
     }
@@ -433,12 +419,12 @@ x11_close_display(struct x11_display *xdisplay)
 	    ptr = &((*ptr)->next);
 	}
     }
-    sys_deregister_input_fd(ConnectionNumber(xdisplay->display));
+    rep_deregister_input_fd(ConnectionNumber(xdisplay->display));
     if(xdisplay->colormap != DefaultColormap(xdisplay->display,
 					     xdisplay->screen))
 	XFreeColormap(xdisplay->display, xdisplay->colormap);
     XCloseDisplay(xdisplay->display);
-    sys_free(xdisplay);
+    rep_free(xdisplay);
 }
     
 void
@@ -456,34 +442,34 @@ DEFSTRING(no_color, "Can't allocate color");
 struct x11_color *
 x11_make_color_dpy(Lisp_Color *c, struct x11_display *dpy)
 {
-    struct x11_color *cell = sys_alloc(sizeof(struct x11_color));
+    struct x11_color *cell = rep_alloc(sizeof(struct x11_color));
     if(cell != 0)
     {
 	XColor tem;
 	cell->next = c->color;
 	cell->dpy = dpy;
 	if(XAllocNamedColor(dpy->display, dpy->colormap,
-			    VSTR(c->name), &cell->color, &tem) != 0)
+			    rep_STR(c->name), &cell->color, &tem) != 0)
 	{
 	    c->color = cell;
 	    return cell;
 	}
-	sys_free(cell);
-	cmd_signal(sym_error, list_2(VAL(&no_color), c->name));
+	rep_free(cell);
+	Fsignal(Qerror, rep_list_2(rep_VAL(&no_color), c->name));
 	return 0;
     }
-    mem_error();
+    rep_mem_error();
     return 0;
 }
 
-VALUE
+repv
 sys_make_color(Lisp_Color *c)
 {
     c->color = 0;
     if(x11_display_list != 0)
-	return x11_make_color_dpy(c, x11_display_list) ? VAL(c) : LISP_NULL;
+	return x11_make_color_dpy(c, x11_display_list) ? rep_VAL(c) : rep_NULL;
     else
-	return VAL(c);			/* lazy */
+	return rep_VAL(c);			/* lazy */
 }
 
 struct x11_color *
@@ -507,7 +493,7 @@ sys_free_color(Lisp_Color *c)
     {
 	struct x11_color *next = x->next;
 	XFreeColors(x->dpy->display, x->dpy->colormap, &x->color.pixel, 1, 0);
-	sys_free(x);
+	rep_free(x);
 	x = next;
     }
     c->color = 0;
@@ -527,7 +513,7 @@ x11_free_dpy_colors(struct x11_display *dpy)
 		struct x11_color *next = (*x)->next;
 		XFreeColors(dpy->display, dpy->colormap,
 			    &(*x)->color.pixel, 1, 0);
-		sys_free(*x);
+		rep_free(*x);
 		*x = next;
 		break;
 	    }
@@ -537,7 +523,7 @@ x11_free_dpy_colors(struct x11_display *dpy)
 }
 
 void
-sys_recolor_cursor(VALUE face)
+sys_recolor_cursor(repv face)
 {
     if(face && FACEP(face)
        && COLORP(VFACE(face)->background)
@@ -580,12 +566,12 @@ x11_async_event_pred(Display *dpy, XEvent *ev, XPointer arg)
 	if(code == XK_g && mods == (EV_TYPE_KEYBD | EV_MOD_CTRL))
 	{
 	    /* Got one. */
-	    throw_value = int_cell;
+	    rep_throw_value = rep_int_cell;
 	    return True;
 	}
     }
     /* This event has now been read, so select() wouldn't notice it.. */
-    sys_mark_input_pending(ConnectionNumber(dpy));
+    rep_mark_input_pending(ConnectionNumber(dpy));
     return False;
 }
 
@@ -596,7 +582,7 @@ x11_handle_input(int fd, bool synchronous)
     bool need_redisplay = FALSE;
 
     /* Read all events in the input queue. */
-    while(throw_value == LISP_NULL)
+    while(rep_throw_value == rep_NULL)
     {
 	XEvent xev;
 	WIN *oldwin = curr_win, *ev_win;
@@ -702,7 +688,7 @@ x11_handle_input(int fd, bool synchronous)
 		    curr_win = ev_win;
 		    if(ev_win != oldwin)
 			curr_vw = curr_win->w_CurrVW;
-		    cmd_delete_window(sym_nil);
+		    Fdelete_window(Qnil);
 		    xdisplay = 0;
 		}
 		need_redisplay = TRUE;
@@ -815,7 +801,7 @@ x11_handle_async_input(void)
     {
 	struct x11_display *dpy = WINDOW_XDPY(curr_win);
 	int fd = ConnectionNumber(dpy->display);
-	if(sys_poll_input(fd) && x11_handle_input(fd, FALSE))
-	    cmd_redisplay(sym_nil);
+	if(rep_poll_input(fd) && x11_handle_input(fd, FALSE))
+	    Fredisplay(Qnil);
     }
 }

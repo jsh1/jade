@@ -23,19 +23,10 @@
  * regular-expression syntax might require a total rethink.
  */
 
-#ifdef JADE
-
+#define rep_NEED_REGEXP_INTERNALS
 #include "jade.h"
-#include <lib/jade_protos.h>
-
+#include <rep_regexp.h>
 #include <stdio.h>
-#ifdef AMIGA
-#undef min
-#endif
-#include "regexp.h"
-#include "regprog.h"
-#include "regmagic.h"
-
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -53,11 +44,11 @@
 static TX      *regtx;		/* buffer */
 static Pos      reginput;	/* String-input pointer. */
 static char	regnocase;	/* Ignore case when string-matching. */
-static VALUE   *regstartp;	/* Pointer to startp array. */
-static VALUE   *regendp;	/* Ditto for endp. */
+static repv   *regstartp;	/* Pointer to startp array. */
+static repv   *regendp;	/* Ditto for endp. */
 
 /* Forwards. */
-static int	regtry(TX *tx, regexp *, Pos *);
+static int	regtry(TX *tx, rep_regexp *, Pos *);
 static int	regmatch(char *);
 static int	regrepeat(char *);
 static char    *regnext(char *);
@@ -86,9 +77,9 @@ static char    *regnext(char *);
  */
 int
 regexec_tx(prog, tx, start, eflags)
-    register regexp *prog;
+    register rep_regexp *prog;
     TX *tx;
-    VALUE start;
+    repv start;
     int eflags;
 {
     Pos s;
@@ -97,18 +88,18 @@ regexec_tx(prog, tx, start, eflags)
     static char mat[3] = "xX";
 
     /* Be paranoid... */
-    if (prog == NULL || tx == NULL || start == LISP_NULL || !POSP(start)) {
-	regerror("NULL parameter");
+    if (prog == NULL || tx == NULL || start == rep_NULL || !POSP(start)) {
+	rep_regerror("NULL parameter");
 	return (0);
     }
     /* Check validity of program. */
     if (UCHARAT(prog->program) != MAGIC) {
-	regerror("corrupted program");
+	rep_regerror("corrupted program");
 	return (0);
     }
 
     /* jsh -- Check for REG_NOCASE, means ignore case in string matches.  */
-    regnocase = ((eflags & REG_NOCASE) != 0);
+    regnocase = ((eflags & rep_REG_NOCASE) != 0);
 
     /* If there is a "must appear" string, look for it. */
     if (prog->regmust != NULL)
@@ -221,9 +212,9 @@ regexec_tx(prog, tx, start, eflags)
    boundaries; I think this is acceptable. */
 int
 regexec_reverse_tx(prog, tx, start, eflags)
-    register regexp *prog;
+    register rep_regexp *prog;
     TX *tx;
-    VALUE start;
+    repv start;
     int eflags;
 {
     Pos s;
@@ -232,18 +223,18 @@ regexec_reverse_tx(prog, tx, start, eflags)
     static char mat[3] = "xX";
 
     /* Be paranoid... */
-    if (prog == NULL || tx == NULL || start == LISP_NULL || !POS(start)) {
-	regerror("NULL parameter");
+    if (prog == NULL || tx == NULL || start == rep_NULL || !POS(start)) {
+	rep_regerror("NULL parameter");
 	return (0);
     }
     /* Check validity of program. */
     if (UCHARAT(prog->program) != MAGIC) {
-	regerror("corrupted program");
+	rep_regerror("corrupted program");
 	return (0);
     }
 
     /* jsh -- Check for REG_NOCASE, means ignore case in string matches.  */
-    regnocase = ((eflags & REG_NOCASE) != 0);
+    regnocase = ((eflags & rep_REG_NOCASE) != 0);
 
     /* If there is a "must appear" string, look for it. */
     if (prog->regmust != NULL)
@@ -314,14 +305,14 @@ regexec_reverse_tx(prog, tx, start, eflags)
 		if(regtry(tx, prog, &s))
 		{
 		    /* Try for a longer match. */
-		    regsubs leftmost = prog->matches;
+		    rep_regsubs leftmost = prog->matches;
 		    while(PCOL(&s)-- > 0)
 		    {
 			char c = INPUT_CHAR(&s);
 			if(toupper(c) == toupper(prog->regstart)
 			   && regtry(tx, prog, &s)
-			   && POS_EQUAL_P(prog->matches.tx.endp[0],
-					  leftmost.tx.endp[0]))
+			   && POS_EQUAL_P(prog->matches.obj.endp[0],
+					  leftmost.obj.endp[0]))
 			{
 			    /* found an equivalent match to the left,
 			       replace the original */
@@ -341,13 +332,13 @@ regexec_reverse_tx(prog, tx, start, eflags)
 		if(regtry(tx, prog, &s))
 		{
 		    /* Try for a longer match. */
-		    regsubs leftmost = prog->matches;
+		    rep_regsubs leftmost = prog->matches;
 		    while(PCOL(&s)-- > 0)
 		    {
 			if(INPUT_CHAR(&s) == prog->regstart
 			   && regtry(tx, prog, &s)
-			   && POS_EQUAL_P(prog->matches.tx.endp[0],
-					  leftmost.tx.endp[0]))
+			   && POS_EQUAL_P(prog->matches.obj.endp[0],
+					  leftmost.obj.endp[0]))
 			{
 			    /* found an equivalent match to the left,
 			       replace the original */
@@ -368,12 +359,12 @@ regexec_reverse_tx(prog, tx, start, eflags)
 	    if (regtry(tx, prog, &s))
 	    {
 		/* Try for a longer match. */
-		regsubs leftmost = prog->matches;
+		rep_regsubs leftmost = prog->matches;
 		while(PCOL(&s)-- > 0)
 		{
 		    if(regtry(tx, prog, &s)
-		       && POS_EQUAL_P(prog->matches.tx.endp[0],
-				      leftmost.tx.endp[0]))
+		       && POS_EQUAL_P(prog->matches.obj.endp[0],
+				      leftmost.obj.endp[0]))
 		    {
 			/* found an equivalent match to the left,
 			   replace the original */
@@ -396,16 +387,16 @@ regexec_reverse_tx(prog, tx, start, eflags)
  */
 int
 regmatch_tx(prog, tx, start, eflags)
-    register regexp *prog;
+    register rep_regexp *prog;
     TX *tx;
-    VALUE start;
+    repv start;
     int eflags;
 {
     Pos s;
     COPY_VPOS(&s, start);
 
     /* Check for REG_NOCASE, means ignore case in string matches.  */
-    regnocase = ((eflags & REG_NOCASE) != 0);
+    regnocase = ((eflags & rep_REG_NOCASE) != 0);
     return regtry(tx, prog, &s);
 }
 
@@ -415,24 +406,24 @@ regmatch_tx(prog, tx, start, eflags)
 static int			/* 0 failure, 1 success */
 regtry(tx, prog, matchpos)
     TX		   *tx;
-    regexp	   *prog;
+    rep_regexp	   *prog;
     Pos            *matchpos;
 {
     register int    i;
 
     regtx = tx;
     reginput = *matchpos;
-    regstartp = prog->matches.tx.startp;
-    regendp = prog->matches.tx.endp;
+    regstartp = prog->matches.obj.startp;
+    regendp = prog->matches.obj.endp;
 
     for (i = 0; i < NSUBEXP; i++) {
-	regstartp[i] = LISP_NULL;
-	regendp[i] = LISP_NULL;
+	regstartp[i] = rep_NULL;
+	regendp[i] = rep_NULL;
     }
     if (regmatch(prog->program + 1)) {
 	regstartp[0] = make_pos(PCOL(matchpos), PROW(matchpos));
 	regendp[0] = make_pos(PCOL(&reginput), PROW(&reginput));
-	prog->lasttype = reg_tx;
+	prog->lasttype = rep_reg_obj;
 	return (1);
     } else
 	return (0);
@@ -566,7 +557,7 @@ regmatch(prog)
 		     * Don't set startp if some later invocation of the same
 		     * parentheses already has.
 		     */
-		    if (regstartp[no] == LISP_NULL)
+		    if (regstartp[no] == rep_NULL)
 			regstartp[no] = make_pos(PCOL(&save), PROW(&save));
 		    return (1);
 		} else
@@ -593,7 +584,7 @@ regmatch(prog)
 		     * Don't set endp if some later invocation of the same
 		     * parentheses already has.
 		     */
-		    if (regendp[no] == LISP_NULL)
+		    if (regendp[no] == rep_NULL)
 			regendp[no] = make_pos(PCOL(&save), PROW(&save));
 		    return (1);
 		} else
@@ -657,7 +648,7 @@ regmatch(prog)
 	    return (1);		/* Success! */
 	    break;
 	default:
-	    regerror("memory corruption");
+	    rep_regerror("memory corruption");
 	    return (0);
 	    break;
 	}
@@ -669,7 +660,7 @@ regmatch(prog)
      * We get here only if there's trouble -- normally "case END" is the
      * terminating point.
      */
-    regerror("corrupted pointers");
+    rep_regerror("corrupted pointers");
     return (0);
 }
 
@@ -746,7 +737,7 @@ regrepeat(p)
 	}
 	break;
     default:			/* Oh dear.  Called inappropriately. */
-	regerror("internal foulup");
+	rep_regerror("internal foulup");
 	count = 0;		/* Best compromise. */
 	break;
     }
@@ -773,5 +764,3 @@ regnext(p)
     else
 	return (p + offset);
 }
-
-#endif /* JADE */

@@ -37,6 +37,7 @@
 ;; so trivial it's almost embarassing ;-)
 
 (require 'read-mail)
+(require 'date)
 (provide 'rm-thread)
 
 ;; Suppress annoying compiler warnings
@@ -70,8 +71,8 @@ threaded.")
 		       (dy (rm-get-date-vector y)))
 		    ;; Date-less messages earlier than dated messages
 		    (if (and dx dy)
-			(< (aref dx mail-date-epoch-time)
-			   (aref dy mail-date-epoch-time))
+			(< (aref dx date-vec-epoch-time)
+			   (aref dy date-vec-epoch-time))
 		      dy))))
 	(cons 'subject
 	      #'(lambda (x y)

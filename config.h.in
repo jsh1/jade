@@ -47,54 +47,8 @@
     comma (',') */
 #undef FULL_NAME_TERMINATOR
 
-/* Define this to be the minimum alignment of memory allocated
-   by malloc(). The default of four should be ok for most systems? If
-   not the Lisp data layout is probably screwed anyway... */
-#define MALLOC_ALIGNMENT 4
-
-/* If the default given below is no good, define this to an implicitly
-   signed integer type, that a pointer can be cast to and from. The
-   only reason this might have to change is on a 64-bit pointer machine
-   that only has 32-bit longs.. */
-#define PTR_SIZED_INT long int
-
-/* This should be the number of bits in the above type. Only needs
-   changing on 64-bit machines.. */
-#define PTR_SIZED_INT_BITS 32
-
-/* Comment this out to get messages telling you when garbage collection
-   takes place. In general gc is fast enough not to be too noticeable
-   (the exception to this is when jade has been swapped out) */
-#define NO_GC_MSG 1
-
 
 /* General configuration options */
-
-/* If you define this statically allocated Lisp strings will be
-   coded in GCC's asm statement to allow better code generation. */
-#undef INLINE_STATIC_STRINGS
-
-/* Define if dynamic loading is available */
-#undef HAVE_DYNAMIC_LOADING
-
-/* Define if <dlfcn.h> is available */
-#undef HAVE_DLFCN_H
-
-/* Define to suffix of dynamically loaded files */
-#undef DYNAMIC_FILE_SUFFIX
-
-/* Define if pseudo terminals are available */
-#undef HAVE_PTYS
-
-/* Define if pseudo terminals should be opened through /dev/ptmx
-   followed by calls to grantpt, unlockpt and ptsname */
-#undef HAVE_DEV_PTMX
-
-/* Character of first pty, eg /dev/ptyX0.  */
-#undef FIRST_PTY_LETTER
-
-/* Define this when <unistd.h> doesn't declare environ, */
-#undef ENVIRON_UNDECLARED
 
 /* Define if using alloca.c.  */
 #undef C_ALLOCA
@@ -118,17 +72,8 @@
 /* Define if you don't have vprintf but do have _doprnt.  */
 #undef HAVE_DOPRNT
 
-/* Define if you have <sys/wait.h> that is POSIX.1 compatible.  */
-#undef HAVE_SYS_WAIT_H
-
 /* Define if you have the vprintf function.  */
 #undef HAVE_VPRINTF
-
-/* Define to `int' if <sys/types.h> doesn't define.  */
-#undef pid_t
-
-/* Define as the return type of signal handlers (int or void).  */
-#undef RETSIGTYPE
 
 /* Define to `unsigned' if <sys/types.h> doesn't define.  */
 #undef size_t
@@ -163,26 +108,14 @@
 /* Define if you have the strcspn function.  */
 #undef HAVE_STRCSPN
 
-/* Define if you have the strerror function.  */
-#undef HAVE_STRERROR
-
 /* Define if you have the strstr function.  */
 #undef HAVE_STRSTR
 
 /* Define if you have the strtol function.  */
 #undef HAVE_STRTOL
 
-/* Define if you have the psignal function.  */
-#undef HAVE_PSIGNAL
-
-/* Define if you have the strsignal function.  */
-#undef HAVE_STRSIGNAL
-
 /* Define if you have the snprintf function. */
 #undef HAVE_SNPRINTF
-
-/* Define if you have the grantpt (and ptsname and unlockpt) function. */
-#undef HAVE_GRANTPT
 
 /* Define if you have the getpagesize function. */
 #undef HAVE_GETPAGESIZE
@@ -193,26 +126,8 @@
 /* Define if you have the memchr function.  */
 #define HAVE_MEMCHR
 
-/* Define if you have the lrand48() and srand48() functions */
-#define HAVE_LRAND48
-
-/* Define if you have the <dirent.h> header file.  */
-#undef HAVE_DIRENT_H
-
 /* Define if you have the <fcntl.h> header file.  */
 #undef HAVE_FCNTL_H
-
-/* Define if you have the <ndir.h> header file.  */
-#undef HAVE_NDIR_H
-
-/* Define if you have the <sys/dir.h> header file.  */
-#undef HAVE_SYS_DIR_H
-
-/* Define if you have the <sys/ioctl.h> header file.  */
-#undef HAVE_SYS_IOCTL_H
-
-/* Define if you have the <sys/ndir.h> header file.  */
-#undef HAVE_SYS_NDIR_H
 
 /* Define if you have the <sys/time.h> header file.  */
 #undef HAVE_SYS_TIME_H
@@ -222,15 +137,6 @@
 
 /* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
-
-/* Define if you have the <siginfo.h> header file.  */
-#undef HAVE_SIGINFO_H
-
-/* Define if you have the <stropts.h> header file.  */
-#undef HAVE_STROPTS_H
-
-/* Define if you have the <termios.h> header file.  */
-#undef HAVE_TERMIOS_H
 
 /* Define if you have the nsl library (-lnsl).  */
 #undef HAVE_LIBNSL

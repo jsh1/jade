@@ -19,6 +19,27 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 
+;; Some macros
+
+(defmacro defface (name &optional documentation &rest forms)
+  "Create a face called NAME, the Lisp FORMS are evaluated to initialise it.
+If the symbol NAME is already bound, only the documentation property is set."
+  `(unless (prog1 (boundp ',name)
+	     (defvar ,name (make-face ,(symbol-name name)) ,documentation))
+     ,@forms))
+
+(defmacro with-view (view &rest forms)
+  "Set the editor's current view to VIEW (and the current window to that
+containing VIEW) evaluate FORMS..., then reinstall the originals
+afterwards, returning the value of (progn FORMS...)"
+  (list* 'with-object view forms))
+
+(defmacro with-window (win &rest forms)
+  "Set the editor's current window to WINDOW and evaluate FORMS, then
+reinstall the original window as the current one."
+  (list* 'with-object win forms))
+
+
 ;; Some more standard faces
 
 (defface underline-face "Face used for underlined text."

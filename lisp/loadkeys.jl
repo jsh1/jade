@@ -304,3 +304,17 @@ the key."
 		    (t
 		     (cons 4 nil)))
 	this-command last-command))
+
+(defun autoload-keymap (keymap-symbol file)
+  "Tell the evaluator that the value of KEYMAP-SYMBOL can be initialised
+by loading the lisp library called FILE."
+  (cond
+   ((and (boundp 'dumped-lisp-libraries)
+	 (member file dumped-lisp-libraries))
+    ;; If FILE has been dumped, but not yet loaded, load it
+    (unless (member file dumped-loaded-libraries)
+      (load file)
+      (setq dumped-loaded-libraries (cons file dumped-loaded-libraries))))
+   ((not (fboundp keymap-symbol))
+    ;; Else just add the autoload defn as normal
+    (fset keymap-symbol (list 'autoload-keymap file)))))

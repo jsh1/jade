@@ -20,6 +20,7 @@
 
 (require 'maildefs)
 (require 'mail-headers)
+(require 'date)
 (provide 'read-mail)
 
 ;; Suppress annoying compiler warnings
@@ -885,7 +886,7 @@ key, the car the order to sort in, a positive or negative integer.")
     (let
 	((string (rm-get-msg-header msg "Date")))
       (if string
-	  (mail-parse-date string)
+	  (parse-date string)
 	nil))))
 
 (defun rm-get-message-id (msg)
@@ -1336,12 +1337,12 @@ key, the car the order to sort in, a positive or negative integer.")
 		       (let
 			   ((date (rm-get-date-vector m)))
 			 (when date
-			   (format nil "%d" (aref date mail-date-day) "")))))
+			   (format nil "%d" (aref date date-vec-day) "")))))
 	  (cons ?w #'(lambda (m)
 		       (let
 			   ((date (rm-get-date-vector m)))
 			 (when date
-			   (aref date mail-date-day-abbrev)))))
+			   (aref date date-vec-day-abbrev)))))
 	  (cons ?f #'(lambda (m)
 		       (car (car (rm-get-senders m)))))
 	  (cons ?F #'(lambda (m)
@@ -1350,12 +1351,12 @@ key, the car the order to sort in, a positive or negative integer.")
 		       (let
 			   ((date (rm-get-date-vector m)))
 			 (when date
-			   (format nil "%d" (aref date mail-date-month))))))
+			   (format nil "%d" (aref date date-vec-month))))))
 	  (cons ?m #'(lambda (m)
 		       (let
 			   ((date (rm-get-date-vector m)))
 			 (when date
-			   (aref date mail-date-month-abbrev)))))
+			   (aref date date-vec-month-abbrev)))))
 	  (cons ?n #'(lambda (m)
 		       (let
 			   ((folder (rm-current-folder)))
@@ -1377,28 +1378,28 @@ key, the car the order to sort in, a positive or negative integer.")
 			   ((date (rm-get-date-vector m)))
 			 (when date
 			   (format nil "%02d:%02d"
-				   (aref date mail-date-hour)
-				   (aref date mail-date-minute))))))
+				   (aref date date-vec-hour)
+				   (aref date date-vec-minute))))))
 	  (cons ?T #'(lambda (m)
 		       (let
 			   ((date (rm-get-date-vector m)))
 			 (when date
 			   (format nil "%02d:%02d:%02d"
-				   (aref date mail-date-hour)
-				   (aref date mail-date-minute)
-				   (aref date mail-date-second))))))
+				   (aref date date-vec-hour)
+				   (aref date date-vec-minute)
+				   (aref date date-vec-second))))))
 	  (cons ?r #'(lambda (m)
 		       (rm-get-address-name (car (rm-get-recipients m)))))
 	  (cons ?Y #'(lambda (m)
 		       (let
 			   ((date (rm-get-date-vector m)))
 			 (when date
-			   (format nil "%d" (aref date mail-date-year))))))
+			   (format nil "%d" (aref date date-vec-year))))))
 	  (cons ?z #'(lambda (m)
 		       (let
 			   ((date (rm-get-date-vector m)))
 			 (when date
-			   (aref date mail-date-timezone)))))))))
+			   (aref date date-vec-timezone)))))))))
 
 ;; Format the string FORMAT for MESSAGE
 (defun rm-format (format message)

@@ -41,11 +41,8 @@ effect.")
 (defvar default-buffer (current-buffer)
   "The `*jade*' buffer.")
 
-(defvar standard-output default-buffer
-  "Stream that `prin?' writes its output to by default")
-
-(defvar standard-input default-buffer
-  "Stream that `read' takes its input from by default")
+(setq standard-output default-buffer)
+(setq standard-input default-buffer)
 
 (defvar buffer-file-modtime (cons 0 0)
   "Holds the modification time of the file this buffer was loaded from")
@@ -80,6 +77,11 @@ searched for a `Local Variables:' section.")
 
 
 ;; Buffer manipulation
+
+(defmacro with-buffer (buffer &rest forms)
+  "Temporarily switches to buffer, then executes the FORMS in it before
+returning to the original buffer."
+  (list* 'with-object buffer forms))
 
 (defun open-buffer (name &optional always-create)
   "If no buffer called NAME exists, creates one and adds it to the main
@@ -573,10 +575,6 @@ will have to agree to this)."
 
 
 ;; Misc
-
-(defun file-newer-than-file-p (file1 file2)
-  "Returns t when FILE1 was modified more recently than FILE2."
-  (time-later-p (file-modtime file1) (file-modtime file2)))
 
 (defun save-and-quit (&optional no-query)
   "Exit the editor. Unless NO-QUERY is non-nil, ask the user whether or

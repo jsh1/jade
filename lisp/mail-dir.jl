@@ -109,7 +109,7 @@ definitions will be added to any existing definitions."
       (unwind-protect
 	  (progn
 	    (format file-handle ";; Mail directory\n;; Created by %s on %s for %s\n\n"
-		    (version-string) (current-time-string) (user-login-name))
+		    jade-version (current-time-string) (user-login-name))
 	    (write file-handle "\(mail-dir")
 	    (mail-dir-output-list file-handle mail-address-list)
 	    (write file-handle "\)\n"))

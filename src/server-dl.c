@@ -1,4 +1,4 @@
-/* server-dl.c -- client/server file handling
+/* server.c -- client/server file handling
    Copyright (C) 1994 John Harper <john@dcs.warwick.ac.uk>
    $Id$
 
@@ -19,29 +19,28 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include "jade_protos.h"
+#include "server.h"
 
 #ifdef HAVE_UNIX
 
 #include <fcntl.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdarg.h>
 #include <errno.h>
 
+#ifdef HAVE_SYS_TIME_H
+# include <sys/time.h>
+#endif
+
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif
 
-_PR Lisp_XSubr *jade_subrs[];
-_PR void jade_init(VALUE file_name);
-_PR void jade_kill(void);
-
 /* List of (FILE-NAME . SOCK-FD) */
-static VALUE client_list;
+static repv client_list;
 
 DEFSYM(server_find_file, "server-find-file");
 
@@ -49,7 +48,7 @@ DEFSYM(server_find_file, "server-find-file");
 static int socket_fd = -1;
 
 /* pathname of the socket. */
-static VALUE socket_name;
+static repv socket_name;
 
 DEFSTRING(io_error, "server_make_connection:io");
 DEFSTRING(val_fmt, "%S");
@@ -63,7 +62,7 @@ server_handle_request(int fd)
     switch(req)
     {
 	u_long len, tem;
-	VALUE val;
+	repv val;
 
     case req_find_file:
 	/* 1. read length field
@@ -72,16 +71,16 @@ server_handle_request(int fd)
 	   4. add (FILE . SOCK-FD) to list of client files
 	   5. call server-find-file with FILE and LINE */
 	if(read(fd, &len, sizeof(u_long)) != sizeof(u_long)
-	   || (val = make_string(len + 1)) == LISP_NULL
-	   || read(fd, VSTR(val), len) != len
+	   || (val = rep_make_string(len + 1)) == rep_NULL
+	   || read(fd, rep_STR(val), len) != len
 	   || read(fd, &tem, sizeof(u_long)) != sizeof(u_long))
 	    goto io_error;
-	VSTR(val)[len] = 0;
-	client_list = cmd_cons(cmd_cons(val, MAKE_INT(fd)), client_list);
-	call_lisp2(sym_server_find_file, val, MAKE_INT(tem));
+	rep_STR(val)[len] = 0;
+	client_list = Fcons(Fcons(val, rep_MAKE_INT(fd)), client_list);
+	rep_call_lisp2(Qserver_find_file, val, rep_MAKE_INT(tem));
 	/* Block any more input on this fd until we've replied to
 	   the original message. */
-	sys_deregister_input_fd(fd);
+	rep_deregister_input_fd(fd);
 	break;
 
     case req_eval:
@@ -91,20 +90,20 @@ server_handle_request(int fd)
 	   4. write length of result-string
 	   5. write LENGTH bytes of result string */
 	if(read(fd, &len, sizeof(u_long)) != sizeof(u_long)
-	   || (val = make_string(len + 1)) == LISP_NULL
-	   || read(fd, VSTR(val), len) != len)
+	   || (val = rep_make_string(len + 1)) == rep_NULL
+	   || read(fd, rep_STR(val), len) != len)
 	    goto io_error;
-	VSTR(val)[len] = 0;
-	val = cmd_read(cmd_cons(MAKE_INT(0), val));
-	if(val != LISP_NULL)
-	    val = cmd_eval(val);
-	if(val != LISP_NULL)
-	    val = cmd_format(LIST_3(sym_nil, VAL(&val_fmt), val));
-	if(val != LISP_NULL && STRINGP(val))
+	rep_STR(val)[len] = 0;
+	val = Fread(Fcons(rep_MAKE_INT(0), val));
+	if(val != rep_NULL)
+	    val = Feval(val);
+	if(val != rep_NULL)
+	    val = Fformat(rep_LIST_3(Qnil, rep_VAL(&val_fmt), val));
+	if(val != rep_NULL && rep_STRINGP(val))
 	{
-	    len = STRING_LEN(val);
+	    len = rep_STRING_LEN(val);
 	    if(write(fd, &len, sizeof(u_long)) != sizeof(u_long)
-	       || write(fd, VSTR(val), len) != len)
+	       || write(fd, rep_STR(val), len) != len)
 		goto io_error;
 	}
 	else
@@ -116,12 +115,12 @@ server_handle_request(int fd)
 	break;
 
     io_error:
-	cmd_signal(sym_error, LIST_1(VAL(&io_error)));
+	Fsignal(Qerror, rep_LIST_1(rep_VAL(&io_error)));
 	return;
 
     case req_end_of_session:
     disconnect:
-	sys_deregister_input_fd(fd);
+	rep_deregister_input_fd(fd);
 	close(fd);
     }
 }
@@ -134,32 +133,30 @@ server_accept_connection(int unused_fd)
     {
 	/* Once upon a time, I started reading commands here. I think
 	   it's cleaner to just register CONFD as an input source */
-	sys_register_input_fd(confd, server_handle_request);
+	rep_register_input_fd(confd, server_handle_request);
 
 	/* CONFD will inherit the properties of SOCKET-FD, i.e. non-
 	   blocking. Make it block.. */
-	unix_set_fd_blocking(confd);
+	rep_unix_set_fd_blocking(confd);
     }
 }
 
-DEFUN("server-open-p", cmd_server_open_p, subr_server_open_p,
-      (void), V_Subr0, DOC_server_open_p) /*
-::doc:server_open_p::
+DEFUN("server-open-p", Fserver_open_p, Sserver_open_p, (void), rep_Subr0) /*
+::doc:Sserver-open-p::
 server-open-p
 
 t if the edit-server is open.
 ::end:: */
 {
     if(socket_fd >= 0)
-	return(sym_t);
-    return(sym_nil);
+	return(Qt);
+    return(Qnil);
 }
 
 DEFSTRING(no_name, "Can't make socket name");
 
-DEFUN_INT("server-open", cmd_server_open, subr_server_open,
-	  (void), V_Subr0, DOC_server_open, "") /*
-::doc:server_open::
+DEFUN_INT("server-open", Fserver_open, Sserver_open, (void), rep_Subr0, "") /*
+::doc:Sserver-open::
 server-open
 
 Creates the socket (or whatever) so that the editor's client program can
@@ -167,40 +164,41 @@ send us messages.
 ::end:: */
 {
     char namebuf[256];
-    VALUE name;
+    repv name;
     if(socket_fd >= 0)
-	return(sym_t);
-    name = cmd_system_name();
-    if(!name || !STRINGP(name))
-	return LISP_NULL;
+	return(Qt);
+    name = Fsystem_name();
+    if(!name || !rep_STRINGP(name))
+	return rep_NULL;
 #ifdef HAVE_SNPRINTF
-    snprintf(namebuf, sizeof(namebuf), "~/" JADE_SOCK_NAME, VSTR(name));
+    snprintf(namebuf, sizeof(namebuf), "~/" JADE_SOCK_NAME, rep_STR(name));
 #else
-    sprintf(namebuf, "~/" JADE_SOCK_NAME, VSTR(name));
+    sprintf(namebuf, "~/" JADE_SOCK_NAME, rep_STR(name));
 #endif
-    name = cmd_local_file_name(string_dup(namebuf));
-    if(name && STRINGP(name))
+    name = Flocal_file_name(rep_string_dup(namebuf));
+    if(name && rep_STRINGP(name))
     {
-	if(access(VSTR(name), F_OK) == 0)
+	if(access(rep_STR(name), F_OK) == 0)
 	{
 	    /* Socket already exists. See if it's live */
 	    struct sockaddr_un addr;
 	    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	    if(sock >= 0)
 	    {
-		strcpy(addr.sun_path, VSTR(name));
+		strcpy(addr.sun_path, rep_STR(name));
 		addr.sun_family = AF_UNIX;
 		if(connect(sock, (struct sockaddr *)&addr,
                    sizeof(addr.sun_family) + strlen(addr.sun_path)) == 0)
 		{
 		    close(sock);
-		    message("A server is already open.");
-		    return(sym_nil);
+		    (*rep_message_fun)(rep_message,
+				       "A server is already open.");
+		    return(Qnil);
 		}
 		close(sock);
 		/* Socket is probably parentless; delete it */
-		message("Deleted stale socket.");
-		unlink(VSTR(name));
+		(*rep_message_fun)(rep_message, "Deleted stale socket.");
+		unlink(rep_STR(name));
 	    }
 	}
 	socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -208,36 +206,35 @@ send us messages.
 	{
 	    struct sockaddr_un addr;
 	    addr.sun_family = AF_UNIX;
-	    strcpy(addr.sun_path, VSTR(name));
+	    strcpy(addr.sun_path, rep_STR(name));
 	    if(bind(socket_fd, (struct sockaddr *)&addr,
 		    sizeof(addr.sun_family) + strlen(addr.sun_path)) == 0)
 	    {
 		if(listen(socket_fd, 5) == 0)
 		{
-		    unix_set_fd_nonblocking(socket_fd);
-		    sys_register_input_fd(socket_fd, server_accept_connection);
+		    rep_unix_set_fd_nonblocking(socket_fd);
+		    rep_register_input_fd(socket_fd, server_accept_connection);
 
 		    socket_name = name;
-		    return(sym_t);
+		    return(Qt);
 		}
 	    }
-	    signal_file_error(sym_nil);
+	    rep_signal_file_error(Qnil);
 	}
 	else
 	{
-	    cmd_signal(sym_error, LIST_1(VAL(&no_name)));
+	    Fsignal(Qerror, rep_LIST_1(rep_VAL(&no_name)));
 	}
 	close(socket_fd);
 	socket_fd = -1;
     }
     else
-	signal_file_error(sym_nil);
-    return LISP_NULL;
+	rep_signal_file_error(Qnil);
+    return rep_NULL;
 }
 
-DEFUN_INT("server-close", cmd_server_close, subr_server_close,
-	  (void), V_Subr0, DOC_server_close, "") /*
-::doc:server_close::
+DEFUN_INT("server-close", Fserver_close, Sserver_close, (void), rep_Subr0, "") /*
+::doc:Sserver-close::
 server-close
 
 Stops listening for client messages.
@@ -245,18 +242,18 @@ Stops listening for client messages.
 {
     if(socket_fd > 0)
     {
-	sys_deregister_input_fd(socket_fd);
+	rep_deregister_input_fd(socket_fd);
 	close(socket_fd);
 	socket_fd = -1;
-	unlink(VSTR(socket_name));
-	socket_name = LISP_NULL;
+	unlink(rep_STR(socket_name));
+	socket_name = rep_NULL;
     }
-    return(sym_t);
+    return(Qt);
 }
 
-DEFUN("server-reply", cmd_server_reply, subr_server_reply,
-      (VALUE file, VALUE rc), V_Subr2, DOC_server_reply) /*
-::doc:server_reply::
+DEFUN("server-reply", Fserver_reply, Sserver_reply,
+      (repv file, repv rc), rep_Subr2) /*
+::doc:Sserver-reply::
 server-reply [FILE-NAME] [RETURN-CODE]
 
 Replies to the editor client which asked us to edit the file FILE-NAME.
@@ -264,44 +261,44 @@ RETURN-CODE is the optional result for the client, by default it is zero
 which denotes no errors. Returns nil if the file doesn't have a client.
 ::end:: */
 {
-    VALUE res = sym_nil, tmp;
+    repv res = Qnil, tmp;
 
     if(BUFFERP(file))
 	file = VTX(file)->tx_CanonicalFileName;
-    else if(!STRINGP(file))
+    else if(!rep_STRINGP(file))
 	file = curr_vw->vw_Tx->tx_CanonicalFileName;
     else
     {
-	GC_root gc_rc;
-	PUSHGC(gc_rc, rc);
-	file = cmd_canonical_file_name(file);
-	POPGC;
-	if(!file || !STRINGP(file))
-	    return LISP_NULL;
+	rep_GC_root gc_rc;
+	rep_PUSHGC(gc_rc, rc);
+	file = Fcanonical_file_name(file);
+	rep_POPGC;
+	if(!file || !rep_STRINGP(file))
+	    return rep_NULL;
     }
 
     tmp = client_list;
-    client_list = sym_nil;
-    while(CONSP(tmp))
+    client_list = Qnil;
+    while(rep_CONSP(tmp))
     {
-	register VALUE car = VCAR(tmp);
-	VALUE next = VCDR(tmp);
-	if(STRINGP(VCAR(car))
-	   && strcmp(VSTR(file), VSTR(VCAR(car))) == 0)
+	register repv car = rep_CAR(tmp);
+	repv next = rep_CDR(tmp);
+	if(rep_STRINGP(rep_CAR(car))
+	   && strcmp(rep_STR(file), rep_STR(rep_CAR(car))) == 0)
 	{
 	    /* Send the result to our client. */
-	    int con_fd = VINT(VCDR(car));
-	    u_long result = INTP(rc) ? VINT(rc) : 0;
+	    int con_fd = rep_INT(rep_CDR(car));
+	    u_long result = rep_INTP(rc) ? rep_INT(rc) : 0;
 	    if(write(con_fd, &result, sizeof(result)) != sizeof(result))
-		res = signal_file_error(file);
+		res = rep_signal_file_error(file);
 	    else
-		res = sym_t;
+		res = Qt;
 	    /* We can handle input on this fd again now. */
-	    sys_register_input_fd(con_fd, server_handle_request);
+	    rep_register_input_fd(con_fd, server_handle_request);
 	}
 	else
 	{
-	    VCDR(tmp) = client_list;
+	    rep_CDR(tmp) = client_list;
 	    client_list = tmp;
 	}
 	tmp = next;
@@ -313,46 +310,46 @@ which denotes no errors. Returns nil if the file doesn't have a client.
 
 /* dl hooks */
 
-Lisp_XSubr *jade_subrs[] = {
-    &subr_server_open_p,
-    &subr_server_open,
-    &subr_server_close,
-    &subr_server_reply,
+rep_xsubr *rep_dl_subrs[] = {
+    &Sserver_open_p,
+    &Sserver_open,
+    &Sserver_close,
+    &Sserver_reply,
     0
 };
 
 void
-jade_init(VALUE file_name)
+rep_dl_init(repv file_name)
 {
-    client_list = sym_nil;
-    mark_static(&client_list);
-    mark_static(&socket_name);
-    INTERN(server_find_file);
+    client_list = Qnil;
+    rep_mark_static(&client_list);
+    rep_mark_static(&socket_name);
+    rep_INTERN(server_find_file);
 }
 
 void
-jade_kill(void)
+rep_dl_kill(void)
 {
     /* clean up */
-    VALUE tmp = client_list;
-    while(CONSP(tmp))
+    repv tmp = client_list;
+    while(rep_CONSP(tmp))
     {
 	/* Any client-opened files still around are replied to with
 	   a result of 5 (fail).  */
 	static u_long failrc = 5;
-	int fd = VINT(VCDR(VCAR(tmp)));
+	int fd = rep_INT(rep_CDR(rep_CAR(tmp)));
 	write(fd, &failrc, sizeof(u_long));
 	close(fd);
-	tmp = VCDR(tmp);
+	tmp = rep_CDR(tmp);
     }
-    client_list = sym_nil;
-    cmd_server_close();
+    client_list = Qnil;
+    Fserver_close();
 }
 
 #endif /* HAVE_UNIX */
 
 /*
-;;;###autoload (autoload 'server-open-p "server-dl")
-;;;###autoload (autoload 'server-open "server-dl" t)
-;;;###autoload (autoload 'server-reply "server-dl")
+;;;###autoload (autoload 'server-open-p "server")
+;;;###autoload (autoload 'server-open "server" t)
+;;;###autoload (autoload 'server-reply "server")
 */

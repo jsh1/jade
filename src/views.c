@@ -19,35 +19,27 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-
 #include <stdlib.h>
 #include <string.h>
+
 #ifdef NEED_MEMORY_H
 # include <memory.h>
 #endif
 
 static void kill_view(VW *vw);
-_PR void kill_all_views(WIN *w);
-_PR void update_views_dimensions(WIN *w);
-_PR void update_status_buffer(VW *vw, char *status_buf, long buflen);
-_PR void views_init(void);
-_PR void views_kill(void);
-_PR void view_sweep(void);
-_PR void view_prin(VALUE, VALUE);
-_PR VW *make_view(VW *, WIN *, TX *, long, bool);
 
-_PR VALUE sym_split_view_hook, sym_delete_view_hook;
 DEFSYM(split_view_hook, "split-view-hook");
 DEFSYM(delete_view_hook, "delete-view-hook"); /*
-::doc:split_view_hook::
+::doc:Vsplit-view-hook::
 Hook called whenever a new view is created; called with a single argument,
 the view that's just been made.
 ::end::
-::doc:delete_view_hook::
+::doc:Vdelete-view-hook::
 Hook called whenever a view is deleted, called with the view as its sole
 argument.
 ::end:: */
+
+int view_type;
 
 DEFSYM(mode_line_format, "mode-line-format");
 
@@ -57,12 +49,10 @@ static void recalc_measures(WIN *w);
 /* view_chain is a list of all allocated VW structures, linked through
    their vw_Next fields. curr_vw is the currently active view; a mirror
    of curr_win->vw_CurrVW. */
-_PR VW *view_chain, *curr_vw;
 VW *view_chain, *curr_vw;
 
 /* This buffer is put into minibuffer views when they're not being
    used. */
-_PR TX *mb_unused_buffer;
 TX *mb_unused_buffer;
 DEFSTRING(unused_mb, "*unused-minibuf*");
 
@@ -153,25 +143,25 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	if((sibling && sibling->vw_MaxY + 1 < lines + 3)
 	   || parent->w_MaxY < lines + 2)
 	{
-	    cmd_signal(sym_window_error,
-		       list_2(VAL(parent), VAL(&too_few_lines)));
+	    Fsignal(Qwindow_error,
+		       rep_list_2(rep_VAL(parent), rep_VAL(&too_few_lines)));
 	    return NULL;
 	}
     }
 
     /* Now the construction of the view proper... */
-    vw = ALLOC_OBJECT(sizeof(VW));
+    vw = rep_ALLOC_CELL(sizeof(VW));
     if(vw != NULL)
     {
 	memset(vw, 0, sizeof(VW));
-	vw->vw_Car = V_View;
+	vw->vw_Car = view_type;
 	vw->vw_Next = view_chain;
 	view_chain = vw;
 	vw->vw_Win = parent;
 	parent->w_ViewCount++;
 	copy_view_prefs(vw, sibling ? sibling : curr_vw);
 	vw->vw_BlockStatus = -1;
-	vw->vw_BufferList = sym_nil;
+	vw->vw_BufferList = Qnil;
 
 	/* Initialise the size of the new view, and resize its
 	   SIBLING if it has one. */
@@ -224,15 +214,15 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 		vw->vw_BlockS = sibling->vw_BlockS;
 		vw->vw_BlockE = sibling->vw_BlockE;
 		vw->vw_BlockStatus = sibling->vw_BlockStatus;
-		vw->vw_BufferList = cmd_copy_sequence(sibling->vw_BufferList);
+		vw->vw_BufferList = Fcopy_sequence(sibling->vw_BufferList);
 	    }
 	    else
 	    {
 		/* this doesn't always work as well as the above. */
 		swap_buffers(vw, tx);
-		vw->vw_BufferList = sym_nil;
+		vw->vw_BufferList = Qnil;
 	    }
-	    cmd_call_hook(sym_split_view_hook, LIST_1(VAL(vw)), sym_nil);
+	    Fcall_hook(Qsplit_view_hook, rep_LIST_1(rep_VAL(vw)), Qnil);
 #ifndef NOSCRLBAR
 	    sys_update_scroller(vw);
 #endif
@@ -247,10 +237,9 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
     return NULL;
 }
 
-_PR VALUE cmd_split_view(VALUE sib, VALUE lines);
-DEFUN_INT("split-view", cmd_split_view, subr_split_view,
-	  (VALUE sib, VALUE lines), V_Subr2, DOC_split_view, "") /*
-::doc:split_view::
+DEFUN_INT("split-view", Fsplit_view, Ssplit_view,
+	  (repv sib, repv lines), rep_Subr2, "") /*
+::doc:Ssplit-view::
 split-view [VIEW] [SIZE]
 
 Split VIEW (or the selected view) into two. Returns a new view directly
@@ -263,9 +252,9 @@ to contain the new view.
 ::end:: */
 {
     if(!VIEWP(sib))
-	sib = VAL(curr_vw);
-    return VAL(make_view(VVIEW(sib), VVIEW(sib)->vw_Win,
-			 VVIEW(sib)->vw_Tx, INTP(lines) ? VINT(lines) : 0,
+	sib = rep_VAL(curr_vw);
+    return rep_VAL(make_view(VVIEW(sib), VVIEW(sib)->vw_Win,
+			 VVIEW(sib)->vw_Tx, rep_INTP(lines) ? rep_INT(lines) : 0,
 			 FALSE));
 }
 
@@ -278,7 +267,7 @@ kill_view(VW *vw)
     vw->vw_NextView = NULL;
     vw->vw_Tx = NULL;
     vw->vw_Win = NULL;
-    vw->vw_BufferList = sym_nil;
+    vw->vw_BufferList = Qnil;
     w->w_ViewCount--;
     if(w->w_CurrVW == vw)
     {
@@ -291,10 +280,9 @@ kill_view(VW *vw)
 DEFSTRING(sole_view, "Can't kill the sole view in a window");
 DEFSTRING(mini_view, "Can't kill minibuffer view");
 
-_PR VALUE cmd_delete_view(VALUE view);
-DEFUN_INT("delete-view", cmd_delete_view, subr_delete_view, (VALUE view),
-	  V_Subr1, DOC_delete_view, "") /*
-::doc:delete_view::
+DEFUN_INT("delete-view", Fdelete_view, Sdelete_view, (repv view),
+	  rep_Subr1, "") /*
+::doc:Sdelete-view::
 delete-view [VIEW]
 
 Delete VIEW (or the current view) from the window containing it. Its window
@@ -311,14 +299,14 @@ VIEW is the minibuffer view.
     if(vw->vw_Win->w_ViewCount <= 2)
     {
 	/* Only two views are left. Don't destroy it. */
-	return cmd_signal(sym_window_error, list_2(VAL(&sole_view), VAL(vw)));
+	return Fsignal(Qwindow_error, rep_list_2(rep_VAL(&sole_view), rep_VAL(vw)));
     }
     else if(vw->vw_Flags & VWFF_MINIBUF)
     {
 	/* Can't kill the minibuffer */
-	return cmd_signal(sym_window_error, list_2(VAL(&mini_view), VAL(vw)));
+	return Fsignal(Qwindow_error, rep_list_2(rep_VAL(&mini_view), rep_VAL(vw)));
     }
-    cmd_call_hook(sym_delete_view_hook, LIST_1(VAL(vw)), sym_nil);
+    Fcall_hook(Qdelete_view_hook, rep_LIST_1(rep_VAL(vw)), Qnil);
 
     if(vw->vw_Win->w_ViewList == vw)
     {
@@ -353,7 +341,7 @@ VIEW is the minibuffer view.
     pred->vw_MaxY += vw->vw_MaxY + 1;
     recalc_measures(pred->vw_Win);
     set_scroll_steps(pred);
-    return(VAL(vw));
+    return(rep_VAL(vw));
 }
 
 /* Destroy all views of window W. */
@@ -477,15 +465,15 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	case 'B':			/* buffer-status-id */
 	case 'f':			/* file-name */
 	{
-	    VALUE str = (fmt[-1] == 'b'
+	    repv str = (fmt[-1] == 'b'
 			 ? tx->tx_BufferName
 			 : (fmt[-1] == 'B'
 			    ? tx->tx_StatusId : tx->tx_FileName));
-	    if(STRINGP(str))
+	    if(rep_STRINGP(str))
 	    {
-		len = STRING_LEN(str);
+		len = rep_STRING_LEN(str);
 		len = MIN(len, buf_len);
-		memcpy(buf, VSTR(str), len);
+		memcpy(buf, rep_STR(str), len);
 		buf += len; buf_len -= len;
 	    }
 	}
@@ -539,12 +527,12 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	    break;
 
 	case '(':			/* `(' if in top-level, else `[' */
-	    *buf++ = (recurse_depth == 0) ? '(' : '[';
+	    *buf++ = (rep_recurse_depth == 0) ? '(' : '[';
 	    buf_len--;
 	    break;
 
 	case ')':			/* similar to '(' */
-	    *buf++ = (recurse_depth == 0) ? ')' : ']';
+	    *buf++ = (rep_recurse_depth == 0) ? ')' : ']';
 	    buf_len--;
 	    break;
 
@@ -562,17 +550,17 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	case '*':			/* %, * or hyphen */
 	case '+':			/* *, % or hyphen */
 	{
-	    VALUE tem = cmd_buffer_symbol_value(sym_read_only,
+	    repv tem = Fbuffer_symbol_value(Qread_only,
 						vw->vw_CursorPos,
-						VAL(tx), sym_t);
+						rep_VAL(tx), Qt);
 	    bool mod = tx->tx_Changes != tx->tx_ProperSaveChanges;
-	    if(VOIDP(tem))
-		tem = sym_nil;
-	    if(mod && !NILP(tem))
+	    if(rep_VOIDP(tem))
+		tem = Qnil;
+	    if(mod && !rep_NILP(tem))
 		*buf = (fmt[-1] == '*') ? '%' : '*';
 	    else if(mod)
 		*buf = '*';
-	    else if(!NILP(tem))
+	    else if(!rep_NILP(tem))
 		*buf = '%';
 	    else
 		*buf = '-';
@@ -595,21 +583,21 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 }
 
 static long
-format_mode_value(VALUE format, VW *vw, char *buf, long buf_len)
+format_mode_value(repv format, VW *vw, char *buf, long buf_len)
 {
     TX *tx = vw->vw_Tx;
 
-    if(SYMBOLP(format))
+    if(rep_SYMBOLP(format))
     {
-	VALUE tem = cmd_buffer_symbol_value(format, vw->vw_CursorPos,
-					    VAL(tx), sym_t);
-	if(VOIDP(tem))
-	    tem = cmd_default_value(format, sym_t);
-	if(STRINGP(tem))
+	repv tem = Fbuffer_symbol_value(format, vw->vw_CursorPos,
+					    rep_VAL(tx), Qt);
+	if(rep_VOIDP(tem))
+	    tem = Fdefault_value(format, Qt);
+	if(rep_STRINGP(tem))
 	{
-	    int len = STRING_LEN(tem);
+	    int len = rep_STRING_LEN(tem);
 	    len = MIN(len, buf_len);
-	    memcpy(buf, VSTR(tem), len);
+	    memcpy(buf, rep_STR(tem), len);
 	    buf += len; buf_len -= len;
 	    return buf_len;
 	}
@@ -617,31 +605,31 @@ format_mode_value(VALUE format, VW *vw, char *buf, long buf_len)
 	    format = tem;
     }
 
-    if(STRINGP(format))
-	return format_mode_string(VSTR(format), vw, buf, buf_len);
+    if(rep_STRINGP(format))
+	return format_mode_string(rep_STR(format), vw, buf, buf_len);
 
-    while(buf_len > 0 && CONSP(format))
+    while(buf_len > 0 && rep_CONSP(format))
     {
-	VALUE item = VCAR(format);
-	format = VCDR(format);
+	repv item = rep_CAR(format);
+	format = rep_CDR(format);
 
-	if(STRINGP(item))
+	if(rep_STRINGP(item))
 	{
-	    u_long done = buf_len - format_mode_string(VSTR(item), vw,
+	    u_long done = buf_len - format_mode_string(rep_STR(item), vw,
 						       buf, buf_len);
 	    buf += done; buf_len -= done;
 	}
-	else if(SYMBOLP(item))
+	else if(rep_SYMBOLP(item))
 	{
-	    VALUE tem = cmd_buffer_symbol_value(item, vw->vw_CursorPos,
-						VAL(tx), sym_t);
-	    if(VOIDP(tem))
-		tem = cmd_default_value(item, sym_t);
-	    if(STRINGP(tem))
+	    repv tem = Fbuffer_symbol_value(item, vw->vw_CursorPos,
+						rep_VAL(tx), Qt);
+	    if(rep_VOIDP(tem))
+		tem = Fdefault_value(item, Qt);
+	    if(rep_STRINGP(tem))
 	    {
-		int len = STRING_LEN(tem);
+		int len = rep_STRING_LEN(tem);
 		len = MIN(len, buf_len);
-		memcpy(buf, VSTR(tem), len);
+		memcpy(buf, rep_STR(tem), len);
 		buf += len; buf_len -= len;
 	    }
 	    else
@@ -651,31 +639,31 @@ format_mode_value(VALUE format, VW *vw, char *buf, long buf_len)
 		buf += done; buf_len -= done;
 	    }
 	}
-	else if(CONSP(item))
+	else if(rep_CONSP(item))
 	{
 	    u_long done = 0;
-	    VALUE first = VCAR(item);
-	    if(STRINGP(first))
-		done = buf_len - format_mode_string(VSTR(first), vw,
+	    repv first = rep_CAR(item);
+	    if(rep_STRINGP(first))
+		done = buf_len - format_mode_string(rep_STR(first), vw,
 						    buf, buf_len);
-	    else if(SYMBOLP(first))
+	    else if(rep_SYMBOLP(first))
 	    {
-		VALUE tem = cmd_buffer_symbol_value(first, vw->vw_CursorPos,
-						    VAL(tx), sym_t);
-		if(VOIDP(tem))
-		    tem = cmd_default_value(first, sym_t);
-		if(!VOIDP(tem) && !NILP(tem))
+		repv tem = Fbuffer_symbol_value(first, vw->vw_CursorPos,
+						    rep_VAL(tx), Qt);
+		if(rep_VOIDP(tem))
+		    tem = Fdefault_value(first, Qt);
+		if(!rep_VOIDP(tem) && !rep_NILP(tem))
 		{
-		    if(CONSP(VCDR(item)))
-			tem = VCAR(VCDR(item));
+		    if(rep_CONSP(rep_CDR(item)))
+			tem = rep_CAR(rep_CDR(item));
 		    else
-			tem = sym_nil;
+			tem = Qnil;
 		}
-		else if(CONSP(VCDR(item)) && CONSP(VCDR(VCDR(item))))
-		    tem = VCAR(VCDR(VCDR(item)));
+		else if(rep_CONSP(rep_CDR(item)) && rep_CONSP(rep_CDR(rep_CDR(item))))
+		    tem = rep_CAR(rep_CDR(rep_CDR(item)));
 		else
-		    tem = sym_nil;
-		if(tem != LISP_NULL && !NILP(tem))
+		    tem = Qnil;
+		if(tem != rep_NULL && !rep_NILP(tem))
 		    done = buf_len - format_mode_value(tem, vw, buf, buf_len);
 	    }
 	    buf += done; buf_len -= done;
@@ -692,13 +680,13 @@ update_status_buffer(VW *vw, char *buf, long buf_len)
     {
 	u_long done;
 	TX *tx = vw->vw_Tx;
-	VALUE format = cmd_buffer_symbol_value(sym_mode_line_format,
+	repv format = Fbuffer_symbol_value(Qmode_line_format,
 					       vw->vw_CursorPos,
-					       VAL(tx), sym_t);
-	if(VOIDP(format))
+					       rep_VAL(tx), Qt);
+	if(rep_VOIDP(format))
 	{
-	    format = cmd_default_value(sym_mode_line_format, sym_t);
-	    if(VOIDP(format))
+	    format = Fdefault_value(Qmode_line_format, Qt);
+	    if(rep_VOIDP(format))
 		return;
 	}
 	
@@ -709,9 +697,8 @@ update_status_buffer(VW *vw, char *buf, long buf_len)
     }
 }
 
-_PR VALUE var_y_scroll_step_ratio(VALUE val);
-DEFUN("y-scroll-step-ratio", var_y_scroll_step_ratio, subr_y_scroll_step_ratio, (VALUE val), V_Var, DOC_y_scroll_step_ratio) /*
-::doc:y_scroll_step_ratio::
+DEFUN("y-scroll-step-ratio", var_y_scroll_step_ratio, Sy_scroll_step_ratio, (repv val), rep_Var) /*
+::doc:Vy-scroll-step-ratio::
 Controls the actual number of lines scrolled when the cursor moves out of
 view. The number of lines to move the display origin is calcualted with the
 formula:
@@ -722,19 +709,18 @@ If the value is 0 then the window will be scrolled by one line.
     VW *vw = curr_vw;
     if(val)
     {
-	if(INTP(val))
+	if(rep_INTP(val))
 	{
-	    vw->vw_YStepRatio = VINT(val);
+	    vw->vw_YStepRatio = rep_INT(val);
 	    set_scroll_steps(vw);
 	}
-	return LISP_NULL;
+	return rep_NULL;
     }
-    return(MAKE_INT(vw->vw_YStepRatio));
+    return(rep_MAKE_INT(vw->vw_YStepRatio));
 }
 
-_PR VALUE var_x_scroll_step_ratio(VALUE val);
-DEFUN("x-scroll-step-ratio", var_x_scroll_step_ratio, subr_x_scroll_step_ratio, (VALUE val), V_Var, DOC_x_scroll_step_ratio) /*
-::doc:x_scroll_step_ratio::
+DEFUN("x-scroll-step-ratio", var_x_scroll_step_ratio, Sx_scroll_step_ratio, (repv val), rep_Var) /*
+::doc:Vx-scroll-step-ratio::
 Controls the actual number of columns scrolled when the cursor moves out of
 view. The number of lines to move the display origin is calcualted with the
 formula:
@@ -745,19 +731,18 @@ If the value is 0 then the window will be scrolled by one column.
     VW *vw = curr_vw;
     if(val)
     {
-	if(INTP(val))
+	if(rep_INTP(val))
 	{
-	    vw->vw_XStepRatio = VINT(val);
+	    vw->vw_XStepRatio = rep_INT(val);
 	    set_scroll_steps(vw);
 	}
-	return LISP_NULL;
+	return rep_NULL;
     }
-    return(MAKE_INT(vw->vw_XStepRatio));
+    return(rep_MAKE_INT(vw->vw_XStepRatio));
 }
 
-_PR VALUE cmd_rect_blocks_p(VALUE vw);
-DEFUN("rect-blocks-p", cmd_rect_blocks_p, subr_rect_blocks_p, (VALUE vw), V_Subr1, DOC_rect_blocks_p) /*
-::doc:rect_blocks_p::
+DEFUN("rect-blocks-p", Frect_blocks_p, Srect_blocks_p, (repv vw), rep_Subr1) /*
+::doc:Srect-blocks-p::
 rect-blocks-p [VIEW]
 
 Returns t if blocks marked in VIEW (or the current one) are treated as
@@ -765,15 +750,14 @@ rectangles.
 ::end:: */
 {
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
+	vw = rep_VAL(curr_vw);
     if(VVIEW(vw)->vw_Flags & VWFF_RECTBLOCKS)
-	return(sym_t);
-    return(sym_nil);
+	return(Qt);
+    return(Qnil);
 }
 
-_PR VALUE cmd_set_rect_blocks(VALUE vw, VALUE stat);
-DEFUN("set-rect-blocks", cmd_set_rect_blocks, subr_set_rect_blocks, (VALUE vw, VALUE stat), V_Subr2, DOC_set_rect_blocks) /*
-::doc:set_rect_blocks::
+DEFUN("set-rect-blocks", Fset_rect_blocks, Sset_rect_blocks, (repv vw, repv stat), rep_Subr2) /*
+::doc:Sset-rect-blocks::
 set-rect-blocks VIEW STATUS
 
 Controls whether or not blocks are taken as contiguous regions of text or as
@@ -782,29 +766,27 @@ rectangles in VIEW. When STATUS is t rectangles are used.
 {
     int oflags;
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
+	vw = rep_VAL(curr_vw);
     oflags = VVIEW(vw)->vw_Flags;
-    if(NILP(stat))
+    if(rep_NILP(stat))
 	VVIEW(vw)->vw_Flags &= ~VWFF_RECTBLOCKS;
     else
 	VVIEW(vw)->vw_Flags |= VWFF_RECTBLOCKS;
     return(stat);
 }
 
-_PR VALUE cmd_current_view(VALUE win);
-DEFUN("current-view", cmd_current_view, subr_current_view, (VALUE win), V_Subr1,  DOC_current_view) /*
-::doc:current_view::
+DEFUN("current-view", Fcurrent_view, Scurrent_view, (repv win), rep_Subr1) /*
+::doc:Scurrent-view::
 current-view [WINDOW]
 
 Returns the currently active view in WINDOW.
 ::end:: */
 {
-    return(WINDOWP(win) ? VAL(VWIN(win)->w_CurrVW) : VAL(curr_vw));
+    return(WINDOWP(win) ? rep_VAL(VWIN(win)->w_CurrVW) : rep_VAL(curr_vw));
 }
 
-_PR VALUE cmd_set_current_view(VALUE vw, VALUE activ);
-DEFUN("set-current-view", cmd_set_current_view, subr_set_current_view, (VALUE vw, VALUE activ), V_Subr2,  DOC_set_current_view) /*
-::doc:set_current_view::
+DEFUN("set-current-view", Fset_current_view, Sset_current_view, (repv vw, repv activ), rep_Subr2) /*
+::doc:Sset-current-view::
 set-current-view VIEW [ACTIVATE-P]
 
 Sets the VIEW which jade reguards as current in the window containing it.
@@ -812,21 +794,20 @@ If ACTIVATE-P is t then the window containing VIEW will be made current
 and activated.
 ::end:: */
 {
-    DECLARE1(vw, VIEWP);
+    rep_DECLARE1(vw, VIEWP);
     VVIEW(vw)->vw_Win->w_CurrVW = VVIEW(vw);
     if(VVIEW(vw)->vw_Win == curr_win)
     {
 	curr_vw = VVIEW(vw);
 	curr_vw->vw_Win->w_CurrVW = curr_vw;
     }
-    if(!NILP(activ))
-	cmd_set_current_window(VAL(VVIEW(vw)->vw_Win), activ);
+    if(!rep_NILP(activ))
+	Fset_current_window(rep_VAL(VVIEW(vw)->vw_Win), activ);
     return(vw);
 }
 
-_PR VALUE var_buffer_list(VALUE val);
-DEFUN("buffer-list", var_buffer_list, subr_buffer_list, (VALUE val), V_Var, DOC_buffer_list) /*
-::doc:buffer_list::
+DEFUN("buffer-list", var_buffer_list, Sbuffer_list, (repv val), rep_Var) /*
+::doc:Vbuffer-list::
 List of buffers in most-recently-used order. Each view has it's own.
 ::end:: */
 {
@@ -835,10 +816,9 @@ List of buffers in most-recently-used order. Each view has it's own.
     return(curr_vw->vw_BufferList);
 }
 
-_PR VALUE cmd_get_buffer_view(VALUE buffer, VALUE all_windows);
-DEFUN("get-buffer-view", cmd_get_buffer_view, subr_get_buffer_view,
-      (VALUE buffer, VALUE all_windows), V_Subr2, DOC_get_buffer_view) /*
-::doc:get_buffer_view::
+DEFUN("get-buffer-view", Fget_buffer_view, Sget_buffer_view,
+      (repv buffer, repv all_windows), rep_Subr2) /*
+::doc:Sget-buffer-view::
 get-buffer-view BUFFER [ALL-WINDOWS]
 
 Return a view that is currently displaying BUFFER. 
@@ -850,12 +830,12 @@ is returned.
 ::end:: */
 {
     WIN *w = curr_win;
-    DECLARE1(buffer, BUFFERP);
+    rep_DECLARE1(buffer, BUFFERP);
     do {
 	VW *vw = w->w_CurrVW;
 	do {
 	    if(vw->vw_Tx == VTX(buffer))
-		return VAL(vw);
+		return rep_VAL(vw);
 	    vw = vw->vw_NextView;
 	    if(vw == 0)
 		vw = w->w_ViewList;
@@ -863,13 +843,12 @@ is returned.
 	w = w->w_Next;
 	if(w == 0)
 	    w = win_chain;
-    } while(!NILP(all_windows) && w != curr_win);
-    return sym_nil;
+    } while(!rep_NILP(all_windows) && w != curr_win);
+    return Qnil;
 }
 
-_PR VALUE cmd_next_view(VALUE win, VALUE allp);
-DEFUN("next-view", cmd_next_view, subr_next_view, (VALUE win, VALUE allp), V_Subr2, DOC_next_view) /*
-::doc:next_view::
+DEFUN("next-view", Fnext_view, Snext_view, (repv win, repv allp), rep_Subr2) /*
+::doc:Snext-view::
 next-view [WINDOW] [ALL-WINDOWS-P]
 
 Return the next view in WINDOW. If ALL-WINDOWS-P is t then views in
@@ -884,36 +863,35 @@ according to the same rules.
     if(VIEWP(win))
     {
 	curr = VVIEW(win);
-	win = VAL(curr->vw_Win);
+	win = rep_VAL(curr->vw_Win);
     }
     else if(WINDOWP(win))
 	curr = VWIN(win)->w_CurrVW;
     else
     {
 	curr = curr_vw;
-	win = VAL(curr_win);
+	win = rep_VAL(curr_win);
     }
     /* If possible just return the next view in the original window */
     if(curr->vw_NextView != 0)
-	return VAL(curr->vw_NextView);
+	return rep_VAL(curr->vw_NextView);
     else
     {
-	if(NILP(allp))
+	if(rep_NILP(allp))
 	    /* First view of the original window. */
-	    return VAL(VWIN(win)->w_ViewList);
+	    return rep_VAL(VWIN(win)->w_ViewList);
 	else
 	{
 	    if(VWIN(win)->w_Next != 0)
-		return VAL(VWIN(win)->w_Next->w_ViewList);
+		return rep_VAL(VWIN(win)->w_Next->w_ViewList);
 	    else
-		return VAL(win_chain->w_ViewList);
+		return rep_VAL(win_chain->w_ViewList);
 	}
     }
 }
 
-_PR VALUE cmd_previous_view(VALUE win, VALUE allp);
-DEFUN("previous-view", cmd_previous_view, subr_previous_view, (VALUE win, VALUE allp), V_Subr2, DOC_previous_view) /*
-::doc:previous_view::
+DEFUN("previous-view", Fprevious_view, Sprevious_view, (repv win, repv allp), rep_Subr2) /*
+::doc:Sprevious-view::
 previous-view [WINDOW] [ALL-WINDOWS-P]
 
 Return the previous view in WINDOW. ALL-WINDOWS-P controls whether or
@@ -929,14 +907,14 @@ according to the same rules.
     if(VIEWP(win))
     {
 	curr = VVIEW(win);
-	win = VAL(curr->vw_Win);
+	win = rep_VAL(curr->vw_Win);
     }
     else if(WINDOWP(win))
 	curr = VWIN(win)->w_CurrVW;
     else
     {
 	curr = curr_vw;
-	win = VAL(curr_win);
+	win = rep_VAL(curr_win);
     }
     if(curr == VWIN(win)->w_ViewList)
     {
@@ -944,7 +922,7 @@ according to the same rules.
 	   need to find the previous window and the last view in it.
 	   otherwise the last view in the current window. */
 	WIN *w;
-	if(!NILP(allp))
+	if(!rep_NILP(allp))
 	{
 	    w = VWIN(win);
 	    if(w == win_chain)
@@ -975,60 +953,11 @@ according to the same rules.
 	while(vw->vw_NextView != curr)
 	    vw = vw->vw_NextView;
     }
-    return VAL(vw);
+    return rep_VAL(vw);
 }
 
-_PR VALUE cmd_with_view(VALUE args);
-DEFUN("with-view", cmd_with_view, subr_with_view, (VALUE args), V_SF, DOC_with_view) /*
-::doc:with_view::
-with-view VIEW FORMS...
-
-Set the editor's current view to VIEW (and the current window to that
-containing VIEW) evaluate FORMS..., then reinstall the originals
-afterwards, returning the value of (progn FORMS...).
-::end:: */
-{
-    if(CONSP(args))
-    {
-	GC_root gc_args;
-	VALUE res;
-	PUSHGC(gc_args, args);
-	if((res = cmd_eval(VCAR(args))) && VIEWP(res))
-	{
-	    VALUE oldvw = VAL(VVIEW(res)->vw_Win->w_CurrVW);
-	    VALUE oldwin = VAL(curr_win);
-	    GC_root gc_oldvw, gc_oldwin;
-
-	    curr_vw = VVIEW(res);
-	    curr_win = curr_vw->vw_Win;
-	    curr_win->w_CurrVW = curr_vw;
-
-	    PUSHGC(gc_oldvw, oldvw);
-	    PUSHGC(gc_oldwin, oldwin);
-	    res = cmd_progn(VCDR(args));
-	    POPGC; POPGC;
-
-	    /* Reinstall the old view */
-	    if(VVIEW(oldvw)->vw_Win
-	       && VVIEW(oldvw)->vw_Win->w_Window != WINDOW_NIL
-	       && WINDOWP(oldwin))
-	    {
-		VVIEW(oldvw)->vw_Win->w_CurrVW = VVIEW(oldvw);
-		curr_win = VWIN(oldwin);
-		curr_vw = curr_win->w_CurrVW;
-	    }
-	}
-	else
-	    res = signal_arg_error(res, 1);
-	POPGC;
-	return(res);
-    }
-    return LISP_NULL;
-}
-
-_PR VALUE cmd_view_origin(VALUE vw);
-DEFUN("view-origin", cmd_view_origin, subr_view_origin, (VALUE vw), V_Subr1, DOC_view_origin) /*
-::doc:view_origin::
+DEFUN("view-origin", Fview_origin, Sview_origin, (repv vw), rep_Subr1) /*
+::doc:Sview-origin::
 view-origin [VIEW]
 
 Return the glyph position of the character displayed in the top-left corner
@@ -1036,16 +965,15 @@ of either VIEW or the current view.
 ::end:: */
 {
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
+	vw = rep_VAL(curr_vw);
     /* Make sure that we get the position that would be at the top-left
        after the _next_ redisplay.. */
     recenter_cursor(VVIEW(vw));
     return VVIEW(vw)->vw_DisplayOrigin;
 }
 
-_PR VALUE cmd_view_dimensions(VALUE vw);
-DEFUN("view-dimensions", cmd_view_dimensions, subr_view_dimensions, (VALUE vw), V_Subr1, DOC_view_dimensions) /*
-::doc:view_dimensions::
+DEFUN("view-dimensions", Fview_dimensions, Sview_dimensions, (repv vw), rep_Subr1) /*
+::doc:Sview-dimensions::
 view-dimensions [VIEW]
 
 Returns (COLUMNS . ROWS) defining the size (in glyphs) of VIEW (by default
@@ -1053,15 +981,13 @@ the current view).
 ::end:: */
 {
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
-    return cmd_cons(MAKE_INT(VVIEW(vw)->vw_MaxX),
-		    MAKE_INT(VVIEW(vw)->vw_MaxY));
+	vw = rep_VAL(curr_vw);
+    return Fcons(rep_MAKE_INT(VVIEW(vw)->vw_MaxX),
+		    rep_MAKE_INT(VVIEW(vw)->vw_MaxY));
 }
 
-_PR VALUE cmd_view_position(VALUE vw);
-DEFUN("view-position", cmd_view_position, subr_view_position, (VALUE vw),
-      V_Subr1, DOC_view_position) /*
-::doc:view_position::
+DEFUN("view-position", Fview_position, Sview_position, (repv vw), rep_Subr1) /*
+::doc:Sview-position::
 view-position [VIEW]
 
 Returns the screen position of VIEW in relation to the top-left hand corner of
@@ -1069,16 +995,15 @@ its containing window.
 ::end:: */
 {
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
+	vw = rep_VAL(curr_vw);
     return make_pos(VVIEW(vw)->vw_FirstX, VVIEW(vw)->vw_FirstY);
 }
 
 DEFSTRING(no_view, "No view to expand into");
 DEFSTRING(no_room, "Not enough room");
 
-_PR VALUE cmd_set_view_dimensions(VALUE vw, VALUE cols, VALUE rows);
-DEFUN("set-view-dimensions", cmd_set_view_dimensions, subr_set_view_dimensions, (VALUE vw, VALUE cols, VALUE rows), V_Subr3, DOC_set_view_dimensions) /*
-::doc:set_view_dimensions::
+DEFUN("set-view-dimensions", Fset_view_dimensions, Sset_view_dimensions, (repv vw, repv cols, repv rows), rep_Subr3) /*
+::doc:Sset-view-dimensions::
 set-view-dimensions [VIEW] [COLUMNS] [ROWS]
 
 Set the size of VIEW (or the current view) to COLUMNSxROWS glyphs. This is
@@ -1092,20 +1017,20 @@ the COLUMNS parameter is always ignored (for the moment).
     VW *sibling;
     long new_sibling_height;
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
-    if(!INTP(rows))
+	vw = rep_VAL(curr_vw);
+    if(!rep_INTP(rows))
 	return vw;
     sibling = VVIEW(vw)->vw_NextView;
     if(sibling == 0)
     {
-	return cmd_signal(sym_window_error, list_2(VAL(&no_view), vw));
+	return Fsignal(Qwindow_error, rep_list_2(rep_VAL(&no_view), vw));
     }
-    new_sibling_height = sibling->vw_MaxY - (VINT(rows) - VVIEW(vw)->vw_MaxY);
-    if(new_sibling_height < 1 || VINT(rows) < 1)
+    new_sibling_height = sibling->vw_MaxY - (rep_INT(rows) - VVIEW(vw)->vw_MaxY);
+    if(new_sibling_height < 1 || rep_INT(rows) < 1)
     {
-	return cmd_signal(sym_window_error, list_2(VAL(&no_room), vw));
+	return Fsignal(Qwindow_error, rep_list_2(rep_VAL(&no_room), vw));
     }
-    VVIEW(vw)->vw_MaxY = VINT(rows);
+    VVIEW(vw)->vw_MaxY = rep_INT(rows);
     sibling->vw_MaxY = new_sibling_height;
     recalc_measures(VVIEW(vw)->vw_Win);
     set_scroll_steps(VVIEW(vw));
@@ -1113,9 +1038,8 @@ the COLUMNS parameter is always ignored (for the moment).
     return vw;
 }
 
-_PR VALUE cmd_find_view_by_pos(VALUE pos, VALUE win);
-DEFUN("find-view-by-pos", cmd_find_view_by_pos, subr_find_view_by_pos, (VALUE pos, VALUE win), V_Subr2, DOC_find_view_by_pos) /*
-::doc:find_view_by_pos::
+DEFUN("find-view-by-pos", Ffind_view_by_pos, Sfind_view_by_pos, (repv pos, repv win), rep_Subr2) /*
+::doc:Sfind-view-by-pos::
 find-view-by-pos POS [WINDOW]
 
 Attempt to find the view in the current window (or in WINDOW), that includes
@@ -1124,24 +1048,23 @@ the glyph at position POS in the window. Returns nil if no such view exists.
 {
     WIN *w = WINDOWP(win) ? VWIN(win) : curr_win;
     VW *vw = w->w_ViewList;
-    DECLARE1(pos, POSP);
+    rep_DECLARE1(pos, POSP);
     if(VROW(pos) < 0)
-	return sym_nil;
+	return Qnil;
     while(vw != NULL)
     {
 	/* vw_MaxY doesn't include the status line */
 	long bottom = (vw->vw_FirstY + vw->vw_MaxY
 		       + ((vw->vw_Flags & VWFF_MINIBUF) ? 0 : 1));
 	if(VROW(pos) < bottom)
-	    return VAL(vw);
+	    return rep_VAL(vw);
 	vw = vw->vw_NextView;
     }
-    return sym_nil;
+    return Qnil;
 }
 
-_PR VALUE cmd_translate_pos_to_view(VALUE pos, VALUE vw);
-DEFUN("translate-pos-to-view", cmd_translate_pos_to_view, subr_translate_pos_to_view, (VALUE pos, VALUE vw), V_Subr2, DOC_translate_pos_to_view) /*
-::doc:translate_pos_to_view::
+DEFUN("translate-pos-to-view", Ftranslate_pos_to_view, Stranslate_pos_to_view, (repv pos, repv vw), rep_Subr2) /*
+::doc:Stranslate-pos-to-view::
 translate-pos-to-view POS [VIEW]
 
 Return the screen position in the current view (or in VIEW) that corresponds
@@ -1152,98 +1075,190 @@ status line of VIEW, return t.
 ::end:: */
 {
     long col, row;
-    DECLARE1(pos, POSP);
+    rep_DECLARE1(pos, POSP);
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
+	vw = rep_VAL(curr_vw);
     col = VCOL(pos) - VVIEW(vw)->vw_FirstX;
     row = VROW(pos) - VVIEW(vw)->vw_FirstY;
     if(col < 0 || col >= VVIEW(vw)->vw_MaxX
        || row < 0 || row > VVIEW(vw)->vw_MaxY)
-	return sym_nil;
+	return Qnil;
     else if(row == VVIEW(vw)->vw_MaxY)
-	return sym_t;
+	return Qt;
     else
 	return make_pos(col, row);
 }
 
-_PR VALUE cmd_minibuffer_view_p(VALUE vw);
-DEFUN("minibuffer-view-p", cmd_minibuffer_view_p, subr_minibuffer_view_p, (VALUE vw), V_Subr1,  DOC_minibuffer_view_p) /*
-::doc:minibuffer_view_p::
+DEFUN("minibuffer-view-p", Fminibuffer_view_p, Sminibuffer_view_p, (repv vw), rep_Subr1) /*
+::doc:Sminibuffer-view-p::
 minibuffer-view-p [VIEW]
 
 Returns t if VIEW is a view of a minibuffer.
 ::end:: */
 {
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
-    return (VVIEW(vw)->vw_Flags & VWFF_MINIBUF) ? sym_t : sym_nil;
+	vw = rep_VAL(curr_vw);
+    return (VVIEW(vw)->vw_Flags & VWFF_MINIBUF) ? Qt : Qnil;
 }
 
-_PR VALUE cmd_minibuffer_view(VALUE win);
-DEFUN("minibuffer-view", cmd_minibuffer_view, subr_minibuffer_view, (VALUE win), V_Subr1,  DOC_minibuffer_view) /*
-::doc:minibuffer_view::
+DEFUN("minibuffer-view", Fminibuffer_view, Sminibuffer_view, (repv win), rep_Subr1) /*
+::doc:Sminibuffer-view::
 minibuffer-view [WINDOW]
 
 Returns the view of the minibuffer in WINDOW (or the current window).
 ::end:: */
 {
-    return VAL(WINDOWP(win) ? VWIN(win)->w_MiniBuf : curr_win->w_MiniBuf);
+    return rep_VAL(WINDOWP(win) ? VWIN(win)->w_MiniBuf : curr_win->w_MiniBuf);
 }
 
-_PR VALUE cmd_minibuffer_active_p(VALUE win);
-DEFUN("minibuffer-active-p", cmd_minibuffer_active_p, subr_minibuffer_active_p, (VALUE win), V_Subr1,  DOC_minibuffer_active_p) /*
-::doc:minibuffer_active_p::
+DEFUN("minibuffer-active-p", Fminibuffer_active_p, Sminibuffer_active_p, (repv win), rep_Subr1) /*
+::doc:Sminibuffer-active-p::
 minibuffer-active-p [WINDOW]
 
 Returns t if the minibuffer of WINDOW is being used.
 ::end:: */
 {
     return MINIBUFFER_ACTIVE_P(WINDOWP(win) ? VWIN(win) : curr_win)
-	? sym_t : sym_nil;
+	? Qt : Qnil;
 }
 
-_PR VALUE cmd_viewp(VALUE);
-DEFUN("viewp", cmd_viewp, subr_viewp, (VALUE arg), V_Subr1, DOC_viewp) /*
-::doc:viewp::
+DEFUN("viewp", Fviewp, Sviewp, (repv arg), rep_Subr1) /*
+::doc:Sviewp::
 viewp ARG
 
 Returns t if ARG is a view object.
 ::end:: */
 {
-    return VIEWP(arg) ? sym_t : sym_nil;
+    return VIEWP(arg) ? Qt : Qnil;
+}
+
+static void
+view_sweep(void)
+{
+    VW *vw = view_chain;
+    view_chain = NULL;
+    while(vw)
+    {
+	VW *next = vw->vw_Next;
+	if(rep_GC_CELL_MARKEDP(rep_VAL(vw)))
+	{
+	    rep_GC_CLR_CELL(rep_VAL(vw));
+	    vw->vw_Next = view_chain;
+	    view_chain = vw;
+	}
+	else
+	    rep_FREE_CELL(vw);
+	vw = next;
+    }
+}
+
+static void
+view_mark (repv val)
+{
+    while (val != rep_NULL)
+    {
+	rep_MARKVAL(rep_VAL(VVIEW(val)->vw_Tx));
+	rep_MARKVAL(VVIEW(val)->vw_BufferList);
+	rep_MARKVAL(VVIEW(val)->vw_CursorPos);
+	rep_MARKVAL(VVIEW(val)->vw_LastCursorPos);
+	rep_MARKVAL(VVIEW(val)->vw_DisplayOrigin);
+	rep_MARKVAL(VVIEW(val)->vw_BlockS);
+	rep_MARKVAL(VVIEW(val)->vw_BlockE);
+	val = rep_VAL(VVIEW(val)->vw_NextView);
+	if (val != rep_NULL)
+	    rep_GC_SET_CELL (val);
+    }
+}    
+
+static void
+view_prin(repv stream, repv vw)
+{
+    char buf[32];
+    if(VVIEW(vw)->vw_Win == 0)
+	rep_stream_puts(stream, "#<dead-view>", -1, FALSE);
+    else
+    {
+#ifdef HAVE_SNPRINTF
+	snprintf(buf, sizeof(buf),
+		 "#<view %d,%d", VVIEW(vw)->vw_MaxX, VVIEW(vw)->vw_MaxY);
+#else
+	sprintf(buf, "#<view %d,%d", VVIEW(vw)->vw_MaxX, VVIEW(vw)->vw_MaxY);
+#endif
+	rep_stream_puts(stream, buf, -1, FALSE);
+	if(VVIEW(vw)->vw_Tx)
+	{
+	    rep_stream_putc(stream, ' ');
+	    rep_stream_puts(stream, rep_PTR(VVIEW(vw)->vw_Tx->tx_BufferName),
+			-1, TRUE);
+	}
+	rep_stream_putc(stream, '>');
+    }
+}
+
+static repv
+view_bind (repv vw)
+{
+    if (!VIEWP(vw))
+	return Qnil;
+    else
+    {
+	repv handle = Fcons (rep_VAL(VVIEW(vw)->vw_Win->w_CurrVW),
+			     rep_VAL(curr_win));
+	curr_vw = VVIEW(vw);
+	curr_win = VVIEW(vw)->vw_Win;
+	curr_win->w_CurrVW = curr_vw;
+	return handle;
+    }
+}
+
+static void
+view_unbind (repv handle)
+{
+    VW *vw = VVIEW(rep_CAR(handle));
+    WIN *win = VWIN(rep_CDR(handle));
+    if (vw->vw_Win && vw->vw_Win->w_Window != WINDOW_NIL)
+    {
+	vw->vw_Win->w_CurrVW = vw;
+	curr_win = win;
+	curr_vw = curr_win->w_CurrVW;
+    }
 }
 
 void
 views_init(void)
 {
-    mb_unused_buffer = VTX(cmd_make_buffer(VAL(&unused_mb), sym_nil, sym_t));
+    view_type = rep_register_new_type ("view", 0, view_prin, view_prin,
+				       view_sweep, view_mark, 0,
+				       0, 0, 0, 0,
+				       view_bind, view_unbind);
 
-    ADD_SUBR_INT(subr_split_view);
-    ADD_SUBR_INT(subr_delete_view);
-    ADD_SUBR(subr_y_scroll_step_ratio);
-    ADD_SUBR(subr_x_scroll_step_ratio);
-    ADD_SUBR(subr_rect_blocks_p);
-    ADD_SUBR(subr_set_rect_blocks);
-    ADD_SUBR(subr_current_view);
-    ADD_SUBR(subr_set_current_view);
-    ADD_SUBR(subr_buffer_list);
-    ADD_SUBR(subr_get_buffer_view);
-    ADD_SUBR(subr_next_view);
-    ADD_SUBR(subr_previous_view);
-    ADD_SUBR(subr_with_view);
-    ADD_SUBR(subr_view_origin);
-    ADD_SUBR(subr_view_dimensions);
-    ADD_SUBR(subr_view_position);
-    ADD_SUBR(subr_set_view_dimensions);
-    ADD_SUBR(subr_find_view_by_pos);
-    ADD_SUBR(subr_translate_pos_to_view);
-    ADD_SUBR(subr_minibuffer_view_p);
-    ADD_SUBR(subr_minibuffer_view);
-    ADD_SUBR(subr_minibuffer_active_p);
-    ADD_SUBR(subr_viewp);
-    INTERN(split_view_hook); DOC(split_view_hook);
-    INTERN(delete_view_hook); DOC(delete_view_hook);
-    INTERN(mode_line_format);
+    mb_unused_buffer = VTX(Fmake_buffer(rep_VAL(&unused_mb), Qnil, Qt));
+
+    rep_ADD_SUBR_INT(Ssplit_view);
+    rep_ADD_SUBR_INT(Sdelete_view);
+    rep_ADD_SUBR(Sy_scroll_step_ratio);
+    rep_ADD_SUBR(Sx_scroll_step_ratio);
+    rep_ADD_SUBR(Srect_blocks_p);
+    rep_ADD_SUBR(Sset_rect_blocks);
+    rep_ADD_SUBR(Scurrent_view);
+    rep_ADD_SUBR(Sset_current_view);
+    rep_ADD_SUBR(Sbuffer_list);
+    rep_ADD_SUBR(Sget_buffer_view);
+    rep_ADD_SUBR(Snext_view);
+    rep_ADD_SUBR(Sprevious_view);
+    rep_ADD_SUBR(Sview_origin);
+    rep_ADD_SUBR(Sview_dimensions);
+    rep_ADD_SUBR(Sview_position);
+    rep_ADD_SUBR(Sset_view_dimensions);
+    rep_ADD_SUBR(Sfind_view_by_pos);
+    rep_ADD_SUBR(Stranslate_pos_to_view);
+    rep_ADD_SUBR(Sminibuffer_view_p);
+    rep_ADD_SUBR(Sminibuffer_view);
+    rep_ADD_SUBR(Sminibuffer_active_p);
+    rep_ADD_SUBR(Sviewp);
+    rep_INTERN(split_view_hook);
+    rep_INTERN(delete_view_hook);
+    rep_INTERN(mode_line_format);
 }
 
 void
@@ -1253,53 +1268,8 @@ views_kill(void)
     while(vw != 0)
     {
 	VW *next = vw->vw_Next;
-	FREE_OBJECT(vw);
+	rep_FREE_CELL(vw);
 	vw = next;
     }
     view_chain = NULL;
-}
-
-void
-view_sweep(void)
-{
-    VW *vw = view_chain;
-    view_chain = NULL;
-    while(vw)
-    {
-	VW *next = vw->vw_Next;
-	if(GC_CELL_MARKEDP(VAL(vw)))
-	{
-	    GC_CLR_CELL(VAL(vw));
-	    vw->vw_Next = view_chain;
-	    view_chain = vw;
-	}
-	else
-	    FREE_OBJECT(vw);
-	vw = next;
-    }
-}
-
-void
-view_prin(VALUE stream, VALUE vw)
-{
-    char buf[32];
-    if(VVIEW(vw)->vw_Win == 0)
-	stream_puts(stream, "#<dead-view>", -1, FALSE);
-    else
-    {
-#ifdef HAVE_SNPRINTF
-	snprintf(buf, sizeof(buf),
-		 "#<view %d,%d", VVIEW(vw)->vw_MaxX, VVIEW(vw)->vw_MaxY);
-#else
-	sprintf(buf, "#<view %d,%d", VVIEW(vw)->vw_MaxX, VVIEW(vw)->vw_MaxY);
-#endif
-	stream_puts(stream, buf, -1, FALSE);
-	if(VVIEW(vw)->vw_Tx)
-	{
-	    stream_putc(stream, ' ');
-	    stream_puts(stream, VPTR(VVIEW(vw)->vw_Tx->tx_BufferName),
-			-1, TRUE);
-	}
-	stream_putc(stream, '>');
-    }
 }

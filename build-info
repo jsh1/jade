@@ -5,6 +5,12 @@
 sys_name="`hostname`.`domainname`"
 user_name="$LOGNAME"
 host_type="$1"
+version="$2"
+major_version="$3"
+minor_version="$4"
+jadedir="$5"
+lispdir="$6"
+jadeexecdir="$7"
 
 build_date="`date +'%a %b %e %Y'`"
 build_time="`date +'%T %Z'`"
@@ -15,6 +21,14 @@ cat >build.h <<EOF
 
 #ifndef BUILD_H
 #define BUILD_H
+
+#define JADE_MAJOR $major_version
+#define JADE_MINOR $minor_version
+#define JADE_VERSION "$version"
+
+#define JADE_DIR "$jadedir"
+#define JADE_LISPDIR "$lispdir"
+#define JADE_EXECDIR "$jadeexecdir"
 
 #define HOST_TYPE "$host_type"
 

@@ -18,11 +18,8 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(require 'lisp-doc)
 (provide 'help)
-
-(defvar lisp-documentation-file (expand-file-name "DOC" lisp-lib-directory)
-  "The name of the file of documentation strings from the pre-compiled Lisp
-libraries.")
 
 (defvar help-keymap
   (bind-keys (make-sparse-keymap)
@@ -118,18 +115,6 @@ w   `where-is'
 	that invoke may be used to invoke it.")
    (help)))
 
-(defun apropos-output (symbols use-function)
-  (let
-      ((separator (make-string 72 ?-)))
-    (mapc #'(lambda (sym)
-	      (write standard-output separator)
-	      (if use-function
-		  (describe-function-1 sym)
-		(describe-variable-1 sym))
-	      (format standard-output "%s\n\n"
-		      (or (documentation sym (not use-function))
-			  "Undocumented"))) symbols)))
-
 (defun apropos-function (regexp &optional all-functions)
   (interactive "sRegular expression:\nP")
   (help-wrapper
@@ -154,43 +139,6 @@ it leads to)."
     (help-wrapper
      (print-keymap nil buffer-in-scope))))
 
-(defun describe-function-1 (fun)
-  (let*
-      ((fval (symbol-function fun))
-       (type (cond
-	      ((special-form-p fval)
-	       "Special Form")
-	      ((macrop fval)
-	       "Macro")
-	      ((subrp fval)
-	       "Built-in Function")
-	      (t
-	       "Function"))))
-    ;; Check if it's been compiled.
-    (when (or (bytecodep fval)
-	      (and (consp fval) (assq 'jade-byte-code fval)))
-      (setq type (concat "Compiled " type)))
-    (format standard-output "\n%s: %s\n\n" type fun)
-    (when (fboundp fun)
-      (when (or (consp fval) (bytecodep fval))
-	;; A Lisp function or macro, print its argument spec.
-	(let
-	    ((lambda-list (if (consp fval)
-			      (nth (if (eq (car fval) 'macro) 2 1) fval)
-			    (aref fval 0))))
-	  (prin1 fun)
-	  ;; Print the arg list (one at a time)
-	  (while lambda-list
-	    (let
-		((arg-name (symbol-name (car lambda-list))))
-	      ;; Unless the argument starts with a `&' print it in capitals
-	      (unless (= (aref arg-name 0) ?&)
-		(setq arg-name (translate-string (copy-sequence arg-name)
-						 upcase-table)))
-	      (format standard-output " %s" arg-name))
-	    (setq lambda-list (cdr lambda-list)))
-	  (format standard-output "\n\n"))))))
-  
 (defun describe-function (fun)
   "Display the documentation of a function, macro or special-form."
   (interactive
@@ -205,9 +153,7 @@ it leads to)."
 (defun describe-variable-1 (var &optional in-buffer)
   (format standard-output
 	  "\n%s: %s\nCurrent value: %S\n\n"
-	  (if (const-variable-p var)
-	      "Constant"
-	    "Variable")
+	  (if (const-variable-p var) "Constant" "Variable")
 	  (symbol-name var)
 	  (with-buffer (or in-buffer (current-buffer)) (symbol-value var t))))
 
@@ -289,78 +235,3 @@ strings of modes may contain any of these expansions."
 	  (setq whereis-rel (symbol-value symbol))))))
     (setq out (cons (substring string point) out))
     (apply 'concat (nreverse out))))
-
-
-;; Accessing doc strings
-
-;;;###autoload
-(defun documentation (symbol &optional is-variable)
-  "Returns the documentation-string for SYMBOL. If IS-VARIABLE is t the
-documentation for the variable stored in SYMBOL is returned, else
-the function doc is provided."
-  (when (symbolp symbol)
-    (let
-	(doc)
-      (if is-variable
-	  (setq doc (or (subr-documentation symbol t)
-			(get symbol 'variable-documentation)))
-	(when (eq (car (symbol-function symbol)) 'autoload)
-	  (load (nth 1 (symbol-function symbol))))
-	(setq symbol (symbol-function symbol))
-	(cond
-	 ((or (subrp symbol)
-	      (bytecodep symbol))
-	  (setq doc (subr-documentation symbol)))
-	 ((or (eq 'macro (car symbol)) (eq 'special (car symbol)))
-	  (setq doc (nth 3 symbol)))
-	 (t
-	  (setq doc (nth 2 symbol)))))
-      (when (numberp doc)
-	(setq doc (get-documentation doc)))
-      (when (stringp doc)
-	doc))))
-
-;;;###autoload
-(defun document-var (symbol doc-string)
-  "Sets the `variable-documentation' property of SYMBOL to DOC-STRING."
-  (put symbol 'variable-documentation doc-string)
-  symbol)
-
-;;;###autoload
-(defun get-documentation (offset)
-  "Return the documentation string starting at position OFFSET in the file
-of such strings."
-  (let
-      ((file (open-file (if (>= offset 0)
-			    documentation-file
-			  (setq offset (1- (- offset)))
-			  lisp-documentation-file) 'read)))
-    (when file
-      (unwind-protect
-	  (let
-	      ((strings '())
-	       line done)
-	    (seek-file file offset 'start)
-	    (while (and (not done) (setq line (read-line file)))
-	      (if (string-match "\f" line)
-		  (setq strings (cons (substring line 0 (match-start)) strings)
-			done t)
-		(setq strings (cons line strings))))
-	    (apply 'concat (nreverse strings)))
-	(close-file file)))))
-
-;;;###autoload
-(defun add-documentation (string)
-  "Adds a documentation string STRING to the file of such strings, returning
-the integer offset at which the string starts in the file."
-  (let
-      ((file (open-file lisp-documentation-file 'append)))
-    (when file
-      (unwind-protect
-	  (prog1
-	      ;; Since we can't have -0, shift all offsets so that the
-	      ;; first character is offset -1
-	      (1- (- (seek-file file)))
-	    (write file string)
-	    (write file ?\f))
-	(close-file file)))))

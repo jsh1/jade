@@ -21,6 +21,9 @@ To compile this snapshot you'll need GNU Autoconf, GNU make, and
 a configure script, then compile as normal (generic instructions in the
 INSTALL file).
 
+You'll also need an installed copy of my librep LISP interpreter,
+this should be able to be found in the same place as this snapshot.
+
 Please send any success or failure reports to the email address above.
 
         John

@@ -19,24 +19,15 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
 #include <string.h>
 #include <assert.h>
-
-_PR void face_prin(VALUE strm, VALUE obj);
-_PR void face_sweep(void);
-_PR int merge_faces(WIN *w, Lisp_Extent *e, int in_active, int on_cursor);
-_PR int get_face_id(WIN *w, Lisp_Face *f);
-_PR void mark_merged_faces(WIN *w);
-_PR void color_prin(VALUE strm, VALUE obj);
-_PR void color_sweep(void);
-_PR bool faces_init(void);
 
 
 /* faces */
 
-_PR Lisp_Face *allocated_faces;
 Lisp_Face *allocated_faces;
+
+int face_type;
 
 DEFSYM(foreground, "foreground");
 DEFSYM(background, "background");
@@ -45,32 +36,23 @@ DEFSYM(bold, "bold");
 DEFSYM(italic, "italic");
 DEFSYM(inverted, "inverted");
 DEFSYM(boxed, "boxed");
-_PR VALUE sym_foreground, sym_background, sym_underline, sym_bold, sym_italic;
-_PR VALUE sym_inverted, sym_boxed;
 
 DEFSYM(default_face, "default-face");
 DEFSYM(block_face, "block-face");
 DEFSYM(modeline_face, "modeline-face");
 DEFSYM(highlight_face, "highlight-face");
 DEFSYM(face, "face");
-_PR VALUE sym_default_face, sym_block_face, sym_modeline_face;
-_PR VALUE sym_highlight_face, sym_face;
 
-_PR VALUE mouse_cursor_face;
-VALUE mouse_cursor_face;
+repv mouse_cursor_face;
 
 char *default_fg_color = "black";
 char *default_bg_color = "#cdcdc1";
 char *default_block_color = "lightblue";
 char *default_hl_color = "lightgoldenrod";
 char *default_ml_color = "lightsteelblue";
-_PR char *default_fg_color, *default_bg_color;
-_PR char *default_block_color, *default_hl_color, *default_ml_color;
 
-_PR VALUE cmd_make_face(VALUE);
-DEFUN("make-face", cmd_make_face, subr_make_face, (VALUE name),
-      V_Subr1, DOC_make_face) /*
-::doc:make_face::
+DEFUN("make-face", Fmake_face, Smake_face, (repv name), rep_Subr1) /*
+::doc:Smake-face::
 make-face NAME
 
 Return the face called NAME. If no face with this name exists already, create
@@ -79,28 +61,28 @@ a new one, its initial state will be to have absolutely no effect.
 {
     Lisp_Face *f;
 
-    DECLARE1(name, STRINGP);
+    rep_DECLARE1(name, rep_STRINGP);
 
     for(f = allocated_faces; f != 0; f = f->next)
     {
-	if(strcmp(VSTR(f->name), VSTR(name)) == 0)
-	    return VAL(f);
+	if(strcmp(rep_STR(f->name), rep_STR(name)) == 0)
+	    return rep_VAL(f);
     }
 
-    f = ALLOC_OBJECT(sizeof(Lisp_Face));
+    f = rep_ALLOC_CELL(sizeof(Lisp_Face));
     if(f == 0)
-	return mem_error();
+	return rep_mem_error();
     f->next = allocated_faces;
     allocated_faces = f;
     f->name = name;
-    f->car = V_Face;
-    f->foreground = f->background = sym_nil;
+    f->car = face_type;
+    f->foreground = f->background = Qnil;
 
-    return VAL(f);
+    return rep_VAL(f);
 }
 
-void
-face_prin(VALUE strm, VALUE obj)
+static void
+face_prin(repv strm, repv obj)
 {
     char buf[128];
 #ifdef HAVE_SNPRINT
@@ -108,11 +90,11 @@ face_prin(VALUE strm, VALUE obj)
 #else
     sprintf
 #endif
-    (buf, "#<face %s>", VSTR(VFACE(obj)->name));
-    stream_puts(strm, buf, -1, FALSE);
+    (buf, "#<face %s>", rep_STR(VFACE(obj)->name));
+    rep_stream_puts(strm, buf, -1, FALSE);
 }
 
-void
+static void
 face_sweep(void)
 {
     Lisp_Face *f = allocated_faces;
@@ -120,11 +102,11 @@ face_sweep(void)
     while(f != 0)
     {
 	Lisp_Face *next = f->next;
-	if(!GC_CELL_MARKEDP(VAL(f)))
-	    FREE_OBJECT(f);
+	if(!rep_GC_CELL_MARKEDP(rep_VAL(f)))
+	    rep_FREE_CELL(f);
 	else
 	{
-	    GC_CLR_CELL(VAL(f));
+	    rep_GC_CLR_CELL(rep_VAL(f));
 	    f->next = allocated_faces;
 	    allocated_faces = f;
 	}
@@ -132,19 +114,25 @@ face_sweep(void)
     }
 }
 
-_PR VALUE cmd_set_face_attribute(VALUE, VALUE, VALUE);
-DEFUN("set-face-attribute", cmd_set_face_attribute, subr_set_face_attribute,
-      (VALUE face, VALUE attr, VALUE value), V_Subr3,
-      DOC_set_face_attribute) /*
-::doc:set_face_attribute::
-set-face-attribute FACE ATTRIBUTE-NAME VALUE
+static void
+face_mark (repv val)
+{
+    rep_MARKVAL(VFACE(val)->name);
+    rep_MARKVAL(VFACE(val)->foreground);
+    rep_MARKVAL(VFACE(val)->background);
+}
 
-Set the attribute named ATTRIBUTE-NAME of FACE to VALUE. ATTRIBUTE-NAME
+DEFUN("set-face-attribute", Fset_face_attribute, Sset_face_attribute,
+      (repv face, repv attr, repv value), rep_Subr3) /*
+::doc:Sset-face-attribute::
+set-face-attribute FACE ATTRIBUTE-NAME repv
+
+Set the attribute named ATTRIBUTE-NAME of FACE to repv. ATTRIBUTE-NAME
 may be one of these symbols:
 
   `foreground', `background'
 	The colours used for glyphs and blank space respectably. Note
-	that VALUE may be either the color object, or the name of the
+	that repv may be either the color object, or the name of the
 	color.
 
   `underline', 'bold', `italic', `inverted', `boxed'
@@ -152,55 +140,55 @@ may be one of these symbols:
 ::end:: */
 {
     WIN *w;
-    DECLARE1(face, FACEP);
+    rep_DECLARE1(face, FACEP);
 
-    if(attr == sym_foreground || attr == sym_background)
+    if(attr == Qforeground || attr == Qbackground)
     {
-	if(STRINGP(value))
+	if(rep_STRINGP(value))
 	{
-	    value = cmd_get_color(value);
+	    value = Fget_color(value);
 	    if(!value)
 		return value;
 	}
-	if(!NILP(value))
-	    DECLARE3(value, COLORP);
-	if(attr == sym_foreground)
+	if(!rep_NILP(value))
+	    rep_DECLARE3(value, COLORP);
+	if(attr == Qforeground)
 	    VFACE(face)->foreground = value;
 	else
 	    VFACE(face)->background = value;
     }
-    else if(attr == sym_underline)
+    else if(attr == Qunderline)
     {
 	VFACE(face)->car &= ~FACEFF_UNDERLINE;
-	if(!NILP(value))
+	if(!rep_NILP(value))
 	    VFACE(face)->car |= FACEFF_UNDERLINE;
     }
-    else if(attr == sym_bold)
+    else if(attr == Qbold)
     {
 	VFACE(face)->car &= ~FACEFF_BOLD;
-	if(!NILP(value))
+	if(!rep_NILP(value))
 	    VFACE(face)->car |= FACEFF_BOLD;
     }
-    else if(attr == sym_italic)
+    else if(attr == Qitalic)
     {
 	VFACE(face)->car &= ~FACEFF_ITALIC;
-	if(!NILP(value))
+	if(!rep_NILP(value))
 	    VFACE(face)->car |= FACEFF_ITALIC;
     }
-    else if(attr == sym_inverted)
+    else if(attr == Qinverted)
     {
 	VFACE(face)->car &= ~FACEFF_INVERT;
-	if(!NILP(value))
+	if(!rep_NILP(value))
 	    VFACE(face)->car |= FACEFF_INVERT;
     }
-    else if(attr == sym_boxed)
+    else if(attr == Qboxed)
     {
 	VFACE(face)->car &= ~FACEFF_BOXED;
-	if(!NILP(value))
+	if(!rep_NILP(value))
 	    VFACE(face)->car |= FACEFF_BOXED;
     }
     else
-	return signal_arg_error(attr, 2);
+	return rep_signal_arg_error(attr, 2);
 
     for(w = win_chain; w != 0; w = w->w_Next)
     {
@@ -214,40 +202,38 @@ may be one of these symbols:
     return value;
 }
 
-_PR VALUE cmd_face_attribute(VALUE, VALUE);
-DEFUN("face-attribute", cmd_face_attribute, subr_face_attribute,
-      (VALUE face, VALUE attr), V_Subr2, DOC_face_attribute) /*
-::doc:face_attribute::
+DEFUN("face-attribute", Fface_attribute, Sface_attribute,
+      (repv face, repv attr), rep_Subr2) /*
+::doc:Sface-attribute::
 face-attribute FACE ATTRIBUTE-NAME
 
 Return the current value of the attribute named ATTRIBUTE-NAME in FACE.
 See `set-face-attribute' for the list of possible attributes.
 ::end:: */
 {
-    DECLARE1(face, FACEP);
+    rep_DECLARE1(face, FACEP);
 
-    if(attr == sym_foreground)
+    if(attr == Qforeground)
 	return VFACE(face)->foreground;
-    else if(attr == sym_background)
+    else if(attr == Qbackground)
 	return VFACE(face)->background;
-    else if(attr == sym_underline)
-	return (VFACE(face)->car & FACEFF_UNDERLINE) ? sym_t : sym_nil;
-    else if(attr == sym_bold)
-	return (VFACE(face)->car & FACEFF_BOLD) ? sym_t : sym_nil;
-    else if(attr == sym_italic)
-	return (VFACE(face)->car & FACEFF_ITALIC) ? sym_t : sym_nil;
-    else if(attr == sym_inverted)
-	return (VFACE(face)->car & FACEFF_INVERT) ? sym_t : sym_nil;
-    else if(attr == sym_boxed)
-	return (VFACE(face)->car & FACEFF_BOXED) ? sym_t : sym_nil;
+    else if(attr == Qunderline)
+	return (VFACE(face)->car & FACEFF_UNDERLINE) ? Qt : Qnil;
+    else if(attr == Qbold)
+	return (VFACE(face)->car & FACEFF_BOLD) ? Qt : Qnil;
+    else if(attr == Qitalic)
+	return (VFACE(face)->car & FACEFF_ITALIC) ? Qt : Qnil;
+    else if(attr == Qinverted)
+	return (VFACE(face)->car & FACEFF_INVERT) ? Qt : Qnil;
+    else if(attr == Qboxed)
+	return (VFACE(face)->car & FACEFF_BOXED) ? Qt : Qnil;
     else
-	return signal_arg_error(attr, 2);
+	return rep_signal_arg_error(attr, 2);
 }
 
-_PR VALUE var_mouse_cursor_face(VALUE);
-DEFUN("mouse-cursor-face", var_mouse_cursor_face, subr_mouse_cursor_face,
-      (VALUE arg), V_Var, DOC_mouse_cursor_face) /*
-::doc:mouse_cursor_face::
+DEFUN("mouse-cursor-face", var_mouse_cursor_face, Smouse_cursor_face,
+      (repv arg), rep_Var) /*
+::doc:Smouse-cursor-face::
 The face used to color the mouse cursor.
 ::end:: */
 {
@@ -263,7 +249,7 @@ The face used to color the mouse cursor.
 /* rendering with faces */
 
 static int
-get_merged_face(WIN *w, u_short car,
+get_merged_face(WIN *w, u_long car,
 		Lisp_Color *background, Lisp_Color *foreground)
 {
     int id, empty = -1;
@@ -325,7 +311,7 @@ merge_faces(WIN *w, Lisp_Extent *e, int in_block, int on_cursor)
 
     if(in_block)
     {
-	VALUE face = VSYM(sym_block_face)->value;
+	repv face = rep_SYM(Qblock_face)->value;
 	if(FACEP(face))
 	    union_face(VFACE(face));
     }
@@ -333,15 +319,15 @@ merge_faces(WIN *w, Lisp_Extent *e, int in_block, int on_cursor)
     /* Work up from E to the root. */
     for(x = e; x != 0; x = x->parent)
     {
-	VALUE face = cmd_extent_get(VAL(x), sym_face);
-	if(FACEP(face))
+	repv face = Fextent_get(rep_VAL(x), Qface);
+	if(face != rep_NULL && FACEP(face))
 	    union_face(VFACE(face));
     }
 
     /* Merge in the default-face properties */
     {
-	VALUE face = VSYM(sym_default_face)->value;
-	if(FACEP(face))
+	repv face = rep_SYM(Qdefault_face)->value;
+	if(face != rep_NULL && FACEP(face))
 	    union_face(VFACE(face));
     }
 
@@ -381,8 +367,8 @@ mark_glyph_buf_faces(WIN *w, glyph_buf *g)
     {
 	if(w->w_MergedFaces[id].valid)
 	{
-	    MARKVAL(VAL(w->w_MergedFaces[id].background));
-	    MARKVAL(VAL(w->w_MergedFaces[id].foreground));
+	    rep_MARKVAL(rep_VAL(w->w_MergedFaces[id].background));
+	    rep_MARKVAL(rep_VAL(w->w_MergedFaces[id].foreground));
 	}
     }
 }
@@ -397,31 +383,30 @@ mark_merged_faces(WIN *w)
 
 /* colors */
 
-_PR Lisp_Color *allocated_colors;
 Lisp_Color *allocated_colors;
 
-_PR VALUE cmd_get_color(VALUE);
-DEFUN("get-color", cmd_get_color, subr_get_color, (VALUE name), V_Subr1,
-      DOC_get_color) /*
-::doc:get_color::
+int color_type;
+
+DEFUN("get-color", Fget_color, Sget_color, (repv name), rep_Subr1) /*
+::doc:Sget-color::
 get-color NAME
 
 Return the Lisp object defining the color named NAME (a string).
 ::end:: */
 {
     Lisp_Color *c;
-    DECLARE1(name, STRINGP);
+    rep_DECLARE1(name, rep_STRINGP);
 
     for(c = allocated_colors; c != 0; c = c->next)
     {
-	if(strcasecmp(VSTR(c->name), VSTR(name)) == 0)
-	    return VAL(c);
+	if(strcasecmp(rep_STR(c->name), rep_STR(name)) == 0)
+	    return rep_VAL(c);
     }
 
-    c = ALLOC_OBJECT(sizeof(Lisp_Color));
+    c = rep_ALLOC_CELL(sizeof(Lisp_Color));
     if(c == 0)
-	return mem_error();
-    c->car = V_Color;
+	return rep_mem_error();
+    c->car = color_type;
     c->next = allocated_colors;
     allocated_colors = c;
     c->name = name;
@@ -429,8 +414,8 @@ Return the Lisp object defining the color named NAME (a string).
     return sys_make_color(c);
 }
 
-void
-color_prin(VALUE strm, VALUE obj)
+static void
+color_prin(repv strm, repv obj)
 {
     char buf[128];
 #ifdef HAVE_SNPRINT
@@ -438,11 +423,11 @@ color_prin(VALUE strm, VALUE obj)
 #else
     sprintf
 #endif
-    (buf, "#<color %s>", VSTR(VCOLOR(obj)->name));
-    stream_puts(strm, buf, -1, FALSE);
+    (buf, "#<color %s>", rep_STR(VCOLOR(obj)->name));
+    rep_stream_puts(strm, buf, -1, FALSE);
 }
 
-void
+static void
 color_sweep(void)
 {
     Lisp_Color *c = allocated_colors;
@@ -450,14 +435,14 @@ color_sweep(void)
     while(c != 0)
     {
 	Lisp_Color *next = c->next;
-	if(!GC_CELL_MARKEDP(VAL(c)))
+	if(!rep_GC_CELL_MARKEDP(rep_VAL(c)))
 	{
 	    sys_free_color(c);
-	    FREE_OBJECT(c);
+	    rep_FREE_CELL(c);
 	}
 	else
 	{
-	    GC_CLR_CELL(VAL(c));
+	    rep_GC_CLR_CELL(rep_VAL(c));
 	    c->next = allocated_colors;
 	    allocated_colors = c;
 	}
@@ -465,60 +450,74 @@ color_sweep(void)
     }
 }
 
+static void
+color_mark (repv val)
+{
+    rep_MARKVAL(VCOLOR(val)->name);
+}
+
 
 
 bool
 faces_init(void)
 {
-    VALUE face, fg, bg, bl, hl, ml;
+    repv face, fg, bg, bl, hl, ml;
 
-    ADD_SUBR(subr_make_face);
-    ADD_SUBR(subr_set_face_attribute);
-    ADD_SUBR(subr_face_attribute);
-    ADD_SUBR(subr_mouse_cursor_face);
-    mark_static(&mouse_cursor_face);
-    ADD_SUBR(subr_get_color);
+    face_type = rep_register_new_type ("face", 0, face_prin, face_prin,
+				       face_sweep, face_mark,
+				       0, 0, 0, 0, 0, 0, 0);
 
-    INTERN(foreground);
-    INTERN(background);
-    INTERN(underline);
-    INTERN(bold);
-    INTERN(italic);
-    INTERN(inverted);
-    INTERN(boxed);
-    INTERN(default_face);
-    INTERN(block_face);
-    INTERN(modeline_face);
-    INTERN(highlight_face);
-    INTERN(face);
+    color_type = rep_register_new_type ("color", 0, color_prin, color_prin,
+					color_sweep, color_mark,
+					0, 0, 0, 0, 0, 0, 0);
 
-    fg = cmd_get_color(string_dup(default_fg_color));
-    bg = cmd_get_color(string_dup(default_bg_color));
-    bl = cmd_get_color(string_dup(default_block_color));
-    hl = cmd_get_color(string_dup(default_hl_color));
-    ml = cmd_get_color(string_dup(default_ml_color));
+    rep_ADD_SUBR(Smake_face);
+    rep_ADD_SUBR(Sset_face_attribute);
+    rep_ADD_SUBR(Sface_attribute);
+    rep_ADD_SUBR(Smouse_cursor_face);
+    rep_mark_static(&mouse_cursor_face);
+    rep_ADD_SUBR(Sget_color);
+
+    rep_INTERN(foreground);
+    rep_INTERN(background);
+    rep_INTERN(underline);
+    rep_INTERN(bold);
+    rep_INTERN(italic);
+    rep_INTERN(inverted);
+    rep_INTERN(boxed);
+    rep_INTERN(default_face);
+    rep_INTERN(block_face);
+    rep_INTERN(modeline_face);
+    rep_INTERN(highlight_face);
+    rep_INTERN(face);
+
+    fg = Fget_color(rep_string_dup(default_fg_color));
+    bg = Fget_color(rep_string_dup(default_bg_color));
+    bl = Fget_color(rep_string_dup(default_block_color));
+    hl = Fget_color(rep_string_dup(default_hl_color));
+    ml = Fget_color(rep_string_dup(default_ml_color));
 
     if(fg && bg && bl && hl && ml)
     {
-	face = cmd_make_face(VSYM(sym_default_face)->name);
-	cmd_set_face_attribute(face, sym_foreground, fg);
-	cmd_set_face_attribute(face, sym_background, bg);
-	VSYM(sym_default_face)->value = face;
+	face = Fmake_face(rep_SYM(Qdefault_face)->name);
+	Fset_face_attribute(face, Qforeground, fg);
+	Fset_face_attribute(face, Qbackground, bg);
+	rep_SYM(Qdefault_face)->value = face;
 	mouse_cursor_face = face;
 	sys_recolor_cursor(mouse_cursor_face);
 
-	face = cmd_make_face(VSYM(sym_block_face)->name);
-	cmd_set_face_attribute(face, sym_background, bl);
-	VSYM(sym_block_face)->value = face;
+	face = Fmake_face(rep_SYM(Qblock_face)->name);
+	Fset_face_attribute(face, Qbackground, bl);
+	rep_SYM(Qblock_face)->value = face;
 
-	face = cmd_make_face(VSYM(sym_modeline_face)->name);
-	cmd_set_face_attribute(face, sym_foreground, fg);
-	cmd_set_face_attribute(face, sym_background, ml);
-	VSYM(sym_modeline_face)->value = face;
+	face = Fmake_face(rep_SYM(Qmodeline_face)->name);
+	Fset_face_attribute(face, Qforeground, fg);
+	Fset_face_attribute(face, Qbackground, ml);
+	rep_SYM(Qmodeline_face)->value = face;
 
-	face = cmd_make_face(VSYM(sym_highlight_face)->name);
-	cmd_set_face_attribute(face, sym_background, hl);
-	VSYM(sym_highlight_face)->value = face;
+	face = Fmake_face(rep_SYM(Qhighlight_face)->name);
+	Fset_face_attribute(face, Qbackground, hl);
+	rep_SYM(Qhighlight_face)->value = face;
 
 	return TRUE;
     }

@@ -19,8 +19,6 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-
 #include <string.h>
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
@@ -33,15 +31,7 @@
 # define XK_BACKSPACE XK_BackSpace
 #endif
 
-_PR void translate_event(u_long *, u_long *, XEvent *, struct x11_display *);
-_PR int cook_key(void *, u_char *, int);
-_PR bool sys_lookup_mod(const char *name, u_long *mods);
-_PR bool sys_lookup_code(const char *name, u_long *code, u_long *mods);
-_PR char *sys_lookup_mod_name(char *buf, u_long mod);
-_PR bool sys_lookup_code_name(char *buf, u_long code, u_long type);
-_PR u_long x11_find_meta(struct x11_display *xd);
 
-_PR u_long esc_code, esc_mods;
 u_long esc_code = XK_Escape, esc_mods = EV_TYPE_KEYBD;
 
 static u_long

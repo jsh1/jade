@@ -19,17 +19,9 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
 #include <assert.h>
 
-_PR void adjust_marks_add_x(TX *, long, long, long);
-_PR void adjust_marks_sub_x(TX *, long, long, long);
-_PR void adjust_marks_add_y(TX *, long, long);
-_PR void adjust_marks_sub_y(TX *, long, long);
-_PR void adjust_marks_split_y(TX *, long, long);
-_PR void adjust_marks_join_y(TX *, long, long);
 
-_PR void reset_all_views(TX *);
 
 
 /* The next few routines deal with updating the various references to
@@ -454,7 +446,7 @@ reset_all_views(TX *tx)
     {
 	if(thisvw->vw_Tx == tx)
 	{
-	    thisvw->vw_CursorPos = cmd_start_of_buffer(VAL(tx), sym_nil);
+	    thisvw->vw_CursorPos = Fstart_of_buffer(rep_VAL(tx), Qnil);
 	    thisvw->vw_DisplayOrigin = thisvw->vw_CursorPos;
 	    thisvw->vw_BlockStatus = -1;
 	}

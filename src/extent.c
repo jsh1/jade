@@ -19,37 +19,18 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
 #include <limits.h>
 #include <setjmp.h>
 #include <assert.h>
 
 #define DEBUG
 
-_PR Lisp_Extent *find_extent_forwards(Lisp_Extent *root, Pos *pos);
-_PR Lisp_Extent *find_extent(Lisp_Extent *root, Pos *pos);
-_PR void map_section_extents(void (*)(Lisp_Extent *, void *), Lisp_Extent *, Pos *, Pos *, void *);
-_PR void make_global_extent(TX *tx);
-_PR void reset_global_extent(TX *tx);
-_PR bool buffer_set_if_bound(VALUE symbol, VALUE value);
-_PR void adjust_extents_add_cols(Lisp_Extent *, long, long, long);
-_PR void adjust_extents_sub_cols(Lisp_Extent *, long, long, long);
-_PR void adjust_extents_add_rows(Lisp_Extent *, long, long);
-_PR void adjust_extents_sub_rows(Lisp_Extent *, long, long);
-_PR void adjust_extents_split_row(Lisp_Extent *, long, long);
-_PR void adjust_extents_join_rows(Lisp_Extent *, long, long);
-_PR void mark_extent(Lisp_Extent *e);
-_PR void extent_sweep(void);
-_PR void extent_prin(VALUE strm, VALUE e);
-_PR int extent_cmp(VALUE e1, VALUE e2);
-_PR void extent_init(void);
-
 DEFSYM(front_sticky, "front-sticky");
 DEFSYM(rear_sticky, "rear-sticky");
 DEFSYM(local_variables, "local-variables");
 DEFSYM(catch_variables, "catch-variables");
-_PR VALUE sym_front_sticky, sym_rear_sticky;
-_PR VALUE sym_local_variables, sym_catch_variables;
+
+int extent_type;
 
 static Lisp_Extent *allocated_extents;
 
@@ -68,14 +49,14 @@ clean_node(Lisp_Extent *e)
 static Lisp_Extent *
 alloc_extent(Lisp_Extent *clonee)
 {
-    Lisp_Extent *x = ALLOC_OBJECT(sizeof(Lisp_Extent));
+    Lisp_Extent *x = rep_ALLOC_CELL(sizeof(Lisp_Extent));
     if(x == 0)
     {
-	mem_error();
+	rep_mem_error();
 	return 0;
     }
 
-    x->car = V_Extent;
+    x->car = extent_type;
     x->next = allocated_extents;
     allocated_extents = x;
     clean_node(x);
@@ -90,8 +71,8 @@ alloc_extent(Lisp_Extent *clonee)
     }
     else
     {
-	x->locals = sym_nil;
-	x->plist = sym_nil;
+	x->locals = Qnil;
+	x->plist = Qnil;
     }
 
     return x;
@@ -504,17 +485,16 @@ reset_global_extent(TX *tx)
     e->start.col = 0;
     e->end.row = tx->tx_NumLines;
     e->end.col = tx->tx_Lines[tx->tx_NumLines-1].ln_Strlen - 1;
-    e->car = V_Extent | EXTFF_OPEN_START | EXTFF_OPEN_END;
+    e->car = extent_type | EXTFF_OPEN_START | EXTFF_OPEN_END;
     invalidate_extent_cache(tx);
 }
 
 
 /* Lisp functions */
 
-_PR VALUE cmd_make_extent(VALUE, VALUE, VALUE);
-DEFUN("make-extent", cmd_make_extent, subr_make_extent,
-      (VALUE start, VALUE end, VALUE plist), V_Subr3, DOC_make_extent) /*
-::doc:make_extent::
+DEFUN("make-extent", Fmake_extent, Smake_extent,
+      (repv start, repv end, repv plist), rep_Subr3) /*
+::doc:Smake-extent::
 make-extent START END [PLIST]
 
 Create and return a new extent in the current buffer from START to END.
@@ -527,56 +507,53 @@ will work reliably however.
 {
     Lisp_Extent *extent;
     TX *tx = curr_vw->vw_Tx;
-    DECLARE1(start, POSP);
-    DECLARE2(end, POSP);
+    rep_DECLARE1(start, POSP);
+    rep_DECLARE2(end, POSP);
 
     if(VROW(start) < 0 || VROW(start) >= tx->tx_NumLines
        || VROW(end) < 0 || VROW(end) >= tx->tx_NumLines
        || POS_GREATER_P(start, end))
-	return cmd_signal(sym_invalid_pos, list_2(start, end));
+	return Fsignal(Qinvalid_pos, rep_list_2(start, end));
 
     extent = alloc_extent(0);
     if(extent == 0)
-	return LISP_NULL;
+	return rep_NULL;
 
     COPY_VPOS(&extent->start, start);
     COPY_VPOS(&extent->end, end);
     extent->tx = tx;
     extent->plist = plist;
-    extent->locals = sym_nil;
+    extent->locals = Qnil;
 
     insert_extent(extent, tx->tx_GlobalExtent);
     invalidate_extent_cache(tx);
 
-    return VAL(extent);
+    return rep_VAL(extent);
 }
 
 DEFSTRING(no_delete_root, "Deleting root extent");
-_PR VALUE cmd_delete_extent(VALUE);
-DEFUN("delete-extent", cmd_delete_extent, subr_delete_extent,
-      (VALUE extent), V_Subr1, DOC_delete_extent) /*
-::doc:delete_extent::
+DEFUN("delete-extent", Fdelete_extent, Sdelete_extent,
+      (repv extent), rep_Subr1) /*
+::doc:Sdelete-extent::
 delete-extent EXTENT
 
 Delete EXTENT from the buffer containing it. An error is signalled if
 EXTENT is the root extent covering the entire buffer.
 ::end:: */
 {
-    DECLARE1(extent, EXTENTP);
+    rep_DECLARE1(extent, EXTENTP);
 
     if(VEXTENT(extent) == VEXTENT(extent)->tx->tx_GlobalExtent)
-	return cmd_signal(sym_error, list_2(VAL(&no_delete_root), extent));
+	return Fsignal(Qerror, rep_list_2(rep_VAL(&no_delete_root), extent));
 
     unlink_extent(VEXTENT(extent));
     invalidate_extent_cache(VEXTENT(extent)->tx);
     return extent;
 }
 
-_PR VALUE cmd_delete_all_extents(VALUE);
-DEFUN_INT("delete-all-extents", cmd_delete_all_extents,
-	  subr_delete_all_extents, (VALUE extent), V_Subr1,
-	  DOC_delete_all_extents, "") /*
-::doc:delete_all_extents::
+DEFUN_INT("delete-all-extents", Fdelete_all_extents,
+	  Sdelete_all_extents, (repv extent), rep_Subr1, "") /*
+::doc:Sdelete-all-extents::
 delete-all-extents [ROOT]
 
 Delete all extents contained within ROOT (or the root of the current buffer).
@@ -584,25 +561,24 @@ Note that it's not possible to delete the global extent of a buffer itself.
 ::end:: */
 {
     if(!EXTENTP(extent))
-	extent = VAL(curr_vw->vw_Tx->tx_GlobalExtent);
+	extent = rep_VAL(curr_vw->vw_Tx->tx_GlobalExtent);
     unlink_extent_recursively(VEXTENT(extent));
     invalidate_extent_cache(VEXTENT(extent)->tx);
     return extent;
 }
 
-_PR VALUE cmd_move_extent(VALUE, VALUE, VALUE);
-DEFUN("move-extent", cmd_move_extent, subr_move_extent,
-      (VALUE extent, VALUE start, VALUE end), V_Subr3, DOC_move_extent) /*
-::doc:move_extent::
+DEFUN("move-extent", Fmove_extent, Smove_extent,
+      (repv extent, repv start, repv end), rep_Subr3) /*
+::doc:Smove-extent::
 move-extent EXTENT START END
 
 Set the start and end positions of EXTENT to START and END respectively,
 without changing the buffer that EXTENT refers to.
 ::end:: */
 {
-    DECLARE1(extent, EXTENTP);
-    DECLARE2(start, POSP);
-    DECLARE3(end, POSP);
+    rep_DECLARE1(extent, EXTENTP);
+    rep_DECLARE2(start, POSP);
+    rep_DECLARE3(end, POSP);
 
     unlink_extent(VEXTENT(extent));
     COPY_VPOS(&VEXTENT(extent)->start, start);
@@ -613,10 +589,8 @@ without changing the buffer that EXTENT refers to.
     return extent;
 }
 
-_PR VALUE cmd_get_extent(VALUE, VALUE);
-DEFUN("get-extent", cmd_get_extent, subr_get_extent, (VALUE pos, VALUE tx),
-      V_Subr2, DOC_get_extent) /*
-::doc:get_extent::
+DEFUN("get-extent", Fget_extent, Sget_extent, (repv pos, repv tx), rep_Subr2) /*
+::doc:Sget-extent::
 get-extent [POSITION] [BUFFER]
 
 Return the innermost extent at POSITION in BUFFER (by default the cursor
@@ -627,7 +601,7 @@ position of the current buffer).
     Pos ppos;
     if(!BUFFERP(tx))
     {
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
 	if(!POSP(pos))
 	    pos = curr_vw->vw_CursorPos;
     }
@@ -636,13 +610,12 @@ position of the current buffer).
     COPY_VPOS(&ppos, pos);
     e = find_extent(VTX(tx)->tx_GlobalExtent, &ppos);
 
-    return (e != 0) ? VAL(e) : sym_nil;
+    return (e != 0) ? rep_VAL(e) : Qnil;
 }
 
-_PR VALUE cmd_map_extents(VALUE, VALUE, VALUE);
-DEFUN("map-extents", cmd_map_extents, subr_map_extents,
-      (VALUE fun, VALUE start, VALUE end), V_Subr3, DOC_map_extents) /*
-::doc:map_extents::
+DEFUN("map-extents", Fmap_extents, Smap_extents,
+      (repv fun, repv start, repv end), rep_Subr3) /*
+::doc:Smap-extents::
 map-extents FUNCTION START END
 
 Call (FUNCTION EXTENT) for all innermost extent fragments containing
@@ -655,8 +628,8 @@ deleted from within the callback function.
     Pos s_copy, e_copy;
     jmp_buf exit;
 
-    DECLARE2(start, POSP);
-    DECLARE3(end, POSP);
+    rep_DECLARE2(start, POSP);
+    rep_DECLARE3(end, POSP);
 
     COPY_VPOS(&s_copy, start);
     COPY_VPOS(&e_copy, end);
@@ -665,8 +638,8 @@ deleted from within the callback function.
     {
 	/* FIXME: remove this GNU CC thing */
 	void map_func(Lisp_Extent *e, void *data) {
-	    /* The call to funcall will protect FUN and E thoughout. */
-	    if(!call_lisp1(fun, VAL(e)))
+	    /* The call to rep_funcall will protect FUN and E thoughout. */
+	    if(!rep_call_lisp1(fun, rep_VAL(e)))
 		longjmp(exit, 1);
 	}
 
@@ -676,60 +649,52 @@ deleted from within the callback function.
 	break;
 
     case 1:
-	return LISP_NULL;
+	return rep_NULL;
     }
 
-    return sym_t;
+    return Qt;
 }
 
-_PR VALUE cmd_extent_start(VALUE);
-DEFUN("extent-start", cmd_extent_start, subr_extent_start, (VALUE extent),
-      V_Subr1, DOC_extent_start) /*
-::doc:extent_start::
+DEFUN("extent-start", Fextent_start, Sextent_start, (repv extent), rep_Subr1) /*
+::doc:Sextent-start::
 extent-start EXTENT
 
 Return the position of the first character in EXTENT.
 ::end:: */
 {
-    DECLARE1(extent, EXTENTP);
-    extent = VAL(find_first_frag(VEXTENT(extent)));
+    rep_DECLARE1(extent, EXTENTP);
+    extent = rep_VAL(find_first_frag(VEXTENT(extent)));
     return make_pos(VEXTENT(extent)->start.col,
 		    VEXTENT(extent)->start.row + row_delta(VEXTENT(extent)));
 }
 
-_PR VALUE cmd_extent_end(VALUE);
-DEFUN("extent-end", cmd_extent_end, subr_extent_end, (VALUE extent),
-      V_Subr1, DOC_extent_end) /*
-::doc:extent_end::
+DEFUN("extent-end", Fextent_end, Sextent_end, (repv extent), rep_Subr1) /*
+::doc:Sextent-end::
 extent-end EXTENT
 
 Return the position of the character following EXTENT.
 ::end:: */
 {
-    DECLARE1(extent, EXTENTP);
-    extent = VAL(find_last_frag(VEXTENT(extent)));
+    rep_DECLARE1(extent, EXTENTP);
+    extent = rep_VAL(find_last_frag(VEXTENT(extent)));
     return make_pos(VEXTENT(extent)->end.col,
 		    VEXTENT(extent)->end.row + row_delta(VEXTENT(extent)));
 }
 
-_PR VALUE cmd_extent_parent(VALUE);
-DEFUN("extent-parent", cmd_extent_parent, subr_extent_parent, (VALUE extent),
-      V_Subr1, DOC_extent_parent) /*
-::doc:extent_parent::
+DEFUN("extent-parent", Fextent_parent, Sextent_parent, (repv extent), rep_Subr1) /*
+::doc:Sextent-parent::
 extent-parent EXTENT
 
 Return parent extent of EXTENT. Returns nil if EXTENT is the global extent
 covering the entire buffer.
 ::end:: */
 {
-    DECLARE1(extent, EXTENTP);
-    return VEXTENT(extent)->parent ? VAL(VEXTENT(extent)->parent) : sym_nil;
+    rep_DECLARE1(extent, EXTENTP);
+    return VEXTENT(extent)->parent ? rep_VAL(VEXTENT(extent)->parent) : Qnil;
 }
 
-_PR VALUE cmd_extent_root(VALUE);
-DEFUN("extent-root", cmd_extent_root, subr_extent_root, (VALUE tx),
-      V_Subr1, DOC_extent_root) /*
-::doc:extent_root::
+DEFUN("extent-root", Fextent_root, Sextent_root, (repv tx), rep_Subr1) /*
+::doc:Sextent-root::
 extent-root [BUFFER]
 
 Return the global extent covering the whole of BUFFER. This extent has no
@@ -737,27 +702,24 @@ parent.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
-    return VAL(VTX(tx)->tx_GlobalExtent);
+	tx = rep_VAL(curr_vw->vw_Tx);
+    return rep_VAL(VTX(tx)->tx_GlobalExtent);
 }
 
-_PR VALUE cmd_extent_plist(VALUE);
-DEFUN("extent-plist", cmd_extent_plist, subr_extent_plist, (VALUE extent),
-      V_Subr1, DOC_extent_plist) /*
-::doc:extent_plist::
+DEFUN("extent-plist", Fextent_plist, Sextent_plist, (repv extent), rep_Subr1) /*
+::doc:Sextent-plist::
 extent-plist EXTENT
 
 Return the property list associated with EXTENT.
 ::end:: */
 {
-    DECLARE1(extent, EXTENTP);
+    rep_DECLARE1(extent, EXTENTP);
     return VEXTENT(extent)->plist;
 }
 
-_PR VALUE cmd_set_extent_plist(VALUE, VALUE);
-DEFUN("set-extent-plist", cmd_set_extent_plist, subr_set_extent_plist,
-      (VALUE extent, VALUE plist), V_Subr2, DOC_set_extent_plist) /*
-::doc:set_extent_plist::
+DEFUN("set-extent-plist", Fset_extent_plist, Sset_extent_plist,
+      (repv extent, repv plist), rep_Subr2) /*
+::doc:Sset-extent-plist::
 set-extent-plist EXTENT PLIST
 
 Set the property list associated with EXTENT (and all other fragments of
@@ -765,7 +727,7 @@ this extent) to PLIST.
 ::end:: */
 {
     Lisp_Extent *e;
-    DECLARE1(extent, EXTENTP);
+    rep_DECLARE1(extent, EXTENTP);
 
     /* Update all fragments of the extent. TODO: don't need to
        call fff, just go backwards then forwards. */
@@ -780,7 +742,7 @@ this extent) to PLIST.
 }
 
 static void
-set_extent_locals(Lisp_Extent *e, VALUE value)
+set_extent_locals(Lisp_Extent *e, repv value)
 {
     e = find_first_frag(e);
     while(e != 0)
@@ -790,10 +752,9 @@ set_extent_locals(Lisp_Extent *e, VALUE value)
     }
 }
 
-_PR VALUE cmd_extent_get(VALUE, VALUE);
-DEFUN("extent-get", cmd_extent_get, subr_extent_get,
-      (VALUE extent, VALUE prop), V_Subr2, DOC_extent_get) /*
-::doc:extent_get::
+DEFUN("extent-get", Fextent_get, Sextent_get,
+      (repv extent, repv prop), rep_Subr2) /*
+::doc:Sextent-get::
 extent-get EXTENT PROPERTY
 
 Return the value of PROPERTY (a symbol) in EXTENT, or any of its parents.
@@ -804,54 +765,53 @@ The special properties `front-sticky', `rear-sticky', `local-variables', and
 ::end:: */
 {
     Lisp_Extent *inner;
-    DECLARE1(extent, EXTENTP);
-    DECLARE2(prop, SYMBOLP);
+    rep_DECLARE1(extent, EXTENTP);
+    rep_DECLARE2(prop, rep_SYMBOLP);
     inner = VEXTENT(extent);
 
-    if(prop == sym_front_sticky || prop == sym_rear_sticky)
+    if(prop == Qfront_sticky || prop == Qrear_sticky)
     {
-	extent = VAL((prop == sym_front_sticky
+	extent = rep_VAL((prop == Qfront_sticky
 		      ? find_first_frag : find_last_frag)(VEXTENT(extent)));
-	return (VEXTENT(extent)->car & (prop == sym_front_sticky
+	return (VEXTENT(extent)->car & (prop == Qfront_sticky
 					? EXTFF_OPEN_START
-					: EXTFF_OPEN_END)) ? sym_t : sym_nil;
+					: EXTFF_OPEN_END)) ? Qt : Qnil;
     }
-    else if(prop == sym_catch_variables)
+    else if(prop == Qcatch_variables)
     {
 	return ((VEXTENT(extent)->car & EXTFF_CATCH_VARIABLES)
-		? sym_t : sym_nil);
+		? Qt : Qnil);
     }
-    else if(prop == sym_local_variables)
+    else if(prop == Qlocal_variables)
 	return VEXTENT(extent)->locals;
 
     while(inner != 0)
     {
-	VALUE plist = inner->plist;
-	while(CONSP(plist) && CONSP(VCDR(plist)))
+	repv plist = inner->plist;
+	while(rep_CONSP(plist) && rep_CONSP(rep_CDR(plist)))
 	{
-	    if(VCAR(plist) == prop)
-		return VCAR(VCDR(plist));
-	    plist = VCDR(VCDR(plist));
+	    if(rep_CAR(plist) == prop)
+		return rep_CAR(rep_CDR(plist));
+	    plist = rep_CDR(rep_CDR(plist));
 	}
 	inner = inner->parent;
     }
-    return sym_nil;
+    return Qnil;
 }
 
-_PR VALUE cmd_extent_put(VALUE, VALUE, VALUE);
-DEFUN("extent-put", cmd_extent_put, subr_extent_put,
-      (VALUE extent, VALUE prop, VALUE val), V_Subr3, DOC_extent_put) /*
-::doc:extent_put::
-extent-put EXTENT PROPERTY VALUE
+DEFUN("extent-put", Fextent_put, Sextent_put,
+      (repv extent, repv prop, repv val), rep_Subr3) /*
+::doc:Sextent-put::
+extent-put EXTENT PROPERTY repv
 
-Set the value of PROPERTY (a symbol) in EXTENT to VALUE.
+Set the value of PROPERTY (a symbol) in EXTENT to repv.
 
 The special properties `front-sticky' and `rear-sticky' control whether
 characters inserted adjacent to the start or end of the extent are
 absorbed into the extent or not (if the related sticky property is non-
 nil).
 
-The special property `local-variables' is an alist of (SYMBOL . VALUE) pairs,
+The special property `local-variables' is an alist of (SYMBOL . repv) pairs,
 each defining the value of the variable named SYMBOL in the extent. See
 the `extent-set' and `buffer-symbol-value' functions.
 
@@ -862,140 +822,142 @@ one, will have their value set in this extent, using the `extent-set'
 function.
 ::end:: */
 {
-    VALUE plist;
-    DECLARE1(extent, EXTENTP);
-    DECLARE2(prop, SYMBOLP);
+    repv plist;
+    rep_DECLARE1(extent, EXTENTP);
+    rep_DECLARE2(prop, rep_SYMBOLP);
 
-    if(prop == sym_front_sticky || prop == sym_rear_sticky)
+    if(prop == Qfront_sticky || prop == Qrear_sticky)
     {
-	u_long bit = (prop == sym_front_sticky
+	u_long bit = (prop == Qfront_sticky
 		      ? EXTFF_OPEN_START : EXTFF_OPEN_END);
-	extent = VAL((prop == sym_front_sticky
+	extent = rep_VAL((prop == Qfront_sticky
 		      ? find_first_frag : find_last_frag)(VEXTENT(extent)));
 	VEXTENT(extent)->car &= ~bit;
-	if(!NILP(val))
+	if(!rep_NILP(val))
 	    VEXTENT(extent)->car |= bit;
     }
-    else if(prop == sym_catch_variables)
+    else if(prop == Qcatch_variables)
     {
-	extent = VAL(find_first_frag(VEXTENT(extent)));
+	extent = rep_VAL(find_first_frag(VEXTENT(extent)));
 	while(VEXTENT(extent) != 0)
 	{
 	    VEXTENT(extent)->car &= ~EXTFF_CATCH_VARIABLES;
-	    if(!NILP(val))
+	    if(!rep_NILP(val))
 		VEXTENT(extent)->car |= EXTFF_CATCH_VARIABLES;
-	    extent = VAL(VEXTENT(extent)->frag_next);
+	    extent = rep_VAL(VEXTENT(extent)->frag_next);
 	}
     }
-    else if(prop == sym_local_variables)
+    else if(prop == Qlocal_variables)
     {
-	if(!LISTP(val))
-	    return signal_arg_error(val, 2);
+	if(!rep_LISTP(val))
+	    return rep_signal_arg_error(val, 2);
 	set_extent_locals(VEXTENT(extent), val);
     }
     else
     {
 	plist = VEXTENT(extent)->plist;
-	while(CONSP(plist) && CONSP(VCDR(plist)))
+	while(rep_CONSP(plist) && rep_CONSP(rep_CDR(plist)))
 	{
-	    if(VCAR(plist) == prop)
+	    if(rep_CAR(plist) == prop)
 	    {
-		VCAR(VCDR(plist)) = val;
+		rep_CAR(rep_CDR(plist)) = val;
 		return val;
 	    }
-	    plist = VCDR(VCDR(plist));
+	    plist = rep_CDR(rep_CDR(plist));
 	}
-	cmd_set_extent_plist(extent,
-			     cmd_cons(prop,
-				      cmd_cons(val, VEXTENT(extent)->plist)));
+	Fset_extent_plist(extent,
+			     Fcons(prop,
+				      Fcons(val, VEXTENT(extent)->plist)));
     }
     return val;
 }
 
-_PR VALUE cmd_buffer_get(VALUE, VALUE, VALUE);
-DEFUN("buffer-get", cmd_buffer_get, subr_buffer_get,
-      (VALUE prop, VALUE pos, VALUE tx), V_Subr3, DOC_buffer_get) /*
-::doc:buffer_get::
+DEFUN("buffer-get", Fbuffer_get, Sbuffer_get,
+      (repv prop, repv pos, repv tx), rep_Subr3) /*
+::doc:Sbuffer-get::
 buffer-get PROPERTY [POSITION] [BUFFER]
 
 Get the value of PROPERTY (a symbol) at POSITION in BUFFER.
 ::end:: */
 {
-    VALUE e;
-    DECLARE1(prop, SYMBOLP);
+    repv e;
+    rep_DECLARE1(prop, rep_SYMBOLP);
 
     /* FIXME: this should search back up the stack. */
-    e = cmd_get_extent(pos, tx);
-    return cmd_extent_get(e, prop);
+    e = Fget_extent(pos, tx);
+    return Fextent_get(e, prop);
 }
 
-_PR VALUE cmd_buffer_symbol_value(VALUE, VALUE, VALUE, VALUE);
-DEFUN("buffer-symbol-value", cmd_buffer_symbol_value, subr_buffer_symbol_value,
-      (VALUE symbol, VALUE pos, VALUE tx, VALUE no_err), V_Subr4,
-      DOC_buffer_symbol_value) /*
-::doc:buffer_symbol_value::
-buffer-symbol-value SYMBOL [POSITION | EXTENT] [BUFFER] [NO-ERROR-IF-VOID]
+DEFUN("buffer-symbol-value", Fbuffer_symbol_value, Sbuffer_symbol_value,
+      (repv symbol, repv pos, repv tx, repv no_err), rep_Subr4) /*
+::doc:Sbuffer-symbol-value::
+buffer-symbol-value SYMBOL [POSITION | EXTENT] [BUFFER] [NO-rep_ERROR-IF-VOID]
 
 Return the local value of the variable named by SYMBOL at POSITION in
 BUFFER. Alternatively, if an extent is given as the second argument
 search from this extent upwards.
 
-If NO-ERROR-IF-VOID is non-nil, no error will be signalled if the variable
+If NO-rep_ERROR-IF-VOID is non-nil, no error will be signalled if the variable
 has no value at the specified position, otherwise a void-value error
 is signalled.
 ::end:: */
 {
-    VALUE e;
-    DECLARE1(symbol, SYMBOLP);
-    if(VSYM(symbol)->car & SF_BUFFER_LOCAL)
+    repv e;
+    rep_DECLARE1(symbol, rep_SYMBOLP);
+    if(rep_SYM(symbol)->car & rep_SF_LOCAL)
     {
 	if(!EXTENTP(pos))
-	    e = cmd_get_extent(pos, tx);
+	    e = Fget_extent(pos, tx);
 	else
 	    e = pos;
-	if(!NILP(e))
+	if(!rep_NILP(e))
 	{
 	    Lisp_Extent *inner = VEXTENT(e);
 	    while(inner != 0)
 	    {
-		VALUE cell = cmd_assq(symbol, inner->locals);
-		if(cell && CONSP(cell))
-		    return VCDR(cell);
+		repv cell = Fassq(symbol, inner->locals);
+		if(cell && rep_CONSP(cell))
+		    return rep_CDR(cell);
 		inner = inner->parent;
 	    }
 	}
     }
-    if(NILP(no_err))
-	return cmd_signal(sym_void_value, LIST_1(symbol));
+    if(rep_NILP(no_err))
+	return Fsignal(Qvoid_value, rep_LIST_1(symbol));
     else
-	return void_value;
+	return rep_void_value;
 }
 
-_PR VALUE cmd_extent_set(VALUE extent, VALUE symbol, VALUE val);
-DEFUN("extent-set", cmd_extent_set, subr_extent_set,
-      (VALUE extent, VALUE symbol, VALUE val), V_Subr3, DOC_extent_set) /*
-::doc:extent_set::
-extent-set EXTENT SYMBOL VALUE
+static repv
+deref_local_symbol (repv sym)
+{
+    return Fbuffer_symbol_value (sym, Qnil, Qnil, Qt);
+}
 
-Set the local value of the variable named SYMBOL in EXTENT to VALUE.
+DEFUN("extent-set", Fextent_set, Sextent_set,
+      (repv extent, repv symbol, repv val), rep_Subr3) /*
+::doc:Sextent-set::
+extent-set EXTENT SYMBOL repv
+
+Set the local value of the variable named SYMBOL in EXTENT to repv.
 ::end:: */
 {
-    VALUE vars;
-    DECLARE1(extent, EXTENTP);
-    DECLARE2(symbol, SYMBOLP);
+    repv vars;
+    rep_DECLARE1(extent, EXTENTP);
+    rep_DECLARE2(symbol, rep_SYMBOLP);
     vars = VEXTENT(extent)->locals;
-    if(!NILP(vars))
+    if(!rep_NILP(vars))
     {
-	VALUE cell = cmd_assq(symbol, vars);
-	if(cell && CONSP(cell))
+	repv cell = Fassq(symbol, vars);
+	if(cell && rep_CONSP(cell))
 	{
-	    VCDR(cell) = val;
+	    rep_CDR(cell) = val;
 	    return val;
 	}
     }
-    vars = cmd_cons(cmd_cons(symbol, val), vars);
+    vars = Fcons(Fcons(symbol, val), vars);
     set_extent_locals(VEXTENT(extent), vars);
-    VSYM(symbol)->car |= SF_BUFFER_LOCAL;
+    rep_SYM(symbol)->car |= rep_SF_LOCAL;
     return val;
 }
 
@@ -1003,7 +965,7 @@ Set the local value of the variable named SYMBOL in EXTENT to VALUE.
    has the SF_BUFFER_LOCAL property) should be set in the current stack
    of extents. If so, sets it and returns true. */
 bool
-buffer_set_if_bound(VALUE symbol, VALUE value)
+buffer_set_if_bound(repv symbol, repv value)
 {
     Pos tem;
     Lisp_Extent *e;
@@ -1011,24 +973,153 @@ buffer_set_if_bound(VALUE symbol, VALUE value)
     e = find_extent(curr_vw->vw_Tx->tx_GlobalExtent, &tem);
     while(e != 0)
     {
-	VALUE cell = cmd_assq(symbol, e->locals);
-	if(cell && CONSP(cell))
+	repv cell = Fassq(symbol, e->locals);
+	if(cell && rep_CONSP(cell))
 	{
-	    VCDR(cell) = value;
+	    rep_CDR(cell) = value;
 	    return TRUE;
 	}
 	else if(e->car & EXTFF_CATCH_VARIABLES)
 	{
-	    VALUE tem = cmd_get(symbol, sym_permanent_local);
-	    if(NILP(tem))
+	    repv tem = Fget(symbol, Qpermanent_local);
+	    if(rep_NILP(tem))
 	    {
-		cmd_extent_set(VAL(e), symbol, value);
+		Fextent_set(rep_VAL(e), symbol, value);
 		return TRUE;
 	    }
 	}
 	e = e->parent;
     }
     return FALSE;
+}
+
+static repv
+set_local_symbol (repv sym, repv value)
+{
+    TX *tx = curr_vw->vw_Tx;
+    if(buffer_set_if_bound(sym, value))
+	return value;
+    else if(rep_SYM(sym)->car & rep_SF_LOCAL)
+    {
+	/* Create a new buffer-local value */
+	tx->tx_GlobalExtent->locals = Fcons(Fcons(sym, value),
+					    tx->tx_GlobalExtent->locals);
+	return value;
+    }
+    else
+	return rep_NULL;
+}
+
+DEFUN("make-local-variable", Fmake_local_variable, Smake_local_variable,
+      (repv sym), rep_Subr1) /*
+::doc:Smake-local-variable::
+make-local-variable SYMBOL
+
+Gives the variable SYMBOL a buffer-local binding in the current buffer. It
+will be the same as the default value to start with. If the current buffer
+alread has a buffer-local binding for SYMBOL nothing happens.
+Returns SYMBOL.
+::end:: */
+{
+    repv slot;
+    TX *tx = curr_vw->vw_Tx;
+    rep_DECLARE1(sym, rep_SYMBOLP);
+    rep_SYM(sym)->car |= rep_SF_LOCAL;
+    slot = Fassq(sym, tx->tx_GlobalExtent->locals);
+    if(!slot || !rep_CONSP(slot))
+    {
+	/* Need to create a binding. */
+	tx->tx_GlobalExtent->locals = Fcons(Fcons(sym, rep_SYM(sym)->value),
+					    tx->tx_GlobalExtent->locals);
+    }
+    return sym;
+}
+
+DEFUN("make-variable-buffer-local", Fmake_variable_buffer_local,
+      Smake_variable_buffer_local, (repv sym), rep_Subr1) /*
+::doc:Smake-variable-buffer-local::
+make-variable-buffer-local SYMBOL
+
+Marks the variable SYMBOL as being automatically buffer-local. Any attempts
+at setting SYMBOL result in the current buffer being given its own binding.
+Returns SYMBOL.
+::end:: */
+{
+    rep_DECLARE1(sym, rep_SYMBOLP);
+    rep_SYM(sym)->car |= (rep_SF_LOCAL | rep_SF_SET_LOCAL);
+    return sym;
+}
+
+DEFUN("buffer-variables", Fbuffer_variables, Sbuffer_variables,
+      (repv tx), rep_Subr1) /*
+::doc:Sbuffer-variables::
+buffer-variables [BUFFER]
+
+Returns a list of (SYMBOL . VALUE) bindings which take effect when the
+current buffer is BUFFER. (Only the buffer-wide bindings, not those
+for each minor extent.)
+::end:: */
+{
+    if(!BUFFERP(tx))
+	tx = rep_VAL(curr_vw->vw_Tx);
+    return VTX(tx)->tx_GlobalExtent->locals;
+}
+
+DEFUN("kill-all-local-variables", Fkill_all_local_variables,
+      Skill_all_local_variables, (repv tx), rep_Subr1) /*
+::doc:Skill-all-local-variables::
+kill-all-local-variables [BUFFER]
+
+Remove all buffer-local variables from BUFFER that are not marked as being
+permanent (i.e. their `permanent-local' property is unset or non-nil.)
+::end:: */
+{
+    repv list;
+    if(!BUFFERP(tx))
+	tx = rep_VAL(curr_vw->vw_Tx);
+    list = VTX(tx)->tx_GlobalExtent->locals;
+    VTX(tx)->tx_GlobalExtent->locals = Qnil;
+    while(rep_CONSP(list))
+    {
+	if(rep_NILP(Fget(rep_CAR(rep_CAR(list)), Qpermanent_local)))
+	    list = rep_CDR(list);
+	else
+	{
+	    repv next = rep_CDR(list);
+	    rep_CDR(list) = VTX(tx)->tx_GlobalExtent->locals;
+	    VTX(tx)->tx_GlobalExtent->locals = list;
+	    list = next;
+	}
+    }
+    tx_kill_local_variables(VTX(tx));
+    return tx;
+}
+
+DEFUN("kill-local-variable", Fkill_local_variable, Skill_local_variable,
+      (repv sym, repv tx), rep_Subr2) /*
+::doc:Skill-local-variable::
+kill-local-variable SYMBOL [BUFFER]
+
+Remove the buffer-local value of the symbol SYMBOL in the specified buffer.
+::end:: */
+{
+    repv list;
+    rep_DECLARE1(sym, rep_SYMBOLP);
+    if(!BUFFERP(tx))
+	tx = rep_VAL(curr_vw->vw_Tx);
+    list = VTX(tx)->tx_GlobalExtent->locals;
+    VTX(tx)->tx_GlobalExtent->locals = Qnil;
+    while(rep_CONSP(list))
+    {
+	repv nxt = rep_CDR(list);
+	if(rep_CAR(list) != sym)
+	{
+	    rep_CDR(list) = VTX(tx)->tx_GlobalExtent->locals;
+	    VTX(tx)->tx_GlobalExtent->locals = list;
+	}
+	list = nxt;
+    }
+    return sym;
 }
 
 
@@ -1239,19 +1330,23 @@ adjust_extents_join_rows(Lisp_Extent *x, long col, long row)
 
 /* Misc. stuff */
 
-void
-mark_extent(Lisp_Extent *e)
+static void
+extent_mark(repv val)
 {
-    MARKVAL(VAL(e));
-    e = e->first_child;
-    while(e != 0)
-    {
-	mark_extent(e);
-	e = e->right_sibling;
-    }
+    Lisp_Extent *e = VEXTENT(val);
+    rep_GC_SET_CELL(val);
+    rep_MARKVAL(e->plist);
+    rep_MARKVAL(e->locals);
+    rep_MARKVAL(rep_VAL(e->tx));
+    /* This is a bit naive. It could probably be done w/o recursion.. */
+    rep_MARKVAL(rep_VAL(e->parent));
+    rep_MARKVAL(rep_VAL(e->right_sibling));
+    rep_MARKVAL(rep_VAL(e->left_sibling));
+    rep_MARKVAL(rep_VAL(e->first_child));
+    rep_MARKVAL(rep_VAL(e->last_child));
 }
 
-void
+static void
 extent_sweep(void)
 {
     Lisp_Extent *e = allocated_extents;
@@ -1259,11 +1354,11 @@ extent_sweep(void)
     while(e != 0)
     {
 	Lisp_Extent *next = e->next;
-	if(!GC_CELL_MARKEDP(VAL(e)))
-	    FREE_OBJECT(e);
+	if(!rep_GC_CELL_MARKEDP(rep_VAL(e)))
+	    rep_FREE_CELL(e);
 	else
 	{
-	    GC_CLR_CELL(VAL(e));
+	    rep_GC_CLR_CELL(rep_VAL(e));
 	    e->next = allocated_extents;
 	    allocated_extents = e;
 	}
@@ -1271,35 +1366,35 @@ extent_sweep(void)
     }
 }
 
-void
-extent_prin(VALUE strm, VALUE e)
+static void
+extent_prin(repv strm, repv e)
 {
     char buf[128];
     sprintf(buf, "#<extent (%ld,%ld)->(%ld,%ld)",
 	    VEXTENT(e)->start.row, VEXTENT(e)->start.col,
 	    VEXTENT(e)->end.row, VEXTENT(e)->end.col);
-    stream_puts(strm, buf, -1, FALSE);
+    rep_stream_puts(strm, buf, -1, FALSE);
 #ifdef DEBUG
-    stream_putc(strm, ' ');
-    print_val(strm, VEXTENT(e)->plist);
-    stream_puts(strm, " [", -1, FALSE);
+    rep_stream_putc(strm, ' ');
+    rep_print_val(strm, VEXTENT(e)->plist);
+    rep_stream_puts(strm, " [", -1, FALSE);
     {
 	Lisp_Extent *x = VEXTENT(e)->first_child;
 	while(x != 0)
 	{
-	    extent_prin(strm, VAL(x));
+	    extent_prin(strm, rep_VAL(x));
 	    x = x->right_sibling;
 	}
     }
-    stream_putc(strm, ']');
+    rep_stream_putc(strm, ']');
 #endif
-    stream_putc(strm, '>');
+    rep_stream_putc(strm, '>');
 }
 
-int
-extent_cmp(VALUE e1, VALUE e2)
+static int
+extent_cmp(repv e1, repv e2)
 {
-    if(VTYPE(e1) == VTYPE(e2))
+    if(rep_TYPE(e1) == rep_TYPE(e2))
     {
 	Lisp_Extent *f1 = find_first_frag(VEXTENT(e1));
 	Lisp_Extent *f2 = find_first_frag(VEXTENT(e2));
@@ -1312,25 +1407,38 @@ extent_cmp(VALUE e1, VALUE e2)
 void
 extent_init(void)
 {
-    ADD_SUBR(subr_make_extent);
-    ADD_SUBR(subr_delete_extent);
-    ADD_SUBR(subr_delete_all_extents);
-    ADD_SUBR(subr_move_extent);
-    ADD_SUBR(subr_get_extent);
-    ADD_SUBR(subr_map_extents);
-    ADD_SUBR(subr_extent_start);
-    ADD_SUBR(subr_extent_end);
-    ADD_SUBR(subr_extent_parent);
-    ADD_SUBR(subr_extent_root);
-    ADD_SUBR(subr_extent_plist);
-    ADD_SUBR(subr_set_extent_plist);
-    ADD_SUBR(subr_extent_get);
-    ADD_SUBR(subr_buffer_get);
-    ADD_SUBR(subr_extent_put);
-    ADD_SUBR(subr_buffer_symbol_value);
-    ADD_SUBR(subr_extent_set);
-    INTERN(front_sticky);
-    INTERN(rear_sticky);
-    INTERN(local_variables);
-    INTERN(catch_variables);
+    extent_type = rep_register_new_type ("extent", extent_cmp,
+					 extent_prin, extent_prin,
+					 extent_sweep, extent_mark,
+					 0, 0, 0, 0, 0, 0, 0);
+
+    rep_ADD_SUBR(Smake_extent);
+    rep_ADD_SUBR(Sdelete_extent);
+    rep_ADD_SUBR(Sdelete_all_extents);
+    rep_ADD_SUBR(Smove_extent);
+    rep_ADD_SUBR(Sget_extent);
+    rep_ADD_SUBR(Smap_extents);
+    rep_ADD_SUBR(Sextent_start);
+    rep_ADD_SUBR(Sextent_end);
+    rep_ADD_SUBR(Sextent_parent);
+    rep_ADD_SUBR(Sextent_root);
+    rep_ADD_SUBR(Sextent_plist);
+    rep_ADD_SUBR(Sset_extent_plist);
+    rep_ADD_SUBR(Sextent_get);
+    rep_ADD_SUBR(Sbuffer_get);
+    rep_ADD_SUBR(Sextent_put);
+    rep_ADD_SUBR(Sbuffer_symbol_value);
+    rep_ADD_SUBR(Sextent_set);
+    rep_ADD_SUBR(Smake_local_variable);
+    rep_ADD_SUBR(Smake_variable_buffer_local);
+    rep_ADD_SUBR(Sbuffer_variables);
+    rep_ADD_SUBR(Skill_all_local_variables);
+    rep_ADD_SUBR(Skill_local_variable);
+    rep_INTERN(front_sticky);
+    rep_INTERN(rear_sticky);
+    rep_INTERN(local_variables);
+    rep_INTERN(catch_variables);
+
+    rep_deref_local_symbol_fun = deref_local_symbol;
+    rep_set_local_symbol_fun = set_local_symbol;
 }

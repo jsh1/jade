@@ -19,18 +19,11 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (require 'ring)
+(require 'mailaddr)
 (provide 'maildefs)
 
 
 ;; Configuration
-
-(defvar mail-domain-name (if (string-match "^([^.]+\\.)[^.]+" (system-name))
-			     (substring (system-name) (match-end 1))
-			   (system-name))
-  "Mail domainname of the local site.")
-
-(defvar user-mail-address (concat (user-login-name) ?\@ mail-domain-name)
-  "Address to put in From: headers of outgoing mail.")
 
 (defvar mail-address-style 'angles
   "How to put the sender's full name into From: headers, options include:\n
@@ -109,8 +102,7 @@ contents of the file specified by mail-signature-file.")
 (defvar mail-signature-file "~/.signature"
   "File to insert at end of message being sent.")
 
-(defvar mail-default-headers (format nil "X-Mailer: %s"
-				     (version-string))
+(defvar mail-default-headers (concat "X-Mailer: " jade-version)
   "Text to insert into the header section of all outgoing mail messages.")
 
 (defvar mail-send-hook nil

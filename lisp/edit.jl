@@ -62,6 +62,17 @@ will insert at the current cursor position, _without_ first moving the
 cursor to the position of the mouse pointer.")
 
 
+;; Some macros
+
+(defmacro pos-col (p)
+  "Return the column pointed to by position P."
+  (list 'cdr p))
+
+(defmacro pos-line (p)
+  "Return the row pointed to by position P."
+  (list 'car p))
+
+
 ;; Marks
 
 (defun goto-mark (mark &optional dont-set-auto)

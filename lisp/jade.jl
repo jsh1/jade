@@ -1,4 +1,4 @@
-;;;; init.jl -- Standard initialisation script
+;;;; jade.jl -- Standard initialisation script
 ;;;  Copyright (C) 1993, 1994 John Harper <john@dcs.warwick.ac.uk>
 ;;;  $Id$
 
@@ -18,12 +18,11 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(provide 'jade)
+
 (message "Initialising; wait..." t)
 
 ;; Load standard libraries
-(load "lisp")
-(load "backquote")
-(load "tilde")
 (load "loadkeys")
 (load "windows")
 (load "buffers")
@@ -33,38 +32,40 @@
 ;; Install all autoload hooks. This is done last so that it works
 ;; when dumped. We load autoload.jl to ensure that we don't get a
 ;; compiled (and possibly out of date) version
-(load "autoload.jl")
+(load-all "autoload.jl" t)
 
-;; Do operating- and window-system initialisation
-(load (concat "os-" (symbol-name operating-system)) t)
-(load (concat "ws-" (symbol-name window-system)) t)
+;; Do and operating- and window-system initialisation
+(load-all (concat "os-" (symbol-name operating-system)) t)
+(load-all (concat "ws-" (symbol-name window-system)) t)
 
 ;; Load site specific initialisation. Errors here are trapped since
 ;; they're probably not going to leave the editor in an unusable state
-(if (not (member "-no-rc" command-line-args))
+(if (not (member "--no-rc" command-line-args))
     (condition-case error-data
 	(progn
-	  ;; First the site-wide stuff, the t means don't complain
-	  ;; if it doesn't exist
-	  (load "site-init" t)
-	  ;; Now try to interpret the user's startup file, or failing that
-	  ;; the default.jl file providing site-wide user options
-	  (or
-	   (load (concat (user-home-directory) ".jaderc") t t)
-	   (load "default" t)))
+	  ;; First the site-wide stuff
+	  (load-all "site-init")
+
+	  ;; then the users rep configuration, or site-wide defaults
+	  (or (load (concat (user-home-directory) ".reprc") t t)
+	      (load "rep-defaults" t))
+
+	  ;; then the jade specific user configuration
+	  (or (load (concat (user-home-directory) ".jaderc") t t)
+	      (load "jade-default" t)))
       (error
        (format (stderr-file) "error in local config--> %S\n" error-data)))
-  (setq command-line-args (delete "-no-rc" command-line-args)))
+  (setq command-line-args (delete "--no-rc" command-line-args)))
+
+(message (concat "Built " jade-build-id))
 
 ;; Set up the first window as command shell type thing
 (with-buffer default-buffer
   (lisp-mode))
 
 ;; Print a message in the first buffer
-(format default-buffer
-	";; %s, Copyright (C) 1993, 1994 John Harper
-;; Jade comes with ABSOLUTELY NO WARRANTY; for details see the file COPYING\n\n"
-	(version-string))
+(format default-buffer ";; Jade %s, Copyright (C) 1993-1999 John Harper\n;; Jade comes with ABSOLUTELY NO WARRANTY; for details see the file COPYING\n\n"	jade-version)
+
 ;; Don't want it in the undo list
 (setq buffer-undo-list nil)
 (set-buffer-modified default-buffer nil)
@@ -87,5 +88,3 @@
        (throw 'quit 0))
       (t
        (find-file arg)))))
-
-(message (concat "Built " (build-id-string)))

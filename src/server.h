@@ -1,4 +1,4 @@
-/* revision.h -- Version control
+/* server.h -- Definitions for client/server
    Copyright (C) 1993, 1994 John Harper <john@dcs.warwick.ac.uk>
    $Id$
 
@@ -11,19 +11,26 @@
 
    Jade is distributed in the hope that it will be useful, but
    WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with Jade; see the file COPYING.  If not, write to
+   along with Jade; see the file COPYING.	If not, write to
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-#ifndef _REVISION_H
-#define _REVISION_H
+#ifndef JADE_SERVER_H
+#define JADE_SERVER_H
 
-#define VERSSTRING "Jade 4.0 alpha"
-#define VERSID	   "4.0"
-#define MAJOR	   4
-#define MINOR	   0
+/* Name of the unix domain socket. It's stored in the user's home directory,
+   but this is the basename. %s is fully-qualified host name */
+#define JADE_SOCK_NAME ".jade-%s"
 
-#endif /* _REVISION_H */
+/* Types of request packet. A byte with one of these values is sent to
+   initiate a command. */
+enum server_request {
+    req_find_file = 0,
+    req_eval,
+    req_end_of_session
+};
+
+#endif /* JADE_SERVER_H */

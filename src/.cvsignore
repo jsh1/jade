@@ -1,0 +1,6 @@
+.libs
+Makefile
+jade
+jadeclient
+*.lo
+*.la

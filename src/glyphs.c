@@ -19,8 +19,6 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-
 #include <string.h>
 #include <stdlib.h>
 
@@ -28,26 +26,14 @@
 # include <memory.h>
 #endif
 
-_PR void make_window_glyphs(glyph_buf *g, WIN *w);
-_PR void make_message_glyphs(glyph_buf *g, WIN *w);
-_PR bool skip_glyph_rows_forwards(VW *, long, long, long, long *, long *);
-_PR bool skip_glyph_rows_backwards(VW *, long, long, long, long *, long *);
-_PR void recenter_cursor(VW *vw);
 
 static long line_glyph_length(TX *tx, long line);
 
-_PR long glyph_col(TX *, long, long);
-_PR long char_col(TX *, long, long);
-_PR long get_cursor_column(VW *);
-_PR void set_cursor_vertically(VW *vw, long row);
 
-_PR void glyphtable_sweep(void);
-_PR void glyphtable_prin(VALUE, VALUE);
-_PR void glyphs_init(void);
-_PR void glyphs_kill(void);
 
 DEFSYM(glyph_table, "glyph-table");
-_PR VALUE sym_glyph_table;
+
+int glyph_table_type;
 
 
 /* Glyph table data structures */
@@ -63,15 +49,15 @@ typedef char glyph_widths_t[256];
 typedef u_char glyph_glyphs_t[256][4];
 
 typedef struct glyph_table {
-    VALUE		gt_Car;
+    repv		gt_Car;
     struct glyph_table *gt_Next;
     glyph_widths_t	gt_Widths;
     glyph_glyphs_t	gt_Glyphs;
 } glyph_table_t;
-#define GTF_STATIC (1 << CELL8_TYPE_BITS)	/* Don't free() this table */
+#define GTF_STATIC (1 << rep_CELL16_TYPE_BITS)	/* Don't free() this table */
 
 static glyph_table_t default_glyph_table = {
-    V_GlyphTable | GTF_STATIC,
+    GTF_STATIC,
     NULL,
     {
 	2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2,
@@ -182,9 +168,9 @@ make_window_glyphs(glyph_buf *g, WIN *w)
     {
 	glyph_widths_t *width_table;
 	glyph_glyphs_t *glyph_table;
-	VALUE glyph_tab = cmd_buffer_symbol_value(sym_glyph_table,
-						  vw->vw_DisplayOrigin,
-						  VAL(vw->vw_Tx), sym_t);
+	repv glyph_tab = Fbuffer_symbol_value(Qglyph_table,
+					      vw->vw_DisplayOrigin,
+					      rep_VAL(vw->vw_Tx), Qt);
 	glyph_attr attr;
 	int tab_size = vw->vw_Tx->tx_TabSize;
 	long first_col, first_row, first_char_col;
@@ -199,7 +185,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	Pos next_extent;
 
 	if(!GLYPHTABP(glyph_tab))
-	    glyph_tab = cmd_default_glyph_table();
+	    glyph_tab = Fdefault_glyph_table();
 	width_table = &VGLYPHTAB(glyph_tab)->gt_Widths;
 	glyph_table = &VGLYPHTAB(glyph_tab)->gt_Glyphs;
 
@@ -398,11 +384,11 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		    attr = merge_faces(w, extent, block_active, FALSE);
 
 		    /* Reload the glyph table for the new extent. */
-		    glyph_tab = cmd_buffer_symbol_value(sym_glyph_table,
-							VAL(extent),
-							sym_nil, sym_t);
+		    glyph_tab = Fbuffer_symbol_value(Qglyph_table,
+							rep_VAL(extent),
+							Qnil, Qt);
 		    if(!GLYPHTABP(glyph_tab))
-			glyph_tab = VAL(&default_glyph_table);
+			glyph_tab = rep_VAL(&default_glyph_table);
 		    width_table = &VGLYPHTAB(glyph_tab)->gt_Widths;
 		    glyph_table = &VGLYPHTAB(glyph_tab)->gt_Glyphs;
 		}
@@ -568,7 +554,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	/* In case the logical end of the buffer is before the
 	   end of the view, fill with empty lines. */
 	{
-	    VALUE face = VSYM(sym_default_face)->value;
+	    repv face = rep_SYM(Qdefault_face)->value;
 	    if(FACEP(face))
 		attr = get_face_id(w, VFACE(face));
 	}
@@ -583,11 +569,11 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	   line text. TODO: should use glyph tables for this */
 	if((vw->vw_Flags & VWFF_MINIBUF) == 0)
 	{
-	    VALUE face;
+	    repv face;
 	    glyph_code *codes;
 	    glyph_attr *attrs;
 
-	    face = VSYM(sym_modeline_face)->value;
+	    face = rep_SYM(Qmodeline_face)->value;
 	    if(FACEP(face))
 		attr = get_face_id(w, VFACE(face));
 
@@ -613,7 +599,7 @@ make_message_glyphs(glyph_buf *g, WIN *w)
 {
     /* TODO: use glyph table to output message */
 
-    VALUE face;
+    repv face;
     glyph_attr attr;
 
     u_long msg_len = w->w_MessageLen;
@@ -625,7 +611,7 @@ make_message_glyphs(glyph_buf *g, WIN *w)
 	msg_len = (g->cols-1) * w->w_MiniBuf->vw_MaxY;
     }
 
-    face = VSYM(sym_default_face)->value;
+    face = rep_SYM(Qdefault_face)->value;
     if(FACEP(face))
 	attr = get_face_id(w, VFACE(face));
     else
@@ -743,9 +729,9 @@ recenter_cursor(VW *vw)
     /* First check that the cursor is within the current
        restriction, if not move the cursor until it is. */
     if(VROW(vw->vw_CursorPos) < tx->tx_LogicalStart)
-	vw->vw_CursorPos = cmd_restriction_start(VAL(tx));
+	vw->vw_CursorPos = Frestriction_start(rep_VAL(tx));
     if(VROW(vw->vw_CursorPos) >= tx->tx_LogicalEnd)
-	vw->vw_CursorPos = cmd_restriction_end(VAL(tx));
+	vw->vw_CursorPos = Frestriction_end(rep_VAL(tx));
     
     /* Check how cursor is in relation to the viewable region of the
        buffer. Change the viewable region if necessary. */
@@ -968,12 +954,12 @@ uncached_string_glyph_length(TX *tx, const u_char *src, long srcLen)
 {
     /* FIXME: This is wrong, it's necessary to traverse the extent
        tree on this line since the glyph-table can be changed. */
-    VALUE gt = cmd_buffer_symbol_value(sym_glyph_table, sym_nil,
-				       VAL(tx), sym_t);
+    repv gt = Fbuffer_symbol_value(Qglyph_table, Qnil,
+				       rep_VAL(tx), Qt);
     register long w;
     glyph_widths_t *width_table;
     if(!GLYPHTABP(gt))
-	gt = cmd_default_glyph_table();
+	gt = Fdefault_glyph_table();
     width_table = &VGLYPHTAB(gt)->gt_Widths;
     for(w = 0; srcLen-- > 0;)
     {
@@ -1091,10 +1077,10 @@ char_col(TX *tx, long col, long linenum)
     glyph_widths_t *width_table;
     register long w = 0;
     /* FIXME: This is wrong */
-    VALUE gt = cmd_buffer_symbol_value(sym_glyph_table, VAL(tx),
-				       sym_nil, sym_t);
-    if(VOIDP(gt) || NILP(gt))
-	gt = VAL(&default_glyph_table);
+    repv gt = Fbuffer_symbol_value(Qglyph_table, rep_VAL(tx),
+				       Qnil, Qt);
+    if(rep_VOIDP(gt) || rep_NILP(gt))
+	gt = rep_VAL(&default_glyph_table);
     width_table = &VGLYPHTAB(gt)->gt_Widths;
     while((w < col) && (srclen-- > 0))
     {
@@ -1141,20 +1127,18 @@ set_cursor_vertically(VW *vw, long row)
 
 /* LISP interface */
 
-_PR VALUE cmd_glyph_table_p(VALUE arg);
-DEFUN("glyph-table-p", cmd_glyph_table_p, subr_glyph_table_p, (VALUE arg), V_Subr1, DOC_glyph_table_p) /*
-::doc:glyph_table_p::
+DEFUN("glyph-table-p", Fglyph_table_p, Sglyph_table_p, (repv arg), rep_Subr1) /*
+::doc:Sglyph-table-p::
 glyph-table-p ARG
 
 Returns t if ARG is a glyph-table.
 ::end:: */
 {
-    return(GLYPHTABP(arg) ? sym_t : sym_nil);
+    return(GLYPHTABP(arg) ? Qt : Qnil);
 }
 
-_PR VALUE cmd_char_to_glyph_pos(VALUE pos, VALUE tx);
-DEFUN("char-to-glyph-pos", cmd_char_to_glyph_pos, subr_char_to_glyph_pos, (VALUE pos, VALUE tx), V_Subr2, DOC_char_to_glyph_pos) /*
-::doc:char_to_glyph_pos::
+DEFUN("char-to-glyph-pos", Fchar_to_glyph_pos, Schar_to_glyph_pos, (repv pos, repv tx), rep_Subr2) /*
+::doc:Schar-to-glyph-pos::
 char-to-glyph-pos [POS] [BUFFER]
 
 From the character position POS, find its true *physical* position when
@@ -1162,18 +1146,17 @@ rendered.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     if(check_line(VTX(tx), pos))
 	return make_pos(glyph_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
     else
-	return LISP_NULL;
+	return rep_NULL;
 }
 
-_PR VALUE cmd_glyph_to_char_pos(VALUE pos, VALUE tx);
-DEFUN("glyph-to-char-pos", cmd_glyph_to_char_pos, subr_glyph_to_char_pos, (VALUE pos, VALUE tx), V_Subr2, DOC_glyph_to_char_pos) /*
-::doc:glyph_to_char_pos::
+DEFUN("glyph-to-char-pos", Fglyph_to_char_pos, Sglyph_to_char_pos, (repv pos, repv tx), rep_Subr2) /*
+::doc:Sglyph-to-char-pos::
 glyph-to-char-pos POS [BUFFER]
 
 For the physical position POS, find the closest matching actual character
@@ -1181,38 +1164,36 @@ position.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
-    DECLARE1(pos, POSP);
+	tx = rep_VAL(curr_vw->vw_Tx);
+    rep_DECLARE1(pos, POSP);
     if(check_line(VTX(tx), pos))
 	return make_pos(char_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
     else
-	return LISP_NULL;
+	return rep_NULL;
 }
 
-_PR VALUE cmd_display_to_char_pos(VALUE pos, VALUE vw);
-DEFUN("display-to-char-pos", cmd_display_to_char_pos,
-      subr_display_to_char_pos, (VALUE pos, VALUE vw),
-      V_Subr2, DOC_display_to_char_pos) /*
-::doc:display_to_char_pos::
+DEFUN("display-to-char-pos", Fdisplay_to_char_pos,
+      Sdisplay_to_char_pos, (repv pos, repv vw), rep_Subr2) /*
+::doc:Sdisplay-to-char-pos::
 display-to-char-pos POSITION [VIEW]
 
 Return the position of the character displayed in VIEW (or the current view)
 at screen coordinate POSITION (relative to the upper-left glyph in VIEW).
 Returns nil if no such character exists (i.e. POSITION is past the end of
 the buffer).
-::doc:: */
+::end:: */
 {
     TX *tx;
     long col, row;
-    DECLARE1(pos, POSP);
+    rep_DECLARE1(pos, POSP);
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
+	vw = rep_VAL(curr_vw);
     tx = VVIEW(vw)->vw_Tx;
     col = VCOL(pos);
     row = VROW(pos);
     if(!(col >= 0 && col < VVIEW(vw)->vw_MaxX
 	 && row >= 0 && row < VVIEW(vw)->vw_MaxY))
-	return signal_arg_error(pos, 1);
+	return rep_signal_arg_error(pos, 1);
 
     if(skip_glyph_rows_forwards(VVIEW(vw), row,
 				VCOL(VVIEW(vw)->vw_DisplayOrigin),
@@ -1224,13 +1205,12 @@ the buffer).
 	col = char_col(tx, col + VCOL(pos), row);
 	return make_pos(col, row);
     }
-    return sym_nil;
+    return Qnil;
 }
 
-_PR VALUE cmd_char_to_display_pos(VALUE pos, VALUE vw);
-DEFUN("char-to-display-pos", cmd_char_to_display_pos, subr_char_to_display_pos,
-      (VALUE pos, VALUE vw), V_Subr2, DOC_char_to_display_pos) /*
-::doc:char_to_display_pos::
+DEFUN("char-to-display-pos", Fchar_to_display_pos, Schar_to_display_pos,
+      (repv pos, repv vw), rep_Subr2) /*
+::doc:Schar-to-display-pos::
 char-to-display-pos POSITION [VIEW]
 
 Return the screen coordinates, relative to the upper left corner of VIEW,
@@ -1241,14 +1221,14 @@ not currently being displayed, return nil.
     TX *tx;
     long gcol, grow;
 
-    DECLARE1(pos, POSP);
+    rep_DECLARE1(pos, POSP);
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
+	vw = rep_VAL(curr_vw);
     tx = VVIEW(vw)->vw_Tx;
     if(!check_line(tx, pos))
-	return LISP_NULL;
+	return rep_NULL;
     if(POS_LESS_P(pos, VVIEW(vw)->vw_DisplayOrigin))
-	return sym_nil;
+	return Qnil;
 
     if(TX_WRAP_LINES_P(tx))
     {
@@ -1267,7 +1247,7 @@ not currently being displayed, return nil.
 	    row++;
 	}
 	if(grow >= VVIEW(vw)->vw_MaxY)
-	    return sym_nil;
+	    return Qnil;
 	gcol = glyph_col(tx, VCOL(pos), VROW(pos));
 	while(gcol >= VVIEW(vw)->vw_MaxX - 1)
 	{
@@ -1279,29 +1259,27 @@ not currently being displayed, return nil.
     {
 	grow = VROW(pos) - VROW(VVIEW(vw)->vw_DisplayOrigin);
 	if(grow < 0 || grow >= VVIEW(vw)->vw_MaxY)
-	    return sym_nil;
+	    return Qnil;
 	gcol = (glyph_col(tx, VCOL(pos), VROW(pos))
 		- VCOL(VVIEW(vw)->vw_DisplayOrigin));
 	if(gcol < 0 || gcol >= VVIEW(vw)->vw_MaxX)
-	    return sym_nil;
+	    return Qnil;
     }
     return make_pos(gcol, grow);
 }
 
-_PR VALUE cmd_default_glyph_table(void);
-DEFUN("default-glyph-table", cmd_default_glyph_table, subr_default_glyph_table, (void), V_Subr0, DOC_default_glyph_table) /*
-::doc:default_glyph_table::
+DEFUN("default-glyph-table", Fdefault_glyph_table, Sdefault_glyph_table, (void), rep_Subr0) /*
+::doc:Sdefault-glyph-table::
 default-glyph-table
 
 Returns the standard glyph-table.
 ::end:: */
 {
-    return(VAL(&default_glyph_table));
+    return(rep_VAL(&default_glyph_table));
 }
 
-_PR VALUE cmd_make_glyph_table(VALUE src);
-DEFUN("make-glyph-table", cmd_make_glyph_table, subr_make_glyph_table, (VALUE src), V_Subr1, DOC_make_glyph_table) /*
-::doc:make_glyph_table::
+DEFUN("make-glyph-table", Fmake_glyph_table, Smake_glyph_table, (repv src), rep_Subr1) /*
+::doc:Smake-glyph-table::
 make-glyph-table SRC
 
 Creates a new glyph-table. If SRC is a glyph-table it will be copied, else if
@@ -1309,7 +1287,7 @@ SRC is a buffer that buffer's glyph-table will be copied. If SRC is nil the
 default glyph-table will be copied.
 ::end:: */
 {
-    glyph_table_t *newgt = ALLOC_OBJECT(sizeof(glyph_table_t));
+    glyph_table_t *newgt = rep_ALLOC_CELL(sizeof(glyph_table_t));
     if(newgt)
     {
 	glyph_table_t *srcgt;
@@ -1317,8 +1295,8 @@ default glyph-table will be copied.
 	    srcgt = VGLYPHTAB(src);
 	else if(BUFFERP(src))
 	{
-	    VALUE tem = cmd_buffer_symbol_value(sym_glyph_table, sym_nil,
-						src, sym_t);
+	    repv tem = Fbuffer_symbol_value(Qglyph_table, Qnil,
+						src, Qt);
 	    if(GLYPHTABP(tem))
 		srcgt = VGLYPHTAB(tem);
 	    else
@@ -1327,18 +1305,17 @@ default glyph-table will be copied.
 	else
 	    srcgt = &default_glyph_table;
 	memcpy(newgt, srcgt, sizeof(glyph_table_t));
-	newgt->gt_Car = V_GlyphTable;
+	newgt->gt_Car = glyph_table_type;
 	newgt->gt_Next = gt_chain;
 	gt_chain = newgt;
-	data_after_gc += sizeof(glyph_table_t);
-	return(VAL(newgt));
+	rep_data_after_gc += sizeof(glyph_table_t);
+	return(rep_VAL(newgt));
     }
-    return mem_error();
+    return rep_mem_error();
 }
 
-_PR VALUE cmd_set_glyph(VALUE gt, VALUE ch, VALUE glyph);
-DEFUN("set-glyph", cmd_set_glyph, subr_set_glyph, (VALUE gt, VALUE ch, VALUE glyph), V_Subr3, DOC_set_glyph) /*
-::doc:set_glyph::
+DEFUN("set-glyph", Fset_glyph, Sset_glyph, (repv gt, repv ch, repv glyph), rep_Subr3) /*
+::doc:Sset-glyph::
 set-glyph GLYPH-TABLE CHARACTER GLYPH-STRING
 
 Make the renderer draw the string GLYPH-STRING (no more than 4 characters)
@@ -1346,53 +1323,52 @@ for each character CHARACTER in any buffers which use the GLYPH-TABLE.
 ::end:: */
 {
     int glyphlen;
-    DECLARE1(gt, GLYPHTABP);
-    DECLARE2(ch, INTP);
-    DECLARE3(glyph, STRINGP);
-    if((VINT(ch) < 0) || (VINT(ch) >= 256))
+    rep_DECLARE1(gt, GLYPHTABP);
+    rep_DECLARE2(ch, rep_INTP);
+    rep_DECLARE3(glyph, rep_STRINGP);
+    if((rep_INT(ch) < 0) || (rep_INT(ch) >= 256))
     {
-	signal_arg_error(ch, 1);
-	return LISP_NULL;
+	rep_signal_arg_error(ch, 1);
+	return rep_NULL;
     }
-    glyphlen = STRING_LEN(glyph);
+    glyphlen = rep_STRING_LEN(glyph);
     if(glyphlen > 4)
     {
-	signal_arg_error(glyph, 2);
-	return LISP_NULL;
+	rep_signal_arg_error(glyph, 2);
+	return rep_NULL;
     }
-    VGLYPHTAB(gt)->gt_Widths[VINT(ch)] = glyphlen;
+    VGLYPHTAB(gt)->gt_Widths[rep_INT(ch)] = glyphlen;
     if(glyphlen == 0)
     {
 	/* put a space in the first character */
-	VGLYPHTAB(gt)->gt_Glyphs[VINT(ch)][0] = ' ';
+	VGLYPHTAB(gt)->gt_Glyphs[rep_INT(ch)][0] = ' ';
     }
     else
-	memcpy(&VGLYPHTAB(gt)->gt_Glyphs[VINT(ch)][0], VSTR(glyph), glyphlen);
+	memcpy(&VGLYPHTAB(gt)->gt_Glyphs[rep_INT(ch)][0], rep_STR(glyph), glyphlen);
 
-    return(sym_t);
+    return(Qt);
 }
 
-_PR VALUE cmd_get_glyph(VALUE gt, VALUE ch);
-DEFUN("get-glyph", cmd_get_glyph, subr_get_glyph, (VALUE gt, VALUE ch), V_Subr2, DOC_get_glyph) /*
-::doc:get_glyph::
+DEFUN("get-glyph", Fget_glyph, Sget_glyph, (repv gt, repv ch), rep_Subr2) /*
+::doc:Sget-glyph::
 get-glyph GLYPH-TABLE CHARACTER
 
 Return the string which is the rendered representation of CHARACTER in
 GLYPH-TABLE.
 ::end:: */
 {
-    DECLARE1(gt, GLYPHTABP);
-    DECLARE2(ch, INTP);
-    if((VINT(ch) < 0) || (VINT(ch) >= 256))
+    rep_DECLARE1(gt, GLYPHTABP);
+    rep_DECLARE2(ch, rep_INTP);
+    if((rep_INT(ch) < 0) || (rep_INT(ch) >= 256))
     {
-	signal_arg_error(ch, 1);
-	return LISP_NULL;
+	rep_signal_arg_error(ch, 1);
+	return rep_NULL;
     }
-    return(string_dupn(&VGLYPHTAB(gt)->gt_Glyphs[VINT(ch)][0],
-		       VGLYPHTAB(gt)->gt_Widths[VINT(ch)]));
+    return(rep_string_dupn(&VGLYPHTAB(gt)->gt_Glyphs[rep_INT(ch)][0],
+		       VGLYPHTAB(gt)->gt_Widths[rep_INT(ch)]));
 }
 
-void
+static void
 glyphtable_sweep(void)
 {
     glyph_table_t *gt = gt_chain;
@@ -1400,11 +1376,11 @@ glyphtable_sweep(void)
     while(gt)
     {
 	glyph_table_t *nxt = gt->gt_Next;
-	if(!GC_CELL_MARKEDP(VAL(gt)) && !(gt->gt_Car & GTF_STATIC))
-	    FREE_OBJECT(gt);
+	if(!rep_GC_CELL_MARKEDP(rep_VAL(gt)) && !(gt->gt_Car & GTF_STATIC))
+	    rep_FREE_CELL(gt);
 	else
 	{
-	    GC_CLR_CELL(VAL(gt));
+	    rep_GC_CLR_CELL(rep_VAL(gt));
 	    gt->gt_Next = gt_chain;
 	    gt_chain = gt;
 	}
@@ -1412,27 +1388,36 @@ glyphtable_sweep(void)
     }
 }
 
-void
-glyphtable_prin(VALUE strm, VALUE obj)
+static void
+glyphtable_prin(repv strm, repv obj)
 {
-    stream_puts(strm, "#<glyph-table>", -1, FALSE);
+    rep_stream_puts(strm, "#<glyph-table>", -1, FALSE);
 }
 
 void
 glyphs_init(void)
 {
-    ADD_SUBR(subr_glyph_table_p);
-    ADD_SUBR(subr_char_to_glyph_pos);
-    ADD_SUBR(subr_glyph_to_char_pos);
-    ADD_SUBR(subr_display_to_char_pos);
-    ADD_SUBR(subr_char_to_display_pos);
-    ADD_SUBR(subr_default_glyph_table);
-    ADD_SUBR(subr_make_glyph_table);
-    ADD_SUBR(subr_set_glyph);
-    ADD_SUBR(subr_get_glyph);
-    INTERN(glyph_table);
-    VSYM(sym_glyph_table)->value = VAL(&default_glyph_table);
-    cmd_make_variable_buffer_local(sym_glyph_table);
+    glyph_table_type = rep_register_new_type ("glyph-table", 0,
+					      glyphtable_prin,
+					      glyphtable_prin,
+					      glyphtable_sweep,
+					      0, 0, 0, 0, 0, 0, 0, 0);
+
+    default_glyph_table.gt_Car |= glyph_table_type;
+
+    rep_ADD_SUBR(Sglyph_table_p);
+    rep_ADD_SUBR(Schar_to_glyph_pos);
+    rep_ADD_SUBR(Sglyph_to_char_pos);
+    rep_ADD_SUBR(Sdisplay_to_char_pos);
+    rep_ADD_SUBR(Schar_to_display_pos);
+    rep_ADD_SUBR(Sdefault_glyph_table);
+    rep_ADD_SUBR(Smake_glyph_table);
+    rep_ADD_SUBR(Sset_glyph);
+    rep_ADD_SUBR(Sget_glyph);
+    rep_INTERN(glyph_table);
+
+    rep_SYM(Qglyph_table)->value = rep_VAL(&default_glyph_table);
+    Fmake_variable_buffer_local(Qglyph_table);
 }
 
 void
@@ -1443,7 +1428,7 @@ glyphs_kill(void)
     {
 	glyph_table_t *nxt = gt->gt_Next;
 	if(!(gt->gt_Car & GTF_STATIC))
-	    FREE_OBJECT(gt);
+	    rep_FREE_CELL(gt);
 	gt = nxt;
     }
     gt_chain = NULL;

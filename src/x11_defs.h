@@ -40,14 +40,7 @@ typedef char *XPointer;
 /* standard font */
 #define DEFAULT_FONT "fixed"
 
-/* timeout length. This determines how much time with no events received
-   is needed before looking for buffers which are due to be auto-saved.	 */
-#define EVENT_TIMEOUT_LENGTH 1
-
 /* max number of milliseconds between double-clicks */
 #define DOUBLE_CLICK_TIME 250
-
-/* how we test for interrupt */
-#define TEST_INT_GUTS x11_handle_async_input()
 
 #endif /* _X11_DEFS_H */

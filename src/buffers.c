@@ -19,47 +19,109 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 
-_PR void buffer_sweep(void);
-_PR void buffer_prin(VALUE, VALUE);
-_PR TX *first_buffer(void);
-_PR TX *swap_buffers(VW *, TX *);
-_PR VALUE *get_tx_cursor_ptr(TX *tx);
-_PR VALUE get_tx_cursor(TX *);
-_PR int auto_save_buffers(bool);
-_PR void tx_kill_local_variables(TX *tx);
-
-_PR void mark_sweep(void);
-_PR int mark_cmp(VALUE, VALUE);
-_PR void mark_prin(VALUE, VALUE);
-_PR void buffers_init(void);
-_PR void buffers_kill(void);
-
-static void make_marks_resident(VALUE newtx);
+static void mark_sweep(void);
+static void make_marks_resident(repv newtx);
 static void make_marks_non_resident(TX *oldtx);
 
+int buffer_type;
+
 /* Chain of all allocated TXs. */
-_PR TX *buffer_chain;
 TX *buffer_chain;
 
-_PR VALUE sym_auto_save_function;
 DEFSYM(auto_save_function, "auto-save-function");
 
-_PR VALUE cmd_make_buffer_name(VALUE);
-DEFUN("make-buffer-name", cmd_make_buffer_name, subr_make_buffer_name, (VALUE rawName), V_Subr1, DOC_make_buffer_name) /*
-::doc:make_buffer_name::
+DEFSTRING(first_buffer_name, "*jade*");
+
+
+/* Stream helper functions */
+
+static int
+pos_getc(TX *tx, repv *pos)
+{
+    int c = EOF;
+    long row = VROW(*pos);
+    long col = VCOL(*pos);
+    if(row < tx->tx_LogicalEnd)
+    {
+	if(col >= (tx->tx_Lines[row].ln_Strlen - 1))
+	{
+	    if(++row == tx->tx_LogicalEnd)
+		--row;
+	    else
+	    {
+		col = 0;
+		c = '\n';
+	    }
+	}
+	else
+	    c = tx->tx_Lines[row].ln_Line[col++];
+    }
+    *pos = make_pos(col, row);
+    return c;
+}
+
+#define POS_UNGETC(p, tx)				\
+    do {						\
+	long row = VROW(p), col = VCOL(p);		\
+	if(--col < 0)					\
+	{						\
+	    row--;					\
+	    col = (tx)->tx_Lines[row].ln_Strlen - 1;	\
+	}						\
+	(p) = make_pos(col, row);			\
+    } while(0)
+
+static int
+pos_putc(TX *tx, repv *pos, int c)
+{
+    int rc = EOF;
+    if(pad_pos(tx, *pos))
+    {
+	u_char tmps[2];
+	repv end;
+	tmps[0] = (u_char)c;
+	tmps[1] = 0;
+	end = insert_string(tx, tmps, 1, *pos);
+	if(end != rep_NULL)
+	{
+	    *pos = end;
+	    rc = 1;
+	}
+    }
+    return rc;
+}
+
+static int
+pos_puts(TX *tx, repv *pos, u_char *buf, int bufLen)
+{
+    if(pad_pos(tx, *pos))
+    {
+	repv end = insert_string(tx, buf, bufLen, *pos);
+	if(end != rep_NULL)
+	{
+	    *pos = end;
+	    return bufLen;
+	}
+    }
+    return EOF;
+}
+
+
+/* Buffers */
+
+DEFUN("make-buffer-name", Fmake_buffer_name, Smake_buffer_name, (repv rawName), rep_Subr1) /*
+::doc:Smake-buffer-name::
 make-buffer-name NAME
 
 Construct a unique buffer-name from NAME.
 ::end:: */
 {
     int suffix = 1;
-    DECLARE1(rawName, STRINGP);
+    rep_DECLARE1(rawName, rep_STRINGP);
     while(TRUE)
     {
 	u_char buf[256];
@@ -68,17 +130,17 @@ Construct a unique buffer-name from NAME.
 	if(suffix != 1)
 	{
 #ifdef HAVE_SNPRINTF
-	    snprintf(buf, sizeof(buf), "%s<%d>", VSTR(rawName), suffix);
+	    snprintf(buf, sizeof(buf), "%s<%d>", rep_STR(rawName), suffix);
 #else
-	    sprintf(buf, "%s<%d>", VSTR(rawName), suffix);
+	    sprintf(buf, "%s<%d>", rep_STR(rawName), suffix);
 #endif
 	    thistry = buf;
 	}
 	else
-	    thistry = VSTR(rawName);
+	    thistry = rep_STR(rawName);
 	while(tx)
 	{
-	    if(tx->tx_BufferName && !strcmp(thistry, VSTR(tx->tx_BufferName)))
+	    if(tx->tx_BufferName && !strcmp(thistry, rep_STR(tx->tx_BufferName)))
 		break;
 	    tx = tx->tx_Next;
 	}
@@ -86,67 +148,83 @@ Construct a unique buffer-name from NAME.
 	{
 	    if(suffix == 1)
 		return(rawName);
-	    return(string_dup(buf));
+	    return(rep_string_dup(buf));
 	}
 	suffix++;
     }
 }
 
-_PR VALUE cmd_make_buffer(VALUE, VALUE, VALUE);
-DEFUN("make-buffer", cmd_make_buffer, subr_make_buffer, (VALUE name, VALUE oldTx, VALUE litName), V_Subr3, DOC_make_buffer) /*
-::doc:make_buffer::
+DEFUN("make-buffer", Fmake_buffer, Smake_buffer, (repv name, repv oldTx, repv litName), rep_Subr3) /*
+::doc:Smake-buffer::
 make-buffer NAME
 
 Return a new buffer, it's name is the result of (make-buffer-name NAME).
 ::end:: */
 {
     TX *tx;
-    DECLARE1(name, STRINGP);
+    rep_DECLARE1(name, rep_STRINGP);
     if(!BUFFERP(oldTx))
     {
 	if(curr_vw)
-	    oldTx = VAL(curr_vw->vw_Tx);
+	    oldTx = rep_VAL(curr_vw->vw_Tx);
 	else
-	    oldTx = LISP_NULL;
+	    oldTx = rep_NULL;
     }
-    tx = ALLOC_OBJECT(sizeof(TX));
+    tx = rep_ALLOC_CELL(sizeof(TX));
     if(tx != NULL)
     {
 	memset(tx, 0, sizeof(TX));
 	if(clear_line_list(tx))
 	{
-	    tx->tx_Car = V_Buffer;
-	    tx->tx_BufferName = NILP(litName)
-	        ? cmd_make_buffer_name(name) : name;
+	    tx->tx_Car = buffer_type;
+	    tx->tx_BufferName = rep_NILP(litName)
+	        ? Fmake_buffer_name(name) : name;
 	    if(tx->tx_BufferName)
 	    {
 		tx->tx_Next = buffer_chain;
 		buffer_chain = tx;
-		data_after_gc += sizeof(TX);
+		rep_data_after_gc += sizeof(TX);
 
-		tx->tx_FileName = sym_nil;
-		tx->tx_CanonicalFileName = sym_nil;
-		tx->tx_StatusId = concat2("Jade: ", VSTR(tx->tx_BufferName));
+		tx->tx_FileName = Qnil;
+		tx->tx_CanonicalFileName = Qnil;
+		tx->tx_StatusId = rep_concat2("Jade: ", rep_STR(tx->tx_BufferName));
 		tx->tx_SavedBlockStatus = -1;
 		tx->tx_TabSize = 8;
-		tx->tx_LastSaveTime = sys_time();
-		tx->tx_UndoList = sym_nil;
-		tx->tx_ToUndoList = LISP_NULL;
-		tx->tx_UndoneList = sym_nil;
+		tx->tx_LastSaveTime = rep_time();
+		tx->tx_UndoList = Qnil;
+		tx->tx_ToUndoList = rep_NULL;
+		tx->tx_UndoneList = Qnil;
 		tx->tx_SavedCPos = make_pos(0, 0);
 		tx->tx_SavedWPos = tx->tx_SavedCPos;
 		make_global_extent(tx);
 
-		return(VAL(tx));
+		return(rep_VAL(tx));
 	    }
 	    kill_line_list(tx);
 	}
-	FREE_OBJECT(tx);
+	rep_FREE_CELL(tx);
     }
-    return LISP_NULL;
+    return rep_NULL;
 }
 
-void
+static void
+buffer_mark (repv val)
+{
+    rep_MARKVAL(VTX(val)->tx_FileName);
+    rep_MARKVAL(VTX(val)->tx_CanonicalFileName);
+    rep_MARKVAL(VTX(val)->tx_BufferName);
+    rep_MARKVAL(VTX(val)->tx_StatusId);
+    rep_MARKVAL(VTX(val)->tx_UndoList);
+    rep_MARKVAL(VTX(val)->tx_ToUndoList);
+    rep_MARKVAL(VTX(val)->tx_UndoneList);
+    rep_MARKVAL(VTX(val)->tx_SavedCPos);
+    rep_MARKVAL(VTX(val)->tx_SavedWPos);
+    rep_MARKVAL(VTX(val)->tx_SavedBlockPos[0]);
+    rep_MARKVAL(VTX(val)->tx_SavedBlockPos[1]);
+    rep_MARKVAL(rep_VAL(VTX(val)->tx_GlobalExtent));
+}
+
+static void
 buffer_sweep(void)
 {
     TX *tx;
@@ -165,20 +243,20 @@ buffer_sweep(void)
     while(tx)
     {
 	TX *nxt = tx->tx_Next;
-	if(!GC_CELL_MARKEDP(VAL(tx)))
+	if(!rep_GC_CELL_MARKEDP(rep_VAL(tx)))
 	{
 	    if(tx->tx_MarkChain != NULL)
 	    {
-		/* mark_value has ensured that tx_CanonicalFileName
+		/* rep_mark_value has ensured that tx_CanonicalFileName
 		   and tx_FileName are kept even if the buffer isn't */
 		make_marks_non_resident(tx);
 	    }
 	    kill_line_list(tx);
-	    FREE_OBJECT(tx);
+	    rep_FREE_CELL(tx);
 	}
 	else
 	{
-	    GC_CLR_CELL(VAL(tx));
+	    rep_GC_CLR_CELL(rep_VAL(tx));
 	    tx->tx_Next = buffer_chain;
 	    buffer_chain = tx;
 	}
@@ -186,23 +264,110 @@ buffer_sweep(void)
     }
 }
 
-void
-buffer_prin(VALUE strm, VALUE obj)
+static void
+buffer_prin(repv strm, repv obj)
 {
-    stream_puts(strm, "#<buffer ", -1, FALSE);
-    stream_puts(strm, VPTR(VTX(obj)->tx_BufferName), -1, TRUE);
-    stream_putc(strm, '>');
+    rep_stream_puts(strm, "#<buffer ", -1, FALSE);
+    rep_stream_puts(strm, rep_PTR(VTX(obj)->tx_BufferName), -1, TRUE);
+    rep_stream_putc(strm, '>');
 }
 
-DEFSTRING(first_buffer_name, "*jade*");
+static int
+buffer_getc (repv stream)
+{
+    if (BUFFERP(stream))
+	return pos_getc (VTX(stream), get_tx_cursor_ptr (VTX(stream)));
+    else if (rep_CONSP(stream) && POSP(rep_CDR(stream)))
+	return pos_getc (VTX(rep_CAR(stream)), &rep_CDR(stream));
+    else
+	return -1;
+}
+
+static int
+buffer_ungetc (repv stream, int c)
+{
+    repv *ptr;
+    if (BUFFERP(stream))
+    {
+	ptr = get_tx_cursor_ptr (VTX(stream));
+	POS_UNGETC(*ptr, VTX(stream));
+    }
+    else if (rep_CONSP(stream))
+    {
+	repv tx = rep_CAR(stream);
+	ptr = &rep_CDR(stream);
+	POS_UNGETC(*ptr, VTX(tx));
+    }
+    return 1;
+}
+
+static int
+buffer_putc (repv stream, int c)
+{
+    if (BUFFERP(stream))
+	return pos_putc (VTX(stream), get_tx_cursor_ptr(VTX(stream)), c);
+    else if (rep_CONSP(stream))
+    {
+	if (POSP(rep_CDR(stream)))
+	    return pos_putc (VTX(rep_CAR(stream)), &rep_CDR(stream), c);
+	else
+	{
+	    repv pos = Frestriction_end (rep_CAR(stream));
+	    return pos_putc (VTX(rep_CAR(stream)), &pos, c);
+	}
+    }
+    else
+	return 0;
+}
+
+static int
+buffer_puts (repv stream, void *data, int len, rep_bool is_val)
+{
+    u_char *buf = is_val ? rep_STR(data) : data;
+    if (BUFFERP(stream))
+    {
+	return pos_puts (VTX(stream),
+			 get_tx_cursor_ptr(VTX(stream)), buf, len);
+    }
+    else if (rep_CONSP(stream))
+    {
+	if (POSP(rep_CDR(stream)))
+	    return pos_puts (VTX(rep_CAR(stream)), &rep_CDR(stream), buf, len);
+	else
+	{
+	    repv pos = Frestriction_end (rep_CAR(stream));
+	    return pos_puts (VTX(rep_CAR(stream)), &pos, buf, len);
+	}
+    }
+    else
+	return 0;
+}
+
+static repv
+buffer_bind (repv tx)
+{
+    TX *old = swap_buffers (curr_vw, VTX(tx));
+    return Fcons (rep_VAL(old), rep_VAL(curr_vw));
+}
+
+static void
+buffer_unbind (repv handle)
+{
+    if (rep_CONSP(handle))
+    {
+	TX *tx = VTX(rep_CAR(handle));
+	VW *vw = VVIEW(rep_CDR(handle));
+	swap_buffers (vw, tx);
+    }
+}
 
 TX *
 first_buffer(void)
 {
-    TX *tx = VTX(cmd_make_buffer(VAL(&first_buffer_name), sym_nil, sym_t));
+    TX *tx = VTX(Fmake_buffer(rep_VAL(&first_buffer_name), Qnil, Qt));
     if(!curr_win)
     {
-	curr_win = VWIN(cmd_make_window(sym_nil, sym_nil, sym_nil, sym_nil));
+	curr_win = VWIN(Fmake_window(Qnil, Qnil, Qnil, Qnil));
 	if(!curr_win)
 	    return(NULL);
     }
@@ -247,45 +412,45 @@ swap_buffers(VW *vw, TX *new)
 	if((vw->vw_Flags & VWFF_MINIBUF)
 	   && MINIBUFFER_ACTIVE_P(vw->vw_Win)
 	   && (vw->vw_Win->w_Flags & WINFF_MESSAGE))
-	    reset_message(vw->vw_Win);
+	{
+	    (*rep_message_fun)(rep_reset_message);
+	}
     }
     return old;
 }
 
-_PR VALUE cmd_get_file_buffer(VALUE);
-DEFUN("get-file-buffer", cmd_get_file_buffer, subr_get_file_buffer, (VALUE name), V_Subr1, DOC_get_file_buffer) /*
-::doc:get_file_buffer::
+DEFUN("get-file-buffer", Fget_file_buffer, Sget_file_buffer, (repv name), rep_Subr1) /*
+::doc:Sget-file-buffer::
 get-file-buffer NAME
 
 Scan all buffers for one containing the file NAME.
 ::end:: */
 {
-    VALUE tx;
-    GC_root gc_name;
-    DECLARE1(name, STRINGP);
+    repv tx;
+    rep_GC_root gc_name;
+    rep_DECLARE1(name, rep_STRINGP);
 
-    PUSHGC(gc_name, name);
-    name = cmd_canonical_file_name(name);
-    POPGC;
-    if(!name || !STRINGP(name))
-	return LISP_NULL;
+    rep_PUSHGC(gc_name, name);
+    name = Fcanonical_file_name(name);
+    rep_POPGC;
+    if(!name || !rep_STRINGP(name))
+	return rep_NULL;
 
-    tx = VAL(buffer_chain);
+    tx = rep_VAL(buffer_chain);
     while(VTX(tx) != 0)
     {
-	if(STRINGP(VTX(tx)->tx_CanonicalFileName)
-	   && STRING_LEN(VTX(tx)->tx_CanonicalFileName) == STRING_LEN(name)
-	   && memcmp(VSTR(VTX(tx)->tx_CanonicalFileName), VSTR(name),
-		     STRING_LEN(name)) == 0)
+	if(rep_STRINGP(VTX(tx)->tx_CanonicalFileName)
+	   && rep_STRING_LEN(VTX(tx)->tx_CanonicalFileName) == rep_STRING_LEN(name)
+	   && memcmp(rep_STR(VTX(tx)->tx_CanonicalFileName), rep_STR(name),
+		     rep_STRING_LEN(name)) == 0)
 	    return tx;
-	tx = VAL(VTX(tx)->tx_Next);
+	tx = rep_VAL(VTX(tx)->tx_Next);
     }
-    return sym_nil;
+    return Qnil;
 }
 
-_PR VALUE cmd_get_buffer(VALUE);
-DEFUN("get-buffer", cmd_get_buffer, subr_get_buffer, (VALUE name), V_Subr1, DOC_get_buffer) /*
-::doc:get_buffer::
+DEFUN("get-buffer", Fget_buffer, Sget_buffer, (repv name), rep_Subr1) /*
+::doc:Sget-buffer::
 get-buffer NAME
 
 Scan all buffers for one whose name is NAME.
@@ -294,17 +459,17 @@ Scan all buffers for one whose name is NAME.
     TX *tx = buffer_chain;
     if(BUFFERP(name))
 	return(name);
-    DECLARE1(name, STRINGP);
+    rep_DECLARE1(name, rep_STRINGP);
     while(tx)
     {
-	if(!strcmp(VSTR(name), VSTR(tx->tx_BufferName)))
-	    return(VAL(tx));
+	if(!strcmp(rep_STR(name), rep_STR(tx->tx_BufferName)))
+	    return(rep_VAL(tx));
 	tx = tx->tx_Next;
     }
-    return(sym_nil);
+    return(Qnil);
 }
 
-VALUE *
+repv *
 get_tx_cursor_ptr(TX *tx)
 {
     VW *vw;
@@ -330,7 +495,7 @@ get_tx_cursor_ptr(TX *tx)
     return(&tx->tx_SavedCPos);
 }    
 
-VALUE
+repv
 get_tx_cursor(TX *tx)
 {
     return *get_tx_cursor_ptr(tx);
@@ -353,7 +518,7 @@ auto_save_buffers(bool force_save)
     if(!Exclusion)
     {
 	TX *tx = buffer_chain;
-	u_long time = sys_time();
+	u_long time = rep_time();
 	Exclusion = TRUE;
 	while(tx)
 	{
@@ -363,11 +528,11 @@ auto_save_buffers(bool force_save)
 	       && (force_save
 	           || (time > (tx->tx_LastSaveTime + tx->tx_AutoSaveInterval))))
 	    {
-		VALUE val_tx = VAL(tx);
-		GC_root gc_tx;
-		PUSHGC(gc_tx, val_tx);
-		call_lisp1(sym_auto_save_function, VAL(tx));
-		POPGC;
+		repv val_tx = rep_VAL(tx);
+		rep_GC_root gc_tx;
+		rep_PUSHGC(gc_tx, val_tx);
+		rep_call_lisp1(Qauto_save_function, rep_VAL(tx));
+		rep_POPGC;
 		tx->tx_LastSaveTime = time;
 		tx->tx_LastSaveChanges = tx->tx_Changes;
 		Exclusion = FALSE;
@@ -380,37 +545,34 @@ auto_save_buffers(bool force_save)
     return(0);
 }
 
-_PR VALUE cmd_current_buffer(VALUE);
-DEFUN("current-buffer", cmd_current_buffer, subr_current_buffer, (VALUE vw), V_Subr1, DOC_current_buffer) /*
-::doc:current_buffer::
+DEFUN("current-buffer", Fcurrent_buffer, Scurrent_buffer, (repv vw), rep_Subr1) /*
+::doc:Scurrent-buffer::
 current-buffer [VIEW]
 
 Return the buffer that VIEW (or the current view) is displaying.
 ::end:: */
 {
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
-    return(VAL(VVIEW(vw)->vw_Tx));
+	vw = rep_VAL(curr_vw);
+    return(rep_VAL(VVIEW(vw)->vw_Tx));
 }
 
-_PR VALUE cmd_set_current_buffer(VALUE, VALUE);
-DEFUN("set-current-buffer", cmd_set_current_buffer, subr_set_current_buffer, (VALUE tx, VALUE vw), V_Subr2, DOC_set_current_buffer) /*
-::doc:set_current_buffer::
+DEFUN("set-current-buffer", Fset_current_buffer, Sset_current_buffer, (repv tx, repv vw), rep_Subr2) /*
+::doc:Sset-current-buffer::
 set-current-buffer BUFFER [VIEW]
 
 Set the buffer that VIEW (or the current view) is displaying. Returns
 the buffer which was being displayed before.
 ::end:: */
 {
-    DECLARE1(tx, BUFFERP);
+    rep_DECLARE1(tx, BUFFERP);
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
-    return VAL(swap_buffers(VVIEW(vw), VTX(tx)));
+	vw = rep_VAL(curr_vw);
+    return rep_VAL(swap_buffers(VVIEW(vw), VTX(tx)));
 }
 
-_PR VALUE cmd_buffer_file_name(VALUE);
-DEFUN("buffer-file-name", cmd_buffer_file_name, subr_buffer_file_name, (VALUE tx), V_Subr1, DOC_buffer_file_name) /*
-::doc:buffer_file_name::
+DEFUN("buffer-file-name", Fbuffer_file_name, Sbuffer_file_name, (repv tx), rep_Subr1) /*
+::doc:Sbuffer-file-name::
 buffer-file-name [BUFFER]
 
 Return the name of the file being edited in BUFFER. If the contents of BUFFER
@@ -418,37 +580,36 @@ isn't associated with a particular file, returns nil.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     return VTX(tx)->tx_FileName;
 }
 
-_PR VALUE cmd_set_buffer_file_name(VALUE, VALUE);
-DEFUN("set-buffer-file-name", cmd_set_buffer_file_name, subr_set_buffer_file_name, (VALUE tx, VALUE name), V_Subr2, DOC_set_buffer_file_name) /*
-::doc:set_buffer_file_name::
+DEFUN("set-buffer-file-name", Fset_buffer_file_name, Sset_buffer_file_name, (repv tx, repv name), rep_Subr2) /*
+::doc:Sset-buffer-file-name::
 set-buffer-file-name BUFFER NAME
 
 Set the name of the file associated with the contents of BUFFER to NAME.
 ::end:: */
 {
-    VALUE canonical;
-    GC_root gc_tx, gc_name;
+    repv canonical;
+    rep_GC_root gc_tx, gc_name;
 
-    if(!NILP(name))
-	DECLARE1(name, STRINGP);
+    if(!rep_NILP(name))
+	rep_DECLARE1(name, rep_STRINGP);
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
 
-    if(STRINGP(name))
+    if(rep_STRINGP(name))
     {
-	PUSHGC(gc_tx, tx);
-	PUSHGC(gc_name, name);
-	canonical = cmd_canonical_file_name(name);
-	POPGC; POPGC;
-	if(!canonical || !STRINGP(canonical))
+	rep_PUSHGC(gc_tx, tx);
+	rep_PUSHGC(gc_name, name);
+	canonical = Fcanonical_file_name(name);
+	rep_POPGC; rep_POPGC;
+	if(!canonical || !rep_STRINGP(canonical))
 	    canonical = name;
     }
     else
-	canonical = sym_nil;
+	canonical = Qnil;
 
     make_marks_non_resident(VTX(tx));
     VTX(tx)->tx_FileName = name;
@@ -458,71 +619,66 @@ Set the name of the file associated with the contents of BUFFER to NAME.
     return name;
 }
 
-_PR VALUE cmd_buffer_name(VALUE);
-DEFUN("buffer-name", cmd_buffer_name, subr_buffer_name, (VALUE tx), V_Subr1, DOC_buffer_name) /*
-::doc:buffer_name::
+DEFUN("buffer-name", Fbuffer_name, Sbuffer_name, (repv tx), rep_Subr1) /*
+::doc:Sbuffer-name::
 buffer-name [BUFFER]
 
 Return the name of BUFFER.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     return VTX(tx)->tx_BufferName;
 }
 
-_PR VALUE cmd_set_buffer_name(VALUE, VALUE);
-DEFUN("set-buffer-name", cmd_set_buffer_name, subr_set_buffer_name, (VALUE tx, VALUE name), V_Subr2, DOC_set_buffer_name) /*
-::doc:set_buffer_name::
+DEFUN("set-buffer-name", Fset_buffer_name, Sset_buffer_name, (repv tx, repv name), rep_Subr2) /*
+::doc:Sset-buffer-name::
 set-buffer-name BUFFER NAME
 
 Set the name of BUFFER to NAME.
 ::end:: */
 {
-    DECLARE1(name, STRINGP);
+    rep_DECLARE1(name, rep_STRINGP);
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     VTX(tx)->tx_BufferName = name;
-    if(VTX(tx)->tx_StatusId == LISP_NULL
-       || !strncmp("Jade: ", VSTR(VTX(tx)->tx_StatusId), 5))
+    if(VTX(tx)->tx_StatusId == rep_NULL
+       || !strncmp("Jade: ", rep_STR(VTX(tx)->tx_StatusId), 5))
     {
 	/* Reset the status-id */
-	VTX(tx)->tx_StatusId = concat2("Jade: ", VSTR(name));
+	VTX(tx)->tx_StatusId = rep_concat2("Jade: ", rep_STR(name));
     }
     sys_reset_sleep_titles(VTX(tx));
     return name;
 }
 
-_PR VALUE cmd_buffer_changes(VALUE);
-DEFUN("buffer-changes", cmd_buffer_changes, subr_buffer_changes, (VALUE tx), V_Subr1, DOC_buffer_changes) /*
-::doc:buffer_changes::
+DEFUN("buffer-changes", Fbuffer_changes, Sbuffer_changes, (repv tx), rep_Subr1) /*
+::doc:Sbuffer-changes::
 buffer-changes [BUFFER]
 
 Return the number of modifications to BUFFER.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
-    return MAKE_INT(VTX(tx)->tx_Changes);
+	tx = rep_VAL(curr_vw->vw_Tx);
+    return rep_MAKE_INT(VTX(tx)->tx_Changes);
 }
 
-_PR VALUE cmd_buffer_modified_p(VALUE);
-DEFUN("buffer-modified-p", cmd_buffer_modified_p, subr_buffer_modified_p, (VALUE tx), V_Subr1, DOC_buffer_modified_p) /*
-::doc:buffer_modified_p::
+DEFUN("buffer-modified-p", Fbuffer_modified_p, Sbuffer_modified_p, (repv tx), rep_Subr1) /*
+::doc:Sbuffer-modified-p::
 buffer-modified-p [BUFFER]
 
 Returns t if the buffer has changed since it was last saved to disk.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     return ((VTX(tx)->tx_Changes != VTX(tx)->tx_ProperSaveChanges)
-	    ? sym_t : sym_nil);
+	    ? Qt : Qnil);
 }
 
-_PR VALUE cmd_set_buffer_modified(VALUE, VALUE);
-DEFUN("set-buffer-modified", cmd_set_buffer_modified, subr_set_buffer_modified, (VALUE buf, VALUE stat), V_Subr2, DOC_set_buffer_modified) /*
-::doc:set_buffer_modified::
+DEFUN("set-buffer-modified", Fset_buffer_modified, Sset_buffer_modified, (repv buf, repv stat), rep_Subr2) /*
+::doc:Sset-buffer-modified::
 set-buffer-modified BUFFER STATUS
 
 If STATUS is nil make it look as though buffer hasn't changed, else make
@@ -530,7 +686,7 @@ it look as though it has.
 ::end:: */
 {
     TX *tx =BUFFERP(buf) ? VTX(buf) : curr_vw->vw_Tx;
-    if(NILP(stat))
+    if(rep_NILP(stat))
     {
 	tx->tx_ProperSaveChanges = tx->tx_Changes;
 	tx->tx_LastSaveChanges = tx->tx_Changes;
@@ -541,25 +697,23 @@ it look as though it has.
 	tx->tx_ProperSaveChanges = tx->tx_Changes - 1;
 	tx->tx_LastSaveChanges = tx->tx_Changes - 1;
     }
-    return VAL(tx);
+    return rep_VAL(tx);
 }
 
-_PR VALUE cmd_buffer_length(VALUE);
-DEFUN("buffer-length", cmd_buffer_length, subr_buffer_length, (VALUE tx), V_Subr1, DOC_buffer_length) /*
-::doc:buffer_length::
+DEFUN("buffer-length", Fbuffer_length, Sbuffer_length, (repv tx), rep_Subr1) /*
+::doc:Sbuffer-length::
 buffer-length [BUFFER]
 
 Returns the number of lines in BUFFER.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
-    return(MAKE_INT(VTX(tx)->tx_NumLines));
+	tx = rep_VAL(curr_vw->vw_Tx);
+    return(rep_MAKE_INT(VTX(tx)->tx_NumLines));
 }
 
-_PR VALUE cmd_line_length(VALUE, VALUE);
-DEFUN("line-length", cmd_line_length, subr_line_length, (VALUE pos, VALUE tx), V_Subr2, DOC_line_length) /*
-::doc:line_length::
+DEFUN("line-length", Fline_length, Sline_length, (repv pos, repv tx), rep_Subr2) /*
+::doc:Sline-length::
 line-length [LINE-POS] [BUFFER]
 
 Returns the length (not including newline) of the specified line, or
@@ -569,106 +723,65 @@ using current cursor position if specifiers are not provided.
     if(POSP(pos))
     {
 	if(!BUFFERP(tx))
-	    tx = VAL(curr_vw->vw_Tx);
+	    tx = rep_VAL(curr_vw->vw_Tx);
     }
     else
     {
 	pos = curr_vw->vw_CursorPos;
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     }
-    return(MAKE_INT(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen - 1));
+    return(rep_MAKE_INT(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen - 1));
 }
 
-_PR VALUE cmd_with_buffer(VALUE);
-DEFUN("with-buffer", cmd_with_buffer, subr_with_buffer, (VALUE args), V_SF, DOC_with_buffer) /*
-::doc:with_buffer::
-with-buffer BUFFER FORMS...
-
-Temporarily switches to buffer, then executes the FORMS in it before
-returning to the original buffer.
-::end:: */
-{
-    if(CONSP(args))
-    {
-	GC_root gc_args;
-	VALUE res;
-	PUSHGC(gc_args, args);
-	if((res = cmd_eval(VCAR(args))) && BUFFERP(res))
-	{
-	    VALUE oldtx = VAL(swap_buffers(curr_vw, VTX(res)));
-	    if(oldtx)
-	    {
-		VALUE oldcurrvw = VAL(curr_vw);
-		GC_root gc_oldtx, gc_oldcurrvw;
-		PUSHGC(gc_oldtx, oldtx);
-		PUSHGC(gc_oldcurrvw, oldcurrvw);
-		res = cmd_progn(VCDR(args));
-		POPGC; POPGC;
-		if(VVIEW(oldcurrvw)->vw_Win)
-		    swap_buffers(VVIEW(oldcurrvw), VTX(oldtx));
-	    }
-	}
-	else
-	    res = signal_arg_error(res, 1);
-	POPGC;
-	return(res);
-    }
-    return LISP_NULL;
-}
-
-_PR VALUE cmd_bufferp(VALUE);
-DEFUN("bufferp", cmd_bufferp, subr_bufferp, (VALUE arg), V_Subr1, DOC_bufferp) /*
-::doc:bufferp::
+DEFUN("bufferp", Fbufferp, Sbufferp, (repv arg), rep_Subr1) /*
+::doc:Sbufferp::
 bufferp ARG
 
 Returns t if ARG is a buffer.
 ::end:: */
 {
     if(BUFFERP(arg))
-	return(sym_t);
-    return(sym_nil);
+	return(Qt);
+    return(Qnil);
 }
 
-_PR VALUE cmd_restrict_buffer(VALUE start, VALUE end, VALUE tx);
-DEFUN_INT("restrict-buffer", cmd_restrict_buffer, subr_restrict_buffer, (VALUE start, VALUE end, VALUE tx), V_Subr3, DOC_restrict_buffer, "-m" DS_NL "M") /*
-::doc:restrict_buffer::
+DEFUN_INT("restrict-buffer", Frestrict_buffer, Srestrict_buffer, (repv start, repv end, repv tx), rep_Subr3, "-m" rep_DS_NL "M") /*
+::doc:Srestrict-buffer::
 restrict-buffer START END [BUFFER]
 
 Limits the portion of BUFFER (or the current buffer) that may be displayed
 to that between the lines specified by positions START and END.
 ::end:: */
 {
-    DECLARE1(start, POSP);
-    DECLARE2(end, POSP);
+    rep_DECLARE1(start, POSP);
+    rep_DECLARE2(end, POSP);
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
-    cmd_unrestrict_buffer(tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
+    Funrestrict_buffer(tx);
     if(check_section(VTX(tx), &start, &end) && VROW(start) <= VROW(end))
     {
 	VTX(tx)->tx_LogicalStart = VROW(start);
 	VTX(tx)->tx_LogicalEnd = VROW(end) + 1;
-	return sym_t;
+	return Qt;
     }
-    return sym_nil;
+    return Qnil;
 }
 
-_PR VALUE cmd_unrestrict_buffer(VALUE tx);
-DEFUN_INT("unrestrict-buffer", cmd_unrestrict_buffer, subr_unrestrict_buffer, (VALUE tx), V_Subr1, DOC_unrestrict_buffer, "") /*
-::doc:unrestrict_buffer::
+DEFUN_INT("unrestrict-buffer", Funrestrict_buffer, Sunrestrict_buffer, (repv tx), rep_Subr1, "") /*
+::doc:Sunrestrict-buffer::
 unrestrict-buffer [BUFFER]
 
 Remove any restriction on the parts of BUFFER that may be displayed.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     VTX(tx)->tx_LogicalStart = 0;
     VTX(tx)->tx_LogicalEnd = VTX(tx)->tx_NumLines;
-    return sym_t;
+    return Qt;
 }
-_PR VALUE cmd_restriction_start(VALUE tx);
-DEFUN("restriction-start", cmd_restriction_start, subr_restriction_start, (VALUE tx), V_Subr1, DOC_restriction_start) /*
-::doc:restriction_start::
+DEFUN("restriction-start", Frestriction_start, Srestriction_start, (repv tx), rep_Subr1) /*
+::doc:Srestriction-start::
 restriction-start [BUFFER]
 
 Return the position of the first character that may be displayed in BUFFER
@@ -676,13 +789,12 @@ Return the position of the first character that may be displayed in BUFFER
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     return make_pos(0, VTX(tx)->tx_LogicalStart);
 }
 
-_PR VALUE cmd_restriction_end(VALUE tx);
-DEFUN("restriction-end", cmd_restriction_end, subr_restriction_end, (VALUE tx), V_Subr1, DOC_restriction_end) /*
-::doc:restriction_end::
+DEFUN("restriction-end", Frestriction_end, Srestriction_end, (repv tx), rep_Subr1) /*
+::doc:Srestriction-end::
 restriction-end [BUFFER]
 
 Return the position of the last character that may be displayed in BUFFER
@@ -690,14 +802,13 @@ Return the position of the last character that may be displayed in BUFFER
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     return make_pos(VTX(tx)->tx_Lines[VTX(tx)->tx_LogicalEnd - 1].ln_Strlen -1,
 		    VTX(tx)->tx_LogicalEnd - 1);
 }
 
-_PR VALUE cmd_buffer_restricted_p(VALUE tx);
-DEFUN("buffer-restricted-p", cmd_buffer_restricted_p, subr_buffer_restricted_p, (VALUE tx), V_Subr1, DOC_buffer_restricted_p) /*
-::doc:buffer_restricted_p::
+DEFUN("buffer-restricted-p", Fbuffer_restricted_p, Sbuffer_restricted_p, (repv tx), rep_Subr1) /*
+::doc:Sbuffer-restricted-p::
 buffer-restricted-p [BUFFER]
 
 Returns t when BUFFER (or the current buffer) has been restricted to display
@@ -705,91 +816,84 @@ less than its full contents.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     return ((VTX(tx)->tx_LogicalStart > 0
 	     || VTX(tx)->tx_LogicalEnd < VTX(tx)->tx_NumLines)
-	    ? sym_t : sym_nil);
+	    ? Qt : Qnil);
 }
 
-_PR VALUE var_auto_save_interval(VALUE);
-DEFUN("auto-save-interval", var_auto_save_interval, subr_auto_save_interval, (VALUE val), V_Var, DOC_auto_save_interval) /*
-::doc:auto_save_interval::
+DEFUN("auto-save-interval", var_auto_save_interval, Sauto_save_interval, (repv val), rep_Var) /*
+::doc:Vauto-save-interval::
 This buffer-local variable defines the period (in seconds) between each
 automatic save of the buffer. A value of zero means that this buffer is
 not to be auto-saved.
 ::end:: */
 {
-    return(handle_var_int(val, &curr_vw->vw_Tx->tx_AutoSaveInterval));
+    return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_AutoSaveInterval));
 }
 
-_PR VALUE var_last_save_changes(VALUE);
-DEFUN("last-save-changes", var_last_save_changes, subr_last_save_changes, (VALUE val), V_Var, DOC_last_save_changes) /*
-::doc:last_save_changes::
+DEFUN("last-save-changes", var_last_save_changes, Slast_save_changes, (repv val), rep_Var) /*
+::doc:Vlast-save-changes::
 Number of changes the last time this buffer was saved (could be auto-save).
 ::end:: */
 {
-    return(handle_var_int(val, &curr_vw->vw_Tx->tx_LastSaveChanges));
+    return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_LastSaveChanges));
 }
 
-_PR VALUE var_last_user_save_changes(VALUE);
-DEFUN("last-user-save-changes", var_last_user_save_changes, subr_last_user_save_changes, (VALUE val), V_Var, DOC_last_user_save_changes) /*
-::doc:last_user_save_changes::
+DEFUN("last-user-save-changes", var_last_user_save_changes, Slast_user_save_changes, (repv val), rep_Var) /*
+::doc:Vlast-user-save-changes::
 Number of changes the last time this buffer was saved (not from auto-save).
 ::end:: */
 {
-    return(handle_var_int(val, &curr_vw->vw_Tx->tx_ProperSaveChanges));
+    return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_ProperSaveChanges));
 }
 
-_PR VALUE var_last_save_time(VALUE);
-DEFUN("last-save-time", var_last_save_time, subr_last_save_time, (VALUE val), V_Var, DOC_last_save_time) /*
-::doc:last_save_time::
+DEFUN("last-save-time", var_last_save_time, Slast_save_time, (repv val), rep_Var) /*
+::doc:Vlast-save-time::
 System time at last save of this buffer (could be from an auto-save).
 ::end:: */
 {
-    if(val != LISP_NULL)
+    if(val != rep_NULL)
     {
-	if(TIMEP(val))
-	    curr_vw->vw_Tx->tx_LastSaveTime = GET_TIME(val);
-	return LISP_NULL;
+	if(rep_TIMEP(val))
+	    curr_vw->vw_Tx->tx_LastSaveTime = rep_GET_TIME(val);
+	return rep_NULL;
     }
     else
-	return MAKE_TIME(curr_vw->vw_Tx->tx_LastSaveTime);
+	return rep_MAKE_TIME(curr_vw->vw_Tx->tx_LastSaveTime);
 }
 
-_PR VALUE var_tab_size(VALUE);
-DEFUN("tab-size", var_tab_size, subr_tab_size, (VALUE val), V_Var, DOC_tab_size) /*
-::doc:tab_size::
+DEFUN("tab-size", var_tab_size, Stab_size, (repv val), rep_Var) /*
+::doc:Vtab-size::
 Sets the size of tab-stops.
 ::end:: */
 {
-    return(handle_var_int(val, &curr_vw->vw_Tx->tx_TabSize));
+    return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_TabSize));
 }
 
-_PR VALUE var_truncate_lines(VALUE);
-DEFUN("truncate-lines", var_truncate_lines, subr_truncate_lines, (VALUE val), V_Var, DOC_truncate_lines) /*
-::doc:truncate_lines::
+DEFUN("truncate-lines", var_truncate_lines, Struncate_lines, (repv val), rep_Var) /*
+::doc:Vtruncate-lines::
 When t lines that continue past the rightmost column of the screen are
 truncated, not wrapped onto the next row as when this variable is nil.
 The default value for all buffers is nil.
 ::end:: */
 {
     TX *tx = curr_vw->vw_Tx;
-    if(val != LISP_NULL)
+    if(val != rep_NULL)
     {
-	if(!NILP(val))
+	if(!rep_NILP(val))
 	    tx->tx_Flags |= TXFF_DONT_WRAP_LINES;
 	else
 	    tx->tx_Flags &= ~TXFF_DONT_WRAP_LINES;
     }
     else
-	val = TX_WRAP_LINES_P(tx) ? sym_nil : sym_t;
+	val = TX_WRAP_LINES_P(tx) ? Qnil : Qt;
     return val;
 }
 
-_PR VALUE var_buffer_status_id(VALUE);
-DEFUN("buffer-status-id", var_buffer_status_id, subr_buffer_status_id,
-      (VALUE val), V_Var, DOC_buffer_status_id) /*
-::doc:buffer_status_id::
+DEFUN("buffer-status-id", var_buffer_status_id, Sbuffer_status_id,
+      (repv val), rep_Var) /*
+::doc:Vbuffer-status-id::
 This buffer-local string is displayed in the status line of the buffer. When
 the buffer is created it is set to `Jade: BUFFER-NAME'.
 ::end:: */
@@ -797,31 +901,30 @@ the buffer is created it is set to `Jade: BUFFER-NAME'.
     TX *tx = curr_vw->vw_Tx;
     if(val)
     {
-	tx->tx_StatusId = STRINGP(val) ? val : LISP_NULL;
+	tx->tx_StatusId = rep_STRINGP(val) ? val : rep_NULL;
 	return val;
     }
     else if(tx->tx_StatusId)
 	return tx->tx_StatusId;
     else
-	return sym_nil;
+	return Qnil;
 }
 
-_PR VALUE cmd_all_buffers(void);
-DEFUN("all-buffers", cmd_all_buffers, subr_all_buffers, (void), V_Subr0, DOC_all_buffers) /*
-::doc:all_buffers::
+DEFUN("all-buffers", Fall_buffers, Sall_buffers, (void), rep_Subr0) /*
+::doc:Sall-buffers::
 all-buffers
 
 Return a list of all allocated buffer objects.
 ::end:: */
 {
-    VALUE list = sym_nil;
+    repv list = Qnil;
     TX *tx = buffer_chain;
     while(tx != 0)
     {
-	list = cmd_cons(VAL(tx), list);
+	list = Fcons(rep_VAL(tx), list);
 	tx = tx->tx_Next;
     }
-    return cmd_nreverse(list);
+    return Fnreverse(list);
 }
 
 void
@@ -832,29 +935,33 @@ tx_kill_local_variables(TX *tx)
 
 /* Marks */
 
+int mark_type;
+
 /* chain of all non-resident marks, linked via `next' */
 static Lisp_Mark *non_resident_mark_chain;
 
 /* chain of all allocated marks */
 static Lisp_Mark *mark_chain;
 
+DEFSTRING(non_resident, "Marks used as streams must be resident");
+
 /* For all non-resident marks, see if any point to NEWTX, if so link them
    onto NEWTX's `tx_Marks' chain. */
 static void
-make_marks_resident(VALUE newtx)
+make_marks_resident(repv newtx)
 {
-    VALUE mk = VAL(non_resident_mark_chain);
+    repv mk = rep_VAL(non_resident_mark_chain);
     non_resident_mark_chain = NULL;
-    while(mk != LISP_NULL)
+    while(mk != rep_NULL)
     {
-	VALUE nxt = VAL(VMARK(mk)->next);
+	repv nxt = rep_VAL(VMARK(mk)->next);
 	
-	if(STRINGP(VTX(newtx)->tx_CanonicalFileName)
-	    && strcmp(VSTR(VTX(newtx)->tx_CanonicalFileName),
-		      VSTR(VMARK(mk)->canon_file)) == 0)
+	if(rep_STRINGP(VTX(newtx)->tx_CanonicalFileName)
+	    && strcmp(rep_STR(VTX(newtx)->tx_CanonicalFileName),
+		      rep_STR(VMARK(mk)->canon_file)) == 0)
 	{
 	    VMARK(mk)->file = newtx;
-	    VMARK(mk)->canon_file = sym_nil;
+	    VMARK(mk)->canon_file = Qnil;
 	    VMARK(mk)->next = VTX(newtx)->tx_MarkChain;
 	    VTX(newtx)->tx_MarkChain = VMARK(mk);
 	}
@@ -895,15 +1002,15 @@ unchain_mark(Lisp_Mark *mk)
    marks.
 
    **NOTE** this function is called from the buffer gc sweep function,
-   and thus OLDTX may be unused; any VALUE fields within it used by this
-   function _must_ be explicitly marked by mark_value in the V_Mark case. */
+   and thus OLDTX may be unused; any repv fields within it used by this
+   function _must_ be explicitly marked by rep_mark_value in the V_Mark case. */
 static void
 make_marks_non_resident(TX *oldtx)
 {
-    VALUE canon_file = (STRINGP(oldtx->tx_CanonicalFileName)
+    repv canon_file = (rep_STRINGP(oldtx->tx_CanonicalFileName)
 			? oldtx->tx_CanonicalFileName
-			: sym_nil);
-    VALUE file = (STRINGP(oldtx->tx_FileName)
+			: Qnil);
+    repv file = (rep_STRINGP(oldtx->tx_FileName)
 		  ? oldtx->tx_FileName
 		  : canon_file);
     Lisp_Mark *nxt, *mk = oldtx->tx_MarkChain;
@@ -911,7 +1018,7 @@ make_marks_non_resident(TX *oldtx)
     while(mk != NULL)
     {
 	nxt = mk->next;
-	if (NILP(canon_file) || NILP(file))
+	if (rep_NILP(canon_file) || rep_NILP(file))
 	{
 	    /* No file to associate with, lose the mark. */
 	    unchain_mark(mk);
@@ -927,7 +1034,27 @@ make_marks_non_resident(TX *oldtx)
     }
 }
 
-void
+static void
+mark_mark (repv val)
+{
+    if(!MARK_RESIDENT_P(VMARK(val)))
+    {
+	rep_MARKVAL(VMARK(val)->file);
+	rep_MARKVAL(VMARK(val)->canon_file);
+    }
+    else
+    {
+	/* TXs don't get marked here. They should still be able to
+	   be gc'd if there's marks pointing to them. The marks will
+	   just get made non-resident. But to do this we'll need
+	   the names of the file they point to.. */
+	rep_MARKVAL(VTX(VMARK(val)->file)->tx_FileName);
+	rep_MARKVAL(VTX(VMARK(val)->file)->tx_CanonicalFileName);
+    }
+    rep_MARKVAL(VMARK(val)->pos);
+}
+
+static void
 mark_sweep(void)
 {
     Lisp_Mark *mk = mark_chain;
@@ -935,14 +1062,14 @@ mark_sweep(void)
     while(mk)
     {
 	Lisp_Mark *nxt = mk->next_alloc;
-	if(!GC_CELL_MARKEDP(VAL(mk)))
+	if(!rep_GC_CELL_MARKEDP(rep_VAL(mk)))
 	{
 	    unchain_mark(mk);
-	    FREE_OBJECT(mk);
+	    rep_FREE_CELL(mk);
 	}
 	else
 	{
-	    GC_CLR_CELL(VAL(mk));
+	    rep_GC_CLR_CELL(rep_VAL(mk));
 	    mk->next_alloc = mark_chain;
 	    mark_chain = mk;
 	}
@@ -951,17 +1078,17 @@ mark_sweep(void)
 }
 
 /* Compare two marks. */
-int
-mark_cmp(VALUE v1, VALUE v2)
+static int
+mark_cmp(repv v1, repv v2)
 {
     int rc = 1;
-    if(VTYPE(v1) == VTYPE(v2))
+    if(rep_TYPE(v1) == rep_TYPE(v2))
     {
 	if((MARK_RESIDENT_P(VMARK(v1)) && MARK_RESIDENT_P(VMARK(v2))
 	    && VMARK(v1)->file == VMARK(v2)->file)
 	   || ((!MARK_RESIDENT_P(VMARK(v1)) && !MARK_RESIDENT_P(VMARK(v2)))
-	       && (value_cmp(VMARK(v1)->canon_file,
-			     VMARK(v2)->canon_file) == 0)))
+	       && (rep_value_cmp(VMARK(v1)->canon_file,
+				 VMARK(v2)->canon_file) == 0)))
 	{
 	    rc = VROW(VMARK(v1)->pos) - VROW(VMARK(v2)->pos);
 	    if(rc == 0)
@@ -971,18 +1098,18 @@ mark_cmp(VALUE v1, VALUE v2)
     return rc;
 }
 
-void
-mark_prin(VALUE strm, VALUE obj)
+static void
+mark_prin(repv strm, repv obj)
 {
     u_char tbuf[40];
-    stream_puts(strm, "#<mark ", -1, FALSE);
+    rep_stream_puts(strm, "#<mark ", -1, FALSE);
     if(MARK_RESIDENT_P(VMARK(obj)))
 	buffer_prin(strm, VMARK(obj)->file);
     else
     {
-	stream_putc(strm, '"');
-	stream_puts(strm, VPTR(VMARK(obj)->file), -1, TRUE);
-	stream_putc(strm, '"');
+	rep_stream_putc(strm, '"');
+	rep_stream_puts(strm, rep_PTR(VMARK(obj)->file), -1, TRUE);
+	rep_stream_putc(strm, '"');
     }
 #ifdef HAVE_SNPRINTF
     snprintf(tbuf, sizeof(tbuf),
@@ -992,12 +1119,56 @@ mark_prin(VALUE strm, VALUE obj)
 	    " #<pos %ld %ld>>",
 	    VCOL(VMARK(obj)->pos),
 	    VROW(VMARK(obj)->pos));
-    stream_puts(strm, tbuf, -1, FALSE);
+    rep_stream_puts(strm, tbuf, -1, FALSE);
 }
 
-_PR VALUE cmd_make_mark(VALUE, VALUE);
-DEFUN("make-mark", cmd_make_mark, subr_make_mark, (VALUE pos, VALUE buffer), V_Subr2, DOC_make_mark) /*
-::doc:make_mark::
+static int
+mark_getc (repv stream)
+{
+    if(!MARK_RESIDENT_P(VMARK(stream)))
+    {
+	Fsignal(Qinvalid_stream, rep_list_2(stream, rep_VAL(&non_resident)));
+	return EOF;
+    }
+    else
+	return pos_getc(VTX(VMARK(stream)->file), &VMARK(stream)->pos);
+}
+
+static int
+mark_ungetc (repv stream, int c)
+{
+    POS_UNGETC(VMARK(stream)->pos, VTX(VMARK(stream)->file));
+    return 1;
+}
+
+static int
+mark_putc (repv stream, int c)
+{
+    if(!MARK_RESIDENT_P(VMARK(stream)))
+    {
+	Fsignal(Qinvalid_stream, rep_list_2(stream, rep_VAL(&non_resident)));
+	return EOF;
+    }
+    else
+	return pos_putc(VTX(VMARK(stream)->file), &VMARK(stream)->pos, c);
+}
+
+static int
+mark_puts (repv stream, void *data, int len, rep_bool is_val)
+{
+    u_char *buf = is_val ? rep_STR(data) : data;
+    if(!MARK_RESIDENT_P(VMARK(stream)))
+    {
+	Fsignal(Qinvalid_stream, rep_list_2(stream, rep_VAL(&non_resident)));
+	return EOF;
+    }
+    else
+	return pos_puts(VTX(VMARK(stream)->file),
+			&VMARK(stream)->pos, buf, len);
+}
+
+DEFUN("make-mark", Fmake_mark, Smake_mark, (repv pos, repv buffer), rep_Subr2) /*
+::doc:Smake-mark::
 make-mark [POS] [FILE]
 
 Creates a new mark pointing to position POS either in FILE or the current
@@ -1010,41 +1181,41 @@ updated as the file changes -- it will always point to the same character
 (for as long as that character exists, anyway).
 ::end:: */
 {
-    VALUE mk = VAL(ALLOC_OBJECT(sizeof(Lisp_Mark)));
-    if(mk != LISP_NULL)
+    repv mk = rep_VAL(rep_ALLOC_CELL(sizeof(Lisp_Mark)));
+    if(mk != rep_NULL)
     {
-	GC_root gc_mk, gc_buf;
+	rep_GC_root gc_mk, gc_buf;
 
-	VMARK(mk)->car = V_Mark;
+	VMARK(mk)->car = mark_type;
 	VMARK(mk)->next_alloc = mark_chain;
 	mark_chain = VMARK(mk);
-	data_after_gc += sizeof(Lisp_Mark);
+	rep_data_after_gc += sizeof(Lisp_Mark);
 	VMARK(mk)->pos = POSP(pos) ? pos : curr_vw->vw_CursorPos;
 
 	/* just so these are valid */
-	VMARK(mk)->file = VAL(curr_vw->vw_Tx);
-	VMARK(mk)->canon_file = sym_nil;
+	VMARK(mk)->file = rep_VAL(curr_vw->vw_Tx);
+	VMARK(mk)->canon_file = Qnil;
 	VMARK(mk)->next = NULL;
 
-	if(STRINGP(buffer))
+	if(rep_STRINGP(buffer))
 	{
-	    VALUE tem;
-	    PUSHGC(gc_mk, mk);
-	    PUSHGC(gc_buf, buffer);
-	    tem = cmd_get_file_buffer(buffer);
-	    POPGC; POPGC;
-	    if(tem != LISP_NULL && BUFFERP(tem))
+	    repv tem;
+	    rep_PUSHGC(gc_mk, mk);
+	    rep_PUSHGC(gc_buf, buffer);
+	    tem = Fget_file_buffer(buffer);
+	    rep_POPGC; rep_POPGC;
+	    if(tem != rep_NULL && BUFFERP(tem))
 		buffer = tem;
 	}
-	if(STRINGP(buffer))
+	if(rep_STRINGP(buffer))
 	{
-	    VALUE tem;
-	    PUSHGC(gc_mk, mk);
-	    PUSHGC(gc_buf, buffer);
-	    tem = cmd_canonical_file_name(buffer);
-	    POPGC; POPGC;
+	    repv tem;
+	    rep_PUSHGC(gc_mk, mk);
+	    rep_PUSHGC(gc_buf, buffer);
+	    tem = Fcanonical_file_name(buffer);
+	    rep_POPGC; rep_POPGC;
 	    VMARK(mk)->file = buffer;
-	    if(tem && STRINGP(tem))
+	    if(tem && rep_STRINGP(tem))
 		VMARK(mk)->canon_file = tem;
 	    else
 		VMARK(mk)->canon_file = buffer;
@@ -1054,50 +1225,48 @@ updated as the file changes -- it will always point to the same character
 	else
 	{
 	    if(!BUFFERP(buffer))
-		buffer = VAL(curr_vw->vw_Tx);
+		buffer = rep_VAL(curr_vw->vw_Tx);
 	    VMARK(mk)->file = buffer;
 	    VMARK(mk)->next = VTX(buffer)->tx_MarkChain;
 	    VTX(buffer)->tx_MarkChain = VMARK(mk);
 	}
 	return mk;
     }
-    return mem_error();
+    return rep_mem_error();
 }
 
-_PR VALUE cmd_set_mark_pos(VALUE mark, VALUE pos);
-DEFUN("set-mark-pos", cmd_set_mark_pos, subr_set_mark_pos,
-      (VALUE mark, VALUE pos), V_Subr2, DOC_set_mark_pos) /*
-::doc:set_mark_pos::
+DEFUN("set-mark-pos", Fset_mark_pos, Sset_mark_pos,
+      (repv mark, repv pos), rep_Subr2) /*
+::doc:Sset-mark-pos::
 set-mark-pos MARK POSITION
 
 Set the position pointed at by MARK to POSITION.
 ::end:: */
 {
-    DECLARE1(mark, MARKP);
-    DECLARE2(pos, POSP);
+    rep_DECLARE1(mark, MARKP);
+    rep_DECLARE2(pos, POSP);
     VMARK(mark)->pos = pos;
     return pos;
 }
 
-_PR VALUE cmd_set_mark_file(VALUE mark, VALUE file);
-DEFUN("set-mark-file", cmd_set_mark_file, subr_set_mark_file,
-      (VALUE mark, VALUE file), V_Subr2, DOC_set_mark_file) /*
-::doc:set_mark_file::
+DEFUN("set-mark-file", Fset_mark_file, Sset_mark_file,
+      (repv mark, repv file), rep_Subr2) /*
+::doc:Sset-mark-file::
 set-mark-file MARK FILE
 
 Set the file pointed at by MARK to FILE, a buffer or a file name.
 ::end:: */
 {
-    GC_root gc_mark, gc_file;
-    DECLARE1(mark, MARKP);
-    if(STRINGP(file))
+    rep_GC_root gc_mark, gc_file;
+    rep_DECLARE1(mark, MARKP);
+    if(rep_STRINGP(file))
     {
-	VALUE tem;
-	PUSHGC(gc_mark, mark);
-	PUSHGC(gc_file, file);
-	tem = cmd_get_file_buffer(file);
-	POPGC; POPGC;
-	if(tem != LISP_NULL && BUFFERP(tem))
+	repv tem;
+	rep_PUSHGC(gc_mark, mark);
+	rep_PUSHGC(gc_file, file);
+	tem = Fget_file_buffer(file);
+	rep_POPGC; rep_POPGC;
+	if(tem != rep_NULL && BUFFERP(tem))
 	    file = tem;
     }
     if(BUFFERP(file))
@@ -1109,15 +1278,15 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
 	    VTX(file)->tx_MarkChain = VMARK(mark);
 	}
 	VMARK(mark)->file = file;
-	VMARK(mark)->canon_file = sym_nil;
+	VMARK(mark)->canon_file = Qnil;
     }
-    else if(STRINGP(file))
+    else if(rep_STRINGP(file))
     {
-	VALUE tem;
-	PUSHGC(gc_mark, mark);
-	PUSHGC(gc_file, file);
-	tem = cmd_canonical_file_name(file);
-	POPGC; POPGC;
+	repv tem;
+	rep_PUSHGC(gc_mark, mark);
+	rep_PUSHGC(gc_file, file);
+	tem = Fcanonical_file_name(file);
+	rep_POPGC; rep_POPGC;
 	if(!MARK_RESIDENT_P(VMARK(mark)))
 	{
 	    unchain_mark(VMARK(mark));
@@ -1125,7 +1294,7 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
 	    non_resident_mark_chain = VMARK(mark);
 	}
 	VMARK(mark)->file = file;
-	if(tem && STRINGP(tem))
+	if(tem && rep_STRINGP(tem))
 	    VMARK(mark)->canon_file = tem;
 	else
 	    VMARK(mark)->canon_file = file;
@@ -1133,9 +1302,8 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
     return VMARK(mark)->file;
 }
 
-_PR VALUE cmd_mark_pos(VALUE);
-DEFUN("mark-pos", cmd_mark_pos, subr_mark_pos, (VALUE mark), V_Subr1, DOC_mark_pos) /*
-::doc:mark_pos::
+DEFUN("mark-pos", Fmark_pos, Smark_pos, (repv mark), rep_Subr1) /*
+::doc:Smark-pos::
 mark-pos MARK
 
 Returns the position that MARK points to. (note that this is the *same*
@@ -1143,43 +1311,40 @@ object that the mark stores internally -- so don't modify it unless you're
 really sure you know what you're doing)
 ::end:: */
 {
-    DECLARE1(mark, MARKP);
+    rep_DECLARE1(mark, MARKP);
     return VMARK(mark)->pos;
 }
 
-_PR VALUE cmd_mark_file(VALUE);
-DEFUN("mark-file", cmd_mark_file, subr_mark_file, (VALUE mark), V_Subr1, DOC_mark_file) /*
-::doc:mark_file::
+DEFUN("mark-file", Fmark_file, Smark_file, (repv mark), rep_Subr1) /*
+::doc:Smark-file::
 mark-file MARK
 
 Returns the file-name or buffer that MARK points to.
 ::end:: */
 {
-    DECLARE1(mark, MARKP);
+    rep_DECLARE1(mark, MARKP);
     return(VMARK(mark)->file);
 }
 
-_PR VALUE cmd_mark_resident_p(VALUE);
-DEFUN("mark-resident-p", cmd_mark_resident_p, subr_mark_resident_p, (VALUE mark), V_Subr1, DOC_mark_resident_p) /*
-::doc:mark_resident_p::
+DEFUN("mark-resident-p", Fmark_resident_p, Smark_resident_p, (repv mark), rep_Subr1) /*
+::doc:Smark-resident-p::
 mark-resident-p MARK
 
 Returns t if the file that MARK points to is in a buffer.
 ::end:: */
 {
-    DECLARE1(mark, MARKP);
-    return MARK_RESIDENT_P(VMARK(mark)) ? sym_t : sym_nil;
+    rep_DECLARE1(mark, MARKP);
+    return MARK_RESIDENT_P(VMARK(mark)) ? Qt : Qnil;
 }
 
-_PR VALUE cmd_markp(VALUE);
-DEFUN("markp", cmd_markp, subr_markp, (VALUE mark), V_Subr1, DOC_markp) /*
-::doc:markp::
+DEFUN("markp", Fmarkp, Smarkp, (repv mark), rep_Subr1) /*
+::doc:Smarkp::
 markp ARG
 
 Return t if ARG is a mark.
 ::end:: */
 {
-    return MARKP(mark) ? sym_t : sym_nil;
+    return MARKP(mark) ? Qt : Qnil;
 }
 
 
@@ -1188,45 +1353,56 @@ Return t if ARG is a mark.
 void
 buffers_init(void)
 {
-    mark_static((VALUE *)&non_resident_mark_chain);
-    INTERN(auto_save_function);
-    ADD_SUBR(subr_make_buffer_name);
-    ADD_SUBR(subr_make_buffer);
-    ADD_SUBR(subr_get_file_buffer);
-    ADD_SUBR(subr_get_buffer);
-    ADD_SUBR(subr_current_buffer);
-    ADD_SUBR(subr_set_current_buffer);
-    ADD_SUBR(subr_buffer_file_name);
-    ADD_SUBR(subr_set_buffer_file_name);
-    ADD_SUBR(subr_buffer_name);
-    ADD_SUBR(subr_set_buffer_name);
-    ADD_SUBR(subr_buffer_changes);
-    ADD_SUBR(subr_buffer_modified_p);
-    ADD_SUBR(subr_set_buffer_modified);
-    ADD_SUBR(subr_buffer_length);
-    ADD_SUBR(subr_line_length);
-    ADD_SUBR(subr_with_buffer);
-    ADD_SUBR(subr_bufferp);
-    ADD_SUBR_INT(subr_restrict_buffer);
-    ADD_SUBR_INT(subr_unrestrict_buffer);
-    ADD_SUBR(subr_restriction_start);
-    ADD_SUBR(subr_restriction_end);
-    ADD_SUBR(subr_buffer_restricted_p);
-    ADD_SUBR(subr_auto_save_interval);
-    ADD_SUBR(subr_last_save_changes);
-    ADD_SUBR(subr_last_user_save_changes);
-    ADD_SUBR(subr_last_save_time);
-    ADD_SUBR(subr_tab_size);
-    ADD_SUBR(subr_truncate_lines);
-    ADD_SUBR(subr_buffer_status_id);
-    ADD_SUBR(subr_all_buffers);
-    ADD_SUBR(subr_make_mark);
-    ADD_SUBR(subr_set_mark_pos);
-    ADD_SUBR(subr_set_mark_file);
-    ADD_SUBR(subr_mark_pos);
-    ADD_SUBR(subr_mark_file);
-    ADD_SUBR(subr_mark_resident_p);
-    ADD_SUBR(subr_markp);
+    buffer_type = rep_register_new_type ("buffer", 0, buffer_prin,
+					 buffer_prin, buffer_sweep,
+					 buffer_mark, 0,
+					 buffer_getc, buffer_ungetc,
+					 buffer_putc, buffer_puts,
+					 buffer_bind, buffer_unbind);
+
+    mark_type = rep_register_new_type ("mark", mark_cmp, mark_prin,
+				       mark_prin, 0, mark_mark,
+				       0, mark_getc, mark_ungetc,
+				       mark_putc, mark_puts, 0, 0);
+
+    rep_mark_static((repv *)&non_resident_mark_chain);
+    rep_INTERN(auto_save_function);
+    rep_ADD_SUBR(Smake_buffer_name);
+    rep_ADD_SUBR(Smake_buffer);
+    rep_ADD_SUBR(Sget_file_buffer);
+    rep_ADD_SUBR(Sget_buffer);
+    rep_ADD_SUBR(Scurrent_buffer);
+    rep_ADD_SUBR(Sset_current_buffer);
+    rep_ADD_SUBR(Sbuffer_file_name);
+    rep_ADD_SUBR(Sset_buffer_file_name);
+    rep_ADD_SUBR(Sbuffer_name);
+    rep_ADD_SUBR(Sset_buffer_name);
+    rep_ADD_SUBR(Sbuffer_changes);
+    rep_ADD_SUBR(Sbuffer_modified_p);
+    rep_ADD_SUBR(Sset_buffer_modified);
+    rep_ADD_SUBR(Sbuffer_length);
+    rep_ADD_SUBR(Sline_length);
+    rep_ADD_SUBR(Sbufferp);
+    rep_ADD_SUBR_INT(Srestrict_buffer);
+    rep_ADD_SUBR_INT(Sunrestrict_buffer);
+    rep_ADD_SUBR(Srestriction_start);
+    rep_ADD_SUBR(Srestriction_end);
+    rep_ADD_SUBR(Sbuffer_restricted_p);
+    rep_ADD_SUBR(Sauto_save_interval);
+    rep_ADD_SUBR(Slast_save_changes);
+    rep_ADD_SUBR(Slast_user_save_changes);
+    rep_ADD_SUBR(Slast_save_time);
+    rep_ADD_SUBR(Stab_size);
+    rep_ADD_SUBR(Struncate_lines);
+    rep_ADD_SUBR(Sbuffer_status_id);
+    rep_ADD_SUBR(Sall_buffers);
+    rep_ADD_SUBR(Smake_mark);
+    rep_ADD_SUBR(Sset_mark_pos);
+    rep_ADD_SUBR(Sset_mark_file);
+    rep_ADD_SUBR(Smark_pos);
+    rep_ADD_SUBR(Smark_file);
+    rep_ADD_SUBR(Smark_resident_p);
+    rep_ADD_SUBR(Smarkp);
 }
 
 void
@@ -1238,14 +1414,14 @@ buffers_kill(void)
     {
 	TX *nxttx = tx->tx_Next;
 	kill_line_list(tx);
-	FREE_OBJECT(tx);
+	rep_FREE_CELL(tx);
 	tx = nxttx;
     }
     buffer_chain = NULL;
     while(mk)
     {
 	Lisp_Mark *nxtmk = mk->next_alloc;
-	FREE_OBJECT(mk);
+	rep_FREE_CELL(mk);
 	mk = nxtmk;
     }
     mark_chain = NULL;

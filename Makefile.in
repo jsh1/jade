@@ -20,37 +20,38 @@
 
 include ./Makedefs
 
+top_builddir=.
 top_srcdir=@top_srcdir@
 
-BUILDDIRS = lib jade lisp jaded
-INSTALLDIRS = lib lisp man
-RCLEANDIRS = lisp man
+SUBDIRS = src lisp man
 
-all :
-	-set -e; for dir in $(BUILDDIRS); do \
+all : build.h DOC.dir
+	set -e; for dir in $(SUBDIRS); do \
 	  [ -d $$dir ] && ( cd $$dir && $(MAKE) $@ ); \
  	done
 
+# this depends on config.status so it's rebuilt if configure is re-run
+build.h : build-info config.status
+	$(SHELL) $< $(host_type) $(version) $(version_major) $(version_minor) \
+	  '$(jadedir)' '$(lispdir)' '$(jadeexecdir)'
+
 install : all installdirs
-	if [ -x jaded/jaded ]; then \
-	  $(INSTALL_PROGRAM) jaded/jaded $(bindir)/jade; \
-	else \
-	  $(INSTALL_PROGRAM) jade/jade $(bindir)/jade; \
-	fi
-	-set -e; for dir in $(INSTALLDIRS); do \
+	set -e; for dir in $(SUBDIRS); do \
 	  ( cd $$dir && $(MAKE) $@ ); \
 	done
-	$(INSTALL_DATA) ./DOC $(jadedir)/$(version)
+	$(INSTALL_DATA) ./DOC.* $(jadedir)/$(version)
 
 installdirs : $(top_srcdir)/mkinstalldirs
 	$(SHELL) $(top_srcdir)/mkinstalldirs $(jadedir)/$(version) $(bindir)
 
 uninstall :
-	rm -f $(bindir)/jade $(bindir)/jaded $(bindir)/jadeclient
-	-set -e; for dir in $(INSTALLDIRS); do \
+	set -e; for dir in $(SUBDIRS); do \
 	  ( cd $$dir && $(MAKE) $@ ); \
 	done
 	rm -rf $(jadedir)/$(version)
+
+DOC.dir :
+	repdoc DOC `find . -name '*.c' -print`
 
 NEWS : man/news.texi
 	(cd man && $(MAKE) ../NEWS )
@@ -62,23 +63,20 @@ nobak :
 	rm -f `find . -name '*~' -print`
 
 clean :
-	-set -e; for dir in $(BUILDDIRS); do \
+	-set -e; for dir in $(SUBDIRS); do \
 	  [ -d $$dir ] && ( cd $$dir && $(MAKE) $@ ); \
 	done
-	rm -f *~ NEWS DOC TAGS
+	rm -f *~ NEWS DOC.* TAGS build.h
 
 realclean :
-	-set -e; for dir in $(RCLEANDIRS); do \
+	-set -e; for dir in $(SUBDIRS); do \
 	  [ -d $$dir ] && ( cd $$dir && $(MAKE) $@ ); \
 	done
-	-[ -d lib ] && rm -rf lib
-	-[ -d jade ] && rm -rf jade
-	-[ -d jaded ] && rm -rf jaded
 	rm -f config.cache config.h config.log config.status Makedefs Makefile
-	rm -f *~ NEWS DOC TAGS
+	rm -f *~ NEWS DOC.* TAGS build.h libtool
 
 TAGS :
 	etags --language=c `find . -name '*.[ch]' -print` \
 	      --language=lisp `find . -name '*.jl' -print`
 
-.PHONY: jade jaded lisp lib install uninstall tar nobak clean realclean TAGS
+.PHONY: install uninstall tar nobak clean realclean TAGS

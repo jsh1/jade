@@ -19,163 +19,66 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-#include "revision.h"
-
+#include "build.h"
 #include <string.h>
 #include <limits.h>
 
-_PR int main(int, char **);
-_PR int inner_main(int, char **);
-_PR bool on_idle(long since_last_event);
-_PR bool handle_input_exception(VALUE *result_p);
-_PR void main_init(void);
+static char *prog_name;
 
-_PR void *common_db;
-void *common_db;
+DEFSYM(jade_directory, "jade-directory");
+DEFSYM(jade_lisp_lib_directory, "jade-lisp-lib-directory");
+DEFSYM(jade_site_lisp_directory, "jade-site-lisp-directory");
+DEFSYM(jade_exec_directory, "jade-exec-directory"); /*
+::doc:Vjade-directory::
+The directory in which all of Jade's installed data files live.
+::end::
+::doc:Vjade-lisp-lib-directory::
+The name of the directory in which the standard lisp files live.
+::end::
+::doc:Vjade-site-lisp-directory::
+The name of the directory in which site-specific Lisp files are stored.
+::end::
+::doc:Vjade-exec-directory::
+The name of the directory containing Jade's architecture specific files.
+::end:: */
 
-_PR int recurse_depth;
-int recurse_depth = -1;
+/* some errors */
+DEFSYM(invalid_area, "invalid-area");
+DEFSTRING(err_invalid_area, "Invalid area");
+DEFSYM(window_error, "window-error");
+DEFSTRING(err_window_error, "Window error");
+DEFSYM(invalid_pos, "invalid-pos");
+DEFSTRING(err_invalid_pos, "Invalid position");
+DEFSYM(buffer_read_only, "buffer-read-only");
+DEFSTRING(err_buffer_read_only, "Buffer is read-only");
+DEFSYM(bad_event_desc, "bad-event-desc");
+DEFSTRING(err_bad_event_desc, "Invalid event description");
 
-_PR VALUE sym_exit, sym_quit, sym_top_level, sym_command_line_args;
-DEFSYM(exit, "exit");
-DEFSYM(quit, "quit");
-DEFSYM(top_level, "top-level");
-DEFSYM(command_line_args, "command-line-args");
-
-#ifndef INIT_SCRIPT
-# define INIT_SCRIPT "init"
-#endif
-static u_char *init_script = INIT_SCRIPT;
-
-_PR bool opt_batch_mode;
-bool opt_batch_mode;
-
-static void
-usage(void)
+static rep_bool
+on_idle (int since_last)
 {
-    fputs("usage: jade [SYSTEM-OPTIONS] [STANDARD-OPTIONS] [LISP-OPTIONS]\n", stderr);
-    sys_usage();
-    fputs("STANDARD-OPTIONS are,\n"
-	"    -rc FILE     use FILE instead of `init.jl' to boot from\n"
-	"    -v           print version/revision details\n"
-	"    -log-msgs    print all messages to standard-error as well\n"
-	"    -batch       don't open any windows; process args and exit\n"
-	"and LISP-OPTIONS are,\n"
-	"    -no-rc       don't load .jaderc or site-init files\n"
-	"    -f FUNCTION  call the Lisp function FUNCTION\n"
-	"    -l FILE      load the file of Lisp forms called FILE\n"
-	"    -q           quit\n"
-	"    FILE         load FILE into a new buffer\n"
-	, stderr);
-}
-
-static int
-get_main_options(int *argc_p, char ***argv_p)
-{
-    int argc = *argc_p;
-    char **argv = *argv_p;
-    VALUE head, *last;
-    while(argc && (**argv == '-'))
+    if(remove_all_messages(TRUE)
+       || print_event_prefix()
+       || auto_save_buffers(FALSE))
     {
-	if((argc >= 2) && !strcmp("-rc", *argv))
-	{
-	    init_script = *(++argv);
-	    argc--;
-	}
-	else if(!strcmp("-v", *argv))
-	{
-	    fputs(VERSSTRING "\n", stdout);
-	    return FALSE;
-	}
-	else if(!strcmp("-log-msgs", *argv))
-	    log_messages = TRUE;
-	else if(!strcmp("-batch", *argv))
-	    opt_batch_mode = TRUE;
-	else if(!strcmp("-?", *argv) || !strcmp("-help", *argv))
-	{
-	    usage();
-	    return FALSE;
-	}
-	else
-	    break;
-	argc--;
-	argv++;
-    }
-    /* any command line args left now get made into a list of strings
-       in symbol "command-line-args".  */
-    head = sym_nil;
-    last = &head;
-    while(argc > 0)
-    {
-	*last = cmd_cons(string_dup(*argv), sym_nil);
-	last = &VCDR(*last);
-	argc--;
-	argv++;
-    }
-    VSYM(sym_command_line_args)->value = head;
-    *argc_p = argc;
-    *argv_p = argv;
-    return TRUE;
-}
-
-int
-main(int argc, char **argv)
-{
-    int rc;
-
-    if(sizeof(PTR_SIZED_INT) != sizeof(void *))
-    {
-	fputs("jade: sizeof(PTR_SIZED_INT) != sizeof(void *); aborting\n",
-	      stderr);
-	return 100;
-    }
-    if(PTR_SIZED_INT_BITS != sizeof(PTR_SIZED_INT) * CHAR_BIT)
-    {
-	fputs("jade: PTR_SIZED_INT_BITS incorrectly defined; aborting\n",
-	      stderr);
-	return 100;
-    }
-
-    if(!sys_memory_init())
-	return 10;
-
-    common_db = db_alloc("common", 4096);
-
-    pre_values_init();
-    pre_sys_init();
-    if(pre_symbols_init())
-    {
-#ifdef DUMPED
-	/* Must initialise dumped out symbols before interning _any_
-	   symbols by hand. */
-	dumped_init();
-#endif
-	symbols_init();
-	rc = sys_init(argc, argv);
-	symbols_kill();
+	return rep_TRUE;
     }
     else
-	rc = 5;
-    values_kill();
-
-    sys_memory_kill();
-
-    return rc;
+	return rep_FALSE;
 }
 
-/* This function is called from sys_init(), it completes the initialisation
-   process and calls the top-level event loop.  sys_init() must advance
-   ARGC and ARGV so they point to the next unused argument.  */
-int
-inner_main(int argc, char **argv)
+static void
+on_termination (void)
 {
-    int rc = 5;
+    /* Autosave all buffers */
+    while(auto_save_buffers(TRUE) > 0)
+	;
+}
 
-    values_init();
-    lisp_init();
-    lispcmds_init();
-    lispmach_init();
+static void
+jade_symbols (void)
+{
+    files_init();
     buffers_init();
     commands_init();
     edit_init();
@@ -183,202 +86,137 @@ inner_main(int argc, char **argv)
     extent_init();
     glyphs_init();
     keys_init();
-    main_init();
     misc_init();
     movement_init();
     redisplay_init();
-    streams_init();
-    files_init();
     undo_init();
     views_init();
     windows_init();
-    sys_misc_init();
     sys_windows_init();
 
-#ifdef HAVE_SUBPROCESSES
-    proc_init();
-#endif
+    if(!faces_init() || !first_buffer())
+	exit (10);
 
-    if(faces_init() && get_main_options(&argc, &argv) && first_buffer())
+    rep_INTERN(jade_directory);
+    if(getenv("JADEDIR") != 0)
+	rep_SYM(Qjade_directory)->value = rep_string_dup(getenv("JADEDIR"));
+    else
+	rep_SYM(Qjade_directory)->value = rep_string_dup(JADE_DIR);
+
+    rep_INTERN(jade_lisp_lib_directory);
+    if(getenv("JADELISPDIR") != 0)
+	rep_SYM(Qjade_lisp_lib_directory)->value
+	    = rep_string_dup(getenv("JADELISPDIR"));
+    else
+	rep_SYM(Qjade_lisp_lib_directory)->value
+	    = rep_string_dup(JADE_LISPDIR);
+
+    rep_INTERN(jade_site_lisp_directory);
+    if(getenv("JADESITELISPDIR") != 0)
+	rep_SYM(Qjade_site_lisp_directory)->value
+	    = rep_string_dup(getenv("JADESITELISPDIR"));
+    else
+	rep_SYM(Qjade_site_lisp_directory)->value
+	    = rep_concat2(rep_STR(rep_SYM(Qjade_directory)->value),
+			  "/site-lisp");
+
+    rep_INTERN(jade_exec_directory);
+    if(getenv("JADEEXECDIR") != 0)
+	rep_SYM(Qjade_exec_directory)->value
+	    = rep_string_dup(getenv("JADEEXECDIR"));
+    else
+	rep_SYM(Qjade_exec_directory)->value = rep_string_dup(JADE_EXECDIR);
+
+    if(getenv("JADEDOCFILE") != 0)
+	rep_SYM(Qdocumentation_file)->value
+	    = rep_string_dup(getenv("JADEDOCFILE"));
+    else
+	rep_SYM(Qdocumentation_file)->value
+	    = rep_concat2(rep_STR(rep_SYM(Qjade_directory)->value),
+			  "/" JADE_VERSION "/DOC");
+
+    rep_SYM(Qdocumentation_files)->value
+	= Fcons(rep_SYM(Qdocumentation_file)->value,
+		rep_SYM(Qdocumentation_files)->value);
+
+    rep_SYM(Qload_path)->value
+	= Fcons(rep_SYM(Qjade_lisp_lib_directory)->value,
+		Fcons(rep_SYM(Qjade_site_lisp_directory)->value,
+		      rep_SYM(Qload_path)->value));
+
+    rep_SYM(Qdl_load_path)->value = Fcons(rep_SYM(Qjade_exec_directory)->value,
+					  rep_SYM(Qdl_load_path)->value);
+
+    rep_INTERN(invalid_area); rep_ERROR(invalid_area);
+    rep_INTERN(window_error); rep_ERROR(window_error);
+    rep_INTERN(invalid_pos); rep_ERROR(invalid_pos);
+    rep_INTERN(buffer_read_only); rep_ERROR(buffer_read_only);
+    rep_INTERN(bad_event_desc); rep_ERROR(bad_event_desc);
+
+    rep_regsub_fun = jade_regsub;
+    rep_regsublen_fun = jade_regsublen;
+    rep_on_idle_fun = on_idle;
+    rep_on_termination_fun = on_termination;
+}    
+
+int
+main(int argc, char **argv)
+{
+    int rc = 5;
+
+    prog_name = *argv++; argc--;
+    rep_init (prog_name, &argc, &argv, 0, &sys_usage);
+
+    if (sys_init(prog_name))
     {
-	VALUE arg, res;
-	if((arg = string_dup(init_script))
-	   && (res = cmd_load(arg, sym_nil, sym_nil, sym_nil)))
+	repv res;
+
+	jade_symbols();
+
+	res = Fload(rep_string_dup ("jade"), Qnil, Qnil, Qnil);
+	if (res != rep_NULL)
 	{
 	    rc = 0;
-	    if(!opt_batch_mode)
-		res = sys_event_loop();
+	    if(rep_SYM(Qbatch_mode)->value == Qnil)
+		res = rep_event_loop();
 	}
-	else if(throw_value && VCAR(throw_value) == sym_quit)
+	else if(rep_throw_value && rep_CAR(rep_throw_value) == Qquit)
 	{
-	    if(INTP(VCDR(throw_value)))
-		rc = VINT(VCDR(throw_value));
+	    if(rep_INTP(rep_CDR(rep_throw_value)))
+		rc = rep_INT(rep_CDR(rep_throw_value));
 	    else
 		rc = 0;
-	    throw_value = 0;
+	    rep_throw_value = 0;
 	}
-    }
 
-    if(throw_value && VCAR(throw_value) == sym_error)
-    {
-	/* If quitting due to an error, print the error cell if
-	   at all possible. */
-	VALUE stream = cmd_stderr_file();
-	VALUE old_tv = throw_value;
-	GC_root gc_old_tv;
-	PUSHGC(gc_old_tv, old_tv);
-	throw_value = LISP_NULL;
-	if(stream && FILEP(stream))
+	if(rep_throw_value && rep_CAR(rep_throw_value) == Qerror)
 	{
-	    fputs("error--> ", stderr);
-	    cmd_prin1(VCDR(old_tv), stream);
-	    fputc('\n', stderr);
+	    /* If quitting due to an error, print the error cell if
+	       at all possible. */
+	    repv stream = Fstderr_file();
+	    repv old_tv = rep_throw_value;
+	    rep_GC_root gc_old_tv;
+	    rep_PUSHGC(gc_old_tv, old_tv);
+	    rep_throw_value = rep_NULL;
+	    if(stream && rep_FILEP(stream))
+	    {
+		fputs("error--> ", stderr);
+		Fprin1(rep_CDR(old_tv), stream);
+		fputc('\n', stderr);
+	    }
+	    else
+		fputs("jade: error in initialisation\n", stderr);
+	    rep_throw_value = old_tv;
+	    rep_POPGC;
 	}
-	else
-	    fputs("jade: error in initialisation\n", stderr);
-	throw_value = old_tv;
-	POPGC;
+
+	windows_kill();
+	views_kill();
+	buffers_kill();
+	glyphs_kill();
+
+	sys_kill();
+	rep_kill();
     }
-
-#ifdef HAVE_DYNAMIC_LOADING
-    kill_dl_libraries();
-#endif
-
-#ifdef HAVE_SUBPROCESSES
-    proc_kill();
-#endif
-
-    windows_kill();
-    views_kill();
-    buffers_kill();
-    find_kill();
-    glyphs_kill();
-    files_kill();
-    lispmach_kill();
-    db_kill();
     return rc;
-}
-
-/* This function gets called when we have idle time available. The
-   single argument is the number of seconds since we weren't idle.
-   The first idle period after a non-idle period should pass zero.
-   Returns TRUE if the display should be refreshed. */
-bool
-on_idle(long since_last_event)
-{
-    static bool called_hook;
-    static int depth;
-    bool res = FALSE;
-
-    depth++;
-
-    /* A timeout; do one of:
-	* Remove messages in minibuffers
-	* Print the current key-prefix
-	* Auto-save a buffer
-	* GC if enough data allocated
-	* Run the `idle-hook' (only once per idle-period)  */
-
-    if(since_last_event == 0)
-	called_hook = FALSE;
-
-    if(remove_all_messages(TRUE)
-       || print_event_prefix()
-       || auto_save_buffers(FALSE))
-	res = TRUE;
-    else if(data_after_gc > idle_gc_threshold)
-	/* nothing was saved so try a GC */
-	cmd_garbage_collect(sym_t);
-    else if(!called_hook && depth == 1)
-    {
-	VALUE hook = cmd_symbol_value(sym_idle_hook, sym_t);
-	if(!VOIDP(hook) && !NILP(hook))
-	{
-	    cmd_call_hook(hook, sym_nil, sym_nil);
-	    res = TRUE;
-	}
-	called_hook = TRUE;
-    }
-
-    depth--;
-    return res;
-}
-
-/* The input loop should call this function when throw_value == LISP_NULL.
-   It returns TRUE when the input loop should exit, returning whatever
-   is stored in *RESULT-P. */
-bool
-handle_input_exception(VALUE *result_p)
-{
-    VALUE tv = throw_value;
-    VALUE car = VCAR(tv);
-    throw_value = LISP_NULL;
-    *result_p = LISP_NULL;
-    
-    if(car == sym_exit)
-    {
-	*result_p = VCDR(tv);
-	if(recurse_depth > 0)
-	    return TRUE;
-    }
-    else if((car == sym_top_level) && (recurse_depth == 0))
-	*result_p = VCDR(tv);
-    else if(car == sym_quit)
-	return TRUE;
-    else if(car == sym_user_interrupt)
-	handle_error(car, sym_nil);
-    else if(car == sym_term_interrupt)
-    {
-	if(recurse_depth == 0)
-	{
-	    /* Autosave all buffers */
-	    while(auto_save_buffers(TRUE) > 0)
-		;
-	}
-	return TRUE;
-    }
-    else if(car == sym_error)
-	handle_error(VCAR(VCDR(tv)), VCDR(VCDR(tv)));
-    else if(recurse_depth == 0)
-	handle_error(sym_no_catcher, LIST_1(car));
-    else
-    {
-	throw_value = tv;
-	return TRUE;
-    }
-    return FALSE;
-}
-
-_PR VALUE cmd_recursive_edit(void);
-DEFUN_INT("recursive-edit", cmd_recursive_edit, subr_recursive_edit, (void), V_Subr0, DOC_recursive_edit, "") /*
-::doc:recursive_edit::
-recursive-edit
-
-Enter a new recursive-edit.
-::end:: */
-{
-    return sys_event_loop();
-}
-
-_PR VALUE cmd_recursion_depth(void);
-DEFUN("recursion-depth", cmd_recursion_depth, subr_recursion_depth, (void), V_Subr0, DOC_recursion_depth) /*
-::doc:recursion_depth::
-recursion-depth
-
-Returns the number of recursive-edit's deep we are, zero signifies the
-original level.
-::end:: */
-{
-    return MAKE_INT(recurse_depth);
-}
-
-void
-main_init(void)
-{
-    ADD_SUBR_INT(subr_recursive_edit);
-    ADD_SUBR(subr_recursion_depth);
-    INTERN(quit);
-    INTERN(exit);
-    INTERN(top_level);
-    INTERN(command_line_args);
 }

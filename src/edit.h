@@ -18,8 +18,93 @@
    along with Jade; see the file COPYING.	If not, write to
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-#ifndef _EDIT_H
-#define _EDIT_H
+#ifndef EDIT_H
+#define EDIT_H
+
+
+/* Macros for editor types */
+
+#define VMARK(v)	((Lisp_Mark *)rep_PTR(v))
+#define VTX(v)		((TX *)rep_PTR(v))
+#define VBUFFER(v)	VTX(v)
+#define VWIN(v)		((WIN *)rep_PTR(v))
+#define VVIEW(v)	((VW *)rep_PTR(v))
+#define VGLYPHTAB(v)	((glyph_table_t *)rep_PTR(v))
+#define VEXTENT(v)	((Lisp_Extent *)rep_PTR(v))	
+#define VFACE(v)	((Lisp_Face *)rep_PTR(v))	
+#define VCOLOR(v)	((Lisp_Color *)rep_PTR(v))	
+
+#define BUFFERP(v)	rep_CELL16_TYPEP(v, buffer_type)
+#define MARKP(v)	rep_CELL16_TYPEP(v, mark_type)
+#define WINDOWP(v)	(rep_CELL16_TYPEP(v, window_type) && VWIN(v)->w_Window)
+#define VIEWP(v)	(rep_CELL16_TYPEP(v, view_type) && VVIEW(v)->vw_Win)
+#define GLYPHTABP(v)	rep_CELL16_TYPEP(v, glyph_table_type)
+#define EXTENTP(v)	rep_CELL16_TYPEP(v, extent_type)
+#define FACEP(v)	rep_CELL16_TYPEP(v, face_type)
+#define COLORP(v)	rep_CELL16_TYPEP(v, color_type)
+
+
+/* Positions */
+
+/* A pointer to a buffer position. There's a conventions that positions
+   accessed via repv pointers (and VCOL, VROW macros) are _read_only_,
+   while those accessed through Pos * pointers (and PCOL, PROW macros)
+   are _read_write_, probably allocated on the stack. */
+
+#define POSP(v) (rep_CONSP(v) && rep_INTP(rep_CAR(v)) && rep_INTP(rep_CDR(v)))
+
+/* We define the column in the cdr and the row in the car, so that
+   the normal cons-comparison (car first, then cdr) will work as the
+   old pos-comparison used to (i.e. row-major). */
+#define MAKE_POS(col, row) Fcons(rep_MAKE_INT(row), rep_MAKE_INT(col))
+#define VCOL(v) (rep_INT(rep_CDR(v)))
+#define VROW(v) (rep_INT(rep_CAR(v)))
+
+/* These should never be used unless it's clear there can be
+   no other references to V. */
+#define VSETCOL(v,c) (rep_CDR(v) = rep_MAKE_INT(c))
+#define VSETROW(v,r) (rep_CAR(v) = rep_MAKE_INT(r))
+
+/* These all want repv pointers */
+#define POS_EQUAL_P(s,e) \
+    ((VROW(s) == VROW(e)) && (VCOL(s) == VCOL(e)))
+#define POS_GREATER_P(s,e) \
+    ((VROW(s) > VROW(e)) || ((VROW(s) == VROW(e)) && (VCOL(s) > VCOL(e))))
+#define POS_GREATER_EQUAL_P(s,e) \
+    ((VROW(s) > VROW(e)) || ((VROW(s) == VROW(e)) && (VCOL(s) >= VCOL(e))))
+#define POS_LESS_P(s,e) \
+    ((VROW(s) < VROW(e)) || ((VROW(s) == VROW(e)) && (VCOL(s) < VCOL(e))))
+#define POS_LESS_EQUAL_P(s,e) \
+    ((VROW(s) < VROW(e)) || ((VROW(s) == VROW(e)) && (VCOL(s) <= VCOL(e))))
+
+/* A more conventional C structure, used in the editor internals to
+   avoid the gratuitous masking and shifting otherwise required. */
+typedef struct {
+    long row, col;
+} Pos;
+
+#define PCOL(p) ((p)->col)
+#define PROW(p) ((p)->row)
+
+#define COPY_VPOS(p, v) 	\
+    do {			\
+	PROW(p) = VROW(v);	\
+	PCOL(p) = VCOL(v);	\
+    } while(0)
+
+#define COPY_POS(p) MAKE_POS(PCOL(p), PROW(p))
+
+/* These all want Pos pointers */
+#define PPOS_EQUAL_P(s,e) \
+    ((PROW(s) == PROW(e)) && (PCOL(s) == PCOL(e)))
+#define PPOS_GREATER_P(s,e) \
+    ((PROW(s) > PROW(e)) || ((PROW(s) == PROW(e)) && (PCOL(s) > PCOL(e))))
+#define PPOS_GREATER_EQUAL_P(s,e) \
+    ((PROW(s) > PROW(e)) || ((PROW(s) == PROW(e)) && (PCOL(s) >= PCOL(e))))
+#define PPOS_LESS_P(s,e) \
+    ((PROW(s) < PROW(e)) || ((PROW(s) == PROW(e)) && (PCOL(s) < PCOL(e))))
+#define PPOS_LESS_EQUAL_P(s,e) \
+    ((PROW(s) < PROW(e)) || ((PROW(s) == PROW(e)) && (PCOL(s) <= PCOL(e))))
 
 
 /* Line structure -- an array of these is in the TX->tx_Lines */
@@ -31,7 +116,7 @@ typedef struct LINE {
 
 /* Each bookmark has one of these */
 typedef struct lisp_mark {
-    VALUE car;
+    repv car;
 
     /* When the file is resident this node is linked into its tx_Marks list,
        otherwise it's in a list of all non-resident marks.  */
@@ -41,13 +126,13 @@ typedef struct lisp_mark {
     struct lisp_mark *next_alloc;
 
     /* The position of the marked character. */
-    VALUE pos;
+    repv pos;
 
     /* The file. Either a buffer, or the name of the file. */
-    VALUE file;
+    repv file;
 
     /* For non-resident marks, the canonical name of the file. */
-    VALUE canon_file;
+    repv canon_file;
 } Lisp_Mark;
 
 #define MARK_RESIDENT_P(m) BUFFERP((m)->file)
@@ -56,7 +141,7 @@ typedef struct lisp_mark {
 /* Extents -- plists for buffer regions */
 
 typedef struct lisp_extent {
-    VALUE car;
+    repv car;
     struct lisp_extent *next;		/* list of allocations */
 
     /* Linkage in the tree. Each extent fragment has a parent (or null),
@@ -73,8 +158,8 @@ typedef struct lisp_extent {
     struct lisp_extent *tem;
 
     struct _TX *tx;
-    VALUE plist;
-    VALUE locals;			/* alist of (SYMBOL . VALUE) */
+    repv plist;
+    repv locals;			/* alist of (SYMBOL . repv) */
 
     /* The start and end positions of the fragment. Note that the ``row''
        components are relative to the row in which the parent of this
@@ -84,14 +169,14 @@ typedef struct lisp_extent {
 } Lisp_Extent;
 
 /* Absorb characters inserted immediately before the extent into the extent. */
-#define EXTFF_OPEN_START	(1 << (CELL8_TYPE_BITS + 0))
+#define EXTFF_OPEN_START	(1 << (rep_CELL16_TYPE_BITS + 0))
 
 /* Absorb characters inserted immediately after the extent into the extent. */
-#define EXTFF_OPEN_END		(1 << (CELL8_TYPE_BITS + 1))
+#define EXTFF_OPEN_END		(1 << (rep_CELL16_TYPE_BITS + 1))
 
 /* If setting a non-permanent-local buffer-local symbol in this extent,
    set its value in _this_ extent. */
-#define EXTFF_CATCH_VARIABLES	(1 << (CELL8_TYPE_BITS + 2))
+#define EXTFF_CATCH_VARIABLES	(1 << (rep_CELL16_TYPE_BITS + 2))
 
 #define EXTENT_CACHE_SIZE 4
 
@@ -105,10 +190,10 @@ struct cached_extent {
 /* colours */
 
 typedef struct lisp_color {
-    VALUE car;
+    repv car;
     struct lisp_color *next;
 
-    VALUE name;
+    repv name;
 
     /* System-local representation of the color */
     SYS_COLOR_TYPE color;
@@ -118,23 +203,24 @@ typedef struct lisp_color {
 /* faces */
 
 typedef struct lisp_face {
-    VALUE car;
+    repv car;
     struct lisp_face *next;
 
-    VALUE name;
-    VALUE foreground, background;
+    repv name;
+    repv foreground, background;
 } Lisp_Face;
 
 typedef struct merged_face {
-    unsigned short car, valid;
+    unsigned long car;
+    bool valid;
     Lisp_Color *foreground, *background;
 } Merged_Face;
 
-#define FACEFF_UNDERLINE	(1 << (CELL8_TYPE_BITS + 0))
-#define FACEFF_BOLD		(1 << (CELL8_TYPE_BITS + 1))
-#define FACEFF_ITALIC		(1 << (CELL8_TYPE_BITS + 2))
-#define FACEFF_INVERT		(1 << (CELL8_TYPE_BITS + 3))
-#define FACEFF_BOXED		(1 << (CELL8_TYPE_BITS + 4))
+#define FACEFF_UNDERLINE	(1 << (rep_CELL16_TYPE_BITS + 0))
+#define FACEFF_BOLD		(1 << (rep_CELL16_TYPE_BITS + 1))
+#define FACEFF_ITALIC		(1 << (rep_CELL16_TYPE_BITS + 2))
+#define FACEFF_INVERT		(1 << (rep_CELL16_TYPE_BITS + 3))
+#define FACEFF_BOXED		(1 << (rep_CELL16_TYPE_BITS + 4))
 #define FACEFF_MASK		(FACEFF_UNDERLINE | FACEFF_BOLD \
 				 | FACEFF_ITALIC | FACEFF_INVERT \
 				 | FACEFF_BOXED)
@@ -142,7 +228,7 @@ typedef struct merged_face {
 
 /* A buffer, strangely called `TX' */
 typedef struct _TX {
-    VALUE	    tx_Car;
+    repv	    tx_Car;
 #define tx_Flags tx_Car
 
     struct _TX	   *tx_Next;
@@ -156,17 +242,17 @@ typedef struct _TX {
     long	    tx_LogicalStart, tx_LogicalEnd;
 
     /* unique name of buffer */
-    VALUE	    tx_BufferName;
+    repv	    tx_BufferName;
 
     /* absolute name of the file in this buffer as the user sees it (or nil) */
-    VALUE	    tx_FileName;
+    repv	    tx_FileName;
 
     /* name of the file in this buffer such that we can compare two
        files by comparing their canonical names (or nil). */
-    VALUE	    tx_CanonicalFileName;
+    repv	    tx_CanonicalFileName;
 
     /* Data for status line and window title */
-    VALUE	    tx_StatusId;
+    repv	    tx_StatusId;
     
     int		    tx_Changes;
     int		    tx_LastSaveChanges;	 /* changes at last save (any type) */
@@ -181,23 +267,23 @@ typedef struct _TX {
     struct cached_extent tx_ExtentCache[EXTENT_CACHE_SIZE];
 
     /* Undo information */
-    VALUE	    tx_UndoList;
-    VALUE	    tx_ToUndoList;
-    VALUE	    tx_UndoneList;
+    repv	    tx_UndoList;
+    repv	    tx_ToUndoList;
+    repv	    tx_UndoneList;
 
     /* Saved state for buffers which are not being displayed.  */
-    VALUE	    tx_SavedCPos;
-    VALUE	    tx_SavedWPos;
-    VALUE	    tx_SavedBlockPos[2];
+    repv	    tx_SavedCPos;
+    repv	    tx_SavedWPos;
+    repv	    tx_SavedBlockPos[2];
     char	    tx_SavedBlockStatus;
 
 } TX;
 
 /* No recording of undo information */
-#define TXFF_NO_UNDO		(1 << (CELL8_TYPE_BITS + 0))
+#define TXFF_NO_UNDO		(1 << (rep_CELL16_TYPE_BITS + 0))
 
 /* don't wrap long lines */
-#define TXFF_DONT_WRAP_LINES	(1 << (CELL8_TYPE_BITS + 1))
+#define TXFF_DONT_WRAP_LINES	(1 << (rep_CELL16_TYPE_BITS + 1))
 #define TX_WRAP_LINES_P(tx)	(((tx)->tx_Flags & TXFF_DONT_WRAP_LINES) == 0)
 
 /* Remnants from the old redisplay code */
@@ -209,7 +295,7 @@ typedef struct _TX {
 /* Each view in a window is like this */
 typedef struct _VW
 {
-    VALUE	    vw_Car;
+    repv	    vw_Car;
 #define vw_Flags vw_Car
 
     struct _VW	   *vw_Next;
@@ -218,15 +304,15 @@ typedef struct _VW
     struct _VW	   *vw_NextView;	/* for w_ViewList */
 
     /* Cursor positioning data.  */
-    VALUE	    vw_CursorPos;
+    repv	    vw_CursorPos;
     u_long	    vw_LastCursorOffset; /* number of glyphs from col 0 */
-    VALUE	    vw_LastCursorPos;
+    repv	    vw_LastCursorPos;
     u_long	    vw_LastCursorChanges;
     TX		   *vw_LastCursorTx;
 
-    VALUE	    vw_DisplayOrigin;
+    repv	    vw_DisplayOrigin;
 
-    VALUE	    vw_BlockS, vw_BlockE;
+    repv	    vw_BlockS, vw_BlockE;
     /* 0=block marked, 1=start marked, 2=end marked, -1=none marked */
     int		    vw_BlockStatus;
 
@@ -241,20 +327,20 @@ typedef struct _VW
 
     /* List of buffers accessible in this window.  This is not used by the
        C code at all; access is via the `buffer-list' variable.  */
-    VALUE	    vw_BufferList;
+    repv	    vw_BufferList;
 
     short	    vw_XStepRatio, vw_YStepRatio;
     short	    vw_XStep, vw_YStep;
 } VW;
 
 /* mark rectangular blocks */
-#define VWFF_RECTBLOCKS		(1 << (CELL8_TYPE_BITS + 0))
+#define VWFF_RECTBLOCKS		(1 << (rep_CELL16_TYPE_BITS + 0))
 
 /* view is of a minibuffer */
-#define VWFF_MINIBUF		(1 << (CELL8_TYPE_BITS + 1))
+#define VWFF_MINIBUF		(1 << (rep_CELL16_TYPE_BITS + 1))
 
 /* at last redisplay, the last line in the buffer was visible */
-#define VWFF_AT_BOTTOM		(1 << (CELL8_TYPE_BITS + 2))
+#define VWFF_AT_BOTTOM		(1 << (rep_CELL16_TYPE_BITS + 2))
 
 
 /* Windows */
@@ -279,7 +365,7 @@ typedef struct {
 
 /* Each window is represented by one of these */
 typedef struct _WIN {
-    VALUE w_Car;
+    repv w_Car;
 #define w_Flags w_Car
 
     struct _WIN *w_Next;
@@ -301,10 +387,10 @@ typedef struct _WIN {
     int w_LeftPix, w_RightPix;		/* Pixel position of top left corner */
     int w_TopPix, w_BottomPix;		/*  "      "   of bottom right */
 
-    VALUE w_FontName;
+    repv w_FontName;
     short w_FontX, w_FontY;		/* pixel width and height of glyphs */
 
-    VALUE w_DisplayedName;		/* current ``name'' of window  */
+    repv w_DisplayedName;		/* current ``name'' of window  */
 
     /* Merged faces in this window. If the `next' field in each
        face is non-zero the face is valid. */
@@ -312,23 +398,20 @@ typedef struct _WIN {
 } WIN;
 
 /* refresh whole window */
-#define WINFF_FORCE_REFRESH	(1 << (CELL8_TYPE_BITS + 0))
+#define WINFF_FORCE_REFRESH	(1 << (rep_CELL16_TYPE_BITS + 0))
 
 /* window is iconified */
-#define WINFF_SLEEPING		(1 << (CELL8_TYPE_BITS + 1))
+#define WINFF_SLEEPING		(1 << (rep_CELL16_TYPE_BITS + 1))
 
 /* a message is currently displayed in the minibuffer */
-#define WINFF_MESSAGE		(1 << (CELL8_TYPE_BITS + 2))
+#define WINFF_MESSAGE		(1 << (rep_CELL16_TYPE_BITS + 2))
 
 /* using the w_NewContent field of the window to preserve the w_Content.
    Used by asynchronous input handling to save screen contents */
-#define WINFF_PRESERVING	(1 << (CELL8_TYPE_BITS + 3))
+#define WINFF_PRESERVING	(1 << (rep_CELL16_TYPE_BITS + 3))
 
 /* True when the minibuffer in WIN is in use. */
 #define MINIBUFFER_ACTIVE_P(win) \
     ((win)->w_MiniBuf->vw_Tx != mb_unused_buffer)
 
-#define CURS_ON	 1
-#define CURS_OFF 0
-
-#endif /* _EDIT_H */
+#endif /* EDIT_H */

@@ -19,21 +19,17 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-
 #include <ctype.h>
 
-_PR void movement_init(void);
 
 DEFSYM(next_screen_context_lines, "next-screen-context-lines"); /*
-::doc:next_screen_context_lines::
+::doc:Vnext-screen-context-lines::
 This variable controls the number of lines of "overlap" when scrolling
 by screenfuls of text.
 ::end:: */
 
-_PR VALUE cmd_goto(VALUE pos);
-DEFUN("goto", cmd_goto, subr_goto, (VALUE pos), V_Subr1, DOC_goto) /*
-::doc:goto::
+DEFUN("goto", Fgoto, Sgoto, (repv pos), rep_Subr1) /*
+::doc:Sgoto::
 goto POSITION
 
 Set the cursor position in the current window to the character position
@@ -41,26 +37,25 @@ POSITION.
 ::end:: */
 {
     VW *vw = curr_vw;
-    DECLARE1(pos, POSP);
+    rep_DECLARE1(pos, POSP);
     if(check_line(vw->vw_Tx, pos))
     {
 	vw->vw_CursorPos = pos;
 	return(pos);
     }
     else
-	return(sym_nil);
+	return(Qnil);
 }
 
-_PR VALUE cmd_goto_glyph(VALUE pos);
-DEFUN("goto-glyph", cmd_goto_glyph, subr_goto_glyph, (VALUE pos), V_Subr1, DOC_goto_glyph) /*
-::doc:goto_glyph::
+DEFUN("goto-glyph", Fgoto_glyph, Sgoto_glyph, (repv pos), rep_Subr1) /*
+::doc:Sgoto-glyph::
 goto-glyph POSITION
 
 Set the cursor position in the current window to the glyph position POSITION.
 ::end:: */
 {
     VW *vw = curr_vw;
-    DECLARE1(pos, POSP);
+    rep_DECLARE1(pos, POSP);
     if(check_line(vw->vw_Tx, pos))
     {
 	vw->vw_CursorPos = make_pos(char_col(vw->vw_Tx, VCOL(pos), VROW(pos)),
@@ -68,12 +63,11 @@ Set the cursor position in the current window to the glyph position POSITION.
 	return(pos);
     }
     else
-	return(sym_nil);
+	return(Qnil);
 }
 
-_PR VALUE cmd_center_display(VALUE vw, VALUE arg);
-DEFUN_INT("center-display", cmd_center_display, subr_center_display, (VALUE vw, VALUE arg), V_Subr2, DOC_center_display, DS_NL "P") /*
-::doc:center_display::
+DEFUN_INT("center-display", Fcenter_display, Scenter_display, (repv vw, repv arg), rep_Subr2, rep_DS_NL "P") /*
+::doc:Scenter-display::
 center-display [VIEW] [ARG]
 
 When ARG is nil arrange it so that the line that the cursor is on is
@@ -88,18 +82,18 @@ view.
     long col, row;
 
     if(!VIEWP(vw))
-	vw = VAL(curr_vw);
+	vw = rep_VAL(curr_vw);
 
-    if(NILP(arg) || CONSP(arg))
+    if(rep_NILP(arg) || rep_CONSP(arg))
 	offset = VVIEW(vw)->vw_MaxY / 2;
-    else if(SYMBOLP(arg))
+    else if(rep_SYMBOLP(arg))
 	offset = VVIEW(vw)->vw_MaxY - 1;
-    else if(INTP(arg))
+    else if(rep_INTP(arg))
     {
-	if(VINT(arg) < 0)
-	    offset = VVIEW(vw)->vw_MaxY + VINT(arg);
+	if(rep_INT(arg) < 0)
+	    offset = VVIEW(vw)->vw_MaxY + rep_INT(arg);
 	else
-	    offset = VINT(arg);
+	    offset = rep_INT(arg);
     }
     else
 	offset = 0;
@@ -121,25 +115,24 @@ view.
     return VVIEW(vw)->vw_DisplayOrigin;
 }
 
-_PR VALUE cmd_next_screen(VALUE number);
-DEFUN_INT("next-screen", cmd_next_screen, subr_next_screen, (VALUE number), V_Subr1, DOC_next_screen, "p") /*
-::doc:next_screen::
+DEFUN_INT("next-screen", Fnext_screen, Snext_screen, (repv number), rep_Subr1, "p") /*
+::doc:Snext-screen::
 next-screen [NUMBER]
 
 Move NUMBER (default: 1) screens forwards in the current window.
 ::end:: */
 {
-    long lines = (INTP(number) ? VINT(number) : 1) * curr_vw->vw_MaxY;
+    long lines = (rep_INTP(number) ? rep_INT(number) : 1) * curr_vw->vw_MaxY;
     long col, row;
-    VALUE context;
+    repv context;
     if(lines < 0)
-	return cmd_prev_screen(MAKE_INT(-lines / curr_vw->vw_MaxY));
-    context = cmd_symbol_value(sym_next_screen_context_lines, sym_t);
-    if(INTP(context) && lines > VINT(context) + 1)
-	lines -= VINT(context);
+	return Fprev_screen(rep_MAKE_INT(-lines / curr_vw->vw_MaxY));
+    context = Fsymbol_value(Qnext_screen_context_lines, Qt);
+    if(rep_INTP(context) && lines > rep_INT(context) + 1)
+	lines -= rep_INT(context);
 
     if(VROW(curr_vw->vw_CursorPos) == curr_vw->vw_Tx->tx_LogicalEnd - 1)
-	return sym_nil;
+	return Qnil;
     else if(curr_vw->vw_Flags & VWFF_AT_BOTTOM)
     {
 	set_cursor_vertically(curr_vw, curr_vw->vw_Tx->tx_LogicalEnd - 1);
@@ -156,26 +149,25 @@ Move NUMBER (default: 1) screens forwards in the current window.
 	return curr_vw->vw_DisplayOrigin;
     }
     else
-	return sym_nil;
+	return Qnil;
 }
 
-_PR VALUE cmd_prev_screen(VALUE number);
-DEFUN_INT("prev-screen", cmd_prev_screen, subr_prev_screen, (VALUE number), V_Subr1, DOC_prev_screen, "p") /*
-::doc:prev_screen::
+DEFUN_INT("prev-screen", Fprev_screen, Sprev_screen, (repv number), rep_Subr1, "p") /*
+::doc:Sprev-screen::
 prev-screen [NUMBER]
 
 Move NUMBER (default: 1) screens backwards in the current window.
 ::end:: */
 {
-    long lines = (INTP(number) ? VINT(number) : 1) * curr_vw->vw_MaxY;
+    long lines = (rep_INTP(number) ? rep_INT(number) : 1) * curr_vw->vw_MaxY;
     long col, row;
-    VALUE context, new_origin;
+    repv context, new_origin;
     if(lines < 0)
-	return cmd_next_screen(MAKE_INT(-lines / curr_vw->vw_MaxY));
+	return Fnext_screen(rep_MAKE_INT(-lines / curr_vw->vw_MaxY));
 
-    context = cmd_symbol_value(sym_next_screen_context_lines, sym_t);
-    if(INTP(context) && lines > VINT(context) + 1)
-	lines -= VINT(context);
+    context = Fsymbol_value(Qnext_screen_context_lines, Qt);
+    if(rep_INTP(context) && lines > rep_INT(context) + 1)
+	lines -= rep_INT(context);
     if(skip_glyph_rows_backwards(curr_vw, lines,
 				 VCOL(curr_vw->vw_DisplayOrigin),
 				 VROW(curr_vw->vw_DisplayOrigin),
@@ -189,7 +181,7 @@ Move NUMBER (default: 1) screens backwards in the current window.
 	return curr_vw->vw_DisplayOrigin;
     }
     else
-	return sym_nil;
+	return Qnil;
 
     /* Now fix the cursor position. */
     if(skip_glyph_rows_forwards(curr_vw, curr_vw->vw_MaxY - 1,
@@ -210,10 +202,9 @@ Move NUMBER (default: 1) screens backwards in the current window.
     return curr_vw->vw_DisplayOrigin;
 }
 
-_PR VALUE cmd_end_of_buffer(VALUE tx, VALUE irp);
-DEFUN_INT("end-of-buffer", cmd_end_of_buffer, subr_end_of_buffer,
-	  (VALUE tx, VALUE irp), V_Subr2, DOC_end_of_buffer, "!@") /*
-::doc:end_of_buffer::
+DEFUN_INT("end-of-buffer", Fend_of_buffer, Send_of_buffer,
+	  (repv tx, repv irp), rep_Subr2, "!@") /*
+::doc:Send-of-buffer::
 end-of-buffer [BUFFER] [IGNORE-RESTRICTION-P]
 
 Return the position of the last character in BUFFER. Unless
@@ -222,8 +213,8 @@ of the buffer's restriction.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
-    if(!NILP(irp))
+	tx = rep_VAL(curr_vw->vw_Tx);
+    if(!rep_NILP(irp))
     {
 	long x, y;
 	y = VTX(tx)->tx_NumLines - 1;
@@ -231,13 +222,12 @@ of the buffer's restriction.
 	return make_pos(x, y);
     }
     else
-	return cmd_restriction_end(tx);
+	return Frestriction_end(tx);
 }
 
-_PR VALUE cmd_start_of_buffer(VALUE tx, VALUE irp);
-DEFUN_INT("start-of-buffer", cmd_start_of_buffer, subr_start_of_buffer,
-	  (VALUE tx, VALUE irp), V_Subr2, DOC_start_of_buffer, "!@") /*
-::doc:start_of_buffer::
+DEFUN_INT("start-of-buffer", Fstart_of_buffer, Sstart_of_buffer,
+	  (repv tx, repv irp), rep_Subr2, "!@") /*
+::doc:Sstart-of-buffer::
 start-of-buffer [BUFFER] [IGNORE-RESTRICTION-P]
 
 Return the position of the start of the buffer. Unless
@@ -245,16 +235,15 @@ IGNORE-RESTRICTION-P is non-nil the position returned is the start
 of the buffer's restriction.
 ::end:: */
 {
-    if(!NILP(irp))
+    if(!rep_NILP(irp))
 	return make_pos(0, 0);
     else
-	return cmd_restriction_start(tx);
+	return Frestriction_start(tx);
 }
 
-_PR VALUE cmd_end_of_line(VALUE pos, VALUE tx);
-DEFUN_INT("end-of-line", cmd_end_of_line, subr_end_of_line,
-	  (VALUE pos, VALUE tx), V_Subr2, DOC_end_of_line, "@") /*
-::doc:end_of_line::
+DEFUN_INT("end-of-line", Fend_of_line, Send_of_line,
+	  (repv pos, repv tx), rep_Subr2, "@") /*
+::doc:Send-of-line::
 end-of-line [POS] [BUFFER]
 
 Return the position of the last character in the line pointed to by POS (or
@@ -262,19 +251,18 @@ the cursor).
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     if(VROW(pos) < VTX(tx)->tx_NumLines)
 	return make_pos(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
     else
-	return sym_nil;
+	return Qnil;
 }
 
-_PR VALUE cmd_start_of_line(VALUE pos);
-DEFUN_INT("start-of-line", cmd_start_of_line, subr_start_of_line,
-	  (VALUE pos), V_Subr1, DOC_start_of_line, "@") /*
-::doc:start_of_line::
+DEFUN_INT("start-of-line", Fstart_of_line, Sstart_of_line,
+	  (repv pos), rep_Subr1, "@") /*
+::doc:Sstart-of-line::
 start-of-line [POS]
 
 Return the position of the first character in the line pointed to by POS
@@ -289,10 +277,9 @@ Return the position of the first character in the line pointed to by POS
 	return pos;
 }
 
-_PR VALUE cmd_forward_line(VALUE lines, VALUE pos);
-DEFUN_INT("forward-line", cmd_forward_line, subr_forward_line,
-	  (VALUE lines, VALUE pos), V_Subr2, DOC_forward_line, "@p") /*
-::doc:forward_line::
+DEFUN_INT("forward-line", Fforward_line, Sforward_line,
+	  (repv lines, repv pos), rep_Subr2, "@p") /*
+::doc:Sforward-line::
 forward-line [NUMBER] [POS]
 
 Return the position of the NUMBER'th (by default the next) line below
@@ -305,17 +292,16 @@ line number is made) nil is returned.
     long row;
     if(!POSP(pos))
 	pos = curr_vw->vw_CursorPos;
-    row = VROW(pos) + (INTP(lines) ? VINT(lines) : 1);
+    row = VROW(pos) + (rep_INTP(lines) ? rep_INT(lines) : 1);
     if(row < 0)
-	return sym_nil;
+	return Qnil;
     else
 	return make_pos(VCOL(pos), row);
 }
 
-_PR VALUE cmd_forward_char(VALUE count, VALUE pos, VALUE tx);
-DEFUN_INT("forward-char", cmd_forward_char, subr_forward_char,
-	  (VALUE count, VALUE pos, VALUE tx), V_Subr3, DOC_forward_char, "@p") /*
-::doc:forward_char::
+DEFUN_INT("forward-char", Fforward_char, Sforward_char,
+	  (repv count, repv pos, repv tx), rep_Subr3, "@p") /*
+::doc:Sforward-char::
 forward-char [COUNT] [POS] [BUFFER]
 
 Returns the position of the character COUNT characters (by default the next)
@@ -326,15 +312,15 @@ beginning or the end of the buffer is passed, nil is returned.
     long dist;
     Pos tem;
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     else
     {
 	if(!check_pos(VTX(tx), pos))
-	    return LISP_NULL;
+	    return rep_NULL;
     }
-    dist = INTP(count) ? VINT(count) : 1;
+    dist = rep_INTP(count) ? rep_INT(count) : 1;
     if(dist == 0)
 	return pos;
     COPY_VPOS(&tem, pos);
@@ -342,13 +328,12 @@ beginning or the end of the buffer is passed, nil is returned.
        || backward_char(-dist, VTX(tx), &tem))
 	return COPY_POS(&tem);
     else
-	return sym_nil;
+	return Qnil;
 }
 
-_PR VALUE cmd_forward_tab(VALUE num, VALUE pos, VALUE size);
-DEFUN_INT("forward-tab", cmd_forward_tab, subr_forward_tab,
-	  (VALUE num, VALUE pos, VALUE size), V_Subr3, DOC_forward_tab, "@p") /*
-::doc:forward_tab::
+DEFUN_INT("forward-tab", Fforward_tab, Sforward_tab,
+	  (repv num, repv pos, repv size), rep_Subr3, "@p") /*
+::doc:Sforward-tab::
 forward-tab [COUNT] [POS] [TAB-SIZE]
 
 Return the glyph position of the COUNT'th next tab stop to the right of
@@ -356,9 +341,9 @@ the character position POS (or the cursor). COUNT is assumed 1 when
 undefined; negative values move towards the left hand side of the screen.
 ::end:: */
 {
-    int tabs = INTP(num) ? VINT(num) : 1;
+    int tabs = rep_INTP(num) ? rep_INT(num) : 1;
     VW *vw = curr_vw;
-    int tabsize = INTP(size) ? VINT(size) : vw->vw_Tx->tx_TabSize;
+    int tabsize = rep_INTP(size) ? rep_INT(size) : vw->vw_Tx->tx_TabSize;
     long col;
     if(!POSP(pos))
     {
@@ -380,7 +365,7 @@ undefined; negative values move towards the left hand side of the screen.
     if(col >= 0)
 	return make_pos(col, VROW(pos));
     else
-	return(sym_nil);
+	return(Qnil);
 }
 
 DEFSTRING(no_brac, "No matching bracket");
@@ -430,7 +415,7 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 		    {
 			if(--y < tx->tx_LogicalStart)
 			{
-			    cmd_signal(sym_error, LIST_1(VAL(&no_brac)));
+			    Fsignal(Qerror, rep_LIST_1(rep_VAL(&no_brac)));
 			    return(FALSE);
 			}
 			line--;
@@ -460,7 +445,7 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 		    {
 			if(++y >= tx->tx_LogicalEnd)
 			{
-			    cmd_signal(sym_error, LIST_1(VAL(&no_brac)));
+			    Fsignal(Qerror, rep_LIST_1(rep_VAL(&no_brac)));
 			    return(FALSE);
 			}
 			line++;
@@ -484,15 +469,14 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 	    return TRUE;
 	}
     }
-    cmd_signal(sym_error, LIST_1(VAL(&no_open_brac)));
+    Fsignal(Qerror, rep_LIST_1(rep_VAL(&no_open_brac)));
     return FALSE;
 }
 
-_PR VALUE cmd_find_matching_bracket(VALUE pos, VALUE tx, VALUE esc);
-DEFUN_INT("find-matching-bracket", cmd_find_matching_bracket,
-	  subr_find_matching_bracket, (VALUE pos, VALUE tx, VALUE esc),
-	  V_Subr3, DOC_find_matching_bracket, "!@") /*
-::doc:find_matching_bracket::
+DEFUN_INT("find-matching-bracket", Ffind_matching_bracket,
+	  Sfind_matching_bracket, (repv pos, repv tx, repv esc),
+	  rep_Subr3, "!@") /*
+::doc:Sfind-matching-bracket::
 find-matching-bracket [POS] [BUFFER] [ESCAPE-CHAR]
 
 Find a bracket matching the one at POS (or the cursor). The things that match
@@ -500,57 +484,55 @@ each other are,  { }, ( ), [ ], ` ', < >. POS is altered.
 Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
 ::end:: */
 {
-    u_char esc_char = INTP(esc) ? VINT(esc) : '\\';
+    u_char esc_char = rep_INTP(esc) ? rep_INT(esc) : '\\';
     Pos tem;
     if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->vw_Tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     else
     {
 	if(!check_pos(VTX(tx), pos))
-	    return LISP_NULL;
+	    return rep_NULL;
     }
     COPY_VPOS(&tem, pos);
     if(find_matching_bracket(&tem, VTX(tx), esc_char))
 	return COPY_POS(&tem);
-    return(sym_nil);
+    return(Qnil);
 }
 
-_PR VALUE cmd_raw_mouse_pos(void);
-DEFUN("raw-mouse-pos", cmd_raw_mouse_pos, subr_raw_mouse_pos, (void), V_Subr0, DOC_raw_mouse_pos) /*
-::doc:raw_mouse_pos::
+DEFUN("raw-mouse-pos", Fraw_mouse_pos, Sraw_mouse_pos, (void), rep_Subr0) /*
+::doc:Sraw-mouse-pos::
 raw-mouse-pos
 
 Return the glyph position of the mouse, relative to the current window.
 ::end:: */
 {
-    VALUE pos = sys_get_mouse_pos(curr_win);
-    if(pos != LISP_NULL)
+    repv pos = sys_get_mouse_pos(curr_win);
+    if(pos != rep_NULL)
 	return pos;
     else
-	return sym_nil;
+	return Qnil;
 }
 
 void
 movement_init(void)
 {
-    ADD_SUBR(subr_goto);
-    ADD_SUBR(subr_goto_glyph);
-    ADD_SUBR_INT(subr_center_display);
-    ADD_SUBR_INT(subr_next_screen);
-    ADD_SUBR_INT(subr_prev_screen);
-    ADD_SUBR_INT(subr_end_of_buffer);
-    ADD_SUBR_INT(subr_start_of_buffer);
-    ADD_SUBR_INT(subr_end_of_line);
-    ADD_SUBR_INT(subr_start_of_line);
-    ADD_SUBR_INT(subr_forward_line);
-    ADD_SUBR_INT(subr_forward_char);
-    ADD_SUBR_INT(subr_forward_tab);
-    ADD_SUBR_INT(subr_find_matching_bracket);
-    ADD_SUBR(subr_raw_mouse_pos);
+    rep_ADD_SUBR(Sgoto);
+    rep_ADD_SUBR(Sgoto_glyph);
+    rep_ADD_SUBR_INT(Scenter_display);
+    rep_ADD_SUBR_INT(Snext_screen);
+    rep_ADD_SUBR_INT(Sprev_screen);
+    rep_ADD_SUBR_INT(Send_of_buffer);
+    rep_ADD_SUBR_INT(Sstart_of_buffer);
+    rep_ADD_SUBR_INT(Send_of_line);
+    rep_ADD_SUBR_INT(Sstart_of_line);
+    rep_ADD_SUBR_INT(Sforward_line);
+    rep_ADD_SUBR_INT(Sforward_char);
+    rep_ADD_SUBR_INT(Sforward_tab);
+    rep_ADD_SUBR_INT(Sfind_matching_bracket);
+    rep_ADD_SUBR(Sraw_mouse_pos);
 
-    INTERN(next_screen_context_lines);
-    DOC(next_screen_context_lines);
-    VSYM(sym_next_screen_context_lines)->value = MAKE_INT(2);
+    rep_INTERN(next_screen_context_lines);
+    rep_SYM(Qnext_screen_context_lines)->value = rep_MAKE_INT(2);
 }

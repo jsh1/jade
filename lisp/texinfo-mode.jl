@@ -60,8 +60,8 @@ Local bindings in this mode are:\n
 	major-mode 'texinfo-mode
 	major-mode-kill 'texinfo-mode-kill
 	local-ctrl-c-keymap texinfo-ctrl-c-keymap
-	paragraph-separate "^@node.*\n"
-	paragraph-start "^ +"
+	;paragraph-separate "^@node.*\n"
+	;paragraph-start "^ +"
 	mode-comment-header "@c"
 	local-keymap 'texinfo-keymap)
   (call-hook 'text-mode-hook)

@@ -288,6 +288,7 @@ in the status line."
 (put 'prog2 'lisp-indent 2)
 (put 'unwind-protect 'lisp-indent 1)
 (put 'condition-case 'lisp-indent 2)
+(put 'with-object 'lisp-indent 1)
 (put 'with-buffer 'lisp-indent 1)
 (put 'with-window 'lisp-indent 1)
 (put 'with-view 'lisp-indent 1)

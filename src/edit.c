@@ -19,8 +19,6 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -49,10 +47,10 @@
 
 /* Allocate a chunk of memory to store a string of size X (including
    terminating zero). */
-#define ALLOC_LINE_BUF(tx, x) sys_alloc(LINE_BUF_SIZE(x))
+#define ALLOC_LINE_BUF(tx, x) rep_alloc(LINE_BUF_SIZE(x))
 
 /* Free something allocated with the previous macro. */
-#define FREE_LINE_BUF(tx, p)  sys_free(p)
+#define FREE_LINE_BUF(tx, p)  rep_free(p)
 
 #ifdef USE_R_ALLOC
 
@@ -83,17 +81,17 @@ extern void *r_re_alloc(void **ptr, size_t size);
 /* Use standard allocation calls */
 
 #define ALLOC_LL(tx,n) \
-    ((tx)->tx_Lines = sys_alloc(sizeof(LINE) * (n)))
+    ((tx)->tx_Lines = rep_alloc(sizeof(LINE) * (n)))
 
 #define FREE_LL(tx)				\
     do {					\
-	sys_free((tx)->tx_Lines);		\
+	rep_free((tx)->tx_Lines);		\
 	(tx)->tx_Lines = 0;			\
     } while(0)
 
 #define REALLOC_LL(tx,n)						\
     do {								\
-	LINE *tem = sys_realloc((tx)->tx_Lines, sizeof(LINE) * (n));	\
+	LINE *tem = rep_realloc((tx)->tx_Lines, sizeof(LINE) * (n));	\
 	if(tem != 0)							\
 	    (tx)->tx_Lines = tem;					\
 	else								\
@@ -102,28 +100,6 @@ extern void *r_re_alloc(void **ptr, size_t size);
 
 #endif /* !USE_R_ALLOC */
 
-_PR bool clear_line_list(TX *);
-_PR void kill_line_list(TX *);
-_PR LINE *resize_line_list(TX *, long, long);
-_PR u_char *alloc_line_buf(TX *, long length);
-_PR void free_line_buf(TX *tx, u_char *line);
-_PR bool insert_gap(TX *, long, long, long);
-_PR VALUE insert_bytes(TX *, const u_char *, long, VALUE);
-_PR VALUE insert_string(TX *, const u_char *, long, VALUE);
-_PR bool delete_chars(TX *, long, long, long);
-_PR VALUE delete_section(TX *, VALUE, VALUE);
-_PR bool pad_pos(TX *, VALUE);
-_PR bool pad_cursor(VW *);
-_PR void order_pos(VALUE *, VALUE *);
-_PR bool check_section(TX *, VALUE *, VALUE *);
-_PR VALUE check_pos(TX *, VALUE);
-_PR bool check_line(TX *, VALUE);
-_PR bool check_row(TX *tx, long line);
-_PR long section_length(TX *, VALUE, VALUE);
-_PR void copy_section(TX *, VALUE, VALUE, u_char *);
-_PR void order_block(VW *);
-_PR bool read_only_pos(TX *, VALUE);
-_PR bool read_only_section(TX *, VALUE, VALUE);
 
 /* Makes buffer TX empty (null string in first line) */
 bool
@@ -272,7 +248,7 @@ insert_gap(TX *tx, long len, long col, long row)
 	}
 	else
 	{
-	    mem_error();
+	    rep_mem_error();
 	    return FALSE;
 	}
     }
@@ -285,8 +261,8 @@ insert_gap(TX *tx, long len, long col, long row)
    No line-breaking is performed, the TEXTLEN bytes of TEXT are simply
    inserted into the current line. Returns the position of the character
    after the end of the inserted text. */
-VALUE
-insert_bytes(TX *tx, const u_char *text, long textLen, VALUE pos)
+repv
+insert_bytes(TX *tx, const u_char *text, long textLen, repv pos)
 {
     if(insert_gap(tx, textLen, VCOL(pos), VROW(pos)))
     {
@@ -294,13 +270,13 @@ insert_bytes(TX *tx, const u_char *text, long textLen, VALUE pos)
 	return make_pos(VCOL(pos) + textLen, VROW(pos));
     }
     else
-	return LISP_NULL;
+	return rep_NULL;
 }
 
 /* Inserts a string, this routine acts on any '\n' characters that it
    finds. */
-VALUE
-insert_string(TX *tx, const u_char *text, long textLen, VALUE pos)
+repv
+insert_string(TX *tx, const u_char *text, long textLen, repv pos)
 {
     const u_char *eol;
     Pos tpos;
@@ -400,11 +376,11 @@ insert_string(TX *tx, const u_char *text, long textLen, VALUE pos)
 	}
 	else
 	abort:
-	    return LISP_NULL;
+	    return rep_NULL;
     }
 
     {
-	VALUE end = make_pos(PCOL(&tpos), PROW(&tpos));
+	repv end = make_pos(PCOL(&tpos), PROW(&tpos));
 	undo_record_insertion(tx, pos, end);
 	flag_insertion(tx, pos, end);
 	return end;
@@ -438,7 +414,7 @@ delete_chars(TX *tx, long col, long row, long size)
 	    u_char *new_line = ALLOC_LINE_BUF(tx, new_length);
 	    if(new_line == NULL)
 	    {
-		mem_error();
+		rep_mem_error();
 		return FALSE;
 	    }
             memcpy(new_line, tx->tx_Lines[row].ln_Line, col);
@@ -455,8 +431,8 @@ delete_chars(TX *tx, long col, long row, long size)
 }
 
 /* Deletes from START to END; returns END if okay. */
-VALUE
-delete_section(TX *tx, VALUE start, VALUE end)
+repv
+delete_section(TX *tx, repv start, repv end)
 {
     undo_record_deletion(tx, start, end);
     if(VROW(end) == VROW(start))
@@ -485,7 +461,7 @@ delete_section(TX *tx, VALUE start, VALUE end)
 	if(middle_lines != 0)
 	{
 	    if(!resize_line_list(tx, -middle_lines, PROW(&tstart)))
-		mem_error();
+		rep_mem_error();
 	    adjust_marks_sub_y(tx, middle_lines, PROW(&tstart));
 	    PROW(&tend) = PROW(&tend) - middle_lines;
 	}
@@ -525,8 +501,8 @@ delete_section(TX *tx, VALUE start, VALUE end)
 		    u_char *new_line = ALLOC_LINE_BUF(tx, new_length);
 		    if(new_line == NULL)
 		    {
-			mem_error();
-			return LISP_NULL;
+			rep_mem_error();
+			return rep_NULL;
 		    }
 		    memcpy(new_line, tx->tx_Lines[row].ln_Line,
 			   tx->tx_Lines[row].ln_Strlen - 1);
@@ -550,13 +526,13 @@ delete_section(TX *tx, VALUE start, VALUE end)
 
 /* Inserts spaces from end of line to pos */
 bool
-pad_pos(TX *tx, VALUE pos)
+pad_pos(TX *tx, repv pos)
 {
     if(VROW(pos) < tx->tx_LogicalEnd && !read_only_pos(tx, pos))
     {
 	if(tx->tx_Lines[VROW(pos)].ln_Strlen < (VCOL(pos) + 1))
 	{
-	    VALUE point = make_pos(tx->tx_Lines[VROW(pos)].ln_Strlen - 1,
+	    repv point = make_pos(tx->tx_Lines[VROW(pos)].ln_Strlen - 1,
 				   VROW(pos));
 	    if(insert_gap(tx, VCOL(pos) - VCOL(point),
 			  VCOL(point), VROW(point)))
@@ -566,7 +542,7 @@ pad_pos(TX *tx, VALUE pos)
 		       VCOL(pos) - VCOL(point));
 		return TRUE;
 	    }
-	    mem_error();
+	    rep_mem_error();
 	    return FALSE;
 	}
 	return TRUE;
@@ -577,7 +553,7 @@ pad_pos(TX *tx, VALUE pos)
 bool
 pad_cursor(VW *vw)
 {
-    VALUE old_cursor = vw->vw_CursorPos;
+    repv old_cursor = vw->vw_CursorPos;
     if(pad_pos(vw->vw_Tx, vw->vw_CursorPos))
     {
 	/* Need to reinstall the old cursor position, since it
@@ -592,18 +568,18 @@ pad_cursor(VW *vw)
 
 /* if end is before start then swap the two */
 void
-order_pos(VALUE *start, VALUE *end)
+order_pos(repv *start, repv *end)
 {
     if(POS_GREATER_P(*start, *end))
     {
-	VALUE tem = *end;
+	repv tem = *end;
 	*end = *start;
 	*start = tem;
     }
 }
 
 bool
-check_section(TX *tx, VALUE *start, VALUE *end)
+check_section(TX *tx, repv *start, repv *end)
 {
     order_pos(start, end);
     if((VROW(*start) >= tx->tx_LogicalEnd)
@@ -611,8 +587,7 @@ check_section(TX *tx, VALUE *start, VALUE *end)
        || (VROW(*start) < tx->tx_LogicalStart)
        || (VROW(*end) < tx->tx_LogicalStart))
     {
-	cmd_signal(sym_invalid_area,
-		   list_3(VAL(tx), *start, *end));
+	Fsignal(Qinvalid_area, rep_list_3(rep_VAL(tx), *start, *end));
 	return(FALSE);
     }
     if(VCOL(*start) >= tx->tx_Lines[VROW(*start)].ln_Strlen)
@@ -628,14 +603,14 @@ check_section(TX *tx, VALUE *start, VALUE *end)
    column specified by POSITION is past the end of its line, the value
    returned will be the position of the end of the line, otherwise
    POSITION is returned. */
-VALUE
-check_pos(TX *tx, VALUE pos)
+repv
+check_pos(TX *tx, repv pos)
 {
     if(VROW(pos) >= tx->tx_LogicalEnd
        || VROW(pos) < tx->tx_LogicalStart)
     {
-	cmd_signal(sym_invalid_pos, list_2(VAL(tx), pos));
-	return LISP_NULL;
+	Fsignal(Qinvalid_pos, rep_list_2(rep_VAL(tx), pos));
+	return rep_NULL;
     }
     if(VCOL(pos) >= tx->tx_Lines[VROW(pos)].ln_Strlen)
 	pos = make_pos(tx->tx_Lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
@@ -645,13 +620,13 @@ check_pos(TX *tx, VALUE pos)
 /* Check that POSITION is in the current restriction of buffer TX.
    If not an error is signalled and the function returns false. */
 bool
-check_line(TX *tx, VALUE pos)
+check_line(TX *tx, repv pos)
 {
     if((VROW(pos) >= tx->tx_LogicalEnd)
        || (VROW(pos) < tx->tx_LogicalStart)
        || (VCOL(pos) < 0))
     {
-	cmd_signal(sym_invalid_pos, list_2(VAL(tx), pos));
+	Fsignal(Qinvalid_pos, rep_list_2(rep_VAL(tx), pos));
 	return FALSE;
     }
     return TRUE;
@@ -664,7 +639,7 @@ check_row(TX *tx, long line)
 {
     if(line >= tx->tx_LogicalEnd || line < tx->tx_LogicalStart)
     {
-	cmd_signal(sym_invalid_pos, list_2(VAL(tx), make_pos(0, line)));
+	Fsignal(Qinvalid_pos, rep_list_2(rep_VAL(tx), make_pos(0, line)));
 	return FALSE;
     }
     else
@@ -674,7 +649,7 @@ check_row(TX *tx, long line)
 /* Returns the number of bytes needed to store a section, doesn't include
    a zero terminator but does include all newline chars. */
 long
-section_length(TX *tx, VALUE startPos, VALUE endPos)
+section_length(TX *tx, repv startPos, repv endPos)
 {
     long linenum = VROW(startPos);
     long length;
@@ -693,7 +668,7 @@ section_length(TX *tx, VALUE startPos, VALUE endPos)
 /* Copies a section to a buffer.
    End of copy does NOT have a zero appended to it. */
 void
-copy_section(TX *tx, VALUE startPos, VALUE endPos, u_char *buff)
+copy_section(TX *tx, repv startPos, repv endPos, u_char *buff)
 {
     long linenum = VROW(startPos);
     long copylen;
@@ -732,7 +707,7 @@ order_block(VW *vw)
 	   || (VROW(vw->vw_BlockS) == VROW(vw->vw_BlockE)
 	       && VCOL(vw->vw_BlockS) > VCOL(vw->vw_BlockE)))
 	{
-	    VALUE tem = vw->vw_BlockE;
+	    repv tem = vw->vw_BlockE;
 	    vw->vw_BlockE = vw->vw_BlockS;
 	    vw->vw_BlockS = tem;
 	}
@@ -742,17 +717,17 @@ order_block(VW *vw)
 /* Returns TRUE and signals an error if buffer TX is currently read-only,
    otherwise returns FALSE. */
 bool
-read_only_pos(TX *tx, VALUE pos)
+read_only_pos(TX *tx, repv pos)
 {
-    VALUE tmp = cmd_buffer_symbol_value(sym_read_only, pos, VAL(tx), sym_t);
-    if(VOIDP(tmp))
-	tmp = cmd_default_value(sym_read_only, sym_t);
-    if(!VOIDP(tmp) && !NILP(tmp))
+    repv tmp = Fbuffer_symbol_value(Qread_only, pos, rep_VAL(tx), Qt);
+    if(rep_VOIDP(tmp))
+	tmp = Fdefault_value(Qread_only, Qt);
+    if(!rep_VOIDP(tmp) && !rep_NILP(tmp))
     {
-	VALUE tmp = cmd_symbol_value(sym_inhibit_read_only, sym_t);
-	if(VOIDP(tmp) || NILP(tmp))
+	repv tmp = Fsymbol_value(Qinhibit_read_only, Qt);
+	if(rep_VOIDP(tmp) || rep_NILP(tmp))
 	{
-	    cmd_signal(sym_buffer_read_only, LIST_2(pos, VAL(tx)));
+	    Fsignal(Qbuffer_read_only, rep_LIST_2(pos, rep_VAL(tx)));
 	    return TRUE;
 	}
     }
@@ -760,16 +735,16 @@ read_only_pos(TX *tx, VALUE pos)
 }
 
 bool
-read_only_section(TX *tx, VALUE start, VALUE end)
+read_only_section(TX *tx, repv start, repv end)
 {
     bool read_only = FALSE;
     Pos p_start, p_end;
 
     /* FIXME: remove this GCC'ism! */
     void map_func (Lisp_Extent *e, void *data) {
-	VALUE val = cmd_buffer_symbol_value(sym_read_only, VAL(e),
-					    sym_nil, sym_t);
-	if(!VOIDP(val) && !NILP(val))
+	repv val = Fbuffer_symbol_value(Qread_only, rep_VAL(e),
+					    Qnil, Qt);
+	if(!rep_VOIDP(val) && !rep_NILP(val))
 	    read_only = TRUE;
     }
 
@@ -778,10 +753,10 @@ read_only_section(TX *tx, VALUE start, VALUE end)
     map_section_extents(map_func, tx->tx_GlobalExtent, &p_start, &p_end, 0);
     if(read_only)
     {
-	VALUE tmp = cmd_symbol_value(sym_inhibit_read_only, sym_t);
-	if(VOIDP(tmp) || NILP(tmp))
+	repv tmp = Fsymbol_value(Qinhibit_read_only, Qt);
+	if(rep_VOIDP(tmp) || rep_NILP(tmp))
 	{
-	    cmd_signal(sym_buffer_read_only, list_3(start, end, VAL(tx)));
+	    Fsignal(Qbuffer_read_only, rep_list_3(start, end, rep_VAL(tx)));
 	    return TRUE;
 	}
     }

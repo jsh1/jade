@@ -1,11 +1,12 @@
-jaded
 Makefile
-lib
-jade
-DOC
+DOC*
 config.status
 config.cache
 config.h
 config.log
 configure
 Makedefs
+aclocal.m4
+libtool
+build.h
+NEWS

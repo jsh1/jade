@@ -19,6 +19,7 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (require 'read-mail)
+(require 'date)
 (provide 'rm-restrict)
 
 ;; Commentary:
@@ -267,7 +268,7 @@ contain its definition as a function."
   (let
       ((msg-date (rm-get-date-vector rm-rule-message)))
     (when msg-date
-      (setq msg-date (aref msg-date mail-date-epoch-time))
+      (setq msg-date (aref msg-date date-vec-epoch-time))
       (funcall (if after '> '<)
 	       msg-date
 	       (if (eq (car date) 'absolute)
@@ -384,10 +385,10 @@ contain its definition as a function."
       (setq seconds-ago 86400))
      (t
       (let
-	  ((date (mail-parse-date string)))
+	  ((date (parse-date string)))
 	(unless date
 	  (error "Invalid date specification: %s" string))
-	(setq abs-time (aref date mail-date-epoch-time)))))
+	(setq abs-time (aref date date-vec-epoch-time)))))
     (if seconds-ago
 	(list* 'relative (/ seconds-ago 86400) (mod seconds-ago 86400))
       (cons 'absolute abs-time))))

@@ -19,6 +19,7 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
+#include "server.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,7 +66,7 @@ system_name(void)
 
 #ifdef HAVE_GETHOSTNAME
     if(gethostname(buf, 256))
-	return LISP_NULL;
+	return rep_NULL;
 #else
     {
 	struct utsname uts;

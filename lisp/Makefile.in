@@ -22,31 +22,32 @@ include ../Makedefs
 
 top_srcdir=@top_srcdir@
 
-jade_prog = ../jade/jade
+jade_prog = ../src/jade
+COMPILE_ENV = JADELISPDIR=. JADEDOCFILE=../DOC
 
-COMPILE_ENV = JADELISPLIB=.
-
-INSTALL_FILES = $(wildcard *.jl) $(wildcard *.jlc) $(wildcard *.jld) DOC
+INSTALL_FILES = $(wildcard *.jl) $(wildcard *.jlc) $(wildcard *.jld)
 
 all : lisp
 
 lisp :
-	$(COMPILE_ENV) $(jade_prog) -batch -log-msgs -no-rc \
-		-l compiler -f compile-compiler
-	$(COMPILE_ENV) $(jade_prog) -batch -log-msgs -no-rc \
-		-f compile-lisp-lib
+	$(COMPILE_ENV) $(jade_prog) --batch --no-rc -l compiler \
+	  -f compile-lib-batch .
 
 install : all installdirs
-	$(INSTALL_DATA) $(INSTALL_FILES) $(lispdir)
+	for f in $(INSTALL_FILES); do \
+	  $(INSTALL_DATA) $$f $(lispdir); \
+	done
 
 installdirs : $(top_srcdir)/mkinstalldirs
 	$(SHELL) $(top_srcdir)/mkinstalldirs $(lispdir)
 
 uninstall :
-	rm -f $(addprefix $(lispdir)/, $(INSTALL_FILES))
+	for f in $(INSTALL_FILES); do \
+	  rm -f $(lispdir)/$$f; \
+	done
 
 clean :
-	rm -f *.jlc DOC *.jld dump.out *~
+	rm -f *.jlc *.jld *~
 
 realclean : clean
 	rm -f Makefile

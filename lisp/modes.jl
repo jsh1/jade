@@ -203,14 +203,6 @@ of the defun is assumed instead.")
 
 ;; Major mode handling
 
-(defun assoc-regexp (input alist &optional fold-case)
-  "Scan ALIST for an element whose car is a regular expression matching the
-string INPUT."
-  (catch 'return
-    (mapc #'(lambda (cell)
-	      (when (string-match (car cell) input nil fold-case)
-		(throw 'return cell))) alist)))
-
 (defun normal-mode ()
   "Initialise the standard major mode for the current buffer."
   (interactive)
@@ -480,7 +472,7 @@ or insert a tab."
 	    (error "Brackets don't match")))
 	 ((member c generic-exp-single-delims)
 	  (if (setq pos (char-search-backward c (forward-char -1 pos)))
-	      (while (= (get-char (forward-char -1 (copy-pos pos)))
+	      (while (= (get-char (forward-char -1 pos))
 			generic-exp-escape-char)
 		(unless (setq pos (char-search-backward c (forward-char -1 pos)))
 		  (error "String doesn't start!")))

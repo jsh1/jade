@@ -37,8 +37,6 @@ char *alloca ();
 #endif
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -62,17 +60,9 @@ static int redisplay_max_d = 0;
 /* Rotate X, a 32 bit quanitity, by N bits to the left. */
 #define ROTATE(x, n) (((x) << (n)) | ((x) >> ((8 * sizeof(u_long)) - (n))))
 
-_PR glyph_buf *alloc_glyph_buf(int cols, int rows);
-_PR void free_glyph_buf(glyph_buf *gb);
-_PR void copy_glyph_buf(glyph_buf *dst, glyph_buf *src);
-_PR u_long hash_glyph_row(glyph_buf *g, int row);
-_PR void garbage_glyphs(WIN *w, int x, int y, int width, int height);
-_PR void redisplay_message(WIN *w);
-_PR void redisplay_init(void);
 
 /* When greater than zero, we're in redisplay, and hence no Lisp code
    should be run, and no asynchronous input should be taken. */
-_PR int redisplay_lock;
 int redisplay_lock;
 
 
@@ -88,7 +78,7 @@ alloc_glyph_buf(int cols, int rows)
 		   + sizeof(u_long) * rows
 		   + sizeof(glyph_code) * rows * cols
 		   + sizeof(glyph_attr) * rows * cols);
-    glyph_buf *g = sys_alloc(size);
+    glyph_buf *g = rep_alloc(size);
     if(g == 0)
 	abort();
     else
@@ -119,7 +109,7 @@ alloc_glyph_buf(int cols, int rows)
 void
 free_glyph_buf(glyph_buf *gb)
 {
-    sys_free(gb);
+    rep_free(gb);
 }
 
 void
@@ -131,7 +121,7 @@ copy_glyph_buf(glyph_buf *dst, glyph_buf *src)
 }
 
 /* Compute and return the hash code of line ROW in buffer G. */
-inline u_long
+static inline u_long
 hash_glyph_row(glyph_buf *g, int row)
 {
     u_long value = 0;
@@ -636,9 +626,8 @@ patch_display(WIN *w, glyph_buf *old_g, glyph_buf *new_g)
 
 /* Putting it all together */
 
-_PR VALUE cmd_redisplay(VALUE arg);
-DEFUN_INT("redisplay", cmd_redisplay, subr_redisplay, (VALUE arg), V_Subr1, DOC_redisplay, "P") /*
-::doc:redisplay::
+DEFUN_INT("redisplay", Fredisplay, Sredisplay, (repv arg), rep_Subr1, "P") /*
+::doc:Sredisplay::
 redisplay [FORCE]
 
 Redisplay everything that needs to be. When FORCE (the raw prefix arg) is
@@ -658,7 +647,7 @@ non-nil, absolutely everything is refreshed, not just what changed.
 	{
 	    glyph_buf *tem;
 
-	    if(!NILP(arg) || (w->w_Flags & WINFF_FORCE_REFRESH))
+	    if(!rep_NILP(arg) || (w->w_Flags & WINFF_FORCE_REFRESH))
 	    {
 		/* Must redraw this window. The easiest way to do this
 		   is to just garbage the entire contents */
@@ -691,7 +680,7 @@ non-nil, absolutely everything is refreshed, not just what changed.
 	       && w->w_DisplayedName != w->w_CurrVW->vw_Tx->tx_StatusId)
 	    {
 		w->w_DisplayedName = w->w_CurrVW->vw_Tx->tx_StatusId;
-		sys_set_win_name(w, VSTR(w->w_DisplayedName));
+		sys_set_win_name(w, rep_STR(w->w_DisplayedName));
 	    }
 	}
     }
@@ -701,13 +690,18 @@ non-nil, absolutely everything is refreshed, not just what changed.
     fprintf(stderr, "Leaving redisplay.\n");
 #endif
 
-    cmd_flush_output();
-    return sym_t;
+    Fflush_output();
+    return Qt;
 }
 
-_PR VALUE var_redisplay_max_d(VALUE val);
-DEFUN("redisplay-max-d", var_redisplay_max_d, subr_redisplay_max_d, (VALUE val), V_Var, DOC_redisplay_max_d) /*
-::doc:redisplay_max_d::
+static void
+redisplay (void)
+{
+    Fredisplay (Qnil);
+}
+
+DEFUN("redisplay-max-d", var_redisplay_max_d, Sredisplay_max_d, (repv val), rep_Var) /*
+::doc:Vredisplay-max-d::
 The upper bound on the number of edit operations (insert line, or delete
 line) per window redisplay. Zero means unbounded (i.e. 2*ROWS).
 
@@ -715,7 +709,7 @@ When the limit is exceeded the search for an optimal edit script is
 aborted and each row of the window is redisplayed manually.
 ::end:: */
 {
-    return handle_var_int(val, &redisplay_max_d);
+    return rep_handle_var_int(val, &redisplay_max_d);
 }
 
 /* Just refresh the contents of the message displayed at the bottom
@@ -738,7 +732,7 @@ redisplay_message(WIN *w)
     w->w_Content->hashes[w->w_MaxY-1]
         = hash_glyph_row(w->w_Content, w->w_MaxY-1);
     redisplay_do_draw(w, w->w_NewContent, w->w_Content, w->w_MaxY);
-    cmd_flush_output();
+    Fflush_output();
 
     redisplay_lock--;
 }
@@ -746,6 +740,7 @@ redisplay_message(WIN *w)
 void
 redisplay_init(void)
 {
-    ADD_SUBR_INT(subr_redisplay);
-    ADD_SUBR(subr_redisplay_max_d);
+    rep_ADD_SUBR_INT(Sredisplay);
+    rep_ADD_SUBR(Sredisplay_max_d);
+    rep_redisplay_fun = redisplay;
 }

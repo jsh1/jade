@@ -19,8 +19,6 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include <lib/jade_protos.h>
-
 #include <string.h>
 #include <stdlib.h>
 
@@ -29,15 +27,9 @@
 
 #define KEYTAB_SIZE 127
 
-_PR VALUE eval_input_event(void *, u_long, u_long);
-_PR bool lookup_event(u_long *, u_long *, u_char *);
-_PR bool lookup_event_name(u_char *, u_long, u_long);
-_PR bool print_event_prefix(void);
-_PR void keys_init(void);
 
 /* current_event holds the event we're processing (or 0s), last_event
    contains the previously processed event.  */
-_PR u_long current_event[2], last_event[2];
 u_long current_event[2], last_event[2];
 
 /* Pointer to the window system's representation of the current_event,
@@ -53,10 +45,6 @@ static bool print_prefix, printed_this_prefix;
 static u_long event_buf[EVENT_BUFSIZ]; /* one event = (code,mods) */
 static int event_index;
 
-_PR VALUE sym_global_keymap, sym_local_keymap, sym_unbound_key_hook;
-_PR VALUE sym_esc_means_meta, sym_keymap, sym_overriding_local_keymap;
-_PR VALUE sym_minor_mode_keymap_alist, sym_autoload_keymap;
-_PR VALUE sym_next_keymap_path;
 DEFSYM(global_keymap, "global-keymap");
 DEFSYM(local_keymap, "local-keymap");
 DEFSYM(overriding_local_keymap, "overriding-local-keymap");
@@ -67,22 +55,21 @@ DEFSYM(minor_mode_keymap_alist, "minor-mode-keymap-alist");
 DEFSYM(autoload_keymap, "autoload-keymap");
 DEFSYM(next_keymap_path, "next-keymap-path");
 
-static VALUE next_keymap_path;
+static repv next_keymap_path;
 
 /* TRUE when the Meta qualifier should be added to the next event. */
 static bool pending_meta;
 
 /* This doesn't belong here but I couldn't find anywhere else :-( */
-_PR VALUE sym_idle_hook;
 DEFSYM(idle_hook, "idle-hook");
 
 /* Some doc strings
-::doc:esc_means_meta::
+::doc:Vesc-means-meta::
 When this variable is non-nil the `ESC' key means that the next event
 is qualified by the `Meta' modifier.
 This feature is included mainly for compatibility with GNU Emacs.
 ::end::
-::doc:idle_hook::
+::doc:Vidle-hook::
 This hook gets evaluated every second while the editor is idle. Don't depend
 on how regularly this gets called, any events from the window-system will
 delay it. Also, auto-saving files and garbage-collection take precedence
@@ -98,65 +85,65 @@ periods only!
    If CALLBACK is non-nil it's a function to call for the binding found.
    If this function returns true, then this binding is acceptable and
    is returned from the function. */
-static VALUE
-search_keymap(VALUE km, u_long code, u_long mods, bool (*callback)(VALUE key))
+static repv
+search_keymap(repv km, u_long code, u_long mods, bool (*callback)(repv key))
 {
     /* If it's a symbol, dereference it. */
-    while(SYMBOLP(km) && !NILP(km) && !INT_P)
+    while(rep_SYMBOLP(km) && !rep_NILP(km) && !rep_INTERRUPTP)
     {
-	VALUE tem = cmd_symbol_value(km, sym_t);
+	repv tem = Fsymbol_value(km, Qt);
 	if(tem == km)
 	    break;
 	km = tem;
-	TEST_INT;
+	rep_TEST_INT;
     }
 
     /* Find the list of bindings to scan. */
-    if(VECTORP(km))
+    if(rep_VECTORP(km))
     {
-	if(VVECT_LEN(km) != KEYTAB_SIZE)
-	    return LISP_NULL;
-	km = VVECTI(km, KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE);
+	if(rep_VECT_LEN(km) != KEYTAB_SIZE)
+	    return rep_NULL;
+	km = rep_VECTI(km, KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE);
     }
-    else if CONSP(km)
-	km = VCDR(km);
+    else if rep_CONSP(km)
+	km = rep_CDR(km);
     else
-	return LISP_NULL;
+	return rep_NULL;
 
     /* Scan them for a match.. */
-    while(CONSP(km))
+    while(rep_CONSP(km))
     {
-	TEST_INT; if(INT_P) break;
-	if(CONSP(VCAR(km)))
+	rep_TEST_INT; if(rep_INTERRUPTP) break;
+	if(rep_CONSP(rep_CAR(km)))
 	{
-	    VALUE ev = KEY_EVENT(VCAR(km));
-	    if((VINT(EVENT_MODS(ev)) == mods) && VINT(EVENT_CODE(ev)) == code)
+	    repv ev = KEY_EVENT(rep_CAR(km));
+	    if((rep_INT(EVENT_MODS(ev)) == mods) && rep_INT(EVENT_CODE(ev)) == code)
 	    {
-		VALUE key = VCAR(km);
+		repv key = rep_CAR(km);
 		if(callback == 0 || callback(key))
 		    return key;
 	    }
-	    km = VCDR(km);
+	    km = rep_CDR(km);
 	}
 	else
 	    /* An inherited sub-keymap. Start scanning it */
-	    km = VCDR(km);
+	    km = rep_CDR(km);
     }
-    return LISP_NULL;
+    return rep_NULL;
 }
 
 /* Search for a binding of CODE&MODS.  */
-static VALUE
-lookup_binding(u_long code, u_long mods, bool (*callback)(VALUE key))
+static repv
+lookup_binding(u_long code, u_long mods, bool (*callback)(repv key))
 {
-    VALUE k = LISP_NULL, nkp = next_keymap_path;
-    next_keymap_path = LISP_NULL;
-    if(nkp == LISP_NULL || nkp == sym_global_keymap)
+    repv k = rep_NULL, nkp = next_keymap_path;
+    next_keymap_path = rep_NULL;
+    if(nkp == rep_NULL || nkp == Qglobal_keymap)
     {
-	VALUE tem;
+	repv tem;
 
-	tem = cmd_symbol_value(sym_overriding_local_keymap, sym_t);
-	if(tem && !VOIDP(tem) && !NILP(tem))
+	tem = Fsymbol_value(Qoverriding_local_keymap, Qt);
+	if(tem && !rep_VOIDP(tem) && !rep_NILP(tem))
 	{
 	    /* overriding-local-keymap replaces all but global-keymap
 	       if non-nil. */
@@ -165,96 +152,96 @@ lookup_binding(u_long code, u_long mods, bool (*callback)(VALUE key))
 	else
 	{
 	    /* First search all current extents.. */
-	    tem = cmd_get_extent(sym_nil, sym_nil);
+	    tem = Fget_extent(Qnil, Qnil);
 	    while(!k && EXTENTP(tem))
 	    {
-		k = search_keymap(cmd_extent_get(tem, sym_keymap),
+		k = search_keymap(Fextent_get(tem, Qkeymap),
 				  code, mods, callback);
-		tem = cmd_extent_parent(tem);
+		tem = Fextent_parent(tem);
 	    }
 
 	    /* ..then the minor modes.. */
-	    tem = cmd_symbol_value(sym_minor_mode_keymap_alist, sym_t);
-	    while(!k && CONSP(tem) && CONSP(VCAR(tem)) && !INT_P)
+	    tem = Fsymbol_value(Qminor_mode_keymap_alist, Qt);
+	    while(!k && rep_CONSP(tem) && rep_CONSP(rep_CAR(tem)) && !rep_INTERRUPTP)
 	    {
-		VALUE cell = VCAR(tem);
-		if(SYMBOLP(VCAR(cell)))
+		repv cell = rep_CAR(tem);
+		if(rep_SYMBOLP(rep_CAR(cell)))
 		{
-		    VALUE cond;
-		    GC_root gc_tem;
-		    PUSHGC(gc_tem, tem);
-		    cond = cmd_symbol_value(VCAR(cell), sym_t);
-		    if(!NILP(cond) && !VOIDP(cond))
-			k = search_keymap(VCDR(cell), code, mods, callback);
-		    POPGC;
+		    repv cond;
+		    rep_GC_root gc_tem;
+		    rep_PUSHGC(gc_tem, tem);
+		    cond = Fsymbol_value(rep_CAR(cell), Qt);
+		    if(!rep_NILP(cond) && !rep_VOIDP(cond))
+			k = search_keymap(rep_CDR(cell), code, mods, callback);
+		    rep_POPGC;
 		}
-		tem = VCDR(tem);
-		TEST_INT;
+		tem = rep_CDR(tem);
+		rep_TEST_INT;
 	    }
 	    /* ..then the local map */
 	    if(!k)
-		k = search_keymap(sym_local_keymap, code, mods, callback);
+		k = search_keymap(Qlocal_keymap, code, mods, callback);
 	}
 
 	/* Finally, scan the global map */
 	if(!k)
-	    k = search_keymap(sym_global_keymap, code, mods, callback);
+	    k = search_keymap(Qglobal_keymap, code, mods, callback);
     }
     else
     {
-	GC_root gc_nkp;
-	PUSHGC(gc_nkp, nkp);
-	while(!k && CONSP(nkp))
+	rep_GC_root gc_nkp;
+	rep_PUSHGC(gc_nkp, nkp);
+	while(!k && rep_CONSP(nkp))
 	{
-	    k = search_keymap(VCAR(nkp), code, mods, callback);
-	    nkp = VCDR(nkp);
+	    k = search_keymap(rep_CAR(nkp), code, mods, callback);
+	    nkp = rep_CDR(nkp);
 	}
-	POPGC;
+	rep_POPGC;
     }
-    return (k != LISP_NULL && KEYP(k)) ? KEY_COMMAND(k) : LISP_NULL;
+    return (k != rep_NULL && KEYP(k)) ? KEY_COMMAND(k) : rep_NULL;
 }
 
 static bool
-eval_input_callback(VALUE key)
+eval_input_callback(repv key)
 {
-    VALUE cmd = KEY_COMMAND(key);
-    if(SYMBOLP(cmd))
+    repv cmd = KEY_COMMAND(key);
+    if(rep_SYMBOLP(cmd))
     {
-	VALUE fun = VSYM(cmd)->function;
-	if(CONSP(fun) && VCAR(fun) == sym_autoload_keymap)
+	repv fun = rep_SYM(cmd)->function;
+	if(rep_CONSP(fun) && rep_CAR(fun) == Qautoload_keymap)
 	{
-	    GC_root gc_key;
-	    PUSHGC(gc_key, key);
-	    fun = load_autoload(cmd, fun, FALSE);
-	    POPGC;
-	    if(fun == LISP_NULL)
+	    rep_GC_root gc_key;
+	    rep_PUSHGC(gc_key, key);
+	    fun = rep_load_autoload(cmd, fun, FALSE);
+	    rep_POPGC;
+	    if(fun == rep_NULL)
 		return FALSE;
 	}
-	if(fun == sym_keymap)
+	if(fun == Qkeymap)
 	{
 	    /* A prefix key, add its list to the next-keymap-path. */
-	    next_keymap_path = cmd_cons(cmd, next_keymap_path
-					? next_keymap_path : sym_nil);
+	    next_keymap_path = Fcons(cmd, next_keymap_path
+					? next_keymap_path : Qnil);
 	    /* Look for more prefix keys */
 	    return FALSE;
 	}
     }
-    next_keymap_path = LISP_NULL;
+    next_keymap_path = rep_NULL;
     return TRUE;
 }
 
 /* Process the event CODE+MODS. OS-INPUT-MSG is the raw input event
    from the window-system, this is only used to cook a string from.  */
-VALUE
+repv
 eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 {
-    VALUE result = sym_nil;
+    repv result = Qnil;
     event_buf[event_index++] = code;
     event_buf[event_index++] = mods;
     if(event_index == EVENT_BUFSIZ)
 	event_index = 0;
     printed_this_prefix = FALSE;
-    if(!NILP(VSYM(sym_esc_means_meta)->value)
+    if(!rep_NILP(rep_SYM(Qesc_means_meta)->value)
        && !pending_meta
        && (code == esc_code) && (mods == esc_mods))
     {
@@ -264,7 +251,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
     else
     {
 	VW *vw = curr_vw;
-	VALUE cmd, orig_next_keymap_path = next_keymap_path;
+	repv cmd, orig_next_keymap_path = next_keymap_path;
 	if(pending_meta)
 	{
 	    mods |= EV_MOD_META;
@@ -274,31 +261,31 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 	current_event[1] = mods;
 	current_os_event = OSInputMsg;
 	cmd = lookup_binding(code, mods, eval_input_callback);
-	if(cmd != LISP_NULL)
+	if(cmd != rep_NULL)
 	{
 	    /* Found a binding for this event; evaluate it. */
-	    result = cmd_call_command(cmd, sym_nil);
+	    result = Fcall_command(cmd, Qnil);
 	}
-	else if(next_keymap_path != LISP_NULL)
+	else if(next_keymap_path != rep_NULL)
 	{
 	    /* We already handled some prefixes. */
-	    this_command = sym_keymap;
-	    result = sym_nil;
+	    this_command = Qkeymap;
+	    result = Qnil;
 	}
-	else if(orig_next_keymap_path != LISP_NULL
-		&& !NILP(orig_next_keymap_path)
-		&& orig_next_keymap_path != sym_global_keymap)
+	else if(orig_next_keymap_path != rep_NULL
+		&& !rep_NILP(orig_next_keymap_path)
+		&& orig_next_keymap_path != Qglobal_keymap)
 	{
 	    /* A multi-key binding, but no final step; clear the prefix
 	       argument for the next command and beep. */
-	    var_prefix_arg(sym_nil);
-	    beep(vw);
+	    var_prefix_arg(Qnil);
+	    Fbeep();
 	}
 	else
 	{
 	    /* An unbound key with no prefix keys. */
-	    result = cmd_call_hook(sym_unbound_key_hook, sym_nil, sym_or);
-	    if(result != LISP_NULL && NILP(result)
+	    result = Fcall_hook(Qunbound_key_hook, Qnil, Qor);
+	    if(result != rep_NULL && rep_NILP(result)
 	       && (mods & EV_TYPE_KEYBD) && OSInputMsg)
 	    {
 		/* Try to self-insert */
@@ -311,64 +298,67 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 		    {
 			if(!read_only_pos(vw->vw_Tx, vw->vw_CursorPos))
 			{
-			    VALUE old_undo_head = LISP_NULL;
-			    cmd_call_hook(sym_pre_command_hook,
-					  sym_nil, sym_nil);
-			    if(last_command == sym_t
-			       && CONSP(vw->vw_Tx->tx_UndoList)
-			       && NILP(VCAR(vw->vw_Tx->tx_UndoList)))
+			    repv old_undo_head = rep_NULL;
+			    Fcall_hook(Qpre_command_hook,
+					  Qnil, Qnil);
+			    if(last_command == Qt
+			       && rep_CONSP(vw->vw_Tx->tx_UndoList)
+			       && rep_NILP(rep_CAR(vw->vw_Tx->tx_UndoList)))
 			    {
 				/* Last command was also an insertion,
 				   fix it so that the undo information
 				   is merged. */
 				old_undo_head = vw->vw_Tx->tx_UndoList;
 				vw->vw_Tx->tx_UndoList
-				    = VCDR(vw->vw_Tx->tx_UndoList);
+				    = rep_CDR(vw->vw_Tx->tx_UndoList);
 			    }
 			    if(pad_cursor(vw))
 			    {
-				VALUE arg = cmd_prefix_numeric_argument(var_prefix_arg(LISP_NULL));
-				if(!INTP(arg) || VINT(arg) < 1)
-				    beep(vw);
-				else if(VINT(arg) == 1)
+				repv arg = Fprefix_numeric_argument(var_prefix_arg(rep_NULL));
+				if(!rep_INTP(arg) || rep_INT(arg) < 1)
+				    Fbeep();
+				else if(rep_INT(arg) == 1)
 				    insert_string(vw->vw_Tx, buff,
 						  len, vw->vw_CursorPos);
 				else if(len == 1
-					&& VINT(arg) < sizeof(buff) - 1)
+					&& rep_INT(arg) < sizeof(buff) - 1)
 				{
 				    /* Inserting a single char, more than
 				       once, build a string of them. */
-				    memset(buff, buff[0], VINT(arg));
+				    memset(buff, buff[0], rep_INT(arg));
 				    insert_string(vw->vw_Tx, buff,
-						  VINT(arg), vw->vw_CursorPos);
+						  rep_INT(arg), vw->vw_CursorPos);
 				}
 				else
 				{
 				    /* Do a looping insertion */
-				    int i = VINT(arg);
+				    int i = rep_INT(arg);
 				    while(i-- > 0)
 					insert_string(vw->vw_Tx, buff,
 						      len, vw->vw_CursorPos);
 				}
 			    }
-			    if(old_undo_head != LISP_NULL)
+			    if(old_undo_head != rep_NULL)
 			    {
-				VCDR(old_undo_head) = vw->vw_Tx->tx_UndoList;
+				rep_CDR(old_undo_head) = vw->vw_Tx->tx_UndoList;
 				vw->vw_Tx->tx_UndoList = old_undo_head;
 			    }
-			    cmd_call_hook(sym_post_command_hook,
-					  sym_nil, sym_nil);
-			    last_command = sym_t;
-			    result = sym_t;
+			    Fcall_hook(Qpost_command_hook,
+					  Qnil, Qnil);
+			    last_command = Qt;
+			    result = Qt;
 			}
 			else
-			    result = LISP_NULL;
+			    result = rep_NULL;
 		    }
 		}
 		else
-		    message("error: key translation screwup");
+		{
+		    (*rep_message_fun)(rep_message,
+				       "error: key translation screwup");
+		}
 		/* Remove prefix arg. */
-		var_prefix_arg(sym_nil);
+		var_prefix_arg(Qnil);
 	    }
 	}
 	last_event[0] = current_event[0];
@@ -381,11 +371,11 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 	if(print_prefix)
 	{
 	    print_event_prefix();
-	    if(next_keymap_path == LISP_NULL && !pending_meta)
+	    if(next_keymap_path == rep_NULL && !pending_meta)
 		print_prefix = FALSE;
 	}
     }
-    if(next_keymap_path == LISP_NULL && !pending_meta)
+    if(next_keymap_path == rep_NULL && !pending_meta)
 	event_index = 0;
     return(result);
 }
@@ -480,7 +470,7 @@ lookup_event(u_long *code, u_long *mods, u_char *desc)
     }
 
 error:
-    cmd_signal(sym_bad_event_desc, LIST_1(string_dup(desc)));
+    Fsignal(Qbad_event_desc, rep_LIST_1(rep_string_dup(desc)));
     return FALSE;
 }
 
@@ -536,10 +526,8 @@ lookup_event_name(u_char *buf, u_long code, u_long mods)
 
 
 /* Lisp functions */
-_PR VALUE cmd_make_keymap(void);
-DEFUN("make-keymap", cmd_make_keymap, subr_make_keymap, (void), V_Subr0,
-      DOC_make_keymap) /*
-::doc:make_keymap::
+DEFUN("make-keymap", Fmake_keymap, Smake_keymap, (void), rep_Subr0) /*
+::doc:Smake-keymap::
 make-keymap
 
 Return a new keymap suitable for storing bindings in. This is a 127
@@ -547,13 +535,12 @@ element vector, each element is an empty list of bindings for that hash
 bucket. Compare with the make-sparse-keymap function.
 ::end:: */
 {
-    return cmd_make_vector(MAKE_INT(KEYTAB_SIZE), sym_nil);
+    return Fmake_vector(rep_MAKE_INT(KEYTAB_SIZE), Qnil);
 }
 
-_PR VALUE cmd_make_sparse_keymap(VALUE base);
-DEFUN("make-sparse-keymap", cmd_make_sparse_keymap, subr_make_sparse_keymap,
-      (VALUE base), V_Subr1, DOC_make_sparse_keymap) /*
-::doc:make_sparse_keymap::
+DEFUN("make-sparse-keymap", Fmake_sparse_keymap, Smake_sparse_keymap,
+      (repv base), rep_Subr1) /*
+::doc:Smake-sparse-keymap::
 make-sparse-keymap [BASE-KEYMAP]
 
 Return a new keymap suitable for storing bindings in. This is a cons cell
@@ -564,15 +551,14 @@ If BASE-KEYMAP is non-nil, it should be an existing sparse keymap whose
 bindings are to be inherited by the new keymap.
 ::end:: */
 {
-    if(!NILP(base) && (!CONSP(base) || VCAR(base) != sym_keymap))
-	return signal_arg_error(base, 1);
+    if(!rep_NILP(base) && (!rep_CONSP(base) || rep_CAR(base) != Qkeymap))
+	return rep_signal_arg_error(base, 1);
 
-    return cmd_cons(sym_keymap, base);
+    return Fcons(Qkeymap, base);
 }
 
-_PR VALUE cmd_bind_keys(VALUE args);
-DEFUN("bind-keys", cmd_bind_keys, subr_bind_keys, (VALUE args), V_SubrN, DOC_bind_keys) /*
-::doc:bind_keys::
+DEFUN("bind-keys", Fbind_keys, Sbind_keys, (repv args), rep_SubrN) /*
+::doc:Sbind-keys::
 bind-keys KEYMAP { EVENT-DESCRIPTION COMMAND }...
 
 Adds key bindings to KEYMAP. Each EVENT-DESCRIPTION is a string naming an
@@ -582,45 +568,45 @@ Returns KEYMAP when successful.
 ::end:: */
 {
     bool rc = TRUE;
-    VALUE km, arg1, res = LISP_NULL;
-    if(!CONSP(args))
-	return LISP_NULL;
-    km = VCAR(args);
-    args = VCDR(args);
-    while(rc && CONSP(args) && CONSP(VCDR(args)))
+    repv km, arg1, res = rep_NULL;
+    if(!rep_CONSP(args))
+	return rep_NULL;
+    km = rep_CAR(args);
+    args = rep_CDR(args);
+    while(rc && rep_CONSP(args) && rep_CONSP(rep_CDR(args)))
     {
 	u_long code, mods;
-	VALUE key;
-	arg1 = VCAR(args);
-	args = VCDR(args);
-	if(STRINGP(arg1))
+	repv key;
+	arg1 = rep_CAR(args);
+	args = rep_CDR(args);
+	if(rep_STRINGP(arg1))
 	{
-	    if(!lookup_event(&code, &mods, VSTR(arg1)))
+	    if(!lookup_event(&code, &mods, rep_STR(arg1)))
 		goto end;
 	}
-	else if(!NILP(cmd_eventp(arg1)))
+	else if(!rep_NILP(Feventp(arg1)))
 	{
-	    code = VINT(VCAR(arg1));
-	    mods = VINT(VCDR(arg1));
+	    code = rep_INT(rep_CAR(arg1));
+	    mods = rep_INT(rep_CDR(arg1));
 	}
 	else
 	{
-	    cmd_signal(sym_bad_event_desc, LIST_1(arg1));
+	    Fsignal(Qbad_event_desc, rep_LIST_1(arg1));
 	    goto end;
 	}
 	rc = FALSE;
-	key = MAKE_KEY(MAKE_EVENT(MAKE_INT(code), MAKE_INT(mods)), VCAR(args));
-	if(key != LISP_NULL)
+	key = MAKE_KEY(MAKE_EVENT(rep_MAKE_INT(code), rep_MAKE_INT(mods)), rep_CAR(args));
+	if(key != rep_NULL)
 	{
-	    if(VECTORP(km))
+	    if(rep_VECTORP(km))
 	    {
 		u_long hash = KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE;
-		VALUE old = VVECTI(km, hash);
-		VVECTI(km, hash) = cmd_cons(key, old);
+		repv old = rep_VECTI(km, hash);
+		rep_VECTI(km, hash) = Fcons(key, old);
 	    }
 	    else
-		VCDR(km) = cmd_cons(key, VCDR(km));
-	    args = VCDR(args);
+		rep_CDR(km) = Fcons(key, rep_CDR(km));
+	    args = rep_CDR(args);
 	    rc = TRUE;
 	}
 	else
@@ -632,82 +618,80 @@ end:
     return res;
 }
 
-_PR VALUE cmd_unbind_keys(VALUE args);
-DEFUN("unbind-keys", cmd_unbind_keys, subr_unbind_keys, (VALUE args), V_SubrN, DOC_unbind_keys) /*
-::doc:unbind_keys::
+DEFUN("unbind-keys", Funbind_keys, Sunbind_keys, (repv args), rep_SubrN) /*
+::doc:Sunbind-keys::
 unbind-keys KEY-MAP EVENT-DESCRIPTION...
 ::end:: */
 {
     bool rc = TRUE;
-    VALUE km, arg1, res = LISP_NULL;
-    if(!CONSP(args))
-	return LISP_NULL;
-    km = VCAR(args);
-    if(!((VECTORP(km) && VVECT_LEN(km) == KEYTAB_SIZE)
-       || CONSP(km)))
-	return(signal_arg_error(km, 1));
-    args = VCDR(args);
-    while(rc && CONSP(args))
+    repv km, arg1, res = rep_NULL;
+    if(!rep_CONSP(args))
+	return rep_NULL;
+    km = rep_CAR(args);
+    if(!((rep_VECTORP(km) && rep_VECT_LEN(km) == KEYTAB_SIZE)
+       || rep_CONSP(km)))
+	return(rep_signal_arg_error(km, 1));
+    args = rep_CDR(args);
+    while(rc && rep_CONSP(args))
     {
 	u_long code, mods;
-	VALUE *keyp;
-	arg1 = VCAR(args);
-	if(STRINGP(arg1))
+	repv *keyp;
+	arg1 = rep_CAR(args);
+	if(rep_STRINGP(arg1))
 	{
-	    if(!lookup_event(&code, &mods, VSTR(arg1)))
+	    if(!lookup_event(&code, &mods, rep_STR(arg1)))
 		goto end;
 	}
-	else if(!NILP(cmd_eventp(arg1)))
+	else if(!rep_NILP(Feventp(arg1)))
 	{
-	    code = VINT(VCAR(arg1));
-	    mods = VINT(VCDR(arg1));
+	    code = rep_INT(rep_CAR(arg1));
+	    mods = rep_INT(rep_CDR(arg1));
 	}
 	else
 	{
-	    cmd_signal(sym_bad_event_desc, LIST_1(arg1));
+	    Fsignal(Qbad_event_desc, rep_LIST_1(arg1));
 	    goto end;
 	}
 	rc = FALSE;
-	if(VECTORP(km))
-	    keyp = &VVECTI(km, KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE);
+	if(rep_VECTORP(km))
+	    keyp = &rep_VECTI(km, KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE);
 	else
-	    keyp = &VCDR(km);
-	while(CONSP(*keyp))
+	    keyp = &rep_CDR(km);
+	while(rep_CONSP(*keyp))
 	{
-	    VALUE cell = VCAR(*keyp);
-	    if(CONSP(cell))
+	    repv cell = rep_CAR(*keyp);
+	    if(rep_CONSP(cell))
 	    {
-		if((VINT(EVENT_MODS(KEY_EVENT(cell))) == mods)
-		   && (VINT(EVENT_CODE(KEY_EVENT(cell))) == code))
+		if((rep_INT(EVENT_MODS(KEY_EVENT(cell))) == mods)
+		   && (rep_INT(EVENT_CODE(KEY_EVENT(cell))) == code))
 		{
-		    *keyp = VCDR(*keyp);
+		    *keyp = rep_CDR(*keyp);
 		    /* Keybindings are supposed to nest so only delete the
 		    first entry for this event  */
 		    break;
 		}
 		else
-		    keyp = &VCDR(*keyp);
+		    keyp = &rep_CDR(*keyp);
 	    }
 	    else
 		/* An inherited keymap. Only delete bindings from
 		   the initial keymap. */
 		break;
 
-	    TEST_INT; if(INT_P) return LISP_NULL;
+	    rep_TEST_INT; if(rep_INTERRUPTP) return rep_NULL;
 	}
 	rc = TRUE;
-	args = VCDR(args);
+	args = rep_CDR(args);
     }
     if(rc)
-	res = sym_t;
+	res = Qt;
 end:
     return(res);
 }
 
-_PR VALUE cmd_next_keymap_path(VALUE path);
-DEFUN("next-keymap-path", cmd_next_keymap_path, subr_next_keymap_path,
-      (VALUE path), V_Subr1, DOC_next_keymap_path) /*
-::doc:next_keymap_path::
+DEFUN("next-keymap-path", Fnext_keymap_path, Snext_keymap_path,
+      (repv path), rep_Subr1) /*
+::doc:Snext-keymap-path::
 next-keymap-path [PATH]
 
 Install a temporary list of keymaps, PATH, to be used when the next input
@@ -720,21 +704,20 @@ Alternatively, if PATH is the symbol `global-keymap', use the currently
 active root keymaps.
 ::end:: */
 {
-    if(path != sym_t)
+    if(path != Qt)
     {
 	next_keymap_path = path;
 	/* This isn't a true command */
-	this_command = sym_nil;
+	this_command = Qnil;
 	/* Pass the prefix-arg along */
-	var_prefix_arg(var_current_prefix_arg(LISP_NULL));
+	var_prefix_arg(var_current_prefix_arg(rep_NULL));
     }
-    return next_keymap_path ? next_keymap_path : sym_nil;
+    return next_keymap_path ? next_keymap_path : Qnil;
 }
 
 DEFSTRING(not_in_handler, "Not in event handler");
-_PR VALUE cmd_current_event_string(void);
-DEFUN("current-event-string", cmd_current_event_string, subr_current_event_string, (void), V_Subr0, DOC_current_event_string) /*
-::doc:current_event_string::
+DEFUN("current-event-string", Fcurrent_event_string, Scurrent_event_string, (void), rep_Subr0) /*
+::doc:Scurrent-event-string::
 current-event-string
 
 Returns the string which would have been inserted by the current event if
@@ -744,46 +727,43 @@ a Lisp function hadn't been called instead.
     u_char buff[256];
     int len;
     if(!current_os_event)
-	return(cmd_signal(sym_error, LIST_1(VAL(&not_in_handler))));
+	return(Fsignal(Qerror, rep_LIST_1(rep_VAL(&not_in_handler))));
     len = cook_key(current_os_event, buff, 256 - 1);
     if(len > 0)
-	return(string_dupn(buff, len));
-    return(null_string());
+	return(rep_string_dupn(buff, len));
+    return(rep_null_string());
 }
 
-_PR VALUE cmd_current_event(void);
-DEFUN("current-event", cmd_current_event, subr_current_event, (void), V_Subr0, DOC_current_event) /*
-::doc:current_event::
+DEFUN("current-event", Fcurrent_event, Scurrent_event, (void), rep_Subr0) /*
+::doc:Scurrent-event::
 current-event
 
 Return the event which caused the current command to be invoked.
 ::end:: */
 {
     if(current_event[1])
-	return MAKE_EVENT(MAKE_INT(current_event[0]),
-			  MAKE_INT(current_event[1]));
+	return MAKE_EVENT(rep_MAKE_INT(current_event[0]),
+			  rep_MAKE_INT(current_event[1]));
     else
-	return sym_nil;
+	return Qnil;
 }
 
-_PR VALUE cmd_last_event(void);
-DEFUN("last-event", cmd_last_event, subr_last_event, (void), V_Subr0, DOC_last_event) /*
-::doc:last_event::
+DEFUN("last-event", Flast_event, Slast_event, (void), rep_Subr0) /*
+::doc:Slast-event::
 last-event
 
 Return the previous event which occurred.
 ::end:: */
 {
     if(last_event[1])
-	return MAKE_EVENT(MAKE_INT(last_event[0]),
-			  MAKE_INT(last_event[1]));
+	return MAKE_EVENT(rep_MAKE_INT(last_event[0]),
+			  rep_MAKE_INT(last_event[1]));
     else
-	return sym_nil;
+	return Qnil;
 }
 
-_PR VALUE cmd_event_name(VALUE ev);
-DEFUN("event-name", cmd_event_name, subr_event_name, (VALUE ev), V_Subr1, DOC_event_name) /*
-::doc:event_name::
+DEFUN("event-name", Fevent_name, Sevent_name, (repv ev), rep_Subr1) /*
+::doc:Sevent-name::
 event-name EVENT
 
 Returns a string naming the event EVENT.
@@ -791,101 +771,96 @@ Returns a string naming the event EVENT.
 {
     u_char buf[256];
     if(!EVENTP(ev))
-	return signal_arg_error(ev, 1);
+	return rep_signal_arg_error(ev, 1);
 
-    if(lookup_event_name(buf, VINT(EVENT_CODE(ev)), VINT(EVENT_MODS(ev))))
-	return string_dup(buf);
+    if(lookup_event_name(buf, rep_INT(EVENT_CODE(ev)), rep_INT(EVENT_MODS(ev))))
+	return rep_string_dup(buf);
     else
-	return sym_nil;
+	return Qnil;
 }
 
-_PR VALUE cmd_lookup_event(VALUE name);
-DEFUN("lookup-event", cmd_lookup_event, subr_lookup_event, (VALUE name), V_Subr1, DOC_lookup_event) /*
-::doc:lookup_event::
+DEFUN("lookup-event", Flookup_event, Slookup_event, (repv name), rep_Subr1) /*
+::doc:Slookup-event::
 lookup-event EVENT-NAME
 
 Return the event whose name is EVENT-NAME.
 ::end:: */
 {
     u_long code, mods;
-    DECLARE1(name, STRINGP);
+    rep_DECLARE1(name, rep_STRINGP);
 
-    if(lookup_event(&code, &mods, VSTR(name)))
-	return MAKE_EVENT(MAKE_INT(code), MAKE_INT(mods));
+    if(lookup_event(&code, &mods, rep_STR(name)))
+	return MAKE_EVENT(rep_MAKE_INT(code), rep_MAKE_INT(mods));
     else
-	return sym_nil;
+	return Qnil;
 }
 
-_PR VALUE cmd_lookup_event_binding(VALUE ev);
-DEFUN("lookup-event-binding", cmd_lookup_event_binding, subr_lookup_event_binding, (VALUE ev), V_Subr1, DOC_lookup_event_binding) /*
-::doc:lookup_event_binding::
+DEFUN("lookup-event-binding", Flookup_event_binding, Slookup_event_binding, (repv ev), rep_Subr1) /*
+::doc:Slookup-event-binding::
 lookup-event-binding EVENT
 
 Return the command currently associated with the event EVENT.
 ::end:: */
 {
-    VALUE res;
+    repv res;
     if(!EVENTP(ev))
-	return(signal_arg_error(ev, 1));
+	return(rep_signal_arg_error(ev, 1));
 
-    res = lookup_binding(VINT(EVENT_CODE(ev)),
-			 VINT(EVENT_MODS(ev)),
+    res = lookup_binding(rep_INT(EVENT_CODE(ev)),
+			 rep_INT(EVENT_MODS(ev)),
 			 eval_input_callback);
     if (res == 0 && next_keymap_path != 0)
     {
 	/* A prefix binding. Fake a function call to next-keymap-path. */
-	if (CONSP(next_keymap_path))
+	if (rep_CONSP(next_keymap_path))
 	{
-	    res = cmd_cons(sym_next_keymap_path,
-			   cmd_cons(cmd_cons(sym_quote,
-					     cmd_cons(next_keymap_path,
-						      sym_nil)),
-				    sym_nil));
+	    res = Fcons(Qnext_keymap_path,
+			   Fcons(Fcons(Qquote,
+					     Fcons(next_keymap_path,
+						      Qnil)),
+				    Qnil));
 	}
     }
-    next_keymap_path = LISP_NULL;
-    return res ? res : sym_nil;
+    next_keymap_path = rep_NULL;
+    return res ? res : Qnil;
 }
 
-_PR VALUE cmd_search_keymap(VALUE ev, VALUE km);
-DEFUN("search-keymap", cmd_search_keymap, subr_search_keymap,
-      (VALUE ev, VALUE km), V_Subr2, DOC_search_keymap) /*
-::doc:search_keymap::
+DEFUN("search-keymap", Fsearch_keymap, Ssearch_keymap,
+      (repv ev, repv km), rep_Subr2) /*
+::doc:Ssearch-keymap::
 search-keymap EVENT KEYMAP
 
 Return the (COMMAND . EVENT) binding of EVENT in KEYMAP, or nil.
 ::end:: */
 {
-    VALUE res;
-    DECLARE1(ev, EVENTP);
-    res = search_keymap(km, VINT(EVENT_CODE(ev)), VINT(EVENT_MODS(ev)), 0);
-    return res ? res : sym_nil;
+    repv res;
+    rep_DECLARE1(ev, EVENTP);
+    res = search_keymap(km, rep_INT(EVENT_CODE(ev)), rep_INT(EVENT_MODS(ev)), 0);
+    return res ? res : Qnil;
 }
 
-_PR VALUE cmd_keymapp(VALUE arg);
-DEFUN("keymapp", cmd_keymapp, subr_keymapp, (VALUE arg), V_Subr1, DOC_keymapp) /*
-::doc:keymapp::
+DEFUN("keymapp", Fkeymapp, Skeymapp, (repv arg), rep_Subr1) /*
+::doc:Skeymapp::
 keymapp ARG
 
 Returns t if ARG can be used as a keymap.
 ::end:: */
 {
-    if((VECTORP(arg) && VVECT_LEN(arg) == KEYTAB_SIZE)
-       || (CONSP(arg) && VCAR(arg) == sym_keymap))
-	return sym_t;
+    if((rep_VECTORP(arg) && rep_VECT_LEN(arg) == KEYTAB_SIZE)
+       || (rep_CONSP(arg) && rep_CAR(arg) == Qkeymap))
+	return Qt;
     else
-	return sym_nil;
+	return Qnil;
 }
 
-_PR VALUE cmd_eventp(VALUE arg);
-DEFUN("eventp", cmd_eventp, subr_eventp, (VALUE arg), V_Subr1, DOC_eventp) /*
-::doc:eventp::
+DEFUN("eventp", Feventp, Seventp, (repv arg), rep_Subr1) /*
+::doc:Seventp::
 eventp ARG
 
 Returns t if the ARG is an input event.
 ::end:: */
 {
-    return EVENTP(arg) ? sym_t : sym_nil;
+    return EVENTP(arg) ? Qt : Qnil;
 }
 
 /* If necessary, print the name of the current event prefix and return
@@ -896,7 +871,7 @@ print_event_prefix(void)
     int i;
     u_char buf[256];
     u_char *bufp = buf;
-    if((next_keymap_path == LISP_NULL && !pending_meta)
+    if((next_keymap_path == rep_NULL && !pending_meta)
        && (!print_prefix || printed_this_prefix))
     {
 	print_prefix = FALSE;
@@ -912,7 +887,7 @@ print_event_prefix(void)
 	    *bufp++ = ' ';
 	}
     }
-    if(next_keymap_path != LISP_NULL || pending_meta)
+    if(next_keymap_path != rep_NULL || pending_meta)
     {
 	if(bufp > buf)
 	    bufp--;			/* erase the last space */
@@ -928,32 +903,32 @@ print_event_prefix(void)
 void
 keys_init(void)
 {
-    INTERN(global_keymap);
-    INTERN(local_keymap);
-    INTERN(overriding_local_keymap);
-    INTERN(unbound_key_hook);
-    INTERN(esc_means_meta); DOC(esc_means_meta);
-    VSYM(sym_esc_means_meta)->value = sym_t;
-    INTERN(idle_hook); DOC(idle_hook);
-    INTERN(keymap);
-    INTERN(minor_mode_keymap_alist);
-    INTERN(autoload_keymap);
-    INTERN(next_keymap_path);
-    next_keymap_path = LISP_NULL;
-    mark_static(&next_keymap_path);
+    rep_INTERN(global_keymap);
+    rep_INTERN(local_keymap);
+    rep_INTERN(overriding_local_keymap);
+    rep_INTERN(unbound_key_hook);
+    rep_INTERN(esc_means_meta);
+    rep_SYM(Qesc_means_meta)->value = Qt;
+    rep_INTERN(idle_hook);
+    rep_INTERN(keymap);
+    rep_INTERN(minor_mode_keymap_alist);
+    rep_INTERN(autoload_keymap);
+    rep_INTERN(next_keymap_path);
+    next_keymap_path = rep_NULL;
+    rep_mark_static(&next_keymap_path);
 
-    ADD_SUBR(subr_make_keymap);
-    ADD_SUBR(subr_make_sparse_keymap);
-    ADD_SUBR(subr_bind_keys);
-    ADD_SUBR(subr_unbind_keys);
-    ADD_SUBR(subr_next_keymap_path);
-    ADD_SUBR(subr_current_event_string);
-    ADD_SUBR(subr_current_event);
-    ADD_SUBR(subr_last_event);
-    ADD_SUBR(subr_event_name);
-    ADD_SUBR(subr_lookup_event);
-    ADD_SUBR(subr_lookup_event_binding);
-    ADD_SUBR(subr_search_keymap);
-    ADD_SUBR(subr_keymapp);
-    ADD_SUBR(subr_eventp);
+    rep_ADD_SUBR(Smake_keymap);
+    rep_ADD_SUBR(Smake_sparse_keymap);
+    rep_ADD_SUBR(Sbind_keys);
+    rep_ADD_SUBR(Sunbind_keys);
+    rep_ADD_SUBR(Snext_keymap_path);
+    rep_ADD_SUBR(Scurrent_event_string);
+    rep_ADD_SUBR(Scurrent_event);
+    rep_ADD_SUBR(Slast_event);
+    rep_ADD_SUBR(Sevent_name);
+    rep_ADD_SUBR(Slookup_event);
+    rep_ADD_SUBR(Slookup_event_binding);
+    rep_ADD_SUBR(Ssearch_keymap);
+    rep_ADD_SUBR(Skeymapp);
+    rep_ADD_SUBR(Seventp);
 }
