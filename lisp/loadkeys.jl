@@ -198,6 +198,7 @@
   "h"		'mark-whole-buffer
   "i"		'insert-file
   "k"		'kill-buffer
+  "m"		'mail-setup
   "n"		'(setq next-keymap-path '(ctrl-x-n-keymap))
   "o"		'goto-next-view
   "s"		'save-some-buffers
