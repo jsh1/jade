@@ -692,7 +692,8 @@ to that between the lines specified by positions START and END.
     DECLARE2(lend, POSP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    if(check_section(VTX(tx), &VPOS(lstart), &VPOS(lend)))
+    if(check_section(VTX(tx), &VPOS(lstart), &VPOS(lend))
+       && VPOS(lstart).pos_Line <= VPOS(lend).pos_Line)
     {
 	VTX(tx)->tx_LogicalStart = VPOS(lstart).pos_Line + 1;
 	VTX(tx)->tx_LogicalEnd = VPOS(lend).pos_Line;
