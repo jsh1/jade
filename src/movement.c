@@ -536,9 +536,7 @@ is returned, not a glyph position.
 
 	   NOTE: we do actually modify the result of cmd_raw_mouse_pos()! */
 	long row, col;
-	row = (VROW(pos)
-	       - (curr_vw->vw_TopPix / curr_vw->vw_Win->w_FontY)
-	       + VROW(curr_vw->vw_DisplayOrigin));
+	row = VROW(pos) - curr_vw->vw_FirstY + VROW(curr_vw->vw_DisplayOrigin);
 	if(row < curr_vw->vw_Tx->tx_LogicalStart
 	   || row >= curr_vw->vw_Tx->tx_LogicalEnd)
 	    return sym_nil;
