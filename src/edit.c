@@ -45,7 +45,7 @@ _PR bool pad_pos(TX *, POS *);
 _PR bool pad_cursor(VW *);
 _PR void order_pos(POS *, POS *);
 _PR bool check_section(TX *, POS *, POS *);
-_PR void check_pos(TX *, POS *);
+_PR bool check_pos(TX *, POS *);
 _PR bool check_line(TX *, POS *);
 _PR long section_length(TX *, POS *, POS *);
 _PR void copy_section(TX *, POS *, POS *, u_char *);
@@ -532,7 +532,11 @@ check_section(TX *tx, POS *start, POS *end)
        || (end->pos_Line >= tx->tx_LogicalEnd)
        || (start->pos_Line < tx->tx_LogicalStart)
        || (end->pos_Line < tx->tx_LogicalStart))
+    {
+	cmd_signal(sym_invalid_area,
+		   list_3(VAL(tx), make_lpos(start), make_lpos(end)));
 	return(FALSE);
+    }
     if(start->pos_Col >= tx->tx_Lines[start->pos_Line].ln_Strlen)
 	start->pos_Col = tx->tx_Lines[start->pos_Line].ln_Strlen - 1;
     if(end->pos_Col >= tx->tx_Lines[end->pos_Line].ln_Strlen)
@@ -540,15 +544,18 @@ check_section(TX *tx, POS *start, POS *end)
     return(TRUE);
 }
 
-void
+bool
 check_pos(TX *tx, POS *pos)
 {
-    if(pos->pos_Line >= tx->tx_LogicalEnd)
-	pos->pos_Line = tx->tx_LogicalEnd - 1;
-    else if(pos->pos_Line < tx->tx_LogicalStart)
-	pos->pos_Line = tx->tx_LogicalStart;
+    if(pos->pos_Line >= tx->tx_LogicalEnd
+       || pos->pos_Line < tx->tx_LogicalStart)
+    {
+	cmd_signal(sym_invalid_pos, list_2(VAL(tx), make_lpos(pos)));
+	return FALSE;
+    }
     if(pos->pos_Col >= tx->tx_Lines[pos->pos_Line].ln_Strlen)
 	pos->pos_Col = tx->tx_Lines[pos->pos_Line].ln_Strlen - 1;
+    return TRUE;
 }
 
 bool
@@ -557,7 +564,10 @@ check_line(TX *tx, POS *pos)
     if((pos->pos_Line >= tx->tx_LogicalEnd)
        || (pos->pos_Line < tx->tx_LogicalStart)
        || (pos->pos_Col < 0))
-	return(FALSE);
+    {
+	cmd_signal(sym_invalid_pos, list_2(VAL(tx), make_lpos(pos)));
+	return FALSE;
+    }
     return(TRUE);
 }
 
