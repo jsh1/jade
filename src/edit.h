@@ -227,6 +227,8 @@ typedef struct _WIN {
 
     VALUE w_FontName;
     short w_FontX, w_FontY;		/* pixel width and height of glyphs */
+
+    VALUE w_DisplayedName;		/* current ``name'' of window  */
 } WIN;
 
 /* refresh whole window */
