@@ -30,7 +30,12 @@
 #endif
 
 #ifdef HAVE_UNIX
-# include <fcntl.h>
+# ifdef HAVE_FCNTL_H
+#  include <fcntl.h>
+# endif
+# ifdef HAVE_UNISTD_H
+#  include <unistd.h>
+# endif
 #endif
 
 /* Command line options, and their default values. */
@@ -165,7 +170,7 @@ make_argv (repv list, int *argc, char ***argv)
     *argc = c;
 }
 
-static void
+void
 sys_beep (WIN *w)
 {
     gdk_beep ();
@@ -178,6 +183,11 @@ sys_init(char *program_name)
     int argc;
     char **argv;
     repv head, *last;
+
+#ifdef HAVE_UNIX
+    if (rep_SYM(Qbatch_mode)->value == Qnil)
+	setpgid (0, 0);
+#endif
 
     make_argv (Fcons (rep_SYM(Qprogram_name)->value,
 		      rep_SYM(Qcommand_line_args)->value), &argc, &argv);

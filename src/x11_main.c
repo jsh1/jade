@@ -26,7 +26,12 @@
 #include <assert.h>
 
 #ifdef HAVE_UNIX
-# include <fcntl.h>
+# ifdef HAVE_FCNTL_H
+#  include <fcntl.h>
+# endif
+# ifdef HAVE_UNISTD_H
+#  include <unistd.h>
+# endif
 #endif
 
 static void x11_handle_sync_input(int fd);
@@ -71,6 +76,11 @@ sys_init(char *program_name)
     struct x11_display *xdisplay;
     char *display_name = 0;
     repv opt;
+
+#ifdef HAVE_UNIX
+    if (rep_SYM(Qbatch_mode)->value == Qnil)
+	setpgid (0, 0);
+#endif
 
     prog_name = program_name;
     def_font_str = rep_VAL (&def_font_str_data);
