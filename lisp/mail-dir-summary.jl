@@ -36,14 +36,14 @@
   "s" 'mds-sort-list)
 
 (defvar mds-alias-functions
-  '((select . nop)
+  '((select . mds-compose-mail-to-item)
     (delete . (lambda (item) (remove-mail-alias (car item))))
     (print . mds-print-alias)
     (list . (lambda () mail-alias-alist))
     (after-marking . (lambda () (summary-next-item 1)))))
 
 (defvar mds-address-functions
-  '((select . nop)
+  '((select . mds-compose-mail-to-item)
     (delete . (lambda (item) (remove-mail-address (car item))))
     (print . mds-print-address)
     (list . (lambda () mail-address-alist))
@@ -127,15 +127,14 @@
       (setq mail-directory-modified t))
     (summary-update-item item)))
 
-(defun mds-compose-mail-to-item (in-cc)
+(defun mds-compose-mail-to-item (item)
   "Compose a new mail message with the current item as the To: field (or the
-CC: field if IN-CC is t)."
-  (interactive "P")
+CC: field if the prefix arg is set)."
+  (interactive (list (summary-current-item)))
   (let
-      ((in-address-list (eq (current-buffer) mds-address-buffer))
-       (item (summary-current-item)))
+      ((in-address-list (eq (current-buffer) mds-address-buffer)))
     (mail-setup)
-    (if in-cc
+    (if current-prefix-arg
 	(send-mail-go-cc)
       (send-mail-go-to))
     (if in-address-list
