@@ -221,6 +221,20 @@ contain its definition as a function."
     (mapc #'(lambda (r)
 	      (and (rm-apply-rule r message)
 		   (throw 'exit t))) rule-list)))
+
+;; Combine RULE1 and RULE2 into a single anonymous rule, combination
+;; is done by OP, one of `and', `or', `progn'. Defaults to `and'.
+(defun rm-combine-rules (rule1 rule2 &optional op)
+  (unless op (setq op 'and))
+  (or (memq op '(and or progn)) (error "Unknown combinator: %s" op))
+  `(lambda ()
+     (,op (funcall ,(if (functionp rule1)
+			rule1
+		      (get rule1 'rm-rule-function)))
+          (funcall ,(if (functionp rule2)
+			rule2
+		      (get rule2 'rm-rule-function))))))
+
 
 ;; Standard rules
 
