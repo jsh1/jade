@@ -54,43 +54,92 @@ WIN *win_chain;
 WIN *curr_win;
 
 /* The default window position and dimensions. */
-short def_dims[4] = { 0, 0, 80, 24 };
+static short def_dims[4] = { 0, 0, 80, 24 };
 
 repv def_font_str;
 
 DEFSYM(save_and_quit, "save-and-quit");
 
-DEFUN_INT("make-window", Fmake_window, Smake_window,
-      (repv xv, repv yv, repv wv, repv hv), rep_Subr4, "") /*
+DEFSYM(dimensions, "dimensions");
+DEFSYM(position, "position");
+DEFSYM(buffer, "buffer");
+DEFSYM(font, "font");
+
+void
+set_default_geometry (short x, short y, short w, short h)
+{
+    def_dims[0] = x;
+    def_dims[1] = y;
+    def_dims[2] = w;
+    def_dims[3] = h;
+}
+
+DEFUN_INT("make-window", Fmake_window, Smake_window, (repv attrs), rep_Subr1, "") /*
 ::doc:make-window::
-make-window [X] [Y] [WIDTH] [HEIGHT]
+make-window ATTRS
 
 Return and select a new window, it will be displaying the same buffer as
 the originally selected window.
+
+ATTRS is an alist with any of the following pairs:
+
+	(font . FONT-NAME)
+	(position . (X . Y))
+	(dimensions . (COLS . ROWS))
+	(buffer . BUFFER)
 ::end:: */
 {
     WIN *w;
-    repv tx = curr_vw ? rep_VAL(curr_vw->vw_Tx) : Qnil;
-    if(rep_INTP(xv))
-	def_dims[0] = rep_INT(xv);
-    if(rep_INTP(yv))
-	def_dims[1] = rep_INT(yv);
-    if(rep_INTP(wv))
-	def_dims[2] = rep_INT(wv);
-    if(rep_INTP(hv))
-	def_dims[3] = rep_INT(hv);
+    repv tem, tx, font;
+    short dims[4];
+
+    memcpy (dims, def_dims, sizeof (dims));
+
+    tem = Fassq (Qbuffer, attrs);
+    if (!tem)
+	return rep_NULL;
+    if (tem != Qnil)
+	tx = rep_CDR(tem);
+    else
+	tx = curr_vw ? rep_VAL(curr_vw->vw_Tx) : Qnil;
+
+    tem = Fassq (Qposition, attrs);
+    if (!tem)
+	return rep_NULL;
+    if (tem != Qnil && rep_CONSP(rep_CDR(tem)))
+    {
+	dims[0] = rep_INT(rep_CADR(tem));
+	dims[1] = rep_INT(rep_CDDR(tem));
+    }
+
+    tem = Fassq (Qdimensions, attrs);
+    if (!tem)
+	return rep_NULL;
+    if (tem != Qnil && rep_CONSP(rep_CDR(tem)))
+    {
+	dims[2] = rep_INT(rep_CADR(tem));
+	dims[3] = rep_INT(rep_CDDR(tem));
+    }
+
+    tem = Fassq (Qfont, attrs);
+    if (!tem)
+	return rep_NULL;
+    if (tem != Qnil)
+	font = rep_CDR(tem);
+    else if (curr_win != 0)
+	font = curr_win->w_FontName;
+    else
+	font = def_font_str;
+
     w = rep_ALLOC_CELL(sizeof(WIN));
     if(w != NULL)
     {
 	memset(w, 0, sizeof(WIN));
 	w->w_Car = window_type;
-	if(curr_win == 0)
-	    w->w_FontName = def_font_str;
-	else
-	    w->w_FontName = curr_win->w_FontName;
+	w->w_FontName = rep_STRINGP(font) ? font : def_font_str;
 	if(sys_set_font(w))
 	{
-	    w->w_Window = sys_new_window(curr_win, w, TRUE);
+	    w->w_Window = sys_new_window(curr_win, w, dims);
 	    if(w->w_Window)
 	    {
 		sys_update_dimensions(w);
@@ -816,6 +865,11 @@ windows_init(void)
     rep_INTERN_SPECIAL(visible_bell_length);
     rep_SYM(Qvisible_bell_length)->value = rep_MAKE_INT (250);
     rep_beep_fun = beep;
+
+    rep_INTERN(dimensions);
+    rep_INTERN(position);
+    rep_INTERN(buffer);
+    rep_INTERN(font);
 }
 
 void

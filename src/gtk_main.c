@@ -121,23 +121,17 @@ use_options(void)
     int x, y, w, h;
     int gflgs = XParseGeometry(geom_str, &x, &y, &w, &h);
 
-    if(gflgs & WidthValue)
-	def_dims[2] = w;
-    else
-	def_dims[2] = -1;
-    if(gflgs & HeightValue)
-	def_dims[3] = h;
-    else
-	def_dims[3] = -1;
+    if(!(gflgs & WidthValue))
+	w = -1;
+    if(!(gflgs & HeightValue))
+	h = -1;
     /* TODO: need to use -ve values properly */
-    if(gflgs & XValue)
-	def_dims[0] = x;
-    else
-	def_dims[0] = -1;
-    if(gflgs & YValue)
-	def_dims[1] = y;
-    else
-	def_dims[1] = -1;
+    if(!(gflgs & XValue))
+	x = -1;
+    if(!(gflgs & YValue))
+	y = -1;
+
+    set_default_geometry (x, y, w, h);
 #endif
 
 #ifdef HAVE_X11

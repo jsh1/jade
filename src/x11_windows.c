@@ -87,7 +87,7 @@ x11_update_dimensions(WIN *w, int width, int height)
 
 /* The only thing necessary in `vw' is the font stuff (I think) */
 Window
-sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
+sys_new_window(WIN *oldW, WIN *w, short *dims)
 {
     unsigned int x, y, width, height;
     Window win;
@@ -103,46 +103,37 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	dpy = x11_display_list;
 
     size_hints.flags = 0;
-    if(!useDefDims && oldW)
+    if(dims[0] >= 0)
     {
-	x = y = 0;
-	width = w->w_FontX * oldW->w_MaxX;
-	height = w->w_FontY * oldW->w_MaxY;
-	size_hints.flags |= PPosition | PSize;
+	x = dims[0];
+	size_hints.flags |= USPosition;
     }
     else
+	x = 0;
+    if(dims[1] >= 0)
     {
-	if(def_dims[0] != -1)
-	{
-	    x = def_dims[0];
-	    size_hints.flags |= USPosition;
-	}
-	else
-	    x = 0;
-	if(def_dims[1] != -1)
-	{
-	    y = def_dims[1];
-	    size_hints.flags |= USPosition;
-	}
-	else
-	    y = 0;
-	if(def_dims[2] != -1)
-	{
-	    width = def_dims[2];
-	    size_hints.flags |= USSize;
-	}
-	else
-	    width = 80;
-	if(def_dims[3] != -1)
-	{
-	    height = def_dims[3];
-	    size_hints.flags |= USSize;
-	}
-	else
-	    height = 24;
-	width = w->w_FontX * width;
-	height = (w->w_FontY * (height + 2));
+	y = dims[1];
+	size_hints.flags |= USPosition;
     }
+    else
+	y = 0;
+    if(dims[2] > 0)
+    {
+	width = dims[2];
+	size_hints.flags |= USSize;
+    }
+    else
+	width = 80;
+    if(dims[3] > 0)
+    {
+	height = dims[3];
+	size_hints.flags |= USSize;
+    }
+    else
+	height = 24;
+
+    width = w->w_FontX * width;
+    height = (w->w_FontY * (height + 2));
 
     face = Fsymbol_value(Qdefault_face, Qt);
     if(FACEP(face))
@@ -527,7 +518,7 @@ When called interactively, DISPLAY-NAME is prompted for.
     {
 	repv win;
 	pending_display = xdisplay;
-	win = Fmake_window(Qnil, Qnil, Qnil, Qnil);
+	win = Fmake_window(Qnil);
 	pending_display = 0;
 	return win;
     }

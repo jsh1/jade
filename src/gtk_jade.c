@@ -43,6 +43,8 @@ static void gtk_jade_class_init (GtkJadeClass *klass);
 static void gtk_jade_init (GtkJade *jade);
 static void gtk_jade_destroy (GtkObject *object);
 static void gtk_jade_realize (GtkWidget *widget);
+static void gtk_jade_size_request (GtkWidget *widget,
+				   GtkRequisition *requisition);
 static void gtk_jade_size_allocate (GtkWidget *widget,
 				    GtkAllocation *allocation);
 static gint gtk_jade_expose (GtkWidget *widget, GdkEventExpose *event);
@@ -119,6 +121,7 @@ gtk_jade_class_init (GtkJadeClass *class)
 
     object_class->destroy = gtk_jade_destroy;
 
+    widget_class->size_request = gtk_jade_size_request;
     widget_class->realize = gtk_jade_realize;
     widget_class->size_allocate = gtk_jade_size_allocate;
     widget_class->expose_event = gtk_jade_expose;
@@ -234,7 +237,9 @@ gtk_jade_new (WIN *win, int width, int height)
     {
 	width *= win->w_FontX;
 	height *= win->w_FontY;
+#if 0
 	gtk_widget_set_usize (GTK_WIDGET (jade), width, height);
+#endif
 	jade->width = width;
 	jade->height = height;
     }
@@ -336,6 +341,19 @@ gtk_jade_realize (GtkWidget *widget)
 
     /* Impolite?! */
     gtk_widget_grab_focus (GTK_WIDGET (jade));
+}
+
+static void
+gtk_jade_size_request (GtkWidget *widget,
+		       GtkRequisition *requisition)
+{
+    GtkJade *jade;
+    g_return_if_fail (widget != NULL);
+    g_return_if_fail (GTK_IS_JADE (widget));
+    jade = GTK_JADE (widget);
+
+    requisition->width = jade->width;
+    requisition->height = jade->height;
 }
 
 static void
@@ -519,7 +537,7 @@ gtk_jade_drag_data_received (GtkWidget *widget, GdkDragContext *context,
 	data = end + strspn (end, "\r\n");
     }
 
-    rep_funcall (Qdnd_drop_uri_list,
+    rep_funcall (Fsymbol_value (Qdnd_drop_uri_list, Qnil),
 		 Fcons (Freverse (list),
 			Fcons (rep_VAL (jade->win),
 			       Fcons (pos, Qnil))),
@@ -719,7 +737,7 @@ focus_out_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
 
 /* The only thing necessary in W is the font stuff (I think) */
 GtkJade *
-sys_new_window(WIN *oldW, WIN *w, bool use_default_dims)
+sys_new_window(WIN *oldW, WIN *w, short *dims)
 {
     unsigned int x = -1, y = -1, width = 80, height = 24;
     GtkWidget *frame = 0;
@@ -727,22 +745,14 @@ sys_new_window(WIN *oldW, WIN *w, bool use_default_dims)
     if (rep_SYM (Qbatch_mode)->value != Qnil)
 	new_window_no_show = TRUE;
 
-    if(!use_default_dims && oldW)
-    {
-	width = w->w_FontX * oldW->w_MaxX;
-	height = w->w_FontY * oldW->w_MaxY;
-    }
-    else
-    {
-	if(def_dims[0] != -1)
-	    x = def_dims[0];
-	if(def_dims[1] != -1)
-	    y = def_dims[1];
-	if(def_dims[2] != -1)
-	    width = def_dims[2];
-	if(def_dims[3] != -1)
-	    height = def_dims[3];
-    }
+    if(dims[0] >= 0)
+	x = dims[0];
+    if(dims[1] >= 0)
+	y = dims[1];
+    if(dims[2] > 0)
+	width = dims[2];
+    if(dims[3] > 0)
+	height = dims[3];
 
     if (!new_window_no_frame)
     {
@@ -888,7 +898,7 @@ if adding to another container.
 
     new_window_no_frame = TRUE;
     new_window_no_show = TRUE;
-    win = Fmake_window (Qnil, Qnil, width, height);
+    win = Fmake_window (rep_LIST_1 (Fcons (Qposition, Fcons (width, height))));
     new_window_no_frame = FALSE;
     new_window_no_show = FALSE;
 
@@ -949,7 +959,7 @@ DEFUN ("make-window-on-display", Fmake_window_on_display,
        XXX present, be sensible about host names, etc... */
     if (strcmp (rep_STR (display), current_dpy) == 0)
     {
-	return Fmake_window (Qnil, Qnil, Qnil, Qnil);
+	return Fmake_window (Qnil);
     }
     else
 	return Fsignal (Qerror, rep_list_2 (rep_string_dup
