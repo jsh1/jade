@@ -35,9 +35,11 @@
 #define EV_MOD_BUTTON4	0x00001000
 #define EV_MOD_BUTTON5	0x00002000
 
+/* Fake meta modifier. Only used when decoding key descriptions. */
+#define EV_MOD_FAKE_META 0x80000000
+
 #define EV_MOD_MASK	0xfffffffc
 
-#define EV_MOD_META	EV_MOD_MOD1
 #define EV_MOD_LMB 	EV_MOD_BUTTON1
 #define EV_MOD_MMB	EV_MOD_BUTTON2
 #define EV_MOD_RMB	EV_MOD_BUTTON3
