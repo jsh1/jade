@@ -506,7 +506,7 @@ string, if nil the current buffer is returned."
 (defvar symbol-word-regexps ["[^][()?'\"#; ]" "[][()?'\"#; ]|$"])
 
 ;;;###autoload
-(defun prompt-for-symbol (&optional prompt prompt-symbol-predicate)
+(defun prompt-for-symbol (&optional prompt prompt-symbol-predicate start)
   "Prompt for an existing symbol. If PROMPT-SYMBOL-PREDICATE is given the
 symbol must agree with it."
   (unless (stringp prompt)
@@ -516,10 +516,10 @@ symbol must agree with it."
        (prompt-validate-function 'prompt-validate-symbol)
        (prompt-word-regexps symbol-word-regexps)
        (prompt-history prompt-symbol-history))
-    (intern (prompt prompt))))
+    (intern (prompt prompt start))))
 
 ;;;###autoload
-(defun prompt-for-lisp (&optional prompt)
+(defun prompt-for-lisp (&optional prompt start)
   "Prompt for a lisp object."
   (unless (stringp prompt)
     (setq prompt "Enter a Lisp object:"))
@@ -528,25 +528,22 @@ symbol must agree with it."
        (prompt-validate-function nil)
        (prompt-word-regexps symbol-word-regexps)
        (prompt-symbol-predicate nil))
-    (read-from-string (prompt prompt))))
+    (read-from-string (prompt prompt start))))
 
 ;;;###autoload
-(defun prompt-for-function (&optional prompt)
+(defun prompt-for-function (&optional prompt start)
   "Prompt for a function."
-  (prompt-for-symbol (or prompt "Enter name of function:")
-		     'fboundp))
+  (prompt-for-symbol (or prompt "Enter name of function:") 'fboundp start))
 
 ;;;###autoload
-(defun prompt-for-variable (&optional prompt)
+(defun prompt-for-variable (&optional prompt start)
   "Prompt for a variable."
-  (prompt-for-symbol (or prompt "Enter name of variable:")
-		     'boundp))
+  (prompt-for-symbol (or prompt "Enter name of variable:") 'boundp start))
 
 ;;;###autoload
-(defun prompt-for-command (&optional prompt)
+(defun prompt-for-command (&optional prompt start)
   "Prompt for a command."
-  (prompt-for-symbol (or prompt "Enter name of command:")
-		     'commandp))
+  (prompt-for-symbol (or prompt "Enter name of command:") 'commandp))
 
 ;;;###autoload
 (defun prompt-from-list (prompt-list prompt &optional start dont-validate)
