@@ -24,6 +24,8 @@
 (defvar gdb-program "gdb"
   "The file name of the gdb program to run.")
 
+(defvar perl-program "perl")
+
 (defvar gdb-auto-centre nil
   "When non-nil the current line in the source view is automatically
 centred each time it changes.")
@@ -51,33 +53,55 @@ centred each time it changes.")
 (defvar gdb-frame-extent nil)
 (make-variable-buffer-local 'gdb-frame-extent)
 
+(defvar gdb-actions nil)
+(make-variable-buffer-local 'gdb-actions)
+
+(defvar gdb-input-filter nil)
+(make-variable-buffer-local 'gdb-input-filter)
+
 (defvar gdb-ctrl-c-keymap
   (bind-keys (make-sparse-keymap shell-ctrl-c-keymap)
-    "Ctrl-n" '(gdb-command "next %d\n"
-			   (prefix-numeric-argument current-prefix-arg))
-    "Ctrl-s" '(gdb-command "step %d\n"
-			   (prefix-numeric-argument current-prefix-arg))
-    "Ctrl-i" '(gdb-command "stepi %d\n"
-			   (prefix-numeric-argument current-prefix-arg))
-    "Ctrl-I" '(gdb-command "nexti %d\n"
-			   (prefix-numeric-argument current-prefix-arg))
-    "Ctrl-f" '(gdb-command "finish\n")
-    "Ctrl-r" '(gdb-command "cont\n")
-    "Ctrl-<" '(gdb-command "up %d\n"
-			   (prefix-numeric-argument current-prefix-arg))
-    "Ctrl->" '(gdb-command "down %d\n"
-			   (prefix-numeric-argument current-prefix-arg))
-    "Ctrl-b" '(gdb-command "break %s:%d\n"
-			   (gdb-current-file) (gdb-current-line))
-    "Ctrl-t" '(gdb-command "tbreak %s:%d\n"
-			   (gdb-current-file) (gdb-current-line))
-    "Ctrl-d" '(gdb-command "clear %d\n"
-			   (gdb-current-line))
+    "Ctrl-n" 'gdb-next
+    "Ctrl-s" 'gdb-step
+    "Ctrl-i" 'gdb-stepi
+    "Ctrl-I" 'gdb-nexti
+    "Ctrl-f" 'gdb-finish-frame
+    "Ctrl-r" 'gdb-continue
+    "Ctrl-<" 'gdb-up-frame
+    "Ctrl->" 'gdb-down-frame
+    "Ctrl-b" 'gdb-set-breakpoint
+    "Ctrl-t" 'gdb-set-temporary-breakpoint
+    "Ctrl-d" 'gdb-delete-breakpoint
     "Ctrl-l" 'gdb-redisplay-frame))
 (fset 'gdb-ctrl-c-keymap 'keymap)
 
 (bind-keys ctrl-x-keymap
   "Ctrl-a" 'gdb-ctrl-c-keymap)
+
+
+;; GDB support
+
+(defvar gdb-gdb-actions
+  '((next . (gdb-command "next %d\n"
+			 (prefix-numeric-argument current-prefix-arg)))
+    (step . (gdb-command "step %d\n"
+			 (prefix-numeric-argument current-prefix-arg)))
+    (stepi . (gdb-command "stepi %d\n"
+			  (prefix-numeric-argument current-prefix-arg)))
+    (nexti . (gdb-command "nexti %d\n"
+			  (prefix-numeric-argument current-prefix-arg)))
+    (finish-frame . (gdb-command "finish\n"))
+    (continue . (gdb-command "cont\n"))
+    (up-frame . (gdb-command "up %d\n"
+			     (prefix-numeric-argument current-prefix-arg)))
+    (down-frame . (gdb-command "down %d\n"
+			       (prefix-numeric-argument current-prefix-arg)))
+    (set-breakpoint . (gdb-command "break %s:%d\n"
+				   (gdb-current-file) (gdb-current-line)))
+    (set-temporary-breakpoint (gdb-command
+			       "tbreak %s:%d\n"
+			       (gdb-current-file) (gdb-current-line)))
+    (delete-breakpoint (gdb-command "clear %d\n" (gdb-current-line)))))
 
 ;;;###autoload
 (defun gdb (args)
@@ -109,7 +133,9 @@ There is no limit to the number of gdb processes you may run at once."
 	  mode-name "GDB"
 	  local-ctrl-c-keymap gdb-ctrl-c-keymap
 	  gdb-last-buffer buffer
-	  gdb-buffer-p t)
+	  gdb-buffer-p t
+	  gdb-actions gdb-gdb-actions
+	  gdb-input-filter 'gdb-gdb-input-filter)
     (call-hook 'gdb-hook)))
 
 (defun gdb-mode ()
@@ -122,6 +148,109 @@ The following commands are available in the `*gdb*' buffer:\n
 \\{gdb-ctrl-c-keymap,Ctrl-c}
 They are also accessible in any buffer by replacing the `Ctrl-c' prefix
 with `Ctrl-x Ctrl-a'.")
+
+(defun gdb-gdb-input-filter (data)
+  (let
+      ((new-frame nil))
+    (while (string-match "\032\032([^:\n]+):([0-9]+):([0-9]+):.*\n" data)
+      ;; A whole marker to process
+      (insert (substring data 0 (match-start 0)))
+      (setq gdb-last-frame (cons (substring data (match-start 1) (match-end 1))
+				 (1- (read (cons 0 (substring
+						    data
+						    (match-start 2)
+						    (match-end 2)))))))
+      (setq new-frame t)
+      (setq data (substring data (match-end 0))))
+    (if (string-match "\032" data)
+	;; Start of an incomplete marker; save it for later
+	(progn
+	  (insert (substring data 0 (match-start 0)))
+	  (setq gdb-spare-output (substring data (match-start 0))))
+      (insert data)
+      (setq gdb-spare-output nil))
+    new-frame))
+
+
+;; Perldb support
+
+(defvar gdb-perldb-actions
+  '((next . (gdb-command "n\n"))
+    (step . (gdb-command "s\n"))
+    (continue . (gdb-command "c\n"))
+    ;; XXX this needs to use (gdb-current-file) as well
+    (set-breakpoint . (gdb-command "b %d\n" (gdb-current-line)))
+    (delete-breakpoint (gdb-command "d %d\n" (gdb-current-line)))))
+
+;;;###autoload
+(defun perldb (args)
+  "Run the Perl debugger in an editor buffer (called `*perldb*'). ARGS is a
+string giving all arguments to the perl subprocess (including the program
+to debug). See the `perl-mode' documentation for details of the available
+commands. There is no limit to the number of processes you may run at once."
+  (interactive "sArguments to perl:")
+  (let*
+      ((buffer (get-buffer "*perldb*"))
+       (directory default-directory))
+    (if (or (not buffer) (with-buffer buffer shell-process))
+	(setq buffer (open-buffer "*perldb*" t))
+      (clear-buffer buffer))
+    (goto-buffer buffer)
+    (kill-all-local-variables)
+    (setq default-directory directory
+	  shell-program-args (list "-c" (concat perl-program " -d "
+						args " -emacs"))
+	  shell-prompt-regexp "^ *DB<+[0-9]+>+ *"
+	  shell-output-stream (list 'lambda '(x)
+				    (list 'gdb-output-filter
+					  (current-buffer) 'x))
+	  shell-callback-function 'gdb-callback)
+    (shell-mode)
+    (setq buffer-status-id (concat "PerlDB: " args)
+	  major-mode 'perldb-mode
+	  mode-name "PerlDB"
+	  local-ctrl-c-keymap gdb-ctrl-c-keymap
+	  gdb-last-buffer buffer
+	  gdb-buffer-p t
+	  gdb-actions gdb-perldb-actions
+	  gdb-input-filter 'gdb-perldb-input-filter)
+    (call-hook 'gdb-hook)))
+
+(defun perldb-mode ()
+  "PerlDB Mode:\n
+This major-mode is used to run the Perl debugger in an editor buffer. To
+start a PerlDB subprocess use the `Meta-x perldb' command.\n
+Each time the target process stops executing the source line of the
+current frame is highlighted in a separate view.\n
+The following commands are available in the `*perldb*' buffer:\n
+\\{gdb-ctrl-c-keymap,Ctrl-c}
+They are also accessible in any buffer by replacing the `Ctrl-c' prefix
+with `Ctrl-x Ctrl-a'.")
+
+(defun gdb-perldb-input-filter (data)
+  (let
+      ((new-frame nil))
+    (while (string-match "\032\032([^:\n]+):([0-9]+):.*\n" data)
+      ;; A whole marker to process
+      (insert (substring data 0 (match-start 0)))
+      (setq gdb-last-frame (cons (expand-file-name
+				  (substring data (match-start 1)
+					     (match-end 1))
+				  default-directory)
+				 (1- (read (cons 0 (substring
+						    data
+						    (match-start 2)
+						    (match-end 2)))))))
+      (setq new-frame t)
+      (setq data (substring data (match-end 0))))
+    (if (string-match "\032" data)
+	;; Start of an incomplete marker; save it for later
+	(progn
+	  (insert (substring data 0 (match-start 0)))
+	  (setq gdb-spare-output (substring data (match-start 0))))
+      (insert data)
+      (setq gdb-spare-output nil))
+    new-frame))
 
 
 ;; Digs the variable VAR out of the gdb-last-buffer
@@ -151,7 +280,7 @@ with `Ctrl-x Ctrl-a'.")
 	 (gdb-get-buffer-var shell-process)
 	 format-spec format-args)
   (with-buffer gdb-last-buffer
-    (when (looking-at "^\\(.*gdb.*\\) *" (start-of-line (end-of-buffer)))
+    (when (looking-at shell-prompt-regexp (start-of-line (end-of-buffer)))
       (setq gdb-delete-prompt t))))
 
 ;; Receives all output from the gdb subprocess, it acts upon and removes
@@ -167,23 +296,7 @@ with `Ctrl-x Ctrl-a'.")
 		 (looking-at shell-prompt-regexp (start-of-line)))
 	(delete-area (match-start) (match-end))
 	(setq gdb-delete-prompt nil))
-      (while (string-match "\032\032([^:\n]+):([0-9]+):([0-9]+):.*\n" data)
-	;; A whole marker to process
-	(insert (substring data 0 (match-start 0)))
-	(setq
-	 gdb-last-frame (cons (substring data (match-start 1) (match-end 1))
-			      (1- (read (cons 0 (substring data
-							   (match-start 2)
-							   (match-end 2))))))
-	 new-frame t
-	 data (substring data (match-end 0))))
-      (if (string-match "\032" data)
-	  ;; Start of an incomplete marker; save it for later
-	  (progn
-	    (insert (substring data 0 (match-start 0)))
-	    (setq gdb-spare-output (substring data (match-start 0))))
-	(insert data)
-	(setq gdb-spare-output nil)))
+      (setq new-frame (funcall gdb-input-filter data)))
     (when new-frame
       (setq gdb-last-buffer buffer)
       ;; Now redisplay the frame and its highlight
@@ -232,3 +345,59 @@ with `Ctrl-x Ctrl-a'.")
     (when (eq gdb-last-buffer (current-buffer))
       ;; Ensure the buffer can be gc'd in the future
       (setq gdb-last-buffer nil))))
+
+
+;; User commands
+
+(defun gdb-next ()
+  (interactive)
+  (gdb-do-command 'next))
+
+(defun gdb-step ()
+  (interactive)
+  (gdb-do-command 'step))
+
+(defun gdb-stepi ()
+  (interactive)
+  (gdb-do-command 'stepi))
+
+(defun gdb-nexti ()
+  (interactive)
+  (gdb-do-command 'nexti))
+
+(defun gdb-finish-frame ()
+  (interactive)
+  (gdb-do-command 'finish-frame))
+
+(defun gdb-continue ()
+  (interactive)
+  (gdb-do-command 'continue))
+
+(defun gdb-up-frame ()
+  (interactive)
+  (gdb-do-command 'up-frame))
+
+(defun gdb-down-frame ()
+  (interactive)
+  (gdb-do-command 'down-frame))
+
+(defun gdb-set-breakpoint ()
+  (interactive)
+  (gdb-do-command 'set-breakpoint))
+
+(defun gdb-set-temporary-breakpoint ()
+  (interactive)
+  (gdb-do-command 'set-temporary-breakpoint))
+
+(defun gdb-delete-breakpoint ()
+  (interactive)
+  (gdb-do-command 'delete-breakpoint))
+
+(defun gdb-do-command (command)
+  (when gdb-buffer-p
+    (setq gdb-last-buffer (current-buffer)))
+  (let
+      ((action (cdr (assq command (gdb-get-buffer-var gdb-actions)))))
+    (if action
+	(eval action)
+      (error "Command %s not supported by this debugger" command))))
