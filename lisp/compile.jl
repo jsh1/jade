@@ -21,19 +21,38 @@
 (provide 'compile)
 
 
-;; Variables
+;; Configuration
 
 (defvar compile-error-regexp "^(.*):([0-9]+):(.+)"
   "String used to match error messages in compilation output.")
+
 (defvar compile-file-expand "\\1"
   "Expansion template for the name of the file in an error matched by
 `compile-error-regexp'.")
+
 (defvar compile-line-expand "\\2"
-    "Expansion template for the line number of an error matched by
+  "Expansion template for the line number of an error matched by
 `compile-error-regexp'.")
+
 (defvar compile-error-expand "\\3"
-    "Expansion template for the error description in an error matched by
+  "Expansion template for the error description in an error matched by
 `compile-error-regexp'.")
+
+(defvar compile-push-directory-regexp "^make: Entering directory `(.*)'"
+  "Regexp matching output when a new directory is entered. First
+subexpression should contain the name of the directory.")
+
+(defvar compile-pop-directory-regexp "^make: Leaving directory "
+  "Regexp matching output when leaving a directory.")
+
+(defvar compile-command "make"
+  "The command to run from `M-x compile'.")
+
+(defvar compile-shell (unless (getenv "SHELL") "/bin/sh")
+  "The filename of the shell to use to run the compilation in.")
+
+
+;; Variables
 
 (defvar compile-keymap (make-keylist))
 
@@ -49,20 +68,14 @@
 (defvar compile-proc nil)
 (defvar compile-errors nil "List of (ERROR-POS-MARK . ERROR-DESC-LINE)")
 (defvar compile-error-pos nil)
-(defvar compile-parsed-errors-p nil)
-(defvar compile-errors-exist-p nil)
-
-(defvar compile-command "make"
-  "The command to run from `M-x compile'.")
+(defvar compile-parsed-errors nil)
+(defvar compile-errors-exist nil)
 
 (defvar compile-last-command nil
   "The previous command run in the *compilation* buffer.")
 
 (defvar compile-last-type nil
   "The type of the last command.")
-
-(defvar compile-shell (unless (getenv "SHELL") "/bin/sh")
-  "The filename of the shell to use to run the compilation in.")
 
 (defvar compile-last-grep "grep -n "
   "The last string entered to the `M-x grep' command.")
@@ -83,8 +96,8 @@
       (setq default-directory original-dir)))
   (when compile-buffer
     (setq compile-errors nil
-	  compile-parsed-errors-p nil
-	  compile-errors-exist-p nil
+	  compile-parsed-errors nil
+	  compile-errors-exist nil
 	  compile-error-pos (start-of-buffer))
     t))
 
@@ -167,7 +180,7 @@ when this function returns."
   (when arg
     (setq compile-last-grep arg)
     ;; Concat "/dev/null /dev/null" To stop a null command (i.e. "grep")
-    ;; from hanging on standard input
+    ;; hanging on standard input
     (start-compile-command (concat arg " /dev/null /dev/null") "grep-hits")))
 
 (defvar grep-buffer-regexp nil
@@ -199,38 +212,48 @@ buffer in a form that `goto-next-error' understands."
 
 ;; Parsing compiler/grep output
 
+;; This can be called while the process is still running, one problem though,
+;; if the compiled file is modified and then a new error is found the line
+;; numbers won't coincide like they normally would.
 (defun compile-parse-errors ()
-  ;; This can be called while the process is still running, one problem though,
-  ;; if the compiled file is modified and then a new error is found the line
-  ;; numbers won't coincide like they normally would.
-  (unless compile-parsed-errors-p
+  (unless compile-parsed-errors
     (with-buffer compile-buffer
-      (let*
-	  (error-file
-	   error-line
-	   last-e-line
-	   last-e-file
-	   new-errors)
-	(while (setq compile-error-pos (re-search-forward compile-error-regexp
-							  compile-error-pos))
-	  (setq error-line (1- (read-from-string
-				(expand-last-match compile-line-expand))))
-	  (when (or (not last-e-line) (/= error-line last-e-line))
-	    (setq last-e-line error-line
-		  error-file (expand-last-match compile-file-expand))
-	    (unless (string= last-e-file error-file)
-	      (setq last-e-file error-file))
-	    (setq new-errors (cons (cons (make-mark (pos 0 error-line)
-						    error-file)
-					 (pos-line compile-error-pos))
-				   new-errors)))
-	  (setq compile-error-pos (match-end)))
-	(when new-errors
-	  (setq compile-errors (nconc compile-errors (nreverse new-errors))
-		compile-errors-exist-p t))))
-    (unless compile-proc
-      (setq compile-parsed-errors-p t)))
-  t)
+      (let
+	  ((pos compile-error-pos)
+	   (dir-stack nil)
+	   (current-dir default-directory)
+	   errors last-line last-file)
+	(while (/= (pos-line pos) (buffer-length))
+	  (cond
+	   ((looking-at compile-error-regexp pos)
+	    ;; Parse the error
+	    (let
+		((line (read-from-string
+			(expand-last-match compile-line-expand)))
+		 (file (expand-file-name
+			(expand-last-match compile-file-expand)
+			current-dir)))
+	      (unless (and last-line (= line last-line)
+			   (file-name= file last-file))
+		(setq errors (cons (cons (make-mark (pos 0 line) file)
+					 (pos-line pos))
+				   errors)
+		      last-line line
+		      last-file file))))
+	   ((looking-at compile-push-directory-regexp pos)
+	    (setq dir-stack (cons current-dir dir-stack)
+		  current-dir (expand-file-name (expand-last-match "\\1")
+						current-dir)))
+	   ((and (looking-at compile-pop-directory-regexp pos) dir-stack)
+	    (setq current-dir (car dir-stack)
+		  dir-stack (cdr dir-stack))))
+	  (setq pos (forward-line 1 pos)))
+	(when errors
+	  (setq compile-errors (nconc (nreverse errors))
+		compile-errors-exist t))
+	(if compile-proc
+	    (setq compile-error-pos pos)
+	  (setq compile-parsed-errors t))))))
 
 ;;;###autoload
 (defun next-error ()
@@ -238,18 +261,16 @@ buffer in a form that `goto-next-error' understands."
 `*compilation*' buffer."
   (interactive)
   (compile-parse-errors)
-  (let*
-      ((err (car compile-errors)))
-    (setq compile-errors (cdr compile-errors))
-    (cond
-     ((not err)
-      (message (concat "No " (if compile-errors-exist-p "more ")
-		       compile-last-type (if compile-proc " yet")))
-      (beep)
-      nil)
-     (t
-      (goto-mark (car err))
-      (when (cdr err)
-	(and (looking-at compile-error-regexp (pos 0 (cdr err)) compile-buffer)
-	     (message (expand-last-match compile-error-expand))))
-      t))))
+  (if compile-errors
+      (let
+	  ((error (car compile-errors)))
+	(goto-mark (car error))
+	(when (and (cdr error)
+		   (looking-at compile-error-regexp (pos 0 (cdr error))
+			       compile-buffer))
+	  (message (expand-last-match compile-error-expand)))
+	(setq compile-errors (cdr compile-errors)))
+    (error "No %s%s%s"
+	   (if compile-errors-exist "more " "")
+	   (or compile-last-type "")
+	   (if compile-proc " yet" ""))))
