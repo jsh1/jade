@@ -65,12 +65,11 @@ prefix keys of this binding, or nil if there is no prefix."
 ;; Map over a single list of keybindings
 (defun km-map-keylist (keylist function buffer)
   (mapc #'(lambda (k)
-	    (if (eq (car (aref k 2)) 'next-keymap-path)
+	    (if (eq (car (car k)) 'next-keymap-path)
 		;; A prefix key
 		(let
-		    ((this-list (with-buffer buffer (eval (nth 1 (aref k 2)))))
-		     (event-str (event-name (cons (aref k 0)
-						  (aref k 1)))))
+		    ((this-list (with-buffer buffer (eval (nth 1 (car k)))))
+		     (event-str (event-name (cdr k))))
 		  (when (listp this-list)
 		    ;; Another keymap-list, add it to the list of those waiting
 		    (let*
@@ -99,9 +98,9 @@ prefix keys of this binding, or nil if there is no prefix."
 		  (format (current-buffer) "%s%s%s "
 			  (or prefix "")
 			  (if prefix " " "")
-			  (event-name (cons (aref k 0) (aref k 1))))
+			  (event-name (cdr k)))
 		  (indent-to 24)
-		  (format (current-buffer) "%S\n" (aref k 2)))
+		  (format (current-buffer) "%S\n" (car k)))
 	      keymap buffer))
 
 
@@ -115,11 +114,10 @@ prefix keys of this binding, or nil if there is no prefix."
   (let
       ((km-where-is-results nil))
     (map-keymap #'(lambda (k pfx)
-		    (when (eq (aref k 2) command)
+		    (when (eq (car k) command)
 		      (setq km-where-is-results
 			    (cons (concat pfx (and pfx " ")
-					  (event-name (cons (aref k 0)
-							    (aref k 1))))
+					  (event-name (cdr k)))
 				  km-where-is-results))))
 		keymap buffer)
     (when output
