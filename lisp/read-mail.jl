@@ -460,6 +460,20 @@ Major mode for viewing mail folders. Local bindings are:\n
 	  (mail-parse-date string)
 	nil))))
 
+(defun rm-get-message-id (msg)
+  (rm-cached-form msg 'message-id
+    ;; Read as a list; this is the easiest way to lose trailing spaces
+    (car (rm-get-msg-header msg "Message-Id" t t))))
+
+(defun rm-get-in-reply-to (msg)
+  (rm-cached-form msg 'in-reply-to
+    ;; Read as a list; this is the easiest way to lose trailing spaces
+    (car (rm-get-msg-header msg "In-Reply-To" t t))))
+
+(defun rm-get-references (msg)
+  (rm-cached-form msg 'references
+    (rm-get-msg-header msg "References" t t)))
+
 
 ;; Displaying messages
 
