@@ -36,6 +36,7 @@
     "TAB" 'html-display-next-link
     "M-TAB" 'html-display-previous-link
     "M-?" 'html-display-describe-link
+    "a" 'html-display-goto-anchor
     "l" 'kill-current-buffer
     "b" 'kill-current-buffer
     "q" 'html-display-quit
@@ -110,7 +111,9 @@
 	(setq start (extent-end tem)))
       (goto (catch 'foo
 	      (map-extents #'(lambda (e)
-			       (when (extent-get e 'html-anchor-params)
+			       (when (and (setq tem (extent-get
+						     e 'html-anchor-params))
+					  (assq 'href tem))
 				 (throw 'foo (extent-start e))))
 			   start (end-of-buffer)))))
     (setq count (1- count)))
@@ -124,7 +127,9 @@
       (goto (let
 		(last)
 	      (map-extents #'(lambda (e)
-			       (when (extent-get e 'html-anchor-params)
+			       (when (and (setq tem (extent-get
+						     e 'html-anchor-params))
+					  (assq 'href tem))
 				 (setq last (extent-start e))))
 			   (start-of-buffer) end)
 	      last)))
@@ -136,6 +141,19 @@
   "Move to the COUNT'th previous link part in the current buffer."
   (interactive "p")
   (html-display-next-link (- count)))
+
+(defun html-display-goto-anchor (name)
+  "Move to the anchor called NAME in the current HTML display."
+  (interactive (list (let
+			 ((prompt-list-fold-case t))
+		       (prompt-from-list
+			(mapcar 'car (cdr (assq 'anchors
+						html-display-details)))
+			"Anchor name:"))))
+  (let
+      ((anchor (assoc name (cdr (assq 'anchors html-display-details)))))
+    (or anchor (error "No anchor called `%s'" name))
+    (goto (cdr anchor))))
 
 
 ;; Selecting links
