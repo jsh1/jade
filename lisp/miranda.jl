@@ -24,6 +24,10 @@
 (defvar miranda-program "mira"
   "Program to start for Miranda session.")
 
+(defvar miranda-program-args nil
+  "List of arguments to pass to miranda-program (filename will be appended
+to this list when defined).")
+
 (defvar miranda-prompt "^(Miranda |::.*:)"
   "Regexp matching Miranda session's prompt.")
 
@@ -47,7 +51,8 @@ mode `shell-mode'. ARG is a string to pass as a command line argument."
 	  (setq default-directory dir
 		shell-program miranda-program
 		shell-prompt-regexp miranda-prompt
-		shell-program-args (and arg (list arg)))
+		shell-program-args (append miranda-program-args
+					   (and arg (list arg))))
 	  (shell-mode))
       (goto-buffer buffer)
       (setq default-directory dir
