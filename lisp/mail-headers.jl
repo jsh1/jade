@@ -31,24 +31,24 @@
 (defun mail-parse-address (string &optional point)
   (unless point (setq point 0))
   (let*
-      ((mail-addr-re (concat "[\t ]*" mail-atom-re "(\\." mail-atom-re ")*@"
-			     mail-atom-re "(\\." mail-atom-re ")*"))
+      ((mail-addr-re (concat "[\t ]*" mail-atom-re "(\\." mail-atom-re ")*(@"
+			     mail-atom-re "(\\." mail-atom-re ")*)?"))
        (mail-angle-addr-re (concat ".*<(" mail-addr-re ")>"))
        (mail-angle-name-re "[\t ]*\"?([^<\t\" \n\f]([\t ]*[^<\t\" \n\f])*)")
        (mail-paren-name-re "[\t ]*\\(\"?([^\n\"]+)\"?\\)")
        mail-addr real-name)
     (cond
-     ((string-looking-at mail-addr-re string point)
-      ;; straightforward "foo@bar.baz" format..
-      (setq mail-addr (substring string (match-start) (match-end)))
-      (when (string-looking-at mail-paren-name-re string (match-end))
-	;; ..with a "(Foo Bar)" comment following
-	(setq real-name (substring string (match-start 1) (match-end 1)))))
      ((string-looking-at mail-angle-addr-re string point)
       ;; "..<foo@bar.baz>..." format
       (setq mail-addr (substring string (match-start 1) (match-end 1)))
       ;; Now look for a preceding name
       (when (string-looking-at mail-angle-name-re string point)
+	(setq real-name (substring string (match-start 1) (match-end 1)))))
+     ((string-looking-at mail-addr-re string point)
+      ;; straightforward "foo@bar.baz" format..
+      (setq mail-addr (substring string (match-start) (match-end)))
+      (when (string-looking-at mail-paren-name-re string (match-end))
+	;; ..with a "(Foo Bar)" comment following
 	(setq real-name (substring string (match-start 1) (match-end 1))))))
     (cons mail-addr real-name)))
 
@@ -317,13 +317,20 @@
 ;; to mail-address-style
 (defun mail-format-address (addr name)
   ;; Need to handle quoting full name a la RFC-822
-  (cond
-   ((eq mail-address-style 'angles)
-    (concat (mail-quote-phrase name) " \<" addr "\>"))
-   ((eq mail-address-style 'parens)
-    (concat addr " \(" (mail-quote-phrase name) "\)"))
-   (t
-    addr)))
+  (if name
+      (cond
+       ((eq mail-address-style 'angles)
+	(concat (mail-quote-phrase name) " \<" addr "\>"))
+       ((eq mail-address-style 'parens)
+	(concat addr " \(" (mail-quote-phrase name) "\)"))
+       (t
+	addr))
+    addr))
+
+(defun mail-insert-address-list (list &optional no-commas)
+  (mail-insert-list (mapcar #'(lambda (cell)
+				(mail-format-address (car cell) (cdr cell)))
+			    list) no-commas))
 
 ;; For a string from the Subject: header of a message, strip off any re:
 ;; prefixes, and return the string naming the _actual_ subject
