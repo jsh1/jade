@@ -115,7 +115,7 @@ in TAG with.")
 ;; Variables whose values are recorded when pushing and popping tags
 (defvar html-decode-environment nil)
 
-;; Stack of (EXIT-FUNC ENV-ALIST TAG-SYMBOL PARAM-ALIST DATA...)
+;; Stack of (EXIT-FUNC ENV-ALIST TAG-SYMBOL PARAM-ALIST DEST DATA...)
 (defvar html-decode-stack nil)
 
 ;; Position in input after current item
@@ -158,6 +158,7 @@ of the document, currently only `title' and `base' keys are defined."
        (html-decode-pending nil)
        (html-decode-pending-fill nil)
        (html-decode-title nil)
+       (html-decode-base nil)
        (html-decode-point (start-of-buffer source))
        (html-decode-source source)
        end tag)
@@ -222,46 +223,59 @@ of the document, currently only `title' and `base' keys are defined."
 ;; buffer DEST, assuming that there are no tags in this section
 (defun html-decode-run (start end source dest)
   (html-decode-output-pending dest)
-  (cond
-   ((eq html-decode-fill nil)
-    ;; <pre> text
-    (insert (html-decode-string (copy-area start end source)) nil dest))
-   (t
-    ;; right/left/centered currently, justify not supported
-    (let*
-	((col (pos-col (char-to-glyph-pos (with-buffer dest
-					    (cursor-pos)) dest)))
-	 word-end next-word spaces pending-spaces string)
-      ;; Work a word of input at a time.
-      (while (looking-at "([^< \t\r\f\n]+)([ \t\r\f\n]*)" start source)
-	(setq word-end (min (match-end 1) end))
-	(setq next-word (match-end))
-	(setq spaces (not (equal (match-start 2) (match-end 2))))
-	(setq string (html-decode-string (copy-area start word-end source)))
-	(when (and (> (+ col (length string)) html-decode-width)
-		   (/= col html-decode-indent))
-	  ;; Too wide, break the line
-	  (insert "\n" nil dest)
-	  (setq pending-spaces nil)
-	  (setq col 0)
-	  (when html-decode-pending-fill
+  (let
+      ((original (with-buffer dest (cursor-pos)))
+       tem)
+    (cond
+     ((eq html-decode-fill nil)
+      ;; <pre> text
+      (insert (html-decode-string (copy-area start end source)) nil dest))
+     (t
+      ;; right/left/centered currently, justify not supported
+      (let*
+	  ((col (pos-col (char-to-glyph-pos (with-buffer dest
+					      (cursor-pos)) dest)))
+	   word-end next-word spaces pending-spaces string)
+	;; Work a word of input at a time.
+	(while (looking-at "([^< \t\r\f\n]+)([ \t\r\f\n]*)" start source)
+	  (setq word-end (min (match-end 1) end))
+	  (setq next-word (match-end))
+	  (setq spaces (not (equal (match-start 2) (match-end 2))))
+	  (setq string (html-decode-string (copy-area start word-end source)))
+	  (when (and (> (+ col (length string)) html-decode-width)
+		     (/= col html-decode-indent))
+	    ;; Too wide, break the line
+	    (setq tem (with-buffer dest (cursor-pos)))
+	    (insert "\n" nil dest)
+	    (setq pending-spaces nil)
+	    (setq col 0)
+	    (when (equal original tem)
+	      (html-decode-patch-starts original (with-buffer dest
+						   (cursor-pos))
+					html-decode-stack)
+	      (setq original tem))
+	    (when html-decode-pending-fill
+	      (with-buffer dest
+		(html-decode-justify-line html-decode-fill (forward-line -1)))
+	      (setq html-decode-pending-fill nil)))
+	  (when (and (zerop col) (not (zerop html-decode-indent)))
 	    (with-buffer dest
-	      (html-decode-justify-line html-decode-fill (forward-line -1)))
-	    (setq html-decode-pending-fill nil)))
-	(when (and (zerop col) (not (zerop html-decode-indent)))
-	  (with-buffer dest
-	    (indent-to html-decode-indent))
-	  (setq col html-decode-indent))
+	      (setq tem (cursor-pos))
+	      (indent-to html-decode-indent)
+	      (when (equal original tem)
+		(html-decode-patch-starts original (cursor-pos)
+					  html-decode-stack)))
+	    (setq col html-decode-indent))
+	  (when pending-spaces
+	    (insert " " nil dest)
+	    (setq col (1+ col)))
+	  (insert string nil dest)
+	  (setq col (+ col (length string)))
+	  (setq pending-spaces spaces)
+	  (setq html-decode-pending-fill t)
+	  (setq start next-word))
 	(when pending-spaces
-	  (insert " " nil dest)
-	  (setq col (1+ col)))
-	(insert string nil dest)
-	(setq col (+ col (length string)))
-	(setq pending-spaces spaces)
-	(setq html-decode-pending-fill t)
-	(setq start next-word))
-      (when pending-spaces
-	(html-decode-add-pending 'space))))))
+	  (html-decode-add-pending 'space)))))))
 
 ;; Returns (END NAME ENTERINGP PARAMS...) or nil
 (defun html-decode-tag (point source)
@@ -329,12 +343,13 @@ of the document, currently only `title' and `base' keys are defined."
 ;; EXIT-FUNC is called (EXIT-FUNC TAG-SYMBOL TAG-PARAMS DATA...)
 ;; when the tag is exited.
 (defun html-decode-push-env (tag dest &optional exit-func &rest data)
-  (let
+  (let*
       ((symbol (car tag))
        (params (cdr (cdr tag)))
        (env (mapcar #'(lambda (sym)
 			(cons sym (symbol-value sym)))
-		    html-decode-environment)))
+		    html-decode-environment))
+       (frame (list* exit-func env symbol params dest data)))
     ;; If leaving this level would cause the fill style to
     ;; be lost, and the tag is a block tag, then justify
     ;; the line now
@@ -345,31 +360,35 @@ of the document, currently only `title' and `base' keys are defined."
 	(let
 	    ((old (glyph-to-char-pos (indent-pos))))
 	  (html-decode-justify-line html-decode-fill)
-	  (html-decode-patch-starts old (glyph-to-char-pos (indent-pos)))
+	  (html-decode-patch-starts old (glyph-to-char-pos (indent-pos))
+				    (cons frame html-decode-stack))
 	  (setq html-decode-pending-fill nil))))
     (setq html-decode-environment html-decode-def-environ)
-    (setq html-decode-stack (cons (list* exit-func env symbol params dest data)
-				  html-decode-stack))))
+    (setq html-decode-stack (cons frame html-decode-stack))))
 
-(defun html-decode-close-frame (frame tag dest)
+(defun html-decode-close-frame (tag-sym dest)
   ;; If leaving this level would cause the fill style to
   ;; be lost, and the tag is a block tag, then justify
   ;; the line now
-  (when (and html-decode-pending-fill
-	     (assq 'html-decode-fill (nth 1 frame))
-	     (memq (car tag) html-decode-block-tags))
-    (with-buffer dest
-      (let
-	  ((old (glyph-to-char-pos (indent-pos))))
-	(html-decode-justify-line html-decode-fill)
-	(html-decode-patch-starts old (glyph-to-char-pos (indent-pos)))
-	(setq html-decode-pending-fill nil))))
-  ;; restore the environment
-  (mapc #'(lambda (pair)
-	    (set (car pair) (cdr pair))) (nth 1 frame))
-  ;; then call the exit function
-  (and (car frame)
-       (apply (car frame) (nthcdr 2 frame))))
+  (let
+      ((frame (car html-decode-stack)))
+    (setq html-decode-stack (cdr html-decode-stack))
+    (when (and html-decode-pending-fill
+	       (assq 'html-decode-fill (nth 1 frame))
+	       (memq tag-sym html-decode-block-tags))
+      (with-buffer dest
+	(let
+	    ((old (glyph-to-char-pos (indent-pos))))
+	  (html-decode-justify-line html-decode-fill)
+	  (html-decode-patch-starts old (glyph-to-char-pos (indent-pos))
+				    (cons frame html-decode-stack))
+	  (setq html-decode-pending-fill nil))))
+    ;; restore the environment
+    (mapc #'(lambda (pair)
+	      (set (car pair) (cdr pair))) (nth 1 frame))
+    ;; then call the exit function
+    (and (car frame)
+	 (apply (car frame) (nthcdr 2 frame)))))
 
 ;; Pop all environments back to the first tag of type TAG
 (defun html-decode-pop-env (tag dest)
@@ -386,9 +405,7 @@ of the document, currently only `title' and `base' keys are defined."
 		     "warning: badly nested HTML: %s, %s, %s, %s\n"
 		     html-decode-source html-decode-point
 		     (car tag) (nth 2 (car html-decode-stack))))
-      (setq item (car html-decode-stack))
-      (setq html-decode-stack (cdr html-decode-stack))
-      (html-decode-close-frame item tag dest))))
+      (html-decode-close-frame (car tag) dest))))
 
 ;; Are we entering or leaving TAG
 (defmacro html-decode-tag-entering-p (tag)
@@ -420,11 +437,12 @@ of the document, currently only `title' and `base' keys are defined."
     (catch 'foo
       (while (and html-decode-stack
 		  (memq (nth 2 frame) html-decode-optional-close-tags))
-	(setq html-decode-stack (cdr html-decode-stack))
-	(when (eq (nth 2 frame) (car tag))
-	  (throw 'foo t))
-	(html-decode-close-frame frame tag dest)
-	(setq frame (car html-decode-stack))))))
+	(if (eq (nth 2 frame) (car tag))
+	    (progn
+	      (setq html-decode-stack (cdr html-decode-stack))
+	      (throw 'foo t))
+	  (html-decode-close-frame (car tag) dest)
+	  (setq frame (car html-decode-stack)))))))
 
 ;; Return the face to be used for a tag of type NAME
 (defmacro html-decode-elt-face (name)
@@ -470,27 +488,27 @@ of the document, currently only `title' and `base' keys are defined."
       (setq html-decode-pending-fill nil)
       (setq html-decode-list-pending nil)
       (when new
-	(html-decode-patch-starts original new)))))
+	(html-decode-patch-starts original new html-decode-stack)))))
 
-(defun html-decode-patch-starts (old new)
-  ;; work back up the stack, fixing the start position of
-  ;; regions that thought they started at the original position
-  ;; before pending output changed it..
-  ;; XXX this assumes that the second DATA argument given to
+(defun html-decode-patch-starts (old new stack)
+  ;; work back up STACK, fixing the start position of regions that
+  ;; thought they started at the original position before pending
+  ;; output changed it..
+  ;; XXX this assumes that the first DATA argument given to
   ;; XXX html-decode-push-env is the position in the output
   (catch 'foo
     (mapc #'(lambda (frame)
-	      (if (equal old (nth (+ 3 2) frame))
+	      (if (equal old (nth (+ 4 1) frame))
 		  ;; a match, so update it to the new position
-		  (rplaca (nthcdr (+ 3 2) frame) new)
+		  (rplaca (nthcdr (+ 4 1) frame) new)
 		;; no others can have either, so abort
-		(throw 'foo t)))
-	  html-decode-stack)))
+		(throw 'foo t))) stack)))
 
 ;; Insert STRING in output buffer DEST, flushing output first
 (defun html-decode-insert (string dest)
   (html-decode-output-pending dest)
-  (insert string nil dest))
+  (insert string nil dest)
+  (setq html-decode-pending-fill t))
 
 ;; Justify the line at POS, according to FILL-TYPE
 (defun html-decode-justify-line (fill-type &optional pos)
@@ -523,7 +541,8 @@ of the document, currently only `title' and `base' keys are defined."
    ((eq type 'ul)
     (insert "* "))
    ((eq type 'ol)
-    (format (current-buffer) "%d. " id))))
+    (format (current-buffer) "%d. " id)))
+  (setq html-decode-pending-fill t))
 
 ;; Decode the ALIGN attribute from TAG, acting on its value
 (defun html-decode-tag:align (tag)
@@ -811,10 +830,16 @@ of the document, currently only `title' and `base' keys are defined."
   (when (html-decode-tag-entering-p tag)
     (let*
 	((name (cdr (assq 'name (nthcdr 2 tag))))
-	 (url (cdr (assq 'src (nthcdr 2 tag))))
-	 (handle (format nil "  Frame: %s" (or name url))))
+	 (url (cdr (assq 'src (nthcdr 2 tag)))))
       (html-decode-add-pending 'line)
-      (html-decode-insert handle dest)
+      (html-decode-insert "  " dest)
+      (with-buffer dest
+	(make-extent (prog1 (cursor-pos)
+		       (html-decode-insert
+			(format nil "Frame: %s" (or name url)) dest))
+		     (cursor-pos)
+		     (list 'face (html-decode-elt-face 'link)
+			   'html-anchor-params (list (cons 'href url)))))
       (html-decode-add-pending 'line))))
 
 (put 'noframes 'html-decode-frameset-fun 'html-decode:body)
