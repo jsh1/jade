@@ -68,16 +68,20 @@
       (setq key (car keymap)
 	    cmd (aref key 2)
 	    event-str (event-name (cons (aref key 0) (aref key 1))))
-      (when (and (eq (car cmd) 'setq) (eq (nth 1 cmd) 'next-keymap-path))
-	;; Link to another keymap; add it to the list of keymaps to
-	;; examine later.
-	(let*
-	    ((new-str (concat km-prefix-string (if km-prefix-string ?\ )
-			      event-str))
-	     (new-list (mapcar #'(lambda (km)
-				   (cons km new-str))
-			       (eval (nth 2 cmd)))))
-	  (setq keymap-list (append keymap-list new-list))))
+      (when (and (eq (car cmd) 'setq)
+		 (eq (nth 1 cmd) 'next-keymap-path))
+	(let
+	    ((this-list (eval (nth 2 cmd))))
+	  (when (listp this-list)
+	    ;; Another keymap list; add it to the list of keymaps to
+	    ;; examine later.
+	    (let*
+		((new-str (concat km-prefix-string (if km-prefix-string ?\ )
+				  event-str))
+		 (new-list (mapcar #'(lambda (km)
+				       (cons km new-str))
+				   this-list)))
+	      (setq keymap-list (append keymap-list new-list))))))
       (insert (concat km-prefix-string (if km-prefix-string ?\ )  event-str))
       (indent-to 24)
       (prin1 cmd (current-buffer))
