@@ -30,30 +30,31 @@
 (provide 'rm-mail-dir)
 
 ;; This function is added to read-mail.jl's read-mail-display-message-hook
-(defun rm-mail-dir-scanner (rm-message)
-  (let
-      ((from (rm-get-senders rm-message))
-       (to (rm-get-recipients rm-message)))
-    (while from
-      (when (and (consp from) (car (car from)) (cdr (car from)))
-	(mail-dir-scan-function (car (car from)) (cdr (car from))))
-      (setq from (cdr from)))
-    (while to
-      (when (and (consp from) (car (car to)) (cdr (car to)))
-	(mail-dir-scan-function (car (car to)) (cdr (car to))))
-      (setq to (cdr to))))
+(defun rm-mail-dir-scanner (rm-message folder &optional all-addresses)
+  (mapc #'(lambda (cell)
+	    (when (and (car cell) (cdr cell))
+	      (mail-dir-scan-function (car cell) (cdr cell))))
+	(rm-get-senders rm-message))
+  (when all-addresses
+    (mapc #'(lambda (cell)
+	      (when (and (car cell) (cdr cell))
+		(mail-dir-scan-function (car cell) (cdr cell))))
+	  (rm-get-recipients rm-message)))
   t)
 (add-hook 'rm-display-message-hook 'rm-mail-dir-scanner)
 
-(defun rm-mail-dir-scan-current ()
-  "Add the sender of the currently displayed message to the mail directory."
-  (interactive)
+(defun rm-mail-dir-scan-current (&optional all-addresses)
+  "Add the senders of the currently displayed message to the mail directory.
+
+If ALL-ADDRESSES is non-nil, add all recipients as well. When called
+interactively a prefix argument denotes ALL-ADDRESSES."
+  (interactive "P")
   (let
       ((mail-dir-scan-messages t)
        (mail-dir-prompt-when-scanning nil)
        (message (rm-get-folder-field (rm-current-folder)
 				     rm-folder-current-msg)))
-    (rm-mail-dir-scanner message)))
+    (rm-mail-dir-scanner message (rm-current-folder) all-addresses)))
 
 ;; Bind to read-mail keymap
 (bind-keys rm-keymap
