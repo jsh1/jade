@@ -1,3 +1,11 @@
+2000-07-31  John Harper  <john@dcs.warwick.ac.uk>
+
+	* sawmill-minor-mode.jl: hack so not to require sawfish.client
+	at compilation
+
+	* rm-restrict.jl, prompt.jl: couple of fixes for (eq nil 'nil)
+	=> false
+
 2000-07-28  John Harper  <john@dcs.warwick.ac.uk>
 
 	* sawmill-minor-mode.jl (smm-identify-module): greps the buffer

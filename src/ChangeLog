@@ -1,3 +1,8 @@
+2000-07-31  John Harper  <john@dcs.warwick.ac.uk>
+
+	* main.c (main): configure the `jade' structure to allow setq
+	on unbound symbols
+
 2000-07-25  John Harper  <john@dcs.warwick.ac.uk>
 
 	* gtk_jade.c: don't ever use gtk_widget_set_usize (), use
