@@ -495,25 +495,24 @@ is. This is 0 in X11.
 bool
 sys_get_mouse_pos(POS *pos, WIN *w)
 {
-    Window tmpw;
-    int tmp;
-    int x, y;
-    if(XQueryPointer(x11_display, w->w_Window,
-		     &tmpw, &tmpw, &tmp, &tmp, &x, &y, &tmp))
+    if(w != x11_current_event_win)
     {
-	x = (x - w->w_LeftPix) / w->w_FontX;
-	y = (y - w->w_TopPix) / w->w_FontY;
-	if((x < 0) || (y < 0) || (x >= w->w_MaxX) || (y >= w->w_MaxY))
-	    return(FALSE);
-	pos->pos_Col = x;
-	pos->pos_Line = y;
-	if(pos->pos_Col < 0)
-	    pos->pos_Col = 0;
-	if(pos->pos_Line < 0)
-	    pos->pos_Line = 0;
-       return(TRUE);
+	Window tmpw;
+	int tmp;
+	int x, y;
+	if(XQueryPointer(x11_display, w->w_Window,
+			 &tmpw, &tmpw, &tmp, &tmp,
+			 &x, &y, &tmp))
+	{
+	    pos->pos_Col = (x - w->w_LeftPix) / w->w_FontX;
+	    pos->pos_Line = (y - w->w_TopPix) / w->w_FontY;
+	}
+	else
+	    return FALSE;
     }
-    return(FALSE);
+    else
+	*pos = x11_current_mouse_pos;
+    return(TRUE);
 }
 
 _PR VALUE cmd_flush_output(void);

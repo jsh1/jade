@@ -29,6 +29,15 @@
   you lose
 #endif
 
+/* The window in which the current event occurred. */
+_PR WIN *x11_current_event_win;
+WIN *x11_current_event_win;
+
+/* The mouse position of the current event, relative to the origin of
+   the window that the event occurred in, measured in glyphs. */
+_PR POS x11_current_mouse_pos;
+POS x11_current_mouse_pos;
+
 /* The last event received which had a timestamp, was at this time. */
 _PR Time x11_last_event_time;
 Time x11_last_event_time;
@@ -124,20 +133,50 @@ handle_event(XEvent *xev)
 	    break;
 
 	case MotionNotify:
+	{
+	    Window tmpw;
+	    int tmp;
+	    int x, y;
+
 	    /* Swallow any pending motion events as well. */
 	    while(XCheckMaskEvent(x11_display, ButtonMotionMask, xev))
 		;
 	    x11_last_event_time = xev->xmotion.time;
+
+	    /* It seems that further MotionNotify events are suspended
+	       until the pointer's position has been queried. I should
+	       check the Xlib manuals about this. */
+	    if(XQueryPointer(x11_display, ev_win->w_Window,
+			     &tmpw, &tmpw, &tmp, &tmp,
+			     &x, &y, &tmp))
+	    {
+		x11_current_mouse_pos.pos_Col = x;
+		x11_current_mouse_pos.pos_Line = y;
+	    }
 	    goto do_command;
+	}
 
 	case ButtonPress:
 	case ButtonRelease:
 	    x11_last_event_time = xev->xbutton.time;
+	    x11_current_mouse_pos.pos_Col = xev->xbutton.x;
+	    x11_current_mouse_pos.pos_Line = xev->xbutton.y;
 	    goto do_command;
 
 	case KeyPress:
 	    x11_last_event_time = xev->xkey.time;
+	    x11_current_mouse_pos.pos_Col = xev->xkey.x;
+	    x11_current_mouse_pos.pos_Line = xev->xkey.y;
+	    /* FALL THROUGH */
+
 	do_command:
+	    x11_current_event_win = ev_win;
+	    x11_current_mouse_pos.pos_Col
+		= ((x11_current_mouse_pos.pos_Col - ev_win->w_LeftPix)
+		   / ev_win->w_FontX);
+	    x11_current_mouse_pos.pos_Line
+		= ((x11_current_mouse_pos.pos_Line - ev_win->w_TopPix)
+		   / ev_win->w_FontY);
 	    code = mods = 0;
 	    translate_event(&code, &mods, xev);
 	    if(mods & EV_TYPE_MASK)
@@ -152,6 +191,7 @@ handle_event(XEvent *xev)
 		reset_message(ev_win);
 		result = usekey(xev, code, mods, (ev_win == oldwin));
 	    }
+	    x11_current_event_win = NULL;
 	    break;
 
 	case SelectionRequest:
