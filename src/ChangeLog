@@ -1,3 +1,7 @@
+2000-01-29  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gtk_jade.c (Fgtk_last_timestamp): new function
+
 2000-01-22  John Harper  <john@dcs.warwick.ac.uk>
 
 	* extent.c: added heavyweight linkage debugging code

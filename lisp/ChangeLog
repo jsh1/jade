@@ -1,3 +1,27 @@
+2000-01-30  John Harper  <john@dcs.warwick.ac.uk>
+
+	* read-mail.jl (rm-duplicate-rules): replaces
+	rm-uniquify-messages, a list of rules to apply to duplicate
+	messages
+
+2000-01-29  John Harper  <john@dcs.warwick.ac.uk>
+
+	* fill.jl (fill-check-line): if mode-indent-line is non-nil,
+	use that function to indent broken lines (good for programming
+	language modes)
+
+	* html-decode.jl (html-decode:html): stop decoding after
+	hitting the </html> tag to avoid trailing garbage (e.g.
+	signatures in mail messages)
+
+	* text-mode.jl (indented-text-mode): don't quote the function
+	name when setting fill-prefix
+	(text-mode-fill-prefix): don't just look on the previous line
+	for the prefix, look on the previous non-blank line
+
+	* gtk-menu.jl (popup-menu-from-spec): pass along a timestamp
+	when popping the menu
+
 2000-01-26  John Harper  <john@dcs.warwick.ac.uk>
 
 	* maildefs.jl (mail-ignored-reply-tos): new variable, a regexp
