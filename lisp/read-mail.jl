@@ -109,8 +109,9 @@ of each rule is ignored.")
 a mailbox file. The rules are expected to have side-effects, the value
 of each rule is ignored.")
 
-(defvar rm-uniquify-messages t
-  "When non-nil, don't display duplicate messages (by id) in folders.")
+(defvar rm-duplicate-rules nil
+  "A list of message restriction rules. Called for duplicate messages as
+they're parsed.")
 
 
 ;; Variables
@@ -524,7 +525,7 @@ key, the car the order to sort in, a positive or negative integer.")
 	    (setq msgs (apply nconc bits))))
       ;; Can't use append to join lists since that doesn't clone the last one
       (setq msgs (apply nconc (mapcar copy-sequence message-lists))))
-    (when rm-uniquify-messages
+    (when rm-duplicate-rules
       (let
 	  ((lst msgs)
 	   id tem)
@@ -537,7 +538,8 @@ key, the car the order to sort in, a positive or negative integer.")
 					(throw 'foo m))) (cdr lst))
 			    nil))
 	    ;; this message has a duplicate
-	    (rplacd lst (delq tem (cdr lst))))
+	    (mapc (lambda (r)
+		    (rm-apply-rule r (car lst))) rm-duplicate-rules))
 	  (setq lst (cdr lst)))))
     msgs))
 
