@@ -915,21 +915,24 @@ is signalled.
 {
     VALUE e;
     DECLARE1(symbol, SYMBOLP);
-    if(!EXTENTP(pos))
-	e = cmd_get_extent(pos, tx);
-    else
-	e = pos;
-    if(!NILP(e))
+    if(VSYM(symbol)->car & SF_BUFFER_LOCAL)
     {
-	Lisp_Extent *inner = VEXTENT(e);
-	while(inner != 0)
+	if(!EXTENTP(pos))
+	    e = cmd_get_extent(pos, tx);
+	else
+	    e = pos;
+	if(!NILP(e))
 	{
-	    VALUE cell = cmd_assq(symbol, inner->locals);
-	    if(cell && CONSP(cell))
-		return VCDR(cell);
-	    inner = inner->parent;
+	    Lisp_Extent *inner = VEXTENT(e);
+	    while(inner != 0)
+	    {
+		VALUE cell = cmd_assq(symbol, inner->locals);
+		if(cell && CONSP(cell))
+		    return VCDR(cell);
+		inner = inner->parent;
+	    }
 	}
-    }	    
+    }
     if(NILP(no_err))
 	return cmd_signal(sym_void_value, LIST_1(symbol));
     else
