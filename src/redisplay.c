@@ -70,6 +70,11 @@ _PR void garbage_glyphs(WIN *w, int x, int y, int width, int height);
 _PR void redisplay_message(WIN *w);
 _PR void redisplay_init(void);
 
+/* When greater than zero, we're in redisplay, and hence no Lisp code
+   should be run, and no asynchronous input should be taken. */
+_PR int redisplay_lock;
+int redisplay_lock;
+
 
 /* Glyph buffer basics */
 
@@ -646,6 +651,7 @@ non-nil, absolutely everything is refreshed, not just what changed.
     fprintf(stderr, "Entering redisplay..\n");
 #endif
 
+    redisplay_lock++;
     for(w = win_chain; w != 0; w = w->w_Next)
     {
 	if(w->w_Window != 0)
@@ -689,6 +695,8 @@ non-nil, absolutely everything is refreshed, not just what changed.
 	    }
 	}
     }
+    redisplay_lock--;
+
 #ifdef DEBUG
     fprintf(stderr, "Leaving redisplay.\n");
 #endif
@@ -718,6 +726,8 @@ redisplay_message(WIN *w)
     if(w->w_Window == 0 || !(w->w_Flags & WINFF_MESSAGE))
 	return;
 
+    redisplay_lock++;
+
     /* Copy existing contents of the message to w_NewContent */
     memcpy(w->w_NewContent->codes[w->w_MaxY - 1],
 	   w->w_Content->codes[w->w_MaxY - 1],
@@ -729,6 +739,8 @@ redisplay_message(WIN *w)
         = hash_glyph_row(w->w_Content, w->w_MaxY-1);
     redisplay_do_draw(w, w->w_NewContent, w->w_Content, w->w_MaxY);
     cmd_flush_output();
+
+    redisplay_lock--;
 }
 
 void
