@@ -79,9 +79,7 @@
 (defun add-autoloads (autoload-file &optional buffer)
   "Add all functions, macros or variables in the BUFFER marked by the magic
 rune `;;;###autoload' to the `autoload.jl' file."
-  (interactive (list (prompt-for-file "Autoload file:" t
-				      (expand-file-name "autoload.jl"
-							(car load-path)))))
+  (interactive (list (prompt-for-file "Autoload file:" t "autoload.jl")))
   (message (format nil "Found %d autoload definition(s)"
 		   (autoload-do-magic autoload-file
 				      (or buffer (current-buffer))
@@ -91,9 +89,7 @@ rune `;;;###autoload' to the `autoload.jl' file."
 (defun remove-autoloads (autoload-file &optional buffer)
   "Removes all autoload definitions in the buffer BUFFER which are marked by
 the string `;;;###autoload' from the `autoload.jl' file."
-  (interactive (list (prompt-for-file "Autoload file:" t
-				      (expand-file-name "autoload.jl"
-							(car load-path)))))
+  (interactive (list (prompt-for-file "Autoload file:" t "autoload.jl")))
   (message (format nil "Removed %d autoload definition(s)"
 		   (autoload-do-magic autoload-file
 				      (or buffer (current-buffer))
