@@ -497,6 +497,8 @@ extern void sys_set_win_name(WIN *win, char *name);
 extern void sys_set_win_pos(WIN *, long, long, long, long);
 extern bool sys_deleting_window_would_exit (WIN *w);
 extern void sys_windows_init(void);
+extern void gtk_jade_foreach (GtkContainer *root,
+			      GtkCallback fun, gpointer data);
 extern repv Fgtk_jade_new (repv, repv);
 extern repv Fgtk_jade_window (repv);
 extern repv Fgtk_jade_window_widget (repv);
