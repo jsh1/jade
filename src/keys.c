@@ -54,6 +54,7 @@ DEFSYM(keymap, "keymap");
 DEFSYM(minor_mode_keymap_alist, "minor-mode-keymap-alist");
 DEFSYM(autoload_keymap, "autoload-keymap");
 DEFSYM(next_keymap_path, "next-keymap-path");
+DEFSYM(mouse_keymap, "mouse-keymap");
 
 static repv next_keymap_path;
 
@@ -151,7 +152,26 @@ lookup_binding(u_long code, u_long mods, bool (*callback)(repv key))
 	}
 	else
 	{
-	    /* First search all current extents.. */
+	    /* First scan the extents under the mouse for mouse-keymap
+	       properties.. */
+	    VW *vw;
+	    for (vw = curr_win->w_ViewList;
+		 k == 0 && vw != 0;
+		 vw = vw->vw_NextView)
+	    {
+		int i;
+		for (i = 0; k == 0 && i < vw->vw_NumMouseExtents; i++)
+		{
+		    tem = Fextent_get(rep_VAL(vw->vw_MouseExtents[i]),
+				      Qmouse_keymap);
+		    if (tem && tem != Qnil)
+			k = search_keymap (tem, code, mods, callback);
+		}
+		if (k != 0)
+		    Fset_current_view (rep_VAL (vw), Qnil);
+	    }
+
+	    /* ..then search all current extents.. */
 	    tem = Fget_extent(Qnil, Qnil);
 	    while(!k && EXTENTP(tem))
 	    {
@@ -916,6 +936,7 @@ keys_init(void)
     rep_INTERN(next_keymap_path);
     next_keymap_path = rep_NULL;
     rep_mark_static(&next_keymap_path);
+    rep_INTERN(mouse_keymap);
 
     rep_ADD_SUBR(Smake_keymap);
     rep_ADD_SUBR(Smake_sparse_keymap);
