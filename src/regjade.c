@@ -25,6 +25,9 @@
 
 #ifdef JADE
 
+#include "jade.h"
+#include "jade_protos.h"
+
 #include <stdio.h>
 #ifdef AMIGA
 #undef min
