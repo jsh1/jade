@@ -38,25 +38,48 @@ _PR bool file_exists3(u_char *, u_char *, u_char *);
 _PR VALUE signal_file_error(VALUE cdr);
 _PR void io_init(void);
 
+/* The average number of chars-per-line in the last file read. At first
+   I tried an average over all files ever loaded; this seems better since
+   likely use will involve locality in loading similar files.
+   Initialised to a guessed value */
+static u_long last_avg_line_length = 40;
+
 /* Read a file into a tx structure, the line list should have been
-   killed.  */
+   killed. FILE-LENGTH is the length of the file to be loaded, or -1
+   if the length is unknown. */
 static bool
-read_tx(TX *tx, FILE *fh)
+read_tx(TX *tx, FILE *fh, long file_length)
 {
-#define SIZESTEP  50	/* size at which line list grows by */
     bool rc = FALSE;
     u_char buf[BUFSIZ];
-    long len;
-    long linenum, allocedlines;
+    long len, linenum, alloced_lines, chars_read = 0;
     LINE *line;
-#ifdef HAVE_AMIGA
-    message("loading...");
-#endif
-    if(!resize_line_list(tx, SIZESTEP, 0))
-	goto abortmem;
-    allocedlines = SIZESTEP;
+
+    /* First calculate the rate at which the line list is allocated. */
+    if(file_length > 0)
+    {
+	/* We know the length of the file, and the average chars-per-line
+	   of the last file loaded. */
+	long predicted_lines = file_length / last_avg_line_length;
+	if(predicted_lines < 64)
+	    predicted_lines = 64;
+	if(predicted_lines > 1024)
+	    predicted_lines = 1024;
+	if(!resize_line_list(tx, predicted_lines, 0))
+	    goto abortmem;
+	alloced_lines = predicted_lines;
+    }
+    else
+    {
+	/* Don't know the length of the file. Let resize_line_list()
+	   take care of everything. */
+	if(!resize_line_list(tx, 1, 0))
+	    goto abortmem;
+	alloced_lines = 1;
+    }
     linenum = 0;
     line = tx->tx_Lines;
+
     while((len = fread(buf, 1, BUFSIZ, fh)) > 0)
     {
 	u_char *new;
@@ -82,11 +105,34 @@ read_tx(TX *tx, FILE *fh)
 		line->ln_Line = new;
 		line->ln_Strlen = newlen+1;
 	    }
-	    if(++linenum >= allocedlines)
+	    chars_read += line->ln_Strlen;
+
+	    if(++linenum >= alloced_lines)
 	    {
-		if(!resize_line_list(tx, SIZESTEP, linenum))
-		    goto abortmem;
-		allocedlines += SIZESTEP;
+		/* Need to grow the line list. If we don't know the size
+		   of the file just pass it off to resize_line_list().. */
+		if(file_length < 0)
+		{
+		    if(!resize_line_list(tx, 1, linenum))
+			goto abortmem;
+		    alloced_lines++;
+		}
+		else
+		{
+		    /* We know the file_length, and the average bytes-per-line
+		       so far. Re-calibrate our prediction of the total
+		       number of lines. */
+		    long predicted_lines = file_length * linenum / chars_read;
+		    /* Some restrictions on the growth rate */
+		    if(predicted_lines < linenum + 32)
+			predicted_lines = linenum + 32;
+		    if(predicted_lines > linenum + 1024)
+			predicted_lines = linenum + 1024;
+		    if(!resize_line_list(tx, predicted_lines - alloced_lines,
+					 linenum))
+			goto abortmem;
+		    alloced_lines = predicted_lines;
+		}
 		line = tx->tx_Lines + linenum;
 	    }
 	    else
@@ -127,20 +173,23 @@ read_tx(TX *tx, FILE *fh)
 	line->ln_Line = str_dupn("", 0);
 	line->ln_Strlen = 1;
     }
+    else
+	chars_read += line->ln_Strlen;
     linenum++;
 
-    if(!resize_line_list(tx, linenum - allocedlines, linenum))
+    if(!resize_line_list(tx, linenum - alloced_lines, linenum))
 	goto abortmem;
+
+    /* If the average line length seems sensible, set it as the
+       length of the "last-read" file */
+    if(chars_read / linenum > 10 && chars_read / linenum < 100)
+	last_avg_line_length = chars_read / linenum;
 
     tx->tx_LogicalStart = 0;
     tx->tx_LogicalEnd = tx->tx_NumLines;
 
     tx->tx_Changes++;
     rc = TRUE;
-
-#ifdef HAVE_AMIGA
-    message("OK");
-#endif
 
     if(0)
     {
@@ -167,11 +216,13 @@ FILE is either a string naming the file to be opened or a Lisp file object
     VALUE res = sym_nil;
     FILE *fh;
     bool closefh;
+    long file_length = -1;
     POS start, end;
     if(FILEP(file) && VFILE(file)->lf_Name)
     {
 	fh = VFILE(file)->lf_File;
 	closefh = FALSE;
+	file_length = sys_file_length(VSTR(VFILE(file)->lf_Name));
     }
     else
     {
@@ -179,6 +230,7 @@ FILE is either a string naming the file to be opened or a Lisp file object
 	if(!(fh = fopen(VSTR(file), "r")))
 	    return(cmd_signal(sym_file_error, list_2(lookup_errno(), file)));
 	closefh = TRUE;
+	file_length = sys_file_length(VSTR(file));
     }
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
@@ -189,7 +241,7 @@ FILE is either a string naming the file to be opened or a Lisp file object
     if(!(end.pos_Line == 0 && end.pos_Line == 0))
 	undo_record_deletion(VTX(tx), &start, &end);
     kill_line_list(VTX(tx));
-    if(read_tx(VTX(tx), fh))
+    if(read_tx(VTX(tx), fh, file_length))
     {
 	end.pos_Line = VTX(tx)->tx_NumLines - 1;
 	end.pos_Col = VTX(tx)->tx_Lines[end.pos_Line].ln_Strlen - 1;
