@@ -653,12 +653,13 @@ If a prefix argument is given, the directory to commit in is prompted for."
 						  (canonical-file-name
 						   (buffer-file-name))
 						  canon-f))
-					    (revert-buffer b))) buffer-list))
+					    (revert-buffer b)))
+				  buffer-list))
 			;; A normal file
 			(let
 			    ((b (get-file-buffer f)))
 			  (when b
-				(revert-buffer b))))
+			    (revert-buffer b))))
 		      cvs-commit-filenames))
 	    (cvs-show-output-buffer)
 	    (cvs-update-if-summary))))
