@@ -530,6 +530,7 @@ by the current CVS mode command."
   (mapcar #'(lambda (x)
 	      (cvs-file-get-fullname x)) (cvs-command-get-files)))
 
+;;;###autoload
 (defun cvs-log ()
   "Displays the CVS logs of all selected files."
   (interactive)
@@ -538,6 +539,7 @@ by the current CVS mode command."
 			      (cvs-show-output-buffer))))
     (cvs-command nil "log" (cvs-command-get-filenames))))
 
+;;;###autoload
 (defun cvs-status ()
   "Displays the CVS status of all selected files."
   (interactive)
@@ -546,6 +548,7 @@ by the current CVS mode command."
 			      (cvs-show-output-buffer))))
     (cvs-command nil "status" (cvs-command-get-filenames))))
 
+;;;###autoload
 (defun cvs-add ()
   "Prompts for a log message, then adds each selected file to CVS using this
 message. Note that this doesn't add the files to the central repository, use
@@ -571,6 +574,7 @@ cvs-commit after calling this command for that."
     (cvs-show-output-buffer)
     (cvs-update-if-summary)))
 
+;;;###autoload
 (defun cvs-remove ()
   "Delete all selected files and remove them under from CVS control. This
 doesn't change the central repository, a subsequent call to cvs-commit will
@@ -586,6 +590,7 @@ do that."
       (cvs-show-output-buffer)
       (cvs-update-if-summary))))
 
+;;;###autoload
 (defun cvs-commit ()
   "Commit all selected CVS files, after prompting for the log message to
 commit them under."
@@ -595,6 +600,7 @@ commit them under."
    `(lambda (m)
       (cvs-commit-callback ',(cvs-command-get-filenames) m))))
 
+;;;###autoload
 (defun cvs-commit-directory (directory)
   "Commit all CVS files under the current working directory that need to be.
 If a prefix argument is given, the directory to commit in is prompted for."
@@ -654,6 +660,7 @@ locally in an editor buffer, are reverted to their on-disk versions."
 		(when b
 		  (revert-buffer b))))) cvs-file-list))
 
+;;;###autoload
 (defun cvs-ignore ()
   "Add all currently selected CVS files to the list of files that should
 be ignored by CVS. This is done by appending their names to the `.cvsignore'
@@ -676,6 +683,7 @@ files in the corresponding working directories."
 	(cvs-get-filenames-by-dir (cvs-command-get-files)))
   (cvs-update-if-summary))
 
+;;;###autoload
 (defun cvs-add-change-log-entries ()
   (interactive)
   (let
@@ -686,6 +694,7 @@ files in the corresponding working directories."
 	       (expand-file-name "ChangeLog" (car cell)) (cdr cell)))
 	  files)))
 
+;;;###autoload
 (defun cvs-diff-cvs ()
   "Display all differences between the currently selected CVS files and their
 corresponding revisions in the central repository."
@@ -697,6 +706,7 @@ corresponding revisions in the central repository."
 			      (cvs-show-output-buffer))))
     (cvs-command nil "diff" (cvs-command-get-filenames))))
 
+;;;###autoload
 (defun cvs-diff-backup ()
   "Display the differences between the currently selected CVS file and its
 backup file (created by a merge with conflicts.)"
@@ -726,6 +736,7 @@ backup file (created by a merge with conflicts.)"
     ;; Need a diff interface
     (shell-command (format nil cvs-diff-command backup-file working-file))))
 
+;;;###autoload
 (defun cvs-undo-modification ()
   "Discard any local changes made to the currently selected CVS files. This
 works by deleting the local copy, before updating it from the repository."
@@ -747,6 +758,7 @@ works by deleting the local copy, before updating it from the repository."
       (cvs-command nil "update" files)
       (cvs-revert-filenames files))))
 
+;;;###autoload
 (defun cvs-tag (tag-name)
   "Tag all selected CVS files with the string TAG-NAME."
   (interactive "sTag:")
@@ -755,6 +767,7 @@ works by deleting the local copy, before updating it from the repository."
 			      (cvs-show-output-buffer))))
     (cvs-command nil "tag" (cons tag-name (cvs-command-get-filenames)))))
 
+;;;###autoload
 (defun cvs-tag-directory (directory tag-name)
   "Tag all CVS controlled files under DIRECTORY with the string TAG-NAME."
   (interactive "DDirectory:\nsTag:")
@@ -765,6 +778,7 @@ works by deleting the local copy, before updating it from the repository."
       (error "Can only work on local directories"))
     (cvs-command nil "tag" (list tag-name directory))))
 
+;;;###autoload
 (defun cvs-next-conflict-marker ()
   "Find the next CVS conflict marker in the current buffer."
   (interactive "@")
