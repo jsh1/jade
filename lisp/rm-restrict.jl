@@ -87,7 +87,7 @@
 
 ;; Entry points
 
-;; Can't autoload macros..
+;;;###autoload
 (defmacro defrule (name args body)
   "Define a rule for restricting the set of messages considered. The new rule
 is called NAME (a symbol), it takes the lambda list of arguments ARGS, and
