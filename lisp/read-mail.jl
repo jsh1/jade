@@ -165,6 +165,11 @@ messages in the buffer, in first to last order.")
   "When t, this mailbox buffer won't be modified.")
 (make-variable-buffer-local 'rm-buffer-read-only)
 
+(defvar rm-proxy-folder nil
+  "When non-nil, the current buffer is being used to temporarily display the
+contents of a mail message. The value of this variable is the folder.")
+(make-variable-buffer-local 'rm-proxy-folder)
+
 
 ;; Entry points
 
@@ -468,6 +473,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Return the folder being displayed in the current view
 (defun rm-current-folder ()
   (or (and (boundp 'rm-summary-folder) rm-summary-folder)
+      rm-proxy-folder
       (cdr (assq (current-view) rm-open-folders))))
 
 ;; Return the number of folders containing the mailbox contained by BUFFER
@@ -896,6 +902,8 @@ key, the car the order to sort in, a positive or negative integer.")
     (if current
 	(progn
 	  (setq mark (rm-get-msg-field current rm-msg-mark))
+	  (when (eq rm-proxy-folder folder)
+	    (kill-current-buffer))
 	  (goto-buffer (mark-file mark))
 	  (unrestrict-buffer)
 	  (let
@@ -925,10 +933,19 @@ key, the car the order to sort in, a positive or negative integer.")
 	      (goto end-of-hdrs)
 	      (restrict-buffer visible-start (rm-message-end current))
 	      (rm-message-put current 'unread nil)
-	      (rm-fix-status-info current)
 	      ;; Called when the current restriction is about to be
 	      ;; displayed
-	      (call-hook 'rm-display-message-hook (list current folder)))))
+	      (call-hook 'rm-display-message-hook (list current folder))
+	      ;; If the current buffer isn't the folder anymore, assume
+	      ;; that something in the hook created an edited copy of the
+	      ;; message into the new current buffer.
+	      (unless (eq (current-buffer) (mark-file mark))
+		(setq rm-proxy-folder folder
+		      major-mode 'read-mail-mode
+		      keymap-path (cons 'rm-keymap
+					(delq rm-keymap keymap-path)))
+		(set-buffer-read-only nil t))
+	      (rm-fix-status-info current))))
       ;; No message to display. Try for an empty buffer
       (let
 	  ((box (car (rm-get-folder-field folder rm-folder-boxes))))
