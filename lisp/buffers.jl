@@ -418,13 +418,13 @@ buffers exist on exit."
       (setq bufs (cdr bufs)))
     (not unsaved-files-p)))
 
-(defun maybe-save-buffer (buffer)
-  "If BUFFER has been modified, ask whether or not to save it."
-  (when (and (buffer-modified-p buffer) (not (buffer-special-p buffer)))
-    (if (y-or-n-p (concat "Save buffer " (buffer-name buffer)))
-	(unless (save-file buffer)
-	  (setq unsaved-files-p t))
-      (setq unsaved-files-p t))))
+(defun maybe-save-buffer (&optional buffer)
+  "If BUFFER has been modified, ask whether or not to save it. Returns t if
+the buffer is (now) in sync with the copy on disk."
+  (or (not (buffer-modified-p buffer))
+      (and (not (buffer-special-p buffer))
+	   (y-or-n-p (concat "Save buffer " (buffer-name buffer)))
+	   (save-file buffer))))
 
 
 ;; Auto saving
