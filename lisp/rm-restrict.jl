@@ -33,7 +33,7 @@
 ;;
 ;;	(defrule recently-from-jsh ()
 ;;	  (and (header "from" "john@dcs")
-;;	       (sent-after "1 May 1998 00:00:00")))
+;;	       (sent-after "last week")))
 ;;
 ;;	(defrule from-jsh-to-djke ()
 ;;	  (and (recently-from-jsh)
@@ -62,7 +62,12 @@
 ;;	(attribute FLAG-SYMBOL)
 ;;
 ;; TODO:
-;;  + Make the date syntax a lot friendlier.
+;;  + Make the date syntax a lot friendlier. Currently we accept:
+;;	last (week|fortnight|month|year)
+;;	N (day|week|fortnight|month|year)s? ago
+;;	yesterday
+;;	DD Month YYYY HH:MM:SS TTTT	(time optional)
+
 
 
 ;; Configuration
@@ -149,15 +154,26 @@ For example, to define a rule accepting only messages sent by me (that's
   (let
       ;; TODO: need a friendlier date parser, this only accepts
       ;; RFC-822 format (possibly with a few missing clauses)
-      ((date-vector (mail-parse-date (nth 1 form))))
-    (list (if (eq (car form) 'sent-after)
-	      'rm-rule-sent-after
-	    'rm-rule-sent-before)
-	  (list 'quote (aref date-vector mail-date-epoch-time)))))
+      ((date (rm-parse-date (nth 1 form))))
+    (list 'rm-rule-sent-date
+	  (list 'quote date)
+	  (eq (car form) 'sent-after))))
 
-(defmacro rm-rule-sent-after (epoch-time)
-  `(> (aref (rm-get-date-vector rm-rule-message) mail-date-epoch-time)
-      ,epoch-time))
+;; DATE is (absolute DAYS . SECONDS) or (relative DAYS . SECONDS)
+(defun rm-rule-sent-date (date after)
+  (let
+      ((msg-date (aref (rm-get-date-vector rm-rule-message)
+		       mail-date-epoch-time)))
+    (funcall (if after '> '<)
+	     msg-date
+	     (if (eq (car date) 'absolute)
+		 (cdr date)
+	       (let
+		   ((current (current-time)))
+		 (rplaca current (- (car current) (nth 1 date)))
+		 (rplacd current (- (cdr current) (nthcdr 2 date)))
+		 (fix-time current))))))
+
 (defmacro rm-rule-sent-before (epoch-time)
   `(< (aref (rm-get-date-vector rm-rule-message) mail-date-epoch-time)
       ,epoch-time))
@@ -205,3 +221,43 @@ For example, to define a rule accepting only messages sent by me (that's
   `(memq ,attr (rm-get-msg-field rm-rule-message rm-msg-flags)))
 
 ;; Also include body search?
+
+
+;; More intuitive date parsing
+
+;; Returns either (absolute DAYS . SECONDS) absolute time, or
+;; (relative DAYS . SECONDS)
+;; TODO: `20 years ago' overflows an integer, etc..
+(defun rm-parse-date (string)
+  (let
+      (seconds-ago abs-time)
+    (cond
+     ((string-match
+       "^(an?|[0-9]+) *(seconds|minute|hour|day|week|fortnight|month|year)s? +ago$"
+       string nil t)
+      (setq seconds-ago (* (if (= (aref string 0) ?a)
+			       1
+			     (read-from-string (expand-last-match "\\1")))
+			   (if (= (aref string (match-start 2)) ?m)
+			       (if (= (aref string (1+ (match-start 2))) ?i)
+				   60
+				 2419200)	;28*24*60*60
+			     (cdr (assq (aref string (match-start 2))
+					'((?s . 1) (?h . 3600) (?d . 86400)
+					  (?w . 604800) (?f . 1209600)
+					  (?m . 2419200) (?y . 31536000))))))))
+     ((string-match "^last +(week|fortnight|month|year)$" string nil t)
+      (setq seconds-ago (cdr (assq (aref string (match-start 1))
+				   '((?w . 604800) (?f . 1209600)
+				     (?m . 2419200) (?y . 31536000))))))
+     ((string-match "^yesterday$" string nil t)
+      (setq seconds-ago 86400))
+     (t
+      (let
+	  ((date (mail-parse-date string)))
+	(unless date
+	  (error "Invalid date specification: %s" string))
+	(setq abs-time (aref date mail-date-epoch-time)))))
+    (if seconds-ago
+	(list* 'relative (/ seconds-ago 86400) (mod seconds-ago 86400))
+      (cons 'absolute abs-time))))
