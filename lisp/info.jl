@@ -171,14 +171,16 @@ is split.")
 		;; first menu item, unless this is the first dir file
 		(when (re-search-forward "^\\* Menu:" spos nil t)
 		  (delete-area spos (forward-line 1 (match-start)))))
-	    (read-file-into-buffer name)
-	    (goto (end-of-buffer))
+	    (insert-file name)
 	    (setq read-dir t))
 	  (unless (equal (cursor-pos) (start-of-line))
 	    (split-line))))
       (setq path (cdr path)))
     (unless read-dir
       (signal 'info-error '("Can't find `dir' file")))
+    ;; Don't associate a file name with DIR since it's probably an amalgam
+    (set-buffer-file-name nil "")
+    (set-buffer-modified nil nil)
     (setq buffer-file-modtime (cons 0 0)
 	  info-file-name "dir"
 	  info-node-name "Top"
@@ -324,7 +326,7 @@ is split.")
 
 ;; "prompt" variant. LIST-FUN is a function to call the first time a list
 ;; of possible completions is required.
-(defun info-prompt (list-fun &optional title default start)
+(defun info-prompt (info-list-fun &optional title default start)
   (unless title
     (setq title "Select node"))
   (when default
@@ -336,13 +338,13 @@ is split.")
 	#'(lambda (w)
 	    (unless prompt-list
 	      (with-buffer info-buffer
-		(setq prompt-list (funcall list-fun))))
+		(setq prompt-list (funcall info-list-fun))))
 	    (prompt-complete-from-list w)))
        (prompt-validate-function
 	#'(lambda (w)
 	    (unless prompt-list
 	      (with-buffer info-buffer
-		(setq prompt-list (funcall list-fun))))
+		(setq prompt-list (funcall info-list-fun))))
 	    (prompt-validate-from-list w)))
        (prompt-list-fold-case t)
        ;;(prompt-word-regexps prompt-def-regexps)
@@ -417,12 +419,11 @@ commands are,\n
 			(start-of-line)))
     (expand-last-match "\\1")))
 
-;; Return a list of the names of all menu items. Starts searching from
-;; the cursor position.
+;; Return a list of the names of all menu items
 (defun info-list-menu-items ()
   (let
       ((list ())
-       (opos (cursor-pos)))
+       (opos (restriction-start)))
     (while (re-search-forward "^\\* ([a-zA-Z0-9]+[^:.]*)" opos)
       (setq list (cons (expand-last-match "\\1") list))
       (setq opos (match-end)))
