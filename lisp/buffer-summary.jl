@@ -95,7 +95,7 @@ Commands for this mode are,\n
 	    (buffer-name item))
     (indent-to 24)
     ;; Print out the mode names
-    (insert (or (with-buffer item mode-name) "Generic"))
+    (insert (or (with-buffer item mode-name) "Fundamental"))
     (let
 	((minor-names (with-buffer item minor-mode-names)))
       (while minor-names
