@@ -84,10 +84,8 @@
       nil)
      (t
       ;; Some sort of atom
-      (unless (looking-at (concat ?\( mail-atom-re
-				      "|[][.:;@]|[\t\n ]+\)+") p)
-	(error "Can't parse atom, %s" p))
-      (cons p (match-end))))))
+      (and (looking-at (concat ?\( mail-atom-re "|[][.:;@]|[\t\n ]+\)+") p)
+	   (cons p (match-end)))))))
 
 ;; Parse one list of atoms, ended by a comma or EOF. Returns (STRING . END),
 ;; the text of the group of atoms, and the position of the first non-included
