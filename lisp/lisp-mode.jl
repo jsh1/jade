@@ -51,6 +51,8 @@ Major mode for editing Lisp source. Local bindings in this mode are:\n
 	paragraph-start paragraph-separate
 	local-keymap lisp-mode-keymap
 	completion-hooks (cons lisp-complete-sexp completion-hooks))
+  (make-local-variable 'info-documentation-files)
+  (setq info-documentation-files '("librep"))
   (call-hook 'lisp-mode-hook))
 
 ;;;###autoload

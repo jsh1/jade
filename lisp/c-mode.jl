@@ -114,8 +114,8 @@ Commands defined by this mode are:\n
 	paragraph-start paragraph-separate
 	local-ctrl-c-keymap c-mode-ctrl-c-keymap
 	local-keymap c-mode-keymap)
-  (make-local-variable 'info-documentation-file)
-  (setq info-documentation-file "libc")
+  (make-local-variable 'info-documentation-files)
+  (setq info-documentation-files '("libc"))
   (call-hook 'c-mode-hook))
 
 (defun c-open-brace ()

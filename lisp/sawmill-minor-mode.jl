@@ -80,10 +80,13 @@ in the status line."
   (if smm-active
       (progn
 	(setq smm-active nil)
-	(kill-local-variable 'info-documentation-file))
+	(setq info-documentation-files
+	      (delete "sawmill" info-documentation-files)))
     (setq smm-active t)
     (make-local-variable 'info-documentation-file)
-    (setq info-documentation-file "sawmill")))
+    (setq info-documentation-files
+	  (if (boundp 'info-documentation-files)
+	      (cons "sawmill" info-documentation-files) (list "sawmill")))))
 
 ;;;###autoload
 (defun sawmill-console ()
