@@ -18,6 +18,7 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(require 'ring)
 (provide 'maildefs)
 
 
@@ -273,3 +274,12 @@ include any parenthesised expressions!")
       (when (cdr list)
 	    (insert ", "))
       (setq list (cdr list)))))
+
+;; History list of prompt-for-folder
+(defvar mail-prompt-history (make-ring))
+
+;; Prompt for the name of a mail folder
+(defun prompt-for-folder (title &optional default)
+  (prompt-for-file title nil
+		   (and default (file-name-directory default)) default
+		   mail-prompt-history))
