@@ -54,7 +54,6 @@ typedef struct {
     struct x11_display *ws_Display;
     Window		ws_Window;
     GC			ws_GC_array[P_MAX];
-    int			ws_PenX, ws_PenY;
     XFontStruct	       *ws_Font;
     int			ws_Width, ws_Height;
 } W_WindowSys;
@@ -70,8 +69,8 @@ typedef struct {
 } ScrollBar;
 #endif
 
-/* Macros for drawing operations. These are mainly used in render.c for
-   system-independant rendering. */
+/* Macros for drawing operations. These are used in redisplay.c for
+   system-independent rendering. */
 
 /* Draw LEN bytes of the string STR with pen PEN at glyph position (X,Y). */
 #define DRAW_GLYPHS(win, x, y, pen, str, len)				\
