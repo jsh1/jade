@@ -33,8 +33,10 @@
     "C-f" 'tex-file
     "TAB" 'bibtex-file
     "C-l" 'tex-recenter-output-buffer
-    "C-k" 'tex-kill-job))
-  
+    "C-k" 'tex-kill-job
+    "C-p" 'tex-print
+    "C-v" 'tex-view
+    "C-q" 'tex-show-print-queue))
 
 (defvar tex-ctrl-c-ctrl-c-keymap
   (bind-keys (make-sparse-keymap)
@@ -54,7 +56,7 @@
     "}" 'tex-move-over-braces))
 
 ;;;###autoload
-(defun tex-mode ()
+(defun tex-mode (&optional from-sub-mode)
   "TeX Mode:\n
 Major mode for editing TeX and LaTeX source files.\n
 Local bindings in this mode are:\n
@@ -81,10 +83,13 @@ Local bindings in this mode are:\n
   (add-hook 'ispell-ignore-word-hook 'tex-ispell-ignore-word-hook)
   (call-hook 'text-mode-hook)
   (call-hook 'tex-mode-hook)
-  (when (re-search-backward "^\\\\(document(class|style)|chapter|(sub)*section)"
-			    (min (forward-line 100 (start-of-buffer))
-				 (end-of-buffer)))
-    (latex-mode)))
+  (cond (from-sub-mode)
+	((re-search-backward "^\\\\(document(class|style)|chapter|(sub)*section)"
+			     (min (forward-line 100 (start-of-buffer))
+				  (end-of-buffer)))
+	 (latex-mode t))
+	(t
+	 (plain-tex-mode t))))
 
 (defun tex-mode-kill ()
   (setq mode-name nil
@@ -92,15 +97,22 @@ Local bindings in this mode are:\n
 	major-mode-kill nil
 	keymap-path (delq 'tex-keymap keymap-path)))
 
-(defun latex-mode ()
-  (unless (eq major-mode 'tex-mode)
-    (tex-mode))
+(defun latex-mode (&optional from-super-mode)
+  (interactive)
+  (unless from-super-mode
+    (tex-mode t))
   (setq major-mode 'latex-mode
 	mode-name "LaTeX")
   (unless (assq 'tex-run-command (buffer-variables))
     (setq tex-run-command latex-run-command))
   (call-hook 'latex-mode-hook))  
 
+(defun plain-tex-mode (&optional from-super-mode)
+  (interactive)
+  (unless from-super-mode
+    (tex-mode t))
+  (call-hook 'plain-tex-mode-hook))
+  
 (defun tex-insert-end ()
   (interactive)
   (let
