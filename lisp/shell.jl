@@ -363,10 +363,14 @@ delete, i.e. replace the marked area with the output of the command."
 				output))
 	    (setq used-message t))
 	(unless (equal (start-of-buffer output) (end-of-buffer output))
-	  (with-view (other-view)
-	    (goto-buffer output)
-	    (goto (start-of-buffer))
-	    (shrink-view-if-larger-than-buffer)))))
+	  (if (eq (current-buffer) output)
+	      (progn
+		(goto (start-of-buffer))
+		(shrink-view-if-larger-than-buffer))
+	    (with-view (other-view)
+	      (goto-buffer output)
+	      (goto (start-of-buffer))
+	      (shrink-view-if-larger-than-buffer))))))
     (when (and error-output
 	       (not (equal (start-of-buffer error-output)
 			   (end-of-buffer error-output))))
