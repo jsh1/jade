@@ -56,6 +56,7 @@ static int event_index;
 _PR VALUE sym_global_keymap, sym_local_keymap, sym_unbound_key_hook;
 _PR VALUE sym_esc_means_meta, sym_keymap, sym_overriding_local_keymap;
 _PR VALUE sym_minor_mode_keymap_alist, sym_autoload_keymap;
+_PR VALUE sym_next_keymap_path;
 DEFSYM(global_keymap, "global-keymap");
 DEFSYM(local_keymap, "local-keymap");
 DEFSYM(overriding_local_keymap, "overriding-local-keymap");
@@ -64,6 +65,7 @@ DEFSYM(esc_means_meta, "esc-means-meta");
 DEFSYM(keymap, "keymap");
 DEFSYM(minor_mode_keymap_alist, "minor-mode-keymap-alist");
 DEFSYM(autoload_keymap, "autoload-keymap");
+DEFSYM(next_keymap_path, "next-keymap-path");
 
 static VALUE next_keymap_path;
 
@@ -814,27 +816,34 @@ Return the event whose name is EVENT-NAME.
 	return sym_nil;
 }
 
-_PR VALUE cmd_lookup_event_binding(VALUE ev, VALUE reset);
-DEFUN("lookup-event-binding", cmd_lookup_event_binding, subr_lookup_event_binding, (VALUE ev, VALUE reset), V_Subr2, DOC_lookup_event_binding) /*
+_PR VALUE cmd_lookup_event_binding(VALUE ev);
+DEFUN("lookup-event-binding", cmd_lookup_event_binding, subr_lookup_event_binding, (VALUE ev), V_Subr1, DOC_lookup_event_binding) /*
 ::doc:lookup_event_binding::
-lookup-event-binding EVENT [RESET-PATH]
+lookup-event-binding EVENT
 
 Return the command currently associated with the event EVENT.
-If RESET-PATH is non-nil the value of `next-keymap-path' will be cleared
-after being used.
 ::end:: */
 {
-    VALUE old_next_km_path = next_keymap_path;
     VALUE res;
     if(!EVENTP(ev))
 	return(signal_arg_error(ev, 1));
 
-    res = lookup_binding(VINT(EVENT_CODE(ev)), VINT(EVENT_MODS(ev)), 0);
-    if(NILP(reset))
+    res = lookup_binding(VINT(EVENT_CODE(ev)),
+			 VINT(EVENT_MODS(ev)),
+			 eval_input_callback);
+    if (res == 0 && next_keymap_path != 0)
     {
-	/* We don't want next-keymap-path to be reset */
-	next_keymap_path = old_next_km_path;
+	/* A prefix binding. Fake a function call to next-keymap-path. */
+	if (CONSP(next_keymap_path))
+	{
+	    res = cmd_cons(sym_next_keymap_path,
+			   cmd_cons(cmd_cons(sym_quote,
+					     cmd_cons(next_keymap_path,
+						      sym_nil)),
+				    sym_nil));
+	}
     }
+    next_keymap_path = LISP_NULL;
     return res ? res : sym_nil;
 }
 
@@ -929,6 +938,7 @@ keys_init(void)
     INTERN(keymap);
     INTERN(minor_mode_keymap_alist);
     INTERN(autoload_keymap);
+    INTERN(next_keymap_path);
     next_keymap_path = LISP_NULL;
     mark_static(&next_keymap_path);
 
