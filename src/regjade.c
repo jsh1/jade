@@ -1,0 +1,767 @@
+/* regjade.c -- implementation/port of regexec that works in a buffer.
+   $Id$ */
+
+/*
+ * Copyright (c) 1986 by University of Toronto. Written by Henry Spencer.  Not
+ * derived from licensed software.
+ *
+ * Permission is granted to anyone to use this software for any purpose on any
+ * computer system, and to redistribute it freely, subject to the following
+ * restrictions:
+ *
+ * 1. The author is not responsible for the consequences of use of this
+ * software, no matter how awful, even if they arise from defects in it.
+ *
+ * 2. The origin of this software must not be misrepresented, either by
+ * explicit claim or by omission.
+ *
+ * 3. Altered versions must be plainly marked as such, and must not be
+ * misrepresented as being the original software.
+ *
+ * Beware that some of this code is subtly aware of the way operator precedence
+ * is structured in regular expressions.  Serious changes in
+ * regular-expression syntax might require a total rethink.
+ */
+
+#ifdef BUILD_JADE
+
+#include <stdio.h>
+#ifdef AMIGA
+#undef min
+#endif
+#include "regexp.h"
+#include "regprog.h"
+#include "regmagic.h"
+
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+/*
+ * Utility definitions.
+ */
+#ifndef CHARBITS
+#define UCHARAT(p)	((int)*(unsigned char *)(p))
+#else
+#define UCHARAT(p)	((int)*(p)&CHARBITS)
+#endif
+
+/* Global work variables for regexec(). */
+static TX      *regtx;		/* buffer */
+static POS      reginput;	/* String-input pointer. */
+static char	regnocase;	/* Ignore case when string-matching. */
+static POS     *regstartp;	/* Pointer to startp array. */
+static POS     *regendp;	/* Ditto for endp. */
+
+/* Forwards. */
+static int	regtry(TX *tx, regexp *, POS *);
+static int	regmatch(char *);
+static int	regrepeat(char *);
+static char    *regnext(char *);
+
+/* Expands to the current input character at position P. This should
+   not be called when P is past the end of the buffer. */
+#define REG_INPUT_CHAR(p)						\
+    (((p)->pos_Col >= regtx->tx_Lines[(p)->pos_Line].ln_Strlen - 1)	\
+     ? '\n'								\
+     : regtx->tx_Lines[(p)->pos_Line].ln_Line[(p)->pos_Col])
+
+/* Non-zero when position P is past the last character in the buffer. */
+#define END_OF_INPUT(p)							   \
+    ((p)->pos_Line >= regtx->tx_LogicalEnd				   \
+     || ((p)->pos_Line == regtx->tx_LogicalEnd - 1			   \
+	 && (p)->pos_Col >= regtx->tx_Lines[(p)->pos_Line].ln_Strlen - 1))
+
+/*
+ * - regexec_tx - search forwards for a regexp in a buffer sub-string
+ *    START is preserved whatever.
+ */
+int
+regexec_tx(prog, tx, start, eflags)
+    register regexp *prog;
+    TX *tx;
+    POS *start;
+    int eflags;
+{
+    POS s;
+    /* For REG_NOCASE and strpbrk()  */
+    static char mat[3] = "xX";
+
+    /* Be paranoid... */
+    if (prog == NULL || tx == NULL || start == NULL) {
+	regerror("NULL parameter");
+	return (0);
+    }
+    /* Check validity of program. */
+    if (UCHARAT(prog->program) != MAGIC) {
+	regerror("corrupted program");
+	return (0);
+    }
+
+    /* jsh -- Check for REG_NOCASE, means ignore case in string matches.  */
+    regnocase = ((eflags & REG_NOCASE) != 0);
+
+    /* If there is a "must appear" string, look for it. */
+    if (prog->regmust != NULL)
+    {
+	int found = 0;
+	s = *start;
+	if(regnocase)
+	{
+	    mat[0] = tolower(prog->regmust[0]);
+	    mat[1] = toupper(prog->regmust[0]);
+	    while (buffer_strpbrk(tx, &s, mat))
+	    {
+		if(buffer_compare_n(tx, &s, prog->regmust,
+				    prog->regmlen, strncasecmp))
+		{
+		    found = 1;
+		    break;	    /* Found it. */
+		}
+		if(!forward_char(1, tx, &s)) break;
+	    }
+	}
+	else
+	{
+	    while (buffer_strchr(tx, &s, prog->regmust[0]))
+	    {
+		if(buffer_compare_n(tx, &s, prog->regmust,
+				    prog->regmlen, strncmp))
+		{
+		    found = 1;
+		    break;	    /* Found it. */
+		}
+		if(!forward_char(1, tx, &s)) break;
+	    }
+	}
+	if (!found)		/* Not present. */
+	    return (0);
+    }
+
+    /* Simplest case:  anchored match need be tried only once.
+       For buffers, this means that it only needs to be tried
+       at the start of each line after position START */
+    if (prog->reganch)
+    {
+	LINE *line = tx->tx_Lines + start->pos_Line;
+	s = *start;
+	if(s.pos_Col > 0)
+	{
+	    s.pos_Col = 0;
+	    s.pos_Line++;
+	    line++;
+	}
+	while(s.pos_Line < tx->tx_LogicalEnd)
+	{
+	    if(regtry(tx, prog, &s))
+		return (1);
+	    s.pos_Line++;
+	    line++;
+	}
+	return (0);
+    }
+
+    /* Messy cases:  unanchored match. */
+    s = *start;
+    if (prog->regstart != '\0')
+    {
+	/* We know what char it must start with. */
+	if(regnocase)
+	{
+	    mat[0] = tolower(prog->regstart);
+	    mat[1] = toupper(prog->regstart);
+	    while(buffer_strpbrk(tx, &s, mat))
+	    {
+		if(regtry(tx, prog, &s))
+		    return (1);
+		if(!forward_char(1, tx, &s)) break;
+	    }
+	}
+	else
+	{
+	    while(buffer_strchr(tx, &s, prog->regstart))
+	    {
+		if(regtry(tx, prog, &s))
+		    return (1);
+		if(!forward_char(1, tx, &s)) break;
+	    }
+	}
+    }
+    else
+	/* We don't -- general case. */
+	do {
+	    if (regtry(tx, prog, &s))
+		return (1);
+	} while (forward_char(1, tx, &s));
+
+    /* Failure. */
+    return (0);
+}
+
+/* regexec_reverse_tx - search backwards for a regexp in a buffer.
+   START is preserved whatever.
+  
+   There's a slight issue here. We obviously want to find the largest
+   possible match; this means that just working our way back through
+   the string to the first character that regtry() accepts won't
+   work. Matching from a previous character could also succeed,
+   possibly giving a longer match.
+
+   My approach is this: find the first match as usual, then scan
+   backwards a character at a time, until the start of the line,
+   finding the match nearest the start of the line, with the proviso
+   that the new match must have the same end position as the
+   original. Obviously the longest-match rule doesn't hold across line
+   boundaries; I think this is acceptable. */
+int
+regexec_reverse_tx(prog, tx, start, eflags)
+    register regexp *prog;
+    TX *tx;
+    POS *start;
+    int eflags;
+{
+    POS s;
+    /* For REG_NOCASE and strpbrk()  */
+    static char mat[3] = "xX";
+
+    /* Be paranoid... */
+    if (prog == NULL || tx == NULL || start == NULL) {
+	regerror("NULL parameter");
+	return (0);
+    }
+    /* Check validity of program. */
+    if (UCHARAT(prog->program) != MAGIC) {
+	regerror("corrupted program");
+	return (0);
+    }
+
+    /* jsh -- Check for REG_NOCASE, means ignore case in string matches.  */
+    regnocase = ((eflags & REG_NOCASE) != 0);
+
+    /* If there is a "must appear" string, look for it. */
+    if (prog->regmust != NULL)
+    {
+	int found = 0;
+	s = *start;
+	if(regnocase)
+	{
+	    mat[0] = tolower(prog->regmust[0]);
+	    mat[1] = toupper(prog->regmust[0]);
+	    while (buffer_reverse_strpbrk(tx, &s, mat))
+	    {
+		if(buffer_compare_n(tx, &s, prog->regmust,
+				    prog->regmlen, strncasecmp))
+		{
+		    found = 1;
+		    break;	    /* Found it. */
+		}
+		if(!backward_char(1, tx, &s)) break;
+	    }
+	}
+	else
+	{
+	    while (buffer_reverse_strchr(tx, &s, prog->regmust[0]))
+	    {
+		if(buffer_compare_n(tx, &s, prog->regmust,
+				    prog->regmlen, strncmp))
+		{
+		    found = 1;
+		    break;	    /* Found it. */
+		}
+		if(!backward_char(1, tx, &s)) break;
+	    }
+	}
+	if (!found)		/* Not present. */
+	    return (0);
+    }
+
+    /* Simplest case:  anchored match need be tried only once.
+       For buffers, this means that it only needs to be tried
+       at the start of each line after position START. Also
+       the longest-match issue doesn't apply since we're always
+       matching from the start of a line. */
+    if (prog->reganch)
+    {
+	LINE *line = tx->tx_Lines + start->pos_Line;
+	s = *start;
+	s.pos_Col = 0;
+	while(s.pos_Line >= tx->tx_LogicalStart)
+	{
+	    if(regtry(tx, prog, &s))
+		return (1);
+	    s.pos_Line--;
+	    line--;
+	}
+	return (0);
+    }
+
+    /* Messy cases:  unanchored match. */
+    s = *start;
+    if (prog->regstart != '\0')
+    {
+	/* We know what char it must start with. */
+	if(regnocase)
+	{
+	    mat[0] = tolower(prog->regstart);
+	    mat[1] = toupper(prog->regstart);
+	    while(buffer_reverse_strpbrk(tx, &s, mat))
+	    {
+		if(regtry(tx, prog, &s))
+		{
+		    /* Try for a longer match. */
+		    regsubs leftmost = prog->matches;
+		    while(s.pos_Col-- > 0)
+		    {
+			char c = REG_INPUT_CHAR(&s);
+			if(toupper(c) == toupper(prog->regstart)
+			   && regtry(tx, prog, &s)
+			   && POS_EQUAL_P(&prog->matches.tx.endp[0],
+					  &leftmost.tx.endp[0]))
+			{
+			    /* found an equivalent match to the left,
+			       replace the original */
+			    leftmost = prog->matches;
+			}
+		    }
+		    prog->matches = leftmost;
+		    return (1);
+		}
+		if(!backward_char(1, tx, &s)) break;
+	    }
+	}
+	else
+	{
+	    while(buffer_reverse_strchr(tx, &s, prog->regstart))
+	    {
+		if(regtry(tx, prog, &s))
+		{
+		    /* Try for a longer match. */
+		    regsubs leftmost = prog->matches;
+		    while(s.pos_Col-- > 0)
+		    {
+			if(REG_INPUT_CHAR(&s) == prog->regstart
+			   && regtry(tx, prog, &s)
+			   && POS_EQUAL_P(&prog->matches.tx.endp[0],
+					  &leftmost.tx.endp[0]))
+			{
+			    /* found an equivalent match to the left,
+			       replace the original */
+			    leftmost = prog->matches;
+			}
+		    }
+		    prog->matches = leftmost;
+		    return (1);
+		}
+		if(!backward_char(1, tx, &s)) break;
+	    }
+	}
+    }
+    else
+    {
+	/* We don't -- general case. */
+	do {
+	    if (regtry(tx, prog, &s))
+	    {
+		/* Try for a longer match. */
+		regsubs leftmost = prog->matches;
+		while(s.pos_Col-- > 0)
+		{
+		    if(regtry(tx, prog, &s)
+		       && POS_EQUAL_P(&prog->matches.tx.endp[0],
+				      &leftmost.tx.endp[0]))
+		    {
+			/* found an equivalent match to the left,
+			   replace the original */
+			leftmost = prog->matches;
+		    }
+		}
+		prog->matches = leftmost;
+		return (1);
+	    }
+	} while (backward_char(1, tx, &s));
+    }
+    /* Failure. */
+    return (0);
+}
+
+/*
+ * - regmatch_tx - match a regexp against the string starting at
+ *		   START. No searching. START is preserved.
+ */
+int
+regmatch_tx(prog, tx, start, eflags)
+    register regexp *prog;
+    TX *tx;
+    POS *start;
+    int eflags;
+{
+    /* Check for REG_NOCASE, means ignore case in string matches.  */
+    regnocase = ((eflags & REG_NOCASE) != 0);
+
+    return regtry(tx, prog, start);
+}
+
+/*
+ * - regtry - try match at specific point
+ */
+static int			/* 0 failure, 1 success */
+regtry(tx, prog, matchpos)
+    TX		   *tx;
+    regexp	   *prog;
+    POS	           *matchpos;
+{
+    register int    i;
+
+    regtx = tx;
+    reginput = *matchpos;
+    regstartp = prog->matches.tx.startp;
+    regendp = prog->matches.tx.endp;
+
+    for (i = 0; i < NSUBEXP; i++) {
+	regstartp[i].pos_Line = -1;
+	regendp[i].pos_Line = -1;
+    }
+    if (regmatch(prog->program + 1)) {
+	regstartp[0] = *matchpos;
+	regendp[0] = reginput;
+	prog->lasttype = reg_tx;
+	return (1);
+    } else
+	return (0);
+}
+
+/*
+ * - regmatch - main matching routine
+ *
+ * Conceptually the strategy is simple:	 check to see whether the current node
+ * matches, call self recursively to see whether the rest matches, and then
+ * act accordingly.  In practice we make some effort to avoid recursion, in
+ * particular by going through "ordinary" nodes (that don't need to know
+ * whether the rest of the match failed) by a loop instead of by recursion.
+ */
+static int			/* 0 failure, 1 success */
+regmatch(prog)
+    char	   *prog;
+{
+    register char  *scan;	/* Current node. */
+    char	   *next;	/* Next node. */
+
+    scan = prog;
+#ifdef DEBUG
+    if (scan != NULL && regnarrate)
+	fprintf(stderr, "%s(\n", regprop(scan));
+#endif
+    while (scan != NULL) {
+#ifdef DEBUG
+	if (regnarrate)
+	    fprintf(stderr, "%s...\n", regprop(scan));
+#endif
+	next = regnext(scan);
+
+	switch (OP(scan)) {
+	case BOL:
+	    if (reginput.pos_Col > 0)
+		return (0);
+	    break;
+	case EOL:
+	    if (reginput.pos_Col
+		< regtx->tx_Lines[reginput.pos_Line].ln_Strlen - 1)
+		return (0);
+	    break;
+	case ANY:
+	    /* Don't match newlines for . */
+	    if(reginput.pos_Col
+	       == regtx->tx_Lines[reginput.pos_Line].ln_Strlen - 1)
+		return (0);
+	    forward_char(1, regtx, &reginput);
+	    break;
+	case EXACTLY:{
+		register int	len;
+		register char  *opnd;
+		opnd = OPERAND(scan);
+		if(regnocase)
+		{
+		    /* Inline the first character, for speed. */
+		    char c;
+		    if(END_OF_INPUT(&reginput))
+			return (0);
+		    c = REG_INPUT_CHAR(&reginput);
+		    if(toupper(*opnd) != toupper(c))
+			return (0);
+		    len = strlen(opnd);
+		    if(len == 1)
+			forward_char(1, regtx, &reginput);
+		    else
+		    {
+			/* Advances reginput to end of match */
+			if(!buffer_compare_n(regtx, &reginput, opnd,
+					     len, strncasecmp))
+			    return (0);
+		    }
+		}
+		else
+		{
+		    /* Inline the first character, for speed. */
+		    if(END_OF_INPUT(&reginput)
+		       || *opnd != REG_INPUT_CHAR(&reginput))
+			return (0);
+		    len = strlen(opnd);
+		    if(len == 1)
+			forward_char(1, regtx, &reginput);
+		    else
+		    {
+			/* Advances reginput to end of match */
+			if(!buffer_compare_n(regtx, &reginput, opnd,
+					     len, strncmp))
+			    return (0);
+		    }
+		}
+	    }
+	    break;
+	case ANYOF: {
+		if (END_OF_INPUT(&reginput)
+		    || strchr(OPERAND(scan),
+			      REG_INPUT_CHAR(&reginput)) == NULL)
+		    return (0);
+		forward_char(1, regtx, &reginput);
+	    }
+	    break;
+	case ANYBUT: {
+		if (END_OF_INPUT(&reginput)
+		    || strchr(OPERAND(scan),
+			      REG_INPUT_CHAR(&reginput)) != NULL)
+		    return (0);
+		forward_char(1, regtx, &reginput);
+	    }
+	    break;
+	case NOTHING:
+	    break;
+	case BACK:
+	    break;
+	case OPEN + 1:
+	case OPEN + 2:
+	case OPEN + 3:
+	case OPEN + 4:
+	case OPEN + 5:
+	case OPEN + 6:
+	case OPEN + 7:
+	case OPEN + 8:
+	case OPEN + 9:{
+		register int	no;
+		POS save;
+
+		no = OP(scan) - OPEN;
+		save = reginput;
+
+		if (regmatch(next)) {
+		    /*
+		     * Don't set startp if some later invocation of the same
+		     * parentheses already has.
+		     */
+		    if (regstartp[no].pos_Line == -1)
+			regstartp[no] = save;
+		    return (1);
+		} else
+		    return (0);
+	    }
+	    break;
+	case CLOSE + 1:
+	case CLOSE + 2:
+	case CLOSE + 3:
+	case CLOSE + 4:
+	case CLOSE + 5:
+	case CLOSE + 6:
+	case CLOSE + 7:
+	case CLOSE + 8:
+	case CLOSE + 9:{
+		register int	no;
+		POS save;
+
+		no = OP(scan) - CLOSE;
+		save = reginput;
+
+		if (regmatch(next)) {
+		    /*
+		     * Don't set endp if some later invocation of the same
+		     * parentheses already has.
+		     */
+		    if (regendp[no].pos_Line == -1)
+			regendp[no] = save;
+		    return (1);
+		} else
+		    return (0);
+	    }
+	    break;
+	case BRANCH:{
+		POS save;
+
+		if (OP(next) != BRANCH) /* No choice. */
+		    next = OPERAND(scan);	/* Avoid recursion. */
+		else {
+		    do {
+			save = reginput;
+			if (regmatch(OPERAND(scan)))
+			    return (1);
+			reginput = save;
+			scan = regnext(scan);
+		    } while (scan != NULL && OP(scan) == BRANCH);
+		    return (0);
+		    /* NOTREACHED */
+		}
+	    }
+	    break;
+	case STAR:
+	case PLUS:{
+		register char	nextch;
+		register int	no;
+		POS save;
+		register int	min;
+
+		/*
+		 * Lookahead to avoid useless match attempts when we know
+		 * what character comes next.
+		 */
+		nextch = '\0';
+		if (OP(next) == EXACTLY)
+		    nextch = *OPERAND(next);
+		min = (OP(scan) == STAR) ? 0 : 1;
+		save = reginput;
+		no = regrepeat(OPERAND(scan));
+		while (no >= min) {
+		    /* If it could work, try it. */
+		    if (nextch == '\0'
+			|| (!END_OF_INPUT(&reginput)
+			    && REG_INPUT_CHAR(&reginput) == nextch))
+			if (regmatch(next))
+			    return (1);
+		    /* Couldn't or didn't -- back up. */
+		    no--;
+		    reginput = save;
+		    forward_char(no, regtx, &reginput);
+		}
+		return (0);
+	    }
+	    break;
+	case END:
+	    return (1);		/* Success! */
+	    break;
+	default:
+	    regerror("memory corruption");
+	    return (0);
+	    break;
+	}
+
+	scan = next;
+    }
+
+    /*
+     * We get here only if there's trouble -- normally "case END" is the
+     * terminating point.
+     */
+    regerror("corrupted pointers");
+    return (0);
+}
+
+/*
+ * - regrepeat - repeatedly match something simple, report how many
+ */
+static int
+regrepeat(p)
+    char *p;
+{
+    register int count = 0;
+    POS scan;
+    register char *opnd;
+
+    scan = reginput;
+    opnd = OPERAND(p);
+    switch (OP(p)) {
+    case ANY:
+	/* TODO: what to do here? How about matching up to the
+	   end of the buffer? No, this could be something like .*
+	   what we want is to match up to the end of a line. */
+	count = (regtx->tx_Lines[scan.pos_Line].ln_Strlen - 1)
+		- scan.pos_Col;
+	scan.pos_Col += count;
+	break;
+    case EXACTLY:
+	if(regnocase)
+	{
+	    char uo = toupper(*opnd);
+	    char c;
+	    while(!END_OF_INPUT(&scan))
+	    {
+		c = REG_INPUT_CHAR(&scan);
+		if(uo != toupper(c))
+		    break;
+		count++;
+		forward_char(1, regtx, &scan);
+	    }
+	}
+	else
+	{
+	    char c;
+	    while(!END_OF_INPUT(&scan))
+	    {
+		c = REG_INPUT_CHAR(&scan);
+		if(*opnd != c)
+		    break;
+		count++;
+		forward_char(1, regtx, &scan);
+	    }
+	}
+	break;
+    case ANYOF: {
+	    char c;
+	    while (!END_OF_INPUT(&scan))
+	    {
+		c = REG_INPUT_CHAR(&scan);
+		if(strchr(opnd, c) == NULL)
+		    break;
+		count++;
+		forward_char(1, regtx, &scan);
+	    }
+	}
+	break;
+    case ANYBUT: {
+	    char c;
+	    while (!END_OF_INPUT(&scan))
+	    {
+		c = REG_INPUT_CHAR(&scan);
+		if(strchr(opnd, c) != NULL)
+		    break;
+		count++;
+		forward_char(1, regtx, &scan);
+	    }
+	}
+	break;
+    default:			/* Oh dear.  Called inappropriately. */
+	regerror("internal foulup");
+	count = 0;		/* Best compromise. */
+	break;
+    }
+    reginput = scan;
+
+    return (count);
+}
+
+/*
+ * - regnext - dig the "next" pointer out of a node 
+ */
+static char    *
+regnext(p)
+    register char  *p;
+{
+    register int    offset;
+
+    offset = NEXT(p);
+    if (offset == 0)
+	return (NULL);
+
+    if (OP(p) == BACK)
+	return (p - offset);
+    else
+	return (p + offset);
+}
+
+#endif /* BUILD_JADE */
