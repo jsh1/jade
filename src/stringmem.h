@@ -21,7 +21,7 @@
 #ifndef _STRINGMEM_H
 #define _STRINGMEM_H
 
-/* #define STRMEM_STATS */
+#undef STRMEM_STATS
 
 /* difference in size between each bucket */
 #define GRAIN	      8
@@ -114,6 +114,8 @@ typedef struct {
     /* Statistics for each bucket. */
     int		    sm_AllocCount[NUMBUCKETS + 1];
     int		    sm_FreeCount[NUMBUCKETS + 1];
+    int		    sm_BlockAllocCount[NUMBUCKETS];
+    int		    sm_BlockFreeCount[NUMBUCKETS];
 #endif
 } StrMem;
 

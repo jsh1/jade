@@ -47,6 +47,7 @@ sm_init(StrMem *sm)
 	sm->sm_FreesBeforeFlush = 0;
 #ifdef STRMEM_STATS
 	sm->sm_AllocCount[i] = sm->sm_FreeCount[i] = 0;
+	sm->sm_BlockAllocCount[i] = sm->sm_BlockFreeCount[i] = 0;
 #endif
     }
     sm->sm_UseMallocChain = FALSE;
@@ -80,10 +81,12 @@ sm_kill(StrMem *sm)
 	sm->sm_MemBuckets[i].mbu_FreeCount = 0;
 
 #ifdef STRMEM_STATS
-	fprintf(stderr, "\t bucket %d (upto %d bytes): %d alloced, %d freed\n",
-		i, (i + 1) * GRAIN, sm->sm_AllocCount[i],
-		sm->sm_FreeCount[i]);
+	fprintf(stderr, "\t bucket %d (upto %d bytes): %d alloced, %d freed (blocks: %d, %d)\n",
+		i, (i + 1) * GRAIN,
+		sm->sm_AllocCount[i], sm->sm_FreeCount[i],
+		sm->sm_BlockAllocCount[i], sm->sm_BlockFreeCount[i]);
 	sm->sm_AllocCount[i] = sm->sm_FreeCount[i] = 0;
+	sm->sm_BlockAllocCount[i] = sm->sm_BlockFreeCount[i] = 0;
 #endif
     }
 
@@ -129,6 +132,9 @@ new_memblock(StrMem *sm, MemBucket *mbu, int sizeIndex)
 	mc->mc_Mem.nextfree = mbu->mbu_FreeList;
 	mbu->mbu_FreeList = mbl->mbl_Chunks;
 	mbu->mbu_FreeCount += numchunks;
+#ifdef STRMEM_STATS
+	sm->sm_BlockAllocCount[sizeIndex]++;
+#endif
 	return(TRUE);
     }
     return(FALSE);
@@ -257,6 +263,9 @@ flush_bucket(StrMem *sm, int bucketIndex)
 	    RemoveM(&mbl->mbl_Node);
 	    sys_free(mbl);
 	    mbu->mbu_FreeCount -= numchnks;
+#ifdef STRMEM_STATS
+	    sm->sm_BlockFreeCount[bucketIndex]++;
+#endif
 	}
 	mbl = nxt;
     }
