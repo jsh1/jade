@@ -86,17 +86,15 @@ translate_event(u_long *code, u_long *mods, XEvent *xev)
 	{
 	    /* Some keys don't have keysym at index 1, if not treat it as
 	       normal keysym shifted.  */
-	    *code = XKeycodeToKeysym(x11_display_list->display,
-				     xev->xkey.keycode, 1);
+	    *code = XKeycodeToKeysym(xev->xany.display, xev->xkey.keycode, 1);
 	    if(*code == NoSymbol)
-		*code = XKeycodeToKeysym(x11_display_list->display,
+		*code = XKeycodeToKeysym(xev->xany.display,
 					 xev->xkey.keycode, 0);
 	    else
 		*mods &= ~EV_MOD_SHIFT;
 	}
 	else
-	    *code = XKeycodeToKeysym(x11_display_list->display,
-				     xev->xkey.keycode, 0);
+	    *code = XKeycodeToKeysym(xev->xany.display, xev->xkey.keycode, 0);
 	if((*code != NoSymbol) && !IsModifierKey(*code))
 	    *mods |= EV_TYPE_KEYBD;
 	break;
