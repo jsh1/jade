@@ -40,6 +40,8 @@
   (interactive)
   (goto-other-view)
   (goto-buffer (open-buffer "*mail-dir*"))
+  (clear-buffer)
+  (set-buffer-read-only (current-buffer) nil)
   (if (eq major-mode 'summary-mode)
       (summary-update)
     (insert "Mail directory:\n\n  Name\t\t\tAddress\n  ----\t\t\t-------\n")
@@ -97,7 +99,9 @@ CC: field if the prefix arg is set)."
   (let
       ((name-x (md-get-field x ':name))
        (name-y (md-get-field y ':name)))
-    (< (or name-x x) (or name-y y))))
+    (if (and name-x name-y)
+	(string-lessp (car name-x) (car name-y))
+      (< (or name-x x) (or name-y y)))))
 
 (defun mds-sort-list ()
   "Sort the list of mail addresses or aliases."
