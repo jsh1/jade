@@ -213,7 +213,8 @@ items to be displayed and manipulated."
       ((start (pos 0 (+ (pos-line summary-first-line) index)))
        (end (pos (max (car (view-dimensions)) (line-length start))
 		 (pos-line start))))
-    (mark-block start end)))
+    (delete-all-extents)
+    (make-extent start end (list 'face highlight-face))))
 
 (defmacro summary-get-pending-ops (item)
   "Return the list of operations pending on ITEM."
