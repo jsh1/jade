@@ -172,9 +172,9 @@
   "Shift-F1"	'(set-mark mark-1 (cursor-pos) (current-buffer))
   "Shift-F2"	'(set-mark mark-2 (cursor-pos) (current-buffer))
   "Shift-F3"	'(set-mark mark-3 (cursor-pos) (current-buffer))
-  "LMB-Click1"	'(goto-char (mouse-pos))
-  "LMB-Click2"	'block-toggle
-  "LMB-Move"	'(goto-char (mouse-pos))
+  "LMB-Click1"	'mouse-select
+  "LMB-Click2"	'mouse-double-select
+  "LMB-Move"	'mouse-select-drag
   "MMB-Click1"	'yank-to-mouse
   "RMB-Click1"	'toggle-iconic
   "Meta-Shift-LMB-Click1" 'block-kill)
