@@ -293,13 +293,18 @@ views (minibuffer and one other) in any window.
 	/* There's no predecessor to VW. So give its space to
 	   the following view. If possible fix the display origin
 	   of the following view to minimise scrolling. */
-	long new_origin;
+	long new_origin_col, new_origin_row;
 	pred = vw->vw_NextView;
 	vw->vw_Win->w_ViewList = pred;
-	new_origin = VROW(pred->vw_DisplayOrigin) - (vw->vw_MaxY + 1);
-	pred->vw_DisplayOrigin = make_pos(VCOL(pred->vw_DisplayOrigin),
-					  MAX(new_origin,
-					      pred->vw_Tx->tx_LogicalStart));
+	if(!skip_glyph_rows_backwards(pred, vw->vw_MaxY + 1,
+				      VCOL(pred->vw_DisplayOrigin),
+				      VROW(pred->vw_DisplayOrigin),
+				      &new_origin_col, &new_origin_row))
+	{
+	    new_origin_col = 0;
+	    new_origin_row = pred->vw_Tx->tx_LogicalStart;
+	}
+	pred->vw_DisplayOrigin = make_pos(new_origin_col, new_origin_row);
     }
     else
     {
@@ -421,6 +426,7 @@ update_status_buffer(VW *vw)
     bool restriction = (tx->tx_LogicalStart != 0)
 			|| (tx->tx_LogicalEnd != tx->tx_NumLines);
     long lines = tx->tx_LogicalEnd - tx->tx_LogicalStart;
+    long glyph_col = get_cursor_column(vw);
     char *position, position_buf[5];
 
     if(vw->vw_Flags & VWFF_MINIBUF
@@ -437,11 +443,14 @@ update_status_buffer(VW *vw)
     else
 	block = "";
 
-    if(lines <= vw->vw_MaxY)
-	position = "All";
-    else if(VROW(vw->vw_DisplayOrigin) <= tx->tx_LogicalStart)
-	position = "Top";
-    else if(VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY >= tx->tx_LogicalEnd)
+    if(VROW(vw->vw_DisplayOrigin) <= tx->tx_LogicalStart)
+    {
+	if(vw->vw_Flags & VWFF_AT_BOTTOM)
+	    position = "All";
+	else
+	    position = "Top";
+    }
+    else if(vw->vw_Flags & VWFF_AT_BOTTOM)
 	position = "Bottom";
     else
     {
@@ -451,7 +460,8 @@ update_status_buffer(VW *vw)
 	position = position_buf;
     }
 
-    calc_cursor_offset(vw);
+    /* TODO: allow customisation via mode-line-format and % formatters */
+
     sprintf(vw->vw_StatusBuf, "%s%s %c%s%s%c %c%ld,%ld%c %s of %ld %s %s",
 	    VSTR(tx->tx_BufferName),
 	    ((tx->tx_Changes != tx->tx_ProperSaveChanges)
@@ -462,8 +472,7 @@ update_status_buffer(VW *vw)
 	    VSTR(tx->tx_MinorModeNameString),
 	    (recurse_depth ? ']' : ')'),
 	    restriction ? '[' : '(',
-	    vw->vw_LastCursorOffset + 1,
-	    VROW(vw->vw_CursorPos) - tx->tx_LogicalStart + 1,
+	    glyph_col + 1, VROW(vw->vw_CursorPos) - tx->tx_LogicalStart + 1,
 	    restriction ? ']' : ')',
 	    position,
 	    lines, lines != 1 ? "lines" : "line",
@@ -861,23 +870,17 @@ DEFUN("translate-pos-to-view", cmd_translate_pos_to_view, subr_translate_pos_to_
 ::doc:translate_pos_to_view::
 translate-pos-to-view POS [VIEW]
 
-Return the glyph position in the current view (or in VIEW) that corresponds to
-the glyph position POS in the view's window. Returns nil if this position is
-invalid.
+Return the screen position in the current view (or in VIEW) that corresponds
+to the screen position POSITION in the view's window.
 ::end:: */
 {
     long col, row;
     DECLARE1(pos, POSP);
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
-    col = VCOL(pos) + VCOL(VVIEW(vw)->vw_DisplayOrigin);
-    row = (VROW(VVIEW(vw)->vw_DisplayOrigin)
-	   + (VROW(pos) - VVIEW(vw)->vw_FirstY));
-    if(row < VVIEW(vw)->vw_Tx->tx_LogicalStart
-       || row > VVIEW(vw)->vw_Tx->tx_LogicalEnd)
-	return sym_nil;
-    else
-	return make_pos(col, row);
+    col = VCOL(pos) - VVIEW(vw)->vw_FirstX;
+    row = VROW(pos) - VVIEW(vw)->vw_FirstY;
+    return make_pos(col, row);
 }
 
 _PR VALUE cmd_minibuffer_view_p(VALUE vw);
