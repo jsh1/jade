@@ -293,12 +293,16 @@ t when this item actually exists."
 (defun summary-next-item (count)
   "Move the cursor to the next item."
   (interactive "p")
-  (summary-goto-item (+ (summary-current-index) count)))
+  (summary-goto-item (condition-case nil
+			 (+ (summary-current-index) count)
+		       (error 0))))
 
 (defun summary-previous-item (count)
   "Move the cursor to the previous item."
   (interactive "p")
-  (summary-goto-item (- (summary-current-index) count)))
+  (summary-goto-item (condition-case nil
+			 (- (summary-current-index) count)
+		       (error 0))))
 
 (defun summary-select-item ()
   "Select the current menu item."
