@@ -1,3 +1,8 @@
+2000-02-03  John Harper  <john@dcs.warwick.ac.uk>
+
+	* info.jl (info-documentation-files): replaces
+	info-documentation-file added yesterday, a list
+
 2000-02-01  John Harper  <john@dcs.warwick.ac.uk>
 
 	* read-mail.jl (rm-prune-messages): apply duplicate rules to
