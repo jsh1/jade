@@ -140,9 +140,12 @@ and POS. When called interactively, POS is bound to the cursor position."
        (seen-non-blank nil)
        goal-column line-end g-line-end)
 
+    ;; Make end into a mark so that it preserves its logical position
+    (setq end (make-mark end))
+
     ;; Delete all existing fill prefixes and other leading white space,
     ;; except on the first non-blank line
-    (while (< line-start end)
+    (while (< line-start (mark-pos end))
       (when has-prefix
 	(fill-delete-prefix line-start))
       (cond
@@ -164,7 +167,7 @@ and POS. When called interactively, POS is bound to the cursor position."
 			    fill-column)))
 
     ;; Loop over all lines in the area
-    (while (< line-start end)
+    (while (< line-start (mark-pos end))
       ;; Find the end of the line in characters and glyphs
       (setq line-end (end-of-line line-start)
 	    g-line-end (char-to-glyph-pos line-end))
@@ -181,14 +184,13 @@ and POS. When called interactively, POS is bound to the cursor position."
 	  (when (and pos (/= (pos-col pos) 0))
 	    (when (= (get-char pos) ?\ )
 	      (delete-area pos (forward-char 1 pos)))
-	    (insert "\n" pos)
-	    (setq end (forward-line 1 end)))
+	    (insert "\n" pos))
 	  ;; Move on to the next line (reinserting the fill prefix)
 	  (fill-area-next-line)))
 
        ((and (/= (pos-col g-line-end) 0)
 	     (< (pos-col g-line-end) goal-column)
-	     (< (pos-line line-start) (pos-line end)))
+	     (< (pos-line line-start) (pos-line (mark-pos end))))
 	;; The current line may be too short
 	(let*
 	    ((space (- goal-column (pos-col g-line-end) 1))
@@ -196,23 +198,23 @@ and POS. When called interactively, POS is bound to the cursor position."
 	     (move-end (min (glyph-to-char-pos (pos space
 						    (pos-line move-start)))
 			    (end-of-line move-start))))
-	  (if (>= move-end end)
-	      (setq move-end end)
+	  (if (>= move-end (mark-pos end))
+	      (setq move-end (mark-pos end))
 	    (setq move-end (re-search-backward fill-break-re move-end)))
 	  (if (and move-end (> move-end move-start))
 	      ;; We can move some words from the next line to
 	      ;; fill some of the gap
 	      (progn
-		(when (and (< move-end end) (= (get-char move-end) ?\ ))
+		(when (and (< move-end (mark-pos end))
+			   (= (get-char move-end) ?\ ))
 		  (delete-area move-end (forward-char 1 move-end)))
 		(insert (cut-area move-start move-end) (insert " " line-end))
 		(when (empty-line-p move-start)
 		  ;; We've created a blank line, delete it
-		  (if (>= end (end-of-buffer))
+		  (if (>= (mark-pos end) (end-of-buffer))
 		      ;; Can't delete to the next line
 		      (delete-area (forward-char -1 move-start) move-start)
-		    (delete-area move-start (forward-line 1 move-start)))
-		  (setq end (forward-line -1 end))))
+		    (delete-area move-start (forward-line 1 move-start)))))
 	    ;; The current line is as good as it gets, move
 	    ;; on to the next line
 	    (fill-area-next-line))))
