@@ -100,22 +100,6 @@ struct cached_extent {
 };
 
 
-/* faces */
-
-typedef struct lisp_face {
-    VALUE car;
-    struct lisp_face *next;
-
-    int id;
-    VALUE name;
-    VALUE foreground, background;
-} Lisp_Face;
-
-#define FACEFF_UNDERLINE	(1 << (CELL8_TYPE_BITS + 0))
-#define FACEFF_BOLD		(1 << (CELL8_TYPE_BITS + 1))
-#define FACEFF_ITALIC		(1 << (CELL8_TYPE_BITS + 2))
-
-
 /* colours */
 
 typedef struct lisp_color {
@@ -127,6 +111,31 @@ typedef struct lisp_color {
     /* System-local representation of the color */
     SYS_COLOR_TYPE color;
 } Lisp_Color;
+
+
+/* faces */
+
+typedef struct lisp_face {
+    VALUE car;
+    struct lisp_face *next;
+
+    VALUE name;
+    VALUE foreground, background;
+} Lisp_Face;
+
+typedef struct merged_face {
+    unsigned short car, valid;
+    Lisp_Color *foreground, *background;
+} Merged_Face;
+
+#define FACEFF_UNDERLINE	(1 << (CELL8_TYPE_BITS + 0))
+#define FACEFF_BOLD		(1 << (CELL8_TYPE_BITS + 1))
+#define FACEFF_ITALIC		(1 << (CELL8_TYPE_BITS + 2))
+#define FACEFF_INVERT		(1 << (CELL8_TYPE_BITS + 3))
+#define FACEFF_BOXED		(1 << (CELL8_TYPE_BITS + 4))
+#define FACEFF_MASK		(FACEFF_UNDERLINE | FACEFF_BOLD \
+				 | FACEFF_ITALIC | FACEFF_INVERT \
+				 | FACEFF_BOXED)
 
 
 /* A buffer, strangely called `TX' */
@@ -252,13 +261,9 @@ typedef u_char glyph_code;
 typedef u_char glyph_attr;
 
 enum Glyph_Attrs {
-    GA_Garbage = 0,			/* glyph was lost */
-    GA_FirstFace = 1,
-    GA_DefaultFace = GA_FirstFace,
-    GA_BlockFace,
-    GA_ModeLineFace,
-    GA_LastFace = 127,
-    GA_CursorFace = 128,		/* invert fg-bg */
+    GA_FirstFace = 0,
+    GA_LastFace = 63,			/* max faces per window */
+    GA_Garbage = 255,
 };
 
 typedef struct {
@@ -299,6 +304,10 @@ typedef struct _WIN {
     short w_FontX, w_FontY;		/* pixel width and height of glyphs */
 
     VALUE w_DisplayedName;		/* current ``name'' of window  */
+
+    /* Merged faces in this window. If the `next' field in each
+       face is non-zero the face is valid. */
+    Merged_Face w_MergedFaces[GA_LastFace+1];
 } WIN;
 
 /* refresh whole window */
