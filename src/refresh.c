@@ -220,7 +220,10 @@ sub_regions(POS *start1, POS *end1, POS *start2, POS *end2,
 /* Refresh the block in VW. If START and END are non-null they specify
    a region of the buffer that has _already_ been redrawn this refresh;
    any parts of the block inside this region that need redrawing can
-   be assumed to be correct already. */
+   be assumed to be correct already.
+
+   Need to fix rectangular block redrawing (horizontal updates don't
+   work properly) */
 static void
 refresh_block(VW *vw, POS *start, POS *end)
 {
@@ -315,7 +318,9 @@ refresh_view(VW *vw)
 	       && ((vw->vw_Flags & VWFF_REFRESH_STATUS)
 	           || (vw->vw_Flags & VWFF_FORCE_REFRESH)
 		   || (vw->vw_Tx->tx_Flags & TXFF_REFRESH_STATUS)
-		   || (vw->vw_LastRefTx != vw->vw_Tx)))
+		   || (vw->vw_LastRefTx != vw->vw_Tx)
+		   || (!POS_EQUAL_P(&vw->vw_DisplayOrigin,
+				    &vw->vw_LastDisplayOrigin))))
 	    {
 		update_status_buffer(vw);
 		redraw_status_buffer(vw);
@@ -323,7 +328,9 @@ refresh_view(VW *vw)
 	    }
 	    if((vw->vw_LastRefTx != vw->vw_Tx)
 	       || (vw->vw_Flags & VWFF_FORCE_REFRESH)
-	       || (tx->tx_Flags & TXFF_REFRESH_ALL))
+	       || (tx->tx_Flags & TXFF_REFRESH_ALL)
+	       || (tx->tx_LogicalStart != tx->tx_LastLogicalStart)
+	       || (tx->tx_LogicalEnd != tx->tx_LastLogicalEnd))
 	    {
 		if(vw->vw_Flags & VWFF_MINIBUF
 		   && vw->vw_Win->w_Flags & WINFF_MESSAGE)
@@ -545,6 +552,8 @@ refresh_world(void)
     while(tx)
     {
 	tx->tx_LastChanges = tx->tx_Changes;
+	tx->tx_LastLogicalStart = tx->tx_LogicalStart;
+	tx->tx_LastLogicalEnd = tx->tx_LogicalEnd;
 	tx->tx_Flags &= ~TXFF_REFRESH_STATUS;
 	tx = tx->tx_Next;
     }
@@ -580,6 +589,8 @@ refresh_world_curs(void)
     while(tx)
     {
 	tx->tx_LastChanges = tx->tx_Changes;
+	tx->tx_LastLogicalStart = tx->tx_LogicalStart;
+	tx->tx_LastLogicalEnd = tx->tx_LogicalEnd;
 	tx->tx_Flags &= ~TXFF_REFRESH_STATUS;
 	tx = tx->tx_Next;
     }
