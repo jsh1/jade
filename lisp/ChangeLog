@@ -1,3 +1,8 @@
+2000-01-25  John Harper  <john@dcs.warwick.ac.uk>
+
+	* buffers.jl: don't call before-exit-hook, that's done
+	automatically by rep now
+
 2000-01-20  John Harper  <john@dcs.warwick.ac.uk>
 
 	* mail-headers.jl (mail-decode-header): fixed the regexp
