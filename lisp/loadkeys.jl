@@ -170,7 +170,7 @@
   "Meta-Shift-LMB-Click1" 'block-kill)
 
 (bind-keys ctrl-x-keymap
-  "Ctrl-b"	'buffer-menu
+  "Ctrl-b"	'buffer-summary
   "Ctrl-c"	'save-and-quit
   "Ctrl-f"	'find-file
   "Ctrl-l"	'downcase-area
