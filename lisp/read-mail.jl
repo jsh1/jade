@@ -309,6 +309,8 @@ key, the car the order to sort in, a positive or negative integer.")
   (interactive
    (list (prompt-for-folder "Mailbox to add:" rm-last-mailbox)
 	 (rm-current-folder)))
+  (unless mailbox
+    (error "Null mailbox"))
   (unless (rm-get-folder-field folder rm-folder-current-msg)
     (let
 	((cell (assoc-regexp mailbox rm-auto-rule-alist)))
@@ -336,6 +338,8 @@ key, the car the order to sort in, a positive or negative integer.")
      (list (prompt-from-list (rm-get-folder-field folder rm-folder-boxes)
 			     "Mailbox to subtract:")
 	   folder)))
+  (unless mailbox
+    (error "Null mailbox"))
   (rm-set-folder-field folder rm-folder-boxes
 		       (delete mailbox (rm-get-folder-field
 					folder rm-folder-boxes)))
@@ -358,6 +362,8 @@ key, the car the order to sort in, a positive or negative integer.")
   (interactive
    (list (rm-current-folder)
 	 (prompt-for-folder "Mailbox to open:" rm-last-mailbox)))
+  (unless mailbox
+    (error "Null mailbox"))
   (rm-subtract-all-mailboxes folder)
   (rm-add-mailbox mailbox folder))
 
@@ -990,6 +996,28 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Getting mail from inbox
 
+;; Append FILE to the current buffer, attempt to save the current buffer
+;; then delete FILE. If an error occurs whilst saving, don't delete anything,
+;; and display a message noting that messages are left in FILE.
+;; Returns t if everything went ok, nil otherwise.
+(defun rm-append-save-and-delete-file (file)
+  (unrestrict-buffer)
+  (goto (end-of-buffer))
+  (unless (zerop (1- (buffer-length)))
+    ;; Unless this is going to be the first message
+    (insert "\n"))
+  (and (insert-file file)
+       (condition-case nil
+	   (progn
+	     (save-file)
+	     (delete-file file)
+	     t)
+	 (error
+	  (beep)
+	  (message (concat "Couldn't save mailbox; messages left in " file) t)
+	  (sit-for 1)
+	  nil))))
+
 ;; Insert the contents of file INBOX at the end of the current buffer,
 ;; if the buffer's rm-buffer-messages variable was set, then it's updated
 ;; with the new messages.
@@ -998,11 +1026,6 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Doesn't rebuild the folder(s) message list
 (defun rm-append-inbox (inbox)
   (cond
-   ((not (file-exists-p inbox))
-    (error "Inbox file doesn't exist" inbox))
-   ((zerop (file-size inbox))
-    (message (concat "No new mail in " inbox))
-    nil)
    ((or (null movemail-program)
 	(not (file-exists-p movemail-program)))
     (error "The variable `movemail-program' is invalid"))
@@ -1015,56 +1038,56 @@ key, the car the order to sort in, a positive or negative integer.")
     (when (eq rm-buffer-messages 'invalid)
       (rm-parse-mailbox (buffer-file-name)))
     (let*
-	((tofile (local-file-name (concat ".newmail-"
-					  (file-name-nondirectory inbox))))
+	((tofile (local-file-name (expand-file-name
+				   (concat ".newmail-"
+					   (file-name-nondirectory inbox))
+				   (file-name-directory (buffer-file-name)))))
 	 (temp-buffer (make-buffer "*movemail-output*"))
-	 (proc (make-process temp-buffer)))
-      (if (zerop (call-process proc nil movemail-program
-			       (local-file-name inbox) tofile))
-	  ;; No errors
-	  (progn
-	    (unrestrict-buffer)
-	    (let
-		((inhibit-read-only t)
-		 (keep-going t)
-		 (count 0)
-		 start pos msgs)
-	      ;; Ensure that there's a blank line at the end of the buffer..
-	      (goto (end-of-buffer))
-	      (unless (zerop (1- (buffer-length)))
-		;; Unless this is going to be the first message
-		(insert "\n"))
-	      (setq start (cursor-pos))
-	      (insert-file-contents tofile)
-	      (condition-case nil
-		  (progn
-		    ;; Try to save the folder..
-		    (save-file)
-		    ;; Don't delete the temporary file unless the folder
-		    ;; was saved properly
-		    (delete-file tofile))
-		(error
-		 ;; Make sure this error message is seen
-		 (beep)
-		 (message (concat "Couldn't save folder; new messages left in "
-				  tofile) t)
-		 (sleep-for 1)
-		 (setq keep-going nil)))
-	      ;; Parse all new messages. Work backwards
-	      (setq pos (end-of-buffer))
-	      (while (and pos (>= pos start)
-			  (setq pos (re-search-backward mail-message-start
-							pos)))
-		(when (rm-message-start-p pos)
-		  (setq msgs (cons (rm-parse-message pos) msgs)
-			count (1+ count))
-		  (rm-set-flag (car msgs) 'unread t))
-		(setq pos (forward-line -1 pos)))
-	      (setq rm-buffer-messages (nconc rm-buffer-messages msgs))
-	      (and keep-going count)))
-	;; Errors
-	(goto-buffer temp-buffer)
-	(error "Couldn't move mail" inbox tofile))))))
+	 (proc (make-process temp-buffer))
+	 (need-to-parse nil)
+	 (keep-going t)
+	 (start (end-of-buffer))
+	 (inhibit-read-only t))
+      ;; First look for messages left in the .newmail-FOO file from last time
+      (when (and (file-exists-p tofile)
+		 (> (file-size tofile) 0))
+	(message (concat "Using messages left in " tofile) t)
+	(setq keep-going (or (rm-append-save-and-delete-file tofile)
+			     keep-going)
+	      need-to-parse t))
+      ;; Then if that didn't fail horrendously, look for mail in the INBOX
+      (when keep-going
+	(cond
+	 ((not (file-exists-p inbox))
+	  (error "Inbox file doesn't exist" inbox))
+	 ((zerop (file-size inbox))
+	  (message (concat "No new mail in " inbox)))
+	 (t
+	  (if (zerop (call-process proc nil movemail-program
+				   (local-file-name inbox) tofile))
+	      ;; Now the temporary file contains the new messages
+	      (setq keep-going (or (rm-append-save-and-delete-file tofile)
+				   keep-going)
+		    need-to-parse t)
+	    ;; Errors
+	    (goto-buffer temp-buffer)
+	    (error "Couldn't move mail: %s, %s" tofile inbox)))))
+      ;; If necessary, parse all new messages. Work backwards
+      (when need-to-parse
+	(let
+	    ((count 0)
+	     pos msgs)
+	  (setq pos (end-of-buffer))
+	  (while (and pos
+		      (setq pos (re-search-backward mail-message-start pos))
+		      (>= pos start))
+	    (when (rm-message-start-p pos)
+	      (setq msgs (cons (rm-parse-message pos) msgs)
+		    count (1+ count))
+	      (rm-set-flag (car msgs) 'unread t))
+	    (setq pos (forward-line -1 pos)))
+	  (setq rm-buffer-messages (nconc rm-buffer-messages msgs))
+	  (and keep-going count)))))))
 
 ;; Returns the number of messages read
 (defun rm-get-mail-for-box (mailbox)
