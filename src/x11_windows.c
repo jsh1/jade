@@ -34,6 +34,7 @@ _PR void x11_update_dimensions(WIN *, int, int);
 _PR Window sys_new_window(WIN *, WIN *, bool);
 _PR void sys_kill_window(WIN *);
 _PR void sys_activate_win(WIN *);
+_PR void sys_set_win_name(WIN *win, char *name);
 _PR void sys_set_win_pos(WIN *, long, long, long, long);
 _PR WIN *x11_find_window(Window);
 _PR int sys_set_font(WIN *);
@@ -230,7 +231,7 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	size_hints.width = width,
 	size_hints.height = height,
 	size_hints.base_width = 0;
-	size_hints.base_height = w->w_FontY + 3;
+	size_hints.base_height = 2 * w->w_FontY;
 	size_hints.width_inc = w->w_FontX;
 	size_hints.height_inc = w->w_FontY;
 	size_hints.min_width = size_hints.base_width + size_hints.width_inc;
@@ -242,7 +243,7 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	XSetWMProperties(dpy->display, win, NULL, NULL,
 			 x11_argv, x11_argc, &size_hints, &wm_hints,
 			 &class_hints);
-	XStoreName(dpy->display, win, "Jade");
+	XSetIconName(dpy->display, win, "jade");
 	XSetWMProtocols(dpy->display, win, &dpy->wm_delete_window, 1);
 	XSelectInput(dpy->display, win, INPUT_EVENTS);
 	XMapWindow(dpy->display, win);
@@ -279,6 +280,12 @@ sys_set_win_pos(WIN *win, long x, long y, long w, long h)
     XMoveResizeWindow(WINDOW_XDPY(win)->display, win->w_Window,
 		      (unsigned int)x, (unsigned int)y,
 		      (unsigned int)w, (unsigned int)h);
+}
+
+void
+sys_set_win_name(WIN *win, char *name)
+{
+    XStoreName(WINDOW_XDPY(win)->display, win->w_Window, name);
 }
 
 WIN *
