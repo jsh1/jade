@@ -121,7 +121,7 @@ Created: @date@.
 </ADDRESS><HR>@id-string@
 </BODY>
 </HTML>")
-  (id-string . "\n<TT><SMALL>@id@</SMALL></TT>"))
+  (id-string . "\n<!-- @id@ -->"))
   "Alist of insertion templates for html-style.")
 
 
