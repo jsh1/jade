@@ -1237,9 +1237,14 @@ extent_prin(VALUE strm, VALUE e)
 int
 extent_cmp(VALUE e1, VALUE e2)
 {
-    Lisp_Extent *f1 = find_first_frag(VEXTENT(e1));
-    Lisp_Extent *f2 = find_first_frag(VEXTENT(e2));
-    return !(f1 == f2);
+    if(VTYPE(e1) == VTYPE(e2))
+    {
+	Lisp_Extent *f1 = find_first_frag(VEXTENT(e1));
+	Lisp_Extent *f2 = find_first_frag(VEXTENT(e2));
+	return !(f1 == f2);
+    }
+    else
+	return 1;
 }
 
 void
