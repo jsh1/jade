@@ -575,12 +575,15 @@ symbol must agree with it."
 		     'commandp))
 
 ;;;###autoload
-(defun prompt-from-list (prompt-list prompt &optional start)
+(defun prompt-from-list (prompt-list prompt &optional start dont-validate)
   "Return a selected choice from the list of options (strings) PROMPT-LIST.
-PROMPT is the title displayed, START the starting choice."
+PROMPT is the title displayed, START the starting choice.
+Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
   (let
       ((prompt-completion-function 'prompt-complete-from-list)
-       (prompt-validate-function 'prompt-validate-from-list)
+       (prompt-validate-function (if dont-validate
+				     nil
+				   'prompt-validate-from-list))
        (prompt-word-regexps prompt-def-regexps))
   (prompt prompt start)))
 
