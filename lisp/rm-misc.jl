@@ -222,7 +222,7 @@ headers will be included."
 	      (message "Ignoring nonsense message!")
 	    ;; Enforce the "\n\n" rule between messages
 	    (goto (end-of-buffer))
-	    (unless (zerop (buffer-length))
+	    (unless (zerop (1- (buffer-length)))
 	      (insert "\n"))
 	    (setq output-pos (cursor-pos))
 	    (insert (copy-area start input-pos))
