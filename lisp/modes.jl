@@ -130,6 +130,21 @@ matches or is specified.")
   "Function like `lisp-backward-sexp'.")
 (make-variable-buffer-local 'mode-backward-exp)
 
+(defvar mode-symbol-regexp generic-exp-symbol-re
+  "Regular expression defining a ``symbol'' in the current major mode.")
+(make-variable-buffer-local 'mode-symbol-regexp)
+
+(defvar mode-defun-header nil
+  "A regular expression matching a function header in the current major mode.
+The name of the function should be stored in the first match expression.")
+(make-variable-buffer-local 'mode-defun-header)
+
+(defvar mode-defun-footer nil
+  "A regular expression matching the end of a function definition in the
+current major mode. If undefined, a single expression from the beginning
+of the defun is assumed instead.")
+(make-variable-buffer-local 'mode-defun-footer)
+
 
 ;; Major mode handling
 
@@ -262,15 +277,15 @@ or insert a tab."
 
 ;; Expressions
 
-(defun forward-exp (&optional number)
-  "Move forward NUMBER expressions."
-  (interactive "p")
-  (goto (funcall (or mode-forward-exp 'forward-word) number)))
+(defun forward-exp (&optional number pos)
+  "Find the end of the NUMBER'th next expression."
+  (interactive "@p")
+  (funcall (or mode-forward-exp 'forward-word) number pos))
 
-(defun backward-exp (&optional number)
-  "Move backwards NUMBER expressions."
-  (interactive "p")
-  (goto (funcall (or mode-backward-exp 'backward-word) number)))
+(defun backward-exp (&optional number pos)
+  "Find the start of the NUMBER'th previous expression."
+  (interactive "@p")
+  (funcall (or mode-backward-exp 'backward-word) number pos))
 
 (defun kill-exp (&optional number)
   "Kill the next NUMBER expressions."
@@ -290,6 +305,57 @@ or insert a tab."
   (transpose-items (or mode-forward-exp 'forward-word)
 		   (or mode-backward-exp 'backward-word)
 		   count))
+
+
+;; Other program units
+
+(defun symbol-at-point ()
+  "Return a string defining the symbol under the cursor."
+  (let
+      (start end)
+    (if (looking-at mode-symbol-regexp)
+	;; Find this symbol's beginning
+	(if (and (re-search-backward mode-symbol-regexp)
+		 (> (match-end) (cursor-pos)))
+	    (setq start (match-start)
+		  end (match-end))
+	  (looking-at mode-symbol-regexp)
+	  (setq start (cursor-pos)
+		end (match-end)))
+      (setq start (re-search-backward mode-symbol-regexp)
+	    end (match-end)))
+    (when (and start end)
+      (copy-area start end))))
+
+(defun defun-at-point ()
+  "Return the name of the function defined under the cursor."
+  (when (re-search-backward mode-defun-header)
+    (expand-last-match "\\1")))
+
+(defun start-of-defun ()
+  "Find the start of the current function definition."
+  (interactive "@")
+  (or mode-defun-header (error "Functions undefined in this mode"))
+  (re-search-backward mode-defun-header))
+    
+(defun end-of-defun ()
+  "Find the end of the current function definition."
+  (interactive "@")
+  (or mode-defun-header (error "Functions undefined in this mode"))
+  (if mode-defun-footer
+      (and (re-search-forward mode-defun-footer)
+	   (match-end))
+    (forward-exp 1 (start-of-defun))))
+
+(defun mark-defun ()
+  "Mark the current function definition as a block."
+  (interactive)
+  (let
+      ((start (start-of-defun))
+       (end (end-of-defun)))
+    (when (and start end)
+      (mark-block (or (and (re-search-backward "^[ \t\f]*\n" start)
+			   (match-end)) start) end))))
 
 
 ;; Generic expression handling
