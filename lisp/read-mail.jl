@@ -408,37 +408,38 @@ Major mode for viewing mail folders. Commands include:\n
 ;; Displaying messages
 
 ;; Display the current message
-(defun rm-display-current-message ()
-    (unrestrict-buffer)
-    (when rm-current-msg
+(defun rm-display-current-message (&optional no-summary-update)
+  (unrestrict-buffer)
+  (when rm-current-msg
+    (let
+	((header-start (mark-pos (rm-get-msg-field rm-current-msg
+						   rm-msg-mark))))
+      (unless (regexp-match-line mail-message-start header-start)
+	(error "Position isn't start of header: %s" header-start))
       (let
-	  ((header-start (mark-pos (rm-get-msg-field rm-current-msg
-						     rm-msg-mark))))
-	(unless (regexp-match-line mail-message-start header-start)
-	  (error "Position isn't start of header: %s" header-start))
-	(let
-	    ((end-of-hdrs (find-next-regexp "^$" header-start))
-	     (inhibit-read-only t))
-	  (setq rm-current-msg-body end-of-hdrs)
-	  ;; Just operate on the headers
-	  (restrict-buffer header-start end-of-hdrs)
-	  ;; First of all, move all visible headers after non-visible ones
-	  (setq rm-current-msg-visible-start (rm-coalesce-visible-headers))
-	  ;; Look for a header to highlight
-	  (when (find-next-regexp mail-highlighted-headers header-start nil t)
-	    (mark-block (match-start 1) (match-end 1)))
-	  (unrestrict-buffer)
-	  (setq rm-current-msg-end (rm-current-message-end))
-	  (goto-char end-of-hdrs)
-	  (rm-restrict-to-message)
-	  (rm-clear-flag rm-current-msg 'unread)
-	  (rm-fix-status-info)
-	  ;; Called when the current restriction is about to be
-	  ;; displayed
-	  (eval-hook 'read-mail-display-message-hook rm-current-msg))))
+	  ((end-of-hdrs (find-next-regexp "^$" header-start))
+	   (inhibit-read-only t))
+	(setq rm-current-msg-body end-of-hdrs)
+	;; Just operate on the headers
+	(restrict-buffer header-start end-of-hdrs)
+	;; First of all, move all visible headers after non-visible ones
+	(setq rm-current-msg-visible-start (rm-coalesce-visible-headers))
+	;; Look for a header to highlight
+	(when (find-next-regexp mail-highlighted-headers header-start nil t)
+	  (mark-block (match-start 1) (match-end 1)))
+	(unrestrict-buffer)
+	(setq rm-current-msg-end (rm-current-message-end))
+	(goto-char end-of-hdrs)
+	(rm-restrict-to-message)
+	(rm-clear-flag rm-current-msg 'unread)
+	(rm-fix-status-info)
+	;; Called when the current restriction is about to be
+	;; displayed
+	(eval-hook 'read-mail-display-message-hook rm-current-msg))))
+  (unless no-summary-update
     ;; Fix the summary buffer if it exists
     (rm-with-summary
-     (rm-summary-update-current)))
+     (rm-summary-update-current))))
 
 ;; Set the minor-mode-names list to reflect the current status
 (defun rm-fix-status-info ()
@@ -547,6 +548,7 @@ Major mode for viewing mail folders. Commands include:\n
 	(rm-display-current-message)))))
 
 ;; Delete all messages in the list DEL-MSGS as efficiently as possible
+;; rm-display-current-msg should be called after this has returned
 (defun rm-delete-messages (del-msgs)
   ;; Need to delete del-msgs in the most efficient order, to
   ;; minimise the amount of list thrashing. The current method
@@ -554,7 +556,8 @@ Major mode for viewing mail folders. Commands include:\n
   ;; Having said that, it's a lot better than what could happen if we
   ;; just deleted messages in the order thrown at us by summary-execute
   (let
-      ((old-curr-msg rm-current-msg))
+      ((old-curr-msg rm-current-msg)
+       skip-count)
     ;; 1. Delete the current message as long as it's in the list
     (while (and del-msgs rm-current-msg (memq rm-current-msg del-msgs))
       (setq del-msgs (delq rm-current-msg del-msgs))
@@ -563,30 +566,39 @@ Major mode for viewing mail folders. Commands include:\n
     ;; messages
     (when (and del-msgs rm-after-msg-list)
       (rm-move-forwards)
+      (setq skip-count 1)
       (while (and del-msgs rm-after-msg-list)
 	(if (memq rm-current-msg del-msgs)
 	    (progn
 	      (setq del-msgs (delq rm-current-msg del-msgs))
 	      (rm-delete-current-message nil t))
-	  (rm-move-forwards))))
+	  (rm-move-forwards)
+	  (setq skip-count (1+ skip-count))))
+      (when (and rm-current-msg (memq rm-current-msg del-msgs))
+	(rm-delete-current-message nil t)
+	(setq skip-count (1- skip-count)))
+      ;; Then back to the old current message
+      (while (> skip-count 0)
+	(rm-move-backwards)
+	(setq skip-count (1- skip-count))))
     ;; 3. Work backwards down the rm-before-list
     (when (and del-msgs rm-before-msg-list)
       (rm-move-backwards)
+      (setq skip-count 1)
       (while (and del-msgs rm-before-msg-list)
 	(if (memq rm-current-msg del-msgs)
 	    (progn
 	      (setq del-msgs (delq rm-current-msg del-msgs))
 	      (rm-delete-current-message t t))
-	  (rm-move-backwards))))
-    ;; If possible, try to display the original current message. Otherwise
-    ;; display the last message in the folder
-    (if (or (eq old-curr-msg rm-current-msg)
-	    (memq old-curr-msg rm-after-msg-list)
-	    (memq old-curr-msg rm-before-msg-list))
-	(rm-display-message old-curr-msg)
-      (if rm-after-msg-list
-	  (rm-display-message (last rm-after-msg-list))
-	(rm-display-current-message)))))
+	  (rm-move-backwards)
+	  (setq skip-count (1+ skip-count))))
+      (when (and rm-current-msg (memq rm-current-msg del-msgs))
+	(rm-delete-current-message nil t)
+	(setq skip-count (1- skip-count)))
+      ;; Then forwards to the old current message
+      (while (> skip-count 0)
+	(rm-move-forwards)
+	(setq skip-count (1- skip-count))))))
 
 
 ;; Getting mail from inbox
@@ -741,6 +753,7 @@ Major mode for viewing mail folders. Commands include:\n
 (defvar rm-summary-functions '((select . rm-summary-select-item)
 			       (list . rm-summary-list)
 			       (print . rm-summary-print-item)
+			       (current . rm-summary-current-item)
 			       (delete . rm-summary-delete-item)
 			       (execute-end . rm-summary-execute-end)
 			       (after-marking . rm-summary-after-marking)
@@ -871,6 +884,10 @@ documentation for command list.")
       (goto-buffer mail-buf)
       (rm-display-message item))))
 
+(defun rm-summary-current-item ()
+  (with-buffer rm-summary-mail-buffer
+    rm-current-msg-index))
+
 (defun rm-summary-delete-item (item)
   (setq rm-summary-msgs-to-delete (cons item rm-summary-msgs-to-delete)))
 
@@ -881,8 +898,10 @@ documentation for command list.")
     (setq rm-summary-msgs-to-delete nil)
     (with-view (other-view)
       (goto-buffer mail-buf)
-      (rm-delete-messages del-msgs))))
-    
+      (rm-delete-messages del-msgs)
+      ;; After this function returns "summary-update" is called
+      (rm-display-current-message t))))
+
 (defun rm-summary-update-current ()
   (let
       (msg index)
