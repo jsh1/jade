@@ -77,6 +77,7 @@ typedef char bool;
 #include "lisp.h"
 #include "doc-strings.h"
 #include "keys.h"
+#include "regexp.h"
 
 
 /* Macros */
