@@ -317,6 +317,8 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 
 (defun prompt-next-history ()
   (interactive)
+  (unless prompt-history
+    (error "No history for this prompt"))
   (cond
    ((or (= prompt-history-index -1)
 	(and (= prompt-history-index 0) (null prompt-default-value)))
@@ -334,6 +336,8 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 
 (defun prompt-previous-history ()
   (interactive)
+  (unless prompt-history
+    (error "No history for this prompt"))
   (cond
    ((= prompt-history-index -1)
     (clear-buffer)
