@@ -561,6 +561,8 @@ format_mode_string(char *fmt, VW *vw, char *buf, u_long buf_len)
 						vw->vw_CursorPos,
 						VAL(tx), sym_t);
 	    bool mod = tx->tx_Changes != tx->tx_ProperSaveChanges;
+	    if(VOIDP(tem))
+		tem = sym_nil;
 	    if(mod && !NILP(tem))
 		*buf = (fmt[-1] == '*') ? '%' : '*';
 	    else if(mod)
