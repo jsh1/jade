@@ -44,7 +44,7 @@ effect.")
 (defvar standard-input default-buffer
   "Stream that `read' takes it's input from by default")
 
-(defvar buffer-file-modtime 0
+(defvar buffer-file-modtime (cons 0 0)
   "Holds the modification time of the file this buffer was loaded from")
 (make-variable-buffer-local 'buffer-file-modtime)
 
@@ -240,7 +240,7 @@ Note: if no changes have been made to this buffer, it won't be saved."
       (let
 	  ((name (buffer-file-name)))
 	(when (and
-	       (> (file-modtime name) buffer-file-modtime)
+	       (time-later-p (file-modtime name) buffer-file-modtime)
 	       (not (yes-or-no-p "File on disk has changed since it was loaded, save anyway")))
 	  (return nil))
 	(when (write-file buffer)
@@ -483,8 +483,8 @@ file it was loaded from."
     (setq buffer (current-buffer)))
   (when (check-changes buffer)
     (with-buffer buffer
-      (read-file-into-buffer (buffer-file-name buffer))
-      (delete-auto-save-file))))
+      (delete-auto-save-file)
+      (read-file-into-buffer (buffer-file-name buffer)))))
 
 (defun goto-line (line)
   "Goto line number LINE. LINE counts from 1."
