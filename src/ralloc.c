@@ -86,7 +86,11 @@ typedef void *POINTER;
 #define bzero(x, len) memset (x, 0, len)
 
 #ifdef DOUG_LEA_MALLOC
+#ifdef LIBC_MALLOC
 #include <malloc.h>
+#else
+#include "dlmalloc.h"
+#endif
 #else
 /* We're using GNU malloc */
 extern int __malloc_extra_blocks;
