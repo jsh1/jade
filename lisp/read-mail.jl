@@ -74,20 +74,36 @@ when set to the symbol `invalid'.")
   "Ctrl-d" 'rm-mark-message-deletion
   "DEL" 'rm-mark-message-deletion
   "x" 'rm-execute
-  "#" 'rm-execute)
+  "#" 'rm-execute
+  "g" 'rm-get-mail-command
+  "q" 'rm-save-and-quit
+  "v" 'read-mail-folder)
 
 
 ;;;; User-visible interface
 
 ;;;###autoload
-(defun read-mail (folder)
+(defun read-mail ()
+  "Read mail."
+  (interactive)
+  (read-mail-folder mail-default-folder))
+
+;;;###autoload
+(defun read-mail-folder (folder)
   "Read mail stored in the file FOLDER."
   (interactive "FMail folder to open:")
+  (when (and (boundp 'rm-summary-mail-buffer) rm-summary-mail-buffer)
+    ;; In summary
+    (let
+	((mail-view (rm-find-view rm-summary-mail-buffer)))
+      (set-current-view mail-view)))
+  (when (and (not (file-exists-p folder))
+	     (file-exists-p (file-name-concat mail-folder-dir folder)))
+    (setq folder (file-name-concat mail-folder-dir folder)))
   (when (find-file-read-only folder)
     ;; The current buffer is now the folder. Set up the major mode
     (read-mail-mode)))
 
-;;;###autoload
 (defun read-mail-mode ()
   "Read-Mail Mode:\n
 Major mode for viewing mail folders. Commands include:\n
@@ -97,8 +113,12 @@ Major mode for viewing mail folders. Commands include:\n
 			 showing important headers in the current msg.
   `SPC'			Display the next page of the message.
   `BS'			Display the previous page of the message.
-  `h'			Create/update the folder summary."
-  (interactive)
+  `h'			Create/update the folder summary.
+  `d', `Ctrl-d'		Mark the current message to be deleted.
+  `x', `#'		Delete marked messages.
+  `g'			Get new mail.
+  `v'			Visit a different folder.
+  `q'			Quit."
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Read-Mail"
@@ -111,7 +131,9 @@ Major mode for viewing mail folders. Commands include:\n
   ;; Build the message list and display the current message
   (rm-build-message-lists)
   (rm-create-summary)
-  (rm-display-current-message)
+  (when (zerop (rm-get-mail))
+    ;; No point doing this twice
+    (rm-display-current-message))
   (when mail-display-summary
     (rm-summary)))
 
@@ -125,7 +147,10 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Internal message structure
 
-;; [ START-MARK FROM-ADDR FROM-NAME SUBJECT DAY-NAME DAY MONTH YEAR TIME ZONE ]
+;; [ START-MARK FROM-ADDR FROM-NAME SUBJECT
+;;   DAY-NAME DAY MONTH YEAR TIME ZONE FLAGS]
+;; FLAGS is a list of symbols, including replied, unread, filed,
+;; forwarded, anything else?
 (defconst rm-msg-mark 0)
 (defconst rm-msg-from-addr 1)
 (defconst rm-msg-from-name 2)
@@ -136,7 +161,7 @@ Major mode for viewing mail folders. Commands include:\n
 (defconst rm-msg-year 7)
 (defconst rm-msg-time 8)
 (defconst rm-msg-zone 9)
-(defconst rm-msg-replied 10)
+(defconst rm-msg-flags 10)
 (defconst rm-msg-struct-size 11)
 
 (defmacro rm-set-msg-field (msg field value)
@@ -147,6 +172,21 @@ Major mode for viewing mail folders. Commands include:\n
 
 (defmacro rm-make-msg ()
   '(make-vector rm-msg-struct-size))
+
+(defmacro rm-set-flag (msg flag)
+  (list 'or
+	(list 'memq flag (list 'rm-get-msg-field msg 'rm-msg-flags))
+	(list 'rm-set-msg-field msg 'rm-msg-flags
+	      (list 'cons flag (list 'rm-get-msg-field msg 'rm-msg-flags)))))
+
+(defmacro rm-clear-flag (msg flag)
+  (list 'and
+	(list 'memq flag (list 'rm-get-msg-field msg 'rm-msg-flags))
+	(list 'rm-set-msg-field msg 'rm-msg-flags
+	      (list 'delq flag (list 'rm-get-msg-field msg 'rm-msg-flags)))))
+
+(defmacro rm-test-flag (msg flag)
+  (list 'memq flag (list 'rm-get-msg-field msg 'rm-msg-flags)))
 
 
 ;; Local functions
@@ -256,10 +296,8 @@ Major mode for viewing mail folders. Commands include:\n
 			  (copy-area (match-start 1) (match-end 1)))
 	(rm-set-msg-field msg rm-msg-zone
 			  (copy-area (match-start 4) (match-end 4)))))
-    (rm-set-msg-field msg rm-msg-replied
-		      (if (find-next-regexp "^Replied[\t ]*:" start nil t)
-			  t
-			nil))
+    (when (find-next-regexp "^Replied[\t ]*:" start nil t)
+      (rm-set-flag msg 'replied))
     (unrestrict-buffer)
     msg))
 
@@ -292,6 +330,7 @@ Major mode for viewing mail folders. Commands include:\n
 	  (setq rm-current-msg-end (rm-current-message-end))
 	  (goto-char end-of-hdrs)
 	  (rm-restrict-to-message)
+	  (rm-clear-flag rm-current-msg 'unread)
 	  ;; Called when the current restriction is about to be
 	  ;; displayed
 	  (eval-hook 'read-mail-display-message-hook rm-current-msg))))
@@ -446,6 +485,108 @@ Major mode for viewing mail folders. Commands include:\n
       (rm-display-current-message))))
 
 
+;; Getting mail from inbox
+
+;; Insert the contents of file INBOX at the end of the current folder, fix
+;; the message lists and display the first new message. Returns the number
+;; of messages read if it's okay to try and read more inboxes, nil if it's
+;; best not to.
+(defun rm-append-inbox (inbox)
+  (cond
+   ((not (file-exists-p inbox))
+    (error "Inbox file doesn't exist" inbox))
+   ((zerop (file-size inbox))
+    (message (concat "No new mail in " inbox))
+    nil)
+   ((or (null movemail-program)
+	(not (file-exists-p movemail-program)))
+    (error "The variable `movemail-program' is invalid"))
+   (t
+    (let*
+	((tofile (file-name-concat (file-name-directory (buffer-file-name))
+				   (concat ".newmail-"
+					   (file-name-nondirectory inbox))))
+	 (temp-buffer (make-buffer "*movemail-output*"))
+	 (proc (make-process temp-buffer)))
+      (if (zerop (call-process proc nil movemail-program inbox tofile))
+	  ;; No errors
+	  (progn
+	    (destroy-buffer temp-buffer)
+	    (unrestrict-buffer)
+	    (let
+		((inhibit-read-only t)
+		 (keep-going t)
+		 (count 0)
+		 start pos msgs)
+	      (while rm-after-msg-list
+		(rm-move-forwards))
+	      (goto-buffer-end)
+	      (insert "\n\n")
+	      (setq start (cursor-pos))
+	      (insert-file tofile)
+	      (error-protect
+		  (progn
+		    ;; Try to save the folder..
+		    (save-file)
+		    ;; Don't delete the temporary file unless the folder
+		    ;; was saved properly
+		    (delete-file tofile))
+		(error
+		 (message (concat "Couldn't save folder; new messages left in "
+				  tofile) t)
+		 (setq keep-going nil)))
+	      (setq pos (buffer-end))
+	      (while (and pos (>= pos start)
+			  (setq pos (find-prev-regexp mail-message-start
+						      pos nil t)))
+		(when (rm-message-start-p pos)
+		  (setq msgs (cons (rm-build-message-struct pos) msgs)
+			count (1+ count))
+		  (rm-set-flag (car msgs) 'unread))
+		(prev-line 1 pos))
+	      (when msgs
+		(when rm-current-msg
+		  (setq rm-before-msg-list (cons rm-current-msg
+						 rm-before-msg-list)
+			rm-current-msg-index (1+ rm-current-msg-index)))
+		(setq rm-current-msg (car msgs)
+		      rm-after-msg-list (cdr msgs)
+		      rm-cached-msg-list 'invalid))
+	      (and keep-going count)))
+	;; Errors
+	(goto-buffer temp-buffer)
+	(error "Couldn't move mail" inbox tofile))))))
+
+;; Try and get new mail for the current folder. Returns the number of
+;; messages actually read
+(defun rm-get-mail ()
+  (let
+      ((inboxes (mail-find-inboxes (buffer-file-name)))
+       (old-msg rm-current-msg)
+       (count 0)
+       (this-ret 0)
+       this)
+    (while (and inboxes (numberp this-ret))
+      (setq this (car inboxes)
+	    inboxes (cdr inboxes))
+      (when (and (not (file-exists-p this))
+	       (file-exists-p (file-name-concat mail-folder-dir this)))
+	(setq this (file-name-concat mail-folder-dir this)))
+      (setq this-ret (rm-append-inbox this))
+      (when (and (numberp this-ret) (> this-ret 0))
+	(when (zerop count)
+	  ;; If this is the first new message we want to display it
+	  ;; afterwards
+	  (setq old-msg rm-current-msg))
+	(setq count (+ count this-ret))))
+    (when (numberp this-ret)
+      (format t "Got %d new messages" count))
+    (rm-with-summary
+     (summary-update))
+    (rm-display-message old-msg)
+    count))
+
+
 ;; Summary interface
 
 (defvar rm-summary-keymap (copy-sequence summary-keymap))
@@ -453,7 +594,10 @@ Major mode for viewing mail folders. Commands include:\n
   "n" 'rm-next-message
   "p" 'rm-previous-message
   "SPC" 'summary-select-item
-  "t" 'rm-toggle-all-headers)
+  "t" 'rm-toggle-all-headers
+  "g" 'rm-get-mail-command
+  "q" 'rm-save-and-quit
+  "v" 'read-mail-folder)
 
 (defvar rm-summary-functions '((select . rm-summary-select-item)
 			       (list . rm-summary-list)
@@ -517,7 +661,8 @@ the summary buffer.")
       (with-buffer rm-summary-buffer
 	(setq rm-summary-mail-buffer mail-buf)
 	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
-	(setq major-mode 'rm-summary-mode)))))
+	(setq major-mode 'rm-summary-mode
+	      mildly-special-buffer t)))))
 
 ;; Find a view in the current window displaying BUFFER, or nil.
 (defun rm-find-view (buffer)
@@ -534,7 +679,7 @@ the summary buffer.")
       ((view (rm-find-view rm-summary-buffer)))
     (unless view
       (setq view (other-view mail-summary-lines))
-      (set-current-buffer rm-summary-buffer view))
+      (goto-buffer rm-summary-buffer view))
     (set-current-view view)
     (unless dont-update
       (summary-update)
@@ -558,18 +703,21 @@ Major mode for displaying a summary of a mail folder.")
 (defun rm-summary-print-item (item)
   (let
       ((pending-ops (summary-get-pending-ops item)))
-    (format (current-buffer) "%s %c%c  %s %s %s "
+    (format (current-buffer) "%s %c%c%c%c%c  %s %s %s "
 	    (if (eq item (rm-with-folder rm-current-msg))
 		(progn
 		  (setq rm-summary-current-marked item)
 		  "->")
 	      "  ")
+	    (if (rm-test-flag item 'unread) ?N ?\ )
 	    (if (memq 'delete pending-ops) ?D ?\ )
-	    (if (rm-get-msg-field item rm-msg-replied) ?R ?\ )
+	    (if (rm-test-flag item 'replied) ?R ?\ )
+	    (if (rm-test-flag item 'filed) ?F ?\ )
+	    (if (rm-test-flag item 'forwarded) ?Z ?\ )
 	    (or (rm-get-msg-field item rm-msg-day) "")
 	    (or (rm-get-msg-field item rm-msg-month) "")
 	    (or (rm-get-msg-field item rm-msg-year) ""))
-    (indent-to 20)
+    (indent-to 22)
     (insert (or (rm-get-msg-field item rm-msg-from-name)
 		(rm-get-msg-field item rm-msg-from-addr)
 		""))
@@ -650,3 +798,41 @@ current message."
   (interactive)
   (rm-with-summary
    (summary-execute)))
+
+(defun rm-get-mail-command ()
+  "Attempt to collect new mail from spool files for the current folder."
+  (interactive)
+  (rm-always-with-folder
+   (rm-get-mail)))
+
+(defun rm-save-and-quit ()
+  "Quit from the mail reading subsystem. The current folder will be saved
+automatically."
+  (interactive)
+  (rm-always-with-folder
+   (let
+       ((buffer (current-buffer)))
+     (when (save-file)
+       (rm-quit-no-save)
+       (kill-buffer buffer)))))
+
+(defun rm-quit-no-save ()
+  "Quit from the mail reading subsystem without saving the current folder. The
+buffer will not be deleted, so it may be saved later."
+  (interactive)
+  (rm-always-with-folder
+   (let
+       ((summary-view (rm-find-view rm-summary-buffer)))
+     (when summary-view
+       (close-view summary-view))
+     (kill-buffer rm-summary-buffer)
+     (setq rm-current-msg nil
+	   rm-before-msg-list nil
+	   rm-after-msg-list nil
+	   rm-cached-msg-list nil
+	   rm-current-msg-index nil
+	   rm-summary-buffer nil)
+     (when (buffer-modified-p)
+       (message (concat  "Folder " (buffer-name)
+			 " contains unsaved changes!")))
+     (bury-buffer (current-buffer)))))
