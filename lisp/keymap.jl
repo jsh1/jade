@@ -31,6 +31,7 @@ keymaps, i.e. all `next-keymap-path' declarations are ignored.")
 (defvar km-prefix-string nil)
 (defvar km-keymap-list nil)
 
+;;;###autoload
 (defun map-keymap (function &optional keymap buffer)
   "Map FUNCTION over all key bindings under the keymap or list of keymaps
 KEYMAP (by default, the contents of the keymap-path variable). If BUFFER

@@ -428,11 +428,12 @@ is rejected.")
       (and (member name prompt-list) t)
     (let
 	((list prompt-list))
-      (while list
-	(when (string-match (concat ?^ (quote-regexp name) ?$)
-			    (car list) nil t)
-	  (return t))
-	(setq list (cdr list))))))
+      (catch 'exit
+	(while list
+	  (when (string-match (concat ?^ (quote-regexp name) ?$)
+			      (car list) nil t)
+	    (throw 'exit t))
+	  (setq list (cdr list)))))))
 
 
 ;; High-level entrypoints; prompt for a specific type of object

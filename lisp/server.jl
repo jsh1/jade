@@ -34,24 +34,24 @@ process asks us to edit a file -- its job is to load the specified file
 into a new buffer and display it at line LINE-NUMBER."
   (let
       (buf view)
-    (unless (setq buf (get-file-buffer file))
-      (unless (setq buf (find-file file t))
+    (if (and (not (setq buf (get-file-buffer file)))
+	     (not (setq buf (find-file file t))))
+	;; Can't find the file; return an error to the client
 	(server-reply file 10)
-	(return)))
-    (cond
-     ((eq server-open-window 'other)
-      (setq view (other-view)))
-     ((null server-open-window)
-      (setq view (current-view)))
-     (t
-      (setq view (current-view (make-window)))))
-    (with-view view
-      (goto-buffer buf)
-      (goto (pos 0 line-number))
-      (message (format nil "Client file `%s'." file)))
-    (with-buffer buf
-      (add-hook 'kill-buffer-hook 'server-file-kill))
-    buf))
+      (cond
+       ((eq server-open-window 'other)
+	(setq view (other-view)))
+       ((null server-open-window)
+	(setq view (current-view)))
+       (t
+	(setq view (current-view (make-window)))))
+      (with-view view
+	(goto-buffer buf)
+	(goto (pos 0 line-number))
+	(message (format nil "Client file `%s'." file)))
+      (with-buffer buf
+	(add-hook 'kill-buffer-hook 'server-file-kill))
+      buf)))
 
 ;; Hooked into kill-buffer, replies to the client if necessary
 (defun server-file-kill (buf)

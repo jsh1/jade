@@ -193,75 +193,78 @@ in the status line."
   "Returns the correct indentation position for the specified line."
   (unless line-pos
     (setq line-pos (cursor-pos)))
-  (let*
-      ((pos (start-of-line line-pos))
-       (index 0)
-       (sexp-ind pos)
-       last-ind
-       (form-pos (end-of-buffer))
-       form)
-    (if (looking-at "^[\t\f ]*(;;;|;[^;])" pos)
-	(setq sexp-ind (pos (if (looking-at "^[\t\f ]*;;;" pos)
-				0
-			      (1- comment-column))
-			    (pos-line sexp-ind)))
-      ;; Work back to the beginning of the containing sexp. The error-handler
-      ;; catches the error that's signalled when the start is reached.
-      (condition-case nil
-	  (while (setq pos (lisp-backward-sexp 1 pos))
-	    (when (<= form-pos pos)
-	      (error "Infinite loop"))
-	    (when (zerop (pos-col pos))
-	      (setq sexp-ind (pos 0 (pos-line sexp-ind)))
-	      (return sexp-ind))
-	    (setq form-pos pos
-		  index (1+ index))
-	    (when (or (null last-ind) (= (pos-line (car last-ind))
-					 (pos-line pos)))
-	      (setq last-ind (cons (char-to-glyph-pos pos) last-ind))))
-	(error))
-      ;; If there weren't any previous sexps to indent against stop now
-      (unless (zerop index)
-	(if last-ind
-	    (setq last-ind (if (and (= (pos-line pos) (pos-line (car last-ind)))
-				    (>= (length last-ind) 2))
-			       (nth 1 last-ind)
-			     (car last-ind)))
-	  (setq last-ind pos))
-	;; pos now points to the first sexp in the containing sexp
-	(setq sexp-ind (pos (pos-col (char-to-glyph-pos
-				      (or (re-search-backward "[\(\[]" pos)
-					  pos)))
-			    (pos-line sexp-ind)))
-	(setq form (read (cons (current-buffer) pos)))
-	(when (symbolp form)
-	  (let
-	      ((type (get form 'lisp-indent)))
-	    (cond
-	     ((null type)
-	      ;; standard indentation
-	      (if (and (= (- (pos-line line-pos) (pos-line pos)) 1)
-		       (< index 2))
-		  ;; on the second line of this sexp, with the first
-		  ;; argument, line up under the function name
-		  (setq sexp-ind (pos (pos-col (char-to-glyph-pos pos))
-				      (pos-line sexp-ind)))
-		;; otherwise line up under the first argument
-		(setq sexp-ind (pos (pos-col last-ind)
-				    (pos-line sexp-ind)))))
-	     ((eq type 'defun)
-	      ;; defun type indentation
-	      (if (or (= index 2) (= (- (pos-line line-pos) (pos-line pos)) 1))
-		  (setq sexp-ind (right-char lisp-body-indent sexp-ind))
-		(setq sexp-ind (pos (pos-col last-ind)
-				    (pos-line sexp-ind)))))
-	     ((numberp type)
-	      ;; first TYPE sexps are indented double
-	      (setq sexp-ind (right-char (if (<= index type)
-					     (* 2 lisp-body-indent)
-					   lisp-body-indent)
-					 sexp-ind))))))))
-    sexp-ind))
+  (catch 'return
+    (let*
+	((pos (start-of-line line-pos))
+	 (index 0)
+	 (sexp-ind pos)
+	 last-ind
+	 (form-pos (end-of-buffer))
+	 form)
+      (if (looking-at "^[\t\f ]*(;;;|;[^;])" pos)
+	  (setq sexp-ind (pos (if (looking-at "^[\t\f ]*;;;" pos)
+				  0
+				(1- comment-column))
+			      (pos-line sexp-ind)))
+	;; Work back to the beginning of the containing sexp. The error-handler
+	;; catches the error that's signalled when the start is reached.
+	(condition-case nil
+	    (while (setq pos (lisp-backward-sexp 1 pos))
+	      (when (<= form-pos pos)
+		(error "Infinite loop"))
+	      (when (zerop (pos-col pos))
+		(setq sexp-ind (pos 0 (pos-line sexp-ind)))
+		(throw 'return sexp-ind))
+	      (setq form-pos pos
+		    index (1+ index))
+	      (when (or (null last-ind) (= (pos-line (car last-ind))
+					   (pos-line pos)))
+		(setq last-ind (cons (char-to-glyph-pos pos) last-ind))))
+	  (error))
+	;; If there weren't any previous sexps to indent against stop now
+	(unless (zerop index)
+	  (if last-ind
+	      (setq last-ind (if (and (= (pos-line pos)
+					 (pos-line (car last-ind)))
+				      (>= (length last-ind) 2))
+				 (nth 1 last-ind)
+			       (car last-ind)))
+	    (setq last-ind pos))
+	  ;; pos now points to the first sexp in the containing sexp
+	  (setq sexp-ind (pos (pos-col (char-to-glyph-pos
+					(or (re-search-backward "[\(\[]" pos)
+					    pos)))
+			      (pos-line sexp-ind)))
+	  (setq form (read (cons (current-buffer) pos)))
+	  (when (symbolp form)
+	    (let
+		((type (get form 'lisp-indent)))
+	      (cond
+	       ((null type)
+		;; standard indentation
+		(if (and (= (- (pos-line line-pos) (pos-line pos)) 1)
+			 (< index 2))
+		    ;; on the second line of this sexp, with the first
+		    ;; argument, line up under the function name
+		    (setq sexp-ind (pos (pos-col (char-to-glyph-pos pos))
+					(pos-line sexp-ind)))
+		  ;; otherwise line up under the first argument
+		  (setq sexp-ind (pos (pos-col last-ind)
+				      (pos-line sexp-ind)))))
+	       ((eq type 'defun)
+		;; defun type indentation
+		(if (or (= index 2)
+			(= (- (pos-line line-pos) (pos-line pos)) 1))
+		    (setq sexp-ind (right-char lisp-body-indent sexp-ind))
+		  (setq sexp-ind (pos (pos-col last-ind)
+				      (pos-line sexp-ind)))))
+	       ((numberp type)
+		;; first TYPE sexps are indented double
+		(setq sexp-ind (right-char (if (<= index type)
+					       (* 2 lisp-body-indent)
+					     lisp-body-indent)
+					   sexp-ind))))))))
+      sexp-ind)))
 
 ;; Set up indentation hints
 

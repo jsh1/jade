@@ -256,43 +256,42 @@ init-mode, the hook after-find-file-hook is dispatched."
 
 ;; Scans the end of a file for any local-variable definitions
 (defun hack-local-variables ()
-  (unless enable-local-variables
-    (return))
-  (let
-      ((pos (pos 0 (- (buffer-length) local-variable-lines))))
-    (when (< (pos-line pos) 0)
-      (setq pos (start-of-buffer)))
-    (when (re-search-forward "^(.*)Local Variables:(.*)$" pos nil t)
-      (let
-	  ((re (concat ?^
-		       (quote-regexp (copy-area (match-start 1) (match-end 1)))
-		       "([^:\n]+):[\t ]*(.*)"
-		       (quote-regexp (copy-area (match-start 2) (match-end 2)))
-		       ?$))
-	   name value)
-	(setq pos (match-end))
-	(while (re-search-forward re pos)
-	  (setq pos (match-end)
-		name (copy-area (match-start 1) (match-end 1))
-		value (copy-area (match-start 2) (match-end 2)))
-	  (cond
-	   ((and (equal name "End") (equal value ""))
-	    (return))
-	   ((equal name "mode")
-	    (when (or (eq enable-local-variables t)
-		      (y-or-n-p (format nil "Use major mode %s?" value)))
-	      (setq mode-name value)))
-	   ((equal name "eval")
-	    (when (and enable-local-eval
-		       (or (eq enable-local-eval t)
-			   (y-or-n-p (format nil "Eval `%s'?" value))))
-	      (eval (read-from-string value))))
-	   (t
-	    (when (or (eq enable-local-variables t)
-		      (y-or-n-p (format nil "Set %s to %s?" name value)))
-	      (setq name (intern name))
-	      (make-local-variable name)
-	      (set name (read-from-string value))))))))))
+  (when enable-local-variables
+    (let
+	((pos (pos 0 (- (buffer-length) local-variable-lines))))
+      (when (< (pos-line pos) 0)
+	(setq pos (start-of-buffer)))
+      (when (re-search-forward "^(.*)Local Variables:(.*)$" pos nil t)
+	(let
+	    ((re (concat ?^ (quote-regexp (copy-area (match-start 1)
+						     (match-end 1)))
+			 "([^:\n]+):[\t ]*(.*)"
+			 (quote-regexp (copy-area (match-start 2)
+						  (match-end 2))) ?$))
+	     name value finished)
+	  (setq pos (match-end))
+	  (while (and (not finished) (re-search-forward re pos))
+	    (setq pos (match-end)
+		  name (copy-area (match-start 1) (match-end 1))
+		  value (copy-area (match-start 2) (match-end 2)))
+	    (cond
+	     ((and (equal name "End") (equal value ""))
+	      (setq finished t))
+	     ((equal name "mode")
+	      (when (or (eq enable-local-variables t)
+			(y-or-n-p (format nil "Use major mode %s?" value)))
+		(setq mode-name value)))
+	     ((equal name "eval")
+	      (when (and enable-local-eval
+			 (or (eq enable-local-eval t)
+			     (y-or-n-p (format nil "Eval `%s'?" value))))
+		(eval (read-from-string value))))
+	     (t
+	      (when (or (eq enable-local-variables t)
+			(y-or-n-p (format nil "Set %s to %s?" name value)))
+		(setq name (intern name))
+		(make-local-variable name)
+		(set name (read-from-string value)))))))))))
 
 (defun find-file-read-only (name &optional dont-activate)
   "Similar to `find-file' except that the buffer is edited in read-only mode."
@@ -354,10 +353,10 @@ to zero. If no changes have been made to the buffer, it won't be saved."
 	(message "No changes need to be saved!")
       (let
 	  ((name (buffer-file-name)))
-	(when (and
-	       (time-later-p (file-modtime name) buffer-file-modtime)
-	       (not (yes-or-no-p "File on disk has changed since it was loaded, save anyway")))
-	  (return nil))
+	(when (and (file-exists-p name)
+		   (time-later-p (file-modtime name) buffer-file-modtime)
+		   (not (yes-or-no-p "File on disk has changed since it was loaded, save anyway")))
+	  (error "Save aborted"))
 	(when (write-file buffer)
 	  (set-buffer-modified buffer nil)
 	  (setq last-save-time (current-time)
