@@ -38,25 +38,16 @@ Major mode for editing Lisp source. Local bindings in this mode are:\n
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Lisp"
 	major-mode 'lisp-mode
-	major-mode-kill 'lisp-mode-kill
+	major-mode-kill 'kill-all-local-variables
 	mode-comment-fun 'lisp-insert-comment
 	mode-indent-line 'lisp-indent-line
 	mode-forward-exp 'lisp-forward-sexp
 	mode-backward-exp 'lisp-backward-sexp
+	mode-symbol-regexp "[^][()?'`,@\"#; \t\f\n]+"
+	mode-defun-header "^\\(defun ([^ \t\f\n]+)"
+	mode-defun-footer nil
 	keymap-path (cons 'lisp-mode-keymap keymap-path))
-  (call-hook 'lisp-mode-hook)
-  t)
-
-(defun lisp-mode-kill ()
-  (setq keymap-path (delq 'lisp-mode-keymap keymap-path)
-	major-mode nil
-	major-mode-kill nil
-	mode-comment-fun nil
-	mode-indent-line nil
-	mode-forward-exp nil
-	mode-backward-exp nil
-	mode-name nil)
-  t)
+  (call-hook 'lisp-mode-hook))
 
 ;; Now lisp-mode is loaded we may as well make the *jade* buffer use it
 (with-buffer default-buffer

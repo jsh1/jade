@@ -101,25 +101,16 @@ Commands defined by this mode are:\n
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "C"
 	major-mode 'c-mode
-	major-mode-kill 'c-mode-kill
+	major-mode-kill 'kill-all-local-variables
 	mode-comment-fun 'c-insert-comment
 	mode-indent-line 'c-indent-line
 	mode-forward-exp 'c-forward-exp
 	mode-backward-exp 'c-backward-exp
+	mode-defun-header "^([a-zA-Z0-9_]+).*\n{"
+	mode-defun-footer "^}"
 	ctrl-c-keymap c-mode-ctrl-c-keymap
 	keymap-path (cons 'c-mode-keymap keymap-path))
   (call-hook 'c-mode-hook))
-
-(defun c-mode-kill ()
-  (setq mode-name nil
-	major-mode nil
-	major-mode-kill nil
-	mode-comment-fun nil
-	mode-indent-line nil
-	mode-forward-exp nil
-	mode-backward-exp nil
-	ctrl-c-keymap nil
-	keymap-path (delq 'c-mode-keymap keymap-path)))
 
 (defun c-open-brace ()
   (interactive)
