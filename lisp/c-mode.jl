@@ -20,8 +20,22 @@
 
 (provide 'c-mode)
 
-(defvar c-mode-tab 4
-  "Size of indentation for c-mode")
+;; Example settings:
+;;                   BSD  GNU  K&R
+;; c-body-indent      4    2    5
+;; c-brace-indent    -4    0   -5
+;; c-case-indent     -4   -2   -5
+;; c-label-indent    -4   -2   -5
+
+(defvar c-body-indent 4
+  "Indentation of code with respect to its containing block.")
+(defvar c-brace-indent -4
+  "Extra indentation of braces relative to the body of the code they
+contain.")
+(defvar c-case-indent -4
+  "Extra indentation for case statements.")
+(defvar c-label-indent -4
+  "Extra indentation for labels.")
 
 (defvar c-mode-keymap (make-keylist))
 (bind-keys c-mode-keymap
@@ -86,99 +100,149 @@ Special commands are,\n
   (insert ":")
   (indent-line))
 
+
+;; Indentation
+
 (defun c-indent-line (&optional pos)
   "Indent the line at POS (or the cursor) assuming that it's C source code."
   (set-indent-pos (c-indent-pos pos)))
 
-(defun c-indent-pos (&optional line-pos)
-  "*Attempts* to guess the correct indentation for this line. Returns the
-position for the first non-space in the line."
-  (setq line-pos (start-of-line line-pos))
-  (let*
-      ((ind-pos (c-indent-pos-empty line-pos)))
-    (when (not (empty-line-p line-pos))
-      (cond
-       ((looking-at "^[\t ]*({|}|case .*:|default *:)" line-pos)
-	(setq ind-pos (forward-tab -1 ind-pos c-mode-tab)))
-       ((looking-at "^[\t ]*([a-zA-Z0-9_]*:|#)" line-pos)
-	(setq ind-pos (pos 0 (pos-line ind-pos))))))
-    ind-pos))
-
-(defun c-indent-pos-empty (&optional line-pos)
-  "Returns the position for the first non-space in the line. Bases its guess
-upon the assumption that the line is empty.
-All positions depend on the indentation of the previous line(s)."
-  (setq line-pos (start-of-line line-pos))
-  (let*
-      ((p-line-pos (forward-line -1 line-pos)))
-    (while (or (empty-line-p p-line-pos)
-	       (looking-at "^([a-zA-Z0-9_]+:|#)" p-line-pos))
-      (unless (setq p-line-pos (forward-line -1 p-line-pos))
-	(return)))
-    (let*
-	((ind-pos (pos (pos-col (indent-pos p-line-pos)) (pos-line line-pos))))
-      (cond
-       ((looking-at ".*({|case .*:|default[\t ]*:|do($| )|else|(if|for|while|switch)[\t ]*\\(.*\\))" p-line-pos)
-	(setq ind-pos (forward-tab 1 ind-pos c-mode-tab)))
-       ((looking-at ".*;" p-line-pos)
-	(setq p-line-pos (forward-line -1 p-line-pos))
-	(while (or (empty-line-p p-line-pos)
-		   (looking-at "^([a-zA-Z0-9_]+:|#)" p-line-pos))
-	  (unless (setq p-line-pos (forward-line -1 p-line-pos))
-	    (return)))
-	(when (and (looking-at
-		    ".*(do($| )|else|(if|for|while|switch)[\t ]*\\(.*\\))"
-		    p-line-pos)
-		   (not (looking-at ".* {[\t ]*(/\\*.*\\*/|)[\t ]*$"
-				    p-line-pos)))
-	  (setq ind-pos (forward-tab -1 ind-pos c-mode-tab))))
-       ((looking-at "^[\t ]*/\\*" p-line-pos)
-	(unless (looking-at ".*\\*/" p-line-pos)
-	  (setq ind-pos (forward-char 3 ind-pos))))
-       ((looking-at "^[\t ]*\\*/ *$" p-line-pos)
-	(setq ind-pos (forward-char -1 ind-pos)))
-       ((looking-at ".*\\*/" p-line-pos)
-	(setq ind-pos (forward-char -3 ind-pos))))
-      ind-pos)))
-
-;;;###autoload
-(defun c-backslash-area (start end)
-  "Insert (or align) backslash characters at the end of each line in between
-START and END except for the last line."
-  (interactive "-m\nM")
+;; Attempt to find the previous statement
+(defun c-backward-stmt (pos)
   (let
-      ((max-width 0)
-       (pos (start-of-line start))
-       tmp)
-    (while (<= pos end)
-      (setq tmp (char-to-glyph-pos (if (looking-at ".*([\t ]*\\\\ *)$" pos)
-				       (match-start 1)
-				     (end-of-line pos))))
-      (when (> (pos-col tmp) max-width)
-	(setq max-width (pos-col tmp)))
-      (setq pos (forward-line 1 pos)))
-    (setq max-width (1+ max-width))
-    (unless (= (% max-width tab-size) 0)
-      (setq max-width (* (1+ (/ max-width tab-size)) tab-size)))
-    (setq pos (pos max-width (pos-line start)))
-    (while (< pos end)
-      (when (looking-at ".*([\t ]*\\\\ *)$" (start-of-line pos))
-	(delete-area (match-start 1) (match-end 1)))
-      (goto (end-of-line pos))
-      (indent-to max-width)
-      (insert "\\")
-      (setq pos (forward-line 1 pos)))
-    (goto end)))
+      (stmt-pos back-1-pos)
+    (condition-case nil
+	(while (setq pos (c-backward-exp 1 pos t))
+	  (cond
+	   ((null back-1-pos)
+	    (setq back-1-pos pos))
+	   ((/= (pos-line back-1-pos) (pos-line pos))
+	    ;; Gone past the start of this line, break the loop
+	    (error "Ignored")))
+	  (setq stmt-pos pos))
+      (error))
+    stmt-pos))
 
-;;;###autoload
-(defun c-insert-comment ()
-  (interactive)
-  (find-comment-pos)
-  (insert "/*  */")
-  (goto (forward-char -3)))
+;; POS should point to an `else' keyword, the position of it's matching `if'
+;; will be returned.
+(defun c-balance-ifs (pos &optional depth)
+  (unless depth
+    (setq depth 1))
+  (while (and (/= depth 0) (setq pos (c-backward-stmt pos)))
+    (cond
+     ((and (looking-at "else[\t ]*" pos)
+	   (not (looking-at "[\t ]*if[\t ]*\\(" (match-end))))
+      (setq depth (1+ depth)))
+     ((looking-at "if" pos)
+      (setq depth (1- depth)))))
+  (when (zerop depth)
+    pos))
+
+;; Work out where to indent LINE-POS to.
+(defun c-indent-pos (&optional line-pos)
+  (setq line-pos (start-of-line line-pos))
+  ;; Check for cpp op
+  (if (looking-at "^[\t ]*#" line-pos)
+      ;; Always indent preprocessor lines to the leftmost column
+      (pos 0 (pos-line line-pos))
+    (let
+	((pos line-pos)
+	 (exp-pos (c-backward-stmt line-pos))
+	 exp-ind)
+
+      ;; Find the beginning of the expression to indent relative to
+      (unless exp-pos
+	;; Start of the containing expression
+	(when (re-search-backward "[\{\(]" pos)
+	  (setq exp-pos (match-start))))
+      (setq exp-ind (char-to-glyph-pos exp-pos))
+      (unless (equal (indent-pos exp-pos) exp-ind)
+	(when (and (looking-at "^[\t ]*([^][(){}\"'a-zA-Z0-9_\t ]+)"
+			       (start-of-line exp-pos))
+		   (< (match-start 1) exp-pos))
+	  ;; Back up over the bits of punctuation
+	  (setq exp-ind (char-to-glyph-pos (match-start 1)))))
+
+      ;; First look at previous line and see how it affects the one we're
+      ;; trying to indent
+      (cond
+       ((= (get-char exp-pos) ?\})
+	;; A closing brace
+	(unless (zerop (pos-col exp-pos))
+	  (setq exp-ind (left-char (+ c-body-indent c-brace-indent) exp-ind))))
+
+       ((looking-at ".*{" exp-pos)
+	;; An opening brace
+	(setq exp-ind (right-char c-body-indent (indent-pos exp-pos))))
+
+       ((looking-at
+	 "(if|for|while|switch)[\t ]*\\(.*$|(else|do)([^a-zA-Z0-9_]|$)"
+	 exp-pos)
+	;; Something that causes the next statement to be
+	;; indented one level
+	(setq exp-ind (right-char c-body-indent exp-ind)))
+
+       ((looking-at ".*\;" exp-pos)
+	;; A full expression, indent to the level of the first
+	;; line in the expression
+	(let
+	    ((prev (c-backward-stmt exp-pos)))
+	  ;; *Need to loop here searching back to the correct level*
+	  (when (and prev (/= (pos-col prev) (pos-col exp-pos))
+		     (not (looking-at "case .*:|default[\t ]*:|.*;" prev)))
+	    ;; A continuation?
+	    (when (and (looking-at "else[\t ]*" prev)
+		       (not (looking-at "[\t ]*if[\t ]*\\(" (match-end))))
+	      (unless (setq prev (c-balance-ifs prev))
+		(error "Beginning of buffer"))
+	      (let
+		  ((tmp (c-backward-stmt prev)))
+		(while (and tmp (looking-at "if[\t ]*\\(" tmp))
+		  (setq prev tmp)
+		  (unless (setq tmp (c-backward-stmt tmp))
+		    (error "Beginning of buffer")))))
+	    (setq exp-ind (pos (pos-col (char-to-glyph-pos prev))
+			       (pos-line exp-ind))))))
+
+       ((looking-at "case .*:|default[\t ]*:" exp-pos)
+	;; A switch-statement label, these are indented back by c-case-indent
+	(setq exp-ind (left-char c-case-indent exp-ind)))
+
+       ((looking-at "[a-zA-Z_][a-zA-Z0-9_]+:([\t ]|$)" exp-pos)
+	;; A goto label, indented back by c-label-indent
+	(unless (left-char c-label-indent exp-ind)
+	  (setq exp-ind (pos 0 (pos-line exp-pos))))))
+
+      ;; Next, look at the contents of this line and see if it needs any
+      ;; special treatment
+      (unless (empty-line-p line-pos)
+	;; Skip leading whitespace
+	(when (looking-at "^[\t\f ]+" line-pos)
+	  (setq line-pos (match-end)))
+
+	(cond
+	 ((= (get-char line-pos) ?\{)
+	  ;; An opening brace at the start of the line, indent back by
+	  ;; c-brace-indent
+	  (setq exp-ind (pos (max 0 (+ (pos-col exp-ind) c-brace-indent)))))
+
+	 ((= (get-char line-pos) ?\})
+	  ;; A closing brace, indent outwards by c-brace-indent
+	  (setq exp-ind (left-char c-body-indent exp-ind)))
+
+	 ((looking-at "case .*:|default[\t ]*:" line-pos)
+	  ;; A switch label
+	  (setq exp-ind (right-char c-case-indent exp-ind)))
+
+	 ((looking-at "[a-zA-Z_]+[a-zA-Z0-9_]*:([\t ]|$)" line-pos)
+	  ;; A goto label
+	  (setq exp-ind (right-char c-label-indent exp-ind)))))
+
+      ;; Finished
+      (pos (pos-col exp-ind) (pos-line line-pos)))))
 
 
-;; Experimental expression stuff
+;; Movement over C expressions
 
 (defun c-forward-exp (&optional number pos)
   (unless number
@@ -298,3 +362,42 @@ START and END except for the last line."
 	    (setq pos (forward-char -1 pos))))
 	(setq number (1- number))))
     pos))
+
+
+;; Miscellaneous functions
+
+;;;###autoload
+(defun c-backslash-area (start end)
+  "Insert (or align) backslash characters at the end of each line in between
+START and END except for the last line."
+  (interactive "-m\nM")
+  (let
+      ((max-width 0)
+       (pos (start-of-line start))
+       tmp)
+    (while (<= pos end)
+      (setq tmp (char-to-glyph-pos (if (looking-at ".*([\t ]*\\\\ *)$" pos)
+				       (match-start 1)
+				     (end-of-line pos))))
+      (when (> (pos-col tmp) max-width)
+	(setq max-width (pos-col tmp)))
+      (setq pos (forward-line 1 pos)))
+    (setq max-width (1+ max-width))
+    (unless (= (% max-width tab-size) 0)
+      (setq max-width (* (1+ (/ max-width tab-size)) tab-size)))
+    (setq pos (pos max-width (pos-line start)))
+    (while (< pos end)
+      (when (looking-at ".*([\t ]*\\\\ *)$" (start-of-line pos))
+	(delete-area (match-start 1) (match-end 1)))
+      (goto (end-of-line pos))
+      (indent-to max-width)
+      (insert "\\")
+      (setq pos (forward-line 1 pos)))
+    (goto end)))
+
+;;;###autoload
+(defun c-insert-comment ()
+  (interactive)
+  (find-comment-pos)
+  (insert "/*  */")
+  (goto (forward-char -3)))
