@@ -850,9 +850,10 @@ make_marks_resident(VALUE newtx)
 	
 	if(STRINGP(VTX(newtx)->tx_CanonicalFileName)
 	    && strcmp(VSTR(VTX(newtx)->tx_CanonicalFileName),
-		      VSTR(VMARK(mk)->file)) == 0)
+		      VSTR(VMARK(mk)->canon_file)) == 0)
 	{
 	    VMARK(mk)->file = newtx;
+	    VMARK(mk)->canon_file = sym_nil;
 	    VMARK(mk)->next = VTX(newtx)->tx_MarkChain;
 	    VTX(newtx)->tx_MarkChain = VMARK(mk);
 	}
@@ -870,8 +871,11 @@ make_marks_resident(VALUE newtx)
 static void
 make_marks_non_resident(TX *oldtx)
 {
-    VALUE file = (STRINGP(oldtx->tx_CanonicalFileName)
-		  ? oldtx->tx_CanonicalFileName
+    VALUE canon_file = (STRINGP(oldtx->tx_CanonicalFileName)
+			? oldtx->tx_CanonicalFileName
+			: null_string());
+    VALUE file = (STRINGP(oldtx->tx_FileName)
+		  ? oldtx->tx_FileName
 		  : null_string());
     Lisp_Mark *nxt, *mk = oldtx->tx_MarkChain;
     oldtx->tx_MarkChain = NULL;
@@ -879,6 +883,7 @@ make_marks_non_resident(TX *oldtx)
     {
 	nxt = mk->next;
 	mk->file = file;
+	mk->canon_file = canon_file;
 	mk->next = non_resident_mark_chain;
 	non_resident_mark_chain = mk;
 	mk = nxt;
@@ -939,16 +944,16 @@ mark_cmp(VALUE v1, VALUE v2)
     int rc = 1;
     if(VTYPE(v1) == VTYPE(v2))
     {
-	if(MARK_RESIDENT_P(VMARK(v1)) && MARK_RESIDENT_P(VMARK(v2))
-	   && VMARK(v1)->file == VMARK(v2)->file)
+	if((MARK_RESIDENT_P(VMARK(v1)) && MARK_RESIDENT_P(VMARK(v2))
+	    && VMARK(v1)->file == VMARK(v2)->file)
+	   || ((!MARK_RESIDENT_P(VMARK(v1)) && !MARK_RESIDENT_P(VMARK(v2)))
+	       && (value_cmp(VMARK(v1)->canon_file,
+			     VMARK(v2)->canon_file) == 0)))
 	{
-	    
 	    rc = VROW(VMARK(v1)->pos) - VROW(VMARK(v2)->pos);
 	    if(rc == 0)
 		rc = VCOL(VMARK(v1)->pos) - VROW(VMARK(v2)->pos);
 	}
-	else if(!MARK_RESIDENT_P(VMARK(v1)) && !MARK_RESIDENT_P(VMARK(v1)))
-	    rc = value_cmp(VMARK(v1)->file, VMARK(v1)->file);
     }
     return rc;
 }
@@ -1005,6 +1010,7 @@ updated as the file changes -- it will always point to the same character
 
 	/* just so these are valid */
 	VMARK(mk)->file = VAL(curr_vw->vw_Tx);
+	VMARK(mk)->canon_file = sym_nil;
 	VMARK(mk)->next = NULL;
 
 	if(STRINGP(buffer))
@@ -1024,10 +1030,11 @@ updated as the file changes -- it will always point to the same character
 	    PUSHGC(gc_buf, buffer);
 	    tem = cmd_canonical_file_name(buffer);
 	    POPGC; POPGC;
+	    VMARK(mk)->file = buffer;
 	    if(tem && STRINGP(tem))
-		VMARK(mk)->file = tem;
+		VMARK(mk)->canon_file = tem;
 	    else
-		VMARK(mk)->file = buffer;
+		VMARK(mk)->canon_file = buffer;
 	    VMARK(mk)->next = non_resident_mark_chain;
 	    non_resident_mark_chain = VMARK(mk);
 	}
@@ -1082,6 +1089,8 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
     }
     if(BUFFERP(file))
     {
+	VMARK(mark)->file = file;
+	VMARK(mark)->canon_file = sym_nil;
 	if(VMARK(mark)->file != file)
 	{
 	    unchain_mark(VMARK(mark));
@@ -1096,8 +1105,11 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
 	PUSHGC(gc_file, file);
 	tem = cmd_canonical_file_name(file);
 	POPGC; POPGC;
+	VMARK(mark)->file = file;
 	if(tem && STRINGP(tem))
-	    file = tem;
+	    VMARK(mark)->canon_file = tem;
+	else
+	    VMARK(mark)->canon_file = file;
 	if(!MARK_RESIDENT_P(VMARK(mark)))
 	{
 	    unchain_mark(VMARK(mark));
@@ -1105,8 +1117,7 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
 	    non_resident_mark_chain = VMARK(mark);
 	}
     }
-    VMARK(mark)->file = file;
-    return file;
+    return VMARK(mark)->file;
 }
 
 _PR VALUE cmd_mark_pos(VALUE);
