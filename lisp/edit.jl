@@ -48,6 +48,9 @@ and writable.")
 position.")
 (make-variable-buffer-local 'auto-mark)
 
+(defvar kill-ring-size 8
+  "Maximum number of strings stored in the kill ring at any one time.")
+
 
 ;; Marks
 
@@ -421,6 +424,7 @@ backwards. When called interactively the cursor is set to the position."
 
 ;; Block handling
 
+;; Called when the block changes
 (defun x11-block-status-function ()
   (if (blockp)
       (x11-set-selection 'xa-primary (block-start) (block-end))
@@ -550,19 +554,25 @@ auto-mark"
 
 ;; Killing
 
-(defvar kill-ring (make-ring 32)
+(defvar kill-ring (make-ring kill-ring-size)
   "The ring buffer containing killed strings.")
+
+;; Cursor position at last kill
+(defvar kill-last-cursor nil)
 
 (defun kill-string (string)
   "Adds STRING to the kill storage. If the last command also kill'ed something
-the string is appended to."
+the string is added to."
   (when (and (stringp string) (not (string= string "")))
     (if (eq last-command 'kill)
-	(set-ring-head kill-ring (concat (killed-string) string))
+	(set-ring-head kill-ring (if (>= (cursor-pos) kill-last-cursor)
+				     (concat (killed-string) string)
+				   (concat string (killed-string))))
       (add-to-ring kill-ring string))
     (call-hook 'after-kill-hook))
   ;; this command did some killing
-  (setq this-command 'kill)
+  (setq this-command 'kill
+	kill-last-cursor (cursor-pos))
   string)
 
 (when (x11-p)
@@ -572,9 +582,7 @@ the string is appended to."
 							       
 (defun killed-string (&optional depth)
   "Returns the string in the kill-buffer at position DEPTH."
-  (unless (numberp depth)
-    (setq depth 0))
-  (get-from-ring kill-ring (1+ depth)))
+  (get-from-ring kill-ring (1+ (or depth 0))))
 
 (defun kill-area (start end)
   "Kills a region of text in the current buffer from START to END."
@@ -597,60 +605,61 @@ kill storage."
 (defvar yank-last-start nil)
 (defvar yank-last-end nil)
 
+(defun yank-get-string (not-block)
+  (if (and (null not-block)
+	   ;; If a block is marked use that, otherwise (in X11) look for a
+	   ;; selection
+	   (or (blockp) (and (x11-p)
+			     (x11-selection-active-p 'xa-primary))))
+      (progn
+	(setq yank-last-item nil)
+	(if (blockp) (copy-block) (x11-get-selection 'xa-primary)))
+    (when (zerop (ring-size kill-ring))
+      (error "Nothing to yank"))
+    (setq yank-last-item 0)
+    (killed-string)))
+
 (defun yank (&optional dont-yank-block)
   "Inserts text before the cursor. If a block is marked in the current buffer
 and DONT-YANK-BLOCK is nil insert the text in the block. Else yank the last
 killed text."
   (interactive "P")
-  (if (and (null dont-yank-block)
-	   ;; If a block is marked use that, otherwise (in X11) look for a
-	   ;; selection not owned by us.
-	   (or (blockp) (and (x11-p) (x11-selection-active-p 'xa-primary)
-			     (not (x11-own-selection-p 'xa-primary)))))
-      (progn
-	(let
-	    ((string (if (blockp)
-			 (copy-block)
-		       (x11-get-selection 'xa-primary))))
-	  (when (not (string= string ""))
-	    (insert string)))
-	(setq yank-last-item nil))
-    (setq yank-last-item 0
-	  yank-last-start (cursor-pos)
-	  yank-last-end (insert (killed-string))
-	  this-command 'yank)))
+  (setq yank-last-start (cursor-pos)
+	this-command 'yank)
+  (insert (yank-get-string dont-yank-block)))
 
 (defun yank-rectangle (&optional dont-yank-block)
   "Similar to `yank' except that the inserted text is treated as a rectangle."
   (interactive "P")
-  (if (and (null dont-yank-block)
-	   (or (blockp) (and (x11-p) (x11-selection-active-p 'xa-primary))))
-      (let
-	  ((string (if (blockp)
-		       (copy-block)
-		     (x11-get-selection 'xa-primary))))
-	(insert-rectangle string))))
+  (setq yank-last-start (cursor-pos)
+	this-command 'yank-rectangle)
+  (insert-rectangle (yank-get-string dont-yank-block)))
 
-(defun yank-next ()
-  "If the last command was a yank, replace the yanked text with the next
-string in the kill ring. Currently this doesn't work when the last command
-yanked a rectangle of text."
-  (interactive)
-  (when (and (eq last-command 'yank)
-	     yank-last-item
-	     (< yank-last-item (1- (ring-size kill-ring))))
-    (goto yank-last-start)
-    (delete-area yank-last-start yank-last-end)
-    (setq yank-last-end (insert-rectangle (killed-string (1+ yank-last-item)))
-	  yank-last-item (1+ yank-last-item)
-	  this-command 'yank)))
-
-(defun yank-to-mouse ()
-  "Calls `yank inserting at the current position of the mouse cursor. The
-cursor is left at the end of the inserted text."
-  (interactive)
-  (goto (mouse-pos))
-  (yank))
+(defun yank-next (count)
+  "If the last command was a yank, replace the yanked text with the COUNT'th
+next string in the kill ring."
+  (interactive "p")
+  (if (and (or (eq last-command 'yank) (eq last-command 'yank-rectangle))
+	   buffer-record-undo)
+      (progn
+	(setq yank-last-item (if yank-last-item
+				 (+ yank-last-item count)
+			       (1- count)))
+	(when (>= yank-last-item (ring-size kill-ring))
+	  (error "Nothing more to yank"))
+	;; Using undo should allow rectangles to be replaced properly
+	(undo)
+	;; ALERT: major hack, doing this causes whatever had to be
+	;; done to undo the last insertion to be lost forever. If
+	;; this isn't done multiple yank-next's won't work. This
+	;; isn't great, since undoing the multiple yanks doesn't
+	;; work as you'd expect...
+	(setq buffer-undo-list nil)
+	(goto yank-last-start)
+	(funcall (if (eq last-command 'yank) 'insert 'insert-rectangle)
+		 (killed-string yank-last-item))
+	(setq this-command last-command))
+    (error "Can't yank (last command wasn't yank, or no undo info)")))
 
 
 ;; Transposing
@@ -911,3 +920,10 @@ the current view. Returns nil if no such character can be found."
       (block-kill)
       (block-start mouse-select-pos)
       (block-end pos))))
+
+(defun yank-to-mouse ()
+  "Yanks to the position under the mouse cursor. The cursor is left at the
+end of the inserted text."
+  (interactive)
+  (mouse-select)
+  (yank))
