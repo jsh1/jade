@@ -423,7 +423,7 @@ x11_handle_input(int fd)
 		    curr_win = ev_win;
 		    if(ev_win != oldwin)
 			curr_vw = curr_win->w_CurrVW;
-		    cmd_call_hook(sym_window_closed_hook, sym_nil, sym_nil);
+		    cmd_delete_window(sym_nil);
 		    xdisplay = 0;
 		}
 		break;
