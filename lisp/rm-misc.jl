@@ -43,7 +43,8 @@
       ;; Need to look at *all* headers
       (restrict-buffer (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark))
 		       rm-current-msg-body)
-      (setq to (mail-get-header "From" t)
+      (setq to (or (mail-get-header "Reply-To" t)
+		   (mail-get-header "From" t))
 	    cc (if followup-p
 		   (nconc (mail-get-header "To" t)
 			  (mail-get-header "CC" t))
@@ -57,7 +58,8 @@
 			    (list (current-buffer) message))))
     (setq rm-reply-message message)
     (when yankp
-      (mail-yank-original))))
+      (mail-yank-original))
+    (set-buffer-modified (current-buffer) nil)))
 
 (defun rm-reply-callback (buffer message)
   (rm-set-flag message 'replied)
