@@ -128,13 +128,20 @@ read_tx(TX *tx, FILE *fh)
 	line->ln_Strlen = 1;
     }
     linenum++;
+
     if(!resize_line_list(tx, linenum - allocedlines, linenum))
 	goto abortmem;
+
+    tx->tx_LogicalStart = 0;
+    tx->tx_LogicalEnd = tx->tx_NumLines;
+
     tx->tx_Changes++;
     rc = TRUE;
+
 #ifdef HAVE_AMIGA
     message("OK");
 #endif
+
     if(0)
     {
 	/* This only gets executed if we aborted while reading the file. */
@@ -142,6 +149,7 @@ abortmem:
 	mem_error();
 	clear_line_list(tx);
     }
+
     tx->tx_Flags |= TXFF_REFRESH_ALL;
     return(rc);
 }
