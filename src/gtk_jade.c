@@ -1041,7 +1041,7 @@ sys_windows_init(void)
     rep_ADD_SUBR (Sflush_output);
     rep_ADD_SUBR (Smake_window_on_display);
     rep_ADD_SUBR (Sgtk_cursor_shape);
-    rep_INTERN (gtk_jade_new_hook);
+    rep_INTERN_SPECIAL (gtk_jade_new_hook);
     rep_INTERN (dnd_drop_uri_list);
 #if 0
     /* XXX this doesn't work. I sometimes get errors:

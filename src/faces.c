@@ -520,10 +520,10 @@ faces_init(void)
     rep_INTERN(italic);
     rep_INTERN(inverted);
     rep_INTERN(boxed);
-    rep_INTERN(default_face);
-    rep_INTERN(block_face);
-    rep_INTERN(modeline_face);
-    rep_INTERN(highlight_face);
+    rep_INTERN_SPECIAL(default_face);
+    rep_INTERN_SPECIAL(block_face);
+    rep_INTERN_SPECIAL(modeline_face);
+    rep_INTERN_SPECIAL(highlight_face);
     rep_INTERN(face);
     rep_INTERN(mouse_face);
 

@@ -46,16 +46,19 @@
 			 ("Toggle modified" bs-toggle-modified)
 			 ("Toggle read-only" bs-toggle-read-only)))
 
-(defvar bs-functions '((select . bs-select-item)
-		       (delete . kill-buffer)
-		       (print . bs-print-item)
-		       (list . (lambda () (copy-sequence buffer-list)))
-		       (save . save-file)
-		       (after-marking . (lambda () (summary-next-item 1)))
-		       (with-extent . (lambda (e)
-					(extent-put
-					 e 'popup-menus bs-popup-menus)))
-		       (on-quit . bs-quit))
+(defvar bs-functions (list '(select . bs-select-item)
+			   '(delete . kill-buffer)
+			   '(print . bs-print-item)
+			   (cons 'list #'(lambda ()
+					   (copy-sequence buffer-list)))
+			   '(save . save-file)
+			   (cons 'after-marking #'(lambda ()
+						    (summary-next-item 1)))
+			   (cons 'with-extent
+				 #'(lambda (e)
+				     (extent-put
+				      e 'popup-menus bs-popup-menus)))
+			   '(on-quit . bs-quit))
   "Function vector for summary-mode.")
 
 ;;;###autoload

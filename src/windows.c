@@ -808,12 +808,12 @@ windows_init(void)
     rep_ADD_SUBR(Swindow_first_view);
     rep_ADD_SUBR(Swindowp);
     rep_ADD_SUBR_INT(Sset_font);
-    rep_INTERN(make_window_hook);
-    rep_INTERN(delete_window_hook);
+    rep_INTERN_SPECIAL(make_window_hook);
+    rep_INTERN_SPECIAL(delete_window_hook);
     rep_INTERN(save_and_quit);
-    rep_INTERN(visible_bell);
+    rep_INTERN_SPECIAL(visible_bell);
     rep_SYM(Qvisible_bell)->value = Qnil;
-    rep_INTERN(visible_bell_length);
+    rep_INTERN_SPECIAL(visible_bell_length);
     rep_SYM(Qvisible_bell_length)->value = rep_MAKE_INT (250);
     rep_beep_fun = beep;
 }

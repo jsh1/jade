@@ -361,18 +361,20 @@ is split.")
   (unless start
     (setq start ""))
   (let*
-      ((prompt-completion-function `(lambda (w)
-				      (or prompt-list
-					  (with-buffer ,(current-buffer)
-					    (setq prompt-list
-						  (funcall info-list-fun))))
-				      (prompt-complete-from-list w)))
-       (prompt-validate-function `(lambda (w)
-				    (or prompt-list
-				      (with-buffer ,(current-buffer)
-					(setq prompt-list
-					      (funcall info-list-fun))))
-				    (prompt-validate-from-list w)))
+      ((prompt-completion-function (make-closure
+				    `(lambda (w)
+				       (or prompt-list
+					   (with-buffer ,(current-buffer)
+					     (setq prompt-list
+						   (funcall info-list-fun))))
+				       (prompt-complete-from-list w))))
+       (prompt-validate-function (make-closure
+				  `(lambda (w)
+				     (or prompt-list
+					 (with-buffer ,(current-buffer)
+					   (setq prompt-list
+						 (funcall info-list-fun))))
+				     (prompt-validate-from-list w))))
        (prompt-list-fold-case t)
        (completion-fold-case t)
        ;;(prompt-word-regexps prompt-def-regexps)

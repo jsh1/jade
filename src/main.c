@@ -97,13 +97,13 @@ jade_symbols (void)
     if(!faces_init() || !first_buffer())
 	exit (10);
 
-    rep_INTERN(jade_directory);
+    rep_INTERN_SPECIAL(jade_directory);
     if(getenv("JADEDIR") != 0)
 	rep_SYM(Qjade_directory)->value = rep_string_dup(getenv("JADEDIR"));
     else
 	rep_SYM(Qjade_directory)->value = rep_string_dup(JADE_DIR);
 
-    rep_INTERN(jade_lisp_lib_directory);
+    rep_INTERN_SPECIAL(jade_lisp_lib_directory);
     if(getenv("JADELISPDIR") != 0)
 	rep_SYM(Qjade_lisp_lib_directory)->value
 	    = rep_string_dup(getenv("JADELISPDIR"));
@@ -111,7 +111,7 @@ jade_symbols (void)
 	rep_SYM(Qjade_lisp_lib_directory)->value
 	    = rep_string_dup(JADE_LISPDIR);
 
-    rep_INTERN(jade_site_lisp_directory);
+    rep_INTERN_SPECIAL(jade_site_lisp_directory);
     if(getenv("JADESITELISPDIR") != 0)
 	rep_SYM(Qjade_site_lisp_directory)->value
 	    = rep_string_dup(getenv("JADESITELISPDIR"));
@@ -120,7 +120,7 @@ jade_symbols (void)
 	    = rep_concat2(rep_STR(rep_SYM(Qjade_directory)->value),
 			  "/site-lisp");
 
-    rep_INTERN(jade_exec_directory);
+    rep_INTERN_SPECIAL(jade_exec_directory);
     if(getenv("JADEEXECDIR") != 0)
 	rep_SYM(Qjade_exec_directory)->value
 	    = rep_string_dup(getenv("JADEEXECDIR"));

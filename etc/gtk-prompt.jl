@@ -61,8 +61,8 @@
 			(GTK-WIDGET-SET-FLAGS button '(can-default))
 			(gtk-box-pack-start bbox button nil nil)
 			(gtk-signal-connect button "clicked"
-					    `(lambda ()
-					       (throw 'exit ',(cdr cell))))))
+					    #'(lambda ()
+						(throw 'exit (cdr cell))))))
 		  buttons)
 	    (gtk-widget-show-all window)
 	    (gtk-main))
@@ -147,9 +147,9 @@
 	    (GTK-WIDGET-SET-FLAGS button '(can-default))
 	    (gtk-box-pack-start bbox button)
 	    (let
-		((fun `(lambda ()
-			 (gtk-prompt-from-list-activate
-			  ,combo ,dont-validate))))
+		((fun #'(lambda ()
+			  (gtk-prompt-from-list-activate
+			   combo dont-validate))))
 	      (gtk-signal-connect button "clicked" fun)
 	      (gtk-signal-connect (gtk-combo-entry combo) "activate" fun))
 	    (setq button (gtk-button-new-with-label "Cancel"))
@@ -181,8 +181,8 @@
 		      (gtk-signal-connect
 		       (gtk-file-selection-ok-button fs)
 		       "clicked"
-		       `(lambda ()
-			  (throw 'got (gtk-file-selection-get-filename ,fs))))
+		       #'(lambda ()
+			   (throw 'got (gtk-file-selection-get-filename fs))))
 		      (gtk-widget-show fs)
 		      (while t
 			(setq file (catch 'got (gtk-main)))

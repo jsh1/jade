@@ -812,9 +812,9 @@ edit_init(void)
     rep_ADD_SUBR(Spos_to_offset);
     rep_ADD_SUBR(Scall_process_area);
 
-    rep_INTERN(inhibit_read_only);
-    rep_INTERN(read_only);
+    rep_INTERN_SPECIAL(inhibit_read_only);
+    rep_INTERN_SPECIAL(read_only);
     rep_SYM(Qread_only)->value = Qnil;
     Fmake_variable_buffer_local(Qread_only);
-    rep_INTERN(block_status_hook);
+    rep_INTERN_SPECIAL(block_status_hook);
 }

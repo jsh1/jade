@@ -344,8 +344,8 @@ killed and one editing NAME is found."
   "Returns the name of the file used to store the backup of FILE-NAME."
   (concat file-name ?~))
 
-(defun backup-file (file-name)
-  "If necessary make a backup of FILE-NAME. The file called FILE-NAME may or
+(defun backup-file (name)
+  "If necessary make a backup of NAME. The file called NAME may or
 may not exist after this function returns."
   (when (and make-backup-files (file-regular-p name))
     (let

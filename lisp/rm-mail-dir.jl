@@ -32,7 +32,7 @@
 ;; Prevent warnings
 (eval-when-compile (require 'rm-summary))
 
-(defvar rm-mail-dir-auto-scan-hook '((lambda () t))
+(defvar rm-mail-dir-auto-scan-hook (list #'(lambda () t))
   "Hook called before a mail message is automatically scanned for addresses
 to add to the address book. If any function in this hook returns nil, the
 message isn't scanned.")

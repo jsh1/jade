@@ -45,16 +45,18 @@ still given a highlighted header.")
   "When non-nil, any attachments that can be displayed inline will be.")
 
 (defvar mime-xfer-encodings-alist
-  '((base64
-     (lambda (in out)
-       (mime-decode-mmencode in out 'mime-encode-base64 t t))
-     (lambda (in out)
-       (mime-decode-mmencode in out 'mime-decode-base64 nil t)))
-    (quoted-printable
-     (lambda (in out)
-       (mime-decode-mmencode in out 'mime-encode-quoted-printable t nil))
-     (lambda (in out)
-       (mime-decode-mmencode in out 'mime-decode-quoted-printable nil nil))))
+  (list (list 'base64
+	      #'(lambda (in out)
+		  (mime-decode-mmencode in out 'mime-encode-base64 t t))
+	      #'(lambda (in out)
+		  (mime-decode-mmencode in out 'mime-decode-base64 nil t)))
+	(list 'quoted-printable
+	      #'(lambda (in out)
+		  (mime-decode-mmencode
+		   in out 'mime-encode-quoted-printable t nil))
+	      #'(lambda (in out)
+		  (mime-decode-mmencode
+		   in out 'mime-decode-quoted-printable nil nil))))
   "Alist of (ENCODING ENCODER DECODER) where ENCODER and DECODER are
 functions that operate as filters on their argument streams.")
 
@@ -212,7 +214,7 @@ external mmencode program, otherwise handle locally.")
 					nil mmencode-program args))
 			     ;; must be a local file
 			     (apply 'call-process process
-				    (local-file-name (file-binding file))
+				    (local-file-name (file-binding input))
 				    mmencode-program args)))
 		;; success
 		(throw 'foo t))

@@ -161,7 +161,7 @@ of each rule is ignored.")
   "Keymap for reading mail")
 
 (defvar rm-popup-menus
-  '(("Movement"
+  `(("Movement"
      ("Next message" rm-next-undeleted-message)
      ("Previous message" rm-previous-undeleted-message)
      ("Next page" rm-next-page)
@@ -172,9 +172,9 @@ of each rule is ignored.")
      ("Unmark all messages" rm-unmark-all-messages)
      ()
      ("Reply to message" rm-reply)
-     ("Reply with quotation" (lambda () (rm-reply t)))
+     ("Reply with quotation" ,#'(lambda () (rm-reply t)))
      ("Followup message" rm-followup)
-     ("Followup with quotation" (lambda () (rm-followup t)))
+     ("Followup with quotation" ,#'(lambda () (rm-followup t)))
      ("Forward message" rm-forward)
      ()
      ("Burst digest message" rm-burst-message)

@@ -147,7 +147,7 @@ For example, to define a rule accepting only messages sent by me (that's
 	 (prompt-for-lisp "Body of rule:")))
   (let
       ((symbol (rm-rule-symbol name)))
-    (fset symbol (list 'lambda args (rm-make-rule-body body)))
+    (fset symbol (make-closure (list 'lambda args (rm-make-rule-body body))))
     (put name 'rm-rule-function symbol)
     name))
 
@@ -155,7 +155,7 @@ For example, to define a rule accepting only messages sent by me (that's
 (defun rule-lambda (args body)
   "Create an anonymous message restriction rule with arguments ARGS and
 body form BODY."
-  (list 'lambda args (rm-make-rule-body body)))
+  (make-closure (list 'lambda args (rm-make-rule-body body))))
 
 (defun compile-rule (name)
   "Compile the message selection rule called NAME (a symbol) to bytecode."
@@ -227,13 +227,14 @@ contain its definition as a function."
 (defun rm-combine-rules (rule1 rule2 &optional op)
   (unless op (setq op 'and))
   (or (memq op '(and or progn)) (error "Unknown combinator: %s" op))
-  `(lambda ()
-     (,op (funcall ,(if (functionp rule1)
-			rule1
-		      (get rule1 'rm-rule-function)))
-          (funcall ,(if (functionp rule2)
-			rule2
-		      (get rule2 'rm-rule-function))))))
+  (make-closure
+   `(lambda ()
+      (,op (funcall ,(if (functionp rule1)
+			 rule1
+		       (get rule1 'rm-rule-function)))
+      (funcall ,(if (functionp rule2)
+		    rule2
+		  (get rule2 'rm-rule-function)))))))
 
 
 ;; Standard rules

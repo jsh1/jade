@@ -63,24 +63,24 @@
 					'mouse-face active-face)))
 	(let
 	    ((menus `(("Restrict to this address"
-		       (lambda ()
-			 (rm-restrict-to-address
-			  ,(quote-regexp (car addr)) ,folder)))
+		       ,#'(lambda ()
+			    (rm-restrict-to-address
+			     (quote-regexp (car addr)) folder)))
 		      ("Restrict to sent msgs"
-		       (lambda ()
-			 (rm-restrict-to-sender
-			  ,(quote-regexp (car addr)) ,folder)))
+		       ,#'(lambda ()
+			    (rm-restrict-to-sender
+			     (quote-regexp (car addr)) folder)))
 		      ("Restrict to received msgs"
-		       (lambda ()
-			 (rm-restrict-to-recipient
-			  ,(quote-regexp (car addr)) ,folder)))
+		       ,#'(lambda ()
+			    (rm-restrict-to-recipient
+			     (quote-regexp (car addr)) folder)))
 		      ("Mail this address"
-		       (lambda ()
-			 (mail-setup (mail-format-address ,(car addr)
-							  ,(cdr addr)))))
+		       ,#'(lambda ()
+			    (mail-setup (mail-format-address (car addr)
+							     (cdr addr)))))
 		      ("Add to address book"
-		       (lambda ()
-			 (add-mail-address ,(car addr) ,(cdr addr)))))))
+		       ,#'(lambda ()
+			    (add-mail-address (car addr) (cdr addr)))))))
 	  (extent-put extent 'popup-menus menus))
 	(setq point (if (looking-at "[\t\n ]*,[\t\n ]*" (cdr tem))
 			(match-end)
@@ -92,12 +92,12 @@
        (extent (rm-msg-links-make-extent point)))
     (extent-put extent 'popup-menus
 		`(("Restrict to this subject"
-		   (lambda ()
-		     (rm-restrict-to-subject
-		      ,(quote-regexp subject) ,folder)))
+		   ,#'(lambda ()
+			(rm-restrict-to-subject
+			 (quote-regexp subject) folder)))
 		  ("Kill this subject"
-		   (lambda ()
-		     (rm-kill-subject)))))))
+		   ,#'(lambda ()
+			(rm-kill-subject)))))))
 
 (defun rm-msg-links-date (point msg folder)
   (let
@@ -106,15 +106,15 @@
     ;;; TODO: ranges of dates
     (extent-put extent 'popup-menus
 		`(("Restrict to before this date"
-		  (lambda ()
-		    (rm-change-rule ,folder
-				    (rule-lambda
-				     () '(sent-before ,date)))))
+		   ,#'(lambda ()
+			(rm-change-rule folder
+					(rule-lambda
+					 () (list 'sent-before date)))))
 		  ("Restrict to after this date"
-		  (lambda ()
-		    (rm-change-rule ,folder
-				    (rule-lambda
-				     () '(sent-after ,date)))))))))
+		   ,#'(lambda ()
+			(rm-change-rule folder
+					(rule-lambda
+					 () (list 'sent-after date)))))))))
 
 (defun rm-msg-links-message-id (point msg folder)
   (save-restriction
@@ -132,14 +132,14 @@
 				      'mouse-face active-face))))
 	(extent-put extent 'popup-menus
 		    `(("Restrict to this id"
-		      (lambda ()
-			(rm-restrict-to-message-id ,quoted-id ,folder)))
+		       ,#'(lambda ()
+			    (rm-restrict-to-message-id quoted-id folder)))
 		      ("Display this message"
-		      (lambda ()
-			(rm-display-message
-			 ,folder
-			 (or (rm-find-message-by-id ,folder ,id)
-			     (error "No message %s" ,id)))))))))))
+		       ,#'(lambda ()
+			    (rm-display-message
+			     folder
+			     (or (rm-find-message-by-id folder id)
+				 (error "No message %s" id)))))))))))
 
 ;; Add the function at the end of the hook, to guarantee it's after
 ;; the mime-decoder

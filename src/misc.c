@@ -102,7 +102,7 @@ __jade_morecore(long size)
 void
 misc_init(void)
 {
-    rep_INTERN(window_system);
+    rep_INTERN_SPECIAL(window_system);
 #if defined (HAVE_GTK)
     rep_INTERN(gtk);
     rep_SYM(Qwindow_system)->value = Qgtk;
@@ -111,12 +111,12 @@ misc_init(void)
     rep_SYM(Qwindow_system)->value = Qx11;
 #endif
 
-    rep_INTERN(jade_build_id);
+    rep_INTERN_SPECIAL(jade_build_id);
     rep_SYM(Qjade_build_id)->value = rep_VAL(&jade_build_id_string);
-    rep_INTERN(jade_major_version);
+    rep_INTERN_SPECIAL(jade_major_version);
     rep_SYM(Qjade_major_version)->value = rep_MAKE_INT(JADE_MAJOR);
-    rep_INTERN(jade_minor_version);
+    rep_INTERN_SPECIAL(jade_minor_version);
     rep_SYM(Qjade_major_version)->value = rep_MAKE_INT(JADE_MINOR);
-    rep_INTERN(jade_version);
+    rep_INTERN_SPECIAL(jade_version);
     rep_SYM(Qjade_version)->value = rep_VAL(&jade_vers_string);
 }

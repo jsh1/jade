@@ -146,8 +146,9 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
   (unless (and shell-process (process-in-use-p shell-process))
     (setq shell-process (make-process
 			 (or shell-output-stream
-			     `(lambda (o) (with-buffer ,(current-buffer)
-					    (funcall 'shell-filter o))))
+			     (make-closure
+			      `(lambda (o) (with-buffer ,(current-buffer)
+					     (funcall 'shell-filter o)))))
 			 ;; Create a function which switches to the
 			 ;; process' buffer then calls the callback
 			 ;; function (through its variable)

@@ -1252,9 +1252,9 @@ views_init(void)
     rep_ADD_SUBR(Sminibuffer_view);
     rep_ADD_SUBR(Sminibuffer_active_p);
     rep_ADD_SUBR(Sviewp);
-    rep_INTERN(split_view_hook);
-    rep_INTERN(delete_view_hook);
-    rep_INTERN(mode_line_format);
+    rep_INTERN_SPECIAL(split_view_hook);
+    rep_INTERN_SPECIAL(delete_view_hook);
+    rep_INTERN_SPECIAL(mode_line_format);
 }
 
 void

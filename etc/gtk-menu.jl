@@ -45,9 +45,9 @@
 			  (setq label (concat label " \(" (car loc) ?\))))))
 		    (setq item (gtk-menu-item-new-with-label label))
 		    (gtk-signal-connect item "activate"
-					`(lambda ()
-					   (popup-menu-dispatch-command
-					    ',(car cell)))))
+					#'(lambda ()
+					    (popup-menu-dispatch-command
+					     (car cell)))))
 		   ((consp (car cell))
 		    (let
 			((sub (gtk-jade-create-menu cell)))

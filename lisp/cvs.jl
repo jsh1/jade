@@ -111,16 +111,17 @@ and hence hasn't been processed yet; or nil.")
   (bind-keys (make-sparse-keymap)
     "Ctrl-c" 'cvs-callback-finished))
 
-(defvar cvs-summary-functions '((print . cvs-summary-print)
-				(after-move . (lambda ()
-						(goto-glyph
-						 (pos cvs-cursor-column nil))))
-				(list . (lambda ()
-					  cvs-file-list))
-				(after-marking . (lambda ()
-						   (summary-next-item 1)))
-				(select . cvs-summary-select)
-				(on-quit . bury-buffer))
+(defvar cvs-summary-functions
+  (list '(print . cvs-summary-print)
+	(cons 'after-move  #'(lambda ()
+			       (goto-glyph
+				(pos cvs-cursor-column nil))))
+	(cons 'list #'(lambda ()
+			cvs-file-list))
+	(cons 'after-marking #'(lambda ()
+				 (summary-next-item 1)))
+	'(select . cvs-summary-select)
+	'(on-quit . bury-buffer))
   "Alist of summary-mode functions for CVS.")
 
 (defvar cvs-cursor-column 19
@@ -270,7 +271,8 @@ that each of the FILENAMES contains no directory specifiers."
        (cvs-command-async
 	;; Need to construct a call using the _current_ value of
 	;; cvs-after-update-hook (in case it's bound dynamically)
-	`(lambda () (cvs-update-finished ,cvs-after-update-hook))))
+	(make-closure
+	 `(lambda () (cvs-update-finished ,cvs-after-update-hook)))))
     (setq cvs-update-in-progress (cvs-command '() "update" '()))))
 
 ;; Return the buffer used for output from CVS commands. If CLEAR is
@@ -579,8 +581,9 @@ argument)."
       (cvs-add-callback (cvs-command-get-files) "")
     (cvs-callback-with-message
      "Adding files"
-     `(lambda (m)
-	(cvs-add-callback ',(cvs-command-get-files) m)))))
+     (make-closure
+      `(lambda (m)
+	 (cvs-add-callback ',(cvs-command-get-files) m))))))
 
 (defun cvs-add-callback (files message)
   ;; Not possible to just call add. Instead it's necessary to iterate
@@ -620,8 +623,9 @@ commit them under."
   (interactive)
   (cvs-callback-with-message
    "Committing files"
-   `(lambda (m)
-      (cvs-commit-callback ',(cvs-command-get-filenames) m))))
+   (make-closure
+    `(lambda (m)
+       (cvs-commit-callback ',(cvs-command-get-filenames) m)))))
 
 ;;;###autoload
 (defun cvs-commit-directory (directory)
@@ -633,18 +637,16 @@ If a prefix argument is given, the directory to commit in is prompted for."
 	   ".")))
   (cvs-callback-with-message
    "Committing files"
-   `(lambda (m)
-      (cvs-commit-callback '(,directory) m))))
+   #'(lambda (m)
+       (cvs-commit-callback (list directory) m))))
 
 (defun cvs-commit-callback (filenames message)
   (save-some-buffers)
   (let
-      ((cvs-command-async `(lambda ()
-			     ;; Need backquote since FILENAMES won't
-			     ;; still be bound when this evaluates
-			     (cvs-revert-filenames ',filenames)
-			     (cvs-show-output-buffer)
-			     (cvs-update-if-summary))))
+      ((cvs-command-async #'(lambda ()
+			      (cvs-revert-filenames filenames)
+			      (cvs-show-output-buffer)
+			      (cvs-update-if-summary))))
     (cvs-command nil "commit" (list* "-m" message filenames))))
 
 (defun cvs-revert-filenames (filenames)
@@ -796,8 +798,8 @@ works by deleting the local copy, before updating it from the repository."
 	(let
 	    ;; Ensure that cvs-revert isn't called until the
 	    ;; update has completed
-	    ((cvs-after-update-hook (cons `(lambda ()
-					     (cvs-revert-filenames ',files))
+	    ((cvs-after-update-hook (cons #'(lambda ()
+					      (cvs-revert-filenames files))
 					  cvs-after-update-hook)))
 	  (cvs-update-no-prompt)
 	  (message "Buffers haven't been reloaded yet.."))

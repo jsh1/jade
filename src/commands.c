@@ -115,6 +115,8 @@ interactive_spec(repv cmd)
     else
 	fun = cmd;
 again:
+    if (rep_FUNARGP(fun))
+	fun = rep_FUNARG(fun)->fun;
     if(!rep_VOIDP(fun) && !rep_NILP(fun))
     {
 	if((rep_TYPE(fun) >= rep_Subr0) && (rep_TYPE(fun) <= rep_SubrN))
@@ -536,6 +538,8 @@ Returns t if COMMAND may be called interactively.
 {
     if(rep_SYMBOLP(cmd))
 	cmd = Fsymbol_function(cmd, Qt);
+    if (rep_FUNARGP(cmd))
+	cmd = rep_FUNARG(cmd)->fun;
     if(!rep_VOIDP(cmd) && !rep_NILP(cmd))
     {
 	if((((rep_TYPE(cmd) >= rep_Subr0) && (rep_TYPE(cmd) <= rep_SubrN))
@@ -606,8 +610,8 @@ commands_init(void)
     rep_mark_static(&this_command);
     rep_mark_static(&last_command);
 
-    rep_INTERN(pre_command_hook);
-    rep_INTERN(post_command_hook);
+    rep_INTERN_SPECIAL(pre_command_hook);
+    rep_INTERN_SPECIAL(post_command_hook);
 
     rep_ADD_SUBR(Sthis_command);
     rep_ADD_SUBR(Slast_command);

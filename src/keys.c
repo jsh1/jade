@@ -923,15 +923,15 @@ print_event_prefix(void)
 void
 keys_init(void)
 {
-    rep_INTERN(global_keymap);
-    rep_INTERN(local_keymap);
-    rep_INTERN(overriding_local_keymap);
-    rep_INTERN(unbound_key_hook);
-    rep_INTERN(esc_means_meta);
+    rep_INTERN_SPECIAL(global_keymap);
+    rep_INTERN_SPECIAL(local_keymap);
+    rep_INTERN_SPECIAL(overriding_local_keymap);
+    rep_INTERN_SPECIAL(unbound_key_hook);
+    rep_INTERN_SPECIAL(esc_means_meta);
     rep_SYM(Qesc_means_meta)->value = Qt;
-    rep_INTERN(idle_hook);
+    rep_INTERN_SPECIAL(idle_hook);
     rep_INTERN(keymap);
-    rep_INTERN(minor_mode_keymap_alist);
+    rep_INTERN_SPECIAL(minor_mode_keymap_alist);
     rep_INTERN(autoload_keymap);
     rep_INTERN(next_keymap_path);
     next_keymap_path = rep_NULL;

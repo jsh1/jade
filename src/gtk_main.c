@@ -221,17 +221,21 @@ sys_init(char *program_name)
     /* Loading the gtk rep library will replace the usual
        event loop with one that works with GTK. */
     rep_INTERN(gtk);
-    Frequire (Qgtk, Qnil);
+    Fload (rep_string_dup ("gtk"), Qnil, Qnil, Qnil);
 
-    /* Find the gtkobj<->lispobj converters */
-    gtk_jade_wrap_gtkobj = rep_find_dl_symbol (Qgtk, "sgtk_wrap_gtkobj");
-    gtk_jade_get_gtkobj = rep_find_dl_symbol (Qgtk, "sgtk_get_gtkobj");
-    gtk_jade_callback_postfix = rep_find_dl_symbol (Qgtk, "sgtk_callback_postfix");
-    assert (gtk_jade_wrap_gtkobj != 0
-	    && gtk_jade_get_gtkobj != 0
-	    && gtk_jade_callback_postfix != 0);
-
-    return TRUE;
+    if (rep_throw_value == 0)
+    {
+	/* Find the gtkobj<->lispobj converters */
+	gtk_jade_wrap_gtkobj = rep_find_dl_symbol (Qgtk, "sgtk_wrap_gtkobj");
+	gtk_jade_get_gtkobj = rep_find_dl_symbol (Qgtk, "sgtk_get_gtkobj");
+	gtk_jade_callback_postfix = rep_find_dl_symbol (Qgtk, "sgtk_callback_postfix");
+	assert (gtk_jade_wrap_gtkobj != 0
+		&& gtk_jade_get_gtkobj != 0
+		&& gtk_jade_callback_postfix != 0);
+	return TRUE;
+    }
+    else
+	return FALSE;
 }
 
 void

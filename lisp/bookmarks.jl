@@ -75,10 +75,8 @@
     (indent-to 24)
     (insert "--------\n")
     (summary-mode "Bookmarks"
-		  (list '(select . (lambda (x) (goto-bookmark (car x))))
-			'(delete . (lambda (x) (kill-bookmark (car x))))
-			;; This is created dynamically to ensure that
-			;; the lambda list gets compiled.
+		  (list (cons 'select #'(lambda (x) (goto-bookmark (car x))))
+			(cons 'delete #'(lambda (x) (kill-bookmark (car x))))
 			(cons 'print
 			      #'(lambda (x)
 				  (format (current-buffer) "%c %s "
@@ -88,5 +86,6 @@
 				  (format (current-buffer) "Line %d of %s"
 					  (pos-line (mark-pos (cdr x)))
 					  (mark-file (cdr x)))))
-			'(after-marking . (lambda () (summary-next-item 1)))
-			'(list . (lambda () bookmark-alist))))))
+			(cons 'after-marking #'(lambda ()
+						 (summary-next-item 1)))
+			(cons 'list #'(lambda () bookmark-alist))))))

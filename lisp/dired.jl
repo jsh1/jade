@@ -61,16 +61,16 @@ the directory named as its single argument.")
 (defvar dired-delete-cache nil)
 (make-variable-buffer-local 'dired-delete-cache)
 
-(defvar dired-functions '((print . dired-print)
-			  (after-move . (lambda ()
-					  (goto-glyph
-					   (pos dired-cursor-column nil))))
-			  (list . dired-list)
-			  (after-marking . (lambda () (summary-next-item 1)))
-			  (delete . dired-delete)
-			  (execute-end . dired-execute-end)
-			  (select . find-file)
-			  (on-quit . bury-buffer))
+(defvar dired-functions
+  (list '(print . dired-print)
+	(cons 'after-move #'(lambda ()
+			      (goto-glyph (pos dired-cursor-column nil))))
+	'(list . dired-list)
+	(cons 'after-marking #'(lambda () (summary-next-item 1)))
+	'(delete . dired-delete)
+	'(execute-end . dired-execute-end)
+	'(select . find-file)
+	'(on-quit . bury-buffer))
   "Function vector for Dired mode.")
 
 

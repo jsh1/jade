@@ -1428,7 +1428,7 @@ glyphs_init(void)
     rep_ADD_SUBR(Smake_glyph_table);
     rep_ADD_SUBR(Sset_glyph);
     rep_ADD_SUBR(Sget_glyph);
-    rep_INTERN(glyph_table);
+    rep_INTERN_SPECIAL(glyph_table);
 
     rep_SYM(Qglyph_table)->value = rep_VAL(&default_glyph_table);
     Fmake_variable_buffer_local(Qglyph_table);

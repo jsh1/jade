@@ -35,12 +35,12 @@
     "s" 'mds-sort-list))
 
 (defvar mds-functions
-  '((select . mds-edit)
-    (delete . md-delete-record)
-    (print . mds-print)
-    (list . (lambda () mail-address-list))
-    (after-marking . (lambda () (summary-next-item 1)))
-    (on-quit . kill-current-buffer)))
+  (list '(select . mds-edit)
+	'(delete . md-delete-record)
+	'(print . mds-print)
+	(cons 'list #'(lambda () mail-address-list))
+	(cons 'after-marking #'(lambda () (summary-next-item 1)))
+	'(on-quit . kill-current-buffer)))
 
 ;;;###autoload
 (defun list-mail-dir ()
