@@ -404,12 +404,12 @@ time that `info' has been called)."
 	mode-name "Info"
 	popup-local-menus info-popup-menus
 	auto-save-p nil)
-  (buffer-record-undo nil)
+  (set-buffer-record-undo nil)
   (set-buffer-read-only nil t)
   (unless info-tags-buffer
     (setq info-tags-buffer (make-buffer "*Info-tags*"))
     (with-buffer info-tags-buffer
-      (buffer-record-undo nil)))
+      (set-buffer-record-undo nil)))
   (cond
    (start-node
     (info-remember)

@@ -64,7 +64,7 @@ Major mode for displaying online help. Local bindings are:\n
 	(setq local-keymap 'help-keymap
 	      mode-name "Help"
 	      major-mode 'help-setup)
-	(buffer-record-undo nil)
+	(set-buffer-record-undo nil)
 	(set-buffer-read-only nil t)))
     buffer))
 
