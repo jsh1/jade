@@ -26,6 +26,7 @@
 
 (defvar dired-keymap (copy-sequence summary-keymap))
 (bind-keys dired-keymap
+  "*" 'summary-mark-item
   "#" 'dired-delete-autosaves
   "~" 'dired-delete-backups
   "&" 'dired-delete-garbage
@@ -39,7 +40,7 @@
   "Regular expression matching files under dired that should be marked for
 deletion by the `&' command.")
 
-(defvar dired-cursor-column 41)
+(defvar dired-cursor-column 43)
 
 (defvar dired-functions '((select . dired-find-file)
 			  (delete . dired-delete)
@@ -66,10 +67,11 @@ deletion by the `&' command.")
     (goto-buffer buffer)
     (if (eq major-mode 'dired-mode)
 	(summary-update)
-      (format buffer "Dired: %s\n\n" directory)
+      (format buffer "[Dired] %s:\n\n" directory)
       (set-buffer-file-name buffer directory)
       (summary-mode "Dired" dired-functions dired-keymap)
-      (setq major-mode 'dired-mode))))
+      (setq summary-assoc-item-function 'assoc
+	    major-mode 'dired-mode))))
 
 (defun dired-mode ()
   "Dired mode:
@@ -93,16 +95,24 @@ is used with the following commands that are specific to Dired:
   (sort (directory-files (buffer-file-name))))
 
 (defun dired-print (item)
-  (let
-      ((name (file-name-concat (buffer-file-name) item)))
-    (format (current-buffer) "%c %s  %d"
+  (let*
+      ((name (file-name-concat (buffer-file-name) item))
+       (symlink (and (file-symlink-p name)
+		     (or (file-exists-p name) 'broken))))
+    (format (current-buffer) "%c%c %s"
 	    (if (memq 'delete (summary-get-pending-ops item)) ?D ? )
-	    (file-modes-as-string (file-modes name))
-	    (file-size name))
-    (indent-to 22)
-    (format (current-buffer) "%s  %s"
-	    (current-time-string (file-modtime name) "%D %T")
-	    item)))
+	    (if (summary-item-marked-p item) ?* ? )
+	    (if symlink "lrwxrwxrwx"
+	      (file-modes-as-string (file-modes name))))
+    (unless (eq symlink 'broken)
+      (format (current-buffer) "  %d " (file-size name)))
+    (indent-to 24)
+    (if (eq symlink 'broken)
+	(insert "[  broken link  ]")
+      (format (current-buffer) "%s "
+	      (current-time-string (file-modtime name) "%D %T")))
+    (indent-to dired-cursor-column)
+    (insert item)))
 
 (defun dired-delete (item)
   (when (yes-or-no-p (format nil "Really delete file %S?" item))
