@@ -311,6 +311,17 @@ prompted for."
 				   "-r" "-l")
 			       (or revision ""))) t)))
 
+(defun rcs-set-default-branch (&optional to-highest)
+  "Set the default branch of the RCS controlled current buffer to that of the
+currently checked out revision. If TO-HIGHEST is t (from the prefix-arg)
+reset to the (dynamically) highest branch on the trunk."
+  (interactive "P")
+  (rcs-verify-buffer)
+  (unless (or rcs-revision to-highest)
+    (error "I don't know the current revision of this file"))
+  (rcs-command "rcs" (buffer-file-name)
+	       (list (concat "-b" (if to-highest "" rcs-revision)))))
+
 (defun rcs-view-revision (&optional revision)
   "Display an old revision of the current buffer. REVISION is a string
 naming the revision, or nil, in which case it will be prompted for."
