@@ -39,7 +39,7 @@ _PR WIN *x11_find_window(Window);
 _PR int sys_set_font(WIN *);
 _PR void sys_unset_font(WIN *);
 _PR void sys_reset_sleep_titles(TX *);
-_PR bool sys_get_mouse_pos(POS *, WIN *);
+_PR VALUE sys_get_mouse_pos(WIN *);
 _PR void sys_windows_init(void);
 
 #define INPUT_EVENTS ButtonPressMask | ButtonReleaseMask | KeyPressMask \
@@ -364,136 +364,10 @@ sys_reset_sleep_titles(TX *tx)
 {
 }
 
-_PR VALUE cmd_screen_width(void);
-DEFUN("screen-width", cmd_screen_width, subr_screen_width, (void), V_Subr0, DOC_screen_width) /*
-::doc:screen_width::
-screen-width
-
-Returns the width of the root window or screen in pixels.
-::end:: */
-{
-    Window root;
-    int dummy1;
-    unsigned int dummy2;
-    int val;
-    if(XGetGeometry(x11_display, DefaultRootWindow(x11_display),
-		    &root, &dummy1, &dummy1,
-		    (unsigned int *)&val, &dummy2,
-		    &dummy2, &dummy2))
-	return(make_number(val));
-    return(NULL);
-}
-
-_PR VALUE cmd_screen_height(void);
-DEFUN("screen-height", cmd_screen_height, subr_screen_height, (void), V_Subr0, DOC_screen_height) /*
-::doc:screen_height::
-screen-height
-
-Returns the height of the root window or screen in pixels.
-::end:: */
-{
-    Window root;
-    int dummy1;
-    unsigned int dummy2;
-    int val;
-    if(XGetGeometry(x11_display, DefaultRootWindow(x11_display),
-		    &root, &dummy1, &dummy1,
-		    &dummy2, (unsigned int *)&val,
-		    &dummy2, &dummy2))
-	return(make_number(val));
-    return(NULL);
-}
-
-_PR VALUE cmd_window_left_edge(void);
-DEFUN("window-left-edge", cmd_window_left_edge, subr_window_left_edge, (void), V_Subr0, DOC_window_left_edge) /*
-::doc:window_left_edge::
-window-left-edge
-
-Returns the x position of the current window relative to the origin of the
-root window or screen.
-::end:: */
-{
-    Window tmp;
-    int x, y;
-    if(XTranslateCoordinates(x11_display, curr_win->w_Window,
-			     DefaultRootWindow(x11_display), 0, 0, &x, &y, &tmp))
-	return(make_number(x));
-    return(NULL);
-}
-
-_PR VALUE cmd_window_top_edge(void);
-DEFUN("window-top-edge", cmd_window_top_edge, subr_window_top_edge, (void), V_Subr0, DOC_window_top_edge) /*
-::doc:window_top_edge::
-window-top-edge
-
-Returns the y position of the current window relative to the origin of the
-root window or screen.
-::end:: */
-{
-    Window tmp;
-    int x, y;
-    if(XTranslateCoordinates(x11_display, curr_win->w_Window,
-			     DefaultRootWindow(x11_display), 0, 0, &x, &y, &tmp))
-	return(make_number(y));
-    return(NULL);
-}
-
-_PR VALUE cmd_window_width(void);
-DEFUN("window-width", cmd_window_width, subr_window_width, (void), V_Subr0, DOC_window_width) /*
-::doc:window_width::
-window-width
-
-Returns the width, in pixels, of the current window.
-::end:: */
-{
-    Window root;
-    int dummy1;
-    unsigned int dummy2;
-    int val;
-    if(XGetGeometry(x11_display, curr_win->w_Window,
-		    &root, &dummy1, &dummy1,
-		    (unsigned int *)&val, &dummy2,
-		    &dummy2, &dummy2))
-	return(make_number(val));
-    return(NULL);
-}
-
-_PR VALUE cmd_window_height(void);
-DEFUN("window-height", cmd_window_height, subr_window_height, (void), V_Subr0, DOC_window_height) /*
-::doc:window_height::
-window-height
-
-Returns the height, in pixels, of the current window.
-::end:: */
-{
-    Window root;
-    int dummy1;
-    unsigned int dummy2;
-    int val;
-    if(XGetGeometry(x11_display, curr_win->w_Window,
-		    &root, &dummy1, &dummy1,
-		    &dummy2, (unsigned int *)&val,
-		    &dummy2, &dummy2))
-	return(make_number(val));
-    return(NULL);
-}
-
-_PR VALUE cmd_window_bar_height(void);
-DEFUN("window-bar-height", cmd_window_bar_height, subr_window_bar_height, (void), V_Subr0, DOC_window_bar_height) /*
-::doc:window_bar_height::
-window-bar-height
-
-On an Amiga returns the number of pixels high the title bar of the window
-is. This is 0 in X11.
-::end:: */
-{
-    return(make_number(0));
-}
-
 /* Now this returns the glyph position in the window of the cursor;
    it doesn't worry about the views in the window. */
-bool
-sys_get_mouse_pos(POS *pos, WIN *w)
+VALUE
+sys_get_mouse_pos(WIN *w)
 {
     if(w != x11_current_event_win)
     {
@@ -504,15 +378,14 @@ sys_get_mouse_pos(POS *pos, WIN *w)
 			 &tmpw, &tmpw, &tmp, &tmp,
 			 &x, &y, &tmp))
 	{
-	    pos->pos_Col = (x - w->w_LeftPix) / w->w_FontX;
-	    pos->pos_Line = (y - w->w_TopPix) / w->w_FontY;
+	    return make_pos((x - w->w_LeftPix) / w->w_FontX,
+			    (y - w->w_TopPix) / w->w_FontY);
 	}
 	else
-	    return FALSE;
+	    return NULL;
     }
     else
-	*pos = x11_current_mouse_pos;
-    return(TRUE);
+	return make_pos(x11_current_mouse_x, x11_current_mouse_y);
 }
 
 _PR VALUE cmd_flush_output(void);
@@ -531,13 +404,6 @@ void
 sys_windows_init(void)
 {
     ADD_SUBR(subr_set_font);
-    ADD_SUBR(subr_screen_width);
-    ADD_SUBR(subr_screen_height);
-    ADD_SUBR(subr_window_left_edge);
-    ADD_SUBR(subr_window_top_edge);
-    ADD_SUBR(subr_window_width);
-    ADD_SUBR(subr_window_height);
-    ADD_SUBR(subr_window_bar_height);
     ADD_SUBR(subr_flush_output);
 
     x11_misc_init();
