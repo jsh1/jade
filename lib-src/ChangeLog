@@ -1,3 +1,11 @@
+1998-12-02  John Harper  <john@dcs.warwick.ac.uk>
+
+	* server-dl.c (cmd_server_open): if the socket already exists,
+	test whether it can be connected to; if not, it's deleted and
+	re-opened
+	* server-dl.c, jadeclient.c: format of socket file name is now
+	.jade-HOST where HOST is the fully-qualified host name
+
 1998-07-03  John Harper  <john@dcs.warwick.ac.uk>
 
 	* server-dl.c: moved from src/unix_server.c
