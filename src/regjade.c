@@ -664,7 +664,7 @@ regmatch(prog)
 		    nextch = *OPERAND(next);
 		if(regnocase)
 		    nextch = toupper(nextch);
-		no = (OP(scan) == STAR) ? 0 : 1;
+		no = (OP(scan) == NGSTAR) ? 0 : 1;
 		save = reginput;
 		max = regrepeat(OPERAND(scan));
 		while (no <= max) {
