@@ -75,6 +75,7 @@ _PR void order_pos(VALUE *, VALUE *);
 _PR bool check_section(TX *, VALUE *, VALUE *);
 _PR VALUE check_pos(TX *, VALUE);
 _PR bool check_line(TX *, VALUE);
+_PR bool check_row(TX *tx, long line);
 _PR long section_length(TX *, VALUE, VALUE);
 _PR void copy_section(TX *, VALUE, VALUE, u_char *);
 _PR void order_block(VW *);
@@ -596,6 +597,11 @@ check_section(TX *tx, VALUE *start, VALUE *end)
     return TRUE;
 }
 
+/* Check that POSITION is in the current restriction of buffer TX.
+   If not an error is signalled and the function returns null. If the
+   column specified by POSITION is past the end of its line, the value
+   returned will be the position of the end of the line, otherwise
+   POSITION is returned. */
 VALUE
 check_pos(TX *tx, VALUE pos)
 {
@@ -603,13 +609,15 @@ check_pos(TX *tx, VALUE pos)
        || VROW(pos) < tx->tx_LogicalStart)
     {
 	cmd_signal(sym_invalid_pos, list_2(VAL(tx), pos));
-	return FALSE;
+	return LISP_NULL;
     }
     if(VCOL(pos) >= tx->tx_Lines[VROW(pos)].ln_Strlen)
 	pos = make_pos(tx->tx_Lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
     return pos;
 }
 
+/* Check that POSITION is in the current restriction of buffer TX.
+   If not an error is signalled and the function returns false. */
 bool
 check_line(TX *tx, VALUE pos)
 {
@@ -621,6 +629,20 @@ check_line(TX *tx, VALUE pos)
 	return FALSE;
     }
     return TRUE;
+}
+
+/* Check that row LINE is in the current restriction of buffer TX.
+   If not an error is signalled and the function returns false. */
+bool
+check_row(TX *tx, long line)
+{
+    if(line >= tx->tx_LogicalEnd || line < tx->tx_LogicalStart)
+    {
+	cmd_signal(sym_invalid_pos, list_2(VAL(tx), make_pos(0, line)));
+	return FALSE;
+    }
+    else
+	return TRUE;
 }
 
 /* Returns the number of bytes needed to store a section, doesn't include
