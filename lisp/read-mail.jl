@@ -135,6 +135,18 @@ RULE is the message restriction rule to apply."
 	   (and arg (rm-prompt-for-rule)))))
   (let
       ((folder (rm-make-folder rule name)))
+    ;; Clean up the rm-open-folders list in case it contains
+    ;; folders that are no longer viewable
+    (setq rm-open-folders (delete-if #'(lambda (cell)
+					 (when (not (viewp (car cell)))
+					   ;; Dead folder
+					   (mapc #'(lambda (box)
+						     (rm-close-mailbox box))
+						 (rm-get-folder-field
+						  (cdr cell) rm-folder-boxes))
+					   t))
+				     rm-open-folders))
+    ;; Add the new folder
     (setq rm-open-folders (cons (cons (current-view) folder) rm-open-folders))
     (mapc #'(lambda (box)
 	      (unless (file-exists-p box)
