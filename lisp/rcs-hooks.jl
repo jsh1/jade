@@ -28,7 +28,7 @@
     "i" 'rcs-register-buffer
     "l" 'rcs-display-log
     "u" 'rcs-revert-buffer
-    "=" 'rcs-display-diffs
+    "=" 'rcs-compare-revisions
     "~" 'rcs-view-revision)
   (bind-keys ctrl-x-keymap
     "v" '(setq next-keymap-path '(rcs-keymap)))
