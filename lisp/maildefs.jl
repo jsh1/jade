@@ -94,7 +94,9 @@ contents of the file specified by mail-signature-file.")
 (defvar mail-signature-file "~/.signature"
   "File to insert at end of message being sent.")
 
-(defvar mail-default-headers nil
+(defvar mail-default-headers (format nil "X-Mailer: Jade %s.%s"
+				     (major-version-number)
+				     (minor-version-number))
   "Text to insert into the header section of all outgoing mail messages.")
 
 (defvar mail-send-hook nil
@@ -124,7 +126,7 @@ buffer as the first substring. No other substrings may be used.")
 only have two, lower order, digits. This is picked up automatically from
 the current year, i.e. 1997 -> \"19\", 2001 -> \"20\".")
 
-(defvar mail-summary-lines 16
+(defvar mail-summary-lines 8
   "The number of lines that the summary view of a mail folder contains.")
 
 (defvar mail-display-summary nil
@@ -150,48 +152,77 @@ include any parenthesised expressions!")
       (match-end)
     nil))
 
+;; Return (START . END) of the atom-ish expression at POS. "atom-ish"
+;; includes comments, strings, angle-delimited addresses, and groups of
+;; normal atoms, importantly though, _no_ commas
+(defun mail-parse-atom (pos &aux char)
+  (when (looking-at "[\t\n ]+" pos)
+    (setq pos (match-end)))
+  (when (setq char (get-char pos))
+    (cond
+     ((member char '(?\  ?\t ?\n))
+      ;; Whitespace
+      (looking-at "[\t\n ]+" pos)
+      (cons pos (match-end)))
+     ((= char ?\")
+      ;; A string
+      (unless (find-next-regexp "[^\\]\"" (next-char 1 (copy-pos pos)))
+	(error "Unterminated string in list, %s" pos))
+      (cons pos (match-end)))
+     ((= char ?\()
+      ;; A comment
+      (unless (find-next-regexp "[^\\]\\)" (next-char 1 (copy-pos pos)))
+	(error "Unterminated comment in list, %s" pos))
+      (cons pos (match-end)))
+     ((= char ?\<)
+      ;; An address spec
+      (unless (find-next-regexp "[^\\]>" (next-char 1 (copy-pos pos)))
+	(error "Unterminated address in list, %s" pos))
+      (cons pos (match-end)))
+     ((= char ?,)
+      ;; A comma
+      nil)
+     (t
+      ;; Some sort of atom
+      (unless (looking-at (concat ?\( mail-atom-re
+				      "|[][.:;@]|[\t\n ]+\)+") pos)
+	(error "Can't parse atom, %s" pos))
+      (cons pos (match-end))))))
+
+;; Parse one list of atoms, ended by a comma or EOF. Returns (STRING . END),
+;; the text of the group of atoms, and the position of the first non-included
+;; character
+(defun mail-parse-group (pos)
+  (let
+      ((list '())
+       tem)
+    (while (setq tem (mail-parse-atom pos))
+      (setq list (cons (copy-area (car tem) (cdr tem)) list))
+      (setq pos (cdr tem)))
+    (when list
+      (cons (nreverse list) pos))))
+
 ;; Parse a list of comma-separated mail addresses, returns a list of
 ;; strings. Stops parsing at the end of the header starting at POS.
-(defun mail-parse-list (pos)
+;; NO-COMMA-SEPS controls whether a comma-separated list is parsed,
+;; or simply a sequence of "groups" (from the above function)
+(defun mail-parse-list (pos &optional no-comma-seps)
   (save-restriction
     ;; Restrict ourselves to the current header
     (restrict-buffer pos (prev-char 1 (or (mail-unfold-header pos)
 					  (buffer-end))))
     (when (looking-at (concat mail-header-name "[\t ]*") pos)
       (setq pos (match-end)))
-    (let
-	((list '())
-	 (start pos))
-      (while pos
-	(cond
-	 ((looking-at "[\t\n ]*\"" pos)
-	  ;; String to skip
-	  (unless (find-next-regexp "[^\\]\"" (match-end))
-	    (error "Unterminated string in list" pos))
-	  (setq pos (match-end)))
-	 ((looking-at "[\t\n ]*\\(" pos)
-	  ;; Comment to skip
-	  (unless (find-next-regexp "[^\\]\\)" (match-end))
-	    (error "Unterminated comment in list" pos))
-	  (setq pos (match-end)))
-	 ((looking-at (concat ?\( mail-atom-re
-			      "|[][.:;@<>]|[\t\n ]+\)+") pos)
-	  ;; Skip several atoms, whitespace or specials (but not
-	  ;; comma or parens)
-	  (setq pos (match-end)))
-	 ((looking-at "[\t\n ]*,[\t\n ]*" pos)
-	  ;; At last the end of an item
-	  (setq list (cons (translate-string (copy-area start (match-start))
-					     flatten-table) list)
-		pos (match-end)
-		start pos))
-	 ((>= pos (buffer-end))
-	  (setq list (cons (translate-string (copy-area start (buffer-end))
-					     flatten-table) list)
-		pos nil))
-	 (t
-	  (error "Shouldn't happen"))))
-      (nreverse list))))
+    (if no-comma-seps
+	(car (mail-parse-group pos))
+      (let
+	  (list tem)
+	(while (setq tem (mail-parse-group pos))
+	  (setq list (cons (apply 'concat (car tem)) list)
+		pos (if (looking-at "[\t\n ]*,[\t\n ]*" (cdr tem))
+			(match-end)
+		      (cdr tem))))
+	(nreverse list)))))
 
 ;; Return the position at which a header matching HEADER occurs, or
 ;; nil if one doesn't
@@ -204,17 +235,18 @@ include any parenthesised expressions!")
 ;; Return a copy of the header named HEADER in the current buffer. This
 ;; will be a string with newlines converted to spaces, unless LISTP is
 ;; non-nil in which case the header will be split into a list of items
-;; (separated by commas).
-(defun mail-get-header (header &optional listp)
+;; (separated by commas, unless NOT-COMMA-SEPARATED is t).
+(defun mail-get-header (header &optional listp not-comma-separated)
   (let
       ((pos (mail-find-header header)))
     (when pos
       (if listp
 	  (let
-	      ((list (mail-parse-list pos)))
+	      ((list (mail-parse-list pos not-comma-separated)))
 	    (while (setq pos (mail-find-header header
 					       (mail-unfold-header pos)))
-	      (setq list (nconc list (mail-parse-list pos))))
+	      (setq list (nconc list (mail-parse-list pos
+						      not-comma-separated))))
 	    list)
 	(translate-string (copy-area pos (or (mail-unfold-header pos)
 					     (buffer-end)))
@@ -260,8 +292,9 @@ include any parenthesised expressions!")
       list))))
 
 ;; Insert a list of comma separated items. Breaks the list to satisfy
-;; mail-fill-column
-(defun mail-insert-list (list)
+;; mail-fill-column. Unless NO-COMMAS is t, each item is separated by
+;; a comma
+(defun mail-insert-list (list &optional no-commas)
   (let
       ((initial-indent (pos-col (char-to-glyph-pos))))
     (while list
@@ -271,8 +304,8 @@ include any parenthesised expressions!")
       (insert "\n")
       (indent-to initial-indent))
       (insert (car list))
-      (when (cdr list)
-	    (insert ", "))
+      (when (and (not no-commas) (cdr list))
+	(insert ", "))
       (setq list (cdr list)))))
 
 ;; History list of prompt-for-folder
