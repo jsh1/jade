@@ -212,7 +212,7 @@ that each of the FILENAMES contains no directory specifiers."
 ;; Function called after `cvs update' has completed
 (defun cvs-update-finished (hook)
   (let
-      ((buffer (cvs-buffer))
+      ((buffer (open-buffer "*cvs*"))
        (inhibit-read-only t))
     (setq cvs-update-pending nil
 	  cvs-file-list (nreverse cvs-update-file-list)
@@ -255,16 +255,11 @@ that each of the FILENAMES contains no directory specifiers."
 	`(lambda () (cvs-update-finished ,cvs-after-update-hook))))
     (setq cvs-update-in-progress (cvs-command '() "update" '()))))
 
-(defun cvs-buffer ()
-  (or (get-buffer "*cvs*")
-      (make-buffer "*cvs*")))
-
 ;; Return the buffer used for output from CVS commands. If CLEAR is
 ;; t delete all of its current contents
 (defun cvs-output-buffer (&optional clear)
   (let
-      ((buffer (or (get-buffer "*cvs-output*")
-		   (make-buffer "*cvs-output*"))))
+      ((buffer (open-buffer "*cvs-output*")))
     (when clear
       (clear-buffer buffer))
     buffer))
