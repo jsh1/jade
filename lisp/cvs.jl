@@ -209,7 +209,8 @@ that each of the FILENAMES contains no directory specifiers."
 ;; Function called after `cvs update' has completed
 (defun cvs-update-finished (hook)
   (let
-      ((buffer (cvs-buffer)))
+      ((buffer (cvs-buffer))
+       (inhibit-read-only t))
     (setq cvs-update-pending nil
 	  cvs-file-list (nreverse cvs-update-file-list)
 	  cvs-update-in-progress nil)
@@ -400,12 +401,10 @@ When called interactively, DIRECTORY is prompted for."
   (unless (file-directory-p directory)
     (error "%S is not a directory" directory))
   (setq directory (directory-file-name (expand-file-name directory)))
-  (let
-      ((inhibit-read-only t))
-    (setq cvs-default-directory directory
-	  cvs-file-list nil)
-    ;; Now build the list of interesting files
-    (cvs-update-file-list)))
+  (setq cvs-default-directory directory
+	cvs-file-list nil)
+  ;; Now build the list of interesting files
+  (cvs-update-file-list))
 
 (defun cvs-update-no-prompt ()
   "Run `cvs-update' *without* prompting for a directory."
