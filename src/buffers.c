@@ -660,6 +660,8 @@ returning to the original buffer.
 		    swap_buffers_tmp(VVIEW(oldcurrvw), VTX(oldtx));
 	    }
 	}
+	else
+	    res = signal_arg_error(res, 1);
 	POPGC;
 	return(res);
     }
