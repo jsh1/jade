@@ -45,9 +45,9 @@
 
 (defvar mds-address-functions
   '((select . mds-compose-mail-to-item)
-    (delete . (lambda (item) (remove-mail-address (car item))))
+    (delete . (lambda (item) (remove-mail-address (md-delete-record item))))
     (print . mds-print-address)
-    (list . (lambda () mail-address-alist))
+    (list . (lambda () mail-address-list))
     (after-marking . (lambda () (summary-next-item 1)))
     (on-quit . kill-current-buffer)))
 
@@ -82,10 +82,20 @@
 
 (defun mds-print-address (item)
   (insert (if (memq 'delete (summary-get-pending-ops item)) "D " "  "))
-  (insert (cdr item))
-  (insert " ")
-  (indent-to 24)
-  (insert (car item)))
+  (let
+      ((addresses (md-get-field item ':net))
+       (names (md-get-field item ':name)))
+    (when names
+      (insert (car names))
+      (when (cdr names)
+	(insert "..."))
+      (insert " "))
+    (indent-to 24)
+    (while addresses
+      (insert (car addresses))
+      (when (cdr addresses)
+	(insert ", "))
+      (setq addresses (cdr addresses)))))
 
 ;; Return t if the current buffer is displaying the address list
 (defun mds-in-addresses-p ()
@@ -107,9 +117,11 @@
 	       (prompt-for-mail-alias "New alias name:" t (car item)))))
     (when name
       (if (mds-in-addresses-p)
-	  (rplacd item name)
-	(rplaca item name))
-      (setq mail-directory-modified t)
+	  (progn
+	    (md-delete-field item ':name)
+	    (md-add-to-field item ':name name))
+	(rplaca item name)
+	(setq mail-directory-modified t))
       (summary-update-item item))))
 
 (defun mds-edit-body (&optional append)
@@ -120,8 +132,8 @@
        new)
     (if (mds-in-addresses-p)
 	(when (setq new (prompt-for-mail-address "New address:" t (car item)))
-	  (rplaca item new)
-	  (setq mail-directory-modified t))
+	  (md-delete-field item ':net)
+	  (md-add-to-field item ':net new))
       (setq new (prompt-for-address-list (concat "List of addresses"
 						 (if append " to append")
 						 ?:) t))
@@ -154,7 +166,7 @@ CC: field if the prefix arg is set)."
   "Sort the list of mail addresses or aliases."
   (interactive)
   (if (mds-in-addresses-p)
-      (setq mail-address-alist (sort mail-address-alist 'mds-sort-predicate))
-    (setq mail-alias-alist (sort mail-address-alist 'mds-sort-predicate)))
+      (setq mail-address-list (sort mail-address-list 'mds-sort-predicate))
+    (setq mail-alias-alist (sort mail-alias-alist 'mds-sort-predicate)))
   (setq mail-directory-modified t)
   (summary-update))
