@@ -135,10 +135,10 @@ When called interactively, BUFFER is prompted for."
 	      (mapc #'(lambda (v)
 			(unless (minibuffer-view-p v)
 			  (with-view v
-			    (setq buffer-list (delq buffer buffer-list)))
-			  (when (eq (current-buffer v) buffer)
-			    (set-current-buffer (or (car buffer-list)
-						    default-buffer) v))))
+			    (setq buffer-list (delq buffer buffer-list))
+			    (when (eq (current-buffer) buffer)
+			      (set-current-buffer (or (car buffer-list)
+						      default-buffer))))))
 		    (window-view-list w)))
 	  (window-list))))
 
