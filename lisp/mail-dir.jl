@@ -324,7 +324,7 @@ entity NAME."
 		   (condition-case nil
 		       (cons a (get-mail-name-from-address a))
 		     (error
-		      a))) field)))
+		      (cons a nil)))) field)))
      (t
       (error "Nothing to insert in record: %s" record)))))
 
