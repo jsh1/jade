@@ -1,3 +1,8 @@
+1999-12-21  John Harper  <john@dcs.warwick.ac.uk>
+
+	* regjade.c (regmatch): fix typo in non-greedy matching
+	(pointed out in librep by Matt Kraai <kraai@ghs.com>)
+
 1999-12-17  John Harper  <john@dcs.warwick.ac.uk>
 
 	* commands.c (Fcommandp): fixed for current autoload format
