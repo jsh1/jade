@@ -437,7 +437,7 @@ update_status_buffer(VW *vw)
     else
 	block = "";
 
-    if(lines < vw->vw_MaxY)
+    if(lines <= vw->vw_MaxY)
 	position = "All";
     else if(VROW(vw->vw_DisplayOrigin) <= tx->tx_LogicalStart)
 	position = "Top";
