@@ -124,11 +124,15 @@ results have been received.")
       (setq ispell-process process)
       (setq ispell-pending-output nil)
       (setq ispell-line-callback nil)
-      (setq ispell-id-string (ispell-read-line)))))
+      (setq ispell-id-string (ispell-read-line))
+      (unless (string-match "ispell version" ispell-id-string 0 t)
+	(ispell-kill-process)
+	(error "Ispell: %s" ispell-id-string)))))
 
 (defun ispell-kill-process ()
   "Kill any subprocesses being used internally to run Ispell."
   (interactive)
+  (accept-process-output 0)		;in case the process already died
   (when ispell-process
     (ispell-save-dictionary)
     (if (eq (process-connection-type ispell-process) 'pty)
@@ -204,16 +208,18 @@ results have been received.")
   (let
       (response tem)
     (ispell-mutex t)
-    (format ispell-process "%s\n" word)
-    (setq response (ispell-read-line))
-    (if (eq (aref response 0) ?\n)
-	;; This shouldn't happen
-	(error "Null output from Ispell")
-      ;; Gobble following blank line
-      (setq tem (ispell-read-line))
-      (unless (eq (aref tem 0) ?\n)
-	(error "Non-null trailing line from Ispell")))
-    (ispell-mutex nil)
+    (unwind-protect
+	(progn
+	  (format ispell-process "%s\n" word)
+	  (setq response (ispell-read-line))
+	  (if (eq (aref response 0) ?\n)
+	      ;; This shouldn't happen
+	      (error "Null output from Ispell")
+	    ;; Gobble following blank line
+	    (setq tem (ispell-read-line))
+	    (unless (eq (aref tem 0) ?\n)
+	      (error "Non-null trailing line from Ispell"))))
+      (ispell-mutex nil))
     response))
 
 
