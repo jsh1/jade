@@ -522,31 +522,7 @@ anything whose status is `unchanged' or `updated'."
 operated on by the current CVS mode command."
   (cvs-error-if-updating)
   (if (cvs-buffer-p)
-      ;; In the summary buffer, either all marked files, or if none
-      ;; are marked, the ARG files under the cursor. This code
-      ;; should be in summary.jl
-      (or (filter #'(lambda (x)
-		      (memq 'mark (summary-get-pending-ops x)))
-		  cvs-file-list)
-	  (let
-	      ((arg (prefix-numeric-argument current-prefix-arg))
-	       (current (summary-current-index)))
-	    (if (= arg 1)
-		(list (summary-get-item current))
-	      (when (< arg 0)
-		(setq current (+ current arg 1)
-		      arg (- arg))
-		(when (< current 0)
-		  (setq arg (+ arg current)
-			current 0)))
-	      (let
-		  ((in (nthcdr current summary-items))
-		   (out nil))
-		(while (and (> arg 0) in)
-		  (setq out (cons (car in) out)
-			in (cdr in)
-			arg (1- arg)))
-		(nreverse out)))))
+      (summary-command-items)
     ;; In a normal buffer. Try to find a CVS file structure for it
     (or (filter #'(lambda (x)
 		    (file-name= (cvs-file-get-fullname x) (buffer-file-name)))
