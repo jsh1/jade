@@ -561,6 +561,21 @@ Returns the height of the window's font (in pixels).
     return(make_number((long)VWIN(win)->w_FontY));
 }
 
+_PR VALUE cmd_window_dimensions(VALUE win);
+DEFUN("window-dimensions", cmd_window_dimensions, subr_window_dimensions, (VALUE win), V_Subr2, DOC_window_dimensions) /*
+::doc:window_dimensions::
+window-dimensions [VIEW]
+
+Returns (COLUMNS . ROWS) defining the size (in glyphs) of WINDOW (by default
+the current window).
+::end:: */
+{
+    if(!WINDOWP(win))
+	win = VAL(curr_win);
+    return cmd_cons(make_number(VWIN(win)->w_MaxX),
+		    make_number(VWIN(win)->w_MaxY));
+}
+
 _PR VALUE cmd_window_view_list(VALUE win);
 DEFUN("window-view-list", cmd_window_view_list, subr_window_view_list, (VALUE win), V_Subr1, DOC_window_view_list) /*
 ::doc:window_view_list::
@@ -630,6 +645,7 @@ windows_init(void)
     ADD_SUBR(subr_window_id);
     ADD_SUBR(subr_font_x_size);
     ADD_SUBR(subr_font_y_size);
+    ADD_SUBR(subr_window_dimensions);
     ADD_SUBR(subr_window_view_list);
     ADD_SUBR(subr_window_view_count);
     ADD_SUBR(subr_window_first_view);
