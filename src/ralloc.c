@@ -66,6 +66,10 @@ extern int __malloc_extra_blocks;
 
 #else /* not emacs */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stddef.h>
 
 typedef size_t SIZE;
