@@ -20,6 +20,7 @@
 
 #include "jade.h"
 #include "jade_protos.h"
+#include <assert.h>
 
 _PR void adjust_marks_add_x(TX *, long, long, long);
 _PR void adjust_marks_sub_x(TX *, long, long, long);
@@ -283,13 +284,12 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
 
 #define UPD2(x,y)				\
     do {					\
-	if((y == ypos) && (x >= xpos))		\
+	if(y >= ypos)				\
 	{					\
-	    x -= xpos;				\
+	    if(y == ypos && x >= xpos)		\
+		x -= xpos;			\
 	    y++;				\
 	}					\
-	else if(y > ypos)			\
-	    y++;				\
     } while(0)
 
     for(thisvw = view_chain; thisvw; thisvw = thisvw->vw_Next)
@@ -364,10 +364,8 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
 	if(y > ypos)				\
 	{					\
 	    if(y == ypos + 1)			\
-	    {					\
 		x += xpos;			\
-		y--;				\
-	    }					\
+	    y--;				\
 	}					\
     } while(0)
 
