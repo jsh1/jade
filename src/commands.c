@@ -177,9 +177,6 @@ any entered arg is given to the invoked COMMAND.
 {
     VALUE res = NULL;
     this_command = cmd;
-    if(last_command == sym_t)
-	undo_distinct();		/* last was an insertion */
-    undo_new_group();
 
     /* Move the prefix arg. */
     if(NILP(cmd_arg))
@@ -390,9 +387,6 @@ any entered arg is given to the invoked COMMAND.
     cmd_eval_hook2(sym_post_command_hook, cmd);
 
     last_command = this_command;
-    /* This is in here so it can tell if the last binding was actually
-       a command. */
-    undo_distinct();
     this_command = sym_nil;
     current_prefix_arg = sym_nil;
     return(res);
