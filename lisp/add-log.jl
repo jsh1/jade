@@ -19,14 +19,20 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (require 'fill)
+(require 'maildefs)			;for user-mail-address
 (provide 'add-log)
 
 (defvar change-log-file "ChangeLog"
   "File name of change logs")
 
 ;;;###autoload
-(defun add-change-log-entry (&optional log-file)
-  (interactive "FLog file:")
+(defun add-change-log-entry (&optional log-file file-list function-list)
+  (interactive
+   (let
+       ((arg current-prefix-arg))
+     (list (prompt-for-file "Log file:")
+	   (list (file-name-nondirectory (buffer-file-name)))
+	   (if arg nil (list (defun-at-point))))))
   (setq log-file (expand-file-name (or log-file "")))
   (cond
    ((file-directory-p log-file)
@@ -43,7 +49,24 @@
     (insert "\n\t* \n")
     (goto (end-of-line (pos 0 2)))
     (unless major-mode
-      (indented-text-mode))))
+      (indented-text-mode))
+    (when (or file-list function-list)
+      (when file-list
+	(mapc #'(lambda (f)
+		  (insert f)
+		  (insert ", ")) file-list)
+	(backspace-char 2)
+	(insert " "))
+      (when function-list
+	(insert "\(")
+	(mapc #'(lambda (f)
+		  (insert f)
+		  (insert " ")) function-list)
+	(backspace-char 1)
+	(insert "\) "))
+      (backspace-char 1)
+      (insert ": ")
+      (fill-paragraph))))
 
 (defun log-in-same-day-p (old-header)
   (string-match (concat (quote-regexp (substring (current-time-string) 0 11))
