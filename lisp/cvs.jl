@@ -33,7 +33,8 @@ file and the current version. Used by the `cvs-diff-backup' command. Two
 strings can be substituted (using `%s'), the original file, and the merged
 version containing the conflict markers.")
 
-(defvar cvs-option-alist '(("diff" . ("-c")))
+(defvar cvs-option-alist '(("diff" . ("-c"))
+			   ("status" . ("-v")))
   "Alist of (COMMAND-NAME . OPTION-LIST) defining extra command options to
 give to CVS commands.")
 
@@ -89,6 +90,8 @@ and hence hasn't been processed yet; or nil.")
   "r" 'cvs-remove
   "R" 'cvs-revert
   "s" 'cvs-status
+  "t" 'cvs-tag
+  "T" 'cvs-tag-directory
   "%" 'cvs-summary-clean
   "~" 'cvs-undo-modification
   "`" 'cvs-next-conflict-marker)
@@ -437,6 +440,10 @@ to CVS mode include:
 			 changed since they were loaded (via the update)
   `s'			Display the `cvs status' information of all
 			 selected files
+  `t'			Add a symbolic tag (prompted for) to all
+			 selected files
+  `T'			Prompt for the name of a working directory, then a
+			 tag, then tag all files under the directory
   `%'			Remove all uninteresting items from the summary
   `~'			Undo all modifications made to the selected
 			 files since they were checked out
@@ -756,6 +763,24 @@ works by deleting the local copy, before updating it from the repository."
 	(cvs-update-no-prompt)
       (cvs-command nil "update" files))
     (cvs-revert-filenames files)))
+
+(defun cvs-tag (tag-name)
+  "Tag all selected CVS files with the string TAG-NAME."
+  (interactive "sTag:")
+  (let
+      ((cvs-command-async #'(lambda ()
+			      (cvs-show-output-buffer))))
+    (cvs-command nil "tag" (cons tag-name (cvs-command-get-filenames)))))
+
+(defun cvs-tag-directory (directory tag-name)
+  "Tag all CVS controlled files under DIRECTORY with the string TAG-NAME."
+  (interactive "DDirectory:\nsTag:")
+  (let
+      ((cvs-command-async #'(lambda ()
+			      (cvs-show-output-buffer))))
+    (unless (setq directory (local-file-name directory))
+      (error "Can only work on local directories"))
+    (cvs-command nil "tag" (list tag-name directory))))
 
 (defun cvs-next-conflict-marker ()
   "Find the next CVS conflict marker in the current buffer."
