@@ -544,15 +544,21 @@ by the current CVS mode command."
     (cvs-command nil "status" (cvs-command-get-filenames))))
 
 ;;;###autoload
-(defun cvs-add ()
+(defun cvs-add (with-log)
   "Prompts for a log message, then adds each selected file to CVS using this
 message. Note that this doesn't add the files to the central repository, use
-cvs-commit after calling this command for that."
-  (interactive)
-  (cvs-callback-with-message
-   "Adding files"
-   `(lambda (m)
-      (cvs-add-callback ',(cvs-command-get-files) m))))
+cvs-commit after calling this command for that.
+
+If WITH-LOG is non-nil, prompt for a creation log message before adding the
+file (when called interactively, this argument is taken from the raw prefix
+argument)."
+  (interactive "P")
+  (if (not with-log)
+      (cvs-add-callback (cvs-command-get-files) "")
+    (cvs-callback-with-message
+     "Adding files"
+     `(lambda (m)
+	(cvs-add-callback ',(cvs-command-get-files) m)))))
 
 (defun cvs-add-callback (files message)
   ;; Not possible to just call add. Instead it's necessary to iterate
