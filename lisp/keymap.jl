@@ -51,7 +51,7 @@
 	    (cond
 	     ((vectorp keymap)
 	      (let
-		  ((i (length keymap)))
+		  ((i (1- (length keymap))))
 		(while (>= i 0)
 		  (km-print-list (aref keymap i))
 		  (setq i (1- i)))))
@@ -145,4 +145,3 @@ would invoke."
 	(message (concat names " is unbound. "))
 	(setq done t
 	      next-keymap-path nil)))))
-
