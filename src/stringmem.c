@@ -125,6 +125,7 @@ new_memblock(StrMem *sm, MemBucket *mbu, int sizeIndex)
 	mc->mc_BlkType = MBT_FREE;
 	mc->mc_Mem.nextfree = mbu->mbu_FreeList;
 	mbu->mbu_FreeList = mbl->mbl_Chunks;
+	mbu->mbu_FreeCount += numchunks;
 	return(TRUE);
     }
     return(FALSE);
@@ -174,6 +175,7 @@ sm_alloc(StrMem *sm, int size)
 	}
 	mc->mc_BlkType = bucket;
 	mbu->mbu_FreeList = mc->mc_Mem.nextfree;
+	mbu->mbu_FreeCount--;
 
 #ifdef STRMEM_STATS
 	sm->sm_AllocCount[bucket]++;
@@ -208,11 +210,14 @@ sm_strdup(StrMem *sm, const u_char *str)
 static void
 flush_bucket(StrMem *sm, int bucketIndex)
 {
+    MemBucket *mbu = &sm->sm_MemBuckets[bucketIndex];
     MemBlock *mbl, *nxt;
     int chnksiz = MCHNK_SIZE((bucketIndex + 1) * GRAIN);
     int numchnks = sm->sm_ChunksPerBlock[bucketIndex];
-    mbl = (MemBlock *)sm->sm_MemBuckets[bucketIndex].mbu_MemBlocks.mlh_Head;
-    while((nxt = (MemBlock *)mbl->mbl_Node.mln_Succ))
+
+    mbl = (MemBlock *)mbu->mbu_MemBlocks.mlh_Head;
+    while(mbu->mbu_FreeCount >= numchnks
+	  && (nxt = (MemBlock *)mbl->mbl_Node.mln_Succ) != NULL)
     {
 	MemChunk *mc = mbl->mbl_Chunks;
 	int j;
@@ -224,11 +229,13 @@ flush_bucket(StrMem *sm, int bucketIndex)
 	}
 	if(j == numchnks)
 	{
+	    /* This whole block is free. Remove all references to
+	       from the bucket's free list. */
 	    mc = mbl->mbl_Chunks;
 	    for(j = 0; j < numchnks; j++)
 	    {
 		MemChunk *last = NULL;
-		MemChunk *list = sm->sm_MemBuckets[bucketIndex].mbu_FreeList;
+		MemChunk *list = mbu->mbu_FreeList;
 		while(list)
 		{
 		    if(list == mc)
@@ -236,8 +243,7 @@ flush_bucket(StrMem *sm, int bucketIndex)
 			if(last)
 			    last->mc_Mem.nextfree = list->mc_Mem.nextfree;
 			else
-			    sm->sm_MemBuckets[bucketIndex].mbu_FreeList
-				= list->mc_Mem.nextfree;
+			    mbu->mbu_FreeList = list->mc_Mem.nextfree;
 			break;
 		    }
 		    last = list;
@@ -247,6 +253,7 @@ flush_bucket(StrMem *sm, int bucketIndex)
 	    }
 	    RemoveM(&mbl->mbl_Node);
 	    myfree(mbl);
+	    mbu->mbu_FreeCount -= numchnks;
 	}
 	mbl = nxt;
     }
@@ -274,27 +281,16 @@ sm_free(StrMem *sm, void *mem)
 	    mc->mc_Mem.nextfree = mbu->mbu_FreeList;
 	    mc->mc_BlkType = MBT_FREE;
 	    mbu->mbu_FreeList = mc;
-	    if(sm->sm_FreesBeforeFlush)
+	    mbu->mbu_FreeCount++;
+	    if(sm->sm_FreesBeforeFlush != 0
+	       && (mbu->mbu_FreeCount
+	           >= (sm->sm_FreesBeforeFlush
+		       * sm->sm_ChunksPerBlock[bucketnum])))
 	    {
-		/* check whether to flush this bucket... */
-		if(++mbu->mbu_FreeCount
-		   >= (sm->sm_FreesBeforeFlush
-		       * sm->sm_ChunksPerBlock[bucketnum]))
-		{
-		    mbu->mbu_FreeCount = 0;
-		    flush_bucket(sm, bucketnum);
-		}
+		/* flush this bucket... */
+		flush_bucket(sm, bucketnum);
 	    }
-#if 0
-	    if(sm == main_strmem)
-	    {
-		/* Tell gc there's x bytes of data which may be able to be
-		   reclaimed. This may seem backwards but it makes sense to gc
-		   (and hence sm_flush()) when a lot of string-bytes have been
-		   freed.  */
-		data_after_gc += (bucketnum + 1) * GRAIN;
-	    }
-#endif
+
 #ifdef STRMEM_STATS
 	    sm->sm_FreeCount[bucketnum]++;
 #endif
