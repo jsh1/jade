@@ -42,6 +42,7 @@ libraries.")
   "Ctrl-h" 'help-help
   "i" 'info
   "k" 'describe-key
+  "w" 'where-is
   "m" 'describe-mode
   "?" 'help-help
   "v" 'describe-variable
@@ -58,7 +59,7 @@ libraries.")
   "Entrance to the online-help system."
   (interactive)
   (message "Type: a b f h i k m v -- h for more help")
-  (setq next-keymap-path '(help-prompt-keymap)))
+  (next-keymap-path '(help-prompt-keymap)))
 
 (defun help-help ()
   "Displays some text describing the options in the help system."
@@ -89,7 +90,11 @@ m   `describe-mode'
 	Show the documentation for the edit mode of the current buffer.
 
 v   `describe-variable'
-	View the documentation and value of a variable."
+	View the documentation and value of a variable.
+
+w   `where-is'
+	Prompt for the name of a command, then display all key bindings
+	that invoke may be used to invoke it."
     (start-of-buffer) help-buffer)
     (goto-buffer help-buffer)
     (goto (start-of-buffer))
@@ -121,10 +126,9 @@ v   `describe-variable'
 it leads to)."
   (interactive)
   (let
-      ((old-buf (current-buffer))
-       (km-list keymap-path))
+      ((old-buf (current-buffer)))
     (help-wrapper
-     (print-keymap km-list old-buf))))
+     (print-keymap nil old-buf))))
 
 (defun describe-function (fun &aux doc)
   "Display the documentation of a function, macro or special-form."
