@@ -44,7 +44,6 @@ for the list of formatting options available.")
 (defvar rm-summary-keymap
   (bind-keys (make-sparse-keymap summary-keymap)
     "d" '(rm-command-with-folder 'rm-mark-message-deletion)
-    "Ctrl-d" '(rm-command-with-folder 'rm-mark-message-deletion)
     "u" '(rm-command-with-folder 'rm-unmark-message)
     "U" '(rm-command-with-folder 'rm-unmark-all-messages)
     "x" '(rm-command-with-folder 'rm-expunge)
