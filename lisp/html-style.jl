@@ -170,13 +170,14 @@ are only set if they don't already have a value."
 
 ;; Functions that can be embedded in .html.in files
 
-(defun html-style-header (title)
+(defun html-style-header (title &optional no-heading)
   "Insert the header for a html file. Includes the first heading of TITLE,
 and the start of the first section of text."
   (html-style-init-vars)
   (file-subst-set 'title title)
   (html-style-insert 'header)
-  (html-style-insert 'title))
+  (unless no-heading
+    (html-style-insert 'title)))
 
 (defun html-style-footer (&optional id)
   "Insert the footer for a html file. If ID is defined, it should be a string
