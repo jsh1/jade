@@ -46,7 +46,7 @@
 	  (unrestrict-buffer)
 	  (save-excursion
 	    (goto (end-of-buffer))
-	    (unless (zerop (buffer-length))
+	    (unless (zerop (1- (buffer-length)))
 	      (insert "\n"))
 	    (let
 		((ins-start (cursor-pos))
@@ -72,10 +72,11 @@
 			    rm-cached-msg-list 'invalid)
 		      (rm-display-current-message))))))))))
      ((filep dest)
-      ;; DEST is a file. Append to it; also append an extra newline
-      ;; character to ensure the "\n\n" requirement at the end of the
-      ;; file is met.
-      (write dest ?\n)
+      ;; DEST is a file. Append to it
+      (unless (zerop (file-size (file-binding dest)))
+	;; The file isn't empty, so ensure there's a blank
+	;; line separating messages
+	(write dest ?\n))
       (write dest text)))
     (rm-set-flag msg 'filed)
     (when rm-delete-after-output
@@ -98,7 +99,7 @@ otherwise write straight to the folder's file."
       (unrestrict-buffer)
       (let
 	  ((real-dest (or (get-file-buffer dest)
-			  (open-file dest "a"))))
+			  (open-file dest 'append))))
 	(unwind-protect
 	    (while (and (> count 0) msg-list)
 	      (rm-output-message (car msg-list) real-dest)

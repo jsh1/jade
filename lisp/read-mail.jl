@@ -167,10 +167,9 @@ the next prompt.")
     (let
 	((mail-view (get-buffer-view rm-summary-mail-buffer)))
       (set-current-view mail-view)))
-  (if (or (file-name-absolute-p folder)
-	  (file-exists-p (expand-file-name folder)))
-      (setq folder (expand-file-name folder))
-    (setq folder (expand-file-name (file-name-concat mail-folder-dir folder))))
+  (unless (or (file-name-absolute-p folder)
+	      (file-exists-p folder))
+    (setq folder (expand-file-name folder mail-folder-dir)))
   (when (find-file-read-only folder)
     ;; The current buffer is now the folder. Set up the major mode
     (setq rm-last-folder folder)
@@ -702,12 +701,12 @@ Major mode for viewing mail folders. Commands include:\n
     (error "The variable `movemail-program' is invalid"))
    (t
     (let*
-	((tofile (file-name-concat (file-name-directory (buffer-file-name))
-				   (concat ".newmail-"
-					   (file-name-nondirectory inbox))))
+	((tofile (local-file-name (concat ".newmail-"
+					  (file-name-nondirectory inbox))))
 	 (temp-buffer (make-buffer "*movemail-output*"))
 	 (proc (make-process temp-buffer)))
-      (if (zerop (call-process proc nil movemail-program inbox tofile))
+      (if (zerop (call-process proc nil movemail-program
+			       (local-file-name inbox) tofile))
 	  ;; No errors
 	  (progn
 	    (destroy-buffer temp-buffer)
@@ -721,7 +720,7 @@ Major mode for viewing mail folders. Commands include:\n
 		(rm-move-forwards))
 	      ;; Ensure that there's a blank line at the end of the buffer..
 	      (goto (end-of-buffer))
-	      (unless (zerop (buffer-length))
+	      (unless (zerop (1- (buffer-length)))
 		;; Unless this is going to be the first message
 		(insert "\n"))
 	      (setq start (cursor-pos))
@@ -746,10 +745,11 @@ Major mode for viewing mail folders. Commands include:\n
 		  (rm-set-flag (car msgs) 'unread))
 		(setq pos (forward-line -1 pos)))
 	      (when msgs
-		(when rm-current-msg
-		  (setq rm-before-msg-list (cons rm-current-msg
-						 rm-before-msg-list)
-			rm-current-msg-index (1+ rm-current-msg-index)))
+		(if rm-current-msg
+		    (setq rm-before-msg-list (cons rm-current-msg
+						   rm-before-msg-list)
+			  rm-current-msg-index (1+ rm-current-msg-index))
+		  (setq rm-current-msg-index 0))
 		(setq rm-current-msg (car msgs)
 		      rm-after-msg-list (cdr msgs)
 		      rm-message-count (+ rm-message-count count)
@@ -772,10 +772,9 @@ Major mode for viewing mail folders. Commands include:\n
     (while (and inboxes (numberp this-ret))
       (setq this (car inboxes)
 	    inboxes (cdr inboxes))
-      (if (or (file-name-absolute-p this)
-	      (file-exists-p (expand-file-name this)))
-	  (setq this (expand-file-name this))
-	(setq this (expand-file-name (file-name-concat mail-folder-dir this))))
+      (unless (or (file-name-absolute-p this)
+		  (file-exists-p this))
+	(setq this (expand-file-name this mail-folder-dir)))
       (if (file-exists-p this)
 	  (progn
 	    (setq this-ret (rm-append-inbox this))
