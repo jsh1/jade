@@ -46,7 +46,7 @@ deletion by the `&' command.")
 			  (print . dired-print)
 			  (list . dired-list)
 			  (on-quit . bury-buffer)
-			  (after-marking (lambda () (summary-next-item 1)))
+			  (after-marking . (lambda () (summary-next-item 1)))
 			  (after-move . (lambda ()
 					  (goto-glyph
 					   (pos dired-cursor-column nil)))))
