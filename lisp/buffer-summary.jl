@@ -39,7 +39,8 @@
 		       (delete . kill-buffer)
 		       (print . bs-print-item)
 		       (list . (lambda () (copy-sequence buffer-list)))
-		       (save . save-file))
+		       (save . save-file)
+		       (after-marking . (lambda () (summary-next-item 1))))
   "Function vector for summary-mode.")
 
 ;;;###autoload
