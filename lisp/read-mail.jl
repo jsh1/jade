@@ -148,7 +148,9 @@ when set to the symbol `invalid'.")
     "z" 'rm-forward
     "*" 'rm-burst-message
     "s" 'rm-output
-    "|" 'rm-pipe-message)
+    "|" 'rm-pipe-message
+    "Ctrl-t" 'rm-toggle-threading
+    "Ctrl-s" 'rm-sort-folder)
   "Keymap for reading mail")
   
 (defvar rm-last-folder mail-folder-dir
@@ -463,6 +465,11 @@ Major mode for viewing mail folders. Local bindings are:\n
 
 (defun rm-get-subject (msg)
   (rm-cached-form msg 'subject (rm-get-msg-header msg "Subject")))
+
+;; subject with any re:'s stripped
+(defun rm-get-actual-subject (msg)
+  (rm-cached-form msg 'raw-subject
+    (mail-get-actual-subject (rm-get-subject msg))))
 
 (defun rm-get-date-vector (msg)
   (rm-cached-form msg 'date-vector
@@ -808,6 +815,7 @@ Major mode for viewing mail folders. Local bindings are:\n
     (rm-with-summary
      (summary-update))
     (rm-display-message old-msg)
+    (call-hook 'rm-after-import-hook)
     count))
 
 
@@ -841,6 +849,8 @@ Major mode for viewing mail folders. Local bindings are:\n
     "z" '(rm-command-in-folder 'rm-forward)
     "*" '(rm-command-with-folder 'rm-burst-message)
     "s" '(rm-command-with-folder 'rm-output)
+    "Ctrl-t" '(rm-command-with-folder 'rm-toggle-threading)
+    "Ctrl-s" '(rm-command-with-folder 'rm-sort-folder)
     "|" '(rm-command-with-folder 'rm-pipe-message)))
 
 (defvar rm-summary-functions '((select . rm-summary-select-item)
@@ -1075,6 +1085,14 @@ the summary buffer.")
   (rm-set-msg-field msg rm-msg-cache
 		    (delete-if #'(lambda (x) (bufferp (car x)))
 			       (rm-get-msg-field msg rm-msg-cache))))
+
+;; Delete all cached summary lines
+(defun rm-invalidate-summary-cache ()
+  (mapc #'(lambda (l)
+	    (mapc 'rm-invalidate-summary l))
+	(list rm-before-msg-list
+	      (and rm-current-msg (list rm-current-msg))
+	      rm-after-msg-list)))
 
 (defun rm-summary-select-item (item)
   (with-view (rm-configure-views (current-buffer) rm-summary-mail-buffer)
