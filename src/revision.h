@@ -18,7 +18,12 @@
    along with Jade; see the file COPYING.  If not, write to
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
+#ifndef _REVISION_H
+#define _REVISION_H
+
 #define VERSSTRING "Jade 4.0 alpha"
 #define VERSID	   "4.0"
 #define MAJOR	   4
 #define MINOR	   0
+
+#endif /* _REVISION_H */
