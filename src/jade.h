@@ -36,7 +36,7 @@ typedef char bool;
 
 #ifndef HAVE_X11
 # ifndef HAVE_AMIGA
-   you lose!
+#  error Need HAVE_X11 or HAVE_AMIGA defined
 # endif
 #endif
 
@@ -46,6 +46,9 @@ typedef char bool;
 #include "keys.h"
 #include "stringmem.h"
 
+
+/* Macros */
+
 /* Some macros for using MinLists  */
 #define AddMTail(l,n)	AddTail((struct List *)l, (struct Node *)n)
 #define InsertM(l,n,ln) Insert((struct List *)l, (struct Node *)n, (struct Node *)ln)
@@ -54,6 +57,20 @@ typedef char bool;
 #define IsMListEmpty(l) IsListEmpty((struct List *)l)
 #define IsLastMNode(n)	(!((n)->mln_Succ))
 
+/* Stringify X. Expands macros in X. */
+#define QUOTE(x) __QUOTE(x)
+#define __QUOTE(x) #x
+
+/* Maximum/minimum macros. Don't use when X or Y have side-effects! */
+#define MAX(x,y) (((x) > (y)) ? (x) : (y))
+#define MIN(x,y) (((x) < (y)) ? (x) : (y))
+#define POS(x)   MAX(x, 0)
+
+/* Round the integer X to the next or previous multiple of Y. */
+#define ROUND_UP_INT(x,y) ((((x) + (y)-1) / (y)) * (y))
+#define ROUND_DOWN_INT(x,y) (((x) / (y)) * (y))
+
+
 #ifndef HAVE_STPCPY
 extern char *stpcpy(char *, const char *);
 #endif
@@ -85,8 +102,5 @@ extern void *memchr(const void *, int, size_t);
 #ifndef FALSE
 # define FALSE (0)
 #endif
-
-#define QUOTE(x) __QUOTE(x)
-#define __QUOTE(x) #x
 
 #endif /* _JADE_H */
