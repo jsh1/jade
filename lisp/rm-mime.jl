@@ -63,7 +63,7 @@
 	  (insert (copy-area (restriction-start)
 			     (rm-message-body msg)) nil dest)
 	  (save-restriction
-	    (restrict-buffer (rm-message-body msg)
+	    (restrict-buffer (forward-line 1 (rm-message-body msg))
 			     (rm-message-end msg))
 	    (goto-buffer dest)
 	    ;; Re-highlight the copied headers
@@ -78,6 +78,7 @@
 						    (match-end))
 						   (end-of-buffer))))
 		    (make-extent end tem (list 'face mail-highlight-face)))))
+	      (insert "\n")
 	      (mime-decode (mark-file (rm-get-msg-field msg rm-msg-mark))
 			   content-type content-xfer-enc content-disp)
 	      (goto top)
