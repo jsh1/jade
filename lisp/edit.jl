@@ -855,10 +855,11 @@ finish (as long as the original buffer still exists)."
 	     _s_r_end_ (make-mark (restriction-end))))
      (unwind-protect
 	 (progn ,@forms)
-       (when (and _s_r_start_ (mark-resident-p _s_r_start_))
-	 (restrict-buffer (mark-pos _s_r_start_)
-			  (mark-pos _s_r_end_)
-			  (mark-file _s_r_start_))))))
+       (if (and _s_r_start_ (mark-resident-p _s_r_start_))
+	   (restrict-buffer (mark-pos _s_r_start_)
+			    (mark-pos _s_r_end_)
+			    (mark-file _s_r_start_))
+	 (unrestrict-buffer)))))
       
 (defmacro save-excursion (&rest forms)
   "Evaluate FORMS, ensuring that the original current buffer and the original
