@@ -192,6 +192,7 @@ struct cached_extent {
 struct visible_extent {
     struct visible_extent *next;
     Lisp_Extent *extent;
+    struct _VW *vw;
     long start_col, start_row;
     long end_col, end_row;
 };
@@ -303,6 +304,9 @@ typedef struct _TX {
 
 
 /* Each view in a window is like this */
+
+#define MAX_MOUSE_EXTENTS 16
+
 typedef struct _VW
 {
     repv	    vw_Car;
@@ -325,6 +329,10 @@ typedef struct _VW
     repv	    vw_BlockS, vw_BlockE;
     /* 0=block marked, 1=start marked, 2=end marked, -1=none marked */
     int		    vw_BlockStatus;
+
+    /* List of extents currently under the mouse in this view. */
+    Lisp_Extent *vw_MouseExtents[MAX_MOUSE_EXTENTS];
+    int vw_NumMouseExtents;
 
     /* This pane of vw_Win starts at glyph (FirstX, FirstY), for
        (MaxX, MaxY) glyphs (not including status line) */
@@ -369,8 +377,6 @@ typedef struct {
        all data for a line can be copied by a single call to memcpy() */
 } glyph_buf;
 
-#define MAX_MOUSE_EXTENTS 16
-
 /* Each window is represented by one of these */
 typedef struct _WIN {
     repv w_Car;
@@ -385,9 +391,7 @@ typedef struct _WIN {
 
     W_WindowSys w_WindowSys;		/* Data for the window system */
     glyph_buf *w_Content, *w_NewContent; /* Data for redisplay */
-    struct visible_extent *w_VisibleExtents;
-    Lisp_Extent *w_MouseExtents[MAX_MOUSE_EXTENTS];
-    int w_NumMouseExtents;
+    struct visible_extent *w_VisibleExtents; /* List of displayed extents */
 
     u_long w_LastClickMics;		/* Last mouse click event */
 
