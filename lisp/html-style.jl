@@ -38,7 +38,7 @@
 ;;;	html-style-footer [ID-STRING]
 ;;;	html-style-small-break
 ;;;	html-style-large-break
-;;;	html-style-title NEW-HEADING
+;;;	html-style-title NEW-HEADING [ANCHOR-NAME]
 ;;;
 ;;; Each function is documented in the usual way. An example use of all
 ;;; this might be something like the following:
@@ -219,10 +219,16 @@ identifying the current revision of the html file."
   (html-style-insert 'section-end)
   (html-style-insert 'section-start))
 
-(defun html-style-title (title)
+(defun html-style-title (title &optional anchor)
   "Insert a break, a heading, and the start of a new section, in the body of
 an html file."
+  (when (eq anchor t)
+    (setq anchor title))
   (file-subst-set 'title title)
   (html-style-insert 'section-end)
+  (when anchor
+    (insert (format nil "<a name=\"%s\">" anchor)))
   (html-style-insert 'title)
+  (when anchor
+    (insert "</a>"))
   (html-style-insert 'section-start))
