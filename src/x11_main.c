@@ -63,43 +63,22 @@ repv def_font_str;
 
 /* Resource/option management */
 
-static char **out_argv;
-static int out_argc;
-
 /* Called from main(). */
 bool
 sys_init(char *program_name)
 {
     struct x11_display *xdisplay;
     char *display_name = 0;
-    repv args = rep_SYM(Qcommand_line_args)->value;
-    repv *pred = &rep_SYM(Qcommand_line_args)->value;
+    repv opt;
 
     def_font_str = rep_VAL(&def_font_str_data);
     prog_name = program_name;
 
-    while (rep_CONSP(args))
-    {
-	if(!strcmp("--display", rep_STR(rep_CAR(args)))
-	   && rep_CONSP(rep_CDR(args)))
-	{
-	    display_name = rep_STR(rep_CAR(args));
-	    rep_CDR(args) = rep_CDR(rep_CDR(args));
-	    *pred = rep_CDR(args);
-	}
-	else if(!strcmp("--name", rep_STR(rep_CAR(args)))
-		&& rep_CONSP(rep_CDR(args)))
-	{
-	    prog_name = strdup(rep_STR(rep_CAR(args)));
-	    rep_CDR(args) = rep_CDR(rep_CDR(args));
-	    *pred = rep_CDR(args);
-	}
-	else
-	{
-	    pred = &rep_CDR(args);
-	    args = rep_CDR(args);
-	}
-    }
+    if (rep_get_option ("--display", &opt))
+	display_name = strdup (rep_STR(opt));
+    if (rep_get_option ("--name", &opt))
+	prog_name = strdup (rep_STR(opt));
+
     if (display_name == 0)
 	display_name = getenv("DISPLAY");
 
@@ -158,8 +137,7 @@ get_resources(struct x11_display *xdisplay)
 void
 sys_usage(void)
 {
-    fputs("\nSYSTEM-OPTIONS are,\n"
-	  "    --display DISPLAY-NAME\n"
+    fputs("    --display DISPLAY-NAME\n"
 	  "    --name NAME\n"
 	  "    --geometry WINDOW-GEOMETRY\n"
 	  "    --visual VISUAL-NAME\n"
@@ -170,56 +148,36 @@ sys_usage(void)
 	  "    --bl BLOCK-COLOUR\n"
 	  "    --rv\n"
 	  "    --font FONT-NAME\n"
-	  "    --sync\n" , stderr);
+	  "    --sync\n"
+	  "    FILE         Load FILE into an editor buffer\n", stderr);
 }
 
 /* Scan the command line for the X11 options. Updating ARGC-P and ARGV-P to
    point to the following options. */
 static void
-get_options(int *argc_p, char ***argv_p)
+get_options(void)
 {
-    int argc = *argc_p;
-    char **argv = *argv_p;
-    argc--;
-    argv++;
-    while((argc >= 1) && (**argv == '-'))
-    {
-	if(!strcmp("--sync", *argv))
-	    x11_opt_sync = 1;
-	else if(!strcmp("--rv", *argv))
-	    x11_opt_reverse_video = !x11_opt_reverse_video;
-	else if(argc >= 2)
-	{
-	    if(!strcmp("--display", *argv))
-		;
-	    else if(!strcmp("--name", *argv))
-		;
-	    else if(!strcmp("--geometry", *argv))
-		geom_str = argv[1];
-	    else if(!strcmp("--visual", *argv))
-		visual_name = argv[1];
-	    else if(!strcmp("--fg", *argv))
-		default_fg_color = argv[1];
-	    else if(!strcmp("--bg", *argv))
-		default_bg_color = argv[1];
-	    else if(!strcmp("--bl", *argv))
-		default_block_color = argv[1];
-	    else if(!strcmp("--hl", *argv))
-		default_hl_color = argv[1];
-	    else if(!strcmp("--ml", *argv))
-		default_ml_color = argv[1];
-	    else if(!strcmp("--font", *argv))
-		def_font_str = rep_string_dup(argv[1]);
-	    else
-		break;
-	    argc--; argv++;
-	}
-	else
-	    break;
-	argc--; argv++;
-    }
-    *argc_p = argc;
-    *argv_p = argv;
+    repv opt;
+    if (rep_get_option("--sync", 0))
+	x11_opt_sync = 1;
+    if (rep_get_option("--rv", 0))
+	x11_opt_reverse_video = !x11_opt_reverse_video;
+    if (rep_get_option("--geometry", &opt))
+	geom_str = strdup (rep_STR(opt));
+    if (rep_get_option("--visual", &opt))
+	visual_name = strdup (rep_STR(opt));
+    if (rep_get_option("--fg", &opt))
+	default_fg_color = strdup (rep_STR(opt));
+    if (rep_get_option("--bg", &opt))
+	default_bg_color = strdup (rep_STR(opt));
+    if (rep_get_option("--bl", &opt))
+	default_block_color = strdup (rep_STR(opt));
+    if (rep_get_option("--hl", &opt))
+	default_hl_color = strdup (rep_STR(opt));
+    if (rep_get_option("--ml", &opt))
+	default_ml_color = strdup (rep_STR(opt));
+    if (rep_get_option("--font", &opt))
+	def_font_str = opt;
 }
 
 /* After parsing the command line and the resource database, use the
@@ -373,7 +331,7 @@ x11_open_display(char *display_name)
 		if(is_first)
 		{
 		    get_resources(xdisplay);
-		    get_options(&out_argc, &out_argv);
+		    get_options();
 		}
 
 		if(use_options(xdisplay))
