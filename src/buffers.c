@@ -648,7 +648,6 @@ Set the name of BUFFER to NAME.
 	/* Reset the status-id */
 	VTX(tx)->tx_StatusId = rep_concat2("Jade: ", rep_STR(name));
     }
-    sys_reset_sleep_titles(VTX(tx));
     return name;
 }
 
