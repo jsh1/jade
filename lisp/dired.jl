@@ -26,15 +26,22 @@
 
 (defvar dired-keymap (copy-sequence summary-keymap))
 (bind-keys dired-keymap
-  "*" 'summary-mark-item
+  "*" 'dired-mark-executables
+  "@" 'dired-mark-symlinks
+  "/" 'dired-mark-directories
   "#" 'dired-delete-autosaves
   "~" 'dired-delete-backups
   "&" 'dired-delete-garbage
-  "%" 'dired-delete-by-regexp
+  "%" '(setq next-keymap-path '(dired-%-keymap))
   "f" 'dired-find-file
   "o" 'dired-find-file-other-view
   "Ctrl-o" 'dired-display-file
   "g" 'summary-update)
+
+(defvar dired-%-keymap (make-keylist))
+(bind-keys dired-%-keymap
+  "d" 'dired-delete-by-regexp
+  "m" 'dired-mark-by-regexp)
 
 (defvar dired-garbage-files "\\.(orig|rej|aux|log)$"
   "Regular expression matching files under dired that should be marked for
@@ -58,21 +65,24 @@ deletion by the `&' command.")
   "Function vector for Dired mode.")
 
 
-;; Basics
+;; Basic interface to summary-mode
 
 ;;;###autoload
 (defun dired (directory)
   (interactive "DDirectory:")
-  (setq directory (directory-file-name directory))
+  (setq directory (directory-file-name (expand-file-name directory)))
+  (unless (file-directory-p directory)
+    (error "%S is not a directory" directory))
   (let
       ((buffer (or (get-file-buffer directory)
-		   (open-buffer (file-name-nondirectory directory))))
+		   (open-buffer (file-name-nondirectory directory) t)))
        (inhibit-read-only t))
     (goto-buffer buffer)
     (if (eq major-mode 'dired-mode)
 	(summary-update)
       (format buffer "[Dired] %s:\n\n" directory)
       (set-buffer-file-name buffer directory)
+      (setq default-directory (file-name-as-directory directory))
       (summary-mode "Dired" dired-functions dired-keymap)
       (setq summary-assoc-item-function 'assoc
 	    major-mode 'dired-mode))))
@@ -96,23 +106,21 @@ is used with the following commands that are specific to Dired:
   `g', `Ctrl-l'		Refresh the directory listing\n")
 
 (defun dired-list ()
-  (sort (directory-files (buffer-file-name))))
+  (sort (directory-files default-directory)))
 
 (defun dired-print (item)
   (let*
-      ((name (file-name-concat (buffer-file-name) item))
-       (symlink (and (file-symlink-p name)
-		     (or (file-exists-p name) 'broken))))
+      ((symlink (and (file-symlink-p item)
+		     (or (file-exists-p item) 'broken))))
     (format (current-buffer) "%c%c %s %2d %8d  "
 	    (if (memq 'delete (summary-get-pending-ops item)) ?D ? )
 	    (if (summary-item-marked-p item) ?* ? )
-	    (if symlink "lrwxrwxrwx"
-	      (file-modes-as-string (file-modes name)))
-	    (if (eq symlink 'broken) 1 (file-nlinks name))
-	    (if (eq symlink 'broken) 0 (file-size name)))
+	    (if symlink "lrwxrwxrwx" (file-modes-as-string item))
+	    (if (eq symlink 'broken) 1 (file-nlinks item))
+	    (if (eq symlink 'broken) 0 (file-size item)))
     (if (eq symlink 'broken)
 	(insert "[broken symlink]  ")
-      (insert (current-time-string (file-modtime name) "%Y-%m-%d %R  ")))
+      (insert (current-time-string (file-modtime item) "%Y-%m-%d %R  ")))
     (indent-to dired-cursor-column)
     (insert item)))
 
@@ -122,37 +130,27 @@ is used with the following commands that are specific to Dired:
 (defun dired-execute-end ()
   (map-y-or-n-p "Really delete file `%s'?"
 		(prog1 dired-delete-cache
-		  (setq dired-delete-cache nil))
-		#'(lambda (f)
-		    (delete-file
-		     (file-name-concat (buffer-file-name) f)))))
+		  (setq dired-delete-cache nil)) 'delete-file))
 
-;; Commands
+;; Marking
 
-(defun dired-find-file (item)
-  (interactive (list (summary-current-item)))
-  (find-file (file-name-concat (buffer-file-name) item)))
-
-(defun dired-find-file-other-view (item)
-  (interactive (list (summary-current-item)))
-  (let
-      ((name (file-name-concat (buffer-file-name) item)))
-    (goto-other-view)
-    (find-file name)))
-
-(defun dired-display-file (item)
-  (interactive (list (summary-current-item)))
-  (let
-      ((name (file-name-concat (buffer-file-name) item)))
-    (with-view (other-view)
-      (find-file name))))
-
-(defun dired-delete-by-regexp (re)
-  (interactive "sRegexp:")
+(defun dired-mark-if (pred &optional op)
   (mapc #'(lambda (x)
-	    (when (string-match re x)
-	      (summary-mark-delete x)))
+	    (when (funcall pred x)
+	      (summary-mark-item (or op 'mark) x)))
 	summary-items))
+
+(defun dired-mark-directories ()
+  (interactive)
+  (dired-mark-if 'file-directory-p))
+
+(defun dired-mark-by-regexp (regexp &optional op)
+  (interactive "sMark files matching regexp:")
+  (dired-mark-if #'(lambda (f) (string-match regexp f)) op))
+
+(defun dired-delete-by-regexp (regexp)
+  (interactive "sDelete files matching regexp:")
+  (dired-mark-by-regexp regexp 'delete))
 
 (defun dired-delete-autosaves ()
   (interactive)
@@ -165,3 +163,24 @@ is used with the following commands that are specific to Dired:
 (defun dired-delete-garbage ()
   (interactive)
   (dired-delete-by-regexp dired-garbage-files))
+
+
+;; Commands
+
+(defun dired-find-file (item)
+  (interactive (list (summary-current-item)))
+  (find-file item))
+
+(defun dired-find-file-other-view (item)
+  (interactive (list (summary-current-item)))
+  (let
+      ((name (expand-file-name item)))
+    (goto-other-view)
+    (find-file name)))
+
+(defun dired-display-file (item)
+  (interactive (list (summary-current-item)))
+  (let
+      ((name (expand-file-name item)))
+    (with-view (other-view)
+      (find-file name))))
