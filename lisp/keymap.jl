@@ -191,22 +191,43 @@ for the bindings to be installed if and when it is."
 
 ;; Get one event
 
+(defvar read-event-cooked nil)
+
+(defun read-event-callback ()
+  (throw 'read-event (if read-event-cooked
+			 (current-event-string)
+		       (current-event))))
+
 ;;;###autoload
-(defun read-event (&optional title)
+(defun read-event (&optional title cooked)
   "Read the next event and return a cons cell containing the two integers that
-define that event."
+define that event. If COOKED is non-nil, return the _string_ that the event
+is bound to be the operating system, not the event itself."
   (let
       ((temp-buffer (make-buffer "*read-event*"))
-       ev)
+       (read-event-cooked cooked))
     (with-view (minibuffer-view)
       (with-buffer temp-buffer
-	(add-hook 'unbound-key-hook #'(lambda ()
-					(throw 'read-event (current-event))))
+	(add-hook 'unbound-key-hook 'read-event-callback)
 	(next-keymap-path nil)
 	(insert (or title "Enter key: "))
-	(setq ev (catch 'read-event
-		   (recursive-edit)))))
-    ev))
+	(catch 'read-event
+	  (recursive-edit))))))
+
+;;;###autoload
+(defun next-event (&optional cooked)
+  "Wait for the next input event, then return it. If COOKED is non-nil, return
+the string that the operating system would normally insert for that event."
+  (next-keymap-path nil)
+  (let
+      ((old-ukh unbound-key-hook)
+       (read-event-cooked cooked))
+    (add-hook 'unbound-key-hook 'read-event-callback)
+    (next-keymap-path nil)
+    (unwind-protect
+	(catch 'read-event
+	  (recursive-edit))
+      (setq unbound-key-hook old-ukh))))
 
 ;;;###autoload
 (defun describe-key ()
