@@ -368,6 +368,25 @@ interactively the MIME part under the cursor is used."
      (t
       (mime-save-part extent)))))
 
+(defun mime-display-part (extent)
+  "Display the unencoded form of the current MIME part in a temporary buffer."
+  (interactive (list (mime-current-part)))
+  (let
+      ((buffer (make-buffer "*decoded-mime-part*")))
+    (with-buffer (extent-get extent 'buffer)
+      (save-restriction
+	(unrestrict-buffer)
+	(let*
+	    ((content-xfer-enc (extent-get extent 'content-xfer-enc))
+	     (tem (assq content-xfer-enc mime-xfer-encodings-alist)))
+	  (restrict-buffer (extent-get extent 'start)
+			   (extent-get extent 'end))
+	  (goto (start-of-buffer))
+	  (mime-decode-buffer content-xfer-enc (current-buffer) buffer))))
+    (with-view (other-view)
+      (goto-buffer buffer)
+      (goto (start-of-buffer)))))
+
 
 ;; Moving through MIME parts in buffers
 
