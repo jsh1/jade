@@ -41,12 +41,15 @@ sm_init(StrMem *sm)
     for(i = 0; i < NUMBUCKETS; i++)
     {
 	NewMList(&(sm->sm_MemBuckets[i].mbu_MemBlocks));
+	sm->sm_MemBuckets[i].mbu_FreeList = NULL;
+	sm->sm_MemBuckets[i].mbu_FreeCount = 0;
 	sm->sm_ChunksPerBlock[i] = MBLOCKSIZE / MCHNK_SIZE((i + 1) * GRAIN);
-
+	sm->sm_FreesBeforeFlush = 0;
 #ifdef STRMEM_STATS
 	sm->sm_AllocCount[i] = sm->sm_FreeCount[i] = 0;
 #endif
     }
+    sm->sm_UseMallocChain = FALSE;
     sm->sm_MallocChain = NULL;
     return(TRUE);
 }
