@@ -30,6 +30,16 @@
   "When non-nil ask for a string describing the file being registered,
 when initialising RCS files.")
 
+(defvar rcs-make-backup-files nil
+  "When nil RCS controlled files will never have backups created when they
+are saved.")
+
+(defvar rcs-only-lock-seen-files t
+  "When this variable is t, doing `Ctrl-u Ctrl-x Ctrl-q' on an unlocked
+buffer, for a revision different to the currently displayed revision will
+cause the new revision _not_ to be locked, only checked out. A successive
+`Ctrl-x Ctrl-q' will lock it.")
+
 
 ;; Initialisation
 
@@ -52,6 +62,11 @@ when initialising RCS files.")
 (defvar rcs-controlled-buffer nil
   "Local variable that is t when the buffer is controlled by RCS.")
 (make-variable-buffer-local 'rcs-controlled-buffer)
+
+(defvar rcs-revision nil
+  "Local variable storing the revision number of buffer's controlled by RCS,
+as a string. May be nil if revision is unknown.")
+(make-variable-buffer-local 'rcs-revision)
 
 (unless (boundp 'rcs-initialised)
   ;; Only do this stuff once
@@ -164,139 +179,162 @@ description entered. COUNT may be negative."
   (interactive "p")
   (rcs-down-history (- (unless count) 1)))
     
-;; Returns t if BUFFER is locked under RCS
-(defun rcs-buffer-locked-p (buffer)
+;; Returns t if the current buffer is locked under RCS
+(defun rcs-buffer-locked-p ()
   ;; For now just check its read-only status
-  (not (buffer-read-only-p buffer)))
+  (not (buffer-read-only-p)))
 
-;; Returns a string defining the current revision number of BUFFER
-(defun rcs-version (buffer)
+;; Initialises rcs-revision to a string defining the current revision
+;; number of the current buffer
+(defun rcs-find-version ()
   ;; First look for a Header, Id, or Revision keyword
   (let
       ((revision-pos (re-search-forward
 		      "\\$((Header|Id): .*,v |Revision: )([0-9.]+) "
 		      (start-of-buffer) buffer nil)))
     (if revision-pos
-	;; Found the id
-	(copy-area (match-start 3) (match-end 3) buffer)
-      ;; Can't find the id
-      "?.?")))
+	(setq rcs-revision (copy-area (match-start 3) (match-end 3)))
+      ;; Could run rlog -h FILE or something and look through
+      ;; the output.. later maybe
+      (setq rcs-revision nil))))
 
 ;; Called from the find-file-hook in rcs-hooks.jl
+;;;###autoload
 (defun rcs-init-file (buffer)
-  ;; This file uses RCS. Try to find its revision number and it's
-  ;; locked status, and put them into the minor mode name.
-  (let
-      ((info (concat "RCS" (if (buffer-read-only-p buffer) "-" ":")
-		     (rcs-version buffer))))
-    (with-buffer buffer
+  (with-buffer buffer
+    ;; This file uses RCS. If the file doesn't actually exist, try to
+    ;; check it out.
+    (when (or (not (file-exists-p (buffer-file-name)))
+	      (zerop (file-size (buffer-file-name))))
+      ;; Attempt to check out the current revision read-only,
+      ;; ignoring errors
+      (rcs-command "co" (buffer-file-name) '("-r") t t))
+    ;; Try to find its revision number and it's locked status, and put
+    ;; them into the minor mode name.
+    (let
+	((info (concat "RCS"
+		       (if (rcs-buffer-locked-p) ?: ?-)
+		       (or (rcs-find-version) "?"))))
       (when (minor-mode-installed-p 'rcs-mode)
 	(remove-minor-mode 'rcs-mode rcs-current-info-string))
       (add-minor-mode 'rcs-mode info)
       (setq rcs-current-info-string info
 	    toggle-read-only-function 'rcs-toggle-read-only
 	    rcs-controlled-buffer t)
-      ;; Ensure no backup files are made for this buffer
-      (make-local-variable 'make-backup-files)
-      (setq make-backup-files nil))))
+      (unless rcs-make-backup-files
+	;; Ensure no backup files are made for this buffer
+	(make-local-variable 'make-backup-files)
+	(setq make-backup-files nil)))))
 
-;; Signals an error if BUFFER is not under RCS control
-(defun rcs-verify-buffer (buffer)
-  (unless (with-buffer buffer rcs-controlled-buffer)
-    (error "Buffer not under RCS control" buffer)))
+;; Signals an error if the current buffer is not under RCS control
+(defun rcs-verify-buffer ()
+  (unless rcs-controlled-buffer
+    (error "Buffer not under RCS control" (current-buffer))))
 
 
 ;; User interface
 
 ;;;###autoload
-(defun rcs-register-buffer (&optional buffer revision)
-  "Register the file in BUFFER with RCS. If the variable rcs-initial-comment
-is non-nil a description of the file will be prompted for. REVISION is
-optionally the initial revision number to give the file. When called
-interactively a non-nil prefix-argument causes the initial revision to
-be prompted for."
-  (interactive (list nil (and current-prefix-arg
-			      (prompt-for-string "Initial revision:"))))
-  (unless buffer (setq buffer (current-buffer)))
-  (maybe-save-buffer buffer)
+(defun rcs-register-buffer (&optional revision)
+  "Register the file in the current buffer with RCS. If the variable
+rcs-initial-comment is non-nil a description of the file will be prompted
+for. REVISION is optionally the initial revision number to give the file.
+
+When called interactively a non-nil prefix-argument causes the initial
+revision to be prompted for."
+  (interactive (list (and current-prefix-arg
+			  (prompt-for-string "Initial revision:"))))
+  (maybe-save-buffer (current-buffer))
   (if rcs-initial-comment
       (rcs-callback-with-description "description of"
-				     (buffer-file-name buffer)
+				     (buffer-file-name)
 				     "ci" (list (concat "-u" (or revision "")))
 				     "-t-" t)
-    (rcs-command "ci" (buffer-file-name buffer)
+    (rcs-command "ci" (buffer-file-name)
 		 (list (concat "-u" (or revision "")) "-t-") t)))
 
-(defun rcs-check-in-buffer (&optional buffer revision)
-  "Checks in BUFFER, assuming that it's currently locked. If REVISION is
-nil the next revision number will be used; otherwise REVISION should be
-a string naming the revision to check the file in as. If REVISION is nil
-and the current-prefix-arg non-nil a revision will be prompted for."
+(defun rcs-check-in-buffer (&optional revision)
+  "Checks in the current buffer, assuming that it's currently locked.
+If REVISION is nil the next revision number will be used; otherwise
+REVISION should be a string naming the revision to check the file in as.
+
+If REVISION is nil and the current-prefix-arg non-nil a revision will
+be prompted for."
   (interactive)
-  (unless buffer (setq buffer (current-buffer)))
   ;; Can't use the interactive spec since this is called from
   ;; toggle-buffer-read-only, via rcs-toggle-read-only
   (when (and (not revision) current-prefix-arg)
-    (setq revision (prompt-for-string "Revision to lock:")))
-  (rcs-verify-buffer buffer)
-  (maybe-save-buffer buffer)
-  (rcs-callback-with-description "changes to"
-				 (buffer-file-name buffer)
+    (setq revision (or (prompt-for-string
+			(apply 'concat "Check in as revision:"
+			       (and rcs-revision
+				    (list " (currently " rcs-revision ")"))))
+		       (error "No revision specified"))))
+  (rcs-verify-buffer)
+  (maybe-save-buffer (current-buffer))
+  (rcs-callback-with-description "changes to" (buffer-file-name)
 				 "ci" (list (concat "-u" (or revision "")))
 				 "-m" t))
 
-(defun rcs-lock-buffer (&optional buffer revision)
-  "Checks out BUFFER, locking it for modification. If REVISION is nil
-the current revision will be checked out; otherwise REVISION should be
-a string naming the revision to check out. If REVISION is nil and
-the current-prefix-arg non-nil a revision will be prompted for."
+(defun rcs-check-out-buffer (&optional revision)
+  "Checks out the current buffer, locking it for modification. If REVISION
+is nil the current revision will be checked out; otherwise REVISION should be
+a string naming the revision to check out.
+
+If REVISION is nil and the current-prefix-arg non-nil a revision will be
+prompted for."
   (interactive)
-  (unless buffer (setq buffer (current-buffer)))
   ;; Can't use the interactive spec since this is called from
   ;; toggle-buffer-read-only, via rcs-toggle-read-only
-  (when (and (not revision) current-prefix-arg)
-    (setq revision (prompt-for-string "Revision to lock:")))
-  (rcs-verify-buffer buffer)
-  (when (or (not (buffer-modified-p buffer))
-	    (y-or-n-p (concat "Buffer " (buffer-name buffer)
-			      " modified; continue")))
-    (rcs-command "co" (buffer-file-name buffer)
-		 (list (concat "-l" (or revision ""))) t)))
+  (unless revision
+    (setq revision (if current-prefix-arg
+		       (or (prompt-for-string
+			    (apply 'concat "Revision to lock:"
+				   (and rcs-revision
+					(list " (currently "
+					      rcs-revision ")")))
+			    (error "No revision specified")))
+		     rcs-revision)))
+  (rcs-verify-buffer)
+  (when (or (not (buffer-modified-p))
+	    (y-or-n-p (concat "Buffer " (buffer-name) " modified; continue")))
+    (rcs-command "co" (buffer-file-name)
+		 (list (concat (if (and rcs-only-lock-seen-files
+					rcs-revision
+					revision
+					(not (string= rcs-revision revision)))
+				   "-r" "-l")
+			       (or revision ""))) t)))
 
-(defun rcs-view-revision (&optional buffer revision)
-  "Display an old revision of BUFFER. REVISION is a string naming the
-revision, or nil, in which case it will be prompted for."
+(defun rcs-view-revision (&optional revision)
+  "Display an old revision of the current buffer. REVISION is a string
+naming the revision, or nil, in which case it will be prompted for."
   (interactive)
-  (unless buffer
-    (setq buffer (current-buffer)))
   (unless revision
     (setq revision (prompt-for-string "Revision to view:")))
   (when revision
     (let*
-	((buffer-name (concat (buffer-name buffer) ?~ revision ?~))
+	((buffer-name (concat (buffer-name) ?~ revision ?~))
 	 (new-buffer (open-buffer buffer-name)))
       (when (check-changes new-buffer)
 	(clear-buffer new-buffer)
 	(set-buffer-read-only new-buffer nil)
-	(rcs-command "co" (buffer-file-name buffer)
+	(rcs-command "co" (buffer-file-name)
 		     (list (concat "-p" revision)) nil nil new-buffer)
 	(set-buffer-read-only new-buffer t)
 	(set-buffer-modified new-buffer nil)
 	(goto-buffer new-buffer)
 	(goto (start-of-buffer))))))
 
-(defun rcs-revert-buffer (&optional buffer)
-  "Discards any changes made since locking BUFFER."
+(defun rcs-revert-buffer ()
+  "Discards any changes made since locking the current buffer."
   (interactive)
-  (unless buffer (setq buffer (current-buffer)))
-  (rcs-verify-buffer buffer)
-  (when (rcs-buffer-locked-p buffer)
+  (rcs-verify-buffer)
+  (when (rcs-buffer-locked-p)
     (unless (yes-or-no-p (concat "Sure you want to return "
-				 (buffer-name buffer)
-				 " to its previous version?"))
+				 (buffer-name) " to its previous version?"))
       (error "RCS revert cancelled"))
-    (maybe-save-buffer buffer)
-    (rcs-command "co" (buffer-file-name buffer) '("-f" "-u") t)))
+    (maybe-save-buffer (current-buffer))
+    (rcs-command "co" (buffer-file-name) '("-f" "-u") t)))
 
 ;;;###autoload
 (defun rcs-display-log (file-name)
@@ -320,6 +358,6 @@ revision, or nil, in which case it will be prompted for."
 (defun rcs-toggle-read-only ()
   (if (buffer-read-only-p)
       ;; Need to check out and lock the current buffer
-      (rcs-lock-buffer)
+      (rcs-check-out-buffer)
     ;; Need to check in the current buffer
     (rcs-check-in-buffer)))
