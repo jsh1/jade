@@ -25,8 +25,23 @@
   "Directory for running TeX in.")
 
 (defvar tex-run-command "tex %s"
-  "Program for running TeX")
+  "Command format for running TeX")
 
+(defvar bibtex-run-command "bibtex %s"
+  "Command format for running BibTeX")
+
+(defvar tex-dvi-print-command "dvips %s"
+  "Command for printing a DVI file")
+
+(defvar tex-dvi-view-command "xdvi %s >/dev/null 2>&1 </dev/null &"
+  "Command for viewing a DVI file")
+
+(defvar tex-show-queue-command "lpq"
+  "Command for displaying the printer queue")
+
+(defvar tex-last-dvi-file nil)
+
+;; Returns the buffer containing the running tex-shell
 (defun tex-init-shell ()
   (let
       ((buffer (get-buffer "*tex-shell*")))
@@ -42,23 +57,92 @@
       (goto-buffer buffer))
     buffer))
 
+(defun tex-shell-command (shell-buffer format &rest args)
+  (with-buffer shell-buffer
+    (goto (end-of-buffer))
+    (let
+	((command (apply 'format nil format args)))
+      (insert command)
+      (insert "\n")
+      (write shell-process command)
+      (write shell-process ?\n))))
+
+(defun tex-kill-job ()
+  (interactive)
+  (let
+      ((buffer (get-buffer "*tex-shell*")))
+    (when buffer
+      (kill-buffer buffer))))
+
+(defun tex-recenter-output-buffer ()
+  (interactive)
+  (let*
+      ((buffer (get-buffer "*tex-shell*"))
+       (view (and buffer (get-buffer-view buffer t))))
+    (cond (view
+	   (with-view view
+	     (goto (end-of-buffer))))
+	  (buffer
+	   (with-view (other-view)
+	     (goto-buffer buffer)
+	     (goto (end-of-buffer))))
+	  (t
+	   (error "No TeX-shell!")))))
+
+
+;; Running shell commands
+
 ;;;###autoload
 (defun tex-file (file-name)
   (interactive (list (buffer-file-name)))
+  (save-some-buffers)
   (let
       ((buffer (tex-init-shell))
        (local-file (or (local-file-name file-name)
 		       (error "Can't run TeX on remote files!")))
        (dir (local-file-name
-	     (file-name-as-directory (expand-file-name tex-directory))))
-       (command tex-run-command))
-    (with-buffer buffer
-      (goto (end-of-buffer))
-      ;; cd to the correct directory
-      (format shell-process "cd %s\n" dir)
-      (format buffer "cd %s\n" dir)
-      ;; then run TeX
-      (format shell-process command local-file)
-      (write shell-process ?\n)
-      (format buffer command local-file)
-      (write buffer ?\n))))
+	     (file-name-as-directory (expand-file-name tex-directory)))))
+    (tex-shell-command buffer "cd %s" dir)
+    (tex-shell-command buffer tex-run-command local-file)
+    (when (string-match "^(.*)\\.tex$" local-file nil t)
+      (setq tex-last-dvi-file (expand-last-match "\\1.dvi")))))
+
+;;;###autoload
+(defun bibtex-file (file-name)
+  (interactive (list (buffer-file-name)))
+  (save-some-buffers)
+  (when (string-match "^(.*)\\.tex$" file-name)
+    (setq file-name (expand-last-match "\\1")))
+  (let
+      ((buffer (tex-init-shell))
+       (local-file (or (local-file-name file-name)
+		       (error "Can't run TeX on remote files!")))
+       (dir (local-file-name
+	     (file-name-as-directory (expand-file-name tex-directory)))))
+    (tex-shell-command buffer "cd %s" dir)
+    (tex-shell-command buffer bibtex-run-command local-file)))
+
+;;;###autoload
+(defun tex-print ()
+  (interactive)
+  (or tex-last-dvi-file
+      (error "No DVI file to print!"))
+  (let
+      ((buffer (tex-init-shell)))
+    (tex-shell-command buffer tex-dvi-print-command tex-last-dvi-file)))
+
+;;;###autoload
+(defun tex-view ()
+  (interactive)
+  (or tex-last-dvi-file
+      (error "No DVI file to print!"))
+  (let
+      ((buffer (tex-init-shell)))
+    (tex-shell-command buffer tex-dvi-view-command tex-last-dvi-file)))
+
+;;;###autoload
+(defun tex-show-print-queue ()
+  (interactive)
+  (let
+      ((buffer (tex-init-shell)))
+    (tex-shell-command buffer tex-show-queue-command)))
