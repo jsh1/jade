@@ -61,6 +61,19 @@ position.")
 will insert at the current cursor position, _without_ first moving the
 cursor to the position of the mouse pointer.")
 
+(defvar blink-matching-paren t
+  "Defines whether or not characters with matching open delimiters (i.e. `\)',
+`\}', and `\]') blink the opening delimiter when the closing delimiter is
+entered. Blinking consists of temporarily moving the cursor to the opening
+delimiter, or if this would require moving the cursor off the viewable area,
+displaying the line containing the opening delimiter in the message area.
+
+When this variable is nil, blinking is disabled. If a list, then blinking is
+only enabled if the list contains the closing delimiter being blinked.")
+
+(defvar blink-matching-delay 1
+  "The number of seconds to delay when blinking parentheses.")
+
 
 ;; Some macros
 
@@ -875,6 +888,27 @@ the same."
 the same."
   (interactive "!@")
   (pos nil (pos-line (end-of-buffer))))
+
+(defun blinking-insert (&optional char)
+  (interactive "E")
+  (when char
+    (insert (if (integerp char)
+		(make-string 1 char)
+	      char)))
+  (when (and blink-matching-paren (or (not (listp blink-matching-paren))
+				      (memq (get-char (forward-char -1))
+					    blink-matching-paren)))
+    
+    (let
+	((match (find-matching-bracket (forward-char -1))))
+      (when match
+	(if (char-to-display-pos match)
+	    (save-excursion
+	      (goto match)
+	      (sit-for blink-matching-delay))
+	  (message (format nil "Matches: %S"
+			   (copy-area (start-of-line match)
+				      (end-of-line match)))))))))
 
 
 ;; Some macros
