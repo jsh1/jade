@@ -248,7 +248,9 @@
 
 ;; Return a list of addresses uniqified from lists X and Y
 (defun mail-union-addresses (x y)
-  (mapc #'(lambda (a)
-	    (unless (assoc (car a) x)
-	      (setq x (nconc x (list a))))) y)
+  (when y
+    (setq x (copy-sequence x))
+    (mapc #'(lambda (a)
+	      (unless (assoc (car a) x)
+		(setq x (nconc x (list a))))) y))
   x)
