@@ -26,7 +26,7 @@
 ;; This is a hack, it assumes knowledge of the html-display module that
 ;; it has no right to. Also, the structure of the link extent..
 
-(defvar rm-urls-regexp "(http|ftp)://[^ \t\n\f\r]+")
+(defvar rm-urls-regexp "(http|ftp)://[^ \t\n\f\r<>]+")
 
 (defvar rm-urls-max-lines 256)
 
