@@ -891,13 +891,13 @@ Get the value of PROPERTY (a symbol) at POSITION in BUFFER.
 DEFUN("buffer-symbol-value", Fbuffer_symbol_value, Sbuffer_symbol_value,
       (repv symbol, repv pos, repv tx, repv no_err), rep_Subr4) /*
 ::doc:Sbuffer-symbol-value::
-buffer-symbol-value SYMBOL [POSITION | EXTENT] [BUFFER] [NO-rep_ERROR-IF-VOID]
+buffer-symbol-value SYMBOL [POSITION | EXTENT] [BUFFER] [NO-ERROR-IF-VOID]
 
 Return the local value of the variable named by SYMBOL at POSITION in
 BUFFER. Alternatively, if an extent is given as the second argument
 search from this extent upwards.
 
-If NO-rep_ERROR-IF-VOID is non-nil, no error will be signalled if the variable
+If NO-ERROR-IF-VOID is non-nil, no error will be signalled if the variable
 has no value at the specified position, otherwise a void-value error
 is signalled.
 ::end:: */

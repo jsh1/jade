@@ -1,3 +1,8 @@
+1999-03-11  John Harper  <john@dcs.warwick.ac.uk>
+
+	* windows.c (Ffont_x_size, Ffont_y_size): combined into one
+	function `font-dimensions'
+
 1999-03-02  John Harper  <john@dcs.warwick.ac.uk>
 
 	* x11_main.c (sys_init, get_options): use the rep_get_option

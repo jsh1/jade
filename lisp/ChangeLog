@@ -1,3 +1,13 @@
+1999-03-11  John Harper  <john@dcs.warwick.ac.uk>
+
+	* find-url.jl (find-url-abort): new command, should allow
+	termination of asynchronous wget processes
+
+1999-03-10  John Harper  <john@dcs.warwick.ac.uk>
+
+	* edit.jl (blinking-insert): catch error when there's no
+	matching bracket
+
 1999-03-08  John Harper  <john@dcs.warwick.ac.uk>
 
 	* edit.jl (blinking-insert): new function, enabled by the
