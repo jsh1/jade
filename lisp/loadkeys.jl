@@ -147,8 +147,6 @@
   "Ctrl-Y"	'yank-rectangle
   "Meta-y"	'yank-next
   "Ctrl-z"	'toggle-iconic
-  "Ctrl-."	'rotate-buffers-forward
-  "Ctrl-,"	'rotate-buffers-backward
   "Ctrl-SPC"	'block-toggle
   "Meta-SPC"	'just-spaces
   "Ctrl-]"	'abort-recursive-edit
