@@ -774,12 +774,15 @@ DEFUN("view-origin", cmd_view_origin, subr_view_origin, (VALUE vw), V_Subr1, DOC
 ::doc:view_origin::
 view-origin [VIEW]
 
-Return the position of the character displayed in the top-left corner of
-either VIEW or the current view.
+Return the glyph position of the character displayed in the top-left corner
+of either VIEW or the current view.
 ::end:: */
 {
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
+    /* Make sure that we get the position that would be at the top-left
+       after the _next_ redisplay.. */
+    recenter_cursor(VVIEW(vw));
     return VVIEW(vw)->vw_DisplayOrigin;
 }
 
