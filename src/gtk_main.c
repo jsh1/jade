@@ -165,6 +165,12 @@ make_argv (repv list, int *argc, char ***argv)
     *argc = c;
 }
 
+static void
+sys_beep (WIN *w)
+{
+    gdk_beep ();
+}
+
 /* Called from main(). */
 bool
 sys_init(char *program_name)
@@ -214,8 +220,6 @@ sys_init(char *program_name)
     assert (gtk_jade_wrap_gtkobj != 0
 	    && gtk_jade_get_gtkobj != 0
 	    && gtk_jade_callback_postfix != 0);
-
-    rep_beep_fun = gdk_beep;
 
     return TRUE;
 }
