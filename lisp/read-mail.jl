@@ -1198,9 +1198,11 @@ current message."
 (defun rm-mark-message-deletion ()
   "Marks that the current message should be deleted."
   (interactive)
-  (rm-with-summary
-   (summary-mark-delete))
-  (rm-fix-status-info))
+  (let
+      ((msg rm-current-msg))
+    (rm-with-summary
+     (summary-mark-delete msg))
+    (rm-fix-status-info)))
 
 (defun rm-kill-subject ()
   "Marks all messages with the same subject as the current message as being
