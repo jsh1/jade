@@ -40,22 +40,21 @@
 
 ;; Load site specific initialisation. Errors here are trapped since
 ;; they're probably not going to leave the editor in an unusable state
-(if (not (member "--no-rc" command-line-args))
-    (condition-case error-data
-	(progn
-	  ;; First the site-wide stuff
-	  (load-all "site-init")
+(unless (get-command-line-option "--no-rc")
+  (condition-case error-data
+      (progn
+	;; First the site-wide stuff
+	(load-all "site-init")
 
-	  ;; then the users rep configuration, or site-wide defaults
-	  (or (load (concat (user-home-directory) ".reprc") t t)
-	      (load "rep-defaults" t))
+	;; then the users rep configuration, or site-wide defaults
+	(or (load (concat (user-home-directory) ".reprc") t t)
+	    (load "rep-defaults" t))
 
-	  ;; then the jade specific user configuration
-	  (or (load (concat (user-home-directory) ".jaderc") t t)
-	      (load "jade-default" t)))
-      (error
-       (format (stderr-file) "error in local config--> %S\n" error-data)))
-  (setq command-line-args (delete "--no-rc" command-line-args)))
+	;; then the jade specific user configuration
+	(or (load (concat (user-home-directory) ".jaderc") t t)
+	    (load "jade-default" t)))
+    (error
+     (format (stderr-file) "error in local config--> %S\n" error-data))))
 
 (message (concat "Built " jade-build-id))
 
