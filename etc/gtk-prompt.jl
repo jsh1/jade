@@ -21,10 +21,6 @@
 (require 'prompt)
 (require 'gtk)
 
-;;;; gtk-dialog.jl
-
-(require 'gtk)
-
 (defvar gtk-prompt-position 'mouse)
 
 (defvar gtk-prompt-enable 'mouse)
@@ -34,6 +30,9 @@
 (defvar gtk-prompt-old-map-y-or-n-p (symbol-function 'map-y-or-n-p))
 (defvar gtk-prompt-old-prompt-for-string (symbol-function 'prompt-for-string))
 (defvar gtk-prompt-old-prompt-from-list (symbol-function 'prompt-from-list))
+(defvar gtk-prompt-old-prompt-for-file (symbol-function 'prompt-for-file))
+(defvar gtk-prompt-old-prompt-for-directory
+  (symbol-function 'prompt-for-directory))
 
 
 ;; General purpose GTK dialogs
@@ -92,11 +91,6 @@
 	      (gtk-entry-set-text entry start))
 	    (gtk-box-pack-end hbox entry)
 	    (gtk-box-pack-end vbox bbox)
-	    (setq button (gtk-button-new-with-label "Cancel"))
-	    (GTK-WIDGET-SET-FLAGS button '(can-default))
-	    (gtk-box-pack-start bbox button)
-	    (gtk-signal-connect button "clicked" #'(lambda ()
-						     (throw 'exit nil)))
 	    (setq button (gtk-button-new-with-label "Ok"))
 	    (GTK-WIDGET-SET-FLAGS button '(can-default))
 	    (gtk-box-pack-start bbox button)
@@ -105,6 +99,11 @@
 			  (throw 'exit (gtk-entry-get-text entry)))))
 	      (gtk-signal-connect button "clicked" fun)
 	      (gtk-signal-connect entry "activate" fun))
+	    (setq button (gtk-button-new-with-label "Cancel"))
+	    (GTK-WIDGET-SET-FLAGS button '(can-default))
+	    (gtk-box-pack-start bbox button)
+	    (gtk-signal-connect button "clicked" #'(lambda ()
+						     (throw 'exit nil)))
 	    (gtk-widget-show-all window)
 	    (gtk-widget-grab-focus entry)
 	    (gtk-main))
@@ -142,11 +141,6 @@
 	    (gtk-combo-set-popdown-strings combo prompt-list)
 	    (gtk-box-pack-end hbox combo)
 	    (gtk-box-pack-end vbox bbox)
-	    (setq button (gtk-button-new-with-label "Cancel"))
-	    (GTK-WIDGET-SET-FLAGS button '(can-default))
-	    (gtk-box-pack-start bbox button)
-	    (gtk-signal-connect button "clicked" #'(lambda ()
-						     (throw 'exit nil)))
 	    (setq button (gtk-button-new-with-label "Ok"))
 	    (GTK-WIDGET-SET-FLAGS button '(can-default))
 	    (gtk-box-pack-start bbox button)
@@ -156,9 +150,50 @@
 			  ,combo ,dont-validate))))
 	      (gtk-signal-connect button "clicked" fun)
 	      (gtk-signal-connect (gtk-combo-entry combo) "activate" fun))
+	    (setq button (gtk-button-new-with-label "Cancel"))
+	    (GTK-WIDGET-SET-FLAGS button '(can-default))
+	    (gtk-box-pack-start bbox button)
+	    (gtk-signal-connect button "clicked" #'(lambda ()
+						     (throw 'exit nil)))
 	    (gtk-widget-show-all window)
 	    (gtk-main))
 	(gtk-widget-destroy window)))))
+
+(defun gtk-prompt-for-file (&optional prompt initial default predicate)
+  (let
+      ((sel (catch 'exit
+	      (let
+		  ((fs (gtk-file-selection-new (or prompt "Select file")))
+		   (file nil))
+		(unwind-protect
+		    (progn
+		      (if initial
+			  (gtk-file-selection-set-filename fs initial)
+			(gtk-file-selection-set-filename fs default-directory))
+		      (gtk-window-position fs gtk-prompt-position)
+		      (gtk-signal-connect (gtk-file-selection-cancel-button fs)
+					  "clicked"
+					  #'(lambda () (throw 'exit nil)))
+		      (gtk-signal-connect fs "delete_event"
+					  #'(lambda () (throw 'exit nil)))
+		      (gtk-signal-connect
+		       (gtk-file-selection-ok-button fs)
+		       "clicked"
+		       `(lambda ()
+			  (throw 'got (gtk-file-selection-get-filename ,fs))))
+		      (gtk-widget-show fs)
+		      (while t
+			(setq file (catch 'got (gtk-main)))
+			(if (or (null predicate)
+				(funcall predicate file))
+			    (throw 'exit file)
+			  (message
+			   (format nil "Filename must satisfy %s" predicate) t)
+			  (beep))))
+		  (gtk-widget-destroy fs))))))
+    (when (and sel (string= sel ""))
+      (setq sel default))
+    sel))
 
 
 ;; Overriding the standard Jade prompt functions
@@ -216,3 +251,24 @@
 	     'gtk-prompt-from-list
 	   gtk-prompt-old-prompt-from-list) args))
 
+(defun prompt-for-file (&optional prompt existing start default &rest args)
+  (if (gtk-prompt-with-gtk-p)
+      (gtk-prompt-for-file prompt start default
+			   (if existing
+			       #'(lambda (f)
+				   (and (file-exists-p f)
+					(not (file-directory-p f))))
+			     #'(lambda (f)
+				 (not (file-directory-p f)))))
+    (apply gtk-prompt-old-prompt-for-file prompt existing start default args)))
+
+(defun prompt-for-directory (&optional prompt existing start default &rest args)
+  (if (gtk-prompt-with-gtk-p)
+      (gtk-prompt-for-file prompt start default
+			   (if existing
+			       'file-directory-p
+			     #'(lambda (f)
+				 (or (not (file-exists-p f))
+				     (file-directory-p f)))))
+    (apply gtk-prompt-old-prompt-for-directory
+	   prompt existing start default args)))
