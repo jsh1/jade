@@ -672,7 +672,7 @@ section_length(TX *tx, VALUE startPos, VALUE endPos)
 }
 
 /* Copies a section to a buffer.
-   end of copy does NOT have a zero appended to it. */
+   End of copy does NOT have a zero appended to it. */
 void
 copy_section(TX *tx, VALUE startPos, VALUE endPos, u_char *buff)
 {
@@ -706,7 +706,7 @@ copy_section(TX *tx, VALUE startPos, VALUE endPos, u_char *buff)
     }
 }
 
-/* makes sure that the marked block is valid */
+/* Ensures that the marked block is valid */
 void
 order_block(VW *vw)
 {
@@ -723,6 +723,8 @@ order_block(VW *vw)
     }
 }
 
+/* Returns TRUE and signals an error if buffer TX is currently read-only,
+   otherwise returns FALSE. */
 bool
 read_only(TX *tx)
 {
