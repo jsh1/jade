@@ -89,8 +89,10 @@ when initialising RCS files.")
 
 ;; Switch to the buffer containing all RCS output
 (defun rcs-goto-buffer ()
-  (goto-buffer rcs-output-buffer)
-  (goto (start-of-buffer)))
+  (with-view (other-view)
+    (goto-buffer rcs-output-buffer)
+    (goto (start-of-buffer))
+    (shrink-view-if-larger-than-buffer)))
 
 ;; (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD)
 (make-variable-buffer-local 'rcs-callback-args)
