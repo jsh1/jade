@@ -44,20 +44,18 @@
       ;; Need to look at *all* headers
       (restrict-buffer (mark-pos (rm-get-msg-field message rm-msg-mark))
 		       (rm-message-body message))
-      ;;; XXX TODO; use header cache
-      (setq to (or (mail-get-header "Reply-To" t)
-		   (mail-get-header "From" t))
-	    cc (if followup-p
-		   (nconc (mail-get-header "To" t)
-			  (mail-get-header "CC" t))
-		 '())
+      (setq to (or (mapcar 'mail-parse-address
+			   (mail-get-header "Reply-To" t))
+		   (rm-get-senders message))
+	    cc (and followup-p
+		    (rm-get-recipients message))
 	    msg-id (mail-get-header "Message-Id")
 	    references (append (mail-get-header "References" t t)
 			       (and msg-id (list msg-id)))))
     (when subject
       (setq subject (concat mail-reply-prefix
 			    (mail-get-actual-subject subject))))
-    (mail-setup to subject msg-id cc references
+    (mail-setup nil subject msg-id nil references
 		(list (cons #'(lambda (folder message)
 				(rm-set-flag message 'replied)
 				(when (rm-get-folder-field
@@ -65,6 +63,15 @@
 				  (rm-with-summary folder
 				    (summary-update-item message))))
 			    (list folder message))))
+    (when to
+      (send-mail-go-to)
+      (mail-insert-address-list to))
+    (when cc
+      (send-mail-go-cc)
+      (mail-insert-address-list cc))
+    (if to
+	(send-mail-go-text)
+      (send-mail-go-to))
     (setq rm-reply-message message)
     (when yankp
       (mail-yank-original))
