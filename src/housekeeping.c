@@ -59,8 +59,6 @@ adjust_marks_add_x(TX *tx, long addx, long xpos, long ypos)
 	    {
 		UPD(thisvw->vw_BlockS);
 		UPD(thisvw->vw_BlockE);
-		UPD(thisvw->vw_LastBlockS);
-		UPD(thisvw->vw_LastBlockE);
 	    }
 	}
     }
@@ -72,11 +70,6 @@ adjust_marks_add_x(TX *tx, long addx, long xpos, long ypos)
     UPD(tx->tx_SavedWPos);
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
-    UPD(tx->tx_ModEnd);
-    if((tx->tx_ModStart
-	&& VROW(tx->tx_ModStart) == ypos) && (VCOL(tx->tx_ModStart) > xpos))
-	tx->tx_ModStart = make_pos(VCOL(tx->tx_ModStart) + addx,
-				   VROW(tx->tx_ModStart));
 
 #undef UPD
 }
@@ -105,8 +98,6 @@ adjust_marks_sub_x(TX *tx, long subx, long xpos, long ypos)
 	    {
 		UPD(thisvw->vw_BlockS);
 		UPD(thisvw->vw_BlockE);
-		UPD(thisvw->vw_LastBlockS);
-		UPD(thisvw->vw_LastBlockE);
 	    }
 	}
     }
@@ -118,14 +109,6 @@ adjust_marks_sub_x(TX *tx, long subx, long xpos, long ypos)
     UPD(tx->tx_SavedWPos);
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
-
-    UPD(tx->tx_ModStart);
-    if(tx->tx_ModEnd
-       && VROW(tx->tx_ModEnd) == ypos && VCOL(tx->tx_ModEnd) > xpos)
-    {
-	register long col = VCOL(tx->tx_ModEnd) - subx;
-	tx->tx_ModEnd = make_pos(MAX(col, xpos), VROW(tx->tx_ModEnd));
-    }
 
 #undef UPD
 }
@@ -158,13 +141,8 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
 	    UPD(thisvw->vw_CursorPos);
 	    UPD(thisvw->vw_BlockS);
 	    UPD(thisvw->vw_BlockE);
-	    UPD(thisvw->vw_LastBlockS);
-	    UPD(thisvw->vw_LastBlockE);
 	    if(thisvw != curr_vw)
-	    {
 		UPD(thisvw->vw_DisplayOrigin);
-		UPD(thisvw->vw_LastDisplayOrigin);
-	    }
 	}
     }
     for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
@@ -173,26 +151,12 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
 
     if(tx->tx_LogicalStart > ypos)
 	tx->tx_LogicalStart += addy;
-    if(tx->tx_LastLogicalStart > ypos)
-	tx->tx_LastLogicalStart += addy;
     UPD_Y(tx->tx_LogicalEnd);
-    UPD_Y(tx->tx_LastLogicalEnd);
 
     UPD(tx->tx_SavedCPos);
     UPD(tx->tx_SavedWPos);
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
-
-#if 0
-#if 1
-    if(tx->tx_ModStart && VROW(tx->tx_ModStart) > ypos)
-	tx->tx_ModStart = make_pos(VCOL(tx->tx_ModStart),
-				   VROW(tx->tx_ModStart) + addy);
-#else
-    UPD(tx->tx_ModStart);
-#endif
-    UPD(tx->tx_ModEnd);
-#endif
 
 #undef UPD
 #undef UPD_Y
@@ -242,21 +206,14 @@ adjust_marks_sub_y(TX *tx, long suby, long ypos)
 	    {
 		UPD1(thisvw->vw_BlockS);
 		UPD1(thisvw->vw_BlockE);
-		UPD1(thisvw->vw_LastBlockS);
-		UPD1(thisvw->vw_LastBlockE);
 	    }
             else
 	    {
                 UPD(thisvw->vw_BlockS);
                 UPD(thisvw->vw_BlockE);
-                UPD(thisvw->vw_LastBlockS);
-                UPD(thisvw->vw_LastBlockE);
 	    }
 	    if(thisvw != curr_vw)
-	    {
 		UPD1(thisvw->vw_DisplayOrigin);
-		UPD1(thisvw->vw_LastDisplayOrigin);
-	    }
 	}
     }
     for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
@@ -264,23 +221,11 @@ adjust_marks_sub_y(TX *tx, long suby, long ypos)
 
     UPD_Y(tx->tx_LogicalStart);
     UPD_Y(tx->tx_LogicalEnd);
-    UPD_Y(tx->tx_LastLogicalStart);
-    UPD_Y(tx->tx_LastLogicalEnd);
 
     UPD(tx->tx_SavedCPos);
     UPD(tx->tx_SavedWPos);
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
-
-    UPD(tx->tx_ModStart);
-    if(tx->tx_ModEnd && VROW(tx->tx_ModEnd) > ypos)
-    {
-	register long row = VROW(tx->tx_ModEnd) - suby;
-	if(row < ypos)
-	    tx->tx_ModEnd = make_pos(0, ypos);
-	else
-	    tx->tx_ModEnd = make_pos(VCOL(tx->tx_ModEnd), row);
-    }
 
 #undef UPD_Y
 #undef UPD
@@ -327,21 +272,14 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
 	    {
 		UPD1(thisvw->vw_BlockS);
 		UPD1(thisvw->vw_BlockE);
-		UPD1(thisvw->vw_LastBlockS);
-		UPD1(thisvw->vw_LastBlockE);
 	    }
             else
 	    {
                 UPD(thisvw->vw_BlockS);
                 UPD(thisvw->vw_BlockE);
-                UPD(thisvw->vw_LastBlockS);
-                UPD(thisvw->vw_LastBlockE);
 	    }
 	    if(thisvw != curr_vw)
-	    {
 		UPD1(thisvw->vw_DisplayOrigin);
-		UPD1(thisvw->vw_LastDisplayOrigin);
-	    }
 	}
     }
     for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
@@ -349,24 +287,11 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
 
     UPD_Y(tx->tx_LogicalStart);
     UPD_Y(tx->tx_LogicalEnd);
-    UPD_Y(tx->tx_LastLogicalStart);
-    UPD_Y(tx->tx_LastLogicalEnd);
 
     UPD(tx->tx_SavedCPos);
     UPD(tx->tx_SavedWPos);
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
-
-    UPD(tx->tx_ModEnd);
-    if(tx->tx_ModStart)
-    {
-	if((VROW(tx->tx_ModStart) == ypos) && (VCOL(tx->tx_ModStart) > xpos))
-	    tx->tx_ModStart = make_pos(VCOL(tx->tx_ModStart) - xpos,
-				       VROW(tx->tx_ModStart) + 1);
-	else if(VROW(tx->tx_ModStart) > ypos)
-	    tx->tx_ModStart = make_pos(VCOL(tx->tx_ModStart),
-				       VROW(tx->tx_ModStart) + 1);
-     }
 
 #undef UPD_Y
 #undef UPD
@@ -410,21 +335,14 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
 	    {
 		UPD1(thisvw->vw_BlockS);
 		UPD1(thisvw->vw_BlockE);
-		UPD1(thisvw->vw_LastBlockS);
-		UPD1(thisvw->vw_LastBlockE);
 	    }
             else
 	    {
                 UPD(thisvw->vw_BlockS);
                 UPD(thisvw->vw_BlockE);
-                UPD(thisvw->vw_LastBlockS);
-                UPD(thisvw->vw_LastBlockE);
 	    }
 	    if(thisvw != curr_vw)
-	    {
 		UPD1(thisvw->vw_DisplayOrigin);
-		UPD1(thisvw->vw_LastDisplayOrigin);
-	    }
 	}
     }
     for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
@@ -432,16 +350,11 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
 
     UPD_Y(tx->tx_LogicalStart);
     UPD_Y(tx->tx_LogicalEnd);
-    UPD_Y(tx->tx_LastLogicalStart);
-    UPD_Y(tx->tx_LastLogicalEnd);
 
     UPD(tx->tx_SavedCPos);
     UPD(tx->tx_SavedWPos);
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
-
-    UPD(tx->tx_ModStart);
-    UPD(tx->tx_ModEnd);
 
 #undef UPD
 #undef UPD2
@@ -458,16 +371,12 @@ resync_x(VW *vw)
     calc_cursor_offset(vw);
     offset = vw->vw_LastCursorOffset;
     while((offset - start_col) >= vw->vw_MaxX)
-    {
 	start_col += vw->vw_XStep;
-	vw->vw_Flags |= VWFF_FORCE_REFRESH;
-    }
     while(offset < start_col)
     {
 	start_col -= vw->vw_XStep;
 	if(start_col < 0)
 	    start_col = 0;
-	vw->vw_Flags |= VWFF_FORCE_REFRESH;
     }
     if(VCOL(vw->vw_DisplayOrigin) != start_col)
 	vw->vw_DisplayOrigin = make_pos(start_col, VROW(vw->vw_DisplayOrigin));
@@ -512,7 +421,7 @@ resync_y(VW *vw)
 	start_row = tx->tx_LogicalStart;
     else if(start_row >= tx->tx_LogicalEnd
 	    /* Check for a `gap' at the bottom of the display */
-	    || (start_row != VROW(vw->vw_LastDisplayOrigin)
+	    || (start_row != VROW(vw->vw_DisplayOrigin)
 	        && (tx->tx_LogicalEnd - start_row) < vw->vw_MaxY))
     {
 	start_row = MAX(tx->tx_LogicalEnd - vw->vw_MaxY,
@@ -526,10 +435,6 @@ resync_y(VW *vw)
 void
 resync_xy(VW *vw)
 {
-    /* kludge: remind me, why is this necessary? */
-    if(vw->vw_Tx != vw->vw_LastRefTx)
-	vw->vw_LastDisplayOrigin = vw->vw_DisplayOrigin;
-
     resync_x(vw);
     resync_y(vw);
 }
@@ -538,10 +443,7 @@ void
 set_start_col(VW *vw, long col)
 {
     if(VCOL(vw->vw_DisplayOrigin) != col)
-    {
-	vw->vw_Flags |= VWFF_FORCE_REFRESH;
 	vw->vw_DisplayOrigin = make_pos(col, VROW(vw->vw_DisplayOrigin));
-    }
 }
 
 void
@@ -574,7 +476,6 @@ reset_all_views(TX *tx)
 	    thisvw->vw_CursorPos = cmd_start_of_buffer(VAL(tx), sym_nil);
 	    thisvw->vw_DisplayOrigin = thisvw->vw_CursorPos;
 	    thisvw->vw_BlockStatus = -1;
-	    thisvw->vw_Flags |= VWFF_FORCE_REFRESH;
 	}
 	tx->tx_SavedCPos = make_pos(0, 0);
 	tx->tx_SavedWPos = tx->tx_SavedCPos;
