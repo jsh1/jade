@@ -114,7 +114,7 @@
   "Meta-f"	'forward-word
   "Ctrl-Meta-f"	'forward-exp
   "Ctrl-h"	'help
-  "Meta-h"	'mark-paragraph
+  "Meta-h"	'paragraph-edges
   "Ctrl-i"	'insert-block
   "Meta-i"	'(insert "\t")
   "Meta-j"	'goto-line
@@ -187,6 +187,7 @@
   "Ctrl-r"	'find-file-read-only
   "Ctrl-s"	'save-file
   "Ctrl-t"	'transpose-lines
+  "Ctrl-Meta-t"	'transpose-paragraphs
   "Ctrl-u"	'upcase-area
   "Ctrl-v"	'find-alternate-file
   "Ctrl-w"	'save-file-as
@@ -198,6 +199,7 @@
   "5"		'(setq next-keymap-path '(ctrl-x-5-keymap))
   "b"		'switch-to-buffer
   "f"		'set-fill-column
+  "."		'set-fill-prefix
   "h"		'mark-whole-buffer
   "i"		'insert-file
   "k"		'kill-buffer
