@@ -323,6 +323,9 @@ which denotes no errors. Returns nil if the file doesn't have a client.
 repv
 rep_dl_init(void)
 {
+#if rep_INTERFACE >= 9
+    repv tem = rep_push_structure ("jade");
+#endif
     client_list = Qnil;
     rep_mark_static(&client_list);
     rep_mark_static(&socket_name);
@@ -331,7 +334,11 @@ rep_dl_init(void)
     rep_ADD_SUBR (Sserver_open);
     rep_ADD_SUBR (Sserver_close);
     rep_ADD_SUBR (Sserver_reply);
+#if rep_INTERFACE >= 9
+    return rep_pop_structure (tem);
+#else
     return Qt;
+#endif
 }
 
 void
