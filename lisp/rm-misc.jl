@@ -49,11 +49,13 @@
 		   (nconc (mail-get-header "To" t)
 			  (mail-get-header "CC" t))
 		 '())
-	    msg-id (mail-get-header "Message-Id")))
+	    msg-id (mail-get-header "Message-Id")
+	    references (append (mail-get-header "References" t t)
+			       (list msg-id))))
     (when (regexp-match rm-Re-regexp subject t)
       (setq subject (concat mail-reply-prefix
 			    (substring subject (match-end)))))
-    (mail-setup to subject msg-id cc nil
+    (mail-setup to subject msg-id cc references
 		(list (cons #'(lambda (buffer message)
 				(rm-set-flag message 'replied)
 				(with-buffer buffer
