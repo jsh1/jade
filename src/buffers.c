@@ -150,7 +150,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 _PR VALUE cmd_destroy_buffer(VALUE);
 DEFUN("destroy-buffer", cmd_destroy_buffer, subr_destroy_buffer, (VALUE tx), V_Subr1, DOC_destroy_buffer) /*
 ::doc:destroy_buffer::
-destory-buffer BUFFER
+destroy-buffer BUFFER
 
 Throw away everything associated with buffer. All resident marks are made
 non-resident.
@@ -167,7 +167,7 @@ non-resident.
     VTX(tx)->tx_Changes = 0;
     VTX(tx)->tx_LocalVariables = sym_nil;
     VTX(tx)->tx_GlyphTable = cmd_default_glyph_table();
-    VTX(tx)->tx_Flags |= TXFF_RDONLY | TXFF_REFRESH_ALL | TXFF_NO_UNDO;
+    VTX(tx)->tx_Flags |= TXFF_RDONLY | TXFF_NO_UNDO;
     VTX(tx)->tx_UndoList = sym_nil;
     VTX(tx)->tx_ToUndoList = LISP_NULL;
     VTX(tx)->tx_UndoneList = sym_nil;
@@ -264,7 +264,6 @@ swap_buffers(VW *vw, TX *new)
 	vw->vw_BlockS = new->tx_SavedBlockPos[0];
 	vw->vw_BlockE = new->tx_SavedBlockPos[1];
 	vw->vw_BlockStatus = new->tx_SavedBlockStatus;
-	vw->vw_LastRefTx = NULL;
     }
 }
 /*
@@ -471,7 +470,6 @@ Set the name of the file being edited in BUFFER to NAME.
 	tx = VAL(curr_vw->vw_Tx);
     make_marks_non_resident(VTX(tx));
     VTX(tx)->tx_FileName = name;
-    VTX(tx)->tx_Flags |= TXFF_REFRESH_STATUS;
     make_marks_resident(VTX(tx));
     return(name);
 }
@@ -501,7 +499,6 @@ Set the name of BUFFER to NAME.
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     VTX(tx)->tx_BufferName = name;
-    VTX(tx)->tx_Flags |= TXFF_REFRESH_STATUS;
     sys_reset_sleep_titles(VTX(tx));
     return(name);
 }
@@ -557,7 +554,6 @@ it look as though it has.
 	tx->tx_ProperSaveChanges = tx->tx_Changes - 1;
 	tx->tx_LastSaveChanges = tx->tx_Changes - 1;
     }
-    tx->tx_Flags |= TXFF_REFRESH_STATUS;
     return VAL(tx);
 }
 
@@ -583,7 +579,6 @@ but doesn't detroy the actual contents) and modifications don't cause the
 	VTX(tx)->tx_Flags &= ~TXFF_SPECIAL;
     else
 	VTX(tx)->tx_Flags |= TXFF_SPECIAL;
-    VTX(tx)->tx_Flags |= TXFF_REFRESH_STATUS;
     return(tx);
 }
 
@@ -617,7 +612,6 @@ If a buffer is read-only no modification of its contents is allowed.
 	VTX(tx)->tx_Flags &= ~TXFF_RDONLY;
     else
 	VTX(tx)->tx_Flags |= TXFF_RDONLY;
-    VTX(tx)->tx_Flags |= TXFF_REFRESH_STATUS;
     return(tx);
 }
 
@@ -756,7 +750,6 @@ Remove any restriction on the parts of BUFFER that may be displayed.
 	tx = VAL(curr_vw->vw_Tx);
     VTX(tx)->tx_LogicalStart = 0;
     VTX(tx)->tx_LogicalEnd = VTX(tx)->tx_NumLines;
-    VTX(tx)->tx_Flags |= TXFF_REFRESH_ALL;
     return sym_t;
 }
 _PR VALUE cmd_restriction_start(VALUE tx);
@@ -870,7 +863,6 @@ line.
     }
     else if(tx->tx_ModeName)
 	return(tx->tx_ModeName);
-    VTX(tx)->tx_Flags |= TXFF_REFRESH_STATUS;
     return(sym_nil);
 }
 
@@ -905,7 +897,6 @@ List of strings naming all minor-modes enabled in this buffer.
 	    tmp = VCDR(tmp);
 	}
     }
-    VTX(tx)->tx_Flags |= TXFF_REFRESH_STATUS;
     return(val);
 }
 

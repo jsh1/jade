@@ -206,7 +206,6 @@ abortmem:
 	clear_line_list(tx);
     }
 
-    tx->tx_Flags |= TXFF_REFRESH_ALL;
     return(rc);
 }
 
