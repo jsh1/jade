@@ -256,15 +256,24 @@ show all messages.")
 	 (count (length messages)))
       (let
 	  (before current after)
-	(if (> count original-index)
-	    (setq after (nthcdr original-index messages)
-		  current (car after)
-		  after (prog1 (cdr after)
-			  (rplacd after nil))
-		  before (nreverse messages))
+	(cond
+	 ((or (null original-index) (zerop original-index))
+	  ;; Make the current message the first
+	  (setq current (car messages)
+		after (cdr messages)
+		before nil))
+	 ((> count original-index)
+	  ;; Make the current message the one at ORIGINAL-INDEX
+	  (setq after (nthcdr (1- original-index) messages)
+		current (car (cdr after))
+		after (prog1 (cdr (cdr after))
+			(rplacd after nil))
+		before (nreverse messages)))
+	 (t
+	  ;; Make the current message the last
 	  (setq current (car messages)
 		after nil
-		before (nreverse (cdr messages))))
+		before (nreverse (cdr messages)))))
 	(rm-set-folder-field folder rm-folder-current-msg current)
 	(rm-set-folder-field folder rm-folder-before-list before)
 	(rm-set-folder-field folder rm-folder-after-list after)
@@ -378,18 +387,6 @@ show all messages.")
 (defun rm-current-folder ()
   (or (and (boundp 'rm-summary-folder) rm-summary-folder)
       (cdr (assq (current-view) rm-open-folders))))
-
-(defun rm-add-messages (buffer msgs)
-  (unrestrict-buffer)
-  (when msgs
-    (with-buffer buffer
-      (unless (eq rm-buffer-messages 'invalid)
-	(setq rm-buffer-messages (nconc rm-buffer-messages msgs))))
-    (mapc #'(lambda (cell)
-	      (when (memq buffer (rm-get-folder-field
-				  (cdr cell) rm-folder-boxes))
-		(rm-rebuild-folder (cdr cell))))
-	  rm-open-folders)))
 
 (defun rm-folders-with-box (buffer)
   (apply '+ (mapcar #'(lambda (cell)
@@ -938,6 +935,7 @@ show all messages.")
 ;; with the new messages.
 ;; Returns the number of messages read if it's okay to try and read more
 ;; inboxes, nil if it's best not to.
+;; Doesn't rebuild the folder(s) message list
 (defun rm-append-inbox (inbox)
   (cond
    ((not (file-exists-p inbox))
@@ -996,7 +994,7 @@ show all messages.")
 			  count (1+ count))
 		    (rm-set-flag (car msgs) 'unread))
 		  (setq pos (forward-line -1 pos)))
-		(rm-add-messages (current-buffer) msgs))
+		(setq rm-buffer-messages (nconc rm-buffer-messages msgs)))
 	      (and keep-going count)))
 	;; Errors
 	(goto-buffer temp-buffer)
@@ -1044,7 +1042,7 @@ show all messages.")
 		      (summary-update)))))
 	    rm-open-folders)
       (format t "Got %d new messages" count))
-    (rm-display-current-message folder)
+    (rm-display-current-message folder t)
     (call-hook 'rm-after-import-hook)
     count))
 
