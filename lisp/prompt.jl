@@ -437,7 +437,8 @@ is rejected.")
 
 (defun prompt-validate-from-list (name)
   (if (null prompt-list-fold-case)
-      (member name prompt-list)
+      ;; Make sure it returns the *symbol* t
+      (and (member name prompt-list) t)
     (let
 	((list prompt-list))
       (while list
