@@ -24,6 +24,14 @@
 #include <sys/types.h>
 #include <stdio.h>
 
+/* Stringify X. Expands macros in X. */
+#define QUOTE(x) QUOTE__(x)
+#define QUOTE__(x) #x
+
+/* Concat two tokens. Expands macros in X and Y. */
+#define CONCAT(x, y) CONCAT__(x, y)
+#define CONCAT__(x, y) x##y
+
 typedef char bool;
 
 #include "revision.h"
@@ -32,14 +40,21 @@ typedef char bool;
 /* This should be either a link to the target systems config.h.X file
    in configs/ or a file containing whatever your system needs.	 */
 #define C_CONFIG
-#include "config.h"
+#include QUOTE(CONFIG_FILE)
 
-#ifndef HAVE_X11
-# ifndef HAVE_AMIGA
+#ifdef HAVE_X11
+# include "x11_defs.h"
+#else
+# ifdef HAVE_AMIGA
+#  include "amiga_defs.h"
+# else
 #  error Need HAVE_X11 or HAVE_AMIGA defined
 # endif
 #endif
-#ifndef HAVE_UNIX
+
+#ifdef HAVE_UNIX
+# include "unix_defs.h"
+#else
 # ifndef HAVE_AMIGA
 #  error Need HAVE_UNIX or HAVE_AMIGA defined
 # endif
@@ -59,14 +74,6 @@ typedef char bool;
 #  error Need ALIGN_8 macro
 # endif
 #endif
-
-/* Stringify X. Expands macros in X. */
-#define QUOTE(x) QUOTE__(x)
-#define QUOTE__(x) #x
-
-/* Concat two tokens. Expands macros in X and Y. */
-#define CONCAT(x, y) CONCAT__(x, y)
-#define CONCAT__(x, y) x##y
 
 #include "stringmem.h"
 #include "edit.h"
