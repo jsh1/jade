@@ -260,8 +260,6 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 					insert_string(vw->vw_Tx, buff,
 						      len, vw->vw_CursorPos);
 				}
-				/* Remove prefix arg. */
-				var_prefix_arg(sym_nil);
 			    }
 			    if(old_undo_head != LISP_NULL)
 			    {
@@ -279,6 +277,8 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 		}
 		else
 		    message("error: key translation screwup");
+		/* Remove prefix arg. */
+		var_prefix_arg(sym_nil);
 	    }
 	}
 	last_event[0] = current_event[0];
