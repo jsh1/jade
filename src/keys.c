@@ -153,7 +153,10 @@ lookup_binding(u_long code, u_long mods)
 	    if(CONSP(tem) && VCAR(tem) == sym_autoload)
 	    {
 		/* This symbol needs to be autoloaded */
+		GC_root gc_kp;
+		PUSHGC(gc_kp, kp);
 		thispath = load_autoload(thispath, tem, TRUE);
+		POPGC;
 		if(thispath == LISP_NULL)
 		    return LISP_NULL;
 	    }
