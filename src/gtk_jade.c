@@ -170,6 +170,11 @@ gtk_jade_set_font (GtkJade *jade)
     jade->win->w_FontX = gdk_text_width (font, "M", 1);
     jade->win->w_FontY = font->ascent + font->descent;
 
+    if (jade->win->w_FontX <= 0)
+	jade->win->w_FontX = 1;
+    if (jade->win->w_FontY <= 0)
+	jade->win->w_FontY = 1;
+
     /* Now for the bold font. It doesn't look as though GDK
        allows us to find the fully expanded name of the font? */
     {
@@ -316,9 +321,10 @@ gtk_jade_realize (GtkWidget *widget)
     jade->gc_values.background = VCOLOR(bg)->color;
     jade->gc_values.font = jade->font;
     jade->gc_values.function = GDK_COPY;
+    jade->gc_values.graphics_exposures = TRUE;
     jade->gc_values_mask = (GDK_GC_LINE_WIDTH | GDK_GC_FOREGROUND
 			    | GDK_GC_BACKGROUND | GDK_GC_FONT
-			    | GDK_GC_FUNCTION);
+			    | GDK_GC_FUNCTION | GDK_GC_EXPOSURES);
     jade->gc = gdk_gc_new_with_values (widget->window,
 				       &jade->gc_values,
 				       jade->gc_values_mask);
@@ -710,6 +716,7 @@ focus_callback (GtkJade *jade, gpointer data)
 static gint
 focus_in_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
 {
+    GTK_WIDGET_SET_FLAGS (widget, GTK_HAS_FOCUS);
     gtk_jade_foreach (GTK_CONTAINER (widget),
 		      (GtkCallback) focus_callback, (gpointer) 1);
     return TRUE;
@@ -718,6 +725,7 @@ focus_in_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
 static gint
 focus_out_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
 {
+    GTK_WIDGET_UNSET_FLAGS (widget, GTK_HAS_FOCUS);
     gtk_jade_foreach (GTK_CONTAINER(widget),
 		      (GtkCallback) focus_callback, (gpointer) 0);
     return TRUE;
