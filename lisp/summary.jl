@@ -45,7 +45,8 @@
 
 (defvar summary-functions nil
   "Association list of functions to call to achieve a certain operation,
-(TAG . FUNC). TAGS include: select, delete, print, list.")
+(TAG . FUNC). TAGS include: select, delete, print, list, execute-begin,
+execute-end.")
 (make-variable-buffer-local 'summary-functions)
 
 (defvar summary-items nil
@@ -196,7 +197,7 @@ items to be displayed and manipulated."
 	(setq items (cdr items))
 	(when items
 	  (insert "\n")))
-      (summary-goto-item (if old-item
+      (summary-goto-item (if (and old-item (memq old-item summary-items))
 			     (summary-get-index old-item)
 			   0)))))
 
@@ -244,6 +245,12 @@ non-nil it should be a list containing the operations which may be performed."
   (interactive)
   (let
       ((ops summary-pending-ops))
+    (setq summary-pending-ops nil)
+    (when (summary-function-exists-p 'execute-start)
+      ;; Send a `execute-start' command when it's defined. This
+      ;; lets the underlying system start caching if it wants to.
+      (summary-dispatch 'execute-start ops))
+    ;; Now start executing the operations
     (while ops
       (let
 	  ((item (car (car ops)))
@@ -252,8 +259,12 @@ non-nil it should be a list containing the operations which may be performed."
 	  (when (or (null types) (memq (car funcs) types))
 	    (summary-dispatch (car funcs) item))
 	  (setq funcs (cdr funcs))))
-      (setq ops (cdr ops))))
-  (setq summary-pending-ops nil)
+      (setq ops (cdr ops)))
+    (when (summary-function-exists-p 'execute-end)
+      ;; Send a `execute-end' command when it's defined. This
+      ;; lets the underlying system end caching and perform the
+      ;; operations if necessary.
+      (summary-dispatch 'execute-end)))
   (eval-hook 'summary-post-execute-hook)
   (summary-update))
 
