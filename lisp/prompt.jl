@@ -372,7 +372,7 @@ allowed to be entered."
 				     'prompt-validate-filename
 				   nil))
        (prompt-history (or history-list prompt-file-history))
-       (prompt-default-value default)
+       (prompt-default-value (and default (expand-file-name default)))
        (completion-abbrev-function 'prompt-abbreviate-filename)
        (str (prompt prompt start)))
     (when (and (string= str "") default)
@@ -393,6 +393,7 @@ allowed to be entered."
 				     'prompt-validate-directory
 				   nil))
        (prompt-history prompt-file-history)
+       (prompt-default-value (and default (expand-file-name default)))
        (completion-abbrev-function 'prompt-abbreviate-filename)
        (str (prompt prompt start)))
     (when (and (string= str "") default)
