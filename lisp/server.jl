@@ -21,10 +21,10 @@
 (provide 'server)
 
 (defvar server-open-window nil
-  "Determines which window a client file gets displayed in. There are three
-possible values,
-  nil	- Use the current window
-  other - Use the `other' window
+  "Determines which where a client file gets displayed in. There are three
+possible options,
+  nil	- Use the current view
+  other - Use the `other' view
   t	- Open a new window")
 
 ;;;###autoload
@@ -33,20 +33,19 @@ possible values,
 process asks us to edit a file -- its job is to load the specified file
 into a new buffer and display it at line LINE-NUMBER."
   (let
-      (buf win)
+      (buf view)
     (unless (setq buf (get-file-buffer file))
       (unless (setq buf (find-file file t))
 	(server-reply file 10)
 	(return)))
-    (setq win
-      (cond
-       ((eq server-open-window 'other)
-	(other-window))
-       ((null server-open-window)
-	(current-window))
-       (t
-	(open-window))))
-    (with-window win
+    (cond
+     ((eq server-open-window 'other)
+      (setq view (other-view)))
+     ((null server-open-window)
+      (setq view (current-view)))
+     (t
+      (setq view (current-view (open-window)))))
+    (with-view view
       (goto-buffer buf)
       (goto (pos 0 line-number))
       (message (format nil "Client file `%s'." file)))
