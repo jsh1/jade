@@ -477,11 +477,10 @@ update_status_buffer(VW *vw)
 
     sprintf(vw->vw_StatusBuf, "%s%s %c%s%s%c %c%ld,%ld%c %s of %ld %s %s",
 	    VSTR(tx->tx_BufferName),
-	    ((tx->tx_Changes != tx->tx_ProperSaveChanges)
-	     && (!(tx->tx_Flags & TXFF_SPECIAL)))
-	    ? "+" : (tx->tx_Flags & TXFF_RDONLY ? "-" : ""),
+	    (tx->tx_Flags & TXFF_RDONLY ? "-" :
+	     (tx->tx_Changes != tx->tx_ProperSaveChanges) ? "+" : " "),
 	    (recurse_depth ? '[' : '('),
-	    (tx->tx_ModeName ? (char *)VSTR(tx->tx_ModeName) : "generic"),
+	    (tx->tx_ModeName ? (char *)VSTR(tx->tx_ModeName) : "Fundamental"),
 	    VSTR(tx->tx_MinorModeNameString),
 	    (recurse_depth ? ']' : ')'),
 	    restriction ? '[' : '(',
@@ -1002,7 +1001,6 @@ void
 views_init(void)
 {
     mb_unused_buffer = VTX(cmd_make_buffer(VAL(&unused_mb), sym_nil, sym_t));
-    cmd_set_buffer_special(VAL(mb_unused_buffer), sym_t);
     cmd_set_buffer_read_only(VAL(mb_unused_buffer), sym_t);
 
     ADD_SUBR_INT(subr_split_view);
