@@ -118,6 +118,7 @@ the originally selected window.
 		    /* ..then the minibuffer view. */
 		    if(make_view(NULL, w, NULL, 0, TRUE))
 		    {
+			w->w_CurrVW = w->w_ViewList;
 			w->w_Flags |= WINFF_FORCE_REFRESH;
 			w->w_Next = win_chain;
 			win_chain = w;
