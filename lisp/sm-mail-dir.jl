@@ -74,10 +74,22 @@ message being composed."
 	    (item addr)
 	  (while (setq item (mail-parse-group (cursor-pos)))
 	    (setq addr (apply 'concat (car item)))
-	    (if (mail-dir-alias-p addr)
-		(progn
-		  (delete-area (cursor-pos) (cdr item))
-		  (insert-mail-item addr))
-	      (goto (cdr item)))
+	    (cond
+	     ((or (md-field-exists-p ':name addr ':net)
+		  (md-field-exists-p ':name addr ':net-alias))
+	      ;; some kind of alias in the directory
+	      (delete-area (cursor-pos) (cdr item))
+	      (insert-mail-item addr))
+	     ((string-match "^[^@]+$" addr)
+	      ;; a local name, try to expand it
+	      (let
+		  ((full-name (concat addr ?@ mail-domain-name)))
+		(if (md-field-exists-p ':net full-name ':name)
+		    (progn
+		      (delete-area (cursor-pos) (cdr item))
+		      (insert-mail-item full-name))
+		  (goto (cdr item)))))
+	     (t
+	      (goto (cdr item))))
 	    (when (looking-at "[\t\n ]*,[\t\n ]*")
 	      (goto (match-end)))))))))
