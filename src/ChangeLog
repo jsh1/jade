@@ -1,3 +1,46 @@
+1999-03-27  John Harper  <john@dcs.warwick.ac.uk>
+
+	* windows.c (window_count, Fwindow_count): removed these, now
+	the window-system must provide a function
+	`sys_deleting_window_would_exit (win)' that is called by
+	Fdelete_window to see if the save-and-quit function should be
+	called instead
+	(Fset_font): moved here from x11_windows.c, it's totally
+	portable anyway
+	(window_mark_active): uses a macro WINDOW_NON_COLLECTABLE (win)
+	if defined to decide which windows should be marked
+
+	* edit.h (VW): removed the ScrollBar field (and thus the
+	NOSCRLBAR defined)
+	* views.c (kill_view): don't call sys_kill_vw anymore
+	(make_view): don't call sys_update_scroller anymore
+	* buffers.c (Fset_buffer_name): don't call
+	sys_reset_sleep_titles anymore (a hangup from the Amiga age)
+
+	* redisplay.c (alloc_glyph_buf): initialise glyphs and
+	attributes to zero
+	(Fredisplay_window): new function, redisplay a single window
+	(Fredisplay): now just call Fredisplay_window for each visible
+	window
+
+	* faces.c (mark_glyph_buf_faces): be more careful in which
+	attributes are taken as valid
+
+	* x11_keys.c: don't do the SWAP_DELETE_KEYS malarkey anymore
+	* x11_defs.h: don't define NOSCRLBAR
+	* x11_main.c: don't define def_font_str, in windows.c now
+	* x11_windows.c: don't define sys_new_vw, sys_kill_vw, or
+	Fset_font, but do defined sys_deleting_window_would_exit
+
+	* gtk_defs.h, gtk_jade.c, gtk_keys.c, gtk_main.c, gtk_select.c:
+	first attempt at using GTK for a window-system (as an
+	alternative to X11). The GtkJade widget allows standard Jade
+	window objects to be embedded in GTK user interfaces. Requires
+	the rep-gtk binding to be available (to define the rep event
+	loop amongst other things). Currently there are still calls to
+	raw Xlib functions (where GDK doesn't provide the necessary
+	wrappers)
+
 1999-03-23  John Harper  <john@dcs.warwick.ac.uk>
 
 	* main.c (main): call Frecursive_edit, not rep_event_loop

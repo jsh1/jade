@@ -1,3 +1,34 @@
+1999-03-27  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gtk-decor.jl (notebook-split-window, framed-window-mode): a
+	couple of GTK hacks (more for illustration than usefulness)
+	* gtk-mail-dir.jl: another unfinished hack
+	* gtk-prompt.jl: replace some of the minibuffer prompts with
+	GTK variants (by default only when commands are invoked by the
+	mouse). Needs to handle file selector as well..
+
+	* ws-gtk.jl: window-system initialisation for GTK
+
+	* rcs.jl (rcs-toggle-buffer-read-only): made interactive
+
+	* popup-menus.jl: portable parts of menu definitions
+	* loadkeys.jl: bind popup-menu to button3
+	* gtk-menu.jl: GTK implementation of popup-menus
+	* jade.jl: load popup-menus at startup (to allow modes to use
+	the defined variables unconditionally)
+	* html-display.jl, info.jl, ispell.jl: provide some popup menus
+	for extents
+
+	* loadkeys.jl (current-command-from-mouse): new variable, t
+	when the current command was invoked via the mouse, not the
+	keyboard
+
+	* edit.jl (mouse-view-pos): new function, returns (VIEW . POS)
+	defining the current mouse position
+
+	* find-url.jl (find-url-http): if fboundp, use
+	html-display-find-url to see if the url is already loaded
+
 1999-03-23  John Harper  <john@dcs.warwick.ac.uk>
 
 	* html-display.jl: bind `C-c C-c' to find-url-abort
