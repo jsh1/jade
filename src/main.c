@@ -191,42 +191,15 @@ main(int argc, char **argv)
 
 	jade_symbols();
 
-	res = Fload(rep_string_dup ("jade"), Qnil, Qnil, Qnil, Qnil);
+	res = rep_load_environment (rep_string_dup ("jade"));
 	if (res != rep_NULL)
 	{
 	    rc = 0;
 	    if(rep_SYM(Qbatch_mode)->value == Qnil)
 		res = Frecursive_edit ();
 	}
-	else if(rep_throw_value && rep_CAR(rep_throw_value) == Qquit)
-	{
-	    if(rep_INTP(rep_CDR(rep_throw_value)))
-		rc = rep_INT(rep_CDR(rep_throw_value));
-	    else
-		rc = 0;
-	    rep_throw_value = 0;
-	}
 
-	if(rep_throw_value && rep_CAR(rep_throw_value) == Qerror)
-	{
-	    /* If quitting due to an error, print the error cell if
-	       at all possible. */
-	    repv stream = Fstderr_file();
-	    repv old_tv = rep_throw_value;
-	    rep_GC_root gc_old_tv;
-	    rep_PUSHGC(gc_old_tv, old_tv);
-	    rep_throw_value = rep_NULL;
-	    if(stream && rep_FILEP(stream))
-	    {
-		fputs("error--> ", stderr);
-		Fprin1(rep_CDR(old_tv), stream);
-		fputc('\n', stderr);
-	    }
-	    else
-		fputs("jade: error in initialisation\n", stderr);
-	    rep_throw_value = old_tv;
-	    rep_POPGC;
-	}
+	rc = rep_top_level_exit ();
 
 	windows_kill();
 	views_kill();
