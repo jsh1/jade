@@ -393,9 +393,15 @@ operated on by the current CVS mode command."
 		      (memq 'mark (summary-get-pending-ops x))) cvs-file-list)
 	  (list (summary-current-item)))
     ;; In a normal buffer. Try to find a CVS file structure for it
-    (filter #'(lambda (x)
-		(file-name= (cvs-file-get-fullname x) (buffer-file-name)))
-	    cvs-file-list)))
+    (or (filter #'(lambda (x)
+		    (file-name= (cvs-file-get-fullname x) (buffer-file-name)))
+		cvs-file-list)
+	;; This file isn't in the cvs-file-list, so make our own structure
+	(list (cvs-make-file-struct
+	       (or (local-file-name (directory-file-name default-directory))
+		   (error "Can only run CVS on local files"))
+	       (file-name-nondirectory (buffer-file-name))
+	       (local-file-name (buffer-file-name)) 'unchanged)))))
 
 (defun cvs-command-get-filenames ()
   "Return a list of file names corresponding to the files to be operated on
