@@ -420,7 +420,7 @@ Major mode for viewing mail folders. Commands include:\n
 		  (setq tem (match-start 1))
 		  (delete-area (match-start 1) (match-end 1)))
 	      (setq tem (forward-char -1 (insert "X-Jade-Flags-v1: \n"
-						 (mail-unfold-header tem)))
+						 (mail-unfold-header start)))
 		    lines-added (1+ lines-added)))
 	    (prin1 (rm-get-msg-field msg rm-msg-flags)
 		   (cons (current-buffer) tem))
@@ -431,7 +431,7 @@ Major mode for viewing mail folders. Commands include:\n
 		  (setq tem (match-start 1))
 		  (delete-area (match-start 1) (match-end 1)))
 	      (setq tem (forward-char -1 (insert "X-Jade-Cache-v1: \n"
-						 (mail-unfold-header tem)))
+						 (mail-unfold-header start)))
 		    lines-added (1+ lines-added)))
 	    (prin1 (delete-if #'(lambda (x)
 				  (null (memq (car x) rm-saved-cache-tags)))
