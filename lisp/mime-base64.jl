@@ -93,7 +93,7 @@
       (when char
 	(setq reg (logior (lsh reg 6) char))
 	(setq bits (+ bits 6)))
-      (while (> bits 8)
+      (while (>= bits 8)
 	(setq char (lsh reg (- 8 bits)))
 	(setq reg (logxor reg (lsh char (- bits 8))))
 	(setq bits (- bits 8))
