@@ -250,5 +250,5 @@
 (defun mail-union-addresses (x y)
   (mapc #'(lambda (a)
 	    (unless (assoc (car a) x)
-	      (setq x (cons a x)))) y)
+	      (setq x (nconc x (list a))))) y)
   x)
