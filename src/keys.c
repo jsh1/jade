@@ -280,8 +280,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 	else if(next_keymap_path != LISP_NULL)
 	{
 	    /* We already handled some prefixes. */
-	    this_command = sym_nil;
-	    var_prefix_arg(var_current_prefix_arg(LISP_NULL));
+	    this_command = sym_keymap;
 	    result = sym_nil;
 	}
 	else if(orig_next_keymap_path != LISP_NULL
