@@ -98,7 +98,7 @@ windows other than the current window are used when needed."
 screenfuls. When called interactively COUNT is taken from the prefix arg.
 Negative arguments scroll backwards."
   (interactive "p")
-  (with-view (other-view)
+  (with-view (other-view t)
     (next-screen count)))
 
 (defun enlarge-view (&optional count)
