@@ -20,13 +20,21 @@
 
 (provide 'tex-mode)
 
+(defvar latex-run-command "latex %s"
+  "Program for running LaTeX")
+
 (defvar tex-keymap
   (bind-keys (make-sparse-keymap)
     "TAB" 'tab-with-spaces))
 
 (defvar tex-ctrl-c-keymap
   (bind-keys (make-sparse-keymap)
-    "Ctrl-c" '(next-keymap-path '(tex-ctrl-c-ctrl-c-keymap))))
+    "C-c" '(next-keymap-path '(tex-ctrl-c-ctrl-c-keymap))
+    "C-f" 'tex-file
+    "TAB" 'bibtex-file
+    "C-l" 'tex-recenter-output-buffer
+    "C-k" 'tex-kill-job))
+  
 
 (defvar tex-ctrl-c-ctrl-c-keymap
   (bind-keys (make-sparse-keymap)
@@ -67,18 +75,31 @@ Local bindings in this mode are:\n
 	generic-exp-single-delims '(?\" ?\$)
 	generic-exp-escape-char 0
 	generic-exp-comment-string "%"
-	generic-exp-symbol-re "[a-zA-Z0-9]+"
+	generic-exp-symbol-re "[a-zA-Z0-9:_@-]+"
 	generic-exp-special-re "[][(){}\"\$a-zA-Z0-9]")
   (make-local-variable 'ispell-ignore-word-hook)
   (add-hook 'ispell-ignore-word-hook 'tex-ispell-ignore-word-hook)
   (call-hook 'text-mode-hook)
-  (call-hook 'tex-mode-hook))
+  (call-hook 'tex-mode-hook)
+  (when (re-search-backward "^\\\\(document(class|style)|chapter|(sub)*section)"
+			    (min (forward-line 100 (start-of-buffer))
+				 (end-of-buffer)))
+    (latex-mode)))
 
 (defun tex-mode-kill ()
   (setq mode-name nil
 	major-mode nil
 	major-mode-kill nil
 	keymap-path (delq 'tex-keymap keymap-path)))
+
+(defun latex-mode ()
+  (unless (eq major-mode 'tex-mode)
+    (tex-mode))
+  (setq major-mode 'latex-mode
+	mode-name "LaTeX")
+  (unless (assq 'tex-run-command (buffer-variables))
+    (setq tex-run-command latex-run-command))
+  (call-hook 'latex-mode-hook))  
 
 (defun tex-insert-end ()
   (interactive)
