@@ -32,6 +32,10 @@ code states that the message was sent successfully.")
   "Hook called immediately prior to sending the mail message that has been
 composed in the current buffer.")
 
+(defvar mail-drafts-directory (expand-file-name "drafts" mail-folder-dir)
+  "The directory used to store partially composed, but not yet sent, mail
+messages.")
+
 ;;; Code:
 
 ;; List of (FUNCTION . ARGS) to call when message is finally sent.
@@ -43,76 +47,61 @@ composed in the current buffer.")
   "Initialises a buffer in which a mail message may be composed, prior to
 being sent."
   (interactive)
-  (let
-      (buffer)
-    (if (setq buffer (get-buffer "*mail*"))
-	(if (or (buffer-read-only-p buffer)
-		(progn
-		  (goto-buffer buffer)
-		  (y-or-n-p "Okay to lose contents of *mail* buffer?")))
-	    (progn
-	      (set-buffer-read-only buffer nil)
-	      (clear-buffer buffer))
-	  (error "Mail buffer in use"))
-      (setq buffer (open-buffer "*mail*")))
-    (goto-buffer buffer)
-    (setq send-mail-actions actions)
-    (insert "To: ")
-    (cond
-     ((stringp to)
-      (insert to))
-     ((consp to)
-      (mail-insert-list to)))
-    (insert "\n")
-    (cond
-     ((stringp cc)
-      (format buffer "CC: %s\n" cc))
-     ((consp cc)
-      (insert "CC: ")
-      (mail-insert-list cc)
+  (send-mail-find-mail-buffer)
+  (setq send-mail-actions actions)
+  (insert "To: ")
+  (cond
+   ((stringp to)
+    (insert to))
+   ((consp to)
+    (mail-insert-list to)))
+  (insert "\n")
+  (cond
+   ((stringp cc)
+    (format (current-buffer) "CC: %s\n" cc))
+   ((consp cc)
+    (insert "CC: ")
+    (mail-insert-list cc)
+    (insert "\n")))
+  (format (current-buffer) "Subject: %s\n" (or subject ""))
+  (when in-reply-to
+    (format (current-buffer) "In-reply-to: %s\n" in-reply-to))
+  (when references
+    (insert "References: ")
+    (mail-insert-list references t)
+    (insert "\n"))
+  (when mail-default-headers
+    (insert mail-default-headers)
+    (when (/= (pos-col (cursor-pos)) 0)
       (insert "\n")))
-    (format buffer "Subject: %s\n" (or subject ""))
-    (when in-reply-to
-      (format buffer "In-reply-to: %s\n" in-reply-to))
-    (when references
-      (insert "References: ")
-      (mail-insert-list references t)
-      (insert "\n"))
-    (when mail-default-headers
-      (insert mail-default-headers)
+  (when mail-default-reply-to
+    (format (current-buffer) "Reply-to: %s\n" mail-default-reply-to))
+  (when mail-self-blind
+    (format (current-buffer) "BCC: %s\n" user-mail-address))
+  (when mail-archive-file-name
+    (format (current-buffer) "FCC: %s\n" mail-archive-file-name))
+  (goto (send-mail-insert-separator))
+  (when mail-signature
+    (let
+	((old (cursor-pos)))
+      (insert "\n\n-- \n")
+      (if (eq mail-signature t)
+	  (when (and mail-signature-file
+		     (file-exists-p mail-signature-file))
+	    (insert-file mail-signature-file))
+	(insert mail-signature))
       (when (/= (pos-col (cursor-pos)) 0)
-	(insert "\n")))
-    (when mail-default-reply-to
-      (format buffer "Reply-to: %s\n" mail-default-reply-to))
-    (when mail-self-blind
-      (format buffer "BCC: %s\n" user-mail-address))
-    (when mail-archive-file-name
-      (format buffer "FCC: %s\n" mail-archive-file-name))
-    (insert mail-header-separator)
-    (insert "\n")
-    ;; Make the separator read-only
-    (extent-set (make-extent (forward-line -1) (cursor-pos)) 'read-only t)
-    (when mail-signature
-      (let
-	  ((old (cursor-pos)))
-	(insert "\n\n-- \n")
-	(if (eq mail-signature t)
-	    (when (and mail-signature-file
-		       (file-exists-p mail-signature-file))
-	      (insert-file mail-signature-file))
-	  (insert mail-signature))
-	(when (/= (pos-col (cursor-pos)) 0)
-	  (insert "\n"))
-	(goto old)))
-    (set-buffer-modified buffer nil)
-    (setq buffer-undo-list nil)
-    (send-mail-mode)
-    (cond ((null to)
-	   (send-mail-go-to))
-	  ((null subject)
-	   (send-mail-go-subject))
-	  (t
-	   (send-mail-go-text)))))
+	(insert "\n"))
+      (goto old)))
+  (set-buffer-modified (current-buffer) nil)
+  (setq buffer-undo-list nil)
+  (send-mail-mode)
+  (cond ((null to)
+	 (send-mail-go-to))
+	((null subject)
+	 (send-mail-go-subject))
+	(t
+	 (send-mail-go-text))))
 
 
 ;; Mail mode
@@ -121,6 +110,7 @@ being sent."
   (bind-keys (make-sparse-keymap)
     "Ctrl-c" 'send-mail-send-and-exit
     "Ctrl-s" 'send-mail-send
+    "Ctrl-d" 'send-mail-defer
     "Ctrl-f" 'send-mail-c-f-keymap
     "Ctrl-t" 'send-mail-go-text
     "Ctrl-w" 'send-mail-signature
@@ -228,6 +218,52 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 	  (goto old-pos)))
     (error "No signature file to insert")))
 
+;; returns the beginning of the separator line
+(defun send-mail-delete-separator ()
+    (unless (re-search-forward (concat ?^
+				      (quote-regexp mail-header-separator ?$)
+				      ?$)
+			      (start-of-buffer))
+      (error "Can't find header-separator string"))
+    ;; Delete the header separator
+    (let
+	((inhibit-read-only t)
+	 (start (match-start))
+	 (end (match-end)))
+      (when (get-extent start)
+	(delete-extent (get-extent start)))
+      (delete-area start end)
+      start))
+
+(defun send-mail-find-mail-buffer ()
+  (let
+      (buffer)
+    (if (setq buffer (get-buffer "*mail*"))
+	(if (or (buffer-read-only-p buffer)
+		(progn
+		  (goto-buffer buffer)
+		  (y-or-n-p "Okay to lose contents of *mail* buffer?")))
+	    (progn
+	      (set-buffer-read-only buffer nil)
+	      (clear-buffer buffer))
+	  (error "Mail buffer in use"))
+      (setq buffer (open-buffer "*mail*")))
+    (goto-buffer buffer)))
+
+;; add the separator into an existing message, returns the start of
+;; the following line
+(defun send-mail-insert-separator ()
+  (let
+      ((start (or (re-search-forward "^\s*$" (start-of-buffer))
+		  (end-of-buffer)))
+       end)
+    (unless (zerop (pos-col start))
+      (setq start (insert "\n" start)))
+    (setq end (insert "\n" (insert mail-header-separator start)))
+    ;; make the separator read-only
+    (extent-set (make-extent start end) 'read-only t)
+    end))
+
 (defun send-mail-send ()
   "Send the mail message in the current buffer."
   (interactive)
@@ -257,16 +293,11 @@ Major mode for composing and sending mail messages. Local bindings are:\n
   (let
       ((resent-addresses '())
        tem)
-    (unless (re-search-forward (concat ?^
-				      (quote-regexp mail-header-separator ?$)
-				      ?$)
-			      (start-of-buffer))
-      (error "Can't find header-separator string"))
-    ;; Delete the header separator and restrict to the headers
-    (let
-	((inhibit-read-only t))
-      (delete-area (match-start) (match-end)))
-    (restrict-buffer (start-of-buffer) (forward-line -1 (match-start)))
+    ;; delete the separator
+    (setq tem (send-mail-delete-separator))
+
+    ;; restrict to the headers
+    (restrict-buffer (start-of-buffer) (forward-line -1 tem))
 
     ;; First, insert From: unless it's already there.
     (if (re-search-forward "^From[\t ]*:[\t ]*" (start-of-buffer) nil t)
@@ -373,3 +404,41 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 	  (goto-buffer temp-buffer)
 	  (goto (start-of-buffer))
 	  (shrink-view-if-larger-than-buffer))))))
+
+
+;; storing/reloading messages
+
+(defun send-mail-defer (filename)
+  "Save the message currently being composed to the file named FILENAME. The
+`M-x send-mail-restore' command may be used to restore the message so that
+it can be completed and sent out."
+  (interactive
+   (list (prompt-for-file "Save message to file:" nil mail-drafts-directory)))
+  (or filename (error "No file specified"))
+  (when (or (not (string= (buffer-name) "*mail*"))
+	    (buffer-read-only-p))
+    (unless (y-or-n-p "Is this buffer really a mail message?")
+      (error "Quit")))
+  (send-mail-delete-separator)
+  (write-buffer-contents filename)
+  (send-mail-insert-separator)
+  (set-buffer-modified (current-buffer) nil)
+  (bury-buffer))
+
+;;;###autoload
+(defun send-mail-restore (filename &optional dont-delete)
+  "Continue composing a message whose current contents are stored in the
+file called FILENAME. Unless the DONT-DELETE parameter is non-nil the
+file is deleted after being read into the message editor. When called
+interactively the DONT-DELETE value is taken from the raw prefix argument."
+  (interactive
+   (let
+       ((arg current-prefix-arg))
+     (list (prompt-for-file "Saved message:" t mail-drafts-directory) arg)))
+  (send-mail-find-mail-buffer)
+  (read-file-contents filename)
+  (send-mail-insert-separator)
+  (setq buffer-undo-list nil)
+  (send-mail-mode)
+  (unless dont-delete
+    (delete-file filename)))
