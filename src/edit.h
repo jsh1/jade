@@ -89,11 +89,16 @@ typedef struct _TX {
     Mark	   *tx_MarkChain;
     LINE	   *tx_Lines;
     long	    tx_NumLines;
+
+    /* line numbers of `narrowed' region */
+    long	    tx_LogicalStart, tx_LogicalEnd;
+
     VALUE	    tx_FileName;
     VALUE	    tx_BufferName;
     VALUE	    tx_ModeName;
     VALUE	    tx_MinorModeNameList;
     VALUE	    tx_MinorModeNameString;
+
     long	    tx_Changes;
     long	    tx_AutoSaveInterval; /* seconds between saves */
     long	    tx_LastSaveTime;	 /* time at last save (auto or user) */
