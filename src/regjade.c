@@ -89,7 +89,7 @@ regexec_tx(prog, tx, start, eflags)
     static char mat[3] = "xX";
 
     /* Be paranoid... */
-    if (prog == NULL || tx == NULL || start == NULL || !POSP(start)) {
+    if (prog == NULL || tx == NULL || start == LISP_NULL || !POSP(start)) {
 	regerror("NULL parameter");
 	return (0);
     }
@@ -227,7 +227,7 @@ regexec_reverse_tx(prog, tx, start, eflags)
     static char mat[3] = "xX";
 
     /* Be paranoid... */
-    if (prog == NULL || tx == NULL || start == NULL || !POS(start)) {
+    if (prog == NULL || tx == NULL || start == LISP_NULL || !POS(start)) {
 	regerror("NULL parameter");
 	return (0);
     }
@@ -423,8 +423,8 @@ regtry(tx, prog, matchpos)
     regendp = prog->matches.tx.endp;
 
     for (i = 0; i < NSUBEXP; i++) {
-	regstartp[i] = NULL;
-	regendp[i] = NULL;
+	regstartp[i] = LISP_NULL;
+	regendp[i] = LISP_NULL;
     }
     if (regmatch(prog->program + 1)) {
 	regstartp[0] = make_pos(PCOL(matchpos), PROW(matchpos));
@@ -563,7 +563,7 @@ regmatch(prog)
 		     * Don't set startp if some later invocation of the same
 		     * parentheses already has.
 		     */
-		    if (regstartp[no] == NULL)
+		    if (regstartp[no] == LISP_NULL)
 			regstartp[no] = make_pos(PCOL(&save), PROW(&save));
 		    return (1);
 		} else
@@ -590,7 +590,7 @@ regmatch(prog)
 		     * Don't set endp if some later invocation of the same
 		     * parentheses already has.
 		     */
-		    if (regendp[no] == NULL)
+		    if (regendp[no] == LISP_NULL)
 			regendp[no] = make_pos(PCOL(&save), PROW(&save));
 		    return (1);
 		} else
