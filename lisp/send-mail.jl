@@ -60,11 +60,13 @@ being sent."
       (insert "CC: ")
       (mail-insert-list cc)
       (insert "\n")))
+    (format buffer "Subject: %s\n" (or subject ""))
     (when in-reply-to
       (format buffer "In-reply-to: %s\n" in-reply-to))
     (when references
-      (format buffer "References: %s\n" references))
-    (format buffer "Subject: %s\n" (or subject ""))
+      (insert "References: ")
+      (mail-insert-list references t)
+      (insert "\n"))
     (when mail-default-headers
       (insert mail-default-headers)
       (when (/= (pos-col (cursor-pos)) 0)
