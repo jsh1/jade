@@ -191,7 +191,7 @@ inner_main (repv arg)
     if (res != rep_NULL)
     {
 	if(!batch_mode_p ())
-	    res = Frecursive_edit ();
+	    res = rep_top_level_recursive_edit ();
     }
     return res;
 }
