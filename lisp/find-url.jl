@@ -38,7 +38,7 @@
   "Alist of (REGEXP . FUNC) matching URLs to the Lisp functions used to
 display them.")
 
-(defvar find-url-default 'find-url-external
+(defvar find-url-default 'find-url-http
   "The function to pass any urls to that aren't matched by find-url-alist.")
 
 (defvar find-url-external-command
@@ -58,10 +58,16 @@ Any `%s' substrings will be replaced by the name of the url.")
 ;; Functions
 
 ;;;###autoload
-(defun find-url (url)
+(defun find-url (url &optional call-external)
   "Find the univeral resource locator URL. This may involve switching to some
-kind of editor buffer, or spawning an external process."
-  (interactive (list (prompt-for-string "URL:" (and (blockp) (copy-block)))))
+kind of editor buffer, or spawning an external process. If CALL-EXTERNAL is
+non-nil, then the external viewer is invoked."
+  (interactive (let
+		   ((arg current-prefix-arg))
+		 (list (prompt-for-string
+			"URL:" (and (blockp) (copy-block))) arg)))
+  (when call-external
+    (find-url-external url))
   (catch 'foo
     (mapc #'(lambda (cell)
 	      (when (string-match (car cell) url nil t)
@@ -81,6 +87,7 @@ kind of editor buffer, or spawning an external process."
 (defun find-url-external (url)
   "Spawn an external process (using find-url-external-command as template)
 to view URL."
+  (interactive (list (prompt-for-string "URL:" (and (blockp) (copy-block)))))
   (let
       ((args (cons url nil)))
     ;; An inifinite list of URLS to pass to format
@@ -170,7 +177,14 @@ a buffer."
 	      (html-display-goto-anchor anchor))
 	    (message "Parsing HTML...done" t))
 	   (t
-	    ;; XXX needs completing
+	    ;; Not HTML. Just rename the buffer to what we think
+	    ;; the filename is then display it
+	    (if (string-match "/([^/]+)$" url)
+		(set-buffer-name output (make-buffer-name
+					 (expand-last-match "\\1")))
+	      (set-buffer-name output (make-buffer-name url)))
+	    (set-buffer-modified output nil)
+	    (set-buffer-read-only output t)
 	    (with-view view
 	      (goto-buffer output)))))
       ;; Failure
