@@ -411,6 +411,14 @@ to reflect NAME. Also sets the modification count to zero."
   (interactive "FWrite file:")
   (unless (bufferp buffer)
     (setq buffer (current-buffer)))
+  (let
+      ((tem (get-file-buffer (expand-file-name name))))
+    (when (and tem (not (eq tem buffer)))
+      ;; Doing the save would overwrite this buffer
+      (or (check-changes tem)
+	  (error "Saving file would overwrite buffer %s" tem))
+      (when (y-or-n-p (format nil "Delete duplicate buffer %s?" tem))
+	(kill-buffer tem))))
   (with-buffer buffer
     (set-buffer-file-name buffer (expand-file-name name))
     (set-buffer-name buffer (file-name-nondirectory name))
