@@ -213,14 +213,14 @@ Commands defined by this mode are:\n
 	;; indented one level
 	(setq exp-ind (right-char c-body-indent exp-ind)))
 
-       ((looking-at ".*\;" exp-pos)
+       ((looking-at ".*\;[\t ]*(\n|/\\*)" exp-pos)
 	;; A full expression, indent to the level of the first
 	;; line in the expression
 	(let
 	    ((prev (c-backward-stmt exp-pos)))
 	  ;; *Need to loop here searching back to the correct level*
 	  (when (and prev (/= (pos-col prev) (pos-col exp-pos))
-		     (not (looking-at "case .*:|default[\t ]*:|[a-zA-Z_][a-zA-Z0-9_]+:|.*;" prev)))
+		     (not (looking-at "case .*:|default[\t ]*:|[a-zA-Z_][a-zA-Z0-9_]+:|.*;[\t ]*(\n|/\\*)" prev)))
 	    ;; A continuation?
 	    (when (and (looking-at "else[\t ]*" prev)
 		       (not (looking-at "[\t ]*if[\t ]*\\(" (match-end))))
