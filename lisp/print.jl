@@ -42,7 +42,14 @@
   "Options to include depending on the numeric arg specified to the
 print command.")
 
-(defvar print-mode-alist '((c-mode . " -Ec"))
+(defvar print-mode-alist '((c-mode . " -Ec")
+			   (lisp-mode . " -Eelisp")
+			   (perl-mode . " -Eperl")
+			   (asm-mode . " -Easm")
+			   (changelog-mode . " -Echangelog")
+			   (read-mail-mode . " -Email")
+			   (send-mail-mode . " -Email")
+			   (sh-mode . " -Esh"))
   "Alist of options to include dependent on the major-mode of the current
 buffer.")
 
