@@ -677,6 +677,14 @@ non-nil, absolutely everything is refreshed, not just what changed.
 	    tem = w->w_NewContent;
 	    w->w_NewContent = w->w_Content;
 	    w->w_Content = tem;
+
+	    /* See if we should update the window name */
+	    if(w->w_CurrVW->vw_Tx->tx_StatusId != 0
+	       && w->w_DisplayedName != w->w_CurrVW->vw_Tx->tx_StatusId)
+	    {
+		w->w_DisplayedName = w->w_CurrVW->vw_Tx->tx_StatusId;
+		sys_set_win_name(w, VSTR(w->w_DisplayedName));
+	    }
 	}
     }
 #ifdef DEBUG
