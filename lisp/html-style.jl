@@ -76,6 +76,12 @@
 
 ;; Configuration
 
+(defvar html-style-default 'plain
+  "Default style to use when building html.")
+
+(defvar html-style-current nil
+  "Style of the current document.")
+
 (defvar html-style-home-page-url "http://foo.bar.com/~baz/"
   "Default home page URL.")
 
@@ -98,32 +104,35 @@
   "Visited link colour for files created by html-style commands")
 
 ;; The standard style is very simple
-(defvar html-style-templates
+(defvar html-style-plain-template
   '((header . "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\"
             \"http://www.w3.org/TR/REC-html40/strict.dtd\">
-<HTML>
-<HEAD>
-<LINK REV=\"MADE\" HREF=\"mailto:@mail-address@\">
-<TITLE>@title@</TITLE>
-</HEAD>
-<BODY BGCOLOR=\"@bg-color@\"
-      TEXT=\"@text-color@\"
-      LINK=\"@link-color@\"
-      ALINK=\"@alink-color@\"
-      VLINK=\"@vlink-color@\">\n")
-  (title . "<H1 ALIGN=CENTER>@title@</H1>")
+<html>
+<head>
+<link rev=\"made\" href=\"mailto:@mail-address@\">
+<title>@title@</title>
+</head>
+<body bgcolor=\"@bg-color@\"
+      text=\"@text-color@\"
+      link=\"@link-color@\"
+      alink=\"@alink-color@\"
+      vlink=\"@vlink-color@\">\n")
+  (title . "<h1 align=center>@title@</h1>")
   (section-start . "")
-  (section-end . "<P>")
-  (break . "<P>\n")
-  (footer . "<HR><ADDRESS>
-<A HREF=\"@home-page-url@\">@home-page-name@</A><BR>
-<A HREF=\"mailto:@mail-address@\">@mail-address@</A><BR>
+  (section-end . "<p>")
+  (break . "<p>\n")
+  (footer . "<hr><address>
+<a href=\"@home-page-url@\">@home-page-name@</a><br>
+<a href=\"mailto:@mail-address@\">@mail-address@</a><br>
 Created: @date@.
-</ADDRESS><HR>@id-string@
-</BODY>
-</HTML>")
+</address><hr>@id-string@
+</body>
+</html>")
   (id-string . "\n<!-- @id@ -->"))
-  "Alist of insertion templates for html-style.")
+  "Alist of insertion templates for the plain html-style.")
+
+(defvar html-style-alist (list (cons 'plain html-style-plain-template))
+  "List of (STYLE . TEMPLATE-ALIST).")
 
 
 ;; Support functions
@@ -154,6 +163,7 @@ are only set if they don't already have a value."
 		   (cons 'link-color html-style-link-color)
 		   (cons 'alink-color html-style-alink-color)
 		   (cons 'vlink-color html-style-vlink-color))))
+    (setq html-style-current html-style-default)
     ;; Merge in file-subst variables that aren't already set
     (mapc #'(lambda (cell)
 	      (unless (assq (car cell) file-subst-vars)
@@ -161,14 +171,22 @@ are only set if they don't already have a value."
 
 (defmacro html-style-get (tag)
   "Return the html template for TAG."
-  `(cdr (assq ,tag html-style-templates)))
+  `(cdr (assq ,tag (cdr (assq html-style-current html-style-alist)))))
 
 (defmacro html-style-insert (tag)
   "Insert the html template for TAG."
   `(insert (html-style-get ,tag)))
 
+;;;###autoload
+(defun html-style-add-style (name template)
+  (setq html-style-alist (cons (cons name template) html-style-alist)))
+
 
 ;; Functions that can be embedded in .html.in files
+
+(defun html-style-set-style (style)
+  "Set the style used for the current document."
+  (setq html-style-current style))
 
 (defun html-style-header (title &optional no-heading)
   "Insert the header for a html file. Includes the first heading of TITLE,
@@ -177,7 +195,8 @@ and the start of the first section of text."
   (file-subst-set 'title title)
   (html-style-insert 'header)
   (unless no-heading
-    (html-style-insert 'title)))
+    (html-style-insert 'title)
+    (html-style-insert 'section-start)))
 
 (defun html-style-footer (&optional id)
   "Insert the footer for a html file. If ID is defined, it should be a string
@@ -204,4 +223,5 @@ identifying the current revision of the html file."
 an html file."
   (file-subst-set 'title title)
   (html-style-insert 'section-end)
-  (html-style-insert 'title))
+  (html-style-insert 'title)
+  (html-style-insert 'section-start))
