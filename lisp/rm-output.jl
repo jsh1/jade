@@ -33,10 +33,11 @@
 
 ;; Append MSG (a message structure), ending at position END, to the folder
 ;; DEST, either a buffer or a file-stream
-(defun rm-output-message (msg end dest)
-  (let
-      ((text (copy-area (mark-pos (rm-get-msg-field msg rm-msg-mark))
-			end)))
+(defun rm-output-message (msg dest)
+  (let*
+      ((end (rm-message-end msg))
+       (text (copy-area (mark-pos (rm-get-msg-field msg rm-msg-mark)) end
+			(mark-file (rm-get-msg-field msg rm-msg-mark)))))
     (cond
      ((bufferp dest)
       ;; DEST is a buffer. Append to that.
@@ -76,7 +77,7 @@
     (rm-set-flag msg 'filed)
     (when rm-delete-after-output
       (rm-with-summary
-       (summary-add-pending-op msg 'delete)))))
+       (summary-mark-delete msg)))))
 
 ;;;###autoload
 (defun rm-output (count dest)
@@ -97,13 +98,7 @@ otherwise write straight to the folder's file."
 			  (open-file dest "a"))))
 	(unwind-protect
 	    (while (and (> count 0) msg-list)
-	      (rm-output-message (car msg-list)
-				 (if (cdr msg-list)
-				     (mark-pos (rm-get-msg-field
-						(car (cdr msg-list))
-						rm-msg-mark))
-				   (end-of-buffer))
-				 real-dest)
+	      (rm-output-message (car msg-list) real-dest)
 	      (setq count (1- count)
 		    msg-list (cdr msg-list)))
 	  (cond
