@@ -43,9 +43,54 @@ paragraph.")
 and writable.")
 (make-variable-buffer-local 'toggle-read-only-function)
 
+(defvar auto-mark nil
+  "Buffer-local mark which some commands use to track the previous cursor
+position.")
+(make-variable-buffer-local 'auto-mark)
+
 
-(defvar auto-mark (make-mark)
-  "Mark which some commands use to track the previous cursor position.")
+;; Marks
+
+(defun goto-mark (mark &optional dont-set-auto)
+  "Switches (if necessary) to the buffer containing MARK at the position
+of the mark. If the file containing MARK is not in memory then we
+attempt to load it by calling find-file. Unless DONT-SET-AUTO is non-nil
+the auto-mark of the current buffer will be updated before the move."
+  (when (markp mark)
+    (let
+	((file (mark-file mark))
+	 (pos (mark-pos mark)))
+      (unless dont-set-auto
+	(set-auto-mark))
+      (if (stringp file)
+	  (find-file file)
+	(goto-buffer file))
+      (goto pos))))
+
+(defun set-auto-mark (&optional pos)
+  "Sets the mark `auto-mark' to POS (or the current position)."
+  (interactive)
+  (if auto-mark
+      (progn
+	(set-mark-pos auto-mark (or pos (cursor-pos)))
+	(set-mark-file auto-mark (current-buffer)))
+    (setq auto-mark (make-mark pos)))
+  (message "Set auto-mark."))
+
+(defun swap-cursor-and-auto-mark ()
+  "Sets the `auto-mark' to the current position and then sets the current
+position (buffer and cursor-pos) to the old value of `auto-mark'."
+  (interactive)
+  (unless auto-mark
+    (error "The auto mark isn't set in this buffer."))
+  (let
+      ((a-m-file (mark-file auto-mark))
+       (a-m-pos (mark-pos auto-mark)))
+    (set-auto-mark)
+    (if (stringp a-m-file)
+	(find-file a-m-file)
+      (goto-buffer a-m-file))
+    (goto a-m-pos)))
 
 
 ;; Characters
@@ -769,24 +814,28 @@ deleted."
 
 (defmacro save-restriction (&rest forms)
   "Evaluate FORMS, restoring the original buffer restriction when they
-finish."
-  (list 'let
-	'((save-restriction-start (restriction-start))
-	  (save-restriction-end (restriction-end))
-	  (save-restriction-buffer (current-buffer)))
-	(list 'unwind-protect
-	      (cons 'progn forms)
-	      '(restrict-buffer save-restriction-start save-restriction-end
-				save-restriction-buffer))))
-
+finish (as long as the original buffer still exists)."
+  (` (let
+	 (_s_r_start_ _s_r_end_)
+       (when (buffer-restricted-p)
+	 (setq _s_r_start_ (make-mark (restriction-start))
+	       _s_r_end_ (make-mark (restriction-end))))
+       (unwind-protect
+	   (, (cons 'progn forms))
+	 (when (and _s_r_start_ (mark-resident-p _s_r_start_))
+	   (restrict-buffer (mark-pos _s_r_start_)
+			    (mark-pos _s_r_end_)
+			    (mark-file _s_r_start_)))))))
+      
 (defmacro save-cursor (&rest forms)
   "Evaluate FORMS, ensuring that the initial position of the cursor in the
-current buffer is preserved. The behaviour is undefined if a new buffer is
-active after FORMS has been evaluated."
-  (list 'let '((save-cursor-mark (make-mark)))
-	(list 'unwind-protect
-	      (cons 'progn forms)
-	      '(goto (mark-pos save-cursor-mark)))))
+current buffer is preserved (as long as the original buffer wasn't killed)."
+  (` (let
+	 ((_s_c_mark_ (make-mark)))
+       (unwind-protect
+	   (, (cons 'progn forms))
+	 (when (mark-resident-p _s_c_mark_)
+	   (goto-mark _s_c_mark_ t))))))
 
 
 ;; Mouse dragging etc
@@ -794,6 +843,14 @@ active after FORMS has been evaluated."
 (defvar mouse-select-pos nil)
 (defvar mouse-dragging nil)
 (defvar mouse-dragging-objects nil)
+
+(defun mouse-pos ()
+  "Return the position of the character underneath the mouse pointer in
+the current view. Returns nil if no such character can be found."
+  (let
+      ((pos (raw-mouse-pos)))
+    (when (and pos (setq pos (translate-pos-to-view pos)))
+      (display-to-char-pos pos))))
 
 (defun mouse-select ()
   (interactive)
@@ -805,7 +862,7 @@ active after FORMS has been evaluated."
 	(set-current-view mouse-view))
       (setq raw-pos (translate-pos-to-view raw-pos))
       (when raw-pos
-	(setq mouse-select-pos (glyph-to-char-pos raw-pos)
+	(setq mouse-select-pos (display-to-char-pos raw-pos)
 	      mouse-dragging nil
 	      mouse-dragging-objects nil)
 	(block-kill)
