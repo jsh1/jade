@@ -134,7 +134,7 @@ items to be displayed and manipulated."
   (set-buffer-read-only (current-buffer) t)
   (set-buffer-special (current-buffer) t)
   (add-hook 'unbound-key-hook 'nop)
-  (eval-hook 'summary-mode-hook)
+  (call-hook 'summary-mode-hook)
   (summary-update))
 
 (defun summary-mode-kill ()
@@ -262,17 +262,18 @@ highlight."
   "Redraw the menu entry for ITEM."
   (let*
       ((inhibit-read-only t)
-       (index (summary-get-index item)))
-    (save-cursor
-      (goto (pos 0 (+ (pos-line summary-first-line) index)))
-      (if (= (pos-line (cursor-pos)) (pos-line (end-of-buffer)))
-	  (progn
-	    (delete-area (cursor-pos) (end-of-line))
-	    (summary-dispatch 'print item))
-	(delete-area (cursor-pos) (forward-line))
-	(summary-dispatch 'print item)
-	(insert "\n"))
-      (summary-maybe-dispatch 'after-update))))
+       (index (summary-get-index item))
+       (old-cursor (cursor-pos)))
+    (goto (pos 0 (+ (pos-line summary-first-line) index)))
+    (if (= (pos-line (cursor-pos)) (pos-line (end-of-buffer)))
+	(progn
+	  (delete-area (cursor-pos) (end-of-line))
+	  (summary-dispatch 'print item))
+      (delete-area (cursor-pos) (forward-line))
+      (summary-dispatch 'print item)
+      (insert "\n"))
+    (goto old-cursor)
+    (summary-maybe-dispatch 'after-update)))
 
 (defun summary-goto-item (index)
   "Move the cursor to the INDEX'th item (from zero) in the menu. Returns
