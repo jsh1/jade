@@ -40,17 +40,21 @@
   "Regular expression matching files under dired that should be marked for
 deletion by the `&' command.")
 
-(defvar dired-cursor-column 43)
+(defvar dired-cursor-column 45)
 
-(defvar dired-functions '((select . dired-find-file)
-			  (delete . dired-delete)
-			  (print . dired-print)
-			  (list . dired-list)
-			  (on-quit . bury-buffer)
-			  (after-marking . (lambda () (summary-next-item 1)))
+(defvar dired-delete-cache nil)
+(make-variable-buffer-local 'dired-delete-cache)
+
+(defvar dired-functions '((print . dired-print)
 			  (after-move . (lambda ()
 					  (goto-glyph
-					   (pos dired-cursor-column nil)))))
+					   (pos dired-cursor-column nil))))
+			  (list . dired-list)
+			  (after-marking . (lambda () (summary-next-item 1)))
+			  (delete . dired-delete)
+			  (execute-end . dired-execute-end)
+			  (select . dired-find-file)
+			  (on-quit . bury-buffer))
   "Function vector for Dired mode.")
 
 
@@ -99,25 +103,29 @@ is used with the following commands that are specific to Dired:
       ((name (file-name-concat (buffer-file-name) item))
        (symlink (and (file-symlink-p name)
 		     (or (file-exists-p name) 'broken))))
-    (format (current-buffer) "%c%c %s"
+    (format (current-buffer) "%c%c %s %2d %8d  "
 	    (if (memq 'delete (summary-get-pending-ops item)) ?D ? )
 	    (if (summary-item-marked-p item) ?* ? )
 	    (if symlink "lrwxrwxrwx"
-	      (file-modes-as-string (file-modes name))))
-    (unless (eq symlink 'broken)
-      (format (current-buffer) "  %d " (file-size name)))
-    (indent-to 24)
+	      (file-modes-as-string (file-modes name)))
+	    (if (eq symlink 'broken) 1 (file-nlinks name))
+	    (if (eq symlink 'broken) 0 (file-size name)))
     (if (eq symlink 'broken)
-	(insert "[  broken link  ]")
-      (format (current-buffer) "%s "
-	      (current-time-string (file-modtime name) "%D %T")))
+	(insert "[broken symlink]  ")
+      (insert (current-time-string (file-modtime name) "%Y-%m-%d %R  ")))
     (indent-to dired-cursor-column)
     (insert item)))
 
 (defun dired-delete (item)
-  (when (yes-or-no-p (format nil "Really delete file %S?" item))
-    (delete-file (file-name-concat (buffer-file-name) item))))
+  (setq dired-delete-cache (cons item dired-delete-cache)))
 
+(defun dired-execute-end ()
+  (map-y-or-n-p "Really delete file `%s'?"
+		(prog1 dired-delete-cache
+		  (setq dired-delete-cache nil))
+		#'(lambda (f)
+		    (delete-file
+		     (file-name-concat (buffer-file-name) f)))))
 
 ;; Commands
 
