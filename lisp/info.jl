@@ -548,13 +548,12 @@ local bindings are:\n
   (interactive)
   (let
       (node)
-    (if (re-search-backward "\\*Note" nil nil t)
-	(progn
-	  (goto (match-start))
-	  (setq node (cdr (info-parse-ref))))
-      (goto (start-of-line))
-      (or (setq node (info-parse-menu-line))
-	  (signal 'info-error '("Nothing on this line to go to"))))
+    (unless (setq node (info-parse-menu-line))
+      (if (re-search-backward "\\*Note" nil nil t)
+	  (progn
+	    (goto (match-start))
+	    (setq node (cdr (info-parse-ref))))
+	(signal 'info-error '("Nothing on this line to go to"))))
     (info-remember)
     (info-find-node node)))
 
