@@ -88,7 +88,7 @@ typedef struct _TX {
     struct _TX	   *tx_Next;
     Mark	   *tx_MarkChain;
     LINE	   *tx_Lines;
-    long	    tx_NumLines;
+    long	    tx_NumLines, tx_TotalLines;	/* text-lines, array-length */
 
     /* line numbers of `narrowed' region */
     long	    tx_LogicalStart, tx_LogicalEnd;
