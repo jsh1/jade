@@ -24,19 +24,25 @@
 
 ;; Map a function over all key bindings in a keymap
 
+(defvar map-keymap-recursively t
+  "When nil, the map-keymap function will only map over the first level of
+keymaps, i.e. all `next-keymap-path' declarations are ignored.")
+
 (defvar km-prefix-string nil)
 (defvar km-keymap-list nil)
 
 (defun map-keymap (function &optional keymap buffer)
-  "Map FUNCTION over all key bindings under the list of keymaps KEYMAP (by
-default, the contents of the keymap-path variable). If BUFFER is defined
-it gives the buffer to dereference all variables in.
+  "Map FUNCTION over all key bindings under the keymap or list of keymaps
+KEYMAP (by default, the contents of the keymap-path variable). If BUFFER
+is defined it gives the buffer to dereference all variables in.
 
 FUNCTION is called as (FUNCTION KEY PREFIX), where KEY is a cons cell
 (COMMAND . EVENT), and PREFIX a string describing the prefix keys of this
 binding, or nil if there was no prefix."
   (unless buffer
     (setq buffer (current-buffer)))
+  (when (keymapp keymap)
+    (setq keymap (list keymap)))
   (let
       ((km-keymap-list (or keymap (with-buffer buffer keymap-path)))
        (done-list nil))
@@ -68,22 +74,38 @@ binding, or nil if there was no prefix."
 	     ((eq k 'keymap))		;An inherited sparse keymap
 	     ((eq (car (car k)) 'next-keymap-path)
 	      ;; A prefix key
-	      (let
-		  ((this-list (with-buffer buffer (eval (nth 1 (car k)))))
-		   (event-str (event-name (cdr k))))
-		(when (listp this-list)
-		  ;; Another keymap-list, add it to the list of those waiting
-		  (let*
-		      ((new-str (concat km-prefix-string
-					(if km-prefix-string ?\ )
-					event-str))
-		       (new-list (mapcar #'(lambda (km)
-					     (cons km new-str)) this-list)))
-		    (setq km-keymap-list (append km-keymap-list new-list))))))
+	      (when map-keymap-recursively
+		(let
+		    ((this-list (with-buffer buffer (eval (nth 1 (car k)))))
+		     (event-str (event-name (cdr k))))
+		  (when (listp this-list)
+		    ;; Another keymap-list, add it to the list of those waiting
+		    (let*
+			((new-str (concat km-prefix-string
+					  (if km-prefix-string ?\ )
+					  event-str))
+			 (new-list (mapcar #'(lambda (km)
+					       (cons km new-str)) this-list)))
+		      (setq km-keymap-list (append km-keymap-list
+						   new-list)))))))
 	      (t
 	       ;; A normal binding
 	       (funcall function k km-prefix-string))))
 	keylist))
+
+
+;; Substitute one command for another in a keymap
+
+;;;###autoload
+(defun substitute-key-definition (olddef newdef &optional keymap)
+  "Substitute all occurrences of the command OLDDEF for the command NEWDEF
+in the keybindings under the keymap or list of keymaps KEYMAP. When KEYMAP
+is nil, the value of `keymap-path' is used, i.e. all key bindings currently
+in effect."
+  (interactive "COld command:\nCReplacement command:")
+  (map-keymap #'(lambda (k pfx)
+		  (when (eq (car k) olddef)
+		    (rplaca k newdef))) keymap))
 
 
 ;; Printing keymaps
