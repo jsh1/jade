@@ -30,6 +30,7 @@ _PR Lisp_Extent *find_extent(Lisp_Extent *root, Pos *pos);
 _PR void map_section_extents(void (*)(Lisp_Extent *, void *), Lisp_Extent *, Pos *, Pos *, void *);
 _PR void make_global_extent(TX *tx);
 _PR void reset_global_extent(TX *tx);
+_PR bool buffer_set_if_bound(VALUE symbol, VALUE value);
 _PR void adjust_extents_add_cols(Lisp_Extent *, long, long, long);
 _PR void adjust_extents_sub_cols(Lisp_Extent *, long, long, long);
 _PR void adjust_extents_add_rows(Lisp_Extent *, long, long);
@@ -45,7 +46,9 @@ _PR void extent_init(void);
 DEFSYM(front_sticky, "front-sticky");
 DEFSYM(rear_sticky, "rear-sticky");
 DEFSYM(local_variables, "local-variables");
-_PR VALUE sym_front_sticky, sym_rear_sticky, sym_local_variables;
+DEFSYM(catch_variables, "catch-variables");
+_PR VALUE sym_front_sticky, sym_rear_sticky;
+_PR VALUE sym_local_variables, sym_catch_variables;
 
 static Lisp_Extent *allocated_extents;
 
@@ -83,6 +86,11 @@ alloc_extent(Lisp_Extent *clonee)
 	x->tx = clonee->tx;
 	x->plist = clonee->plist;
 	x->locals = clonee->locals;
+    }
+    else
+    {
+	x->locals = sym_nil;
+	x->plist = sym_nil;
     }
 
     return x;
@@ -208,8 +216,12 @@ unlink_extent(Lisp_Extent *e)
 static void
 unlink_extent_recursively(Lisp_Extent *e)
 {
-    while(e->first_child != 0)
-	unlink_extent_recursively(e->first_child);
+    Lisp_Extent *x = e->first_child;
+    while(x != 0)
+    {
+	unlink_extent_recursively(x);
+	x = x->right_sibling;
+    }
     if(e->parent != 0)
 	unlink_extent_fragment(e);
 }
@@ -469,14 +481,9 @@ invalidate_extent_cache(TX *tx)
 void
 make_global_extent(TX *tx)
 {
-    Lisp_Extent *e = alloc_extent(0);
-    e->tx = tx;
-    e->plist = sym_nil;
-    e->locals = sym_nil;
-    e->start.row = e->start.col = 0;
-    e->end.row = e->end.col = 0;
-    e->car |= EXTFF_OPEN_START | EXTFF_OPEN_END;
-    tx->tx_GlobalExtent = e;
+    tx->tx_GlobalExtent = alloc_extent(0);
+    tx->tx_GlobalExtent->tx = tx;
+    reset_global_extent(tx);
 }
 
 /* After loading a file into TX, call this. */
@@ -489,6 +496,8 @@ reset_global_extent(TX *tx)
     e->start.col = 0;
     e->end.row = tx->tx_NumLines;
     e->end.col = tx->tx_Lines[tx->tx_NumLines-1].ln_Strlen - 1;
+    e->car = V_Extent | EXTFF_OPEN_START | EXTFF_OPEN_END;
+    invalidate_extent_cache(tx);
 }
 
 
@@ -790,8 +799,8 @@ extent-get PROPERTY EXTENT
 Return the value of PROPERTY (a symbol) in EXTENT, or any of its parents.
 Returns nil if there is no value in this extent.
 
-The special properties `front-sticky', `rear-sticky' and `local-variables'
-have values in every extent.
+The special properties `front-sticky', `rear-sticky', `local-variables', and
+`catch-variables' have values in every extent.
 ::end:: */
 {
     Lisp_Extent *inner;
@@ -806,6 +815,11 @@ have values in every extent.
 	return (VEXTENT(extent)->car & (prop == sym_front_sticky
 					? EXTFF_OPEN_START
 					: EXTFF_OPEN_END)) ? sym_t : sym_nil;
+    }
+    else if(prop == sym_catch_variables)
+    {
+	return ((VEXTENT(extent)->car & EXTFF_CATCH_VARIABLES)
+		? sym_t : sym_nil);
     }
     else if(prop == sym_local_variables)
 	return VEXTENT(extent)->locals;
@@ -840,6 +854,12 @@ nil).
 The special property `local-variables' is an alist of (SYMBOL . VALUE) pairs,
 each defining the value of the variable named SYMBOL in the extent. See
 the `extent-set' and `buffer-symbol-value' functions.
+
+If the special property `catch-variables' is non-nil, any buffer-local
+variables (that don't have a permanent-local property) set from a
+position within this extent, that aren't bound in an extent inside this
+one, will have their value set in this extent, using the `extent-set'
+function.
 ::end:: */
 {
     VALUE plist;
@@ -855,6 +875,17 @@ the `extent-set' and `buffer-symbol-value' functions.
 	VEXTENT(extent)->car &= ~bit;
 	if(!NILP(val))
 	    VEXTENT(extent)->car |= bit;
+    }
+    else if(prop == sym_catch_variables)
+    {
+	extent = VAL(find_first_frag(VEXTENT(extent)));
+	while(VEXTENT(extent) != 0)
+	{
+	    VEXTENT(extent)->car &= ~EXTFF_CATCH_VARIABLES;
+	    if(!NILP(val))
+		VEXTENT(extent)->car |= EXTFF_CATCH_VARIABLES;
+	    extent = VAL(VEXTENT(extent)->frag_next);
+	}
     }
     else if(prop == sym_local_variables)
     {
@@ -893,6 +924,7 @@ Get the value of PROPERTY (a symbol) at POSITION in BUFFER.
     VALUE e;
     DECLARE1(prop, SYMBOLP);
 
+    /* FIXME: this should search back up the stack. */
     e = cmd_get_extent(pos, tx);
     return cmd_extent_get(prop, e);
 }
@@ -955,7 +987,7 @@ Set the local value of the variable named SYMBOL in EXTENT to VALUE.
     if(!NILP(vars))
     {
 	VALUE cell = cmd_assq(symbol, vars);
-	if(!NILP(cell))
+	if(cell && CONSP(cell))
 	{
 	    VCDR(cell) = val;
 	    return val;
@@ -965,6 +997,38 @@ Set the local value of the variable named SYMBOL in EXTENT to VALUE.
     set_extent_locals(VEXTENT(extent), vars);
     VSYM(symbol)->car |= SF_BUFFER_LOCAL;
     return val;
+}
+
+/* Called by the `set' function. Sees if the value of SYMBOL (assuming it
+   has the SF_BUFFER_LOCAL property) should be set in the current stack
+   of extents. If so, sets it and returns true. */
+bool
+buffer_set_if_bound(VALUE symbol, VALUE value)
+{
+    Pos tem;
+    Lisp_Extent *e;
+    COPY_VPOS(&tem, curr_vw->vw_CursorPos);
+    e = find_extent(curr_vw->vw_Tx->tx_GlobalExtent, &tem);
+    while(e != 0)
+    {
+	VALUE cell = cmd_assq(symbol, e->locals);
+	if(cell && CONSP(cell))
+	{
+	    VCDR(cell) = value;
+	    return TRUE;
+	}
+	else if(e->car & EXTFF_CATCH_VARIABLES)
+	{
+	    VALUE tem = cmd_get(symbol, sym_permanent_local);
+	    if(NILP(tem))
+	    {
+		cmd_extent_set(symbol, value, VAL(e));
+		return TRUE;
+	    }
+	}
+	e = e->parent;
+    }
+    return FALSE;
 }
 
 
@@ -1204,4 +1268,5 @@ extent_init(void)
     INTERN(front_sticky);
     INTERN(rear_sticky);
     INTERN(local_variables);
+    INTERN(catch_variables);
 }
