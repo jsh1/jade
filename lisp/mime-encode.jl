@@ -83,7 +83,7 @@
 			   (list 'application 'octet-stream))))
     (cond
      ((eq major-mode 'send-mail-mode)
-      (unless (memq 'mime-encode-message mail-send-hook)
+      (unless (in-hook-p 'mail-send-hook mime-encode-message)
 	(make-local-variable 'mail-send-hook)
 	(add-hook 'mail-send-hook mime-encode-message)))
      (t
