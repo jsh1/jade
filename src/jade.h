@@ -26,6 +26,7 @@
 
 typedef char bool;
 
+#include "revision.h"
 #include "value.h"
 
 /* This should be either a link to the target systems config.h.X file
