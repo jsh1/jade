@@ -71,12 +71,13 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
     ;; Look at the last token on the previous line
     (if (= (get-char (forward-char -2 pos)) ?\\ )
 	(setq indent (+ indent sh-continuation-indent))
-      (when (looking-at "((.*[^a-zA-Z0-9\n])?(do|then|in)|.*\\))[ \t]*$"
-			(forward-line -1 pos))
+      (when (looking-at
+	     "((.*[^a-zA-Z0-9\n])?(do|then|else|elif|in)|.*\\))[ \t]*$"
+	     (forward-line -1 pos))
 	(setq indent (+ indent sh-basic-indent)))
       (when (looking-at ".*;;[\t ]*$" (forward-line -1 pos))
 	(setq indent (- indent sh-basic-indent)))
       ;; Look at the contents of this line
-      (when (looking-at "[ \t]*(done|fi|esac)" pos)
+      (when (looking-at "[ \t]*(done|else|elif|fi|esac)" pos)
 	(setq indent (- indent sh-basic-indent))))
     (set-indent-pos (pos indent (pos-line pos)))))
