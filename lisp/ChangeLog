@@ -1,5 +1,7 @@
 2000-07-05  John Harper  <john@dcs.warwick.ac.uk>
 
+	* gtk-prompt.jl: removed all calls to gtk-window-position
+
 	* cvs.jl (cvs-add-change-log-entries): use find-change-log-file
 	when prompting
 
