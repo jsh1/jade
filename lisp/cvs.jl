@@ -789,4 +789,3 @@ works by deleting the local copy, before updating it from the repository."
   (interactive "@")
   (or (re-search-forward "^<<<<<<< ")
       (re-search-forward "^<<<<<<< " (start-of-buffer))))
-      
