@@ -45,7 +45,7 @@ Major mode for editing Lisp source. Local bindings in this mode are:\n
 	mode-forward-exp 'lisp-forward-sexp
 	mode-backward-exp 'lisp-backward-sexp
 	mode-symbol-regexp "[^][()?'`,@\"#; \t\f\n]+"
-	mode-defun-header "^\\(defun ([^ \t\f\n]+)"
+	mode-defun-header "^\\(def[a-z]+[\t ]+([^ \t\f\n]+)"
 	mode-defun-footer nil
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
