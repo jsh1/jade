@@ -178,9 +178,13 @@ of SYMBOL is non-nil, KEYMAP is used to search for bindings.")
   "Meta-<"	'start-of-buffer
   "Meta->"	'end-of-buffer
   "Meta-."	'find-tag
+  "Meta-,"	'tags-loop-continue
   "Meta-;"	'insert-comment
   "Meta-~"	'(set-buffer-modified nil nil)
   "Meta-\\"	'no-spaces
+  "\)"		'blinking-insert
+  "}"		'blinking-insert
+  "]"		'blinking-insert
   "Ctrl-Meta-\\" 'indent-area
   "LMB-Click1"	'mouse-select
   "Ctrl-LMB-Click1" 'mouse-select
