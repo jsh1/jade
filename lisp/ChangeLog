@@ -1,3 +1,14 @@
+1999-12-15  John Harper  <john@dcs.warwick.ac.uk>
+
+	* html-decode.jl (html-decode-tag): recognize SGML declarations
+	other than comments `<!...>'
+	(html-decode-pop-optional): restore the environment of the last
+	frame, don't just pop it
+
+	* html-style.jl (html-style-title): added optional arg ANCHOR;
+	either `t' to add an anchor the same name as the title, or a
+	string explicitly specifying the name
+
 1999-12-14  John Harper  <john@dcs.warwick.ac.uk>
 
 	* html-decode.jl (html-decode-tag): simplified how comments are
