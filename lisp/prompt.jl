@@ -480,7 +480,10 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
 
 ;;;###autoload
 (defun prompt-for-string (&optional prompt start)
-  (prompt (or prompt "Enter string: ") start))
+  (let
+      ((prompt-completion-function 'prompt-complete-filename)
+       (prompt-validate-function nil))
+    (prompt (or prompt "Enter string: ") start)))
 
 ;;;###autoload
 (defun prompt-for-number (&optional prompt)
