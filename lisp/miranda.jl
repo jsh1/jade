@@ -51,5 +51,5 @@ mode `shell-mode'. ARG is a string to pass as a command line argument."
 	  (shell-mode))
       (goto-buffer buffer)
       (setq default-directory dir
-	    shell-program-args (and arg (list arg)))
+	    shell-program-args (and arg (list (local-file-name arg))))
       (shell-start-process))))
