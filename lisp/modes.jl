@@ -110,11 +110,11 @@ tab stop after the end of the line is used instead.")
   "A function called to indent a specified line in the current buffer.")
 (make-variable-buffer-local 'mode-indent-line)
 
-(defvar mode-forward-exp nil
+(defvar mode-forward-exp 'generic-forward-exp
   "Function like `lisp-forward-sexp'.")
 (make-variable-buffer-local 'mode-forward-exp)
 
-(defvar mode-backward-exp nil
+(defvar mode-backward-exp 'generic-backward-exp
   "Function like `lisp-backward-sexp'.")
 (make-variable-buffer-local 'mode-backward-exp)
 
@@ -284,3 +284,144 @@ or insert a tab."
   (transpose-items (or mode-forward-exp 'forward-word)
 		   (or mode-backward-exp 'backward-word)
 		   count))
+
+
+;; Generic expression handling
+
+(defvar generic-exp-single-delims '(?\")
+  "A list of characters that delimit compound expressions in generic
+expressions.")
+(make-variable-buffer-local 'generic-exp-single-delims)
+
+(defvar generic-exp-open-delims '(?\( ?\[ ?\{)
+  "A list of characters that open compound expressions in generic
+expressions. Can only be from the list `\(', `\[', `\{', `\<' and `\`'.")
+(make-variable-buffer-local 'generic-exp-open-delims)
+
+(defvar generic-exp-close-delims '(?\) ?\] ?\})
+  "A list of characters that close compound expressions in generic
+expressions. Can only be from the list `\)', `\]', `\}', `\>' and `\''.")
+(make-variable-buffer-local 'generic-exp-close-delims)
+
+(defvar generic-exp-escape-char '?\\
+  "The character that escapes the next character in a generic expression.")
+(make-variable-buffer-local 'generic-exp-escape-char)
+
+(defvar generic-exp-comment-string nil
+  "When non-nil a string that begins a comment up to the end of the
+current line.")
+(make-variable-buffer-local 'generic-exp-comment-string)
+
+(defvar generic-exp-symbol-re "[a-zA-Z0-9_]+"
+  "Regexp matching a symbol")
+(make-variable-buffer-local 'generic-exp-symbol)
+
+(defvar generic-exp-special-re "[][(){}\"a-zA-Z0-9_]"
+  "Characters to look for when finding the start of the next expression
+after a symbol.")
+(make-variable-buffer-local 'generic-exp-special-re)
+
+(defun generic-forward-exp (&optional number pos)
+  "Return the position of the NUMBER'th next expression from POS."
+  (unless number
+    (setq number 1))
+  (unless pos
+    (setq pos (cursor-pos)))
+  (let
+      ((ws-re (if (null generic-exp-comment-string)
+		  "[\t\f\n ]+"
+		(concat "([\t\f\n ]+|("
+			(regexp-quote generic-exp-comment-string)
+			".*\n))+"))))
+    (while (> number 0)
+      ;; first, skip white space and comments
+      (when (looking-at ws-re pos)
+	(setq pos (match-end)))
+      (when (> pos (buffer-end))
+	(error "End of buffer"))
+      (let
+	  ((c (get-char pos)))
+	(cond
+	 ((member c generic-exp-single-delims)
+	  ;; move over string
+	  (if (setq pos (find-next-char c (next-char 1 pos)))
+	      (while (= (get-char (prev-char 1 (copy-pos pos)))
+			generic-exp-escape-char)
+		(unless (setq pos (find-next-char c (next-char 1 pos)))
+		  (error "String doesn't end!")))
+	    (error "String doesn't end!"))
+	  (setq pos (next-char 1 pos)))
+	 ((member c generic-exp-open-delims)
+	  ;; move over brackets
+	  (unless (setq pos (match-brackets pos nil generic-exp-escape-char))
+	    (error "Expression doesn't end!"))
+	  (setq pos (next-char 1 pos)))
+	 ((member c generic-exp-close-delims)
+	  (error "End of containing expression"))
+	 (t
+	  ;; a symbol of some sort
+	  (if (looking-at generic-exp-symbol-re pos)
+	      (setq pos (match-end))
+	    (unless (setq pos (find-next-regexp generic-exp-special-re pos))
+	      (error "Can't find end of symbol"))
+	    (setq number (1+ number))))))
+      (setq number (1- number))))
+  pos)
+
+(defun generic-backward-exp (&optional number orig-pos)
+  "Return the position of the NUMBER'th previous s-expression from ORIG-POS."
+  (unless number
+    (setq number 1))
+  (unless orig-pos 
+    (setq orig-pos (cursor-pos)))
+  (let
+      ((pos (copy-pos orig-pos))
+       comment-skip-some-re
+       comment-skip-line-re
+       comment-tail-re)
+    (when generic-exp-comment-string
+      (setq comment-skip-some-re (concat
+				  "[\t\f ]*"
+				  (regexp-quote generic-exp-comment-string)
+				  "|[\f\t ]*$")
+	    comment-skip-line-re (concat
+				  "^[\t\f ]*"
+				  (regexp-quote generic-exp-comment-string)
+				  "|^[\f\t ]*$")
+	    comment-tail-re (concat "[\t\f ]+"
+				    (regexp-quote generic-exp-comment-string))))
+    (while (> number 0)
+      ;; skip preceding white space
+      (unless (setq pos (find-prev-regexp "[^\t\f\n ]" (prev-char 1 pos)))
+	(error "No expression!"))
+      (when generic-exp-comment-string
+	(while (regexp-match-line comment-skip-line-re pos)
+	  (unless (setq pos (prev-line 1 pos))
+	    (error "Beginning of buffer"))
+	  (setq pos (line-end pos)))
+	(when (and (regexp-match-line comment-skip-some-re pos)
+		   (< (match-start) pos))
+	  (setq pos (prev-char 1 (match-start)))))
+      (let
+	  ((c (get-char pos)))
+	(cond
+	 ((member c generic-exp-close-delims)
+	  (unless (setq pos (match-brackets pos nil generic-exp-escape-char))
+	    (error "Brackets don't match")))
+	 ((member c generic-exp-single-delims)
+	  (if (setq pos (find-prev-char c (prev-char 1 pos)))
+	      (while (= (get-char (prev-char 1 (copy-pos pos)))
+			generic-exp-escape-char)
+		(unless (setq pos (find-prev-char c (prev-char 1 pos)))
+		  (error "String doesn't start!")))
+	    (error "String doesn't start!")))
+	 ((member c generic-exp-open-delims)
+	  (error "Start of containing sexp"))
+	 (t
+	  ;; a symbol?
+	  (if (looking-at generic-exp-symbol-re pos)
+	      (unless (setq pos (find-prev-regexp generic-exp-symbol-re pos))
+		(error "Can't classify expression"))
+	    (setq number (1+ number))))))
+      (setq number (1- number)))
+    pos))
