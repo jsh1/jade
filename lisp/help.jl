@@ -20,7 +20,7 @@
 
 (provide 'help)
 
-(defvar lisp-documentation-file (expand-file-name "DOC" lisp-lib-dir)
+(defvar lisp-documentation-file (expand-file-name "DOC" lisp-lib-directory)
   "The name of the file of documentation strings from the pre-compiled Lisp
 libraries.")
 

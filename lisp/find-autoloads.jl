@@ -42,7 +42,7 @@
 		 (start-of-line (forward-line 1 (match-start))))))
 
 (defun autoload-do-magic (buf line-fun)
-  (when (find-file (expand-file-name "autoload.jl" lisp-lib-dir))
+  (when (find-file (expand-file-name "autoload.jl" lisp-lib-directory))
     (let
 	((pos (start-of-buffer))
 	 form
