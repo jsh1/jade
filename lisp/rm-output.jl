@@ -69,9 +69,9 @@ while auto-archiving.")
 	  ;; line separating messages
 	  (write dest ?\n))
 	(write dest text)))
-      (rm-set-flag msg 'filed)
+      (rm-message-put msg 'filed t)
       (when rm-delete-after-output
-	(rm-set-flag msg 'deleted)))))
+	(rm-message-put msg 'deleted t)))))
 
 ;;;###autoload
 (defun rm-output (count dest)

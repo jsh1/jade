@@ -63,7 +63,7 @@ message formatting characters are available.")
 			    (mail-get-actual-subject subject))))
     (mail-setup nil subject msg-id nil references
 		(list (cons #'(lambda (folder message)
-				(rm-set-flag message 'replied)
+				(rm-message-put message 'replied t)
 				(when (rm-get-folder-field
 				       folder rm-folder-summary)
 				  (rm-with-summary folder
@@ -153,7 +153,7 @@ arg TO specifies who to send it to."
        start tem)
     (mail-setup to subject nil nil nil
 		(list (cons #'(lambda (folder message)
-				(rm-set-flag message 'forwarded)
+				(rm-message-put message 'forwarded t)
 				(when (rm-get-folder-field
 				       folder rm-folder-summary)
 				  (rm-with-summary folder
@@ -258,7 +258,7 @@ arg TO specifies who to send it to."
 	    (when (setq new-msg (rm-parse-message output-pos))
 	      (setq count (1+ count)
 		    msgs (cons new-msg msgs))
-	      (rm-set-flag new-msg 'unread))))
+	      (rm-message-put new-msg 'unread t))))
 	(setq input-pos (forward-line 1 input-pos)
 	      last-pos input-pos)
 	(restrict-buffer input-pos input-end)))
