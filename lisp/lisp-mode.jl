@@ -27,7 +27,8 @@
     "Ctrl-j" 'eval-insert-sexp
     "Meta-Ctrl-x" 'eval-print-sexp
     "TAB" 'indent-line
-    "Meta-TAB" 'lisp-complete-sexp))
+    "Meta-TAB" 'lisp-complete-sexp
+    "Meta-?" 'lisp-show-sexp-completions))
 
 ;;;###autoload
 (defun lisp-mode ()
@@ -83,7 +84,17 @@ in the status line."
     (setq pos (cursor-pos)))
   (set-indent-pos (lisp-indent-pos pos)))
 
-(defun lisp-complete-sexp (&optional all-symbols)
+(defun lisp-complete-sexp (&optional all-symbols only-display)
+  "Complete the Lisp s-expression immediately preceding the cursor.
+
+If ALL-SYMBOLS is non-nil symbols bound either as subroutines or
+variables will be accepted. Otherwise the character preceding the start
+of the expression is examined; if it is an opening parenthesis
+character the expression is completed as the name of a subroutine, if
+not, it is completed as a variable.
+
+If ONLY-DISPLAY is non-nil nothing is inserted into the buffer, the list of
+completions is simply displayed."
   (interactive "P")
   (require 'completion)
   (let
@@ -104,14 +115,22 @@ in the status line."
 	(progn
 	  (completion-remove-view)
 	  (message "[No completions!]"))
-      (if (= count 1)
+      (if (and (not only-display) (= count 1))
 	  (progn
 	    (insert (substring (car completions) (length sexp)))
 	    (completion-remove-view)
 	    (message "[Unique completion]"))
-	(insert (substring (complete-string sexp completions) (length sexp)))
+	(unless only-display
+	  (insert (substring (complete-string sexp completions)
+			     (length sexp))))
 	(completion-list completions)
 	(message (format nil "[%d completion(s)]" count))))))
+
+(defun lisp-show-sexp-completions (&optional all-symbols)
+  "Display the list of completions of the Lisp s-expression immediately
+preceding the cursor. See `lisp-complete-sexp' for more details."
+  (interactive "P")
+  (lisp-complete-sexp all-symbols t))
 
 
 ;; Expressions
