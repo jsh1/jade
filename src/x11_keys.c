@@ -43,7 +43,7 @@ _PR u_long esc_code, esc_mods;
 u_long esc_code = XK_Escape, esc_mods = EV_TYPE_KEYBD;
 
 static u_long
-translate_mods(u_long mods, unsigned int state)
+translate_mods(u_long mods, unsigned int state, bool subst_meta)
 {
     if(state & ShiftMask)
 	mods |= EV_MOD_SHIFT;
@@ -72,7 +72,7 @@ translate_mods(u_long mods, unsigned int state)
     if(state & Button5Mask)
 	mods |= EV_MOD_BUTTON5;
 
-    if(curr_win != 0 && mods & WINDOW_META(curr_win))
+    if(subst_meta && (mods & WINDOW_META(curr_win)) != 0)
 	mods = (mods & ~WINDOW_META(curr_win)) | EV_MOD_META;
 
     return(mods);
@@ -85,7 +85,7 @@ translate_event(u_long *code, u_long *mods, XEvent *xev)
     switch(xev->type)
     {
     case KeyPress:
-	*mods = translate_mods(*mods, xev->xkey.state);
+	*mods = translate_mods(*mods, xev->xkey.state, TRUE);
 	if(*mods & EV_MOD_SHIFT)
 	{
 	    /* Some keys don't have keysym at index 1, if not treat it as
@@ -115,8 +115,8 @@ translate_event(u_long *code, u_long *mods, XEvent *xev)
     case ButtonRelease:
 	*code = EV_CODE_MOUSE_UP;
     button:
-	*mods = EV_TYPE_MOUSE
-	    | translate_mods(*mods, xev->xbutton.state);
+	*mods = (EV_TYPE_MOUSE
+		 | translate_mods(*mods, xev->xbutton.state, TRUE));
 	switch(xev->xbutton.button)
 	{
 	case Button1:
@@ -139,7 +139,8 @@ translate_event(u_long *code, u_long *mods, XEvent *xev)
 
     case MotionNotify:
 	*code = EV_CODE_MOUSE_MOVE;
-	*mods = EV_TYPE_MOUSE | translate_mods(*mods, xev->xmotion.state);
+	*mods = (EV_TYPE_MOUSE
+		 | translate_mods(*mods, xev->xmotion.state, TRUE));
 	break;
     }
 }
@@ -411,11 +412,11 @@ x11_find_meta(struct x11_display *xd)
 		    switch(sym)
 		    {
 		    case XK_Meta_L: case XK_Meta_R:
-			meta_mod = translate_mods(0, 1 << row);
+			meta_mod = translate_mods(0, 1 << row, FALSE);
 			break;
 
 		    case XK_Alt_L: case XK_Alt_R:
-			alt_mod = translate_mods(0, 1 << row);
+			alt_mod = translate_mods(0, 1 << row, FALSE);
 			break;
 		    }
 		}
