@@ -253,7 +253,7 @@ for. When called interactively, spell-check the current block."
   (let
       (ispell-prompt-buffer
        ispell-options-buffer)
-    (ispell-region-1 'ispell-handle-failure-interactively start end)
+    (ispell-region-1 ispell-handle-failure-interactively start end)
     (when ispell-options-buffer
       (kill-buffer ispell-options-buffer))))
 
