@@ -40,8 +40,8 @@ void
 jade_regsub(lasttype, matches, source, dest, data)
     int		    lasttype;
     rep_regsubs	   *matches;
-    u_char	   *source;
-    u_char	   *dest;
+    char	   *source;
+    char	   *dest;
     void	   *data;
 {
     register u_char  *src;
@@ -124,7 +124,7 @@ int
 jade_regsublen(lasttype, matches, source, data)
     int		    lasttype;
     rep_regsubs	   *matches;
-    u_char	   *source;
+    char	   *source;
     void	   *data;
 {
     register u_char  *src;

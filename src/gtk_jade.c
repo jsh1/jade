@@ -283,7 +283,7 @@ gtk_jade_realize (GtkWidget *widget)
     GtkJade *jade;
     GdkWindowAttr attributes;
     gint attributes_mask;
-    repv face, fg, bg;
+    repv face, fg = rep_NULL, bg = rep_NULL;
 
     g_return_if_fail (widget != NULL);
     g_return_if_fail (GTK_IS_JADE (widget));
@@ -322,8 +322,10 @@ gtk_jade_realize (GtkWidget *widget)
 
     /* Create gc */
     jade->gc_values.line_width = 0;
-    jade->gc_values.foreground = VCOLOR(fg)->color;
-    jade->gc_values.background = VCOLOR(bg)->color;
+    if (fg != rep_NULL)
+	jade->gc_values.foreground = VCOLOR(fg)->color;
+    if (bg != rep_NULL)
+	jade->gc_values.background = VCOLOR(bg)->color;
     jade->gc_values.font = jade->font;
     jade->gc_values.function = GDK_COPY;
     jade->gc_values.graphics_exposures = TRUE;
@@ -448,7 +450,7 @@ gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
     g_return_val_if_fail (event != NULL, FALSE);
     jade = GTK_JADE (widget);
 
-    switch (event->type)
+    switch ((int) event->type)
     {
 	int x, y;
 
@@ -471,8 +473,6 @@ gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
     case GDK_KEY_PRESS:
 	gtk_jade_last_event_time = event->key.time;
 	break;
-
-    default:
     }
 
     translate_event (&code, &mods, event);
@@ -1051,6 +1051,8 @@ DEFUN("gtk-last-timestamp", Fgtk_last_timestamp,
 
 /* Asyncronous event handling. X11 specific. */
 
+#if 0
+
 #ifdef HAVE_X11
 static Bool
 async_event_pred (Display *dpy, XEvent *ev, XPointer arg)
@@ -1137,6 +1139,8 @@ gtk_jade_handle_async_input (void)
     if (need_redisplay)
 	Fredisplay (Qnil);
 }
+
+#endif /* 0 */
 
 
 /* Initialisation */

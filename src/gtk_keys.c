@@ -76,7 +76,7 @@ translate_mods(u_long mods, unsigned int state, bool subst_meta)
 void
 translate_event(u_long *code, u_long *mods, GdkEvent *ev)
 {
-    switch(ev->type)
+    switch((int) ev->type)
     {
     case GDK_KEY_PRESS:
 	if (IsModifierKey (ev->key.keyval))
@@ -149,8 +149,6 @@ translate_event(u_long *code, u_long *mods, GdkEvent *ev)
 	*code = EV_CODE_MOUSE_MOVE;
 	*mods = (EV_TYPE_MOUSE | translate_mods(*mods, ev->motion.state & ~all_lock_mask, TRUE));
 	break;
-
-    default:
     }
 }
 

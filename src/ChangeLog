@@ -1,3 +1,8 @@
+2005-01-04  John Harper  <jsh@unfactored.org>
+
+	* x11_windows.c, windows.c, regsub.c, jade_subrs.h, gtk_keys.c,
+	gtk_jade.c, buffers.c: fixed compiler warnings
+
 2003-12-04  John Harper  <jsh@unfactored.org>
 
 	* jadeclient.c (usage): added '\n\' to the end of each line to

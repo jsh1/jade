@@ -791,7 +791,7 @@ window_prin(repv strm, repv win)
 	sprintf(buf,
 #endif
 #if defined (HAVE_GTK) || !defined (HAVE_X11)
-		"#<window 0x%x", VWIN(win)->w_Window);
+		"#<window %p", VWIN(win)->w_Window);
 #else
 		"#<window %ld", VWIN(win)->w_Window);
 #endif

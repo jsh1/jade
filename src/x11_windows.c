@@ -106,7 +106,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
     Window win;
     struct x11_display *dpy;
     repv face;
-    struct x11_color *bg, *fg;
+    struct x11_color *bg = 0, *fg = 0;
 
     if(pending_display != 0)
 	dpy = pending_display;
@@ -157,10 +157,22 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 
     {
 	XSetWindowAttributes wa;
-	wa.background_pixel = (x11_opt_reverse_video
-			       ? fg->color.pixel : bg->color.pixel);
-	wa.border_pixel = (x11_opt_reverse_video
-			   ? bg->color.pixel : fg->color.pixel);
+
+	if (x11_opt_reverse_video)
+	{
+	    if (fg != 0)
+		wa.background_pixel = fg->color.pixel;
+	    if (bg != 0)
+		wa.border_pixel = bg->color.pixel;
+	}
+	else
+	{
+	    if (bg != 0)
+		wa.background_pixel = bg->color.pixel;
+	    if (fg != 0)
+		wa.border_pixel = fg->color.pixel;
+	}
+
 	wa.colormap = dpy->colormap;
 	wa.cursor = dpy->text_cursor;
 

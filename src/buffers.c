@@ -1363,7 +1363,7 @@ buffers_init(void)
 				       0, mark_getc, mark_ungetc,
 				       mark_putc, mark_puts, 0, 0);
 
-    rep_mark_static((repv *)&non_resident_mark_chain);
+    rep_mark_static((void *)&non_resident_mark_chain);
     rep_INTERN(auto_save_function);
     rep_ADD_SUBR(Smake_buffer_name);
     rep_ADD_SUBR(Smake_buffer);
