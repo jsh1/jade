@@ -308,9 +308,8 @@ Major mode for composing and sending mail messages. Local bindings are:\n
   (let ((point (start-of-buffer))
 	(addresses '()))
     (while (and point (re-search-forward header-re point nil t))
-      (let ((next (match-end)))
-	(setq addresses (nconc addresses (mail-parse-list point)))
-	(setq point next)))
+      (setq point (match-end))
+      (setq addresses (nconc addresses (mail-parse-list (match-start)))))
     addresses))
 
 (defun sendmail-send-message ()

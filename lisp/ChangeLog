@@ -1,3 +1,15 @@
+2001-08-07  John Harper  <jsh@pixelslut.com>
+
+	* gdb.jl: added support for rep's debugger  (rep-debugger
+	command)
+
+	* send-mail-smtp.jl (smtp-output): do better error checking
+
+2001-06-14  John Harper  <jsh@pixelslut.com>
+
+	* send-mail.jl (send-mail-extract-addresses): fixed this
+	function (doh!)
+
 2001-06-09  John Harper  <jsh@pixelslut.com>
 
 	* send-mail-smtp.jl: minor changes; added some comments

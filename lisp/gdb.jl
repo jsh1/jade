@@ -26,6 +26,8 @@
 
 (defvar perl-program "perl")
 
+(defvar rep-program "rep")
+
 (defvar gdb-auto-centre nil
   "When non-nil the current line in the source view is automatically
 centred each time it changes.")
@@ -105,7 +107,7 @@ centred each time it changes.")
 (defun gdb-gdb-input-filter (data)
   (let
       ((new-frame nil))
-    (while (string-match "\032\032([^:\n]+):([0-9]+):([0-9]+):.*\n" data)
+    (while (string-match "\032\032([^:\n]+):([0-9]+):.*\n" data)
       ;; A whole marker to process
       (insert (substring data 0 (match-start 0)))
       (setq gdb-last-frame (cons (substring data (match-start 1) (match-end 1))
@@ -249,6 +251,52 @@ The following commands are available in the `*perldb*' buffer:\n
 \\{gdb-ctrl-c-keymap,Ctrl-c}
 They are also accessible in any buffer by replacing the `Ctrl-c' prefix
 with `Ctrl-x Ctrl-a'.")
+
+
+;; rep support
+
+(defvar gdb-rep-actions
+  '((next . (gdb-command "n\n"))
+    (step . (gdb-command "s\n"))
+    (continue . (gdb-command "c\n"))))
+
+(define gdb-rep-input-filter gdb-gdb-input-filter)
+
+;;;###autoload
+(defun rep-debugger (args)
+  "Run the rep debugger in an editor buffer (called `*rep-db*'). ARGS is a
+string giving all arguments to the perl subprocess (including the program
+to debug). See the `perl-mode' documentation for details of the available
+commands. There is no limit to the number of processes you may run at once."
+  (interactive "sArguments to rep:")
+  (let*
+      ((buffer (get-buffer "*rep-db*"))
+       (directory default-directory))
+    (if (or (not buffer) (with-buffer buffer shell-process))
+	(setq buffer (open-buffer "*rep-db*" t))
+      (clear-buffer buffer))
+    (goto-buffer buffer)
+    (kill-all-local-variables)
+    (setq default-directory directory
+	  shell-program-args (list "-c" (concat rep-program
+						" --rep-debug --rep-emacs-debugger "
+						args))
+	  shell-prompt-regexp "^rep-db> "
+	  shell-output-stream (let ((buffer (current-buffer)))
+				(lambda (x)
+				  (gdb-output-filter buffer x)))
+	  shell-callback-function (lambda () (gdb-callback)))
+    (lisp-mode)
+    (shell-mode)
+    (buffer-status-id (concat "RepDB: " args))
+    (setq major-mode 'lisp-mode
+	  mode-name "RepDB"
+	  local-ctrl-c-keymap gdb-ctrl-c-keymap
+	  gdb-last-buffer buffer
+	  gdb-buffer-p t
+	  gdb-actions gdb-rep-actions
+	  gdb-input-filter gdb-rep-input-filter)
+    (call-hook 'gdb-hook)))
 
 
 ;; Digs the variable VAR out of the gdb-last-buffer

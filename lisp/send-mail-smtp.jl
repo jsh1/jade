@@ -53,18 +53,30 @@ SMTP directly.")
       (when pending-output
 	(setq output (concat pending-output output))
 	(setq pending-output nil))
-      (when (string-match "\\s*^([2345])\\d\\d\\s+(.*)\\s+" output)
-	(setq got-result t)
-	(setq error-occurred (and (member (expand-last-match "\\1") '("4" "5"))
-				  (expand-last-match "\\2")))
-	(setq pending-output (substring output (match-end)))))
+      (let ((point 0))
+	(while (string-match "\n" output point)
+	  (let ((line (substring output point (match-start))))
+	    (setq point (match-end))
+	    (cond ((string-looking-at "\\s*^(211|214|220|221)\\b" line)
+		   ;; ignored responses
+		   )
+		  ((string-match "\\s*^[23]\\d\\d\\b" line)
+		   ;; success
+		   (setq got-result t)
+		   (setq error-occurred nil))
+		  ((string-match "\\s*^[45]\\d\\d\\s+(.*)\\s+$" line)
+		   (setq got-result t)
+		   (setq error-occurred (expand-last-match "\\2"))))))
+	(setq pending-output (substring output point))))
 
     ;; Output a single SMTP command; waits for the result before returning
     ;; Signals an error unless the SMTP command succeeds
     (define (smtp-command fmt . args)
+      (or (socketp socket)
+	  (error "SMTP server closed connection"))
       (apply format socket fmt args)
       (setq got-result nil)
-      (while (not got-result)
+      (while (and (not got-result) (socketp socket))
 	(and (accept-socket-output-1 socket 30)
 	     (error "Timed out waiting for SMTP server"))
 	(when error-occurred
