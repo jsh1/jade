@@ -54,10 +54,11 @@ static u_long event_buf[EVENT_BUFSIZ]; /* one event = (code,mods) */
 static int event_index;
 
 _PR VALUE sym_global_keymap, sym_local_keymap, sym_unbound_key_hook;
-_PR VALUE sym_esc_means_meta, sym_keymap;
+_PR VALUE sym_esc_means_meta, sym_keymap, sym_overriding_local_keymap;
 _PR VALUE sym_minor_mode_keymap_alist, sym_autoload_keymap;
 DEFSYM(global_keymap, "global-keymap");
 DEFSYM(local_keymap, "local-keymap");
+DEFSYM(overriding_local_keymap, "overriding-local-keymap");
 DEFSYM(unbound_key_hook, "unbound-key-hook");
 DEFSYM(esc_means_meta, "esc-means-meta");
 DEFSYM(keymap, "keymap");
@@ -150,35 +151,50 @@ lookup_binding(u_long code, u_long mods, bool (*callback)(VALUE key))
     next_keymap_path = LISP_NULL;
     if(nkp == LISP_NULL || nkp == sym_global_keymap)
     {
-	VALUE extent, minors;
+	VALUE tem;
 
-	extent = cmd_get_extent(sym_nil, sym_nil);
-	while(!k && EXTENTP(extent))
+	tem = cmd_symbol_value(sym_overriding_local_keymap, sym_t);
+	if(tem && !VOIDP(tem) && !NILP(tem))
 	{
-	    k = search_keymap(cmd_extent_get(extent, sym_keymap),
-			      code, mods, callback);
-	    extent = cmd_extent_parent(extent);
+	    /* overriding-local-keymap replaces all but global-keymap
+	       if non-nil. */
+	    k = search_keymap(tem, code, mods, callback);
 	}
-
-	minors = cmd_symbol_value(sym_minor_mode_keymap_alist, sym_t);
-	while(!k && CONSP(minors) && CONSP(VCAR(minors)) && !INT_P)
+	else
 	{
-	    VALUE cell = VCAR(minors);
-	    if(SYMBOLP(VCAR(cell)))
+	    /* First search all current extents.. */
+	    tem = cmd_get_extent(sym_nil, sym_nil);
+	    while(!k && EXTENTP(tem))
 	    {
-		VALUE cond;
-		GC_root gc_minors;
-		PUSHGC(gc_minors, minors);
-		cond = cmd_symbol_value(VCAR(cell), sym_t);
-		if(!NILP(cond) && !VOIDP(cond))
-		    k = search_keymap(VCDR(cell), code, mods, callback);
-		POPGC;
+		k = search_keymap(cmd_extent_get(tem, sym_keymap),
+				  code, mods, callback);
+		tem = cmd_extent_parent(tem);
 	    }
-	    minors = VCDR(minors);
-	    TEST_INT;
+
+	    /* ..then the minor modes.. */
+	    tem = cmd_symbol_value(sym_minor_mode_keymap_alist, sym_t);
+	    while(!k && CONSP(tem) && CONSP(VCAR(tem)) && !INT_P)
+	    {
+		VALUE cell = VCAR(tem);
+		if(SYMBOLP(VCAR(cell)))
+		{
+		    VALUE cond;
+		    GC_root gc_tem;
+		    PUSHGC(gc_tem, tem);
+		    cond = cmd_symbol_value(VCAR(cell), sym_t);
+		    if(!NILP(cond) && !VOIDP(cond))
+			k = search_keymap(VCDR(cell), code, mods, callback);
+		    POPGC;
+		}
+		tem = VCDR(tem);
+		TEST_INT;
+	    }
+	    /* ..then the local map */
+	    if(!k)
+		k = search_keymap(sym_local_keymap, code, mods, callback);
 	}
-	if(!k)
-	    k = search_keymap(sym_local_keymap, code, mods, callback);
+
+	/* Finally, scan the global map */
 	if(!k)
 	    k = search_keymap(sym_global_keymap, code, mods, callback);
     }
@@ -906,6 +922,7 @@ keys_init(void)
 {
     INTERN(global_keymap);
     INTERN(local_keymap);
+    INTERN(overriding_local_keymap);
     INTERN(unbound_key_hook);
     INTERN(esc_means_meta); DOC(esc_means_meta);
     VSYM(sym_esc_means_meta)->value = sym_t;
