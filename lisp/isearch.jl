@@ -283,7 +283,7 @@ direction."
 
 (defun isearch (forwards)
   (let
-      ((prompt-buffer (get-prompt-buffer))
+      ((prompt-buffer (make-buffer "*isearch*"))
        (old-buffer (current-buffer))
        ;; FIXME
        (esc-means-meta nil))
@@ -315,7 +315,6 @@ direction."
       ((old-view isearch-view)
        (old-buffer isearch-original-buffer))
     (kill-all-local-variables)
-    (return-prompt-buffer (current-buffer))
     (kill-current-buffer)
     (set-current-buffer old-buffer)
     (set-current-view old-view)))
