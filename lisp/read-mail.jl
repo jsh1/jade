@@ -580,12 +580,14 @@ Major mode for viewing mail folders. Commands include:\n
 	      (rm-delete-current-message t t))
 	  (rm-move-backwards))))
     ;; If possible, try to display the original current message. Otherwise
-    ;; leave it how it is..
+    ;; display the last message in the folder
     (if (or (eq old-curr-msg rm-current-msg)
-	      (memq old-curr-msg rm-after-msg-list)
-	      (memq old-curr-msg rm-before-msg-list))
+	    (memq old-curr-msg rm-after-msg-list)
+	    (memq old-curr-msg rm-before-msg-list))
 	(rm-display-message old-curr-msg)
-      (rm-display-current-message))))
+      (if rm-after-msg-list
+	  (rm-display-message (last rm-after-msg-list))
+	(rm-display-current-message)))))
 
 
 ;; Getting mail from inbox
