@@ -171,8 +171,11 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
     }
     win = XCreateSimpleWindow(dpy->display,
 			      DefaultRootWindow(dpy->display),
-			      x, y, width, height,
-			      1, dpy->fore_pixel, dpy->back_pixel);
+			      x, y, width, height, 1,
+			      (x11_opt_reverse_video
+			       ? dpy->back_pixel : dpy->fore_pixel),
+			      (x11_opt_reverse_video
+			       ? dpy->fore_pixel : dpy->back_pixel));
     if(win)
     {
 	XGCValues xgcv;
@@ -180,8 +183,10 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	WINDOW_XDPY(w) = dpy;
 	dpy->window_count++;
 
-	xgcv.foreground = dpy->fore_pixel;
-	xgcv.background = dpy->back_pixel;
+	xgcv.foreground = (x11_opt_reverse_video
+			   ? dpy->back_pixel : dpy->fore_pixel);
+	xgcv.background = (x11_opt_reverse_video
+			   ? dpy->fore_pixel : dpy->back_pixel);
 	xgcv.line_width = 1;
 	xgcv.font = w->w_WindowSys.ws_Font->fid;
 	w->w_WindowSys.ws_GC_array[P_TEXT] = XCreateGC(dpy->display,
@@ -191,8 +196,10 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 						       | GCLineWidth
 						       | GCFont,
 						       &xgcv);
-	xgcv.foreground = dpy->back_pixel;
-	xgcv.background = dpy->fore_pixel;
+	xgcv.foreground = (x11_opt_reverse_video
+			   ? dpy->fore_pixel : dpy->back_pixel);
+	xgcv.background = (x11_opt_reverse_video
+			   ? dpy->back_pixel : dpy->fore_pixel);
 	w->w_WindowSys.ws_GC_array[P_TEXT_RV] = XCreateGC(dpy->display,
 							  w->w_Window,
 							  GCForeground
