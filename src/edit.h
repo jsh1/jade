@@ -43,7 +43,8 @@ typedef struct lisp_mark {
     /* The position of the marked character. */
     VALUE pos;
 
-    /* The file. Either a buffer, or a string naming an unloaded file. */
+    /* The file. Either a buffer, or a string canonically naming an
+       unloaded file. */
     VALUE file;
 } Lisp_Mark;
 
@@ -65,8 +66,17 @@ typedef struct _TX {
     /* line numbers of `narrowed' region */
     long	    tx_LogicalStart, tx_LogicalEnd;
 
-    VALUE	    tx_FileName;
+    /* unique name of buffer */
     VALUE	    tx_BufferName;
+
+    /* absolute name of the file in this buffer as the user sees it
+       (or a null string) */
+    VALUE	    tx_FileName;
+
+    /* name of the file in this buffer such that we can compare two
+       files by comparing their canonical names. */
+    VALUE	    tx_CanonicalFileName;
+
     VALUE	    tx_ModeName;
     VALUE	    tx_MinorModeNameList;
     VALUE	    tx_MinorModeNameString;
