@@ -196,7 +196,7 @@ which denotes no errors. Returns nil if the file doesn't have a client.
     {
 	register VALUE car = VCAR(tmp);
 	VALUE next = VCDR(tmp);
-	if(!VALUE_CMP(file, VCAR(car)))
+	if(STRINGP(VCAR(car)) && same_files(VSTR(file), VSTR(VCAR(car))))
 	{
 	    /* Send the result to our client. */
 	    int con_fd = VNUM(VCDR(car));

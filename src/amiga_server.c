@@ -125,7 +125,7 @@ DEFUN("server-reply", cmd_server_reply, subr_server_reply, (VALUE file, VALUE rc
     {
 	register VALUE car = VCAR(tmp);
 	VALUE next = VCDR(tmp);
-	if(!VALUE_CMP(file, VCAR(car)))
+	if(STRINGP(VCAR(car)) && same_files(VSTR(file), VSTR(VCAR(car))))
 	{
 	    /* Send the result to our client. */
 	    struct clientmsg *cm = (struct clientmsg *)VNUM(VCDR(car));
