@@ -50,7 +50,7 @@ Returns the position of the character following the insertion."
 for that particular occurrence (see the `expand-last-match' function for
 details of what can be in TEMPLATE). Moves the cursor to the end of the
 last change."
-  (interactive "sReplace regexp:\nsReplace regexp %s with:")
+  (interactive "sReplace regexp:\nsReplace regexp `%s' with:")
   (let
       (match)
     (goto (start-of-buffer))
@@ -175,7 +175,7 @@ type one of the following special commands,\n
   `Ctrl-r'           enter a recursive edit (`Ctrl-Meta-c' to exit)
   `Ctrl-w'           delete the match, then enter a recursive edit
   `Ctrl-h'           show some help text"
-  (interactive "sQuery replace regexp: \nsQuery replace regexp %s with: ")
+  (interactive "sQuery replace regexp: \nsQuery replace regexp `%s' with: ")
   (let
       ((query-replace-trace nil)
        (query-replace-alive t)
