@@ -179,12 +179,7 @@ of the buffer's restriction.
 	return(make_lpos2(x, y));
     }
     else
-    {
-	VALUE end = cmd_restriction_end(tx);
-	VPOS(end).pos_Line--;
-	VPOS(end).pos_Col = VTX(tx)->tx_Lines[VPOS(end).pos_Line].ln_Strlen - 1;
-	return end;
-    }
+	return cmd_restriction_end(tx);
 }
 
 _PR VALUE cmd_goto_buffer_end(void);
