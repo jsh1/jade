@@ -864,7 +864,7 @@ key, the car the order to sort in, a positive or negative integer.")
 		    (setq tem (forward-char -1 (or (mail-unfold-header
 						    (match-end))
 						   (end-of-buffer))))
-		    (make-extent end tem (list 'face highlight-face)))))
+		    (make-extent end tem (list 'face mail-highlight-face)))))
 	      (unrestrict-buffer)
 	      (goto end-of-hdrs)
 	      (restrict-buffer visible-start (rm-message-end current))
