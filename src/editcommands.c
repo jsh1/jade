@@ -458,7 +458,7 @@ character exists at that position, nil is returned.
 	return(sym_nil);
     else if(pos.pos_Col == line->ln_Strlen - 1)
     {
-	if(pos.pos_Line == VTX(tx)->tx_NumLines - 1)
+	if(pos.pos_Line == VTX(tx)->tx_LogicalEnd - 1)
 	    return(sym_nil);
 	else
 	    return(make_number('\n'));
@@ -890,12 +890,14 @@ DEFUN_INT("clear-buffer", cmd_clear_buffer, subr_clear_buffer, (VALUE tx), V_Sub
 ::doc:clear_buffer::
 clear-buffer [BUFFER]
 
-Remove all text from BUFFER, leaving just one empty line.
+Remove all text from BUFFER, leaving just one empty line. Also removes
+any restriction on the buffer.
 ::end:: */
 {
     POS start, end;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
+    cmd_unrestrict_buffer(tx);
     start.pos_Col = start.pos_Line = 0;
     end.pos_Line = VTX(tx)->tx_NumLines - 1;
     end.pos_Col = VTX(tx)->tx_Lines[end.pos_Line].ln_Strlen - 1;

@@ -259,7 +259,8 @@ Move to the last character in the line.
 ::end:: */
 {
     VW *vw = curr_vw;
-    vw->vw_CursorPos.pos_Col = vw->vw_Tx->tx_Lines[vw->vw_CursorPos.pos_Line].ln_Strlen - 1;
+    vw->vw_CursorPos.pos_Col
+	= vw->vw_Tx->tx_Lines[vw->vw_CursorPos.pos_Line].ln_Strlen - 1;
     return(sym_t);
 }
 
@@ -306,7 +307,7 @@ by POS (or the cursor). POS is altered.
     if(!POSP(pos))
 	pos = make_lpos(&curr_vw->vw_CursorPos);
     VPOS(pos).pos_Line += NUMBERP(lines) ? VNUM(lines) : 1;
-    if(VPOS(pos).pos_Line > 0)
+    if(VPOS(pos).pos_Line >= 0)
 	return(pos);
     return(sym_nil);
 }
@@ -605,7 +606,7 @@ prev_char(long count, POS *pos, TX *tx)
 	    count -= pos->pos_Col + 1; /* `+ 1' for the assumed '\n' */
 	    line--;
 	    pos->pos_Line--;
-	    if(pos->pos_Line < 0)
+	    if(pos->pos_Line < tx->tx_LogicalStart)
 		return(FALSE);
 	    pos->pos_Col = line->ln_Strlen - 1;
 	}
@@ -634,7 +635,7 @@ next_char(long count, POS *pos, TX *tx)
 	    pos->pos_Col = 0;
 	    pos->pos_Line++;
 	    line++;
-	    if(pos->pos_Line >= tx->tx_NumLines)
+	    if(pos->pos_Line >= tx->tx_LogicalEnd)
 		return(FALSE);
 	}
     }
@@ -760,8 +761,8 @@ the buffer in the current window.
 	VPOS(pos).pos_Line = VPOS(pos).pos_Line
 			     - (curr_vw->vw_TopPix / curr_vw->vw_Win->w_FontY)
 			     + curr_vw->vw_StartLine;
-	if(VPOS(pos).pos_Line < 0
-	   || VPOS(pos).pos_Line >= curr_vw->vw_Tx->tx_NumLines)
+	if(VPOS(pos).pos_Line < curr_vw->vw_Tx->tx_LogicalStart
+	   || VPOS(pos).pos_Line >= curr_vw->vw_Tx->tx_LogicalEnd)
 	    return sym_nil;
 	VPOS(pos).pos_Col = char_col(curr_vw->vw_Tx, VPOS(pos).pos_Col,
 				     VPOS(pos).pos_Line);
@@ -856,7 +857,7 @@ find_matching_bracket(POS *pos, TX *tx, u_char esc)
 		    u_char c;
 		    if(--x < 0)
 		    {
-			if(--y < 0)
+			if(--y < tx->tx_LogicalStart)
 			{
 			    cmd_signal(sym_error,
 				       LIST_1(MKSTR("No matching bracket")));
@@ -887,7 +888,7 @@ find_matching_bracket(POS *pos, TX *tx, u_char esc)
 		    u_char c;
 		    if(++x >= line->ln_Strlen)
 		    {
-			if(++y >= tx->tx_NumLines)
+			if(++y >= tx->tx_LogicalEnd)
 			{
 			    cmd_signal(sym_error,
 				       LIST_1(MKSTR("No matching bracket")));
