@@ -1,3 +1,8 @@
+2000-12-03  John Harper  <jsh@eazel.com>
+
+	* python-mode.jl: new module, contributed by Andrew Rodionoff
+	<arnost@mail.ru>
+
 2000-11-14  John Harper  <jsh@eazel.com>
 
 	* cyrillic.jl: new file, support for editing Cyrillic text.
