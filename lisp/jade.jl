@@ -23,7 +23,6 @@
 (message "Initialising; wait..." t)
 
 (setq *user-structure* 'jade)
-(setq *root-structure* 'jade)
 
 (require 'rep.regexp)
 (require 'rep.system)
