@@ -57,6 +57,10 @@ static VALUE sym_keymap_path, sym_unbound_key_hook, sym_esc_means_meta,
 /* TRUE when the Meta qualifier should be added to the next event. */
 static bool pending_meta;
 
+/* Modifier mask for the meta modifier. */
+_PR u_long ev_mod_meta;
+u_long ev_mod_meta;
+
 /* This doesn't belong here but I couldn't find anywhere else :-( */
 _PR VALUE sym_idle_hook;
 VALUE sym_idle_hook;
@@ -175,7 +179,7 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 			 || (next_keymap_path == sym_t));
 	if(pending_meta)
 	{
-	    mods |= EV_MOD_META;
+	    mods |= ev_mod_meta;
 	    pending_meta = FALSE;
 	}
 	current_event[0] = code;
@@ -600,6 +604,8 @@ print_event_prefix(void)
 void
 keys_init(void)
 {
+    ev_mod_meta = sys_find_meta();
+
     INTERN(sym_keymap_path, "keymap-path");
     DOC_VAR(sym_keymap_path, DOC_keymap_path);
     INTERN(sym_unbound_key_hook, "unbound-key-hook");
