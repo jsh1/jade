@@ -172,7 +172,7 @@ direction."
 ;; Pushes the current position, pushes the STRING onto the top of the
 ;; stack, then searches for it
 (defun isearch-push-string (string)
-  (isearch-push-match (cursor-pos))
+  (isearch-push-match (with-view isearch-view (cursor-pos)))
   (setq isearch-trace (cons (cons string nil) isearch-trace))
   (if (isearch-looking-at)
       (isearch-goto (with-view isearch-view (cursor-pos)))
@@ -337,8 +337,7 @@ direction."
       (setq next (isearch-find-next-regexp next))
       (cond
         ((posp next)
-	  (isearch-push-match (with-view isearch-view
-				(cursor-pos)))
+	  (isearch-push-match (with-view isearch-view (cursor-pos)))
 	  (setq isearch-failing nil)
 	  (isearch-goto next))
 	((null next)
@@ -364,8 +363,7 @@ direction."
       (setq next (isearch-find-prev-regexp next))
       (cond
        ((posp next)
-	(isearch-push-match (with-view isearch-view
-			      (cursor-pos)))
+	(isearch-push-match (with-view isearch-view (cursor-pos)))
 	(setq isearch-failing nil)
 	(isearch-goto next))
        ((null next)
