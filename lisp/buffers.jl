@@ -404,19 +404,11 @@ file it was loaded from."
   "Asks whether or not to save any modified buffers, returns t if no modified
 buffers exist on exit."
   (interactive)
-  (let
-      ((bufs buffer-list)
-       buf
-       (unsaved-files-p nil))
-    (while (consp bufs)
-      (setq buf (car bufs))
-      (when (and (buffer-modified-p buf) (not (buffer-special-p buf)))
-	(if (y-or-n-p (concat "Save buffer " (buffer-name buf)))
-	    (unless (save-file buf)
-	      (setq unsaved-files-p t))
-	  (setq unsaved-files-p t)))
-      (setq bufs (cdr bufs)))
-    (not unsaved-files-p)))
+  (map-y-or-n-p #'(lambda (x) (format nil "Save file %s" (buffer-file-name x)))
+		(filter #'(lambda (b)
+			    (and (buffer-modified-p b)
+				 (not (buffer-special-p b)))) buffer-list)
+		'save-file))
 
 (defun maybe-save-buffer (&optional buffer)
   "If BUFFER has been modified, ask whether or not to save it. Returns t if
