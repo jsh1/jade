@@ -69,7 +69,7 @@
 ;;
 ;;	last (week|fortnight|month|year)
 ;;	N (day|week|fortnight|month|year)s? ago
-;;	yesterday
+;;	(yesterday|today)
 ;;	DD Month YYYY HH:MM:SS TZTZ	(all parts optional)
 ;;
 ;; Also have (put PROP VALUE) and (get PROP VALUE) to allow arbitrary
@@ -151,6 +151,12 @@ For example, to define a rule accepting only messages sent by me (that's
     (put name 'rm-rule-function symbol)
     name))
 
+;;;###autoload
+(defun rule-lambda (args body)
+  "Create an anonymous message restriction rule with arguments ARGS and
+body form BODY."
+  (list 'lambda args (rm-make-rule-body body)))
+
 (defun compile-rule (name)
   "Compile the message selection rule called NAME (a symbol) to bytecode."
   (interactive "SRule to compile:")
@@ -190,16 +196,22 @@ contain its definition as a function."
 ;;;###autoload
 (defun rm-filter-by-rule (messages rule)
   (let
-      ((function (or (get rule 'rm-rule-function)
-		     (error "No rule called %s" rule))))
+      ((function (if (functionp rule)
+		     rule
+		   (or (get rule 'rm-rule-function)
+		       (error "No rule called %s" rule)))))
     (filter #'(lambda (rm-rule-message)
 		(funcall function)) messages)))
 
 ;; Apply the message RM-RULE-MESSAGE to RULE, returning t if it matches
 ;;;###autoload
 (defun rm-apply-rule (rule rm-rule-message)
-  (funcall (or (get rule 'rm-rule-function)
-	       (error "No rule called %s" rule))))
+  (let
+      ((function (if (functionp rule)
+		     rule
+		   (or (get rule 'rm-rule-function)
+		       (error "No rule called %s" rule)))))
+    (funcall function)))
 
 ;; Apply the message MESSAGE to the list of rules RULE-LIST. Return t if
 ;; any rule matches (without testing any remaining rules)
@@ -258,16 +270,19 @@ contain its definition as a function."
 (put 'sent-before 'rm-rule-compiler 'rm-compile-sent-x)
 (defun rm-compile-sent-x (form)
   (let
-      ((date (rm-parse-date (nth 1 form))))
-    (list 'rm-rule-sent-date
-	  (list 'quote date)
-	  (eq (car form) 'sent-after))))
+      ((date (nth 1 form)))
+    (when (stringp date)
+      (setq date (list 'quote (rm-parse-date date))))
+    (list 'rm-rule-sent-date date (eq (car form) 'sent-after))))
 
 ;; DATE is (absolute DAYS . SECONDS) or (relative DAYS . SECONDS)
 (defun rm-rule-sent-date (date after)
   (let
       ((msg-date (rm-get-date-vector rm-rule-message)))
     (when msg-date
+      (unless (consp date)
+	;; this will be slooow!
+	(setq date (rm-parse-date date)))
       (setq msg-date (aref msg-date date-vec-epoch-time))
       (funcall (if after '> '<)
 	       msg-date
@@ -364,7 +379,7 @@ contain its definition as a function."
       (seconds-ago abs-time)
     (cond
      ((string-match
-       "^(an?|[0-9]+) *(seconds|minute|hour|day|week|fortnight|month|year)s? +ago$"
+       "^(an?|[0-9]+) *(seconds|minute|hour|day|week|fortnight|month|year)s?( +ago)?$"
        string nil t)
       (setq seconds-ago (* (if (= (aref string 0) ?a)
 			       1
@@ -383,6 +398,8 @@ contain its definition as a function."
 				     (?m . 2419200) (?y . 31536000))))))
      ((string-match "^yesterday$" string nil t)
       (setq seconds-ago 86400))
+     ((string-match "^today$" string nil t)
+      (setq seconds-ago 0))
      (t
       (let
 	  ((date (parse-date string)))
@@ -401,13 +418,57 @@ contain its definition as a function."
   (let
       ((prompt-history rm-rule-history)
        (rule (prompt-for-symbol (or prompt
-				    "Restriction rule (`new' to define rule):")
+				    "Restriction rule (`lambda' for anonymous rule):")
 				#'(lambda (sym)
 				    (or (eq sym 'new)
+					(eq sym 'lambda)
 					(eq sym 'nil)
 					(let
 					    ((fun (rm-rule-symbol sym)))
 					  (fboundp fun)))))))
-    (if (eq rule 'new)
-	(call-command 'define-rule)
-      rule)))
+    (cond ((eq rule 'new)
+	   (call-command 'define-rule))
+	  ((eq rule 'lambda)
+	   (rm-prompt-for-anon-rule))
+	  (t
+	   rule))))
+
+;;;###autoload
+(defun rm-prompt-for-anon-rule (&optional prompt)
+  (rule-lambda () (prompt-for-lisp (or prompt "Rule form:"))))
+
+
+;; Commands
+
+;;;###autoload
+(defun rm-restrict-to-sender (re &optional folder)
+  (interactive "sAddress regexp:")
+  (rm-change-rule (or folder (rm-current-folder))
+		  (rule-lambda () `(sender ,re))))
+
+;;;###autoload
+(defun rm-restrict-to-recipient (re &optional folder)
+  (interactive "sAddress regexp:")
+  (rm-change-rule (or folder (rm-current-folder))
+		  (rule-lambda () `(recipient ,re))))
+
+;;;###autoload
+(defun rm-restrict-to-address (re &optional folder)
+  (interactive "sAddress regexp:")
+  (rm-change-rule (or folder (rm-current-folder))
+		  (rule-lambda () `(or (sender ,re) (recipient ,re)))))
+
+
+;;;###autoload
+(defun rm-restrict-to-subject (re &optional folder)
+  (interactive "sSubject regexp:")
+  (rm-change-rule (or folder (rm-current-folder))
+		  (rule-lambda () `(subject ,re))))
+
+;;;###autoload
+(defun rm-restrict-to-message-id (re &optional folder)
+  (interactive "sId regexp:")
+  (rm-change-rule (or folder (rm-current-folder))
+		  (rule-lambda () `(or (header "in-reply-to" ,re)
+				       (header "references" ,re)
+				       (header "message-id" ,re)))))
