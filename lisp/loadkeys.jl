@@ -157,6 +157,7 @@
   "Ctrl-_"	'undo
   "Meta-<"	'start-of-buffer
   "Meta->"	'end-of-buffer
+  "Meta-."	'find-tag
   "Meta-;"	'insert-comment
   "Meta-~"	'(set-buffer-modified nil nil)
   "Meta-\\"	'no-spaces
