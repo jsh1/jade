@@ -208,7 +208,7 @@ of the defun is assumed instead.")
   (interactive)
   (unless major-mode
     (let ((text (and (looking-at
-		      ".*-\\*-\\s*(.+?)\\s*-\\*-" (start-of-buffer))
+		      ".*-\\*-\\s*([^: \t]+).*-\\*-" (start-of-buffer))
 		     (expand-last-match "\\1"))))
       (when (and text (> (length text) 0))
 	(let ((pieces (string-split "\\s*;\\s*" text)))
