@@ -133,7 +133,7 @@ returning the initialisation function of that mode (a symbol) or nil."
       (setq list (cdr list)))))
 
 (defun init-mode (buf &optional name)
-  "Initialise an edit-mode for buffer BUF, either calls the function named
+  "Initialise a major mode for buffer BUF; either calls the function named
 in the buffer-local variable `major-mode' or finds a mode in `mode-alist'
 using one of the following to match against:
   1. NAME
@@ -144,7 +144,8 @@ using one of the following to match against:
   (with-buffer (unless buf (current-buffer))
     (unless major-mode
       (setq name (or name
-		     (and (looking-at ".*-\\*- *([^ ]+) *-\\*-" (start-of-buffer))
+		     (and (looking-at ".*-\\*- *([^ ]+) *-\\*-"
+				      (start-of-buffer))
 			  (expand-last-match "\\1"))
 		     mode-name
 		     (buffer-file-name buf)))
@@ -167,33 +168,31 @@ using one of the following to match against:
   "List of all minor-modes enabled in this buffer.")
 (make-variable-buffer-local 'minor-mode-list)
 
-(defvar minor-mode-keymap nil
-  "Buffer-local keymap to be used by minor-modes. This is only created
-the first time a minor mode calls `add-minor-mode' in the buffer.")
-(make-variable-buffer-local 'minor-mode-keymap)
-
-(defun add-minor-mode (mode name &optional no-keymap)
+(defun add-minor-mode (mode name &optional keymap)
   "For use by minor-modes. MODE is the mode's function symbol. This sets up the
-current buffer. All minor-modes should call this before doing anything drastic.
-NAME is the string to be displayed in the status-line to show that the mode
-is enabled."
-  (when (memq mode minor-mode-list)
+current buffer. All minor-modes should call this before doing anything
+drastic. NAME is the string to be displayed in the status-line to show that
+the mode is enabled. When non-nil KEYMAP is a keymap defining the bindings
+of the minor mode; it will be added to the front of the list of active
+keymaps."
+  (when (minor-mode-installed-p mode)
     (error "Minor mode already installed" mode))
   (setq minor-mode-list (cons mode minor-mode-list)
 	minor-mode-names (cons name minor-mode-names))
-  (unless (or minor-mode-keymap no-keymap)
-    (setq minor-mode-keymap (make-keylist)
-	  keymap-path (cons 'minor-mode-keymap keymap-path)))
-  t)
+  (when (keymapp keymap)
+    (setq keymap-path (cons keymap keymap-path)))
+  mode)
 
-(defun remove-minor-mode (mode name)
+(defun remove-minor-mode (mode name &optional keymap)
   "For use by minor-modes. MODE is the mode's function symbol. Removes MODE
 from the current buffer."
   (setq minor-mode-list (delq mode minor-mode-list)
 	minor-mode-names (delete name minor-mode-names))
-  t)
+  (when (keymapp keymap)
+    (setq keymap-path (delq keymap keymap-path)))
+  mode)
 
-(defun minor-mode-installed (mode)
+(defun minor-mode-installed-p (mode)
   "Returns t if MODE is installed in the current buffer."
   (memq mode minor-mode-list))
 
