@@ -51,6 +51,77 @@ typedef struct lisp_mark {
 #define MARK_RESIDENT_P(m) BUFFERP((m)->file)
 
 
+/* Extents -- plists for buffer regions */
+
+typedef struct lisp_extent {
+    VALUE car;
+    struct lisp_extent *next;		/* list of allocations */
+
+    /* Linkage in the tree. Each extent fragment has a parent (or null),
+       a sibling either side (or null), and an optional list of
+       children. */
+    struct lisp_extent *parent;
+    struct lisp_extent *left_sibling, *right_sibling;
+    struct lisp_extent *first_child, *last_child;
+
+    /* The doubly-linked list of extent fragments making up one ``extent''. */
+    struct lisp_extent *frag_next, *frag_pred;
+
+    /* ``Temporary'' field. Used for traversing trees sometimes */
+    struct lisp_extent *tem;
+
+    struct _TX *tx;
+    VALUE plist;
+    VALUE locals;			/* alist of (SYMBOL . VALUE) */
+
+    /* The start and end positions of the fragment. Note that the ``row''
+       components are relative to the row in which the parent of this
+       fragment begins. */
+    Pos start, end;
+
+} Lisp_Extent;
+
+#define EXTFF_OPEN_START	(1 << (CELL8_TYPE_BITS + 0))
+#define EXTFF_OPEN_END		(1 << (CELL8_TYPE_BITS + 1))
+
+#define EXTENT_CACHE_SIZE 4
+
+struct cached_extent {
+    Pos pos;
+    Lisp_Extent *extent;
+    u_long lru_clock;
+};
+
+
+/* faces */
+
+typedef struct lisp_face {
+    VALUE car;
+    struct lisp_face *next;
+
+    int id;
+    VALUE name;
+    VALUE foreground, background;
+} Lisp_Face;
+
+#define FACEFF_UNDERLINE	(1 << (CELL8_TYPE_BITS + 0))
+#define FACEFF_BOLD		(1 << (CELL8_TYPE_BITS + 1))
+#define FACEFF_ITALIC		(1 << (CELL8_TYPE_BITS + 2))
+
+
+/* colours */
+
+typedef struct lisp_color {
+    VALUE car;
+    struct lisp_color *next;
+
+    VALUE name;
+
+    /* System-local representation of the color */
+    SYS_COLOR_TYPE color;
+} Lisp_Color;
+
+
 /* A buffer, strangely called `TX' */
 typedef struct _TX {
     VALUE	    tx_Car;
@@ -90,8 +161,9 @@ typedef struct _TX {
 
     int		    tx_TabSize;
 
-    VALUE	    tx_LocalVariables; /* alist of (SYMBOL . VALUE) */
-    VALUE	    tx_GlyphTable;
+    /* This is an extent covering the _whole_ buffer. */
+    Lisp_Extent	   *tx_GlobalExtent;
+    struct cached_extent tx_ExtentCache[EXTENT_CACHE_SIZE];
 
     /* Undo information */
     VALUE	    tx_UndoList;
@@ -106,14 +178,11 @@ typedef struct _TX {
 
 } TX;
 
-/* No modifications to file */
-#define TXFF_RDONLY		(1 << (CELL8_TYPE_BITS + 0))
-
 /* No recording of undo information */
-#define TXFF_NO_UNDO		(1 << (CELL8_TYPE_BITS + 1))
+#define TXFF_NO_UNDO		(1 << (CELL8_TYPE_BITS + 0))
 
 /* don't wrap long lines */
-#define TXFF_DONT_WRAP_LINES	(1 << (CELL8_TYPE_BITS + 2))
+#define TXFF_DONT_WRAP_LINES	(1 << (CELL8_TYPE_BITS + 1))
 #define TX_WRAP_LINES_P(tx)	(((tx)->tx_Flags & TXFF_DONT_WRAP_LINES) == 0)
 
 /* Remnants from the old redisplay code */
@@ -182,16 +251,13 @@ typedef u_char glyph_code;
 typedef u_char glyph_attr;
 
 enum Glyph_Attrs {
-    GA_Text = 0,			/* foreground on background */
-    GA_Text_RV,				/* bg on fg */
-    GA_Block,				/* fg on highlight */
-    GA_Block_RV,			/* highlight on fg */
-    GA_Text_Rect,
-    GA_Text_Rect_RV,
-    GA_Block_Rect,
-    GA_Block_Rect_RV,
-    GA_MAX,
-    GA_Garbage = 255,			/* glyph was lost */
+    GA_Garbage = 0,			/* glyph was lost */
+    GA_FirstFace = 1,
+    GA_DefaultFace = GA_FirstFace,
+    GA_BlockFace,
+    GA_ModeLineFace,
+    GA_LastFace = 127,
+    GA_CursorFace = 128,		/* invert fg-bg */
 };
 
 typedef struct {

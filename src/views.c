@@ -464,6 +464,7 @@ update_status_buffer(VW *vw, char *status_buf, u_long buflen)
     long glyph_col = get_cursor_column(vw);
     char *ptr = status_buf;
     size_t len;
+    VALUE tem;
 
     if(vw->vw_Flags & VWFF_MINIBUF)
 	return;
@@ -490,7 +491,8 @@ update_status_buffer(VW *vw, char *status_buf, u_long buflen)
 	*ptr++ = '-';
 
     /* Read-only, modified status */
-    if(tx->tx_Flags & TXFF_RDONLY)
+    tem = cmd_buffer_symbol_value(sym_read_only, sym_nil, VAL(tx), sym_t);
+    if(!NILP(tem) && !VOIDP(tem))
     {
 	*ptr++ = '%';
 	*ptr++ = (tx->tx_Changes != tx->tx_ProperSaveChanges) ? '*' : '%';
@@ -1105,7 +1107,6 @@ void
 views_init(void)
 {
     mb_unused_buffer = VTX(cmd_make_buffer(VAL(&unused_mb), sym_nil, sym_t));
-    cmd_set_buffer_read_only(VAL(mb_unused_buffer), sym_t);
 
     ADD_SUBR_INT(subr_split_view);
     ADD_SUBR_INT(subr_delete_view);

@@ -235,7 +235,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 		    buff[len] = 0;
 		    if(len > 0)
 		    {
-			if(!read_only(vw->vw_Tx))
+			if(!read_only_pos(vw->vw_Tx, vw->vw_CursorPos))
 			{
 			    VALUE old_undo_head = LISP_NULL;
 			    cmd_call_hook(sym_pre_command_hook,

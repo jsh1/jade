@@ -39,6 +39,8 @@ DEFSYM(block_status_hook, "block-status-hook");
 
 _PR VALUE sym_inhibit_read_only;
 DEFSYM(inhibit_read_only, "inhibit-read-only");
+_PR VALUE sym_read_only;
+DEFSYM(read_only, "read-only");
 
 /* Some doc strings
 ::doc:upcase_table::
@@ -78,7 +80,7 @@ character after the end of the inserted text.
 	pos = curr_vw->vw_CursorPos;
     if(!BUFFERP(buff))
 	buff = VAL(curr_vw->vw_Tx);
-    if(!read_only(VTX(buff)) && pad_pos(VTX(buff), pos))
+    if(pad_pos(VTX(buff), pos))
     {
 	pos = insert_string(VTX(buff), VSTR(string), STRING_LEN(string), pos);
 	if(pos != LISP_NULL)
@@ -99,10 +101,8 @@ Deletes from START-POS up to (but not including) END-POS.
     DECLARE2(end, POSP);
     if(!BUFFERP(buff))
 	buff = VAL(curr_vw->vw_Tx);
-    if(!read_only(VTX(buff))
-       && pad_pos(VTX(buff), start)
-       && pad_pos(VTX(buff), end)
-       && check_section(VTX(buff), &start, &end))
+    if(check_section(VTX(buff), &start, &end)
+       && !read_only_section(VTX(buff), start, end))
     {
 	delete_section(VTX(buff), start, end);
 	return start;
@@ -149,10 +149,8 @@ END-POS) is deleted from the file after being duplicated.
     DECLARE2(end, POSP);
     if(!BUFFERP(buff))
 	buff = VAL(curr_vw->vw_Tx);
-    if(!read_only(VTX(buff))
-       && pad_pos(VTX(buff), start)
-       && pad_pos(VTX(buff), end)
-       && check_section(VTX(buff), &start, &end))
+    if(check_section(VTX(buff), &start, &end)
+       && !read_only_section(VTX(buff), start, end))
     {
 	/* Only one copy is made. */
 	VALUE str = undo_push_deletion(VTX(buff), start, end);
@@ -329,7 +327,8 @@ unchanged.
     DECLARE1(start, POSP);
     DECLARE2(end, POSP);
     DECLARE3(table, STRINGP);
-    if(!read_only(VTX(tx)) && check_section(VTX(tx), &start, &end))
+    if(check_section(VTX(tx), &start, &end)
+       && !read_only_section(VTX(tx), start, end))
     {
 	LINE *line = VTX(tx)->tx_Lines + VROW(start);
 	long linenum = VROW(start), col;
@@ -646,7 +645,8 @@ If ONLY-SPACES in non-nil no tab characters are used.
     DECLARE1(indpos, POSP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    if((!read_only(VTX(tx))) && check_line(VTX(tx), indpos))
+    /* FIXME: should check if the region is read-only. */
+    if(!read_only_pos(VTX(tx), indpos) && check_line(VTX(tx), indpos))
     {
 	LINE *line = VTX(tx)->tx_Lines + VROW(indpos);
 	u_char *s = line->ln_Line;
@@ -742,7 +742,7 @@ COLUMN counts from zero.
     VW *vw = curr_vw;
     TX *tx = vw->vw_Tx;
     DECLARE1(col, INTP);
-    if(!read_only(tx) && pad_cursor(vw))
+    if(pad_cursor(vw))
     {
 	int spaces, tabs;
 	long curr_col, dest_col;
@@ -914,5 +914,8 @@ edit_init(void)
     VSTR(VSYM(sym_flatten_table)->value)[11] = 0;
     
     INTERN(inhibit_read_only); DOC(inhibit_read_only);
+    INTERN(read_only);
+    VSYM(sym_read_only)->value = sym_nil;
+    cmd_make_variable_buffer_local(sym_read_only);
     INTERN(block_status_hook); DOC(block_status_hook);
 }

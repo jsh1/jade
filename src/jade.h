@@ -76,8 +76,8 @@ typedef char bool;
 #endif
 
 #include "stringmem.h"
-#include "edit.h"
 #include "lisp.h"
+#include "edit.h"
 #include <lib/doc-strings.h>
 #include "keys.h"
 #include "regexp.h"

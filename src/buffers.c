@@ -132,16 +132,13 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 		tx->tx_StatusId = concat2("Jade: ", VSTR(tx->tx_BufferName));
 		tx->tx_SavedBlockStatus = -1;
 		tx->tx_TabSize = 8;
-		tx->tx_LocalVariables = sym_nil;
-		tx->tx_GlyphTable = (oldTx
-				     ? VTX(oldTx)->tx_GlyphTable
-				     : cmd_default_glyph_table());
 		tx->tx_LastSaveTime = sys_time();
 		tx->tx_UndoList = sym_nil;
 		tx->tx_ToUndoList = LISP_NULL;
 		tx->tx_UndoneList = sym_nil;
 		tx->tx_SavedCPos = make_pos(0, 0);
 		tx->tx_SavedWPos = tx->tx_SavedCPos;
+		make_global_extent(tx);
 
 		return(VAL(tx));
 	    }
@@ -545,38 +542,6 @@ it look as though it has.
 	tx->tx_LastSaveChanges = tx->tx_Changes - 1;
     }
     return VAL(tx);
-}
-
-_PR VALUE cmd_set_buffer_read_only(VALUE tx, VALUE stat);
-DEFUN("set-buffer-read-only", cmd_set_buffer_read_only, subr_set_buffer_read_only, (VALUE tx, VALUE stat), V_Subr2, DOC_set_buffer_read_only) /*
-::doc:set_buffer_read_only::
-set-buffer-read-only BUFFER READ-ONLY-P
-
-If a buffer is read-only no modification of its contents is allowed.
-::end:: */
-{
-    if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
-    if(NILP(stat))
-	VTX(tx)->tx_Flags &= ~TXFF_RDONLY;
-    else
-	VTX(tx)->tx_Flags |= TXFF_RDONLY;
-    return(tx);
-}
-
-_PR VALUE cmd_buffer_read_only_p(VALUE tx);
-DEFUN("buffer-read-only-p", cmd_buffer_read_only_p, subr_buffer_read_only_p, (VALUE tx), V_Subr1, DOC_buffer_read_only_p) /*
-::doc:buffer_read_only_p::
-buffer-read-only-p [BUFFER]
-
-Returns t if BUFFER is read-only. See `set-buffer-read-only'.
-::end:: */
-{
-    if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
-    if(VTX(tx)->tx_Flags & TXFF_RDONLY)
-	return(sym_t);
-    return(sym_nil);
 }
 
 _PR VALUE cmd_buffer_length(VALUE);
@@ -1269,8 +1234,6 @@ buffers_init(void)
     ADD_SUBR(subr_buffer_changes);
     ADD_SUBR(subr_buffer_modified_p);
     ADD_SUBR(subr_set_buffer_modified);
-    ADD_SUBR(subr_set_buffer_read_only);
-    ADD_SUBR(subr_buffer_read_only_p);
     ADD_SUBR(subr_buffer_length);
     ADD_SUBR(subr_line_length);
     ADD_SUBR(subr_with_buffer);

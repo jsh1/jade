@@ -21,15 +21,6 @@
 #ifndef _X11_WINDOWSYS_H
 #define _X11_WINDOWSYS_H
 
-/* Pen colours. */
-enum {
-    P_TEXT = 0,				/* foreground-on-background */
-    P_TEXT_RV,				/* bg-on-fg */
-    P_BLOCK,				/* fg-on-highlight */
-    P_BLOCK_RV,				/* hl-on-fg */
-    P_MAX
-};
-
 /* Per display data */
 struct x11_display {
     struct x11_display *next;
@@ -39,9 +30,6 @@ struct x11_display {
 
     /* Number of windows open */
     int window_count;
-
-    /* Allocated colours */
-    u_long fore_pixel, back_pixel, high_pixel;
 
     /* Interned atoms */
     Atom wm_delete_window, jade_selection;
@@ -60,8 +48,9 @@ struct x11_display {
 typedef struct {
     struct x11_display *ws_Display;
     Window		ws_Window;
-    GC			ws_GC_array[P_MAX];
     XFontStruct	       *ws_Font;
+    GC			ws_GC;
+    XGCValues		ws_GC_values;
     int			ws_Width, ws_Height;
     int			ws_HasFocus;
 } W_WindowSys;
@@ -73,6 +62,14 @@ typedef struct {
 #define WINDOW_META(w)  (WINDOW_XDPY(w)->meta_mod)
 #define WINDOW_HAS_FOCUS(w) ((w)->w_WindowSys.ws_HasFocus)
 
+struct x11_color {
+    struct x11_color *next;
+    struct x11_display *dpy;
+    XColor color;
+};
+
+#define SYS_COLOR_TYPE struct x11_color *
+
 #if 0
 typedef struct {
     /* ... */
@@ -82,40 +79,7 @@ typedef struct {
 /* Macros for drawing operations. These are used in redisplay.c for
    system-independent rendering. */
 
-/* Draw LEN bytes of the string STR with ATTR at glyph position (X,Y). */
-#define DRAW_GLYPHS(win, x, y, attr, str, len)				\
-    do {								\
-	int pen = x11_attr_map[attr];					\
-	int xpix = (win)->w_LeftPix + (win)->w_FontX * (x);		\
-	int ypix = ((win)->w_TopPix + (win)->w_FontY * (y)		\
-		    + (win)->w_WindowSys.ws_Font->ascent);		\
-	XDrawImageString(WINDOW_XDPY(win)->display, (win)->w_Window,	\
-			 (win)->w_WindowSys.ws_GC_array[pen],		\
-			 xpix, ypix, str, len);				\
-    } while(0)
-
-/* Fill LEN glyphs from (X,Y) with pen PEN. */
-#define FILL_GLYPHS(win, x, y, attr, len)				\
-    do {								\
-	int xpix = (win)->w_LeftPix + (win)->w_FontX * (x);		\
-	int ypix = (win)->w_TopPix + (win)->w_FontY * (y);		\
-	int pen = x11_rattr_map[attr];					\
-	XFillRectangle(WINDOW_XDPY(win)->display, (win)->w_Window,	\
-		       (win)->w_WindowSys.ws_GC_array[pen],		\
-		       xpix, ypix,					\
-		       (len) * (win)->w_FontX, (win)->w_FontY);		\
-    } while(0)
-
-/* Clear LEN glyphs from (X,Y). */
-#define CLEAR_GLYPHS(win, x, y, len)				\
-    do {							\
-	int xpix = (win)->w_LeftPix + (win)->w_FontX * (x);	\
-	int ypix = (win)->w_TopPix + (win)->w_FontY * (y);	\
-	XClearArea(WINDOW_XDPY(win)->display, (win)->w_Window,	\
-		       xpix, ypix,				\
-		       (len) * (win)->w_FontX, (win)->w_FontY,	\
-		       False);					\
-    } while(0)
+#define SYS_DRAW_GLYPHS sys_draw_glyphs
 
 /* Copy WxH glyphs from (X1,Y1) to (X2,Y2)  */
 #define COPY_GLYPHS(win, x1, y1, w, h, x2, y2)				\
@@ -128,20 +92,9 @@ typedef struct {
 	int height = (h) * (win)->w_FontY;				\
 	XCopyArea(WINDOW_XDPY(win)->display,				\
 		  (win)->w_Window, (win)->w_Window,			\
-		  (win)->w_WindowSys.ws_GC_array[P_TEXT],		\
+		  (win)->w_WindowSys.ws_GC,				\
 		  x1pix, y1pix, width, height, x2pix, y2pix);		\
     } while(0)
 
-#define DRAW_CURSOR_RECTANGLE(win, x, y, attr)				\
-    do {								\
-	int xpix = (win)->w_LeftPix + (win)->w_FontX * (x);		\
-	int ypix = (win)->w_TopPix + (win)->w_FontY * (y);		\
-	int pen = x11_attr_map[attr];					\
-	XDrawRectangle(WINDOW_XDPY(win)->display, (win)->w_Window,	\
-			 (win)->w_WindowSys.ws_GC_array[pen],		\
-			 xpix, ypix,					\
-			 (win)->w_FontX - 1, (win)->w_FontY - 1);	\
-    } while(0)
-	
 
 #endif /* _X11_WINDOWSYS_H */

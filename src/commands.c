@@ -240,7 +240,7 @@ any entered arg is given to the invoked COMMAND.
 		if(c == '*')
 		{
 		    /* Abort if buffer is read-only */
-		    if(read_only(curr_vw->vw_Tx))
+		    if(read_only_pos(curr_vw->vw_Tx, curr_vw->vw_CursorPos))
 		    {
 			POPGC;
 			goto exit;

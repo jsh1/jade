@@ -65,6 +65,7 @@ static int redisplay_max_d = 0;
 _PR glyph_buf *alloc_glyph_buf(int cols, int rows);
 _PR void free_glyph_buf(glyph_buf *gb);
 _PR void copy_glyph_buf(glyph_buf *dst, glyph_buf *src);
+_PR u_long hash_glyph_row(glyph_buf *g, int row);
 _PR void garbage_glyphs(WIN *w, int x, int y, int width, int height);
 _PR void redisplay_message(WIN *w);
 _PR void redisplay_init(void);
@@ -125,7 +126,7 @@ copy_glyph_buf(glyph_buf *dst, glyph_buf *src)
 }
 
 /* Compute and return the hash code of line ROW in buffer G. */
-static inline u_long
+inline u_long
 hash_glyph_row(glyph_buf *g, int row)
 {
     u_long value = 0;
@@ -248,11 +249,7 @@ redisplay_do_draw(WIN *w, glyph_buf *old_g, glyph_buf *new_g, int line)
     {
 	glyph_attr attr = new_attrs[prefix];
 	int end, len;
-	bool all_spaces = TRUE, draw_rect = FALSE;
-
-	static const int rattr_map[GA_MAX] =
-	    { GA_Text_Rect, GA_Text_Rect_RV, GA_Block_Rect, GA_Block_Rect_RV,
-	      GA_Text, GA_Text_RV, GA_Block, GA_Block_RV };
+	bool all_spaces = TRUE;
 
 	for(end = prefix; end < suffix; end++)
 	{
@@ -263,23 +260,8 @@ redisplay_do_draw(WIN *w, glyph_buf *old_g, glyph_buf *new_g, int line)
 	}
 	len = end - prefix;
 
-	assert(attr <= GA_MAX);
-
-	if(len == 1 && attr >= GA_Text_Rect && attr <= GA_Block_Rect_RV)
-	{
-	    draw_rect = TRUE;
-	    attr = rattr_map[attr];
-	}
-
-	if(!all_spaces)
-	    DRAW_GLYPHS(w, prefix, line-1, attr, new_codes + prefix, len);
-	else if(attr == GA_Text)
-	    CLEAR_GLYPHS(w, prefix, line-1, len);
-	else
-	    FILL_GLYPHS(w, prefix, line-1, attr, len);
-
-	if(draw_rect)
-	    DRAW_CURSOR_RECTANGLE(w, prefix, line-1, rattr_map[attr]);
+	SYS_DRAW_GLYPHS(w, prefix, line-1, attr,
+			new_codes + prefix, len, all_spaces);
 
 	prefix = end;
     }
