@@ -20,9 +20,11 @@
 
 (require 'summary)
 (require 'maildefs)
+(require 'mail-headers)
 (provide 'read-mail)
 
-;;;; Configuration
+
+;; Configuration
 
 (defvar rm-auto-next-message t
   "When t the next message will automatically be displayed when trying to
@@ -31,7 +33,43 @@ page past the limits of the current message.")
 (defvar rm-move-after-deleting t
   "When t move to the next message after deleting the current message.")
 
-;;;; Variables
+(defvar rm-summary-format "%a %d/%m%10i%25F%36i%s"
+  "A string defining the format of lines in mail summary buffers. It is
+copied verbatim except for formatting directives introduced by percent
+signs (%). Each directive consists of a percent character, an optional
+numeric argument, and a single character specifying what should be
+inserted in place of the format directive. These characters include:
+
+	a	A 3-character attribute string, showing the status of
+		the message
+	d	The numeric day of the month when the message was sent
+	f	The address of the first sender
+	F	The name of address of the first sender
+	i	Indent to column ARG (i.e. %20i => indent to column 20)
+	m	The numeric month of the message's date
+	M	The abbreviated month name of the date
+	s	The subject line
+	t	The hour and minute at which the message was sent
+	T	The hour, minute, and second of the date
+	%	Insert a percent character
+	r	The name of the first recipient of the message
+	y	The numeric year of the sending date
+
+The list of formatting options can be extended by the variable
+`rm-summary-print-functions'.")
+
+(defvar rm-summary-print-functions nil
+  "An alist of (CHARACTER . FUNCTION) defining extra formatting directives
+for the rm-summary-format-string. The function is called as:
+(FUNCTION MESSAGE-STRUCTURE ARG); it should insert whatever is required
+at the current cursor position (no newlines).")
+
+(defvar rm-saved-cache-tags '(sender-list recipient-list date-vector)
+  "List of cache tags whose values should be saved in the headers of each
+message (to improve performance when the folder is next loaded).")
+
+
+;; Variables
 
 ;; The message list is kept in three parts. The messages before the
 ;; current message, in reverse order (rm-before-msg-list), the current
@@ -90,6 +128,7 @@ when set to the symbol `invalid'.")
   "x" '(rm-with-summary (summary-execute))
   "#" '(rm-with-summary (summary-execute))
   "g" 'rm-get-mail
+  "k" 'rm-kill-subject
   "q" 'rm-save-and-quit
   "u" '(rm-with-summary (summary-unmark-item
 			 (with-buffer rm-summary-mail-buffer
@@ -101,14 +140,15 @@ when set to the symbol `invalid'.")
   "F" '(rm-followup t)
   "z" 'rm-forward
   "*" 'rm-burst-message
-  "s" 'rm-output)
+  "s" 'rm-output
+  "|" 'rm-pipe-message)
   
 (defvar rm-last-folder mail-folder-dir
   "File name of the most recently opened folder. Used as a default value for
 the next prompt.")
 
 
-;;;; Entry points
+;; Entry points
 
 ;;;###autoload
 (defun read-mail ()
@@ -148,18 +188,23 @@ Major mode for viewing mail folders. Commands include:\n
   `BS'			Display the previous page of the message.
   `h'			Create/update the folder summary.
   `d', `Ctrl-d'		Mark the current message to be deleted.
+  `k'			Mark that all messages with the same subject as
+			 the current message should be deleted.
+  `u'			Unmark the current message.
   `x', `#'		Delete marked messages.
   `g'			Get new mail.
   `v'			Visit a different folder.
   `q'			Quit.
   `r'			Reply to the current message.
-  `R'			Reply quoting the current message.
+  `R'			Reply, quoting the current message.
   `f'			Follow-up to the current message (reply including
 			 all recipients of the original message).
-  `F'			Follow-up quoting the current message.
+  `F'			Follow-up, quoting the current message.
   `z'			Forward the current message to someone else.
-  `*'			Burst an RFC-934 digest message into its
-			 constituent messages."
+  `s'			Save the current message to a different folder.
+  `*'			Burst an RFC-934 or RFC-1153 digest message into
+			 its constituent messages.
+  `|'			Pipe the current message through a shell command."
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Mail:"
@@ -188,22 +233,14 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Internal message structure
 
-;; [ START-MARK FROM-ADDR FROM-NAME SUBJECT
-;;   DAY-NAME DAY MONTH YEAR TIME ZONE FLAGS]
 ;; FLAGS is a list of symbols, including replied, unread, filed,
 ;; forwarded, anything else?
 (defconst rm-msg-mark 0)
-(defconst rm-msg-from-addr 1)
-(defconst rm-msg-from-name 2)
-(defconst rm-msg-subject 3)
-(defconst rm-msg-day-name 4)
-(defconst rm-msg-day 5)
-(defconst rm-msg-month 6)
-(defconst rm-msg-year 7)
-(defconst rm-msg-time 8)
-(defconst rm-msg-zone 9)
-(defconst rm-msg-flags 10)
-(defconst rm-msg-struct-size 11)
+(defconst rm-msg-total-lines 1)
+(defconst rm-msg-header-lines 2)
+(defconst rm-msg-flags 3)
+(defconst rm-msg-cache 4)
+(defconst rm-msg-struct-size 5)
 
 (defmacro rm-set-msg-field (msg field value)
   (list 'aset msg field value))
@@ -214,20 +251,46 @@ Major mode for viewing mail folders. Commands include:\n
 (defmacro rm-make-msg ()
   '(make-vector rm-msg-struct-size))
 
-(defmacro rm-set-flag (msg flag)
-  (list 'or
-	(list 'memq flag (list 'rm-get-msg-field msg 'rm-msg-flags))
-	(list 'rm-set-msg-field msg 'rm-msg-flags
-	      (list 'cons flag (list 'rm-get-msg-field msg 'rm-msg-flags)))))
+(defun rm-set-flag (msg flag)
+  (unless (memq flag (rm-get-msg-field msg rm-msg-flags))
+    (rm-set-msg-field msg rm-msg-flags
+		      (cons flag (rm-get-msg-field msg rm-msg-flags)))
+    (rm-invalidate-summary msg)))
 
-(defmacro rm-clear-flag (msg flag)
-  (list 'and
-	(list 'memq flag (list 'rm-get-msg-field msg 'rm-msg-flags))
-	(list 'rm-set-msg-field msg 'rm-msg-flags
-	      (list 'delq flag (list 'rm-get-msg-field msg 'rm-msg-flags)))))
+(defun rm-clear-flag (msg flag)
+  (when (memq flag (rm-get-msg-field msg rm-msg-flags))
+    (rm-set-msg-field msg rm-msg-flags
+		      (delq flag (rm-get-msg-field msg rm-msg-flags)))
+    (rm-invalidate-summary msg)))
 
 (defmacro rm-test-flag (msg flag)
-  (list 'memq flag (list 'rm-get-msg-field msg 'rm-msg-flags)))
+  (list 'memq flag (list 'rm-get-msg-field msg rm-msg-flags)))
+
+;; Call like (rm-cached-form MSG TAG FORM) instead of just FORM, to
+;; cache its value in MSG under key TAG
+(defmacro rm-cached-form (msg tag form)
+  `(let
+       ((_tem_ (assq ,tag (rm-get-msg-field ,msg rm-msg-cache))))
+     (if _tem_
+	 (cdr _tem_)
+       (setq _tem_ ,form)
+       (rm-set-msg-field ,msg rm-msg-cache
+			 (cons (cons ,tag _tem_)
+			       (rm-get-msg-field ,msg rm-msg-cache)))
+       _tem_)))
+(put 'rm-cached-form 'lisp-indent 2)
+
+;; Returns t if TAG is cached by MSG
+(defmacro rm-tag-cached-p (msg tag)
+  `(assq ,tag (rm-get-msg-field ,msg rm-msg-cache)))
+
+;; If TAG is cached by MSG, remove its cached value
+(defun rm-invalidate-tag (msg tag)
+  (let
+      ((cell (rm-tag-cached-p msg tag)))
+    (when cell
+      (rm-set-msg-field msg rm-msg-cache
+			(delq cell (rm-get-msg-field msg rm-msg-cache))))))
 
 
 ;; Message structures and list manipulation
@@ -268,11 +331,11 @@ Major mode for viewing mail folders. Commands include:\n
       ((pos (start-of-buffer))
        (msgs nil)
        (count 0))
-    (while (and pos (setq pos (re-search-forward mail-message-start pos)))
-      (when (rm-message-start-p pos)
-	(setq msgs (cons (rm-build-message-struct pos) msgs)
-	      count (1+ count)))
-      (setq pos (forward-line 1 pos)))
+    (while (and pos (rm-message-start-p pos) (< pos (end-of-buffer)))
+      (setq msgs (cons (rm-build-message-struct pos) msgs)
+	    count (1+ count)
+	    pos (forward-line (rm-get-msg-field (car msgs)
+						rm-msg-total-lines) pos)))
     ;; Okay, the current message is the last in the buffer. There's
     ;; no messages after the current one, all the rest go before.
     (setq rm-current-msg (car msgs)
@@ -284,80 +347,35 @@ Major mode for viewing mail folders. Commands include:\n
     rm-current-msg))
 
 ;; Parse one message and return a message structure. The buffer
-;; should be unrestricted.
+;; should be unrestricted
 (defun rm-build-message-struct (start)
   (let
       ((end (re-search-forward "^$" start))
        (msg (rm-make-msg))
-       pos)
-    (restrict-buffer start (unless end (end-of-buffer)))
+       pos tem)
+    (restrict-buffer start (or end (end-of-buffer)))
     (rm-set-msg-field msg rm-msg-mark (make-mark start))
-    (when (or (re-search-forward "^From[ \t]*:[ \t]*" start nil t)
-	      (re-search-forward "^Sender[ \t]*:[ \t]*" start nil t))
-      (setq pos (match-end))
-      (let*
-	  ((addr-re (concat mail-atom-re "(\\." mail-atom-re ")*@"
-			    mail-atom-re "(\\." mail-atom-re ")*"))
-	   (angle-addr-re (concat ".*<(" addr-re ")>"))
-	   (angle-name-re "[\t ]*\"?([^<\t\" \n\f]([\t ]*[^<\t\" \n\f])*)")
-	   (paren-name-re "[\t ]*\\(\"?([^\n\"]+)\"?\\)"))
-	(cond
-	 ((looking-at addr-re pos)
-	  ;; straightforward "foo@bar.baz" format..
-	  (rm-set-msg-field msg rm-msg-from-addr
-			    (copy-area (match-start) (match-end)))
-	  (when (looking-at paren-name-re (match-end))
-	    ;; ..with a "(Foo Bar)" comment following
-	    (rm-set-msg-field msg rm-msg-from-name
-			      (copy-area (match-start 1) (match-end 1)))))
-	 ((looking-at angle-addr-re pos)
-	  ;; "..<foo@bar.baz>..." format
-	  (rm-set-msg-field msg rm-msg-from-addr
-			    (copy-area (match-start 1) (match-end 1)))
-	  ;; Now look for a preceding name
-	  (when (looking-at angle-name-re pos)
-	    (rm-set-msg-field msg rm-msg-from-name
-			      (copy-area (match-start 1) (match-end 1))))))))
-    (when (re-search-forward "^Subject[ \t]*:[\t ]*(.*)[\t ]*$" start nil t)
-      (rm-set-msg-field msg rm-msg-subject
-			(copy-area (match-start 1) (match-end 1))))
-    (when (re-search-forward "^Date[\t ]*:[\t ]*" start nil t)
-      (setq pos (match-end))
-      (when (looking-at "[\t ]*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[\t ]*,[\t ]*"
-			pos nil t)
-	(rm-set-msg-field msg rm-msg-day-name
-			  (copy-area (match-start 1) (match-end 1)))
-	(setq pos (match-end)))
-      (when (looking-at "[\t ]*([0-9]+)[\t ]+([A-Za-z]+)[\t ]+([0-9]+)[\t ]+"
-			pos)
-	(rm-set-msg-field msg rm-msg-day
-			  (copy-area (match-start 1) (match-end 1)))
-	(rm-set-msg-field msg rm-msg-month
-			  (copy-area (match-start 2) (match-end 2)))
-	(rm-set-msg-field msg rm-msg-year
-			  (if (= (- (pos-col (match-end 3))
-				    (pos-col (match-start 3)))
-				 2)
-			      ;; 2-digit year; concat a two digit prefix
-			      ;; onto the front
-			      (concat mail-two-digit-year-prefix
-				      (copy-area (match-start 3)
-						 (match-end 3)))
-			    (copy-area (match-start 3) (match-end 3))))
-	(setq pos (match-end)))
-      (when (looking-at "([0-9]+:[0-9]+(:([0-9]+)|))[\t ]*([A-Z]+|[+-][0-9]+)"
-			pos)
-	(rm-set-msg-field msg rm-msg-time
-			  (copy-area (match-start 1) (match-end 1)))
-	(rm-set-msg-field msg rm-msg-zone
-			  (copy-area (match-start 4) (match-end 4)))))
-    (when (re-search-forward "^X-Jade-Flags-v1[\t ]*:[\t ]*" start nil t)
-      (rm-set-msg-field msg rm-msg-flags
-			(read (cons (current-buffer) (match-end)))))
-    (when (re-search-forward "^Replied[\t ]*:" start nil t)
+    (rm-set-msg-field msg rm-msg-header-lines (- (pos-line (restriction-end))
+						 (pos-line start)))
+    (when (setq pos (mail-find-header "^X-Jade-Flags-v1" start))
+      (rm-set-msg-field msg rm-msg-flags (read (cons (current-buffer) pos))))
+    (when (setq pos (mail-find-header "^X-Jade-Cache-v1" start))
+      (rm-set-msg-field msg rm-msg-cache (read (cons (current-buffer) pos))))
+    (when (mail-find-header "Replied" start)
       ;; MH annotates replied messages like this
       (rm-set-flag msg 'replied))
     (unrestrict-buffer)
+    ;; Find the total number of lines in the message
+    (if (null end)
+	(setq pos (end-of-buffer))
+      ;; Find the start of the next message
+      (setq pos (forward-line 1 start))
+      (while (and pos (setq pos (re-search-forward mail-message-start pos))
+		  (not (rm-message-start-p pos)))
+	(setq pos (forward-line 1 pos))))
+    (rm-set-msg-field msg rm-msg-total-lines (- (pos-line
+						 (or pos (end-of-buffer)))
+						(pos-line start)))
     msg))
 
 ;; Returns t if POS is the start of a message. Munges the regexp history
@@ -369,11 +387,8 @@ Major mode for viewing mail folders. Commands include:\n
 ;; Returns the position of the start of the last line in the current message.
 ;; Works no matter what the restriction is set to.
 (defun rm-current-message-end ()
-  (if rm-after-msg-list
-      (forward-line -1 (copy-pos (mark-pos
-				  (rm-get-msg-field
-				   (car rm-after-msg-list) rm-msg-mark))))
-    (end-of-buffer nil t)))
+  (pos 0 (+ (pos-line (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark)))
+	    (rm-get-msg-field rm-current-msg rm-msg-total-lines) -1)))
 
 ;; Updates the flags embedded in the message headers. Leaves the buffer
 ;; unrestricted.
@@ -393,17 +408,75 @@ Major mode for viewing mail folders. Commands include:\n
 	  (unrestrict-buffer)
 	  (when (re-search-forward "^$" start)
 	    (restrict-buffer start (match-end)))
-	  (if (re-search-forward "^X-Jade-Flags-v1[\t ]*:[\t ]*(.*)$"
-				start nil t)
-	      (progn
-		(setq start (match-start 1))
-		(delete-area (match-start 1) (match-end 1)))
-	    (setq start (forward-char -1 (insert "X-Jade-Flags-v1: \n"
-						 (mail-unfold-header start)))))
-	  (prin1 (rm-get-msg-field msg rm-msg-flags)
-		 (cons (current-buffer) start)))
+	  (let
+	      ((lines-added 0)
+	       (print-escape t)
+	       tem)
+	    ;; First put flags into X-Jade-Flags-v1 header
+	    (if (re-search-forward "^X-Jade-Flags-v1[\t ]*:[\t ]*(.*)$"
+				   start nil t)
+		(progn
+		  (setq tem (match-start 1))
+		  (delete-area (match-start 1) (match-end 1)))
+	      (setq tem (forward-char -1 (insert "X-Jade-Flags-v1: \n"
+						 (mail-unfold-header tem)))
+		    lines-added (1+ lines-added)))
+	    (prin1 (rm-get-msg-field msg rm-msg-flags)
+		   (cons (current-buffer) tem))
+	    ;; Then selected cache items into X-Jade-Cache-v1 header
+	    (if (re-search-forward "^X-Jade-Cache-v1[\t ]*:[\t ]*(.*)$"
+				   start nil t)
+		(progn
+		  (setq tem (match-start 1))
+		  (delete-area (match-start 1) (match-end 1)))
+	      (setq tem (forward-char -1 (insert "X-Jade-Cache-v1: \n"
+						 (mail-unfold-header tem)))
+		    lines-added (1+ lines-added)))
+	    (prin1 (delete-if #'(lambda (x)
+				  (null (memq (car x) rm-saved-cache-tags)))
+			      (copy-sequence
+			       (rm-get-msg-field msg rm-msg-cache)))
+		   (cons (current-buffer) tem))
+	    ;; Adjust total-lines and header-lines message attrs
+	    (rm-set-msg-field msg rm-msg-header-lines
+			      (+ (rm-get-msg-field msg rm-msg-header-lines)
+				 lines-added))
+	    (rm-set-msg-field msg rm-msg-total-lines
+			      (+ (rm-get-msg-field msg rm-msg-total-lines)
+				 lines-added))))
 	(setq list (cdr list))))
     (unrestrict-buffer)))
+
+;; Call (mail-get-header HEADER LISTP NO-COMMA-SEP), with the current
+;; restriction set to the headers of MSG
+(defun rm-get-msg-header (msg header &optional listp no-comma-sep)
+  (with-buffer (mark-file (rm-get-msg-field msg rm-msg-mark))
+    (save-restriction
+      (restrict-buffer (mark-pos (rm-get-msg-field msg rm-msg-mark))
+		       (pos 0 (+ (rm-get-msg-field msg rm-msg-header-lines)
+				 (pos-line (mark-pos (rm-get-msg-field
+						      msg rm-msg-mark))))))
+      (mail-get-header header listp no-comma-sep))))
+
+;; Shortcuts to some common headers
+(defun rm-get-senders (msg)
+  (rm-cached-form msg 'sender-list
+    (mapcar 'mail-parse-address (rm-get-msg-header msg "(From|Sender)" t))))
+
+(defun rm-get-recipients (msg)
+  (rm-cached-form msg 'recipient-list
+    (mapcar 'mail-parse-address (rm-get-msg-header msg "(To|Cc|Bcc)" t))))
+
+(defun rm-get-subject (msg)
+  (rm-cached-form msg 'subject (rm-get-msg-header msg "Subject")))
+
+(defun rm-get-date-vector (msg)
+  (rm-cached-form msg 'date-vector
+    (let
+	((string (rm-get-msg-header msg "Date")))
+      (if string
+	  (mail-parse-date string)
+	nil))))
 
 
 ;; Displaying messages
@@ -743,6 +816,7 @@ Major mode for viewing mail folders. Commands include:\n
   "BS" '(rm-command-with-folder 'rm-previous-page)
   "t" '(rm-command-with-folder 'rm-toggle-all-headers)
   "g" '(rm-command-with-folder 'rm-get-mail)
+  "k" '(rm-command-with-folder 'rm-kill-subject)
   "q" '(rm-command-with-folder 'rm-save-and-quit)
   "v" '(rm-command-with-folder 'read-mail-folder)
   "r" '(rm-command-in-folder 'rm-reply)
@@ -751,7 +825,8 @@ Major mode for viewing mail folders. Commands include:\n
   "F" '(rm-command-in-folder '(rm-followup t))
   "z" '(rm-command-in-folder 'rm-forward)
   "*" '(rm-command-with-folder 'rm-burst-message)
-  "s" '(rm-command-with-folder 'rm-output))
+  "s" '(rm-command-with-folder 'rm-output)
+  "|" '(rm-command-with-folder 'rm-pipe-message))
 
 (defvar rm-summary-functions '((select . rm-summary-select-item)
 			       (list . rm-summary-list)
@@ -816,8 +891,9 @@ the summary buffer.")
       (with-buffer rm-summary-buffer
 	(setq rm-summary-mail-buffer mail-buf
 	      truncate-lines t)
+	(call-hook 'read-mail-summary-mode-hook)
 	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
-	(setq major-mode 'rm-summary-mode)))))
+	(setq major-mode 'read-mail-mode)))))
 
 
 ;; Summary mechanics
@@ -829,11 +905,6 @@ the summary buffer.")
   (unless dont-update
     (summary-update)
     (rm-summary-update-current)))
-
-(defun rm-summary-mode ()
-  "Mail Summary Mode:\n
-Major mode for displaying a summary of a mail folder. See read-mail-mode
-documentation for command list.")
 
 ;; Configure the window to display the summary in one view, and the
 ;; mail buffer in the other. Return the view displaying the mail buffer
@@ -885,30 +956,115 @@ documentation for command list.")
 	       '()))
      rm-cached-msg-list)))
 
-(defun rm-summary-print-item (item)
+(defun rm-summary-format-item (item)
   (let
-      ((pending-ops (summary-get-pending-ops item)))
-    (format (current-buffer) "%c%c%c%c%c  %s %s %s "
-	    (if (rm-test-flag item 'unread) ?N ?\ )
-	    (if (memq 'delete pending-ops) ?D ?\ )
-	    (if (rm-test-flag item 'replied) ?R ?\ )
-	    (if (rm-test-flag item 'filed) ?F ?\ )
-	    (if (rm-test-flag item 'forwarded) ?Z ?\ )
-	    (or (rm-get-msg-field item rm-msg-day) "")
-	    (or (rm-get-msg-field item rm-msg-month) "")
-	    (or (rm-get-msg-field item rm-msg-year) ""))
-    (indent-to 20)
-    (insert (or (rm-get-msg-field item rm-msg-from-name)
-		(rm-get-msg-field item rm-msg-from-addr)
-		""))
-    (insert " ")
-    (indent-to 40)
-    (insert (or (rm-get-msg-field item rm-msg-subject) ""))))
+      ((point 0)
+       (date (rm-get-date-vector item))
+       (pending-ops (summary-get-pending-ops item))
+       (len (length rm-summary-format))
+       (field-fun #'(lambda (s)
+		      (if (null arg)
+			  (insert s)
+			(let
+			    ((len (length s)))
+			  (if (> arg len)
+			      (progn
+				(insert s)
+				(insert (make-string (- arg len))))
+			    (insert (substring s 0 (- arg 2)))
+			    (insert ".."))))))
+       char fun arg)
+    (while (and (< point len)
+		(string-match "%([0-9]*)[^0-9]" rm-summary-format point))
+      (insert (substring rm-summary-format point (match-start)))
+      (setq arg (if (/= (match-start 1) (match-end 1))
+		    (read-from-string (substring rm-summary-format
+						 (match-start 1)
+						 (match-end 1)))
+		  nil)
+	    char (aref rm-summary-format (match-end 1))
+	    point (match-end))
+      (if (setq fun (cdr (assq char rm-summary-print-functions)))
+	  (funcall fun item arg pending-ops)
+	(cond
+	 ((= char ?a)
+	  (format (current-buffer) "%c%c%c"
+		  (cond
+		   ((rm-test-flag item 'unread) ?U)
+		   ((memq 'delete pending-ops) ?D)
+		   (t ? ))
+		  (cond
+		   ((rm-test-flag item 'replied) ?R)
+		   ((rm-test-flag item 'forwarded) ?Z)
+		   (t ? ))
+		  (if (rm-test-flag item 'filed) ?F ?\ )))
+	 ((= char ?d)
+	  (when date
+	    (format (current-buffer) "%d" (or (aref date mail-date-day) ""))))
+	 ((= char ?f)
+	  (let
+	      ((from (car (rm-get-senders item))))
+	    (when (car from)
+	      (funcall field-fun (car from)))))
+	 ((= char ?F)
+	  (let*
+	      ((from (car (rm-get-senders item))))
+	    (funcall field-fun (or (cdr from) (car from) ""))))
+	 ((= char ?i)
+	  (indent-to arg))
+	 ((= char ?m)
+	  (when date
+	    (format (current-buffer) "%d"
+		    (or (aref date mail-date-month) ""))))
+	 ((= char ?M)
+	  (when date
+	    (insert (or (aref date mail-date-month-abbrev) ""))))
+	 ((= char ?s)
+	  (funcall field-fun (or (rm-get-subject item) "")))
+	 ((= char ?t)
+	  (funcall field-fun (if date
+				 (format nil "%d:%d"
+					 (aref date mail-date-hour)
+					 (aref date mail-date-minute)) "")))
+	 ((= char ?T)
+	  (funcall field-fun (if date (format nil "%d:%d:%d"
+					      (aref date mail-date-hour)
+					      (aref date mail-date-minute))
+			       "")))
+	 ((= char ?%)
+	  (insert "%"))
+	 ((= char ?r)
+	  (let
+	      ((to (car (rm-get-recipients item))))
+	    (funcall field-fun (or (cdr to) (car to) ""))))
+	 ((= char ?y)
+	  (when date
+	    (format (current-buffer) "%d"
+		    (or (aref date mail-date-year) "")))))))
+    (insert (substring rm-summary-format point))
+    (copy-area (start-of-line) (cursor-pos))))
+
+(defun rm-summary-print-item (item)
+  ;; Cache the summary line with the summary buffer as the tag
+  (let
+      (value dont-insert)
+    (setq value (rm-cached-form item (current-buffer)
+		  (progn
+		    (setq dont-insert t)
+		    (rm-summary-format-item item))))
+    (unless dont-insert
+      (insert value))))
+
+;; Delete all cached summary lines for MSG
+(defun rm-invalidate-summary (msg)
+  (rm-set-msg-field msg rm-msg-cache
+		    (delete-if #'(lambda (x) (bufferp (car x)))
+			       (rm-get-msg-field msg rm-msg-cache))))
 
 (defun rm-summary-select-item (item)
   (with-view (rm-configure-views (current-buffer) rm-summary-mail-buffer)
     (rm-display-message item)))
-
+  
 (defun rm-summary-current-item ()
   (with-buffer rm-summary-mail-buffer
     rm-current-msg-index))
@@ -939,12 +1095,12 @@ documentation for command list.")
       (summary-update))))
 
 (defun rm-summary-after-marking (msg)
+  (rm-invalidate-summary msg)
   (if (and (eq (with-buffer rm-summary-mail-buffer rm-current-msg) msg)
 	   rm-move-after-deleting)
-      (if (with-buffer rm-summary-mail-buffer rm-after-msg-list)
-	  (rm-with-folder
-	   (rm-next-undeleted-message 1))
-	(rm-summary-after-update))
+      (when (with-buffer rm-summary-mail-buffer rm-after-msg-list)
+	(rm-with-folder
+	 (rm-next-undeleted-message 1)))
     (when (/= (summary-current-index)
 	      (with-buffer rm-summary-mail-buffer rm-message-count))
       (summary-next-item 1))))
@@ -1044,6 +1200,34 @@ current message."
   (rm-with-summary
    (summary-mark-delete))
   (rm-fix-status-info))
+
+(defun rm-kill-subject ()
+  "Marks all messages with the same subject as the current message as being
+ready for deletion."
+  (interactive)
+  (let*
+      ((kill-subject (rm-get-subject rm-current-msg)))
+    (mapc #'(lambda (m)
+		    (when (string= kill-subject (rm-get-subject m))
+		      (with-buffer rm-summary-buffer
+			(summary-mark-delete m))))
+	  (append rm-before-msg-list
+		  (and rm-current-msg (list rm-current-msg))
+		  rm-after-msg-list))))
+
+(defun rm-pipe-message (command &optional ignore-headers)
+  "Pipes all of the current message through the shell command COMMAND (unless
+IGNORE-HEADERS is non-nil, in which case only the body of the message is
+used). All output is left in the `*shell output*' buffer. When called
+interactively, COMMAND is prompted for, and IGNORE-HEADERS takes its value
+from the prefix argument."
+  (interactive "sShell command on message:\nP")
+  (save-restriction
+    (let
+	((start (if ignore-headers
+		    rm-current-msg-body
+		  (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark)))))
+      (shell-command-on-area command start rm-current-msg-end))))
 
 (defun rm-save-and-quit ()
   "Quit from the mail reading subsystem. The current folder will be saved
