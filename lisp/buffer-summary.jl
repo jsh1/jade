@@ -32,12 +32,29 @@
     "~" 'bs-toggle-modified
     "%" 'bs-toggle-read-only))
 
+(defvar bs-popup-menus '(("Select buffer" summary-select-item)
+			 ("Select in other view" bs-select-other-view)
+			 ("Select in whole window" bs-select-whole-window)
+			 ("Select in two views" bs-select-two-views)
+			 ()
+			 ("Mark for saving" bs-mark-save)
+			 ("Mark for deletion" summary-mark-delete)
+			 ("Unmark item" summary-unmark-item)
+			 ("Unmark all" summary-unmark-all)
+			 ("Execute marks" summary-execute)
+			 ()
+			 ("Toggle modified" bs-toggle-modified)
+			 ("Toggle read-only" bs-toggle-read-only)))
+
 (defvar bs-functions '((select . bs-select-item)
 		       (delete . kill-buffer)
 		       (print . bs-print-item)
 		       (list . (lambda () (copy-sequence buffer-list)))
 		       (save . save-file)
 		       (after-marking . (lambda () (summary-next-item 1)))
+		       (with-extent . (lambda (e)
+					(extent-put
+					 e 'popup-menus bs-popup-menus)))
 		       (on-quit . bs-quit))
   "Function vector for summary-mode.")
 
