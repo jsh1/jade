@@ -86,6 +86,7 @@
 							  (throw 'exit nil)))
 	    (gtk-container-add window vbox)
 	    (gtk-box-pack-start vbox hbox)
+	    (gtk-box-set-spacing hbox 5)
 	    (gtk-box-pack-start hbox label)
 	    (when start
 	      (gtk-entry-set-text entry start))
@@ -135,6 +136,7 @@
 							  (throw 'exit nil)))
 	    (gtk-container-add window vbox)
 	    (gtk-box-pack-start vbox hbox)
+	    (gtk-box-set-spacing hbox 5)
 	    (gtk-box-pack-start hbox label)
 	    (when start
 	      (gtk-combo-set-item-string combo start))
