@@ -219,10 +219,7 @@ Major mode for composing and sending mail messages."
 (defun sendmail-send-message ()
   "Use sendmail to send the message in the current buffer."
   (let
-      ((header-end (find-next-regexp
-		    (concat ?^ (regexp-quote mail-header-separator) ?$)
-		    (buffer-start) nil t))
-       (resent-addresses '())
+      ((resent-addresses '())
        tem)
     (unless (find-next-regexp (concat ?^
 				      (regexp-quote mail-header-separator ?$)
