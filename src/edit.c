@@ -83,7 +83,7 @@ extern void *r_re_alloc(void **ptr, size_t size);
 /* Use standard allocation calls */
 
 #define ALLOC_LL(tx,n) \
-    (tx->tx_Lines = sys_alloc(sizeof(LINE) * (n)))
+    ((tx)->tx_Lines = sys_alloc(sizeof(LINE) * (n)))
 
 #define FREE_LL(tx)				\
     do {					\
@@ -97,7 +97,7 @@ extern void *r_re_alloc(void **ptr, size_t size);
 	if(tem != 0)							\
 	    (tx)->tx_Lines = tem;					\
 	else								\
-	    FREE_LL((tx)->tx_Lines);					\
+	    FREE_LL(tx);						\
     } while(0)
 
 #endif /* !USE_R_ALLOC */
