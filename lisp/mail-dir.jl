@@ -37,11 +37,6 @@
   "When t any unknown addresses seen in messages will not be added to the
 directory without confirmation from the user.")
 
-(defvar mail-dir-auto-expand-aliases t
-  "When t any mail aliases in mail messages being sent will be expanded.
-Note that this variable only has an effect when sm-mail-dir.jl is first
-loaded.")
-
 (defvar mail-address-alist nil
   "Alist of (EMAIL-ADDRESS . REAL-NAME).")
 
@@ -168,6 +163,8 @@ definitions will be added to any existing definitions."
 		   ((alias (prompt-for-mail-alias "Alias to add" t)))
 		 (list alias (prompt-for-address-list (concat "Set alias "
 							alias " to:") t))))
+  (unless (and alias address-list)
+    (error "Null argument"))
   (let
       ((current (assoc alias mail-alias-alist)))
     (if current
@@ -196,6 +193,8 @@ entity called FULL-NAME."
 		 (list addr (prompt-for-mail-full-name (concat "Set address "
 							       addr " to")
 						       t))))
+  (unless (and address full-name)
+    (error "Null argument"))
   (let
       ((current (assoc address mail-address-alist)))
     (if current
