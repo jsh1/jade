@@ -92,6 +92,7 @@ typedef struct _TX {
 
     /* line numbers of `narrowed' region */
     long	    tx_LogicalStart, tx_LogicalEnd;
+    long	    tx_LastLogicalStart, tx_LastLogicalEnd;
 
     VALUE	    tx_FileName;
     VALUE	    tx_BufferName;
