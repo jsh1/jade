@@ -71,6 +71,9 @@ and hence hasn't been processed yet; or nil.")
 (defvar cvs-update-file-list nil
   "Used by the `cvs update' filter to build the new list.")
 
+(defvar cvs-after-update-hook nil
+  "Hook called after completing a cvs-update command.")
+
 (defvar cvs-keymap (copy-sequence summary-keymap))
 (bind-keys cvs-keymap
   "a" 'cvs-add
@@ -233,7 +236,8 @@ that each of the FILENAMES contains no directory specifiers."
 		(goto-buffer cvs-buffer)
 		(shrink-view-if-larger-than-buffer)))
 	    (add-buffer cvs-buffer)
-	    (message "cvs update finished"))))
+	    (message "cvs update finished")
+	    (call-hook 'cvs-after-update-hook))))
     (setq cvs-update-in-progress (cvs-command '() "update" '()))
     (when cvs-update-in-progress
       (with-buffer cvs-buffer
@@ -736,9 +740,16 @@ works by deleting the local copy, before updating it from the repository."
     ;; Remove any files that the user answered negatively to
     (setq files (delete-if 'file-exists-p files))
     (if (cvs-buffer-p)
-	(cvs-update-no-prompt)
-      (cvs-command nil "update" files))
-    (cvs-revert-filenames files)))
+	(let
+	    ;; Ensure that cvs-revert isn't called until the
+	    ;; update has completed
+	    ((cvs-after-update-hook (cons `(lambda ()
+					     (cvs-revert-filenames ,files))
+					  cvs-after-update-hook)))
+	  (cvs-update-no-prompt)
+	  (message "Buffers haven't been reloaded yet.."))
+      (cvs-command nil "update" files)
+      (cvs-revert-filenames files))))
 
 (defun cvs-tag (tag-name)
   "Tag all selected CVS files with the string TAG-NAME."
