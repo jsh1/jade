@@ -23,7 +23,7 @@
  * regular-expression syntax might require a total rethink.
  */
 
-#ifdef BUILD_JADE
+#ifdef JADE
 
 #include <stdio.h>
 #ifdef AMIGA
@@ -768,4 +768,4 @@ regnext(p)
 	return (p + offset);
 }
 
-#endif /* BUILD_JADE */
+#endif /* JADE */
