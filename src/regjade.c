@@ -69,6 +69,11 @@ static char    *regnext(char *);
      ? '\n'							\
      : regtx->tx_Lines[PROW(p)].ln_Line[PCOL(p)])
 
+#define TOUPPER_INPUT_CHAR(p)					\
+    ((PCOL(p) >= regtx->tx_Lines[PROW(p)].ln_Strlen - 1)	\
+     ? '\n'							\
+     : toupper(regtx->tx_Lines[PROW(p)].ln_Line[PCOL(p)]))
+
 /* Non-zero when position P is past the last character in the buffer. */
 #define END_OF_INPUT(p)						\
     (PROW(p) >= regtx->tx_LogicalEnd				\
@@ -632,6 +637,8 @@ regmatch(prog)
 		nextch = '\0';
 		if (OP(next) == EXACTLY)
 		    nextch = *OPERAND(next);
+		if(regnocase)
+		    nextch = toupper(nextch);
 		min = (OP(scan) == STAR) ? 0 : 1;
 		save = reginput;
 		no = regrepeat(OPERAND(scan));
@@ -639,7 +646,8 @@ regmatch(prog)
 		    /* If it could work, try it. */
 		    if (nextch == '\0'
 			|| (!END_OF_INPUT(&reginput)
-			    && INPUT_CHAR(&reginput) == nextch))
+			    && (regnocase ? TOUPPER_INPUT_CHAR(&reginput)
+				: INPUT_CHAR(&reginput)) == nextch))
 			if (regmatch(next))
 			    return (1);
 		    /* Couldn't or didn't -- back up. */
