@@ -532,7 +532,9 @@ redraw_lines_clr(VW *vw, long startLine, long endLine)
     short y;
     endLine++;
     if((endLine <= vw->vw_StartLine)
-       || (startLine > (vw->vw_StartLine + vw->vw_MaxY)))
+       || (endLine < vw->vw_Tx->tx_LogicalStart)
+       || (startLine > (vw->vw_StartLine + vw->vw_MaxY))
+       || (startLine > (vw->vw_Tx->tx_LogicalEnd)))
     {
 	return;
     }
