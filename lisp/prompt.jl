@@ -586,7 +586,7 @@ PROMPT is the title displayed, START the starting choice."
 
 ;;;###autoload
 (defun prompt-for-string (&optional prompt start)
-  (prompt (or prompt "Enter string: " start)))
+  (prompt (or prompt "Enter string: ") start))
 
 ;;;###autoload
 (defun prompt-for-number (&optional prompt)
