@@ -62,8 +62,6 @@ and hence hasn't been processed yet; or nil.")
 
 (defvar cvs-keymap (copy-sequence summary-keymap))
 (bind-keys cvs-keymap
-  "%" 'cvs-summary-clean
-  "o" 'cvs-summary-select-other-view
   "a" 'cvs-add
   "A" 'cvs-change-log-other-view
   "b" 'cvs-diff-backup
@@ -74,11 +72,13 @@ and hence hasn't been processed yet; or nil.")
   "G" 'cvs-update
   "i" 'cvs-ignore
   "l" 'cvs-log
+  "o" 'cvs-summary-select-other-view
   "p" 'cvs-update-pwd
   "P" 'cvs-update-parent
   "r" 'cvs-remove
   "R" 'cvs-revert
   "s" 'cvs-status
+  "%" 'cvs-summary-clean
   "~" 'cvs-undo-modification
   "`" 'cvs-next-conflict-marker)
 
@@ -337,6 +337,64 @@ When called interactively, DIRECTORY is prompted for."
   (interactive)
   (cvs-update "."))
 
+(defun cvs-summary-mode ()
+  "CVS summary mode:
+
+Major mode for manipulating a CVS repository. Use the `cvs-update' command
+to call `cvs update' on a specified directory, displaying in the standard
+summary interface all files that have been modified in some way in this
+working directory.
+
+Most of the standard `summary-mode' commands are available (with the notable
+exception of the `delete' operations). Extra commands that are specific
+to CVS mode include:
+
+  `a'			Add all selected files to the local copy
+			 of the repository
+  `b'			For selected files whose status is `conflict'
+			 show the differences between the previous
+			 working copy and the new merged working copy
+  `c'			Prompt for a log message, then commit all
+			 selected files to the repository
+  `d'			Display the differences between all selected files
+			 and their relations in the repository
+  `f'			Open the current item in the current view
+  `g'			Call `cvs update' again, rebuilding the display
+  `G'			Prompt for a new working directory to call
+			 `cvs update' on
+  `i'			Add all selected files to the relevant .cvsignore
+			 files so that CVS disregards them
+  `l'			Display the logs of all selected files
+  `o'			Open the current item in the other view
+  `p'			Call `cvs-update' on the current directory
+  `P'			Call `cvs-update' on the parent of the
+			 current directory
+  `r'			Delete all selected files then remove them from
+			 the local copy of the repository
+  `R'			Revert all locally buffered files that have
+			 changed since they were loaded (via the update)
+  `s'			Display the `cvs status' information of all
+			 selected files
+  `%'			Remove all uninteresting items from the summary
+  `~'			Undo all modifications made to the selected
+			 files since they were checked out
+  ``'			Search the current file for the next CVS
+			 conflict marker
+
+Where the commands work on the currently `selected' files, this means
+one of two things:
+
+   1. All files in the summary that are marked by an asterisk `*' (use
+      the summary-mode `m' command to mark files, `u' or `U' to unmark
+      them); of if no files are marked
+
+   2. The current summary item. If a prefix argument is given, then ARG
+      files starting at the current item are selected.
+
+Note that all commands described above are available in all buffers by
+prefixing them with the `Ctrl-x c' key sequence. For example, type
+`Ctrl-x c s' to display the CVS status of the current buffer.")
+
 
 ;; CVS summary mechanics
 
@@ -388,10 +446,29 @@ When called interactively, DIRECTORY is prompted for."
 operated on by the current CVS mode command."
   (if (eq major-mode 'cvs-summary-mode)
       ;; In the summary buffer, either all marked files, or if none
-      ;; are marked, the file under the cursor
+      ;; are marked, the ARG files under the cursor. This code
+      ;; should be in summary.jl
       (or (filter #'(lambda (x)
 		      (memq 'mark (summary-get-pending-ops x))) cvs-file-list)
-	  (list (summary-current-item)))
+	  (let
+	      ((arg (prefix-numeric-argument current-prefix-arg))
+	       (current (summary-current-index)))
+	    (if (= arg 1)
+		(list (summary-get-item current))
+	      (when (< arg 0)
+		(setq current (+ current arg 1)
+		      arg (- arg))
+		(when (< current 0)
+		(setq arg (+ arg current)
+		      current 0)))
+	      (let
+		  ((in (nthcdr current summary-items))
+		   (out nil))
+		(while (and (> arg 0) in)
+		  (setq out (cons (car in) out)
+			in (cdr in)
+			arg (1- arg)))
+		(nreverse out)))))
     ;; In a normal buffer. Try to find a CVS file structure for it
     (or (filter #'(lambda (x)
 		    (file-name= (cvs-file-get-fullname x) (buffer-file-name)))
