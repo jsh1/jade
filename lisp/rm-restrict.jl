@@ -112,7 +112,7 @@
 ;; Entry points
 
 ;;;###autoload
-(defmacro defrule (name args &rest body)
+(defmacro defrule (name args #!rest body)
   "Define a rule for restricting the set of messages considered. The new rule
 is called NAME (a symbol), it takes the lambda list of arguments ARGS, and
 is defined by the forms BODY.
@@ -225,7 +225,7 @@ contain its definition as a function."
 
 ;; Combine RULE1 and RULE2 into a single anonymous rule, combination
 ;; is done by OP, one of `and', `or', `progn'. Defaults to `and'.
-(defun rm-combine-rules (rule1 rule2 &optional op)
+(defun rm-combine-rules (rule1 rule2 #!optional op)
   (unless op (setq op 'and))
   (or (memq op '(and or progn)) (error "Unknown combinator: %s" op))
   (let ((rule-1-fun (if (functionp rule1)
@@ -433,7 +433,7 @@ contain its definition as a function."
 ;; Prompting
 
 ;;;###autoload
-(defun rm-prompt-for-rule (&optional title)
+(defun rm-prompt-for-rule (#!optional title)
   (let
       ((prompt-history rm-rule-history)
        (rule (prompt-for-symbol (or title
@@ -453,39 +453,39 @@ contain its definition as a function."
 	   rule))))
 
 ;;;###autoload
-(defun rm-prompt-for-anon-rule (&optional title)
+(defun rm-prompt-for-anon-rule (#!optional title)
   (rule-lambda () (prompt-for-lisp (or title "Rule form:"))))
 
 
 ;; Commands
 
 ;;;###autoload
-(defun rm-restrict-to-sender (re &optional folder)
+(defun rm-restrict-to-sender (re #!optional folder)
   (interactive "sAddress regexp:")
   (rm-change-rule (or folder (rm-current-folder))
 		  (rule-lambda () `(sender ,re))))
 
 ;;;###autoload
-(defun rm-restrict-to-recipient (re &optional folder)
+(defun rm-restrict-to-recipient (re #!optional folder)
   (interactive "sAddress regexp:")
   (rm-change-rule (or folder (rm-current-folder))
 		  (rule-lambda () `(recipient ,re))))
 
 ;;;###autoload
-(defun rm-restrict-to-address (re &optional folder)
+(defun rm-restrict-to-address (re #!optional folder)
   (interactive "sAddress regexp:")
   (rm-change-rule (or folder (rm-current-folder))
 		  (rule-lambda () `(or (sender ,re) (recipient ,re)))))
 
 
 ;;;###autoload
-(defun rm-restrict-to-subject (re &optional folder)
+(defun rm-restrict-to-subject (re #!optional folder)
   (interactive "sSubject regexp:")
   (rm-change-rule (or folder (rm-current-folder))
 		  (rule-lambda () `(subject ,re))))
 
 ;;;###autoload
-(defun rm-restrict-to-message-id (re &optional folder)
+(defun rm-restrict-to-message-id (re #!optional folder)
   (interactive "sId regexp:")
   (rm-change-rule (or folder (rm-current-folder))
 		  (rule-lambda () `(or (header "in-reply-to" ,re)

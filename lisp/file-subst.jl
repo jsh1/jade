@@ -92,7 +92,7 @@ Finally, note that the string \"@@\" expands to a single @ character."
 	    (princ value output-buffer)))))))
 
 ;;;###autoload
-(defun map-file-subst (file-list &optional regexp force)
+(defun map-file-subst (file-list #!optional regexp force)
   "Call `file-subst' for each file named in FILE-LIST, using REGEXP to
 find the output file names. When REGEXP is undefined, use the value of
 the `file-subst-map-regexp' variable.

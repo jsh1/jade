@@ -122,7 +122,7 @@ previous line, then works as normal. Local bindings in this mode are:\n
 ;; Misc
 
 ;;;###autoload
-(defun word-count-area (start end &optional do-print)
+(defun word-count-area (start end #!optional do-print)
   "Return the number of words in the area of text between START and END in
 the current buffer. If PRINT is non-nil this number is also displayed in the
 status line."

@@ -263,7 +263,7 @@ that each of the FILENAMES contains no directory specifiers."
 
 ;; Return the buffer used for output from CVS commands. If CLEAR is
 ;; t delete all of its current contents
-(defun cvs-output-buffer (&optional clear)
+(defun cvs-output-buffer (#!optional clear)
   (let
       ((buffer (open-buffer "*cvs-output*")))
     (when clear
@@ -311,7 +311,7 @@ Finally, unless the cvs-command-dont-clear-output parameter is non-nil, the
 		  cvs-command-ignore-errors)
 	(error "whilst running cvs")))))
 
-(defun cvs-kill-processes (&optional force)
+(defun cvs-kill-processes (#!optional force)
   "Interrupt all active CVS processes (after confirmation). If FORCE is non-nil
 don't ask for confirmation and kill instead of interrupting."
   (interactive)
@@ -332,7 +332,7 @@ don't ask for confirmation and kill instead of interrupting."
   "Return t if the current buffer is the CVS summary buffer."
   '(eq major-mode 'cvs-summary-mode))
 
-(defun cvs-show-output-buffer (&optional activate)
+(defun cvs-show-output-buffer (#!optional activate)
   "Ensure that the `*cvs-output*' buffer is visible in the current window,
 probably in the other view. If ACTIVATE is non-nil, the view displaying the
 buffer will be activated."
@@ -483,7 +483,7 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
   (interactive)
   (cvs-find-file t))
 
-(defun cvs-find-file (&optional in-other)
+(defun cvs-find-file (#!optional in-other)
   "Open the selected files in the `*cvs*' summary."
   (interactive)
   (let
@@ -730,7 +730,7 @@ will be prompted for."
 	  files)))
 
 ;;;###autoload
-(defun cvs-diff-cvs (&optional rev1 rev2)
+(defun cvs-diff-cvs (#!optional rev1 rev2)
   "Compare revisions REV1 and REV2 (or the working copy) of all selected CVS
 files. When called interactively, compares the working copy against the
 head revision, unless a prefix arg is given, when REV1 and REV2 must then

@@ -28,7 +28,7 @@
 
 ;; Return (MAIL-ADDR . REAL-NAME) (both strings, or nil) from the position
 ;; POINT in STRING
-(defun mail-parse-address (string &optional point)
+(defun mail-parse-address (string #!optional point)
   (unless point (setq point 0))
   (let*
       ((mail-addr-re (concat "[\t ]*" mail-atom-re "(\\." mail-atom-re ")*(@"
@@ -105,7 +105,7 @@
 ;; strings. Stops parsing at the end of the header starting at POS.
 ;; NO-COMMA-SEPS controls whether a comma-separated list is parsed,
 ;; or simply a sequence of "groups" (from the above function)
-(defun mail-parse-list (p &optional no-comma-seps)
+(defun mail-parse-list (p #!optional no-comma-seps)
   (save-restriction
     ;; Restrict ourselves to the current header
     (restrict-buffer p (forward-char -1 (or (mail-unfold-header p)
@@ -201,7 +201,7 @@
 
 ;; Return the position at which a header matching HEADER occurs, or
 ;; nil if one doesn't. HEADER may be a regexp (i.e. "(From|Sender)")
-(defun mail-find-header (header &optional p)
+(defun mail-find-header (header #!optional p)
   (when (and (re-search-forward (concat "^(" header "[\t ]*:[\t ]*|$)")
 			       (or p (start-of-buffer)) nil t)
 	     (> (match-end) (match-start)))
@@ -211,7 +211,7 @@
 ;; will be a string with newlines converted to spaces, unless LISTP is
 ;; non-nil in which case the header will be split into a list of items
 ;; (separated by commas, unless NOT-COMMA-SEPARATED is t).
-(defun mail-get-header (header &optional lstp not-comma-separated decode)
+(defun mail-get-header (header #!optional lstp not-comma-separated decode)
   (let
       ((p (mail-find-header header))
        out)
@@ -247,7 +247,7 @@
 ;; Insert a list of comma separated items. Breaks the list to satisfy
 ;; mail-fill-column. Unless NO-COMMAS is t, each item is separated by
 ;; a comma
-(defun mail-insert-list (lst &optional no-commas)
+(defun mail-insert-list (lst #!optional no-commas)
   (let*
       ((at-bol t)
        (initial-indent (if (looking-at
@@ -295,7 +295,7 @@
 	addr))
     addr))
 
-(defun mail-insert-address-list (lst &optional no-commas)
+(defun mail-insert-address-list (lst #!optional no-commas)
   (mail-insert-list (mapcar #'(lambda (cell)
 				(mail-format-address (car cell) (cdr cell)))
 			    lst) no-commas))

@@ -68,7 +68,7 @@
 
 ;; Message composition functions
 
-(defun mime-encode-insert (content-type content-disp &optional plist)
+(defun mime-encode-insert (content-type content-disp #!optional plist)
   (and (mime-current-part t)
        (error "Can't insert in existing MIME attachments!"))
   (let
@@ -102,7 +102,7 @@
     (extent-set extent 'read-only t)))
 
 ;;;###autoload
-(defun mime-encode-attach-file (filename &optional content-type inline)
+(defun mime-encode-attach-file (filename #!optional content-type inline)
   (interactive "fFile to attach:\n\nP")
   (unless content-type
     (let
@@ -120,7 +120,7 @@
 		      (list 'content-source filename)))
 
 ;;;###autoload
-(defun mime-encode-attach-buffer (buffer &optional content-type inline)
+(defun mime-encode-attach-buffer (buffer #!optional content-type inline)
   (interactive "bBuffer to attach:\n\nP")
   (let
       ((name (if (buffer-file-name buffer)
@@ -171,7 +171,7 @@
   (mime-encode-params (cdr content-disp))
   (insert "\n"))
 
-(defun mime-encode-stream (encoding input &optional output)
+(defun mime-encode-stream (encoding input #!optional output)
   (unless output
     (setq output (current-buffer)))
   (let

@@ -22,7 +22,7 @@
 (require 'popup-menus)
 (provide 'gtk-menu)
 
-(defun gtk-jade-create-menu (spec &optional bar)
+(defun gtk-jade-create-menu (spec #!optional bar)
   (let
       ((menu (if bar (gtk-menu-bar-new) (gtk-menu-new))))
     (mapc #'(lambda (cell)

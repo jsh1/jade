@@ -84,7 +84,7 @@
       count)))
 
 ;;;###autoload
-(defun add-autoloads (autoload-file &optional buffer)
+(defun add-autoloads (autoload-file #!optional buffer)
   "Add all functions, macros or variables in the BUFFER marked by the magic
 rune `;;;###autoload' to the `autoload.jl' file."
   (interactive (list (prompt-for-file "Autoload file:" t "autoload.jl")))
@@ -94,7 +94,7 @@ rune `;;;###autoload' to the `autoload.jl' file."
 				      autoload-insert-entry))))
 
 ;;;###autoload
-(defun remove-autoloads (autoload-file &optional buffer)
+(defun remove-autoloads (autoload-file #!optional buffer)
   "Removes all autoload definitions in the buffer BUFFER which are marked by
 the string `;;;###autoload' from the `autoload.jl' file."
   (interactive (list (prompt-for-file "Autoload file:" t "autoload.jl")))

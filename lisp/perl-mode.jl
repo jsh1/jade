@@ -74,7 +74,7 @@ Major mode for editing Perl source code. Local keybindings are:\n
 	local-keymap perl-mode-keymap)
   (call-hook 'perl-mode-hook))
 
-(defun perl-indent-line (&optional p)
+(defun perl-indent-line (#!optional p)
   (let*
       ((line-pos (start-of-line p))
        (exp-pos (c-backward-stmt line-pos))

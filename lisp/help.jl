@@ -70,7 +70,7 @@ Major mode for displaying online help. Local bindings are:\n
 
 ;; Setup the help-buffer for insertion of the help text
 ;; standard-output is bound to the correct output stream
-(defmacro help-wrapper (&rest forms)
+(defmacro help-wrapper (#!rest forms)
   `(with-view (other-view)
      (goto-buffer (help-setup))
      (clear-buffer)
@@ -121,7 +121,7 @@ w   `where-is'
   (mapc (lambda (sym)
 	  (describe-value (symbol-value sym t) sym)) symbols))
 
-(defun apropos-function (regexp &optional all-functions)
+(defun apropos-function (regexp #!optional all-functions)
   (interactive "sRegular expression:\nP")
   (help-wrapper
    (format standard-output "Apropos %s `%s':\n\n"
@@ -160,7 +160,7 @@ it leads to)."
      (insert (if doc (substitute-command-keys doc) "Undocumented."))
      (insert "\n"))))
 
-(defun describe-variable-1 (var &optional in-buffer)
+(defun describe-variable-1 (var #!optional in-buffer)
   (format standard-output
 	  "\n%s: %s\nCurrent value: %S\n\n"
 	  (if (binding-immutable-p var) "Constant" "Variable")

@@ -271,7 +271,7 @@ with `Ctrl-x Ctrl-a'.")
 	(pos-line (cursor-pos)))))
 
 ;; Send a command to the correct gdb process
-(defun gdb-command (format-spec &rest format-args)
+(defun gdb-command (format-spec #!rest format-args)
   (when gdb-buffer-p
     (setq gdb-last-buffer (current-buffer)))
   (apply format

@@ -221,13 +221,13 @@ contents of a mail message. The value of this variable is the folder.")
 ;; Entry points
 
 ;;;###autoload
-(defun read-mail (&optional rule)
+(defun read-mail (#!optional rule)
   "Read mail."
   (interactive (list (and current-prefix-arg (rm-prompt-for-rule))))
   (read-mail-folder mail-default-folder rule))
 
 ;;;###autoload
-(defun read-mail-folder (boxes &optional rule name)
+(defun read-mail-folder (boxes #!optional rule name)
   "Read mail stored in the files named by the list BOXES. When defined
 RULE is the message restriction rule to apply."
   (interactive
@@ -279,7 +279,7 @@ RULE is the message restriction rule to apply."
 ;; The mailbox named MAILBOX is not required any longer. If DONT-UPDATE
 ;; is t, the cached information won't be updated and the buffer won't
 ;; be saved
-(defun rm-close-mailbox (mailbox &optional dont-update)
+(defun rm-close-mailbox (mailbox #!optional dont-update)
   (let
       ((buffer (get-file-buffer mailbox)))
     (when buffer
@@ -372,7 +372,7 @@ key, the car the order to sort in, a positive or negative integer.")
   (list 'aref folder field))
 
 ;; Create a new unused folder object
-(defun rm-make-folder (&optional rule name)
+(defun rm-make-folder (#!optional rule name)
   (let
       ((folder (make-vector rm-folder-struct-size)))
     (rm-set-folder-field folder rm-folder-type 'folder)
@@ -426,7 +426,7 @@ key, the car the order to sort in, a positive or negative integer.")
        folder (rm-get-folder-field folder rm-folder-sort-key) nil t))))
 
 ;; Add MAILBOX to FOLDER. NO-REDISPLAY does at it suggests
-(defun rm-add-mailbox (mailbox folder &optional no-redisplay)
+(defun rm-add-mailbox (mailbox folder #!optional no-redisplay)
   (interactive
    (list (prompt-for-folder "Mailbox to add:" rm-last-mailbox)
 	 (rm-current-folder)))
@@ -474,7 +474,7 @@ key, the car the order to sort in, a positive or negative integer.")
   (rm-redisplay-folder folder))
 
 ;; Remove all MAILBOXES from FOLDER
-(defun rm-subtract-all-mailboxes (folder &optional no-redisplay)
+(defun rm-subtract-all-mailboxes (folder #!optional no-redisplay)
   (interactive (list (rm-current-folder)))
   (mapc rm-close-mailbox (rm-get-folder-field folder rm-folder-boxes))
   (rm-set-folder-field folder rm-folder-boxes nil)
@@ -597,7 +597,7 @@ key, the car the order to sort in, a positive or negative integer.")
   '(make-vector rm-msg-struct-size))
 
 ;; Set PROP in MSG to VALUE
-(defun rm-message-put (msg prop value &optional undisplayed)
+(defun rm-message-put (msg prop value #!optional undisplayed)
   (let
       ((cell (assq prop (rm-get-msg-field msg rm-msg-plist)))
        (modified t))
@@ -927,7 +927,7 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Call (mail-get-header HEADER LISTP NO-COMMA-SEP), with the current
 ;; restriction set to the headers of MSG
-(defun rm-get-msg-header (msg header &optional lstp no-comma-sep decode)
+(defun rm-get-msg-header (msg header #!optional lstp no-comma-sep decode)
   (with-buffer (mark-file (rm-get-msg-field msg rm-msg-mark))
     (save-restriction
       (restrict-buffer (mark-pos (rm-get-msg-field msg rm-msg-mark))
@@ -1008,7 +1008,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Displaying messages
 
 ;; Display the current message in FOLDER
-(defun rm-display-current-message (folder &optional no-summary-update)
+(defun rm-display-current-message (folder #!optional no-summary-update)
   (let
       ((current (rm-get-folder-field folder rm-folder-current-msg))
        mark)
@@ -1156,7 +1156,7 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Delete the current message. Unless GO-BACKWARDS-P is t the next
 ;; message is displayed (unless there is no next message).
-(defun rm-delete-message (msg &optional go-backwards-p)
+(defun rm-delete-message (msg #!optional go-backwards-p)
   ;; When this hook returns t the message isn't deleted.
   (unless (call-hook 'rm-vet-deletion-hook (list msg) 'or)
     (with-buffer (mark-file (rm-get-msg-field msg rm-msg-mark))
@@ -1380,7 +1380,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; When called from a folder buffer, will execute FORMS in the summary
 ;; buffer. If a view of the summary exists will be in that. Note that
 ;; FORMS should be as small as poss. since it's expanded twice.
-(defmacro rm-with-summary (folder &rest forms)
+(defmacro rm-with-summary (folder #!rest forms)
   `(let
        ((view (get-buffer-view (rm-get-folder-field
 				,folder rm-folder-summary))))
@@ -1512,7 +1512,7 @@ key, the car the order to sort in, a positive or negative integer.")
         (summary-command-items))
     (list (rm-get-folder-field folder rm-folder-current-msg))))
 
-(defun rm-next-message (&optional count skip-deleted)
+(defun rm-next-message (#!optional count skip-deleted)
   "Display the next message in the current mail folder."
   (interactive "p")
   (unless count
@@ -1542,17 +1542,17 @@ key, the car the order to sort in, a positive or negative integer.")
 	(setq count (1+ count))))
     (rm-display-current-message folder)))
 
-(defun rm-previous-message (&optional count skip-deleted)
+(defun rm-previous-message (#!optional count skip-deleted)
   "Display the previous message in the current mail folder."
   (interactive "p")
   (rm-next-message (- (or count 1)) skip-deleted))
 
-(defun rm-next-undeleted-message (&optional count)
+(defun rm-next-undeleted-message (#!optional count)
   "Display the next undeleted message."
   (interactive "p")
   (rm-next-message count t))
 
-(defun rm-previous-undeleted-message (&optional count)
+(defun rm-previous-undeleted-message (#!optional count)
   "Display the previous undeleted message."
   (interactive "p")
   (rm-previous-message count t))
@@ -1651,7 +1651,7 @@ ready for deletion."
 			 (when (string= kill-subject (rm-get-actual-subject m))
 			   (rm-message-put m 'deleted t))) folder)))
 
-(defun rm-pipe-message (command &optional ignore-headers)
+(defun rm-pipe-message (command #!optional ignore-headers)
   "Pipes all of the current message through the shell command COMMAND (unless
 IGNORE-HEADERS is non-nil, in which case only the body of the message is
 used). All output is left in the `*shell output*' buffer. When called
@@ -1673,7 +1673,7 @@ automatically."
   (interactive)
   (rm-quit-no-save t))
 
-(defun rm-quit-no-save (&optional really-save)
+(defun rm-quit-no-save (#!optional really-save)
   "Quit from the mail reading subsystem without saving the current folder. The
 buffer will not be deleted, so it may be saved later."
   (interactive)

@@ -154,7 +154,7 @@ for the list of formatting options available.")
 ;; Summary mechanics
 
 ;;;###autoload
-(defun rm-summarize (folder &optional dont-update)
+(defun rm-summarize (folder #!optional dont-update)
   "Display a summary of mail folder FOLDER in a separate view."
   (interactive (list (rm-current-folder)))
   (let
@@ -202,14 +202,14 @@ for the list of formatting options available.")
   
 ;; When called from a summary buffer, installs the summary's mail buffer
 ;; and executes FORMS.
-(defmacro rm-with-folder (&rest forms)
+(defmacro rm-with-folder (#!rest forms)
   `(let
        ((view (rm-summary-view)))
      (with-view view ,@forms)))
 
 ;; Switch to the buffer containing the folder and execute FORMS. Don't
 ;; switch back afterwards
-(defmacro rm-in-folder (&rest forms)
+(defmacro rm-in-folder (#!rest forms)
   `(let
        ((view (rm-summary-view)))
      (set-current-view view)

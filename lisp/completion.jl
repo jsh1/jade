@@ -117,7 +117,7 @@ matching strings.")
 	(when completion-deletable-view
 	  (shrink-view-if-larger-than-buffer))))))
 
-(defun completion-insert (completions word &optional only-display fold-case)
+(defun completion-insert (completions word #!optional only-display fold-case)
   (let
       ((count (length completions))
        (w-start (forward-char (- (length word)))))
@@ -157,7 +157,7 @@ matching strings.")
 (setq-default completion-hooks
 	      (nconc completion-hooks (list complete-from-buffer)))
 
-(defun complete-at-point (&optional only-display)
+(defun complete-at-point (#!optional only-display)
   "Complete the word immediately before the cursor. If ONLY-DISPLAY is non-nil,
 don't insert anything, just display the list of possible completions."
   (interactive "P")

@@ -57,7 +57,7 @@ mail-dir.jl is loaded.")
   (load-mail-directory mail-directory-file))
 
 ;;;###autoload
-(defun load-mail-directory (file &optional dont-merge)
+(defun load-mail-directory (file #!optional dont-merge)
   "Load email directory from FILE. Unless DONT-MERGE is t, the new
 definitions will be added to any existing definitions."
   (interactive (list (prompt-for-file "Mail directory file" t
@@ -162,7 +162,7 @@ definitions will be added to any existing definitions."
   (setq mail-directory-modified t))
 
 ;; Return a flattened list of all fields matching FIELD
-(defun md-get-all-fields (field &optional required)
+(defun md-get-all-fields (field #!optional required)
   (apply append (mapcar #'(lambda (r)
 			    (when (or (not required)
 				      (md-get-field r required))
@@ -177,21 +177,21 @@ definitions will be added to any existing definitions."
 
 ;; Prompt variants
 
-(defun prompt-for-mail-address (title &optional dont-validate initial)
+(defun prompt-for-mail-address (title #!optional dont-validate initial)
   (prompt-from-list (md-get-all-fields ':net) title initial dont-validate))
 
-(defun prompt-for-mail-item (title &optional dont-validate initial)
+(defun prompt-for-mail-item (title #!optional dont-validate initial)
   (prompt-from-list (md-get-all-fields ':name) title initial dont-validate))
 
-(defun prompt-for-mail-full-name (title &optional dont-validate initial)
+(defun prompt-for-mail-full-name (title #!optional dont-validate initial)
   (prompt-from-list (md-get-all-fields ':name ':net)
 		    title initial dont-validate))
 
-(defun prompt-for-mail-alias (title &optional dont-validate initial)
+(defun prompt-for-mail-alias (title #!optional dont-validate initial)
   (prompt-from-list (md-get-all-fields ':name ':net-alias)
 		    title initial dont-validate))
 
-(defun prompt-for-address-list (title &optional dont-validate)
+(defun prompt-for-address-list (title #!optional dont-validate)
   (let
       ((lst '())
        tem)
@@ -256,7 +256,7 @@ entity called FULL-NAME."
 ;; Accessor functions
 
 ;;;###autoload
-(defun get-mail-address (full-name &optional do-print)
+(defun get-mail-address (full-name #!optional do-print)
   "Return the mail address of the entity called FULL-NAME (a string). When
 PRINT is t the address is also displayed in the message area."
   (interactive (list (prompt-for-mail-full-name "Name") t))
@@ -271,7 +271,7 @@ PRINT is t the address is also displayed in the message area."
     (car field)))
 
 ;;;###autoload
-(defun get-mail-name-from-address (address &optional do-print)
+(defun get-mail-name-from-address (address #!optional do-print)
   "Return the name of the entity whose email address is ADDRESS. When PRINT
 is t the address is also displayed in the message area."
   (interactive (list (prompt-for-mail-address "Address") t))
@@ -286,7 +286,7 @@ is t the address is also displayed in the message area."
     (car field)))
 
 ;;;###autoload
-(defun get-mail-alias (alias &optional do-print)
+(defun get-mail-alias (alias #!optional do-print)
   "Return the expansion of mail alias ALIAS (a list of addresses). When
 PRINT is t the expansion is also displayed in the message area."
   (interactive (list (prompt-for-mail-alias "Alias") t))

@@ -452,7 +452,7 @@ for. When called interactively, spell-check the current block."
 
 ;; Returns the end of the checked region
 ;;;###autoload
-(defun ispell-highlight-misspellings (start end &optional abort-on-input)
+(defun ispell-highlight-misspellings (start end #!optional abort-on-input)
   "Highlight misspellings in the region between START and END. If
 ABORT-ON-INPUT is non-nil, any input arriving will preempt the spell checking.
 This function returns the position of the end of the actually checked region.

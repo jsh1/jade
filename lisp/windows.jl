@@ -21,20 +21,20 @@
 
 ;; Some macros
 
-(defmacro defface (name &optional doc &rest forms)
+(defmacro defface (name #!optional doc #!rest forms)
   "Create a face called NAME, the Lisp FORMS are evaluated to initialise it.
 If the symbol NAME is already bound, only the documentation property is set."
   `(or (prog1 (boundp ',name)
 	 (defvar ,name (make-face ,(symbol-name name)) ,doc))
        (progn ,@forms)))
 
-(defmacro with-view (view &rest forms)
+(defmacro with-view (view #!rest forms)
   "Set the editor's current view to VIEW (and the current window to that
 containing VIEW) evaluate FORMS..., then reinstall the originals
 afterwards, returning the value of (progn FORMS...)"
   (list 'call-with-object view (list* 'lambda nil forms)))
 
-(defmacro with-window (win &rest forms)
+(defmacro with-window (win #!rest forms)
   "Set the editor's current window to WINDOW and evaluate FORMS, then
 reinstall the original window as the current one."
   (list 'call-with-object win (list* 'lambda nil forms)))
@@ -74,7 +74,7 @@ reinstall the original window as the current one."
 
 ;; View handling
 
-(defun delete-other-views (&optional view)
+(defun delete-other-views (#!optional view)
   "Close all views in the current window except for VIEW, or the current one."
   (interactive)
   (unless view
@@ -99,7 +99,7 @@ COMMAND in it."
   (interactive)
   (set-current-view (other-view)))
 
-(defun other-view (&optional lines)
+(defun other-view (#!optional lines)
   "Return a different view in the current window. LINES defines the lower
 bound on the number of lines in the new view; alternately, if it is the
 symbol nil the other view will be roughly half the size of the current view,
@@ -121,7 +121,7 @@ or if it is the symbol t the size of the other view won't be changed."
 	  (enlarge-view (- total desired (cdr (view-dimensions))))))
       view)))
 
-(defun goto-next-view (&optional all-windows-p)
+(defun goto-next-view (#!optional all-windows-p)
   "Cycles through the available views. If ALL-WINDOWS-P is t views in
 windows other than the current window are used when needed."
   (interactive "P")
@@ -131,7 +131,7 @@ windows other than the current window are used when needed."
       (setq view (next-view view all-windows-p)))
     (set-current-view view all-windows-p)))
 
-(defun scroll-next-view (&optional count)
+(defun scroll-next-view (#!optional count)
   "Scroll the view following the current view in this window by COUNT
 screenfuls. When called interactively COUNT is taken from the prefix arg.
 Negative arguments scroll backwards."
@@ -139,7 +139,7 @@ Negative arguments scroll backwards."
   (with-view (other-view t)
     (next-screen count)))
 
-(defun enlarge-view (&optional count)
+(defun enlarge-view (#!optional count)
   "Enlarge the current view by one line. If COUNT is specified enlarge
 by COUNT lines. When called interactively, COUNT is taken from the prefix
 argument."
@@ -161,7 +161,7 @@ argument."
       (setq view (current-view))))
     (set-view-dimensions view nil (+ (cdr (view-dimensions view)) count))))
 
-(defun shrink-view (&optional count)
+(defun shrink-view (#!optional count)
   "Shrink the current view by one line. If COUNT is specified shrink by
 COUNT lines. When called interactively, COUNT is taken from the prefix
 argument."

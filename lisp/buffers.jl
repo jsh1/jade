@@ -75,12 +75,12 @@ searched for a `Local Variables:' section.")
 
 ;; Buffer manipulation
 
-(defmacro with-buffer (buffer &rest forms)
+(defmacro with-buffer (buffer #!rest forms)
   "Temporarily switches to buffer, then executes the FORMS in it before
 returning to the original buffer."
   (list 'call-with-object buffer (list* 'lambda nil forms)))
 
-(defun open-buffer (name &optional always-create)
+(defun open-buffer (name #!optional always-create)
   "If no buffer called NAME exists, creates one and adds it to the main
 buffer-list. Always returns the buffer. If ALWAYS-CREATE is non-nil never
 return an existing buffer, always create a new one. If a new buffer has
@@ -97,7 +97,7 @@ inherited from the current buffer."
       (add-buffer buf))
     buf))
 
-(defun goto-buffer (buffer &optional view)
+(defun goto-buffer (buffer #!optional view)
   "Switch the current buffer to BUFFER which can either be a buffer-object
 or a string naming an existing buffer. The selected buffer is moved to
 the head of the buffer list. If BUFFER is a string and it doesn't name
@@ -159,7 +159,7 @@ put at the end of the list if it's not already in a member."
 		  (window-view-list w)))
 	(window-list)))
 
-(defun bury-buffer (&optional buffer all-views)
+(defun bury-buffer (#!optional buffer all-views)
   "Puts BUFFER (or the currently displayed buffer) at the end of the current
 window's buffer-list then switch to the buffer at the head of the list.
 If ALL-VIEWS is non-nil this is done in all views (the same buffer will be
@@ -201,7 +201,7 @@ NEW-NAME (i.e. NEW-NAME possibly with a `<N>' suffix)."
   (interactive "sNew name of buffer:")
   (set-buffer-name nil (make-buffer-name new-name)))
 
-(defun insert-buffer (buffer &optional p)
+(defun insert-buffer (buffer #!optional p)
   "Insert the contents of BUFFER before POS (or the cursor is POS is nil)."
   (interactive "bBuffer to insert:")
   (insert (copy-area (start-of-buffer buffer)
@@ -210,7 +210,7 @@ NEW-NAME (i.e. NEW-NAME possibly with a `<N>' suffix)."
 
 ;; Storing files in buffers
 
-(defun find-file (name &optional dont-activate)
+(defun find-file (name #!optional dont-activate)
   "Find a buffer containing the file called NAME, and (unless DONT-ACTIVATE
 is t) install it as the current buffer in the current view.
 
@@ -320,7 +320,7 @@ normal-mode, the hook after-read-file-hook is dispatched."
 		(make-local-variable name)
 		(set name (read-from-string value)))))))))))
 
-(defun find-file-read-only (name &optional dont-activate)
+(defun find-file-read-only (name #!optional dont-activate)
   "Similar to `find-file' except that the buffer is edited in read-only mode."
   (interactive "FFind file read-only:")
   (let
@@ -357,7 +357,7 @@ may not exist after this function returns."
 	  (when else-backup-by-copying
 	    (copy-file name backup-name)))))))
 
-(defun write-file (buffer &optional name)
+(defun write-file (buffer #!optional name)
   "Writes the contents of BUFFER to the file NAME, or to the one
 that it is associated with."
   (or (stringp name)
@@ -373,7 +373,7 @@ that it is associated with."
 	  (set-file-modes name modes))
 	t))))
 
-(defun save-file (&optional buffer force)
+(defun save-file (#!optional buffer force)
   "Saves the buffer BUFFER, or the current buffer, to the file that it is
 associated with, then sets the number of modifications made to this file
 to zero. If no changes have been made to the buffer, it won't be saved
@@ -402,7 +402,7 @@ prefix-argument when the function is called interactively)."
 	  (delete-auto-save-file)
 	  (message (concat "Wrote file `" name ?\') t))))))
 
-(defun save-file-as (name &optional buffer)
+(defun save-file-as (name #!optional buffer)
   "Saves the buffer BUFFER, or the current one, to the file NAME,
 resetting the name of the buffer and the file that it is associated with
 to reflect NAME. Also sets the modification count to zero."
@@ -430,7 +430,7 @@ to reflect NAME. Also sets the modification count to zero."
       (delete-auto-save-file)
       (message (concat "Wrote file `" name ?\') t))))
 
-(defun insert-file (name &optional buffer)
+(defun insert-file (name #!optional buffer)
   "Inserts the file NAME into the buffer BUFFER (or the current one) before
 the cursor position."
   (interactive "FInsert file:")
@@ -440,7 +440,7 @@ the cursor position."
     (unless (call-hook 'insert-file-hook (list name) 'or)
       (insert-file-contents name))))
 
-(defun check-changes (&optional buffer)
+(defun check-changes (#!optional buffer)
   "Returns t if it is ok to lose the current contents of BUFFER, or the
 current buffer. If unsaved changes have been made to it the user is asked
 whether they mind losing them."
@@ -449,7 +449,7 @@ whether they mind losing them."
       (yes-or-no-p (format nil "OK to lose change(s) to buffer `%s'"
 			   (file-name-nondirectory (buffer-name buffer))))))
 
-(defun revert-buffer (&optional buffer force)
+(defun revert-buffer (#!optional buffer force)
   "Restores the contents of BUFFER (or current buffer) to the contents of the
 file it was loaded from. Unless FORCE is t, unsaved modifications will only
 be lost after confirmation from the user."
@@ -503,7 +503,7 @@ buffers exist on exit."
 		      save-file)
       (message "[No modified buffers]"))))
 
-(defun maybe-save-buffer (&optional buffer)
+(defun maybe-save-buffer (#!optional buffer)
   "If BUFFER has been modified, ask whether or not to save it. Returns t if
 the buffer is (now) in sync with the copy on disk."
   (or (not (buffer-modified-p buffer))
@@ -532,7 +532,7 @@ name of the file stored in BUFFER."
       (error "Can't auto-save" buffer)
       nil)))
 
-(defun delete-auto-save-file (&optional buffer)
+(defun delete-auto-save-file (#!optional buffer)
   "Deletes the file used to store the auto-save'd copy of the file stored in
 BUFFER, if such a file exists."
   (interactive)
@@ -549,7 +549,7 @@ is newer than NAME."
        (t2 (file-modtime name)))
     (and t1 t2 (time-later-p t1 t2))))
 
-(defun auto-save-mode (&optional disable)
+(defun auto-save-mode (#!optional disable)
   "When this mode is enabled files are autosaved regularly if they've been
 modified."
   (interactive "P")
@@ -561,7 +561,7 @@ modified."
     (auto-save-interval default-auto-save-interval)
     (message "Auto-save is now enabled for this buffer.")))
 
-(defun recover-file (&optional buffer)
+(defun recover-file (#!optional buffer)
   "Loads the auto-saved copy of the file stored in BUFFER into BUFFER
 overwriting its current contents (if any changes are to be lost the user
 will have to agree to this)."
@@ -582,7 +582,7 @@ will have to agree to this)."
 
 ;; Misc
 
-(defun save-and-quit (&optional no-query)
+(defun save-and-quit (#!optional no-query)
   "Exit the editor. Unless NO-QUERY is non-nil, ask the user whether or
 not to save any buffers with outstanding modifications. When NO-QUERY is
 numeric it's used as the exit status of the editor process."
@@ -598,7 +598,7 @@ numeric it's used as the exit status of the editor process."
     (setq before-exit-hook nil)
     (throw 'quit (if (numberp no-query) no-query 0))))
 
-(defun buffer-read-only-p (&optional buffer)
+(defun buffer-read-only-p (#!optional buffer)
   (condition-case nil
       (buffer-symbol-value 'read-only (extent-root buffer) nil)
     (error)))

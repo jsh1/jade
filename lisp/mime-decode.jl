@@ -91,7 +91,7 @@ external mmencode program, otherwise handle locally.")
 
 ;; Parsing Content- headers
 
-(defun mime-decode-params (text &optional point)
+(defun mime-decode-params (text #!optional point)
   (let
       (params)
     (while (string-looking-at (concat ";[ \t\n]*(" mime-token-re
@@ -152,7 +152,7 @@ external mmencode program, otherwise handle locally.")
 ;; For the mime part defined by the arguments, insert an extent marking
 ;; its presence. The extent will contain all the arguments in its plist
 (defun mime-decode-insert-stub (buffer start end
-				&optional content-type content-xfer-enc
+				#!optional content-type content-xfer-enc
 				content-disp)
  (let
      ((out-start (cursor-pos))
@@ -252,7 +252,7 @@ external mmencode program, otherwise handle locally.")
 ;; CONTENT-TYPE is the parsed content type of the message. CONTENT-XFER-ENC
 ;; likewise for the encoding.
 (defun mime-decode (src-buffer content-type
-		    &optional content-xfer-enc content-disp in-multipart)
+		    #!optional content-xfer-enc content-disp in-multipart)
   (let
       (tem)
     ;; Switch on content types
@@ -409,7 +409,7 @@ external mmencode program, otherwise handle locally.")
 
 ;; Manipulating embedded parts of messages
 
-(defun mime-current-part (&optional no-error)
+(defun mime-current-part (#!optional no-error)
   (let
       ((e (get-extent)))
     (while (and e (not (extent-get e 'content-type)))
@@ -418,7 +418,7 @@ external mmencode program, otherwise handle locally.")
       (error "No MIME part here!"))
     e))
 
-(defun mime-save-part (extent &optional file-name)
+(defun mime-save-part (extent #!optional file-name)
   "Save the MIME part of the message marked by EXTENT to the file FILE-NAME.
 When called interactively, the MIME part under the cursor is used, and
 FILE-NAME is prompted for."

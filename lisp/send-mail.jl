@@ -43,7 +43,7 @@ messages.")
 (make-variable-buffer-local 'send-mail-actions)
 
 ;;;###autoload
-(defun mail-setup (&optional to subject in-reply-to cc references actions)
+(defun mail-setup (#!optional to subject in-reply-to cc references actions)
   "Initialises a buffer in which a mail message may be composed, prior to
 being sent."
   (interactive)
@@ -436,7 +436,7 @@ it can be completed and sent out."
   (bury-buffer))
 
 ;;;###autoload
-(defun send-mail-restore (filename &optional dont-delete)
+(defun send-mail-restore (filename #!optional dont-delete)
   "Continue composing a message whose current contents are stored in the
 file called FILENAME. Unless the DONT-DELETE parameter is non-nil the
 file is deleted after being read into the message editor. When called

@@ -137,12 +137,12 @@ Commands defined by this mode are:\n
 
 ;; Indentation
 
-(defun c-indent-line (&optional p)
+(defun c-indent-line (#!optional p)
   "Indent the line at POS (or the cursor) assuming that it's C source code."
   (set-indent-pos (c-indent-pos p)))
 
 ;; Attempt to find the previous statement. perl-mode also uses this
-(defun c-backward-stmt (p &optional skip-blocks)
+(defun c-backward-stmt (p #!optional skip-blocks)
   (let
       (stmt-pos back-1-pos)
     (condition-case nil
@@ -159,7 +159,7 @@ Commands defined by this mode are:\n
 
 ;; POS should point to an `else' keyword, the position of it's matching `if'
 ;; will be returned.
-(defun c-balance-ifs (p &optional depth)
+(defun c-balance-ifs (p #!optional depth)
   (unless depth
     (setq depth 1))
   (while (and (/= depth 0) (setq p (c-backward-stmt p t)))
@@ -173,7 +173,7 @@ Commands defined by this mode are:\n
     p))
 
 ;; Work out where to indent LINE-POS to.
-(defun c-indent-pos (&optional line-pos)
+(defun c-indent-pos (#!optional line-pos)
   (setq line-pos (start-of-line line-pos))
   ;; Check for cpp op
   (if (looking-at "^[\t ]*#" line-pos)
@@ -281,7 +281,7 @@ Commands defined by this mode are:\n
 ;; Movement over C expressions. perl-mode also uses these functions
 ;; (that's why they allow $ and @ characters in symbols)
 
-(defun c-forward-exp (&optional number p)
+(defun c-forward-exp (#!optional number p)
   (unless number
     (setq number 1))
   (while (> number 0)
@@ -338,7 +338,7 @@ Commands defined by this mode are:\n
       (setq number (1- number))))
   p)
   
-(defun c-backward-exp (&optional number orig-pos no-blocks)
+(defun c-backward-exp (#!optional number orig-pos no-blocks)
   (unless number
     (setq number 1))
   (unless orig-pos 

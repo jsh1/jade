@@ -299,7 +299,7 @@ or insert a tab."
 
 ;; Expressions
 
-(defun forward-exp (&optional number p)
+(defun forward-exp (#!optional number p)
   "Find the end of the NUMBER'th next expression."
   (interactive "@p")
   (cond ((> number 0)
@@ -307,7 +307,7 @@ or insert a tab."
 	((< number 0)
 	 (funcall (or mode-backward-exp backward-word) (- number) p))))
 
-(defun backward-exp (&optional number p)
+(defun backward-exp (#!optional number p)
   "Find the start of the NUMBER'th previous expression."
   (interactive "@p")
   (cond ((> number 0)
@@ -315,13 +315,13 @@ or insert a tab."
 	((< number 0)
 	 (funcall (or mode-forward-exp forward-word) (- number) p))))
 
-(defun kill-exp (&optional number)
+(defun kill-exp (#!optional number)
   "Kill the next NUMBER expressions."
   (interactive "p")
   (kill-area (cursor-pos) (funcall (or mode-forward-exp forward-word)
 				   number)))
 
-(defun backward-kill-exp (&optional number)
+(defun backward-kill-exp (#!optional number)
   "Kills from the start of this NUMBER'th previous expression to the cursor."
   (interactive "p")
   (kill-area (funcall (or mode-backward-exp backward-word) number)
@@ -388,7 +388,7 @@ or insert a tab."
 
 ;; Generic expression handling
 
-(defun generic-forward-exp (&optional number p)
+(defun generic-forward-exp (#!optional number p)
   "Return the position of the NUMBER'th next expression from POS."
   (unless number
     (setq number 1))
@@ -435,7 +435,7 @@ or insert a tab."
       (setq number (1- number))))
   p)
 
-(defun generic-backward-exp (&optional number orig-pos)
+(defun generic-backward-exp (#!optional number orig-pos)
   "Return the position of the NUMBER'th previous s-expression from ORIG-POS."
   (unless number
     (setq number 1))

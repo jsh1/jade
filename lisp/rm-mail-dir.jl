@@ -38,7 +38,7 @@ to add to the address book. If any function in this hook returns nil, the
 message isn't scanned.")
 
 ;; This function is added to read-mail.jl's read-mail-display-message-hook
-(defun rm-mail-dir-scanner (rm-message folder &optional all-addresses force)
+(defun rm-mail-dir-scanner (rm-message folder #!optional all-addresses force)
   (call-hook 'rm-mail-dir-auto-scan-hook (list rm-message) 'and)
   (mapc #'(lambda (cell)
 	    (when (and (car cell) (or (cdr cell) force))
@@ -58,7 +58,7 @@ message isn't scanned.")
   t)
 (add-hook 'rm-display-message-hook rm-mail-dir-scanner)
 
-(defun rm-mail-dir-scan-messages (&optional all-addresses)
+(defun rm-mail-dir-scan-messages (#!optional all-addresses)
   "Add the senders of the selected message(s) to the mail directory.
 
 If ALL-ADDRESSES is non-nil, add all recipients as well. When called

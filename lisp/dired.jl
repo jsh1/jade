@@ -64,7 +64,7 @@ the directory named as its single argument.")
 ;; Basic interface to summary-mode
 
 ;;;###autoload
-(defun dired (directory &optional directory-function)
+(defun dired (directory #!optional directory-function)
   (interactive "DDirectory:")
   (setq directory (directory-file-name (expand-file-name directory)))
   (unless (file-directory-p directory)
@@ -147,7 +147,7 @@ bindings is:\n
   (interactive)
   (summary-mark-if 'file-directory-p))
 
-(defun dired-mark-by-regexp (regexp &optional op)
+(defun dired-mark-by-regexp (regexp #!optional op)
   (interactive "sMark files matching regexp:")
   (summary-mark-if #'(lambda (f) (string-match regexp f)) op))
 

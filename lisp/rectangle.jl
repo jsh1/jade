@@ -19,7 +19,7 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;###autoload
-(defun insert-rectangle (text &optional p)
+(defun insert-rectangle (text #!optional p)
   "Insert TEXT rectangularly at position POS in the current buffer."
   (unless p
     (setq p (cursor-pos)))

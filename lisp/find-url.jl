@@ -50,7 +50,7 @@ Any `%s' substrings will be replaced by the name of the url.")
 ;; Functions
 
 ;;;###autoload
-(defun find-url (url &optional call-external)
+(defun find-url (url #!optional call-external)
   "Find the univeral resource locator URL. This may involve switching to some
 kind of editor buffer, or spawning an external process. If CALL-EXTERNAL is
 non-nil, then the external viewer is invoked."
@@ -225,7 +225,7 @@ a buffer."
 	  (find-url-http-loaded process url anchor
 				(current-view) buffer errors))))))
 
-(defun find-url-abort (url &optional kill)
+(defun find-url-abort (url #!optional kill)
   "Terminate the asynchronous connection loading URL."
   (interactive (let
 		   ((arg current-prefix-arg))

@@ -66,7 +66,7 @@
 
 (defvar gdecor-framed-windows nil)
 
-(defun gdecor-frame-widget (widget &optional label)
+(defun gdecor-frame-widget (widget #!optional label)
   (let*
       ((parent (gtk-widget-parent widget))
        (frame (gtk-frame-new (or label "jade"))))

@@ -361,7 +361,7 @@ is split.")
 
 ;; "prompt" variant. LIST-FUN is a function to call the first time a list
 ;; of possible completions is required.
-(defun info-prompt (list-fun &optional title default start)
+(defun info-prompt (list-fun #!optional title default start)
   (unless title
     (setq title "Select node"))
   (when default
@@ -393,7 +393,7 @@ is split.")
       res)))
 
 ;;;###autoload
-(defun info (&optional start-node new-buffer)
+(defun info (#!optional start-node new-buffer)
   "Start the Info viewer. If START-NODE is given it specifies the node to
 show, otherwise the current node is used (or `(dir)' if this is the first
 time that `info' has been called)."
@@ -492,7 +492,7 @@ local bindings are:\n
       (signal 'info-error (list "Menu line malformed")))))
 
 ;; Prompt for the name of a menu item (with a default) and find it's node.
-(defun info-menu (&optional menu-name)
+(defun info-menu (#!optional menu-name)
   (interactive)
   (when (info-goto-menu-start)
     (unless menu-name
@@ -647,7 +647,7 @@ local bindings are:\n
       (info-find-node (cdr ref)))))
 
 ;;;###autoload
-(defun info-visit-node (info-file node-name &optional menu-key)
+(defun info-visit-node (info-file node-name #!optional menu-key)
   (info (concat ?\( info-file ?\) node-name))
   (when menu-key
     (info-menu menu-key)))

@@ -290,7 +290,7 @@ last in the buffer the current command is copied to the end of the buffer."
 ;; Running shell commands non-interactively
 
 ;;;###autoload
-(defun shell-command (command &optional insertp)
+(defun shell-command (command #!optional insertp)
   "Run the shell command string COMMAND using the shell named by the
 variable `shell-file-name'. Leave the output in the buffer *shell-output*
 unless INSERTP is t in which case it's inserted in the current buffer, or
@@ -302,7 +302,7 @@ the DELETEP parameter also nil."
   (shell-command-on-area command (end-of-buffer) (end-of-buffer) nil insertp))
 
 ;;;###autoload
-(defun shell-command-on-buffer (command &optional replacep)
+(defun shell-command-on-buffer (command #!optional replacep)
   "Run the shell command string COMMAND using the shell named by the
 variable `shell-file-name' with the contents of the current buffer as its
 standard input. If REPLACEP is non-nil the output of the command replaces
@@ -314,7 +314,7 @@ the current contents of the buffer; otherwise output is sent to the
 			 replacep replacep))
 
 ;;;###autoload
-(defun shell-command-on-area (command start end &optional deletep insertp)
+(defun shell-command-on-area (command start end #!optional deletep insertp)
   "Run the shell command string COMMAND using the shell named by the variable
 `shell-file-name', giving the area of the current buffer from START to END
 as its standard input. If DELETEP is t the input area will be deleted.

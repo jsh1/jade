@@ -44,7 +44,7 @@ automatically uncompressed when loaded, and recompressed when saved.")
 ;; Entry point
 
 ;;;###autoload
-(defun auto-compression-mode (&optional force-active)
+(defun auto-compression-mode (#!optional force-active)
   "Toggle automatic decompression and compression of files whose suffixes
 match well-known suffixes."
   (interactive "P")

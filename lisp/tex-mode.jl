@@ -58,7 +58,7 @@
     "}" 'tex-move-over-braces))
 
 ;;;###autoload
-(defun tex-mode (&optional from-sub-mode)
+(defun tex-mode (#!optional from-sub-mode)
   "TeX Mode:\n
 Major mode for editing TeX source files.\n
 Local bindings in this mode are:\n
@@ -97,7 +97,7 @@ Local bindings in this mode are:\n
 	local-keymap nil))
 
 ;;;###autoload
-(defun latex-mode (&optional from-super-mode)
+(defun latex-mode (#!optional from-super-mode)
   "LaTeX Mode:\n
 Major mode for editing LaTeX source files.\n
 Local bindings in this mode are:\n
@@ -114,7 +114,7 @@ Local bindings in this mode are:\n
   (call-hook 'latex-mode-hook))  
 
 ;;;###autoload
-(defun plain-tex-mode (&optional from-super-mode)
+(defun plain-tex-mode (#!optional from-super-mode)
   "Plain TeX Mode:\n
 Major mode for editing Plain TeX source files.\n
 Local bindings in this mode are:\n
@@ -145,7 +145,7 @@ Local bindings in this mode are:\n
       (tex-insert-braces "end")
       (error "Can't find a command to \\end"))))
 
-(defun tex-insert-braces (&optional command)
+(defun tex-insert-braces (#!optional command)
   (interactive)
   (let
       ((count (and current-prefix-arg

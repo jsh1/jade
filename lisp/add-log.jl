@@ -48,7 +48,7 @@ considered as referring to the same day.")
        (expand-file-name ".." directory)))))
 
 ;;;###autoload
-(defun add-change-log-entry (&optional log-file file-list function-list)
+(defun add-change-log-entry (#!optional log-file file-list function-list)
   (interactive
    (let
        ((arg current-prefix-arg))

@@ -50,7 +50,7 @@
 ;; Code
 
 ;;;###autoload
-(defun dict-lookup (word &optional strategy)
+(defun dict-lookup (word #!optional strategy)
   "Look up WORD in the dictionary, displaying output in the `*shell-output*'
 buffer. If STRATEGY is non-nil, it should be a symbol whose name defines the
 lookup strategy used, otherwise the `dict-strategy' variable specifies the

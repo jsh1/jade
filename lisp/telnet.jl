@@ -75,7 +75,7 @@ sent to it.")
   (call-hook 'telnet-mode-hook))
 
 ;;;###autoload
-(defun telnet (host &optional arg use-rlogin)
+(defun telnet (host #!optional arg use-rlogin)
   "Start a telnet session, connecting to the remote system called HOST,
 optionally using port number ARG. When USE-RLOGIN is t, use the rlogin
 mechanism, not telnet, in this case ARG may be a string specifying the
@@ -112,7 +112,7 @@ prompted for if a prefix argument is given."
       (shell-start-process))))
 
 ;;;###autoload
-(defun rlogin (host &optional user)
+(defun rlogin (host #!optional user)
   "Use the rlogin command to connect to run a shell on the remote host HOST,
 optionally as the user called USER. When called interactively, HOST will
 be prompted for, USER will only be prompted for if a prefix argument is

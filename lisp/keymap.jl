@@ -59,7 +59,7 @@ keymaps, i.e. all prefix keys are ignored.")
 	      (nreverse maps)))))
 
 ;;;###autoload
-(defun map-keymap (function &optional keymap buffer)
+(defun map-keymap (function #!optional keymap buffer)
   "Map FUNCTION over all key bindings under the keymap or list of keymaps
 KEYMAP (by default, the active keymaps of BUFFER). If BUFFER is defined it
 gives the buffer to dereference all variables in.
@@ -130,7 +130,7 @@ binding, or nil if there was no prefix."
 ;; Substitute one command for another in a keymap
 
 ;;;###autoload
-(defun substitute-key-definition (olddef newdef &optional keymap)
+(defun substitute-key-definition (olddef newdef #!optional keymap)
   "Substitute all occurrences of the command OLDDEF for the command NEWDEF
 in the keybindings under the keymap or list of keymaps KEYMAP. When KEYMAP
 is nil, the currently active keymaps used, i.e. all key bindings currently
@@ -144,7 +144,7 @@ in effect."
 ;; Adding bindings to a feature that may not yet be loaded
 
 ;;;###autoload
-(defmacro lazy-bind-keys (feature keymap &rest bindings)
+(defmacro lazy-bind-keys (feature keymap #!rest bindings)
   "Install the list of BINDINGS in KEYMAP, assuming that KEYMAP is available
 once FEATURE has been provided. If FEATURE has not yet been loaded, arrange
 for the bindings to be installed if and when it is."
@@ -156,7 +156,7 @@ for the bindings to be installed if and when it is."
 ;; Printing keymaps
 
 ;;;###autoload
-(defun print-keymap (&optional keymap buffer)
+(defun print-keymap (#!optional keymap buffer)
   "Prints a description of the installed keymaps in the current buffer."
   (insert "\nKey/Event")
   (indent-to 24)
@@ -178,7 +178,7 @@ for the bindings to be installed if and when it is."
 (defvar km-where-is-results nil)
 
 ;;;###autoload
-(defun where-is (command &optional keymap buffer output)
+(defun where-is (command #!optional keymap buffer output)
   (interactive "CWhere is command:\n\n\nt")
   (let
       ((km-where-is-results nil))
@@ -205,7 +205,7 @@ for the bindings to be installed if and when it is."
 		       (current-event))))
 
 ;;;###autoload
-(defun read-event (&optional title cooked)
+(defun read-event (#!optional title cooked)
   "Read the next event and return a cons cell containing the two integers that
 define that event. If COOKED is non-nil, return the _string_ that the event
 is bound to be the operating system, not the event itself."
@@ -221,7 +221,7 @@ is bound to be the operating system, not the event itself."
 	  (recursive-edit))))))
 
 ;;;###autoload
-(defun next-event (&optional cooked)
+(defun next-event (#!optional cooked)
   "Wait for the next input event, then return it. If COOKED is non-nil, return
 the string that the operating system would normally insert for that event."
   (let

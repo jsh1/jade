@@ -67,7 +67,7 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
       (setq p (forward-line -1 p)))
     (pos-col (indent-pos p))))
 
-(defun sh-indent-line (&optional p)
+(defun sh-indent-line (#!optional p)
   (setq p (start-of-line p))
   (let
       ((indent (sh-get-basic-indent p)))

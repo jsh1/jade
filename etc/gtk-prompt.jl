@@ -35,7 +35,7 @@
 ;; General purpose GTK dialogs
 
 ;; Each BUTTON is (TEXT . RETURNED-VALUE)
-(defun gtk-prompt-dialog (msg &rest buttons)
+(defun gtk-prompt-dialog (msg #!rest buttons)
   (let
       ((window (gtk-window-new 'toplevel))
        (vbox (gtk-vbox-new nil 0))
@@ -64,7 +64,7 @@
 	    (recursive-edit))
 	(gtk-widget-destroy window)))))
 
-(defun gtk-prompt-for-string (&optional title start)
+(defun gtk-prompt-for-string (#!optional title start)
   (let
       ((window (gtk-window-new 'toplevel))
        (vbox (gtk-vbox-new nil 0))
@@ -113,7 +113,7 @@
 	(throw 'exit text)
       (beep))))
 
-(defun gtk-prompt-from-list (prompt-list title &optional start dont-validate)
+(defun gtk-prompt-from-list (prompt-list title #!optional start dont-validate)
   (let
       ((window (gtk-window-new 'toplevel))
        (vbox (gtk-vbox-new nil 0))
@@ -155,7 +155,7 @@
 	    (recursive-edit))
 	(gtk-widget-destroy window)))))
 
-(defun gtk-prompt-for-file (&optional title initial default predicate)
+(defun gtk-prompt-for-file (#!optional title initial default predicate)
   (let
       ((sel (catch 'exit
 	      (let
@@ -198,17 +198,17 @@
       (and (eq gtk-prompt-enable 'mouse) current-command-from-mouse)
       (and (consp gtk-prompt-enable) (memq this-command gtk-prompt-enable))))
 
-(defun yes-or-no-p (question &rest args)
+(defun yes-or-no-p (question #!rest args)
   (if (gtk-prompt-with-gtk-p)
       (gtk-prompt-dialog question '("Yes" . t) '("No" . nil))
     (apply gtk-prompt-old-yes-or-no-p question args)))
 
-(defun y-or-n-p (question &rest args)
+(defun y-or-n-p (question #!rest args)
   (if (gtk-prompt-with-gtk-p)
       (gtk-prompt-dialog question '("Yes" . t) '("No" . nil))
     (apply gtk-prompt-old-y-or-n-p question args)))
 
-(defun map-y-or-n-p (question inputs callback &rest args)
+(defun map-y-or-n-p (question inputs callback #!rest args)
   (if (gtk-prompt-with-gtk-p)
       (let
 	  ((all-t t))
@@ -236,17 +236,17 @@
 	all-t)
     (apply gtk-prompt-old-map-y-or-n-p question inputs callback args)))
 
-(defun prompt-for-string (&rest args)
+(defun prompt-for-string (#!rest args)
   (apply (if (gtk-prompt-with-gtk-p)
 	     gtk-prompt-for-string
 	   gtk-prompt-old-prompt-for-string) args))
 
-(defun prompt-from-list (&rest args)
+(defun prompt-from-list (#!rest args)
   (apply (if (gtk-prompt-with-gtk-p)
 	     gtk-prompt-from-list
 	   gtk-prompt-old-prompt-from-list) args))
 
-(defun prompt-for-file (&optional title existing start default &rest args)
+(defun prompt-for-file (#!optional title existing start default #!rest args)
   (if (gtk-prompt-with-gtk-p)
       (gtk-prompt-for-file title start default
 			   (if existing
@@ -257,7 +257,7 @@
 				 (not (file-directory-p f)))))
     (apply gtk-prompt-old-prompt-for-file title existing start default args)))
 
-(defun prompt-for-directory (&optional title existing start default &rest args)
+(defun prompt-for-directory (#!optional title existing start default #!rest args)
   (if (gtk-prompt-with-gtk-p)
       (gtk-prompt-for-file title start default
 			   (if existing

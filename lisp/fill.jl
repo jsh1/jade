@@ -87,7 +87,7 @@ to display it, assuming that it's inserted at column zero.")
 ;; Filling functions
 
 ;;;###autoload
-(defun set-fill-column (&optional column)
+(defun set-fill-column (#!optional column)
   "Sets the column number for filling to (the variable `fill-column') to
 COLUMN or the current column."
   (interactive)
@@ -285,7 +285,7 @@ the next line is started."
 ;; Centering
 
 ;;;###autoload
-(defun center-line (&optional p)
+(defun center-line (#!optional p)
   "Centre the line at POS."
   (interactive)
   (let*
@@ -301,7 +301,7 @@ the next line is started."
 	(set-indent-pos spos)))))
 
 ;;;###autoload
-(defun center-paragraph (&optional p)
+(defun center-paragraph (#!optional p)
   "Centre the paragraph surrounding POS."
   (interactive)
   (let*

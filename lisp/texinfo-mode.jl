@@ -115,7 +115,7 @@ Local bindings in this mode are:\n
 	    (insert ", ")
 	    (insert tmp)))))))
 
-(defun texinfo-insert-braces (&optional command)
+(defun texinfo-insert-braces (#!optional command)
   (interactive)
   (when command
     (insert command))

@@ -214,7 +214,7 @@ include any parenthesised expressions!")
 (defvar mail-prompt-history (make-ring))
 
 ;; Prompt for the name of a mail folder
-(defun prompt-for-folder (title &optional default)
+(defun prompt-for-folder (title #!optional default)
   (prompt-for-file title nil
 		   (and default (file-name-directory default))
 		   default mail-prompt-history))

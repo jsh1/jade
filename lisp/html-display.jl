@@ -67,7 +67,7 @@
     ("Describe link" html-display-describe-link)))
 
 ;;;###autoload
-(defun html-display (source &optional url in-other-view)
+(defun html-display (source #!optional url in-other-view)
   (interactive "bBuffer with HTML:\nsURL of document\nP")
   (let*
       ((output (make-buffer "*html-display*"))
@@ -105,7 +105,7 @@
 		   (start-of-buffer) (end-of-buffer))
       (call-hook 'html-display-hook))))
 
-(defun html-display-current-link (&optional failable)
+(defun html-display-current-link (#!optional failable)
   (let
       ((e (get-extent)))
     ;; can't use extent-get since that searches up the stack
@@ -196,7 +196,7 @@
 
 ;; Selecting links
 
-(defun html-display-select (&optional in-other-view externally)
+(defun html-display-select (#!optional in-other-view externally)
   (interactive "P")
   (let*
       ((e (html-display-current-link))
@@ -217,7 +217,7 @@
       (goto-other-view))
     (find-url href externally)))
 
-(defun html-display-mouse-select (&optional in-other-view)
+(defun html-display-mouse-select (#!optional in-other-view)
   (interactive "P")
   (goto-mouse)
   (html-display-select in-other-view))

@@ -32,7 +32,7 @@ to this list when defined).")
   "Regexp matching Miranda session's prompt.")
 
 ;;;###autoload
-(defun miranda (&optional arg)
+(defun miranda (#!optional arg)
   "Run a Miranda interpreter in a buffer called `*miranda*' using the major
 mode `shell-mode'. ARG is a string to pass as a command line argument."
   (interactive (list (prompt-for-file "Miranda script:" t

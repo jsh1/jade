@@ -100,7 +100,7 @@ be shown before the second.")
 ;; Variables
 
 ;;;###autoload
-(defun rm-thread-folder (folder &optional no-redisplay)
+(defun rm-thread-folder (folder #!optional no-redisplay)
   "Display messages in FOLDER by thread."
   (interactive (list (rm-current-folder)))
   (message "Threading folder..." t)
@@ -204,7 +204,7 @@ be shown before the second.")
 ;; Folder sorting
 
 ;;;###autoload
-(defun rm-sort-folder (folder key &optional reversed no-redisplay)
+(defun rm-sort-folder (folder key #!optional reversed no-redisplay)
   "Select the order in which messages are displayed in FOLDER as that defined
 by the symbol KEY. Standard options for KEY include:
 

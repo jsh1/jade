@@ -32,7 +32,7 @@
 		     "C-M-x" 'smm-eval-print-sexp
 		     "C-j" 'smm-eval-insert-sexp))
 
-(defun smm-eval (form &optional module)
+(defun smm-eval (form #!optional module)
   ;; avoid requiring sawfish.client at compile-time
   ((lambda (x) (require x)) 'sawfish.client)
   (declare (bound sawfish-client-eval))
@@ -40,7 +40,7 @@
       (sawfish-client-eval form t)
     (sawfish-client-eval `(eval-in ',form ',module) t)))
 
-(defun smm-identify-module (&optional point buf)
+(defun smm-identify-module (#!optional point buf)
   "Return the name of the Lisp module that the cursor is in."
   (if (or (re-search-backward
 	   "\\(define-structure[ \t\n]+(.+?)[ \t\n]" point buf)
@@ -71,7 +71,7 @@ in the status line."
   (interactive)
   (princ (smm-eval-sexp) t))
 
-(defun sawmill-describe-function (fn &optional index-node)
+(defun sawmill-describe-function (fn #!optional index-node)
   (interactive
    (list (prompt-for-string "Sawmill function:" (symbol-at-point))
 	 "Function Index"))

@@ -56,7 +56,7 @@ buffer.")
 
 ;; Code
 
-(defun print-build-shell-command (&optional prefix buffer
+(defun print-build-shell-command (#!optional prefix buffer
 				  output-file printer)
   (let
       ((command (concat print-command
@@ -80,7 +80,7 @@ buffer.")
       command)))
 
 ;;;###autoload
-(defun print-buffer (&optional prefix)
+(defun print-buffer (#!optional prefix)
   "Print the current buffer, using `print-command' and it's associated
 options."
   (interactive "P")
@@ -88,7 +88,7 @@ options."
 						      (current-buffer))))
 
 ;;;###autoload
-(defun print-buffer-to-file (file &optional prefix)
+(defun print-buffer-to-file (file #!optional prefix)
   "Print the current buffer, leaving the output in FILE."
   (interactive "FOutput file\nP")
   (shell-command-on-buffer (print-build-shell-command prefix
@@ -96,7 +96,7 @@ options."
 						      file)))
 
 ;;;###autoload
-(defun print-buffer-to-printer (printer &optional prefix)
+(defun print-buffer-to-printer (printer #!optional prefix)
   "Print the current buffer using PRINTER."
   (interactive "sPrinter\nP")
   (shell-command-on-buffer (print-build-shell-command prefix
@@ -104,7 +104,7 @@ options."
 						      nil printer)))
 
 ;;;###autoload
-(defun print-area (start end &optional prefix)
+(defun print-area (start end #!optional prefix)
   "Print the area from START to END."
   (interactive "-m\nM\nP")
   (shell-command-on-area (print-build-shell-command prefix
@@ -112,7 +112,7 @@ options."
 			 start end))
 
 ;;;###autoload
-(defun print-area-to-file (start end file &optional prefix)
+(defun print-area-to-file (start end file #!optional prefix)
   "Print the area from START to END leaving output in FILE."
   (interactive "-m\nM\nFOutput file\nP")
   (shell-command-on-area (print-build-shell-command prefix
@@ -121,7 +121,7 @@ options."
 			 start end))
 
 ;;;###autoload
-(defun print-area-to-printer (start end printer &optional prefix)
+(defun print-area-to-printer (start end printer #!optional prefix)
   "Print the area from START to END using PRINTER."
   (interactive "-m\nM\nsPrinter\nP")
   (shell-command-on-area (print-build-shell-command prefix

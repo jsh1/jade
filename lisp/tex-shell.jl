@@ -65,7 +65,7 @@
       (goto-buffer buffer))
     buffer))
 
-(defun tex-shell-command (shell-buffer fmt &rest args)
+(defun tex-shell-command (shell-buffer fmt #!rest args)
   (with-buffer shell-buffer
     (goto (end-of-buffer))
     (let

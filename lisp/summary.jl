@@ -134,7 +134,7 @@ assoc is needed.")
 ;; the menu should be displayed.
 ;;  Note that a copy of the FUNCTIONS list is made, this allows easy
 ;; modification by hooks, without changing anything in other buffers
-(defun summary-mode (name functions &optional keymap)
+(defun summary-mode (name functions #!optional keymap)
   "Summary Mode:\n
 This major mode provides a generic menu capability. It allows lists of
 items to be displayed and manipulated."
@@ -166,7 +166,7 @@ items to be displayed and manipulated."
 
 
 ;; Call the function FUNC with ARGS
-(defmacro summary-dispatch (func &rest args)
+(defmacro summary-dispatch (func #!rest args)
   (cons 'funcall
 	(cons (list 'cdr (list 'assq func 'summary-functions))
 	      args)))
@@ -176,7 +176,7 @@ items to be displayed and manipulated."
   (list 'assq func 'summary-functions))
 
 ;; Call the function FUNC with ARGS, only if it exists.
-(defmacro summary-maybe-dispatch (func &rest args)
+(defmacro summary-maybe-dispatch (func #!rest args)
   (list 'and
 	(list 'summary-function-exists-p func)
 	(cons 'summary-dispatch (cons func args))))
@@ -372,7 +372,7 @@ t when this item actually exists."
   (goto-mouse)
   (summary-select-item))
 
-(defun summary-execute (&optional types)
+(defun summary-execute (#!optional types)
   "Perform all pending operations on the current summary menu. If TYPES is
 non-nil it should be a list containing the operations which may be performed."
   (interactive)
@@ -407,7 +407,7 @@ non-nil it should be a list containing the operations which may be performed."
     (summary-maybe-dispatch 'execute-end))
   (summary-update))
 
-(defun summary-mark-item (op &optional item count)
+(defun summary-mark-item (op #!optional item count)
   "Add operation OP to ITEM (or the current item) for future use. If ITEM
 is nil and COUNT is a number, mark COUNT items starting with the current
 item."
@@ -430,7 +430,7 @@ item."
 	(setq item (cdr item)
 	      count (1- count))))))
 
-(defun summary-mark-if (pred &optional op)
+(defun summary-mark-if (pred #!optional op)
   "Mark all items that satisfy the predicate function PRED, optionally
 using tag OP (by default the `mark' tag)."
   (mapc #'(lambda (x)
@@ -438,14 +438,14 @@ using tag OP (by default the `mark' tag)."
 	      (summary-mark-item (or op 'mark) x)))
 	summary-items))
 
-(defun summary-mark-delete (&optional item count)
+(defun summary-mark-delete (#!optional item count)
   "Mark that ITEM, or the current item, should be deleted."
   (interactive "\np")
   (if (assq 'delete summary-functions)
       (summary-mark-item 'delete item count)
     (error "No delete operation in this summary")))
 
-(defun summary-map-marked-items (function &optional preserve-marks)
+(defun summary-map-marked-items (function #!optional preserve-marks)
   "Map FUNCTION over all marked items in the current buffer. Unless
 PRESERVE-MARKS is t, all marks are unset. FUNCTION is called as
 (FUNCTION MARKED-ITEM)."

@@ -182,7 +182,7 @@ when this function returns."
   "Regular-expression which `grep-buffer' scans for")
 
 ;;;###autoload
-(defun grep-buffer (&optional regexp)
+(defun grep-buffer (#!optional regexp)
   "Scans the current buffer for all matches of REGEXP (or the contents of
 variable `grep-buffer-regexp'). All hits are displayed in the `*compilation*'
 buffer in a form that `goto-next-error' understands."

@@ -116,7 +116,7 @@ entered currently.")
 ;; Main entrypoint
 
 ;;;###autoload
-(defun prompt (&optional title start)
+(defun prompt (#!optional title start)
   "Prompts for a string using completion. PROMPT-TITLE is the optional
 title to print in the buffer, START the original contents of the buffer.
 The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
@@ -190,7 +190,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 (defun prompt-message (string)
   (message string))
 
-(defun prompt-complete (&optional only-display)
+(defun prompt-complete (#!optional only-display)
   (interactive)
   (cond ((null prompt-completion-function)
 	 (prompt-message "[No completion function]"))
@@ -359,7 +359,7 @@ is rejected.")
 ;; High-level entrypoints; prompt for a specific type of object
 
 ;;;###autoload
-(defun prompt-for-file (&optional title existing start default history-list)
+(defun prompt-for-file (#!optional title existing start default history-list)
   "Prompt for a file, if EXISTING is t only files which exist are
 allowed to be entered."
   (unless (stringp title)
@@ -381,7 +381,7 @@ allowed to be entered."
     str))
 
 ;;;###autoload
-(defun prompt-for-directory (&optional title existing start default)
+(defun prompt-for-directory (#!optional title existing start default)
   "Prompt for a directory, if EXISTING is t only files which exist are
 allowed to be entered."
   (unless (stringp title)
@@ -402,7 +402,7 @@ allowed to be entered."
     str))
 
 ;;;###autoload
-(defun prompt-for-buffer (&optional title existing default)
+(defun prompt-for-buffer (#!optional title existing default)
   "Prompt for a buffer, if EXISTING is t the buffer selected must exist,
 otherwise if EXISTING is nil the buffer will be created if it doesn't
 exist already. DEFAULT is the value to return if the user enters the null
@@ -423,7 +423,7 @@ string, if nil the current buffer is returned."
 	    (open-buffer buf))))))
 
 ;;;###autoload
-(defun prompt-for-symbol (&optional title pred start)
+(defun prompt-for-symbol (#!optional title pred start)
   "Prompt for an existing symbol. If PRED is given the symbol must agree
 with it."
   (unless (stringp title)
@@ -436,7 +436,7 @@ with it."
     (intern (prompt title start))))
 
 ;;;###autoload
-(defun prompt-for-lisp (&optional title start)
+(defun prompt-for-lisp (#!optional title start)
   "Prompt for a lisp object."
   (unless (stringp title)
     (setq title "Enter a Lisp object:"))
@@ -453,7 +453,7 @@ with it."
     (read-from-string (prompt title start))))
 
 ;;;###autoload
-(defun prompt-for-function (&optional title start)
+(defun prompt-for-function (#!optional title start)
   "Prompt for a function."
   (prompt-for-symbol (or title "Enter name of function:")
 		     (lambda (x)
@@ -466,17 +466,17 @@ with it."
 		     start))
 
 ;;;###autoload
-(defun prompt-for-variable (&optional title start)
+(defun prompt-for-variable (#!optional title start)
   "Prompt for a variable."
   (prompt-for-symbol (or title "Enter name of variable:") boundp start))
 
 ;;;###autoload
-(defun prompt-for-command (&optional title start)
+(defun prompt-for-command (#!optional title start)
   "Prompt for a command."
   (prompt-for-symbol (or title "Enter name of command:") commandp))
 
 ;;;###autoload
-(defun prompt-from-list (options title &optional start dont-validate)
+(defun prompt-from-list (options title #!optional start dont-validate)
   "Return a selected choice from the list of options (strings) PROMPT-LIST.
 PROMPT is the title displayed, START the starting choice.
 Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
@@ -490,14 +490,14 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
   (prompt title start)))
 
 ;;;###autoload
-(defun prompt-for-string (&optional title start)
+(defun prompt-for-string (#!optional title start)
   (let
       ((prompt-completion-function prompt-complete-filename)
        (prompt-validate-function nil))
     (prompt (or title "Enter string: ") start)))
 
 ;;;###autoload
-(defun prompt-for-number (&optional title)
+(defun prompt-for-number (#!optional title)
   (let
       (num)
     (while (not (numberp num))
@@ -506,7 +506,7 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
 
 ;; Compatibility
 ;;;###autoload
-(defmacro prompt2 (&rest args)
+(defmacro prompt2 (#!rest args)
   (cons 'prompt args))
 
 
@@ -527,7 +527,7 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
     "SPC" '(throw 'ask t)))
 
 ;;;###autoload
-(defun y-or-n-p (question &optional keymap help-string)
+(defun y-or-n-p (question #!optional keymap help-string)
   "Prompts the user for a single keypress response, either `y' or `n' to the
 string QUESTION, returns t for `y'."
   (let

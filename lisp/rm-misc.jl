@@ -36,7 +36,7 @@ message formatting characters are available.")
 (make-variable-buffer-local 'rm-reply-message)
 
 ;;;###autoload
-(defun rm-reply (&optional yankp followup-p ignore-replyto)
+(defun rm-reply (#!optional yankp followup-p ignore-replyto)
   "Reply to the mail message currently being displayed."
   (interactive "\n\nP")
   (let*
@@ -87,7 +87,7 @@ message formatting characters are available.")
     (set-buffer-modified (current-buffer) nil)))
 
 ;;;###autoload
-(defun rm-followup (&optional yankp ignore-replyto)
+(defun rm-followup (#!optional yankp ignore-replyto)
   "Follow-up to the current mail message. This differs from replying to a
 message in that all recipients of the original wil receive the reply."
   (interactive "\nP")
@@ -113,7 +113,7 @@ message in that all recipients of the original wil receive the reply."
     (call-hook 'mail-yank-hooks
 	       (list yank-begin (cursor-pos) rm-reply-message) 'or)))
 
-(defun rm-default-yank-function (start end &optional msg)
+(defun rm-default-yank-function (start end #!optional msg)
   (when msg
     (restrict-buffer start end)
     (let
@@ -137,7 +137,7 @@ message in that all recipients of the original wil receive the reply."
 ;; Message forwarding
 
 ;;;###autoload
-(defun rm-forward (&optional to)
+(defun rm-forward (#!optional to)
   "Forward the current message using RFC-934 message encapsulation. Optional
 arg TO specifies who to send it to."
   (interactive "\nP")

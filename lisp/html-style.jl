@@ -189,7 +189,7 @@ are only set if they don't already have a value."
   "Set the style used for the current document."
   (setq html-style-current style))
 
-(defun html-style-header (title &optional no-heading)
+(defun html-style-header (title #!optional no-heading)
   "Insert the header for a html file. Includes the first heading of TITLE,
 and the start of the first section of text."
   (html-style-init-vars)
@@ -199,7 +199,7 @@ and the start of the first section of text."
     (html-style-insert 'title)
     (html-style-insert 'section-start)))
 
-(defun html-style-footer (&optional id)
+(defun html-style-footer (#!optional id)
   "Insert the footer for a html file. If ID is defined, it should be a string
 identifying the current revision of the html file."
   (if id
@@ -219,7 +219,7 @@ identifying the current revision of the html file."
   (html-style-insert 'section-end)
   (html-style-insert 'section-start))
 
-(defun html-style-title (title &optional anchor)
+(defun html-style-title (title #!optional anchor)
   "Insert a break, a heading, and the start of a new section, in the body of
 an html file."
   (when (eq anchor t)

@@ -28,7 +28,7 @@
   "Name of program used for thesaurus lookups.")
 
 ;;;###autoload
-(defun thesaurus-lookup-word (word &optional exact)
+(defun thesaurus-lookup-word (word #!optional exact)
   "Look up WORD in the thesaurus, displaying output in the `*shell-output*'
 buffer. If EXACT is non-nil, only the entry containing WORD is displayed,
 otherwise all entries beginning with WORD are shown."

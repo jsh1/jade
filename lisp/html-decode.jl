@@ -368,7 +368,7 @@ of the document, currently only `title' and `base' keys are defined."
 
 ;; EXIT-FUNC is called (EXIT-FUNC TAG-SYMBOL TAG-PARAMS DATA...)
 ;; when the tag is exited.
-(defun html-decode-push-env (tag dest &optional exit-func &rest data)
+(defun html-decode-push-env (tag dest #!optional exit-func #!rest data)
   (let*
       ((symbol (car tag))
        (params (cdr (cdr tag)))
@@ -537,7 +537,7 @@ of the document, currently only `title' and `base' keys are defined."
   (setq html-decode-pending-fill t))
 
 ;; Justify the line at POS, according to FILL-TYPE
-(defun html-decode-justify-line (fill-type &optional p)
+(defun html-decode-justify-line (fill-type #!optional p)
   (unless (or (null fill-type) (eq fill-type 'left))
     (let*
 	((spos (indent-pos p))

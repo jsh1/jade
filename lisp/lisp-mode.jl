@@ -82,7 +82,7 @@ in the status line."
   (interactive "xEval:")
   (prin1 (eval form) t))
 
-(defun lisp-indent-line (&optional p)
+(defun lisp-indent-line (#!optional p)
   (unless p
     (setq p (cursor-pos)))
   (set-indent-pos (lisp-indent-pos p)))
@@ -107,7 +107,7 @@ in the status line."
 
 ;; Expressions
 
-(defun lisp-forward-sexp (&optional number p)
+(defun lisp-forward-sexp (#!optional number p)
   "Return the position of the NUMBER'th next s-expression from POS."
   (unless number
     (setq number 1))
@@ -148,7 +148,7 @@ in the status line."
     (setq number (1- number)))
   p)
 
-(defun lisp-backward-sexp (&optional number orig-pos)
+(defun lisp-backward-sexp (#!optional number orig-pos)
   "Return the position of the NUMBER'th previous s-expression from ORIG-POS."
   (unless number
     (setq number 1))
@@ -199,7 +199,7 @@ in the status line."
 (defvar lisp-body-indent 2
   "Number of columns to indent code bodies by.")
 
-(defun lisp-indent-pos (&optional line-pos)
+(defun lisp-indent-pos (#!optional line-pos)
   "Returns the correct indentation position for the specified line."
   (unless line-pos
     (setq line-pos (cursor-pos)))

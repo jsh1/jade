@@ -88,7 +88,7 @@ only enabled if the list contains the closing delimiter being blinked.")
 
 ;; Marks
 
-(defun goto-mark (mark &optional dont-set-auto)
+(defun goto-mark (mark #!optional dont-set-auto)
   "Switches (if necessary) to the buffer containing MARK at the position
 of the mark. If the file containing MARK is not in memory then we
 attempt to load it by calling find-file. Unless DONT-SET-AUTO is non-nil
@@ -104,7 +104,7 @@ the auto-mark of the current buffer will be updated before the move."
 	(goto-buffer file))
       (goto p))))
 
-(defun set-auto-mark (&optional p)
+(defun set-auto-mark (#!optional p)
   "Sets the mark `auto-mark' to POS (or the current position)."
   (interactive)
   (if auto-mark
@@ -132,7 +132,7 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
 
 ;; Characters
 
-(defun backward-char (&optional count p buf)
+(defun backward-char (#!optional count p buf)
   (interactive "@p")
   (forward-char (if count (- count) -1) p buf))
 
@@ -141,7 +141,7 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
   (interactive "p")
   (transpose-items forward-char backward-char count))
 
-(defun backward-tab (&optional count p size)
+(defun backward-tab (#!optional count p size)
   (interactive "@p")
   (forward-tab (if count (- count) -1) p size))
 
@@ -163,7 +163,7 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
 ;; The view that the goal-column refers to
 (defvar goal-view nil)
 
-(defun backward-line (&optional count p)
+(defun backward-line (#!optional count p)
   "Return the position of the line COUNT lines below position POS. (defaults
 to one line from the cursor)."
   (interactive "@p")
@@ -187,7 +187,7 @@ the column position to preserve the original position."
   (interactive "@p")
   (next-line (- count)))
 
-(defun split-line (&optional count p)
+(defun split-line (#!optional count p)
   "Insert COUNT newline characters before position POS (or before the
 cursor)."
   (interactive "p")
@@ -195,7 +195,7 @@ cursor)."
 	      "\n"
 	    (make-string count ?\n)) p))
 
-(defun kill-line (&optional arg)
+(defun kill-line (#!optional arg)
   "If the cursor is not at the end of the line kill the text from the cursor
 to the end of the line, else kill from the end of the line to the start of
 the next line."
@@ -253,7 +253,7 @@ counted."
 
 ;; Words
 
-(defun forward-word (&optional number p)
+(defun forward-word (#!optional number p)
   "Return the position of first character after the end of this word.
 NUMBER is the number of words to move, negative values mean go backwards.
 If MOVE is t then the cursor is moved to the result."
@@ -288,7 +288,7 @@ If MOVE is t then the cursor is moved to the result."
 	(setq number (1- number)))))
   p)
 
-(defun backward-word (&optional number p)
+(defun backward-word (#!optional number p)
   "Basically `(forward-word -NUMBER POS)'"
   (interactive "@p")
   (forward-word (if number (- number) -1) p))
@@ -303,7 +303,7 @@ If MOVE is t then the cursor is moved to the result."
   (interactive "p")
   (kill-area (forward-word (- count)) (cursor-pos)))
 
-(defun word-start (&optional p)
+(defun word-start (#!optional p)
   "Returns the position of the start of *this* word."
   (interactive "@")
   (when (looking-at word-regexp p)
@@ -311,12 +311,12 @@ If MOVE is t then the cursor is moved to the result."
 	(re-search-forward word-regexp (match-end))
       (re-search-forward word-regexp (start-of-buffer)))))
 
-(defun in-word-p (&optional p)
+(defun in-word-p (#!optional p)
   "Returns t if POS is inside a word."
   (when (looking-at word-regexp p)
     t))
 
-(defun mark-word (count &optional p)
+(defun mark-word (count #!optional p)
   "Marks COUNT words from POS."
   (interactive "p")
   (set-rect-blocks nil nil)
@@ -330,7 +330,7 @@ If MOVE is t then the cursor is moved to the result."
 
 ;; Paragraphs
 
-(defun forward-paragraph (count &optional p)
+(defun forward-paragraph (count #!optional p)
   "Return the end of the COUNT'th paragraph. If the function is called
 interactively, the cursor is set to this position."
   (interactive "@p")
@@ -371,13 +371,13 @@ interactively, the cursor is set to this position."
 	      count 0))))
   p)
 
-(defun backward-paragraph (count &optional p)
+(defun backward-paragraph (count #!optional p)
   "Returns the start of the COUNT'th previous paragraph. If the function is
 called interactively, the cursor is set to this position."
   (interactive "@p")
   (forward-paragraph (- (or count 1)) p))
 
-(defun paragraph-edges (count &optional p mark)
+(defun paragraph-edges (count #!optional p mark)
   "Return (START . END), the positions defining the outermost characters of
 the COUNT paragraphs around POS. Positive COUNTs mean to search forwards,
 negative to search backwards.
@@ -407,7 +407,7 @@ When MARK is t, the block marks are set to START and END."
 
 ;; Page handling
 
-(defun forward-page (&optional count p)
+(defun forward-page (#!optional count p)
   "Return the position COUNT pages forwards. If COUNT is negative, go
 backwards. When called interactively the cursor is set to the position."
   (interactive "@p")
@@ -435,7 +435,7 @@ backwards. When called interactively the cursor is set to the position."
 	    count 0)))
   p)
 
-(defun backward-page (&optional count p)
+(defun backward-page (#!optional count p)
   "Basically (forward-page (- COUNT) POS)."
   (interactive "@p")
   (forward-page (- (or count 1)) p))
@@ -514,12 +514,12 @@ the buffer."
   (mark-block (start-of-buffer) (end-of-buffer)))
 
 
-(defun upcase-area (start end &optional buffer)
+(defun upcase-area (start end #!optional buffer)
   "Makes all alpha characters in the specified region of text upper-case."
   (interactive "-m\nM")
   (translate-area start end upcase-table buffer))
 
-(defun downcase-area (start end &optional buffer)
+(defun downcase-area (start end #!optional buffer)
   "Makes all alpha characters in the specified region of text lower-case."
   (interactive "-m\nM")
   (translate-area start end downcase-table buffer))
@@ -591,7 +591,7 @@ the string is added to."
 	kill-last-cursor (cursor-pos))
   string)
 
-(defun killed-string (&optional depth)
+(defun killed-string (#!optional depth)
   "Returns the string in the kill-buffer at position DEPTH."
   (get-from-ring kill-ring (1+ (or depth 0))))
 
@@ -616,7 +616,7 @@ kill storage."
 (defvar yank-last-start nil)
 (defvar yank-last-end nil)
 
-(defun yank-get-string (&optional no-hooks)
+(defun yank-get-string (#!optional no-hooks)
   (let
       (tem)
     (cond
@@ -631,7 +631,7 @@ kill storage."
       (setq yank-last-item 0)
       (killed-string)))))
 
-(defun yank (&optional no-pre-yank-hooks)
+(defun yank (#!optional no-pre-yank-hooks)
   "Inserts text before the cursor. If running under X11, and a selection is
 active, paste that; else yank the most recent entry in the kill-ring."
   (interactive "P")
@@ -735,7 +735,7 @@ over the COUNT following items."
   (transpose-items forward-line backward-line count))
 
 
-(defun abort-recursive-edit (&optional ret-val)
+(defun abort-recursive-edit (#!optional ret-val)
   "Exits the innermost recursive edit with a value of VALUE (or nil)."
   (interactive)
   (throw 'exit ret-val))
@@ -764,7 +764,7 @@ over the COUNT following items."
     (setq overwrite-mode t)
     (add-hook 'unbound-key-hook overwrite-insert)))
 
-(defun overwrite-insert (&optional str)
+(defun overwrite-insert (#!optional str)
   (unless str
     (setq str (current-event-string)))
   (when str
@@ -887,7 +887,7 @@ the same."
   (interactive "!@")
   (pos nil (pos-line (end-of-buffer))))
 
-(defun blinking-insert (&optional char)
+(defun blinking-insert (#!optional char)
   (interactive "E")
   (when char
     (insert (if (integerp char)
@@ -913,7 +913,7 @@ the same."
 
 ;; Some macros
 
-(defmacro save-restriction (&rest forms)
+(defmacro save-restriction (#!rest forms)
   "Evaluate FORMS, restoring the original buffer restriction when they
 finish (as long as the original buffer still exists)."
   (let
@@ -932,7 +932,7 @@ finish (as long as the original buffer still exists)."
 			      (mark-file ,start))
 	   (unrestrict-buffer))))))
       
-(defmacro save-excursion (&rest forms)
+(defmacro save-excursion (#!rest forms)
   "Evaluate FORMS, ensuring that the original current buffer and the original
 position in this buffer are restored afterwards, even in case of a non-local
 exit occurring (as long as the original buffer wasn't killed)."
@@ -945,7 +945,7 @@ exit occurring (as long as the original buffer wasn't killed)."
 	 (when (mark-resident-p ,mark)
 	   (goto-mark ,mark t))))))
 
-(defmacro map-extents-at (function &optional position buffer)
+(defmacro map-extents-at (function #!optional position buffer)
   "Call (FUNCTION EXTENT) for all extents containing location POSITION in
 BUFFER (defaulting to the current position in the current buffer), working
 from the innermost outwards."

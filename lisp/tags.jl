@@ -159,7 +159,7 @@ move back to the previously found tag."
 ;; Tags searching
 
 ;; Returns the next file in tag table (after CURRENT-FILE if defined), or nil
-(defun tags-next-file (&optional current-file)
+(defun tags-next-file (#!optional current-file)
   (tags-find-table)
   (let*
       ((tags-buffer (find-file tags-file-name t))
@@ -182,7 +182,7 @@ move back to the previously found tag."
 
 ;; Map (FUNCTION BUFFER POINT) over all files in the current tags-table.
 ;; MARK provides an optional start point
-(defun tags-map-buffers (function &optional mark)
+(defun tags-map-buffers (function #!optional mark)
   (let
       (file buffer kill-this-buffer point)
     (when mark
@@ -211,7 +211,7 @@ move back to the previously found tag."
       (setq file (tags-next-file file)))))
 
 ;;;###autoload
-(defun tags-search (regexp &optional mark)
+(defun tags-search (regexp #!optional mark)
   "Search through all files in the current tags table for an occurrence of the
 regular expression REGEXP. Further matches may be found though the use of the
 `tags-loop-continue' function."
@@ -232,7 +232,7 @@ regular expression REGEXP. Further matches may be found though the use of the
     (message "[No matches]")))
 
 ;;;###autoload
-(defun tags-query-replace (from to &optional mark)
+(defun tags-query-replace (from to #!optional mark)
   "Query replace through all files in the current tags table for an occurrence
 of the regular expression FROM, possibly replacing it with TO. Further matches
 may be found though the use of the `tags-loop-continue' function."

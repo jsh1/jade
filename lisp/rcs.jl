@@ -112,7 +112,7 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
 ;; options OPTIONS. If REREAD-BUFFER is t the current buffer will
 ;; be reinitialised from FILE after the command completes.
 ;; If DISPLAY-OUTPUT is non-nil, display output in a separate view
-(defun rcs-command (command file-name options &optional
+(defun rcs-command (command file-name options #!optional
 		    reread-buffer ignore-errors output display-output)
   (unless (setq file-name (local-file-name file-name))
     (error "Can only use RCS on local files"))
@@ -181,7 +181,7 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
       (rcs-command command file options reread-p)
       (kill-buffer callback-buffer))))
 
-(defun rcs-down-history (&optional count)
+(defun rcs-down-history (#!optional count)
   "Replace the buffer contents with the COUNT'th previous RCS change
 description entered. COUNT may be negative."
   (interactive "p")
@@ -193,7 +193,7 @@ description entered. COUNT may be negative."
       (insert (get-from-ring rcs-descr-ring level))
       (setq rcs-history-level level))))
 
-(defun rcs-up-history (&optional count)
+(defun rcs-up-history (#!optional count)
   "Replace the buffer contents with the COUNT'th next RCS change
 description entered. COUNT may be negative."
   (interactive "p")
@@ -250,7 +250,7 @@ description entered. COUNT may be negative."
 ;; User interface
 
 ;;;###autoload
-(defun rcs-register-buffer (&optional revision)
+(defun rcs-register-buffer (#!optional revision)
   "Register the file in the current buffer with RCS. If the variable
 rcs-initial-comment is non-nil a description of the file will be prompted
 for. REVISION is optionally the initial revision number to give the file.
@@ -268,7 +268,7 @@ revision to be prompted for."
     (rcs-command "ci" (buffer-file-name)
 		 (list (concat "-u" (or revision "")) "-t-") t)))
 
-(defun rcs-check-in-buffer (&optional revision)
+(defun rcs-check-in-buffer (#!optional revision)
   "Checks in the current buffer, assuming that it's currently locked.
 If REVISION is nil the next revision number will be used; otherwise
 REVISION should be a string naming the revision to check the file in as.
@@ -290,7 +290,7 @@ be prompted for."
 				 "ci" (list (concat "-u" (or revision "")))
 				 "-m" t))
 
-(defun rcs-check-out-buffer (&optional revision)
+(defun rcs-check-out-buffer (#!optional revision)
   "Checks out the current buffer, locking it for modification. If REVISION
 is nil the current revision will be checked out; otherwise REVISION should be
 a string naming the revision to check out.
@@ -320,7 +320,7 @@ prompted for."
 				   "-r" "-l")
 			       (or revision ""))) t)))
 
-(defun rcs-set-default-branch (&optional to-highest)
+(defun rcs-set-default-branch (#!optional to-highest)
   "Set the default branch of the RCS controlled current buffer to that of the
 currently checked out revision. If TO-HIGHEST is t (from the prefix-arg)
 reset to the (dynamically) highest branch on the trunk."
@@ -331,7 +331,7 @@ reset to the (dynamically) highest branch on the trunk."
   (rcs-command "rcs" (buffer-file-name)
 	       (list (concat "-b" (if to-highest "" rcs-revision)))))
 
-(defun rcs-view-revision (&optional revision)
+(defun rcs-view-revision (#!optional revision)
   "Display an old revision of the current buffer. REVISION is a string
 naming the revision, or nil, in which case it will be prompted for."
   (interactive)

@@ -65,7 +65,7 @@ first group of non-empty lines is displayed."
 Major mode used to summarise the pages in a buffer. Local commands are:\n
 \\{page-summary-keymap}")
 
-(defun page-summary-next (count &optional point)
+(defun page-summary-next (count #!optional point)
   (interactive "@p")
   (unless point
     (setq point (cursor-pos)))
@@ -77,7 +77,7 @@ Major mode used to summarise the pages in a buffer. Local commands are:\n
     (setq count (1+ count)))
   point)
 
-(defun page-summary-previous (count &optional point)
+(defun page-summary-previous (count #!optional point)
   (interactive "@p")
   (page-summary-next (- (or count 1)) point))
 
