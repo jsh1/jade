@@ -32,29 +32,45 @@
 (provide 'sm-mail-dir)
 
 (bind-keys send-mail-c-keymap
-  "Ctrl-a" 'insert-mail-alias
-  "a" 'insert-mail-address-and-name)
+  "Ctrl-a" 'insert-mail-address-and-name
+  "a" 'insert-mail-alias
+  "Ctrl-x" 'expand-mail-aliases)
 
-(defun sm-mail-dir-expand-aliases ()
-  (unrestrict-buffer)
-  (when (re-search-forward (concat ?^ (quote-regexp mail-header-separator) ?$))
-    (restrict-buffer (start-of-buffer) (match-start)))
-  (goto (start-of-buffer))
-  (while (re-search-forward "^(Resent-|)(From|To|CC|BCC)[\t ]*:" nil nil t)
-    (save-restriction
-      (goto (match-end))
-      (restrict-buffer (match-start) (or (mail-unfold-header (match-start))
-					 (end-of-buffer)))
-      (when (looking-at (concat mail-header-name "[\t ]*"))
-	(goto (match-end)))
-      (let
-	  (item)
-	(while (setq item (mail-parse-group (cursor-pos)))
-	  (when (assoc (car item) mail-alias-alist)
-	    (delete-area (cursor-pos) (cdr item))
-	    (insert-mail-alias (car item)))
-	  (when (looking-at "[\t\n ]*,[\t\n ]*")
-	    (goto (match-end))))))))
+;;;###autoload
+(defun expand-mail-aliases ()
+  "Expand all mail aliases in the `From', `To', `CC' or `BCC' headers of the
+message being composed.
 
-(when mail-dir-auto-expand-aliases
-  (add-hook 'mail-send-hook 'sm-mail-dir-expand-aliases))
+To make this happen automatically, add this function to the `mail-send-hook'
+(i.e. add the form \"(add-hook 'expand-mail-aliases 'mail-send-hook)\" to
+your `.jaderc' file."
+  (interactive)
+  (save-restriction
+    (unrestrict-buffer)
+    (unless (re-search-forward
+	     (concat ?^ (quote-regexp mail-header-separator) ?$)
+	     (start-of-buffer))
+      (error "Can't find message body separator"))
+    ;; Only work on headers
+    (restrict-buffer (start-of-buffer) (match-start))
+    (goto (start-of-buffer))
+    (while (re-search-forward "^(Resent-|)(From|To|CC|BCC)[\t ]*:" nil nil t)
+      (save-restriction
+	(goto (match-start))
+	(restrict-buffer (match-start)
+			 (or (forward-char -1 (mail-unfold-header
+					       (match-start)))
+			     (end-of-buffer)))
+	(when (looking-at (concat mail-header-name "[\t ]*"))
+	  (goto (match-end)))
+	(let
+	    (item addr)
+	  (while (setq item (mail-parse-group (cursor-pos)))
+	    (setq addr (apply 'concat (car item)))
+	    (if (assoc addr mail-alias-alist)
+		(progn
+		  (delete-area (cursor-pos) (cdr item))
+		  (insert-mail-alias addr))
+	      (goto (cdr item)))
+	    (when (looking-at "[\t\n ]*,[\t\n ]*")
+	      (goto (match-end)))))))))
