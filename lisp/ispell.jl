@@ -27,7 +27,10 @@
   "Filename of program used to start ispell(1).")
 
 (defvar ispell-options nil
-  "List of options to pass to ispell")
+  "List of options to pass to Ispell")
+
+(defvar ispell-dictionary nil
+  "Name of dictionary to pass to Ispell, or nil for the default.")
 
 (defvar ispell-timeout 60
   "Seconds to wait for ispell output before giving up.")
@@ -35,6 +38,13 @@
 (defvar ispell-word-re "[a-zA-Z]")
 
 (defvar ispell-not-word-re "[^a-zA-Z]")
+
+(defvar ispell-misspelt-face nil
+  "Face used to highlight misspelt words.")
+(unless ispell-misspelt-face
+  (setq ispell-misspelt-face (make-face "ispell-misspelt"))
+  (set-face-attribute ispell-misspelt-face 'underline t)
+  (set-face-attribute ispell-misspelt-face 'foreground "darkred"))
 
 (defvar ispell-echo-output nil
   "Use for debugging only.")
@@ -53,6 +63,13 @@
 
 (defvar ispell-prompt-buffer nil)
 (defvar ispell-options-buffer nil)
+
+;; [CHANGES PAGE-START PAGE-END]
+(defvar ispell-minor-mode-last-scan nil)
+(make-variable-buffer-local 'ispell-minor-mode-last-scan)
+
+(setq minor-mode-alist (cons (list 'ispell-minor-mode-last-scan " Ispell")
+			     minor-mode-alist))
 
 (defvar ispell-keymap (bind-keys (make-sparse-keymap)
 			"SPC" 'ispell-accept
@@ -80,7 +97,7 @@
 			"Ctrl-h" 'ispell-help))
 
 
-;; Code
+;; Process management
 
 ;; Start the ispell-process if it isn't already
 (defun ispell-start-process ()
@@ -88,7 +105,10 @@
     (let
 	((process (make-process #'ispell-output-filter)))
       (set-process-function process 'ispell-sentinel)
-      (apply 'start-process process ispell-program "-a" ispell-options)
+      (apply 'start-process process ispell-program "-a"
+	     (nconc (and ispell-dictionary
+			 (list "-d" ispell-dictionary))
+		    ispell-options))
       (setq ispell-process process)
       (setq ispell-id-string (ispell-read-line)))))
 
@@ -142,6 +162,56 @@
 	(error "Ispell timed out waiting for output"))))
 
 ;;;###autoload
+(defun ispell-set-dictionary (dict-name)
+  "Set the name of the dictionary used by Ispell to DICT-NAME."
+  (interactive "sName of dictionary:")
+  (setq ispell-dictionary dict-name)
+  (when ispell-process
+    (ispell-kill-process)
+    (ispell-start-process))
+  (mapc #'(lambda (b)
+	    (with-buffer b
+	      (when ispell-minor-mode-last-scan
+		(aset ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
+	buffer-list))
+
+
+;; Commands to interactively spell-check parts of a buffer
+
+(defun ispell-region-1 (function start end)
+  (while (< start end)
+    (let
+	(word-start word-end word)
+      (setq word-start (re-search-forward ispell-word-re start))
+      (if word-start
+	  (progn
+	    (setq word-end (or (re-search-forward ispell-not-word-re
+						  word-start)
+			       (end-of-buffer)))
+	    (ispell-start-process)
+	    (setq word (copy-area word-start word-end))
+	    (write ispell-process word)
+	    (write ispell-process ?\n)
+	    (let
+		((response (ispell-read-line)))
+	      (cond
+	       ((eq (aref response 0) ?\n)
+		;; This shouldn't happen
+		(error "Null output from Ispell"))
+	       ((string-looking-at "^[*+-]" response)
+		;; Word spelt ok
+		(setq start word-end)
+		;; Take the following newline
+		(ispell-read-line))
+	       (t
+		;; Not ok
+		(setq start (funcall function word response
+				     word-start word-end))
+		(ispell-read-line)))))
+	;; Can't find end of word
+	(setq start end)))))
+
+;;;###autoload
 (defun ispell-region (start end)
   "Run Ispell interactively over the region of the current buffer from START
 to END. Any misspelt words will result in the correct spelling being prompted
@@ -150,37 +220,7 @@ for. When called interactively, spell-check the current block."
   (let
       (ispell-prompt-buffer
        ispell-options-buffer)
-    (while (< start end)
-      (let
-	  (word-start word-end word)
-	(setq word-start (re-search-forward ispell-word-re start))
-	(if word-start
-	    (progn
-	      (setq word-end (or (re-search-forward ispell-not-word-re
-						    word-start)
-				 (end-of-buffer)))
-	      (ispell-start-process)
-	      (setq word (copy-area word-start word-end))
-	      (write ispell-process word)
-	      (write ispell-process ?\n)
-	      (let
-		  ((response (ispell-read-line)))
-		(cond
-		 ((eq (aref response 0) ?\n)
-		  ;; This shouldn't happen
-		  (error "Null output from Ispell"))
-		 ((string-looking-at "^[*+-]" response)
-		  ;; Word spelt ok
-		  (setq start word-end)
-		  ;; Take the following newline
-		  (ispell-read-line))
-		 (t
-		  ;; Not ok
-		  (setq start (ispell-handle-failure word response
-						     word-start word-end))
-		  (ispell-read-line)))))
-	  ;; Can't find end of word
-	  (setq start end))))
+    (ispell-region-1 'ispell-handle-failure-interactively start end)
     (when ispell-options-buffer
       (kill-buffer ispell-options-buffer))))
 
@@ -190,7 +230,7 @@ for. When called interactively, spell-check the current block."
   (interactive)
   (ispell-region (start-of-buffer) (end-of-buffer)))
 
-(defun ispell-handle-failure (word response start end)
+(defun ispell-handle-failure-interactively (word response start end)
   (let
       ((old-buffer (current-buffer))
        options)
@@ -271,6 +311,10 @@ for. When called interactively, spell-check the current block."
 	      (error "Unknown ispell command, %S" command)))))))
     end))
 
+
+;; Support for interactive spell checking
+
+;; Given a derivation WORD, produce the resulting replacement
 (defun ispell-strip-word (word)
   (let
       ((out "")
@@ -322,3 +366,75 @@ for. When called interactively, spell-check the current block."
 (defun ispell-quit ()
   (interactive)
   (throw 'ispell-exit '(quit)))
+
+
+;; Non-interactive spell-checking
+
+(defun ispell-delete-highlights (start end)
+  (interactive (if (blockp)
+		   (list (block-start) (block-end))
+		 (list (start-of-buffer) (end-of-buffer))))
+  (let
+      (extents)
+    (map-extents #'(lambda (e)
+		     (when (extent-parent e)
+		       (setq extents (cons e extents)))) start end)
+    (mapc 'delete-extent extents)))
+
+;;;###autoload
+(defun ispell-highlight-misspellings (start end)
+  (interactive (if (blockp)
+		   (list (block-start) (block-end))
+		 (list (start-of-buffer) (end-of-buffer))))
+  (ispell-delete-highlights start end)
+  (ispell-region-1 #'(lambda (word response wstart wend)
+		       (make-extent
+			wstart wend (list 'face ispell-misspelt-face))
+		       wend)
+		   start end))
+
+(defun ispell-idle-function ()
+  (when ispell-minor-mode-last-scan
+    (let
+	((start (or (display-to-char-pos '(0 . 0)) (end-of-buffer)))
+	 (end (view-dimensions)))
+      (setq end (or (display-to-char-pos (pos (1- (car end)) (1- (cdr end))))
+		    (end-of-buffer)))
+      (if (> (buffer-changes) (aref ispell-minor-mode-last-scan 0))
+	  ;; Rescan entirely
+	  (progn
+	    (ispell-delete-highlights (start-of-buffer) (end-of-buffer))
+	    (ispell-highlight-misspellings start end)
+	    (aset ispell-minor-mode-last-scan 0 (buffer-changes))
+	    (aset ispell-minor-mode-last-scan 1 start)
+	    (aset ispell-minor-mode-last-scan 2 end))
+	;; No changes, so just rescan the bits of the current page
+	;; that aren't already scanned
+	(let
+	    ((old-start (aref ispell-minor-mode-last-scan 1))
+	     (old-end (aref ispell-minor-mode-last-scan 2)))
+	  (cond
+	   ((< start old-start)
+	    ;; Extend upwards to start
+	    (setq end (min end old-start))
+	    (ispell-highlight-misspellings start end)
+	    (aset ispell-minor-mode-last-scan 1 start)
+	    (aset ispell-minor-mode-last-scan 2 end))
+	   ((> end old-end)
+	    ;; Extend downwards to end
+	    (setq start (max start old-end))
+	    (ispell-highlight-misspellings start end)
+	    (aset ispell-minor-mode-last-scan 1 start)
+	    (aset ispell-minor-mode-last-scan 2 end))))))))
+
+;;;###autoload
+(defun ispell-minor-mode ()
+  (interactive)
+  (if ispell-minor-mode-last-scan
+      (progn
+	(setq ispell-minor-mode-last-scan nil)
+	(ispell-delete-highlights (start-of-buffer) (end-of-buffer))
+	(remove-hook 'idle-hook 'ispell-idle-function))
+    (setq ispell-minor-mode-last-scan (vector 0 nil nil))
+    (make-local-variable 'idle-hook)
+    (add-hook 'idle-hook 'ispell-idle-function)))
