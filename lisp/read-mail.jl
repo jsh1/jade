@@ -271,9 +271,10 @@ show all messages.")
 		before (nreverse messages)))
 	 (t
 	  ;; Make the current message the last
-	  (setq current (car messages)
+	  (setq before (nreverse messages)
 		after nil
-		before (nreverse (cdr messages)))))
+		current (car before)
+		before (cdr before))))
 	(rm-set-folder-field folder rm-folder-current-msg current)
 	(rm-set-folder-field folder rm-folder-before-list before)
 	(rm-set-folder-field folder rm-folder-after-list after)
@@ -1246,7 +1247,8 @@ current message."
        (current (rm-get-folder-field folder rm-folder-current-msg)))
     (rm-set-flag current 'deleted)
     (rm-fix-status-info current)
-    (when rm-move-after-deleting
+    (when (and rm-move-after-deleting
+	       (rm-get-folder-field folder rm-folder-after-list))
       (rm-next-message))))
 
 (defun rm-expunge ()
@@ -1273,7 +1275,8 @@ nonrecoverable."
        (current (rm-get-folder-field folder rm-folder-current-msg)))
     (rm-clear-flag current 'deleted)
     (rm-fix-status-info current)
-    (when rm-move-after-deleting
+    (when (and rm-move-after-deleting
+	       (rm-get-folder-field folder rm-folder-after-list))
       (rm-next-message))))
 
 (defun rm-kill-subject ()
