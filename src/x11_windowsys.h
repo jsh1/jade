@@ -84,6 +84,28 @@ typedef struct {
 			 xpix, ypix, str, len);				\
     } while(0)
 
+/* Fill LEN glyphs from (X,Y) with pen PEN. */
+#define FILL_GLYPHS(win, x, y, pen, len)				\
+    do {								\
+	int xpix = (win)->w_LeftPix + (win)->w_FontX * (x);		\
+	int ypix = (win)->w_TopPix + (win)->w_FontY * (y);		\
+	XFillRectangle(WINDOW_XDPY(win)->display, (win)->w_Window,	\
+		       (win)->w_WindowSys.ws_GC_array[pen],		\
+		       xpix, ypix,					\
+		       (len) * (win)->w_FontX, (win)->w_FontY);		\
+    } while(0)
+
+/* Clear LEN glyphs from (X,Y). */
+#define CLEAR_GLYPHS(win, x, y, len)				\
+    do {							\
+	int xpix = (win)->w_LeftPix + (win)->w_FontX * (x);	\
+	int ypix = (win)->w_TopPix + (win)->w_FontY * (y);	\
+	XClearArea(WINDOW_XDPY(win)->display, (win)->w_Window,	\
+		       xpix, ypix,				\
+		       (len) * (win)->w_FontX, (win)->w_FontY,	\
+		       False);					\
+    } while(0)
+
 /* Copy WxH glyphs from (X1,Y1) to (X2,Y2)  */
 #define COPY_GLYPHS(win, x1, y1, w, h, x2, y2)				\
     do {								\
