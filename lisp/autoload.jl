@@ -237,4 +237,6 @@
 (autoload 'mime-encode-quoted-printable "mime-quoted-printable")
 (autoload 'mime-decode-quoted-printable "mime-quoted-printable")
 (autoload 'php3-mode "php3-mode" t)
+(autoload 'sawmill-minor-mode "sawmill-minor-mode" t)
+(autoload 'sawmill-console "sawmill-minor-mode" t)
 ;;; ::autoload-end::

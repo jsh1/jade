@@ -22,7 +22,8 @@ include ../Makedefs
 
 top_srcdir=@top_srcdir@
 
-jade_prog = ../src/jade
+jade_prog = $(LIBTOOL) --mode=execute -dlopen ../src/lib server-dl.la \
+	    ../src/jade --batch --no-rc
 COMPILE_ENV = JADELISPDIR=. JADEDOCFILE=../DOC
 
 INSTALL_FILES = $(wildcard *.jl) $(wildcard *.jlc) $(wildcard *.jld)
@@ -30,8 +31,7 @@ INSTALL_FILES = $(wildcard *.jl) $(wildcard *.jlc) $(wildcard *.jld)
 all : lisp
 
 lisp :
-	$(COMPILE_ENV) $(jade_prog) --batch --no-rc -l compiler \
-	  -f compile-lib-batch .
+	$(COMPILE_ENV) $(jade_prog) -l compiler -f compile-lib-batch .
 
 install : all installdirs
 	for f in $(INSTALL_FILES); do \

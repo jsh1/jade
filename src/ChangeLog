@@ -1,3 +1,8 @@
+1999-09-14  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gtk_jade.c: disable async input handling, GDK sometimes falls
+	over with it turned on
+
 1999-07-04  John Harper  <john@dcs.warwick.ac.uk>
 
 	* x11_misc.c, gtk_select.c (Fx11_set_selection,

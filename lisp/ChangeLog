@@ -1,3 +1,13 @@
+1999-09-09  John Harper  <john@dcs.warwick.ac.uk>
+
+	* mail-headers.jl (mail-union-addresses): don't trash one of
+	the old lists, make a copy of it first
+
+1999-08-25  John Harper  <john@dcs.warwick.ac.uk>
+
+	* sawmill-minor-mode.jl: minor mode to eval lisp forms using
+	sawmill-client
+
 1999-07-04  John Harper  <john@dcs.warwick.ac.uk>
 
 	* ws-x11.jl, ws-gtk.jl: in the after-kill-hook, clear the
