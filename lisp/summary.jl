@@ -149,7 +149,8 @@ items to be displayed and manipulated."
 	mode-name name
 	local-keymap summary-actual-keymap
 	buffer-record-undo nil
-	buffer-undo-list nil)
+	buffer-undo-list nil
+	truncate-lines t)
   (set-buffer-read-only (current-buffer) t)
   (add-hook 'unbound-key-hook nop)
   (call-hook 'summary-mode-hook)

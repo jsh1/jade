@@ -41,7 +41,8 @@ the debugger are:\n
 \\{debug-ctrl-c-keymap,Ctrl-c}"
   (setq local-ctrl-c-keymap debug-ctrl-c-keymap
 	major-mode 'debug-mode
-	mode-name "Debug"))
+	mode-name "Debug"
+	truncate-lines t))
 
 (with-buffer debug-buffer
   (debug-mode)
