@@ -87,8 +87,7 @@ struct _GtkJadeClass
    in batch-mode we never show the window, so it will be collected,
    leaving us without a curr_win at all---not a happy situation, so.. */
 #define WINDOW_NON_COLLECTABLE(w) 				\
-    (rep_SYM (Qbatch_mode)->value != Qnil 			\
-     || ((w)->w_Window && GTK_WIDGET_REALIZED ((w)->w_Window)))
+    (batch_mode_p () || ((w)->w_Window && GTK_WIDGET_REALIZED ((w)->w_Window)))
 
 #define SYS_COLOR_TYPE		GdkColor
 

@@ -191,7 +191,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 			 &class_hints);
 	XSetIconName(dpy->display, win, "jade");
 	XSetWMProtocols(dpy->display, win, &dpy->wm_delete_window, 1);
-	if(Fsymbol_value (Qbatch_mode, Qt) == Qnil)
+	if(!batch_mode_p ())
 	{
 	    XSelectInput(dpy->display, win, INPUT_EVENTS);
 	    XMapWindow(dpy->display, win);

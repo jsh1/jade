@@ -743,7 +743,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
     unsigned int x = -1, y = -1, width = 80, height = 24;
     GtkWidget *frame = 0;
 
-    if (Fsymbol_value (Qbatch_mode, Qt) != Qnil)
+    if (batch_mode_p ())
 	new_window_no_show = TRUE;
 
     if(dims[0] >= 0)

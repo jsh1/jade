@@ -78,7 +78,7 @@ sys_init(char *program_name)
     repv opt;
 
 #ifdef HAVE_UNIX
-    if (Fsymbol_value (Qbatch_mode, Qt) == Qnil)
+    if (!batch_mode_p ())
 	setpgid (0, 0);
 #endif
 

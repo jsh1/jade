@@ -834,7 +834,7 @@ windows_init(void)
 					 window_mark_active, 0, 0, 0, 0,
 					 window_bind, window_unbind);
 
-    if(Fsymbol_value (Qbatch_mode, Qt) == Qnil)
+    if(!batch_mode_p ())
 	rep_message_fun = jade_message;
 
     rep_ADD_SUBR_INT(Smake_window);
