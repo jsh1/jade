@@ -34,6 +34,7 @@
     "e" 'tex-insert-end
     "i" '(tex-insert-braces "textit")
     "l" '(tex-insert-braces "label")
+    "m" '(tex-insert-braces "emph")
     "n" '(insert "\\noindent\n")
     "r" '(tex-insert-braces "ref")
     "s" '(tex-insert-braces "section")
@@ -55,6 +56,7 @@ Special commands available are,\n
 			 current context
   `Ctrl-c Ctrl-c i'	Insert `\\textit{}'
   `Ctrl-c Ctrl-c l'	Insert `\\label{}'
+  `Ctrl-c Ctrl-c m'	Insert `\\emph{}'
   `Ctrl-c Ctrl-c n'	Insert `\\noindent'
   `Ctrl-c Ctrl-c r'	Insert `\\ref{}'
   `Ctrl-c Ctrl-c s'	Insert `\\section{}'
@@ -87,10 +89,10 @@ Special commands available are,\n
 (defun tex-insert-end ()
   (interactive)
   (let
-      ((pos (line-end (prev-line)))
+      ((pos (prev-char))
        (depth 0))
     (if (catch 'foo
-	  (while (find-prev-regexp "^\\\\(end|begin)\{(.*)}" pos)
+	  (while (find-prev-regexp "\\\\(end|begin)\{([^\}]+)" pos)
 	    (if (= (get-char (match-start 1)) ?b)
 		;; no end
 		(if (zerop depth)
@@ -110,15 +112,15 @@ Special commands available are,\n
 		   (prefix-numeric-argument current-prefix-arg))))
     (if (null count)
 	(progn
-	  (insert (concat ?\\ command "{}"))
+	  (insert (if command (concat ?\\ command "{}") "{}"))
 	  (goto-prev-char))
       (if (> count 0)
 	  (progn
-	    (insert (concat ?\\ command ?\{))
+	    (insert (if command (concat ?\\ command ?\{) "\{"))
 	    (forward-word count nil t)
 	    (insert "\}"))
 	(forward-word count nil t)
-	(insert (concat ?\\ command ?\{))
+	(insert (if command (concat ?\\ command ?\{) "\{"))
 	(forward-word (- count) nil t)
 	(insert "\}")))))
 
