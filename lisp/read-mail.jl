@@ -904,24 +904,24 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Call (mail-get-header HEADER LISTP NO-COMMA-SEP), with the current
 ;; restriction set to the headers of MSG
-(defun rm-get-msg-header (msg header &optional lstp no-comma-sep)
+(defun rm-get-msg-header (msg header &optional lstp no-comma-sep decode)
   (with-buffer (mark-file (rm-get-msg-field msg rm-msg-mark))
     (save-restriction
       (restrict-buffer (mark-pos (rm-get-msg-field msg rm-msg-mark))
 		       (pos 0 (+ (rm-get-msg-field msg rm-msg-header-lines)
 				 (pos-line (mark-pos (rm-get-msg-field
 						      msg rm-msg-mark))))))
-      (mail-get-header header lstp no-comma-sep))))
+      (mail-get-header header lstp no-comma-sep decode))))
 
 ;; Shortcuts to some common headers
 
 (defun rm-get-from (msg)
   (rm-cached-form msg 'from
-    (mapcar mail-parse-address (rm-get-msg-header msg "From" t))))
+    (mapcar mail-parse-address (rm-get-msg-header msg "From" t nil t))))
 
 (defun rm-get-sender (msg)
   (rm-cached-form msg 'sender
-    (mapcar mail-parse-address (rm-get-msg-header msg "Sender" t))))
+    (mapcar mail-parse-address (rm-get-msg-header msg "Sender" t nil t))))
 
 ;; this returns the union of the from and sender headers
 (defun rm-get-senders (msg)
@@ -929,10 +929,10 @@ key, the car the order to sort in, a positive or negative integer.")
 
 (defun rm-get-recipients (msg)
   (rm-cached-form msg 'recipient-list
-    (mapcar mail-parse-address (rm-get-msg-header msg "(To|Cc|Bcc)" t))))
+    (mapcar mail-parse-address (rm-get-msg-header msg "(To|Cc|Bcc)" t nil t))))
 
 (defun rm-get-subject (msg)
-  (rm-cached-form msg 'subject (rm-get-msg-header msg "Subject")))
+  (rm-cached-form msg 'subject (rm-get-msg-header msg "Subject" nil nil t)))
 
 ;; subject with any re:'s stripped
 (defun rm-get-actual-subject (msg)
