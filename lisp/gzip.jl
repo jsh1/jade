@@ -48,9 +48,10 @@ automatically uncompressed when loaded, and recompressed when saved.")
 match well-known suffixes."
   (interactive "P")
   (setq auto-compression-mode (or force-active (not auto-compression-mode)))
-  (message (if auto-compression-mode
-	       "Auto compression enabled"
-	     "Auto compression disabled")))
+  (unless force-active
+    (message (if auto-compression-mode
+		 "Auto compression enabled"
+	       "Auto compression disabled"))))
 
 
 ;; Hooks
