@@ -841,6 +841,61 @@ the COLUMNS parameter is always ignored (for the moment).
     return vw;
 }
 
+_PR VALUE cmd_find_view_by_pos(VALUE pos, VALUE win);
+DEFUN("find-view-by-pos", cmd_find_view_by_pos, subr_find_view_by_pos, (VALUE pos, VALUE win), V_Subr2, DOC_find_view_by_pos) /*
+::doc:find_view_by_pos::
+find-view-by-pos POS [WINDOW]
+
+Attempt to find the view in the current window (or in WINDOW), that includes
+the glyph at position POS in the window. Returns nil if no such view exists.
+::end:: */
+{
+    WIN *w = WINDOWP(win) ? VWIN(win) : curr_win;
+    VW *vw = w->w_ViewList;
+    long y_pix;
+    DECLARE1(pos, POSP);
+    if(VPOS(pos).pos_Line < 0)
+	return sym_nil;
+    y_pix = VPOS(pos).pos_Line * w->w_FontY;
+    while(vw != NULL)
+    {
+	/* vw_BottomPix doesn't include the status line */
+	long bottom = ((vw->vw_Flags & VWFF_MINIBUF)
+		       ? vw->vw_BottomPix
+		       : vw->vw_BottomPix + w->w_FontY);
+	if(y_pix < bottom)
+	    return VAL(vw);
+	vw = vw->vw_NextView;
+    }
+    return sym_nil;
+}
+
+_PR VALUE cmd_translate_pos_to_view(VALUE pos, VALUE vw);
+DEFUN("translate-pos-to-view", cmd_translate_pos_to_view, subr_translate_pos_to_view, (VALUE pos, VALUE vw), V_Subr2, DOC_translate_pos_to_view) /*
+::doc:translate_pos_to_view::
+translate-pos-to-view POS [VIEW]
+
+Return the glyph position in the current view (or in VIEW) that corresponds to
+the glyph position POS in the view's window. Returns nil if this position is
+invalid.
+::end:: */
+{
+    VALUE res;
+    DECLARE1(pos, POSP);
+    if(!VIEWP(vw))
+	vw = VAL(curr_vw);
+    res = make_lpos(&VPOS(pos));
+    VPOS(res).pos_Line
+	= (VVIEW(vw)->vw_StartLine
+	   + (VPOS(pos).pos_Line
+	      - (VVIEW(vw)->vw_TopPix / VVIEW(vw)->vw_Win->w_FontY)));
+    if(VPOS(res).pos_Line < VVIEW(vw)->vw_Tx->tx_LogicalStart
+       || VPOS(res).pos_Line > VVIEW(vw)->vw_Tx->tx_LogicalEnd)
+	return sym_nil;
+    else
+	return res;
+}
+
 _PR VALUE cmd_minibuffer_view_p(VALUE vw);
 DEFUN("minibuffer-view-p", cmd_minibuffer_view_p, subr_minibuffer_view_p, (VALUE vw), V_Subr1,  DOC_minibuffer_view_p) /*
 ::doc:minibuffer_view_p::
@@ -934,6 +989,8 @@ views_init(void)
     ADD_SUBR(subr_with_view);
     ADD_SUBR(subr_view_dimensions);
     ADD_SUBR(subr_set_view_dimensions);
+    ADD_SUBR(subr_find_view_by_pos);
+    ADD_SUBR(subr_translate_pos_to_view);
     ADD_SUBR(subr_minibuffer_view_p);
     ADD_SUBR(subr_minibuffer_view);
     ADD_SUBR(subr_minibuffer_active_p);
