@@ -35,9 +35,9 @@
 (defvar ispell-timeout 60
   "Seconds to wait for ispell output before giving up.")
 
-(defvar ispell-word-re "[a-zA-Z]")
-
-(defvar ispell-not-word-re "[^a-zA-Z]")
+(defvar ispell-word-re "[a-zA-Z]([a-zA-Z']*[a-zA-Z])?"
+  "Regexp matching a region of text that can be spell-checked using Ispell,
+i.e. a single word.")
 
 (defvar ispell-misspelt-face nil
   "Face used to highlight misspelt words.")
@@ -96,6 +96,8 @@
 			"HELP" 'ispell-help
 			"Ctrl-h" 'ispell-help))
 
+(add-hook 'before-exit-hook 'ispell-cleanup-before-exit)
+
 
 ;; Process management
 
@@ -105,6 +107,8 @@
     (let
 	((process (make-process #'ispell-output-filter)))
       (set-process-function process 'ispell-sentinel)
+      ;; Use a pty if possible. This allow EOF to be sent via ^D
+      (set-process-connection-type process 'pty)
       (apply 'start-process process ispell-program "-a"
 	     (nconc (and ispell-dictionary
 			 (list "-d" ispell-dictionary))
@@ -116,10 +120,19 @@
 (defun ispell-kill-process ()
   (interactive)
   (when ispell-process
-    ;; FIXME: should really send EOF
-    (interrupt-process ispell-process)
-    (while (and (not (accept-process-output ispell-timeout)) ispell-process)
-      (kill-process ispell-process))))
+    ;; Save the dictionary
+    (write ispell-process "#\n")
+    (if (eq (process-connection-type ispell-process) 'pty)
+	(write ispell-process ?\^D)
+      ;; Not so successful..
+      (interrupt-process ispell-process))
+    (let
+	((counter 0))
+      (while (and (not (accept-process-output ispell-timeout)) ispell-process)
+	(if (< counter 2)
+	    (interrupt-process ispell-process)
+	  (kill-process ispell-process))
+	(setq counter (1+ counter))))))
 
 ;; Function to buffer output from Ispell
 (defun ispell-output-filter (output)
@@ -161,19 +174,9 @@
     (or ispell-read-line-out
 	(error "Ispell timed out waiting for output"))))
 
-;;;###autoload
-(defun ispell-set-dictionary (dict-name)
-  "Set the name of the dictionary used by Ispell to DICT-NAME."
-  (interactive "sName of dictionary:")
-  (setq ispell-dictionary dict-name)
+(defun ispell-cleanup-before-exit ()
   (when ispell-process
-    (ispell-kill-process)
-    (ispell-start-process))
-  (mapc #'(lambda (b)
-	    (with-buffer b
-	      (when ispell-minor-mode-last-scan
-		(aset ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
-	buffer-list))
+    (ispell-kill-process)))
 
 
 ;; Commands to interactively spell-check parts of a buffer
@@ -185,9 +188,7 @@
       (setq word-start (re-search-forward ispell-word-re start))
       (if word-start
 	  (progn
-	    (setq word-end (or (re-search-forward ispell-not-word-re
-						  word-start)
-			       (end-of-buffer)))
+	    (setq word-end (match-end))
 	    (ispell-start-process)
 	    (setq word (copy-area word-start word-end))
 	    (write ispell-process word)
@@ -319,15 +320,15 @@ for. When called interactively, spell-check the current block."
   (let
       ((out "")
        (point 0))
-    (when (string-looking-at (concat ?\( ispell-word-re "+\)\\+") word point)
+    (when (string-looking-at (concat ?\( ispell-word-re "\)\\+") word point)
       ;; [prefix+]
       (setq out (substring word (match-start 1) (match-end 1)))
       (setq point (match-end)))
-    (when (string-looking-at (concat ?\( ispell-word-re "+\)[+-]") word point)
+    (when (string-looking-at (concat ?\( ispell-word-re "\)[+-]") word point)
       ;; root
       (setq out (concat out (substring word (match-start 1) (match-end 1))))
       (setq point (match-end 1)))
-    (while (string-looking-at (concat "-\(" ispell-word-re "+\)") word point)
+    (while (string-looking-at (concat "-\(" ispell-word-re "\)") word point)
       ;; [-prefix] | [-suffix]
       (let
 	  ((tem (quote-regexp (substring word (match-start 1) (match-end 1)))))
@@ -337,7 +338,7 @@ for. When called interactively, spell-check the current block."
 	  (setq out (substring out 0 (match-start))))
 	 ((string-match (concat ?^ tem) out)
 	  (setq out (substring out (match-end)))))))
-    (when (string-looking-at (concat "\\+\(" ispell-word-re "+\)") word point)
+    (when (string-looking-at (concat "\\+\(" ispell-word-re "\)") word point)
       (setq out (concat out (substring word (match-start 1) (match-end 1)))))))
 
 (defun ispell-accept ()
@@ -377,7 +378,7 @@ for. When called interactively, spell-check the current block."
   (let
       (extents)
     (map-extents #'(lambda (e)
-		     (when (extent-parent e)
+		     (when (eq (extent-get e 'face) ispell-misspelt-face)
 		       (setq extents (cons e extents)))) start end)
     (mapc 'delete-extent extents)))
 
@@ -438,3 +439,31 @@ for. When called interactively, spell-check the current block."
     (setq ispell-minor-mode-last-scan (vector 0 nil nil))
     (make-local-variable 'idle-hook)
     (add-hook 'idle-hook 'ispell-idle-function)))
+
+(defun ispell-invalidate-past-scans ()
+  (mapc #'(lambda (b)
+	    (with-buffer b
+	      (when ispell-minor-mode-last-scan
+		(aset ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
+	buffer-list))
+
+;; Dictionary management
+
+;;;###autoload
+(defun ispell-set-dictionary (dict-name)
+  "Set the name of the dictionary used by Ispell to DICT-NAME."
+  (interactive "sName of dictionary:")
+  (setq ispell-dictionary dict-name)
+  (when ispell-process
+    (ispell-kill-process)
+    (ispell-start-process))
+  (ispell-invalidate-past-scans))
+
+;;;###autoload
+(defun ispell-add-word-to-dictionary (word)
+  "Add the string WORD to your personal Ispell dictionary."
+  (interactive (list (prompt-for-string "Word to add:" (symbol-at-point))))
+  (ispell-start-process)
+  (format ispell-process "*%s\n" word)
+  (ispell-invalidate-past-scans))
+
