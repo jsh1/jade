@@ -298,3 +298,4 @@ in the status line."
 (put 'catch 'lisp-indent 1)
 (put 'bind-keys 'lisp-indent 1)
 (put 'unbind-keys 'lisp-indent 1)
+(put 'save-restriction 'lisp-indent 0)
