@@ -102,7 +102,7 @@ contents of the file specified by mail-signature-file.")
 (defvar mail-signature-file "~/.signature"
   "File to insert at end of message being sent.")
 
-(defvar mail-default-headers (concat "X-Mailer: " jade-version)
+(defvar mail-default-headers (concat "X-Mailer: Jade " jade-version)
   "Text to insert into the header section of all outgoing mail messages.")
 
 (defvar mail-send-hook nil
