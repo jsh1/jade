@@ -130,12 +130,12 @@ argument."
        (view-index (- view-count (1- (length (memq (current-view) views)))))
        view)
     (cond
-     ((= view-count 2)
-      (error "Can't resize a single view"))
      ((> view-index (- view-count 2))
       ;; Last view in window or minibuffer, expand the previous view negatively
       (setq view (previous-view)
 	    count (- count)))
+     ((= view-count 2)
+      (error "Can't resize a single view"))
      (t
       (setq view (current-view))))
     (set-view-dimensions view nil (+ (cdr (view-dimensions view)) count))))
