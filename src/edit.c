@@ -57,6 +57,10 @@
 /* Free something allocated with the previous macro. */
 #define FREE_LINE_BUF(tx, p)  sm_free(&TX_STRINGPOOL(tx), p)
 
+#ifdef USE_R_ALLOC
+
+/* Use the relocation allocator for line arrays.. */
+
 /* Allocate a buffer to contain N LINE structures for TX. */
 #define ALLOC_LL(tx,n) \
     r_alloc((void **)&((tx)->tx_Lines), sizeof(LINE) * (n))
@@ -69,6 +73,26 @@
 /* Free one of the above in TX */
 #define FREE_LL(tx) \
     r_alloc_free((void **)&((tx)->tx_Lines))
+
+extern void *r_alloc(void **ptr, size_t size);
+extern void r_alloc_free(void **ptr);
+extern void *r_re_alloc(void **ptr, size_t size);
+
+#else /* USE_R_ALLOC */
+
+/* Use standard malloc calls */
+
+#define ALLOC_LL(tx,n) \
+    (tx->tx_Lines = sys_alloc(sizeof(LINE) * (n)))
+
+#define REALLOC_LL(tx,n) \
+    sys_realloc((tx)->tx_Lines, sizeof(LINE) * (n))
+
+/* Free one of the above in TX */
+#define FREE_LL(tx) \
+    sys_free((tx)->tx_Lines)
+
+#endif /* !USE_R_ALLOC */
 
 _PR bool clear_line_list(TX *);
 _PR void kill_line_list(TX *);
