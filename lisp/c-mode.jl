@@ -106,7 +106,7 @@ Commands defined by this mode are:\n
 	mode-indent-line 'c-indent-line
 	mode-forward-exp 'c-forward-exp
 	mode-backward-exp 'c-backward-exp
-	mode-defun-header "^([a-zA-Z0-9_]+).*\n{"
+	mode-defun-header "^([a-zA-Z0-9_]+)[\t ]*\\([^}]+\n{"
 	mode-defun-footer "^}"
 	ctrl-c-keymap c-mode-ctrl-c-keymap
 	keymap-path (cons 'c-mode-keymap keymap-path))
