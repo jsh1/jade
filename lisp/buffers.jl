@@ -224,7 +224,8 @@ such buffer could be made."
     (if buf
 	;; Buffer already exists; check that it's up to date
 	(with-buffer buf
-	  (when (and (time-later-p (file-modtime name) buffer-file-modtime)
+	  (when (and (file-exists-p name)
+		     (time-later-p (file-modtime name) buffer-file-modtime)
 		     (yes-or-no-p "File on disk has changed; revert buffer?"))
 	    ;; it's not, so reread it
 	    (revert-buffer)))
@@ -363,8 +364,12 @@ to zero. If no changes have been made to the buffer, it won't be saved."
   (unless (bufferp buffer)
     (setq buffer (current-buffer)))
   (with-buffer buffer
-    (if (not (buffer-modified-p))
-	(message "No changes need to be saved!")
+    (cond
+     ((string= (buffer-file-name) "")
+      (error "Buffer has no file associated with it"))
+     ((not (buffer-modified-p))
+      (message "No changes need to be saved!"))
+     (t
       (let
 	  ((name (buffer-file-name)))
 	(when (and (file-exists-p name)
@@ -378,7 +383,7 @@ to zero. If no changes have been made to the buffer, it won't be saved."
 		last-user-save-changes (buffer-changes)
 		buffer-file-modtime (file-modtime name))
 	  (delete-auto-save-file)
-	  (message (concat "Wrote file `" name ?\') t))))))
+	  (message (concat "Wrote file `" name ?\') t)))))))
 
 (defun save-file-as (name &optional buffer)
   "Saves the buffer BUFFER, or the current one, to the file NAME,
