@@ -123,7 +123,7 @@ last change."
        (goto (replace-last-match query-replace-to)))
   (while (re-search-forward query-replace-from nil nil case-fold-search)
     (goto (replace-last-match query-replace-to)))
-  (setq query-replace-alive nil)
+  (setq query-replace-alive 'rest)
   (throw 'query-replace))
 
 (defun query-replace-edit ()
@@ -189,10 +189,9 @@ type one of the following special commands,\n
        match)
     (add-hook 'unbound-key-hook 'query-replace-unbound-key-fun)
     (unwind-protect
-	(while (and query-replace-alive
-		    (setq match
-			  (re-search-forward query-replace-from nil
-					     nil case-fold-search)))
+	(while (and (eq query-replace-alive t)
+		    (setq match (re-search-forward
+				 query-replace-from nil nil case-fold-search)))
 	  (goto match)
 	  (setq query-replace-trace (cons match query-replace-trace))
 	  (catch 'query-replace
@@ -200,4 +199,7 @@ type one of the following special commands,\n
 	    (recursive-edit)))
       (with-buffer buf
 	(remove-hook 'unbound-key-hook 'query-replace-unbound-key-fun)))
-    (message "Done.")))
+    (message "Done.")
+    ;; Returns `rest' if the `!' command was given, t if the cycle ended due
+    ;; to lack of matches, nil otherwise
+    query-replace-alive))
