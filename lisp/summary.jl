@@ -40,9 +40,14 @@
     "u" 'summary-unmark-item
     "U" 'summary-unmark-all
     "m" 'summary-mark-item
-    "Button1-Click2" 'summary-select-item
-    "Button2-Click1" 'summary-select-mouse-item)
+    "Button1-Click2" 'summary-select-item)
   "Base keymap for modes deriving from summary.")
+
+(defvar summary-mouse-map
+  (bind-keys (make-sparse-keymap)
+    "button2-click1" 'goto-mouse
+    "button2-move" 'goto-mouse
+    "button2-off" 'summary-select-mouse-item))
 
 
 ;; Local variables
@@ -290,7 +295,8 @@ highlight."
       (while items
 	(summary-dispatch 'print (car items))
 	(make-extent (start-of-line) (cursor-pos)
-		     (list 'mouse-face active-face))
+		     (list 'mouse-face active-face
+			   'mouse-keymap summary-mouse-map))
 	(setq items (cdr items))
 	(when items
 	  (insert "\n")))
@@ -309,9 +315,15 @@ highlight."
       (if (= (pos-line (cursor-pos)) (pos-line (end-of-buffer)))
 	  (progn
 	    (delete-area (cursor-pos) (end-of-line))
-	    (summary-dispatch 'print item))
+	    (summary-dispatch 'print item)
+	    (make-extent (start-of-line) (cursor-pos)
+			 (list 'mouse-face active-face
+			       'mouse-keymap summary-mouse-map)))
 	(delete-area (cursor-pos) (forward-line))
 	(summary-dispatch 'print item)
+	(make-extent (start-of-line) (cursor-pos)
+		     (list 'mouse-face active-face
+			   'mouse-keymap summary-mouse-map))
 	(insert "\n"))
       (goto old-cursor)
       (set-buffer-modified nil nil)
