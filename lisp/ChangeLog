@@ -1,3 +1,10 @@
+2000-02-09  John Harper  <john@dcs.warwick.ac.uk>
+
+	* lisp-mode.jl: added `define' indent hint
+
+	* find-autoloads.jl (autoload-do-magic): handle autoloaded
+	macros, but don't treat defvar magically
+
 2000-02-07  John Harper  <john@dcs.warwick.ac.uk>
 
 	* html-display.jl (html-display-select): new optional parameter
