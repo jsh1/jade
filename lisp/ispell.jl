@@ -19,9 +19,9 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;; TODO:
-;;
-;; Arbitrate access to the ispell-process when more than one context
-;; tries to use it at once (i.e. spell-checking two buffers concurrently).
+;;  * replace the use of recursive-edit and catch/throw by a keymap
+;;    in the minibuffer view for interactive checking. This will allow
+;;    multiple buffers to be checked concurrently
 
 (provide 'ispell)
 
@@ -58,6 +58,10 @@ if the hook (`or' style) returns t the word is assumed to be correct.")
 
 (defvar ispell-process nil
   "Subprocess that ispell is running in, or nil if ispell isn't running.")
+
+(defvar ispell-process-busy nil
+  "When t, the ispell-process is being used to check a word, but not all
+results have been received.")
 
 (defvar ispell-id-string nil
   "String sent by ispell identifying itself when it started executing.")
@@ -118,6 +122,8 @@ if the hook (`or' style) returns t the word is assumed to be correct.")
 			 (list "-d" ispell-dictionary))
 		    ispell-options))
       (setq ispell-process process)
+      (setq ispell-pending-output nil)
+      (setq ispell-line-callback nil)
       (setq ispell-id-string (ispell-read-line)))))
 
 (defun ispell-kill-process ()
@@ -177,9 +183,38 @@ if the hook (`or' style) returns t the word is assumed to be correct.")
     (or ispell-read-line-out
 	(error "Ispell timed out waiting for output"))))
 
+;; put in the before-exit-hook
 (defun ispell-cleanup-before-exit ()
   (when ispell-process
     (ispell-kill-process)))
+
+;; Arbitrate access to the Ispell process, the mutex must be obtained
+;; before sending a command that generates output. An error is signalled
+;; if the process is busy
+(defun ispell-mutex (grab)
+  (if grab
+      (if ispell-process-busy
+	  (error "Ispell process is busy!")
+	(ispell-start-process)
+	(setq ispell-process-busy t))
+    (setq ispell-process-busy nil)))
+
+;; Check a word with Ispell. Returns the raw (single-line) output
+(defun ispell-check-word (word)
+  (let
+      (response tem)
+    (ispell-mutex t)
+    (format ispell-process "%s\n" word)
+    (setq response (ispell-read-line))
+    (if (eq (aref response 0) ?\n)
+	;; This shouldn't happen
+	(error "Null output from Ispell")
+      ;; Gobble following blank line
+      (setq tem (ispell-read-line))
+      (unless (eq (aref tem 0) ?\n)
+	(error "Non-null trailing line from Ispell")))
+    (ispell-mutex nil)
+    response))
 
 
 ;; Commands to interactively spell-check parts of a buffer
@@ -187,33 +222,21 @@ if the hook (`or' style) returns t the word is assumed to be correct.")
 (defun ispell-region-1 (function start end)
   (while (< start end)
     (let
-	(word-start word-end word)
+	(word-start word-end word response)
       (setq word-start (re-search-forward ispell-word-re start))
       (if (and word-start (<= (setq word-end (match-end)) end))
 	  (if (and ispell-ignore-word-hook
 		   (call-hook ispell-ignore-word-hook
 			      (list word word-start word-end) 'or))
 	      (setq start word-end)
-	    (ispell-start-process)
 	    (setq word (copy-area word-start word-end))
-	    (write ispell-process word)
-	    (write ispell-process ?\n)
-	    (let
-		((response (ispell-read-line)))
-	      (cond
-	       ((eq (aref response 0) ?\n)
-		;; This shouldn't happen
-		(error "Null output from Ispell"))
-	       ((string-looking-at "^[*+-]" response)
+	    (setq response (ispell-check-word word))
+	    (if (string-looking-at "^[*+-]" response)
 		;; Word spelt ok
 		(setq start word-end)
-		;; Take the following newline
-		(ispell-read-line))
-	       (t
-		;; Not ok
-		(setq start (funcall function word response
-				     word-start word-end))
-		(ispell-read-line)))))
+	      ;; Not ok
+	      (setq start (funcall function word response
+				   word-start word-end))))
 	;; Can't find word
 	(setq start end)))))
 
