@@ -25,21 +25,23 @@ top_srcdir=@top_srcdir@
 srcdir=@srcdir@
 VPATH=@top_srcdir@/src:.
 
-JADE_LIBOBJS=@JADE_LIBOBJS@
+JADE_LIBOBJS := @JADE_LIBOBJS@
 
-COMMON_SRCS =	buffers.c commands.c edit.c editcommands.c extent.c \
-		faces.c files.c find.c glyphs.c housekeeping.c \
-		keys.c main.c misc.c movement.c redisplay.c regjade.c \
-		regsub.c undo.c views.c windows.c
-X11_SRCS =	x11_keys.c x11_main.c x11_misc.c x11_windows.c
+SRCS :=	buffers.c commands.c edit.c editcommands.c extent.c faces.c files.c \
+	find.c glyphs.c housekeeping.c keys.c main.c misc.c movement.c \
+	redisplay.c regjade.c regsub.c undo.c views.c windows.c
 
-SRCS =		$(COMMON_SRCS) $(X11_SRCS)
-OBJS =		$(SRCS:.c=.o)
+X11_SRCS := x11_keys.c x11_main.c x11_misc.c x11_windows.c
+GTK_SRCS := gtk_jade.c gtk_keys.c gtk_main.c gtk_select.c
 
-DL_SRCS =	server-dl.c
-DL_OBJS =	$(DL_SRCS:%.c=lib%.la)
+SRCS :=	$(SRCS) $($(windowsys)_SRCS)
+OBJS := $(SRCS:.c=.o)
 
-LIBS += $(X11LIBS)
+DL_SRCS := server-dl.c
+DL_OBJS := $(DL_SRCS:%.c=lib%.la)
+
+CFLAGS := $(CFLAGS) $($(windowsys)_CFLAGS)
+LIBS   := $(LIBS) $($(windowsys)_LIBS)
 
 all : jade jadeclient $(DL_OBJS)
 

@@ -36,7 +36,7 @@ DEFSYM(jade_minor_version, "jade-minor-version");
 DEFSYM(jade_version, "jade-version"); /*
 ::doc:Vwindow-system::
 A symbol defining the window system that Jade is running under. The only
-current possibility is `x11'.
+current possibilities are `x11' or `gtk'.
 ::end::
 ::doc:Vjade-build-id::
 A string describing when, where, and by who the running version of the
@@ -52,7 +52,9 @@ The minor version number of the editor.
 A string naming the editor version.
 ::end:: */
 
-#ifdef HAVE_X11
+#if defined (HAVE_GTK)
+DEFSYM(gtk, "gtk");
+#elif defined (HAVE_X11)
 DEFSYM(x11, "x11");
 #endif
 
@@ -101,7 +103,10 @@ void
 misc_init(void)
 {
     rep_INTERN(window_system);
-#ifdef HAVE_X11
+#if defined (HAVE_GTK)
+    rep_INTERN(gtk);
+    rep_SYM(Qwindow_system)->value = Qgtk;
+#elif defined (HAVE_X11)
     rep_INTERN(x11);
     rep_SYM(Qwindow_system)->value = Qx11;
 #endif

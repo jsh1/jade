@@ -328,6 +328,7 @@ extern void garbage_glyphs(WIN *w, int x, int y, int width, int height);
 extern void redisplay_message(WIN *w);
 extern void redisplay_init(void);
 extern int redisplay_lock;
+extern repv Fredisplay_window(repv win, repv arg);
 extern repv Fredisplay(repv arg);
 extern repv var_redisplay_max_d(repv val);
 
@@ -402,8 +403,8 @@ extern repv Qmake_window_hook, Qdelete_window_hook;
 extern int window_type;
 extern WIN *win_chain;
 extern WIN *curr_win;
-extern int window_count;
 extern short def_dims[4];
+extern repv def_font_str;
 extern repv Fmake_window(repv xv, repv yv, repv wv, repv hv);
 extern repv Fdelete_window(repv win);
 extern repv Fsleep_window(repv win);
@@ -412,7 +413,6 @@ extern repv Fnext_window(repv win, repv activ);
 extern repv Fmessage(repv string, repv now);
 extern repv Ffont_name(repv win);
 extern repv Fwindow_asleep_p(void);
-extern repv Fwindow_count(void);
 extern repv Fposition_window(repv left, repv top, repv width, repv height);
 extern repv Fcurrent_window(void);
 extern repv Fset_current_window(repv win, repv activ);
@@ -424,8 +424,74 @@ extern repv Fwindow_view_list(repv win);
 extern repv Fwindow_view_count(repv win);
 extern repv Fwindow_first_view(repv win);
 extern repv Fwindowp(repv);
+extern repv Fset_font(repv fontname, repv win);
 
-#ifdef HAVE_X11
+#if defined (HAVE_GTK)
+
+/* from gtk_keys.c */
+extern void translate_event(u_long *, u_long *, GdkEvent *);
+extern int cook_key(void *, u_char *, int);
+extern bool sys_lookup_mod(const char *name, u_long *mods);
+extern bool sys_lookup_code(const char *name, u_long *code, u_long *mods);
+extern char *sys_lookup_mod_name(char *buf, u_long mod);
+extern bool sys_lookup_code_name(char *buf, u_long code, u_long type);
+extern u_long gtk_find_meta(void);
+extern u_long esc_code, esc_mods;
+
+/* from gtk_main.c */
+extern repv (*gtk_jade_wrap_gtkobj)(GtkObject *object);
+extern GtkObject *(*gtk_jade_get_gtkobj)(repv obj);
+extern void (*gtk_jade_callback_postfix)(void);
+extern repv sys_make_color(Lisp_Color *c);
+extern void sys_free_color(Lisp_Color *c);
+extern void sys_usage(void);
+extern bool sys_init(char *);
+extern void sys_kill(void);
+extern u_long gtk_meta_mod;
+extern repv sys_get_mouse_pos(WIN *);
+
+/* from gtk_select.c */
+extern repv Fgtk_jade_set_selection(repv sel, repv start,
+				    repv end, repv buffer);
+extern repv Fgtk_jade_selection_active_p(repv sel);
+extern repv Fgtk_jade_own_selection_p(repv sel);
+extern repv Fgtk_jade_get_selection(repv sel);
+extern repv Fgtk_jade_lose_selection(repv sel);
+extern void gtk_jade_add_selection_targets (GtkJade *jade);
+extern void gtk_jade_selection_get(GtkWidget *widget,
+				   GtkSelectionData *sel_data,
+				   guint info, guint time);
+extern gint gtk_jade_selection_clear(GtkWidget *widget,
+				     GdkEventSelection *event);
+extern void gtk_jade_window_lose_selections(WIN *w);
+extern void gtk_misc_init(void);
+
+/* from gtk_jade.c */
+extern u_long gtk_jade_last_event_time;
+extern GtkWidget *gtk_jade_new (WIN *win, int width, int height);
+extern guint gtk_jade_get_type (void);
+extern int gtk_jade_set_font (GtkJade *jade);
+extern void gtk_jade_get_size (GtkJade *jade, gint *widthp, gint *heightp);
+extern void sys_draw_glyphs(WIN *, int, int, glyph_attr, char *, int, bool);
+extern void sys_recolor_cursor(repv face);
+extern void sys_update_dimensions(WIN *);
+extern GtkJade *sys_new_window(WIN *, WIN *, bool);
+extern void sys_kill_window(WIN *);
+extern int sys_set_font(WIN *);
+extern void sys_unset_font(WIN *);
+extern int sys_sleep_win(WIN *);
+extern int sys_unsleep_win(WIN *);
+extern void sys_activate_win(WIN *);
+extern void sys_set_win_name(WIN *win, char *name);
+extern void sys_set_win_pos(WIN *, long, long, long, long);
+extern bool sys_deleting_window_would_exit (WIN *w);
+extern void sys_windows_init(void);
+extern repv Fgtk_jade_new (repv, repv);
+extern repv Fgtk_jade_window (repv);
+extern repv Fgtk_jade_window_widget (repv);
+extern repv Fflush_output(void);
+
+#elif defined (HAVE_X11)
 
 /* from x11_keys.c */
 extern void translate_event(u_long *, u_long *, XEvent *,
@@ -462,7 +528,6 @@ extern struct x11_display *x11_display_list;
 extern char **x11_argv;
 extern int x11_argc;
 extern bool x11_opt_reverse_video;
-extern repv def_font_str;
 
 /* from x11_misc.c */
 extern void x11_beep(void);
@@ -480,8 +545,6 @@ extern repv Fx11_lose_selection(repv sel);
 /* from x11_windows.c */
 extern int sys_sleep_win(WIN *);
 extern int sys_unsleep_win(WIN *);
-extern void sys_new_vw(VW *);
-extern void sys_kill_vw(VW *);
 extern void sys_update_dimensions(WIN *);
 extern void x11_update_dimensions(WIN *, int, int);
 extern Window sys_new_window(WIN *, WIN *, bool);
@@ -493,13 +556,12 @@ extern WIN *x11_find_window(Window);
 extern void sys_draw_glyphs(WIN *, int, int, glyph_attr, char *, int, bool);
 extern int sys_set_font(WIN *);
 extern void sys_unset_font(WIN *);
-extern void sys_reset_sleep_titles(TX *);
 extern repv sys_get_mouse_pos(WIN *);
+extern bool sys_deleting_window_would_exit (WIN *w);
 extern void sys_windows_init(void);
-extern repv Fset_font(repv fontname, repv win);
 extern repv Fflush_output(void);
 extern repv Fmake_window_on_display(repv display);
 
-#endif /* HAVE_X11 */
+#endif /* window system */
 
 #endif /* JADE_SUBRS */

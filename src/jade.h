@@ -36,14 +36,12 @@ typedef char bool;
 # define HAVE_UNIX 1
 #endif
 
-#ifdef HAVE_X11
+#if defined (HAVE_GTK)
+# include "gtk_defs.h"
+#elif defined (HAVE_X11)
 # include "x11_defs.h"
 #else
-# ifdef HAVE_AMIGA
-#  include "amiga_defs.h"
-# else
-#  error Need HAVE_X11 or HAVE_AMIGA defined
-# endif
+# error "Need a window-system"
 #endif
 
 #include "edit.h"
