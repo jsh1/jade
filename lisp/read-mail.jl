@@ -553,20 +553,15 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Getting mail from inbox
 
-;; Ensure that there's two newlines at the end of the buffer, or that
-;; the end of the buffer is the start of the buffer ;-) Leaves the
-;; cursor at the end of the buffer
+;; Ensure that it's okay to insert a new message at the current cursor
+;; position (must be preceded by the start of the buffer, or "\n\n")
+;; Leaves the cursor at the position to insert at.
 ;; The buffer should be unrestricted
 (defun rm-enforce-msg-separator ()
-  (if (equal (buffer-end) (buffer-start))
-      (goto-buffer-end)
-    (if (find-prev-regexp "^.+\n" (buffer-end))
-	(progn
-	  (goto-char (match-end))
-	  (unless (looking-at "^\n")
-	    (insert "\n"))
-	  (goto-buffer-end))
-      (goto-buffer-end)
+  (unless (or (equal (cursor-pos) (buffer-start))
+	      (looking-at "\n\n" (prev-char)))
+    (if (= (get-char) ?\n)
+	(insert "\n")
       (insert "\n\n"))))
   
 ;; Insert the contents of file INBOX at the end of the current folder, fix
@@ -603,6 +598,7 @@ Major mode for viewing mail folders. Commands include:\n
 	      (while rm-after-msg-list
 		(rm-move-forwards))
 	      ;; Ensure that there's a blank line at the end of the buffer
+	      (goto-buffer-end)
 	      (rm-enforce-msg-separator)
 	      (setq start (cursor-pos))
 	      (insert-file tofile)
