@@ -29,6 +29,8 @@ Lisp_Face *allocated_faces;
 
 int face_type;
 
+rep_bool invert_all_faces;
+
 DEFSYM(foreground, "foreground");
 DEFSYM(background, "background");
 DEFSYM(underline, "underline");
@@ -287,7 +289,7 @@ int
 merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
 {
     WIN *w = vw->vw_Win;
-    u_long car = 0;
+    u_long car = invert_all_faces ? FACEFF_INVERT : 0;
     Lisp_Color *background = 0, *foreground = 0;
 
     Lisp_Extent *x;
@@ -366,8 +368,11 @@ merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
 int
 get_face_id(WIN *w, Lisp_Face *f)
 {
+    long car = f->car;
+    if (invert_all_faces)
+	car ^= FACEFF_INVERT;
     assert(COLORP(f->background) && COLORP(f->foreground));
-    return get_merged_face(w, f->car & FACEFF_MASK,
+    return get_merged_face(w, car,
 			   VCOLOR(f->background), VCOLOR(f->foreground));
 }
 
