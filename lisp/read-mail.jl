@@ -52,6 +52,8 @@ by default:
 
 	a	A 3-character attribute string, showing the status of
 		the message
+	A	A 5-character attribute string
+	*	A `*' character if the message is marked
 	b	The name of the buffer containing the folder
 	D	The numeric day of the month when the message was sent
 	w	The day of the week, as a 3-character string
@@ -129,7 +131,7 @@ of each rule is ignored.")
     "k" 'rm-kill-subject
     "q" 'rm-save-and-quit
     "u" 'rm-unmark-message
-    "v" 'read-mail-folder
+    "U" 'rm-unmark-all-messages
     "r" 'rm-reply
     "R" '(rm-reply t)
     "f" 'rm-followup
@@ -1268,6 +1270,13 @@ key, the car the order to sort in, a positive or negative integer.")
 			       (if (rm-message-get m 'replied) ?R ? )
 			       (if (rm-message-get m 'forwarded) ?Z ? )
 			       (if (rm-message-get m 'filed) ?F ? ))))
+	  (cons ?* #'(lambda (m)
+		       (let
+			   ((summary (rm-get-folder-field (rm-current-folder)
+							  rm-folder-summary)))
+			 (if (and summary (with-buffer summary
+					    (summary-item-marked-p m)))
+			     "*" " "))))
 	  (cons ?b #'(lambda (m)
 		       (buffer-name (mark-file
 				     (rm-get-msg-field m rm-msg-mark)))))
@@ -1354,6 +1363,15 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Commands, these must only be called from the folder buffer, *not*
 ;; from the summary.
+
+;; Return the list of messages that the current command should operate on
+(defun rm-command-items (folder)
+  (let
+      ((summary (rm-get-folder-field folder rm-folder-summary)))
+    (if summary
+	(with-buffer summary
+	  (summary-command-items))
+      (list (rm-get-folder-field folder rm-folder-current-msg)))))
 
 (defun rm-next-message (&optional count skip-deleted)
   "Display the next message in the current mail folder."
@@ -1465,10 +1483,22 @@ nonrecoverable."
       ((folder (rm-current-folder))
        (current (rm-get-folder-field folder rm-folder-current-msg)))
     (rm-message-put current 'deleted nil)
-    (rm-fix-status-info current)
-    (when (and rm-move-after-deleting
-	       (rm-get-folder-field folder rm-folder-after-list))
-      (rm-next-message))))
+    (when (rm-get-folder-field folder rm-folder-summary)
+      (rm-with-summary folder
+        (summary-unmark-item current)))
+    (rm-fix-status-info current)))
+
+(defun rm-unmark-all-messages ()
+  "Unmarks all messages in the current folder."
+  (interactive)
+  (let
+      ((folder (rm-current-folder)))
+    (rm-map-messages #'(lambda (m)
+			 (rm-message-put m 'deleted nil)) folder)
+    (when (rm-get-folder-field folder rm-folder-summary)
+      (rm-with-summary folder
+        (summary-unmark-all)))))
+
 
 (defun rm-kill-subject ()
   "Marks all messages with the same subject as the current message as being

@@ -43,27 +43,28 @@
   t)
 (add-hook 'rm-display-message-hook 'rm-mail-dir-scanner)
 
-(defun rm-mail-dir-scan-current (&optional all-addresses)
-  "Add the senders of the currently displayed message to the mail directory.
+(defun rm-mail-dir-scan-messages (&optional all-addresses)
+  "Add the senders of the selected message(s) to the mail directory.
 
 If ALL-ADDRESSES is non-nil, add all recipients as well. When called
 interactively a prefix argument denotes ALL-ADDRESSES."
   (interactive "P")
-  (let
+  (let*
       ((mail-dir-scan-messages t)
        (mail-dir-prompt-when-scanning nil)
-       (message (rm-get-folder-field (rm-current-folder)
-				     rm-folder-current-msg)))
-    (rm-mail-dir-scanner message (rm-current-folder) all-addresses)))
+       (folder (rm-current-folder))
+       (messages (rm-command-items folder)))
+    (mapc #'(lambda (m)
+	      (rm-mail-dir-scanner m folder all-addresses)) messages)))
 
 ;; Bind to read-mail keymap
 (bind-keys rm-keymap
-  "Ctrl-k" 'rm-mail-dir-scan-current)
+  "Ctrl-k" 'rm-mail-dir-scan-messages)
 
 ;; Similar for rm-summary keymap, but defer binding if it doesn't exist
 (if (featurep 'rm-summary)
     (bind-keys rm-summary-keymap
-      "Ctrl-k" '(rm-command-with-folder 'rm-mail-dir-scan-current))
+      "Ctrl-k" '(rm-command-with-folder 'rm-mail-dir-scan-messages))
   (eval-after-load "rm-summary" '(bind-keys rm-summary-keymap
 				   "Ctrl-k" '(rm-command-with-folder
-					      'rm-mail-dir-scan-current))))
+					      'rm-mail-dir-scan-messages))))

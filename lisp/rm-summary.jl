@@ -22,7 +22,7 @@
 (require 'read-mail)
 (provide 'rm-summary)
 
-(defvar rm-summary-format "%a  %2D %3m  %-^16F  %l"
+(defvar rm-summary-format "%*%a  %2D %3m  %-^16F  %l"
   "A string defining the format of lines in mail summary buffers. It is
 copied verbatim except for formatting directives introduced by percent
 signs (%). Each directive consists of a percent character, an optional
@@ -46,6 +46,7 @@ for the list of formatting options available.")
     "d" '(rm-command-with-folder 'rm-mark-message-deletion)
     "Ctrl-d" '(rm-command-with-folder 'rm-mark-message-deletion)
     "u" '(rm-command-with-folder 'rm-unmark-message)
+    "U" '(rm-command-with-folder 'rm-unmark-all-messages)
     "x" '(rm-command-with-folder 'rm-expunge)
     "#" '(rm-command-with-folder 'rm-expunge)
     "n" '(rm-command-with-folder 'rm-next-undeleted-message)
@@ -58,7 +59,6 @@ for the list of formatting options available.")
     "g" '(rm-command-with-folder 'rm-get-mail)
     "k" '(rm-command-with-folder 'rm-kill-subject)
     "q" '(rm-command-with-folder 'rm-save-and-quit)
-    "v" '(rm-command-with-folder 'read-mail-folder)
     "r" '(rm-command-in-folder 'rm-reply)
     "R" '(rm-command-in-folder '(rm-reply t))
     "f" '(rm-command-in-folder 'rm-followup)

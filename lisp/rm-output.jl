@@ -41,9 +41,9 @@ while auto-archiving.")
   (with-buffer (mark-file (rm-get-msg-field msg rm-msg-mark))
     (save-restriction)
     (unrestrict-buffer)
-    (let*
-	((end (rm-message-end msg))
-	 (text (copy-area (mark-pos (rm-get-msg-field msg rm-msg-mark)) end)))
+    (let
+	((text (copy-area (mark-pos (rm-get-msg-field msg rm-msg-mark))
+			  (rm-message-end msg))))
       (cond
        ((bufferp dest)
 	;; DEST is a buffer. Append to that.
@@ -63,7 +63,9 @@ while auto-archiving.")
 		   (inhibit-read-only (eq major-mode 'read-mail-mode)))
 		(insert text))))))
        ((filep dest)
-	;; DEST is a file. Append to it
+	;; DEST is a file. Append to it. The flush is for when checking the
+	;; size of the file
+	(flush-file dest)
 	(unless (zerop (file-size (file-binding dest)))
 	  ;; The file isn't empty, so ensure there's a blank
 	  ;; line separating messages
@@ -74,27 +76,23 @@ while auto-archiving.")
 	(rm-message-put msg 'deleted t)))))
 
 ;;;###autoload
-(defun rm-output (count dest)
-  "Output COUNT messages, starting at the current message, to the mail
-folder DEST. If DEST is currently loaded into a buffer, append there;
-otherwise write straight to the folder's file."
-  (interactive (list (prefix-numeric-argument current-prefix-arg)
-		     (prompt-for-folder "Destination folder:"
+(defun rm-output (dest)
+  "Output the currently selected messages to the mail folder DEST. If DEST is
+currently loaded into a buffer, append there; otherwise write straight to the
+folder's file."
+  (interactive (list (prompt-for-folder "Destination folder:"
 					rm-last-output-folder)))
   (let*
       ((folder (rm-current-folder))
-       (msg-list (cons (rm-get-folder-field folder rm-folder-current-msg)
-		       (rm-get-folder-field folder rm-folder-after-list))))
-    (unless (car msg-list)
-      (error "No current message"))
+       (messages (rm-command-items folder)))
+    (unless messages
+      (error "No selected messages"))
     (let
 	((real-dest (or (get-file-buffer dest)
 			(open-file dest 'append))))
       (unwind-protect
-	  (while (and (> count 0) msg-list)
-	    (rm-output-message (car msg-list) real-dest)
-	    (setq count (1- count)
-		  msg-list (cdr msg-list)))
+	  (mapc #'(lambda (m)
+		    (rm-output-message m real-dest)) messages)
 	(when (filep real-dest)
 	  (close-file real-dest))))
     (rm-redisplay-folder folder)))
