@@ -38,28 +38,20 @@
 (defvar diff-program "diff"
   "Program used to compare two files.")
 
-(defvar diff-added-face nil
-  "Face used to display added text in diff listings.")
-(unless diff-added-face
-  (setq diff-added-face (make-face "diff-added"))
+(defface diff-added-face
+  "Face used to display added text in diff listings."
   (set-face-attribute diff-added-face 'background "lightgreen"))
 
-(defvar diff-deleted-face nil
-  "Face used to display removed text in diff listings.")
-(unless diff-deleted-face
-  (setq diff-deleted-face (make-face "diff-deleted"))
+(defface diff-deleted-face
+  "Face used to display removed text in diff listings."
   (set-face-attribute diff-deleted-face 'background "pink"))
 
-(defvar diff-changed-face nil
-  "Face used to display text that has been modified in diff listings.")
-(unless diff-changed-face
-  (setq diff-changed-face (make-face "diff-changed"))
+(defface diff-changed-face
+  "Face used to display text that has been modified in diff listings."
   (set-face-attribute diff-changed-face 'background "lightgoldenrod"))
 
-(defvar diff-marker-face nil
-  "Face used to show where an insertion or deletion occurs in diff listings.")
-(unless diff-marker-face
-  (setq diff-marker-face (make-face "diff-marker"))
+(defface diff-marker-face
+  "Face used to show where an insertion or deletion occurs in diff listings."
   (set-face-attribute diff-marker-face 'background "#eeeee1"))
 
 (defvar diff-keymap (bind-keys (make-sparse-keymap)

@@ -18,12 +18,9 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
-(defvar minor-major-face (or (boundp 'minor-major-face)
-			     (let
-				 ((face (make-face "minor-major")))
-			       (set-face-attribute face 'foreground "darkblue")
-			       face))
-  "Face used in areas of the buffer with a minor-major mode.")
+(defface minor-major-face
+  "Face used in areas of the buffer with a minor-major mode."
+  (set-face-attribute minor-major-face 'foreground "darkblue"))
 
 ;;;###autoload
 (defun minor-major-mode (mode start end)

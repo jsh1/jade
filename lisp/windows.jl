@@ -21,17 +21,14 @@
 
 ;; Some more standard faces
 
-(defvar underline-face (make-face "underline" default-face)
-  "Face used for underlined text.")
-(set-face-attribute underline-face 'underline t)
+(defface underline-face "Face used for underlined text."
+  (set-face-attribute underline-face 'underline t))
 
-(defvar bold-face (make-face "bold" default-face)
-  "Face used for bold text.")
-(set-face-attribute bold-face 'bold t)
+(defface bold-face "Face used for bold text."
+  (set-face-attribute bold-face 'bold t))
 
-(defvar italic-face (make-face "italic" default-face)
-  "Face used for italicized text.")
-(set-face-attribute italic-face 'italic t)
+(defface italic-face "Face used for italicized text."
+  (set-face-attribute italic-face 'italic t))
 
 
 

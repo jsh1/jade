@@ -44,10 +44,7 @@
   "Regexp matching a region of text that can be spell-checked using Ispell,
 i.e. a single word.")
 
-(defvar ispell-misspelt-face nil
-  "Face used to highlight misspelt words.")
-(unless ispell-misspelt-face
-  (setq ispell-misspelt-face (make-face "ispell-misspelt"))
+(defface ispell-misspelt-face "Face used to highlight misspelt words."
   (set-face-attribute ispell-misspelt-face 'underline t)
   (set-face-attribute ispell-misspelt-face 'foreground "#700000"))
 
