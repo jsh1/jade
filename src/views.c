@@ -440,12 +440,13 @@ update_status_buffer(VW *vw, char *status_buf, u_long buflen)
     long lines = tx->tx_LogicalEnd - tx->tx_LogicalStart;
     long glyph_col = get_cursor_column(vw);
     char *ptr = status_buf;
+    size_t len;
 
     if(vw->vw_Flags & VWFF_MINIBUF)
 	return;
     if(vw->vw_StatusOverride != LISP_NULL)
     {
-	u_long len = STRING_LEN(vw->vw_StatusOverride);
+	len = STRING_LEN(vw->vw_StatusOverride);
 	memcpy(status_buf, VSTR(vw->vw_StatusOverride), MIN(len, buflen));
 	if(len < buflen)
 	    memset(status_buf + len, ' ', buflen - len);
@@ -485,23 +486,40 @@ update_status_buffer(VW *vw, char *status_buf, u_long buflen)
 
     if(STRINGP(tx->tx_StatusId))
     {
-	int len = STRING_LEN(tx->tx_StatusId);
-	memcpy(ptr, VSTR(tx->tx_StatusId), MIN(len, 24));
-	if(len < 24)
-	    memset(ptr + len, '-', 24 - len);
-	ptr += 24;
-	*ptr++ = '-';
+	len = STRING_LEN(tx->tx_StatusId);
+	len = MIN(len, buflen - (ptr - status_buf));
+	memcpy(ptr, VSTR(tx->tx_StatusId), POS(len));
+	ptr += len;
+	*ptr++ = ' ';
     }
 
     *ptr++ = (recurse_depth > 0) ? '[' : '(';
-    ptr = stpcpy(ptr, tx->tx_ModeName ? (char *)VSTR(tx->tx_ModeName)
-		 : "Fundamental");
-    ptr = stpcpy(ptr, VSTR(tx->tx_MinorModeNameString));
+    if(tx->tx_ModeName != LISP_NULL)
+    {
+	len = STRING_LEN(tx->tx_ModeName);
+	len = MIN(len, buflen - (ptr - status_buf));
+	memcpy(ptr, VSTR(tx->tx_ModeName), POS(len));
+    }
+    else
+    {
+	len = sizeof("Fundamental");
+	len = MIN(len, buflen - (ptr - status_buf));
+	memcpy(ptr, "Fundamental", POS(len));
+    }
+    ptr += POS(len);
+    len = STRING_LEN(tx->tx_MinorModeNameString);
+    len = MIN(len, buflen - (ptr - status_buf));
+    memcpy(ptr, VSTR(tx->tx_MinorModeNameString), POS(len));
+    ptr += POS(len);
     *ptr++ = (recurse_depth > 0) ? ']' : ')';
     *ptr++ = '-'; *ptr++ = '-';
 
     {
 	char *position, position_buf[4];
+	char tem[64];
+	size_t len;
+	char *mptr;
+
 	if(VROW(vw->vw_DisplayOrigin) <= tx->tx_LogicalStart)
 	{
 	    if(vw->vw_Flags & VWFF_AT_BOTTOM)
@@ -510,7 +528,7 @@ update_status_buffer(VW *vw, char *status_buf, u_long buflen)
 		position = "Top";
 	}
 	else if(vw->vw_Flags & VWFF_AT_BOTTOM)
-	    position = "Bottom";
+	    position = "Bot";
 	else
 	{
 	    int percent = ((VROW(vw->vw_DisplayOrigin)
@@ -518,21 +536,18 @@ update_status_buffer(VW *vw, char *status_buf, u_long buflen)
 	    position_buf[0] = (percent / 10) + '0';
 	    position_buf[1] = (percent % 10) + '0';
 	    position_buf[2] = '%';
+	    position_buf[3] = 0;
 	    position = position_buf;
 	}
-	memcpy(ptr, position, 3);
-	ptr += 3;
-    }
 
-    sprintf(ptr, "--%c%ld,%ld%c--", restriction ? '[' : '(',
-	    glyph_col + 1, VROW(vw->vw_CursorPos) - tx->tx_LogicalStart + 1,
-	    restriction ? ']' : ')');
-    ptr += strlen(ptr);
-
-    {
-	int left = buflen - (ptr - status_buf);
-	memset(ptr, '-', left);
-	ptr[left] = 0;
+	sprintf(tem, "-%c%ld,%ld%c--%s-", restriction ? '[' : '(',
+		glyph_col + 1, VROW(vw->vw_CursorPos)
+		- tx->tx_LogicalStart + 1, restriction ? ']' : ')', position);
+	len = strlen(tem);
+	mptr = status_buf + buflen - len;
+	memcpy(mptr, tem, len);
+	if(ptr < mptr)
+	    memset(ptr, '-', mptr - ptr);
     }
 }
 
