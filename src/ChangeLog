@@ -1,3 +1,11 @@
+2000-07-25  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gtk_jade.c: don't ever use gtk_widget_set_usize (), use
+	gtk_window_set_default_size () and set the WM_NORMAL_HINTS
+	(only if the new GtkJade widget is being framed). This removes
+	the problem of not being able to resize the window to be
+	smaller than its initial size
+
 2000-07-24  John Harper  <john@dcs.warwick.ac.uk>
 
 	* server-dl.c: don't use rep_dl_subrs
