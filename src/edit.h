@@ -196,33 +196,13 @@ enum Glyph_Attrs {
 
 typedef struct {
     int cols, rows;
-    u_long hashes[0];			/* ROWS hash codes*/
+    glyph_code **codes;			/* ROWS glyph codes */
+    glyph_attr **attrs;			/* ROWS glyph attrs */
+    u_long *hashes;			/* ROWS hash values */
 
-    /* Following the ROWS hash codes, we have COLSxROWS glyph codes
-       followed by COLSxROWS glyph attrs. Use the GLYPH_BUF_CODES and
-       GLYPH_BUF_ATTRS to get pointers into them. */
+    /* Note that attrs[i] follows immediately after codes[i], so that
+       all data for a line can be copied by a single call to memcpy() */
 } glyph_buf;
-
-#define SIZEOF_GLYPH_BUF(cols, rows)		\
-    (sizeof(glyph_buf)				\
-     + ((cols) * (rows) * sizeof(glyph_code))	\
-     + ((cols) * (rows) * sizeof(glyph_attr))	\
-     + ((rows) * sizeof(u_long)))
-
-/* Return the address of the code line ROW in glyph buffer G. */
-#define GLYPH_BUF_CODES(g,row)						\
-    ((glyph_code *)(((char *)g)						\
-		    + sizeof(glyph_buf)					\
-		    + (((g)->rows) * sizeof(u_long))			\
-		    + (((g)->cols * (row)) * sizeof(glyph_code))))
-
-/* Return the address of the attribute line ROW in glyph buffer G. */
-#define GLYPH_BUF_ATTRS(g,row)						\
-    ((glyph_attr *)(((char *)g)						\
-		    + sizeof(glyph_buf)					\
-		    + (((g)->rows) * sizeof(u_long))			\
-		    + (((g)->cols * (g)->rows) * sizeof(glyph_code))	\
-		    + (((g)->cols * (row)) * sizeof(glyph_attr))))
 
 /* Each window is represented by one of these */
 typedef struct _WIN {
