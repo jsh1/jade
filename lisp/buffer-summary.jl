@@ -40,14 +40,15 @@
 		       (print . bs-print-item)
 		       (list . (lambda () (copy-sequence buffer-list)))
 		       (save . save-file)
-		       (after-marking . (lambda () (summary-next-item 1))))
+		       (after-marking . (lambda () (summary-next-item 1)))
+		       (on-quit . bs-quit))
   "Function vector for summary-mode.")
 
 ;;;###autoload
 (defun buffer-summary ()
   "Switch to the buffer-summary."
   (interactive)
-  (goto-buffer bs-buffer)
+  (set-current-buffer bs-buffer)
   (if (eq major-mode 'buffer-summary-mode)
       (summary-update)
     (insert "Buffer Summary:\n\n   MR\tName\t\tMode\t\tFile\n   --\t----\t\t----\t\t----\n")
@@ -80,6 +81,9 @@ Commands for this mode are,\n
 			buffer-list.
   `q'			Quit the buffer menu.")
 
+(defun bs-quit ()
+  (set-current-buffer (car buffer-list)))
+
 (defun bs-print-item (item)
   (let
       ((pending-ops (summary-get-pending-ops item)))
@@ -102,7 +106,7 @@ Commands for this mode are,\n
     (format (current-buffer) "%s" (buffer-file-name item))))
 
 (defun bs-select-item (item)
-  (bury-buffer bs-buffer)
+  (bs-quit)
   (goto-buffer item))
 
 (defun bs-select-whole-window ()
@@ -114,9 +118,9 @@ Commands for this mode are,\n
   (interactive)
   (let
       ((new-buf (summary-current-item))
-       (old-buf (nth 1 buffer-list))
+       (old-buf (car buffer-list))
        first-view second-view)
-    (bury-buffer bs-buffer)
+    (bs-quit)
     (if (< (window-view-count) 3)
 	(open-view)
       (while (> (window-view-count) 3)
@@ -151,5 +155,4 @@ Commands for this mode are,\n
 
 (defun bs-mark-save ()
   (interactive)
-  (summary-add-pending-op (summary-current-item) 'save)
-  (summary-next-item 1))
+  (summary-add-pending-op (summary-current-item) 'save))
