@@ -69,6 +69,18 @@ adjust_marks_add_x(TX *tx, long addx, long xpos, long ypos)
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
 
+    adjust_extents_add_cols(tx->tx_GlobalExtent, addx, xpos, ypos);
+
+    {
+	struct cached_extent *ce = tx->tx_ExtentCache;
+	int i;
+	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
+	{
+	    if(ce->extent && ce->pos.row == ypos && ce->pos.col >= xpos)
+		ce->pos.col += addx;
+	}
+    }
+
 #undef UPD
 }
 
@@ -107,6 +119,18 @@ adjust_marks_sub_x(TX *tx, long subx, long xpos, long ypos)
     UPD(tx->tx_SavedWPos);
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
+
+    adjust_extents_sub_cols(tx->tx_GlobalExtent, subx, xpos, ypos);
+
+    {
+	struct cached_extent *ce = tx->tx_ExtentCache;
+	int i;
+	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
+	{
+	    if(ce->extent && ce->pos.row == ypos && ce->pos.col >= xpos)
+		ce->pos.col -= subx;
+	}
+    }
 
 #undef UPD
 }
@@ -155,6 +179,18 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
     UPD(tx->tx_SavedWPos);
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
+
+    adjust_extents_add_rows(tx->tx_GlobalExtent, addy, ypos);
+
+    {
+	struct cached_extent *ce = tx->tx_ExtentCache;
+	int i;
+	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
+	{
+	    if(ce->extent && ce->pos.row >= ypos)
+		ce->pos.row += addy;
+	}
+    }
 
 #undef UPD
 #undef UPD_Y
@@ -225,6 +261,18 @@ adjust_marks_sub_y(TX *tx, long suby, long ypos)
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
 
+    adjust_extents_sub_rows(tx->tx_GlobalExtent, suby, ypos);
+
+    {
+	struct cached_extent *ce = tx->tx_ExtentCache;
+	int i;
+	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
+	{
+	    if(ce->extent && ce->pos.row >= ypos)
+		ce->pos.row = MAX(ypos, ce->pos.row - suby);
+	}
+    }
+
 #undef UPD_Y
 #undef UPD
 #undef UPD1
@@ -292,6 +340,24 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
 
+    adjust_extents_split_row(tx->tx_GlobalExtent, xpos, ypos);
+
+    {
+	struct cached_extent *ce = tx->tx_ExtentCache;
+	int i;
+	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
+	{
+	    if(ce->extent
+	       && (ce->pos.row > ypos
+		   || (ce->pos.row == ypos && ce->pos.col >= xpos)))
+	    {
+		if(ce->pos.row == ypos)
+		    ce->pos.col -= xpos;
+		ce->pos.row++;
+	    }
+	}
+    }
+
 #undef UPD_Y
 #undef UPD
 #undef UPD1
@@ -354,6 +420,22 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
     UPD(tx->tx_SavedWPos);
     UPD(tx->tx_SavedBlockPos[0]);
     UPD(tx->tx_SavedBlockPos[1]);
+
+    adjust_extents_join_rows(tx->tx_GlobalExtent, xpos, ypos);
+
+    {
+	struct cached_extent *ce = tx->tx_ExtentCache;
+	int i;
+	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
+	{
+	    if(ce->extent && ce->pos.row > ypos)
+	    {
+		if(ce->pos.row == ypos + 1)
+		    ce->pos.col += xpos;
+		ce->pos.row--;
+	    }
+	}
+    }
 
 #undef UPD
 #undef UPD2
