@@ -22,9 +22,6 @@
 (require 'completion)
 (provide 'prompt)
 
-(defvar prompt-buffer-list '()
-  "Stack of buffers which can be used for prompts.")
-
 (defvar prompt-keymap
   (bind-keys (make-sparse-keymap)
     "TAB"	'prompt-complete
@@ -40,6 +37,16 @@
 
 ;; Configuration variables
 
+(defvar prompt-complete-function nil
+  "When non-nil this function is called in place of prompt-complete to handle
+_all_ completion in the prompt. It should complete whatever precedes the
+cursor. Note that if this variable is non-nil. The `prompt-completion-
+function' isn't ever called.")
+
+(defvar prompt-list-completions-function nil
+  "Similar to `prompt-complete-function', but called instead of the `prompt-
+list-completions' command.")
+
 (defvar prompt-completion-function nil
   "Optional function taking one argument, the string to be completed. It
 should return a list of all matches.")
@@ -50,13 +57,6 @@ Should return non-nil when this string may be accepted (and therefore the
 prompt will end). If it returns the symbol t the string is returned as-is,
 if some other non-nil value is returned *that* is the value returned by
 the prompt.")
-
-(defconst prompt-def-regexps ["[a-zA-Z0-9]" "[^a-zA-Z0-9]|$"]
-  "Default value of `prompt-word-regexps'")
-
-(defvar prompt-word-regexps prompt-def-regexps
-  "Vector of two regexps; the values of `word-regexp' and `word-not-regexp'
-for the prompt.")
 
 (defvar prompt-list nil
   "Used by the `prompt-complete-from-list' and `prompt-validate-from-list'
@@ -80,6 +80,9 @@ case.")
 
 (defvar prompt-history prompt-default-history
   "A ring buffer used to record history information for the minibuffer.")
+
+(defvar prompt-glyph-table nil
+  "When non-nil the glyph table to use for prompts.")
 
 
 ;; Working variables used by more than one function
@@ -124,7 +127,7 @@ entered currently.")
 title to print in the buffer, START the original contents of the buffer.
 The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
   (let*
-      ((prompt-buffer (get-prompt-buffer))
+      ((prompt-buffer (make-buffer "*prompt*"))
        (prompt-title-view (nth (- (window-view-count) 2) (window-view-list)))
        prompt-old-title-msg
        (prompt-original-buffer (current-buffer))
@@ -139,38 +142,26 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
     (unwind-protect
 	(with-view (minibuffer-view)
 	  (with-buffer prompt-buffer
-	    (setq word-regexp (aref prompt-word-regexps 0) 
-		  word-not-regexp (aref prompt-word-regexps 1))
+	    (when prompt-glyph-table
+	      (set-buffer-glyph-table prompt-buffer prompt-glyph-table))
 	    (when (stringp start)
 	      (insert start))
 	    (make-local-variable 'pre-command-hook)
 	    (setq keymap-path '(prompt-keymap global-keymap)
-		  buffer-undo-list nil
 		  result (catch 'prompt (recursive-edit)))
 	    (when (and result prompt-history
 		       (not (string= result ""))
 		       (or (zerop (ring-size prompt-history))
 			   (not (equal (get-from-ring prompt-history)
 				       result))))
-	      (add-to-ring prompt-history result))))
-      (return-prompt-buffer prompt-buffer)
+	      (add-to-ring prompt-history result)))
+	  (kill-all-local-variables prompt-buffer))
       (completion-remove-view)
       (set-status-message prompt-old-title-msg prompt-title-view))
     result))
 
 
 ;; Subroutines
-
-(defun get-prompt-buffer ()
-  (if prompt-buffer-list
-      (prog1
-	  (car prompt-buffer-list)
-	(setq prompt-buffer-list (cdr prompt-buffer-list)))
-    (make-buffer "*prompt*")))
-
-(defun return-prompt-buffer (buf)
-  (setq prompt-buffer-list (cons buf prompt-buffer-list))
-  (clear-buffer buf))
 
 (defun prompt-enter-line ()
   (interactive)
@@ -195,54 +186,58 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 ;; Returns the number of completions found.
 (defun prompt-complete ()
   (interactive)
-  (if (not prompt-completion-function)
-      (progn
-	(prompt-message "[No completion function]")
-	0)
-    (let*
-	((word (copy-area (start-of-buffer) (cursor-pos)))
-	 ;; Before making the list of completions, try to
-	 ;; restore the original context
-	 (comp-list (with-view prompt-original-view
-		      (with-buffer prompt-original-buffer
-			(funcall prompt-completion-function word))))
-	 (num-found (length comp-list))
-	 (buffer-record-undo nil))
-      (cond
-       ((= num-found 0)
-	(completion-remove-view)
-	(prompt-message "[No completions]"))
-       ((= num-found 1)
-	(goto (replace-string word (car comp-list) (start-of-buffer)))
-	(completion-remove-view)
-	(prompt-message "[Unique completion]"))
-       (t
-	(when (not (string-head-eq (car comp-list) word))
-	  ;; Completions don't match their source at all.
-	  (delete-area (start-of-buffer) (cursor-pos))
-	  (setq word ""))
-	(goto (replace-string word (complete-string word comp-list
-						    prompt-list-fold-case)
-			      (start-of-buffer)))
-	(completion-list comp-list)
-	(prompt-message (format nil "[%d completions]" num-found))))
-      num-found)))
-
+  (if prompt-complete-function
+      (call-command prompt-complete-function current-prefix-arg)
+    (if (not prompt-completion-function)
+	(progn
+	  (prompt-message "[No completion function]")
+	  0)
+      (let*
+	  ((word (copy-area (start-of-buffer) (cursor-pos)))
+	   ;; Before making the list of completions, try to
+	   ;; restore the original context
+	   (comp-list (with-view prompt-original-view
+			(with-buffer prompt-original-buffer
+			  (funcall prompt-completion-function word))))
+	   (num-found (length comp-list))
+	   (buffer-record-undo nil))
+	(cond
+	 ((= num-found 0)
+	  (completion-remove-view)
+	  (prompt-message "[No completions]"))
+	 ((= num-found 1)
+	  (goto (replace-string word (car comp-list) (start-of-buffer)))
+	  (completion-remove-view)
+	  (prompt-message "[Unique completion]"))
+	 (t
+	  (when (not (string-head-eq (car comp-list) word))
+	    ;; Completions don't match their source at all.
+	    (delete-area (start-of-buffer) (cursor-pos))
+	    (setq word ""))
+	  (goto (replace-string word (complete-string word comp-list
+						      prompt-list-fold-case)
+				(start-of-buffer)))
+	  (completion-list comp-list)
+	  (prompt-message (format nil "[%d completions]" num-found))))
+	num-found))))
+  
 (defun prompt-list-completions ()
   (interactive)
-  (if (not prompt-completion-function)
-      (progn
-	(prompt-message "[No completion function]")
-	0)
-    (let*
-	((word (copy-area (start-of-buffer) (cursor-pos)))
-	 ;; Before making the list of completions, try to
-	 ;; restore the original context
-	 (comp-list (with-view prompt-original-view
-		      (with-buffer prompt-original-buffer
-			(funcall prompt-completion-function word)))))
-      (completion-list comp-list)
-      (prompt-message (format nil "[%d completions]" (length comp-list))))))
+  (if prompt-list-completions-function
+      (call-command prompt-list-completions-function current-prefix-arg)
+    (if (not prompt-completion-function)
+	(progn
+	  (prompt-message "[No completion function]")
+	  0)
+      (let*
+	  ((word (copy-area (start-of-buffer) (cursor-pos)))
+	   ;; Before making the list of completions, try to
+	   ;; restore the original context
+	   (comp-list (with-view prompt-original-view
+			(with-buffer prompt-original-buffer
+			  (funcall prompt-completion-function word)))))
+	(completion-list comp-list)
+	(prompt-message (format nil "[%d completions]" (length comp-list)))))))
 
 (defun prompt-cancel ()
   (interactive)
@@ -390,7 +385,6 @@ allowed to be entered."
        (prompt-validate-function (if existing
 				     'prompt-validate-filename
 				   nil))
-       (prompt-word-regexps prompt-def-regexps)
        (prompt-history (or history-list prompt-file-history))
        (prompt-default-value default)
        (str (prompt prompt start)))
@@ -411,7 +405,6 @@ allowed to be entered."
        (prompt-validate-function (if existing
 				     'prompt-validate-directory
 				   nil))
-       (prompt-word-regexps prompt-def-regexps)
        (prompt-history prompt-file-history)
        (str (prompt prompt start)))
     (when (and (string= str "") default)
@@ -431,7 +424,6 @@ string, if nil the current buffer is returned."
        (prompt-validate-function (if existing
 				     'prompt-validate-buffer
 				   nil))
-       (prompt-word-regexps prompt-def-regexps)
        (prompt-default-value (buffer-name (or default (current-buffer))))
        (buf (prompt prompt)))
     (if (equal buf "")
@@ -439,9 +431,6 @@ string, if nil the current buffer is returned."
       (unless (get-buffer buf)
 	(when (not existing)
 	  (open-buffer buf))))))
-
-;; borrowed from lisp-mode.jl
-(defvar symbol-word-regexps ["[^][()?'\"#; ]" "[][()?'\"#; ]|$"])
 
 ;;;###autoload
 (defun prompt-for-symbol (&optional prompt prompt-symbol-predicate start)
@@ -452,7 +441,6 @@ symbol must agree with it."
   (let
       ((prompt-completion-function 'prompt-complete-symbol)
        (prompt-validate-function 'prompt-validate-symbol)
-       (prompt-word-regexps symbol-word-regexps)
        (prompt-history prompt-symbol-history))
     (intern (prompt prompt start))))
 
@@ -462,9 +450,9 @@ symbol must agree with it."
   (unless (stringp prompt)
     (setq prompt "Enter a Lisp object:"))
   (let
-      ((prompt-completion-function 'prompt-complete-symbol)
+      ((prompt-complete-function 'lisp-complete-sexp)
+       (prompt-list-completions-function 'lisp-show-sexp-completions)
        (prompt-validate-function nil)
-       (prompt-word-regexps symbol-word-regexps)
        (prompt-symbol-predicate nil))
     (read-from-string (prompt prompt start))))
 
@@ -492,8 +480,7 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
       ((prompt-completion-function 'prompt-complete-from-list)
        (prompt-validate-function (if dont-validate
 				     nil
-				   'prompt-validate-from-list))
-       (prompt-word-regexps prompt-def-regexps))
+				   'prompt-validate-from-list)))
   (prompt prompt start)))
 
 ;;;###autoload
@@ -537,7 +524,7 @@ string QUESTION, returns t for `y'."
   (let
       ((buf (current-buffer))
        (view (current-view))
-       (prompt-buffer (get-prompt-buffer)))
+       (prompt-buffer (make-buffer "*y-or-n*")))
     (with-view (minibuffer-view)
       (with-buffer prompt-buffer
 	(let
@@ -551,9 +538,7 @@ string QUESTION, returns t for `y'."
 	      (catch 'ask
 		(recursive-edit))
 	    (with-buffer prompt-buffer
-	      (setq keymap-path old-k-p
-		    unbound-key-hook old-u-k-h))
-	    (return-prompt-buffer prompt-buffer)))))))
+	      (kill-all-local-variables))))))))
 
 (defvar map-y-or-n-keymap
   (bind-keys (make-sparse-keymap y-or-n-keymap)
