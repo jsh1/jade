@@ -24,6 +24,7 @@
 
 #include <string.h>
 #include <X11/Xutil.h>
+#include <assert.h>
 
 _PR int sys_sleep_win(WIN *);
 _PR int sys_unsleep_win(WIN *);
@@ -276,11 +277,14 @@ x11_find_window(Window win)
 }
 
 static inline void
-face_to_gc(WIN *w, Lisp_Face *f, bool invert)
+face_to_gc(WIN *w, Merged_Face *f, bool invert)
 {
     unsigned long mask = 0;
     struct x11_color *c;
     Font fid;
+
+    if(f->car & FACEFF_INVERT)
+	invert = !invert;
 
     c = x11_get_color_dpy(VCOLOR(invert ? f->background : f->foreground),
 			  WINDOW_XDPY(w));
@@ -321,21 +325,14 @@ void
 sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 		int len, bool all_spaces)
 {
-    bool draw_rect = FALSE;
     bool invert = FALSE;
-    Lisp_Face *f;
+    Merged_Face *f;
     int x, y;
 
-    if(attr & GA_CursorFace)
-    {
-	if(!WINDOW_HAS_FOCUS(w))
-	   draw_rect = TRUE;
-	invert = TRUE;
-	attr &= ~GA_CursorFace;
-    }
+    assert(attr >= GA_FirstFace && attr <= GA_LastFace);
 
-    f = face_table[attr];
-    if(!f)
+    f = &w->w_MergedFaces[attr];
+    if(!f->valid)
 	return;
     
     x = w->w_LeftPix + w->w_FontX * col;
@@ -355,9 +352,10 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 		       len * w->w_FontX, w->w_FontY);
     }
 
-    if(VFACE(f)->car & FACEFF_UNDERLINE)
+    if(f->car & FACEFF_UNDERLINE)
     {
-	face_to_gc(w, f, invert);
+	if(all_spaces)
+	    face_to_gc(w, f, invert);
 	XDrawLine(WINDOW_XDPY(w)->display, w->w_Window,
 		  w->w_WindowSys.ws_GC,
 		  x, y + w->w_WindowSys.ws_Font->ascent + 1,
@@ -365,12 +363,18 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 		  y + w->w_WindowSys.ws_Font->ascent + 1);
     }
 
-    if(draw_rect)
+    if(f->car & FACEFF_BOXED)
     {
-	face_to_gc(w, f, !invert);
-	XDrawRectangle(WINDOW_XDPY(w)->display, w->w_Window,
-		       w->w_WindowSys.ws_GC, x, y,
-		       w->w_FontX - 1, w->w_FontY - 1);
+	int i;
+	if(all_spaces)
+	    face_to_gc(w, f, invert);
+	for(i = 0; i < len; i++)
+	{
+	    XDrawRectangle(WINDOW_XDPY(w)->display, w->w_Window,
+			   w->w_WindowSys.ws_GC, x, y,
+			   w->w_FontX - 1, w->w_FontY - 1);
+	    x += w->w_FontX;
+	}
     }
 }
 
