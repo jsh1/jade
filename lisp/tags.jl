@@ -35,12 +35,17 @@
 (defvar tags-history nil
   "List of previously found tags (as marks).")
 
+(defvar tags-marks nil
+  "List of locations from which tags were found (as marks).")
+
 (defvar tags-fold-case t
   "When t, case isn't important when searching tags tables.")
 
 ;; If non-nil, (FUNCTION . ARGS) that will restart the previous tags-search
 ;; or tags-query-replace command
 (defvar tags-continue-command nil)
+
+(defvar tags-history-length 16)
 
 
 ;; Code
@@ -56,6 +61,14 @@
 					      default default)))
       (error "No tags table selected")))
 
+(defun tags-trim-history ()
+  (let ((history-end (nthcdr tags-history-length tags-history))
+	(marks-end (nthcdr tags-history-length tags-marks)))
+    (when history-end
+      (rplacd history-end nil))
+    (when marks-end
+      (rplacd marks-end nil))))
+
 ;;;###autoload
 (defun visit-tag-table (name)
   "Signal that all tags searches should be carried out in tags table NAME."
@@ -70,23 +83,21 @@ prefix argument greater than one says to find the next tag using the same
 string that the last tag was found with; a negative prefix arg says to
 move back to the previously found tag."
   (interactive
-   (list (let
-	     ((arg (prefix-numeric-argument current-prefix-arg)))
-	   (cond
-	    ((< arg 0)
-	     ;; Negative arg, pop last tag off stack
-	     'pop)
-	    ((> arg 1)
-	     ;; Move to the next occurrence of the last tag
-	     'push)
-	    (t
+   (list (if (null current-prefix-arg)
 	     ;; Find a new tag
-	     (or (prompt-for-string "Find tag:")
-		 (error "No tag specified")))))))
+	     (or (prompt-for-string "Find tag:" (symbol-at-point))
+		 (error "No tag specified"))
+	   (if (< (prefix-numeric-argument current-prefix-arg) 0)
+	       ;; Negative arg, pop last tag off stack
+	       'pop
+	     ;; Move to the next occurrence of the last tag
+	     'push))))
   (tags-find-table)
+  (tags-trim-history)			;should be after, but easier here..
   (catch 'return
     (let
 	((tags-buffer (find-file tags-file-name t))
+	 (original-mark (make-mark))
 	 start)
       (cond
        ((eq name 'pop)
@@ -151,9 +162,18 @@ move back to the previously found tag."
 	    ;; break out of the loop
 	    (setq tags-last-found name
 		  tags-last-found-pos (end-of-line start tags-buffer)
-		  tags-history (cons (make-mark) tags-history))
+		  tags-history (cons (make-mark) tags-history)
+		  tags-marks (cons original-mark tags-marks))
 	    (throw 'return (cursor-pos)))))
       (error "Tag %S not found" name))))
+
+(defun pop-tag-mark ()
+  "Return to the buffer and position from which the last tag was found."
+  (interactive)
+  (if (null tags-marks)
+      (message "[No more tag marks]")
+    (goto-mark (car tags-marks))
+    (setq tags-marks (cdr tags-marks))))
 
 
 ;; Tags searching
