@@ -35,8 +35,6 @@
 typedef char *XPointer;
 #endif
 
-#define NOSCRLBAR
-
 /* standard font */
 #define DEFAULT_FONT "fixed"
 
