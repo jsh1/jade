@@ -152,20 +152,17 @@ regexec_tx(prog, tx, start, eflags)
        at the start of each line after position START */
     if (prog->reganch)
     {
-	LINE *line = tx->tx_Lines + VROW(start);
 	COPY_VPOS(&s, start);
 	if(PCOL(&s) > 0)
 	{
 	    PCOL(&s) = 0;
 	    PROW(&s)++;
-	    line++;
 	}
 	while(PROW(&s) < tx->tx_LogicalEnd)
 	{
 	    if(regtry(tx, prog, &s))
 		return (1);
 	    PROW(&s)++;
-	    line++;
 	}
 	return (0);
     }
@@ -292,7 +289,6 @@ regexec_reverse_tx(prog, tx, start, eflags)
        matching from the start of a line. */
     if (prog->reganch)
     {
-	LINE *line = tx->tx_Lines + VROW(start);
 	COPY_VPOS(&s, start);
 	PCOL(&s) = 0;
 	while(PROW(&s) >= tx->tx_LogicalStart)
@@ -300,7 +296,6 @@ regexec_reverse_tx(prog, tx, start, eflags)
 	    if(regtry(tx, prog, &s))
 		return (1);
 	    PROW(&s)--;
-	    line--;
 	}
 	return (0);
     }

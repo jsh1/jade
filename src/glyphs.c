@@ -819,7 +819,6 @@ recenter_cursor(VW *vw)
 	/* First, is the cursor past the end of the last row of glyphs
 	   that will be displayed for the line it's on? */
 	{
-	    LINE *line = tx->tx_Lines + VROW(vw->vw_CursorPos);
 	    long last_col = line_glyph_length(tx, VROW(vw->vw_CursorPos));
 	    if(last_col == 0)
 		/* Always display a line, even if there's no glyphs at all */
@@ -828,7 +827,7 @@ recenter_cursor(VW *vw)
 		last_col = ROUND_UP_INT(last_col, vw->vw_MaxX - 1);
 	    if(offset > last_col)
 	    {
-		vw->vw_CursorPos = make_pos(line->ln_Strlen - 1,
+		vw->vw_CursorPos = make_pos(tx->tx_Lines[VROW(vw->vw_CursorPos)].ln_Strlen - 1,
 					    VROW(vw->vw_CursorPos));
 		offset = get_cursor_column(vw);
 	    }
@@ -1004,9 +1003,9 @@ line_glyph_length(TX *tx, long line)
 	if(set_data->changes != tx->tx_Changes)
 	{
 	    /* No. Recalculate */
-	    LINE *l = tx->tx_Lines + line;
-	    set_data->glyphs = uncached_string_glyph_length(tx, l->ln_Line,
-							    l->ln_Strlen - 1);
+	    set_data->glyphs
+		= uncached_string_glyph_length(tx, tx->tx_Lines[line].ln_Line,
+					       tx->tx_Lines[line].ln_Strlen - 1);
 	    set_data->changes = tx->tx_Changes;
 	    gl_cache.invalid_hits++;
 	}
@@ -1036,10 +1035,9 @@ line_glyph_length(TX *tx, long line)
 	    if(set_data[i].changes != tx->tx_Changes)
 	    {
 		/* No. Recalculate */
-		LINE *l = tx->tx_Lines + line;
 		set_data[i].glyphs
-		    = uncached_string_glyph_length(tx, l->ln_Line,
-						   l->ln_Strlen - 1);
+		    = uncached_string_glyph_length(tx, tx->tx_Lines[line].ln_Line,
+						   tx->tx_Lines[line].ln_Strlen - 1);
 		set_data[i].changes = tx->tx_Changes;
 		gl_cache.invalid_hits++;
 	    }
@@ -1073,24 +1071,23 @@ line_glyph_length(TX *tx, long line)
 long
 glyph_col(TX *tx, long col, long linenum)
 {
-    LINE *line = tx->tx_Lines + linenum;
-    if(col >= line->ln_Strlen)
+    if(col >= tx->tx_Lines[linenum].ln_Strlen)
     {
 	return (line_glyph_length(tx, linenum)
-		+ (col - (line->ln_Strlen - 1)));
+		+ (col - (tx->tx_Lines[linenum].ln_Strlen - 1)));
     }
     else
 	/* TODO: make this work with the cache */
-	return uncached_string_glyph_length(tx, line->ln_Line, col);
+	return uncached_string_glyph_length(tx, tx->tx_Lines[linenum].ln_Line,
+					    col);
 }
 
 /* Find how many chars to glyph position col. */
 long
 char_col(TX *tx, long col, long linenum)
 {
-    LINE *line = tx->tx_Lines + linenum;
-    u_char *src = line->ln_Line;
-    long srclen = line->ln_Strlen - 1;
+    u_char *src = tx->tx_Lines[linenum].ln_Line;
+    long srclen = tx->tx_Lines[linenum].ln_Strlen - 1;
     glyph_widths_t *width_table;
     register long w = 0;
     /* FIXME: This is wrong */
@@ -1108,9 +1105,9 @@ char_col(TX *tx, long col, long linenum)
 	    w += w1;
     }
     if(srclen < 0)
-	return((line->ln_Strlen - 1) + (col - w));
+	return((tx->tx_Lines[linenum].ln_Strlen - 1) + (col - w));
     else
-	return(src - line->ln_Line);
+	return(src - tx->tx_Lines[linenum].ln_Line);
 }
 
 /* Return the actual column on the screen that the cursor appears in. */

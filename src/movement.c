@@ -403,7 +403,7 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
    that COL is referenced more than once, so no side effects please!   */
 #define TST_ESC(line, col) ((col) > 0 && (line)[(col)-1] == esc)
 
-    LINE *line = tx->tx_Lines + PROW(pos);
+    LINE *line = tx->tx_Lines + PROW(pos);	/* safe */
     if(PCOL(pos) < line->ln_Strlen)
     {
 	u_char startc = line->ln_Line[PCOL(pos)];
