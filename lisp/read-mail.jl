@@ -908,15 +908,14 @@ show all messages.")
 				  (1- (rm-get-folder-field
 				       folder rm-folder-message-count)))
 	     (rm-invalidate-status-cache folder)
-	     (let
+	     (let*
 		 ((after (rm-get-folder-field folder rm-folder-after-list))
 		  (current (rm-get-folder-field folder rm-folder-current-msg))
 		  (before (rm-get-folder-field folder rm-folder-before-list))
 		  (index (rm-get-folder-field folder rm-folder-current-index)))
-	       (setq after (delq message after)
-		     before (delq message before))
 	       (cond
 		((eq message current)
+		 ;; Deleting the current message
 		 (if (and before (or go-backwards-p (null after)))
 		     (setq current (car before)
 			   before (cdr before)
@@ -924,9 +923,11 @@ show all messages.")
 		   (setq current (car after)
 			 after (cdr after))))
 		((memq message before)
+		 ;; Deleting from before the current message
 		 (setq before (delq message before)
 		       index (1- index)))
 		(t
+		 ;; Deleting from after the current message
 		 (setq after (delq message after))))
 	       (rm-set-folder-field folder rm-folder-before-list before)
 	       (rm-set-folder-field folder rm-folder-current-msg current)
