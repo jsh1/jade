@@ -248,26 +248,6 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	else
 	    in_block = FALSE;
 
-	attr = GA_Text;
-	/* Check if the block is marked in the top left corner of VW */
-	if(in_block)
-	{
-	    if(!rect_block)
-	    {
-		if(POS_GREATER_EQUAL_P(vw->vw_DisplayOrigin, vw->vw_BlockS)
-		   && POS_LESS_P(vw->vw_DisplayOrigin, vw->vw_BlockE))
-		    attr = GA_Block;
-	    }
-	    else
-	    {
-		if(VROW(vw->vw_DisplayOrigin) >= VROW(vw->vw_BlockS)
-		   && VCOL(vw->vw_DisplayOrigin) >= VCOL(vw->vw_BlockS)
-		   && VROW(vw->vw_DisplayOrigin) < VROW(vw->vw_BlockE)
-		   && VCOL(vw->vw_DisplayOrigin) < VCOL(vw->vw_BlockE))
-		    attr = GA_Block;
-	    }
-	}
-
 	while(char_row < last_row)
 	{
 	    /* Fill in the glyphs for GLYPH_ROW */
@@ -279,6 +259,8 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    bool cursor_row = (vw == w->w_CurrVW
 			       && VROW(vw->vw_CursorPos) == char_row);
 	    bool block_row = FALSE;
+	    attr = GA_Text;
+
 	    if(in_block)
 	    {
 		block_row = (VROW(vw->vw_BlockS) <= char_row
@@ -288,6 +270,21 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		    /* Does the block start or end in this row? */
 		    block_start = VROW(vw->vw_BlockS) == char_row;
 		    block_end = VROW(vw->vw_BlockE) == char_row;
+		    if((char_row > VROW(vw->vw_BlockS)
+			|| (char_row == VROW(vw->vw_BlockS)
+			    && char_col >= VCOL(vw->vw_BlockS)))
+		       && (char_row < VROW(vw->vw_BlockE)
+			   || (char_row == VROW(vw->vw_BlockE)
+			       && char_col < VCOL(vw->vw_BlockE))))
+			attr = GA_Block;
+		}
+		else
+		{
+		    if(char_row >= VROW(vw->vw_BlockS)
+		       && first_col >= VCOL(vw->vw_BlockS)
+		       && char_row < VROW(vw->vw_BlockE)
+		       && first_col < VCOL(vw->vw_BlockE))
+			attr = GA_Block;
 		}
 	    }
 
