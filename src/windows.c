@@ -134,6 +134,8 @@ active window.
 			    curr_win = w;
 			    curr_vw = w->w_CurrVW;
 			}
+			cmd_call_hook(sym_make_window_hook,
+				      LIST_1(VAL(w)), sym_nil);
 			return(VAL(w));
 		    }
 		    kill_all_views(w);
