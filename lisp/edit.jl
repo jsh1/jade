@@ -119,6 +119,12 @@ the next line."
 	       (start-of-line))
 	     (cursor-pos)))
 
+(defun goto-line (line)
+  "Goto line number LINE. LINE counts from 1."
+  (interactive "NLine: ")
+  (set-auto-mark)
+  (goto (pos nil (1- line))))
+
 
 ;; Words
 
