@@ -1,5 +1,8 @@
 2000-04-10  John Harper  <john@dcs.warwick.ac.uk>
 
+	* jade.jl: misc fixes for modularized rep (but should be
+	backwards compatible)
+
 	* lisp-mode.jl (lisp-indent-pos): indentation hints for rep
 	structure forms
 

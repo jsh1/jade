@@ -305,6 +305,7 @@ extern repv Fkeymapp(repv arg);
 extern repv Feventp(repv arg);
 
 /* from main.c */
+extern bool batch_mode_p (void);
 extern int main(int, char **);
 
 /* from misc.c */
