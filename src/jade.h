@@ -87,7 +87,6 @@ typedef char bool;
 # endif
 #endif
 
-#include "stringmem.h"
 #include "lisp.h"
 #include "edit.h"
 #include <lib/doc-strings.h>
