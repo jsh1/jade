@@ -429,7 +429,7 @@ backwards. When called interactively the cursor is set to the position."
   (if (blockp)
       (x11-set-selection 'xa-primary (block-start) (block-end))
     (x11-lose-selection 'xa-primary)))
-(when (x11-p)
+(when (eq window-system 'x11)
   (add-hook 'block-status-hook 'x11-block-status-function))
 
 (defun copy-block (&aux rc)
@@ -575,7 +575,7 @@ the string is added to."
 	kill-last-cursor (cursor-pos))
   string)
 
-(when (x11-p)
+(when (eq window-system 'x11)
   (add-hook 'after-kill-hook
 	    #'(lambda ()
 		(x11-set-selection 'xa-primary (killed-string)))))
@@ -609,7 +609,7 @@ kill storage."
   (if (and (null not-block)
 	   ;; If a block is marked use that, otherwise (in X11) look for a
 	   ;; selection
-	   (or (blockp) (and (x11-p)
+	   (or (blockp) (and (eq window-system 'x11)
 			     (x11-selection-active-p 'xa-primary))))
       (progn
 	(setq yank-last-item nil)
