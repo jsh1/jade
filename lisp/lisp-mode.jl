@@ -329,6 +329,7 @@ preceding the cursor. See `lisp-complete-sexp' for more details."
 (put 'with-view 'lisp-indent 1)
 (put 'catch 'lisp-indent 1)
 (put 'bind-keys 'lisp-indent 1)
+(put 'lazy-bind-keys 'lisp-indent 2)
 (put 'unbind-keys 'lisp-indent 1)
 (put 'save-restriction 'lisp-indent 0)
 (put 'save-excursion 'lisp-indent 0)

@@ -29,6 +29,9 @@
 (require 'read-mail)
 (provide 'rm-mail-dir)
 
+;; Prevent warnings
+(eval-when-compile (require 'rm-summary))
+
 ;; This function is added to read-mail.jl's read-mail-display-message-hook
 (defun rm-mail-dir-scanner (rm-message folder &optional all-addresses)
   (mapc #'(lambda (cell)
@@ -61,10 +64,6 @@ interactively a prefix argument denotes ALL-ADDRESSES."
 (bind-keys rm-keymap
   "Ctrl-k" 'rm-mail-dir-scan-messages)
 
-;; Similar for rm-summary keymap, but defer binding if it doesn't exist
-(if (featurep 'rm-summary)
-    (bind-keys rm-summary-keymap
-      "Ctrl-k" '(rm-command-with-folder 'rm-mail-dir-scan-messages))
-  (eval-after-load "rm-summary" '(bind-keys rm-summary-keymap
-				   "Ctrl-k" '(rm-command-with-folder
-					      'rm-mail-dir-scan-messages))))
+;; Similar for rm-summary keymap
+(lazy-bind-keys rm-summary rm-summary-keymap
+  "Ctrl-k" '(rm-command-with-folder 'rm-mail-dir-scan-messages))
