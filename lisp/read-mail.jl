@@ -332,7 +332,7 @@ Major mode for viewing mail folders. Commands include:\n
       ((pos (start-of-buffer))
        (msgs nil)
        (count 0))
-    (while (and pos (rm-message-start-p pos) (< pos (end-of-buffer)))
+    (while (and pos (< pos (end-of-buffer)) (rm-message-start-p pos))
       (setq msgs (cons (rm-build-message-struct pos) msgs)
 	    count (1+ count)
 	    pos (forward-line (rm-get-msg-field (car msgs)
@@ -374,8 +374,9 @@ Major mode for viewing mail folders. Commands include:\n
       (while (and pos (setq pos (re-search-forward mail-message-start pos))
 		  (not (rm-message-start-p pos)))
 	(setq pos (forward-line 1 pos))))
-    (rm-set-msg-field msg rm-msg-total-lines (- (pos-line
-						 (or pos (end-of-buffer)))
+    (rm-set-msg-field msg rm-msg-total-lines (- (if pos
+						    (pos-line pos)
+						  (buffer-length))
 						(pos-line start)))
     msg))
 
@@ -602,16 +603,20 @@ Major mode for viewing mail folders. Commands include:\n
     (error "No message to delete"))
   ;; When this hook returns t the message isn't deleted.
   (unless (call-hook 'read-mail-delete-message-hook (list rm-current-msg) 'or)
+    (unrestrict-buffer)
     (let
 	((inhibit-read-only t)
+	 (start (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark)))
 	 ;; Don't use rm-curr-msg-end, it may not be initialised.
 	 (end (rm-message-end)))
-      (unrestrict-buffer)
-      (unless (equal end (end-of-buffer))
-	;; Now this points to the first character of the next message
-	(setq end (forward-line 1 end)))
-      (delete-area (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark))
-		   end)
+      (if (not (equal end (end-of-buffer)))
+	  ;; Now this points to the first character of the next message
+	  (setq end (forward-line 1 end))
+	;; If there's a message preceding this one, we want to delete the
+	;; newline between them as well.
+	(unless (equal start (start-of-buffer))
+	  (setq start (forward-line -1 start))))
+      (delete-area start end)
       (setq rm-message-count (1- rm-message-count))
       (if (and rm-before-msg-list
 	       (or go-backwards-p (null rm-after-msg-list)))
@@ -681,17 +686,6 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Getting mail from inbox
 
-;; Ensure that it's okay to insert a new message at the current cursor
-;; position (must be preceded by the start of the buffer, or "\n\n")
-;; Leaves the cursor at the position to insert at.
-;; The buffer should be unrestricted
-(defun rm-enforce-msg-separator ()
-  (unless (or (equal (cursor-pos) (start-of-buffer))
-	      (looking-at "\n\n" (forward-char -1)))
-    (if (= (get-char) ?\n)
-	(insert "\n")
-      (insert "\n\n"))))
-  
 ;; Insert the contents of file INBOX at the end of the current folder, fix
 ;; the message lists and display the first new message. Returns the number
 ;; of messages read if it's okay to try and read more inboxes, nil if it's
@@ -725,9 +719,11 @@ Major mode for viewing mail folders. Commands include:\n
 		 start pos msgs)
 	      (while rm-after-msg-list
 		(rm-move-forwards))
-	      ;; Ensure that there's a blank line at the end of the buffer
+	      ;; Ensure that there's a blank line at the end of the buffer..
 	      (goto (end-of-buffer))
-	      (rm-enforce-msg-separator)
+	      (unless (zerop (buffer-length))
+		;; Unless this is going to be the first message
+		(insert "\n"))
 	      (setq start (cursor-pos))
 	      (insert-file-contents tofile)
 	      (condition-case nil

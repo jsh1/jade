@@ -46,7 +46,8 @@
 	  (unrestrict-buffer)
 	  (save-excursion
 	    (goto (end-of-buffer))
-	    (rm-enforce-msg-separator)
+	    (unless (zerop (buffer-length))
+	      (insert "\n"))
 	    (let
 		((ins-start (cursor-pos))
 		 ;; Don't override read-only in normal buffers
@@ -71,8 +72,10 @@
 			    rm-cached-msg-list 'invalid)
 		      (rm-display-current-message))))))))))
      ((filep dest)
-      ;; DEST is a file. Append to it, assuming that the
-      ;; "\n\n" requirement at the end of the file is met.
+      ;; DEST is a file. Append to it; also append an extra newline
+      ;; character to ensure the "\n\n" requirement at the end of the
+      ;; file is met.
+      (write dest ?\n)
       (write dest text)))
     (rm-set-flag msg 'filed)
     (when rm-delete-after-output

@@ -222,7 +222,8 @@ headers will be included."
 	      (message "Ignoring nonsense message!")
 	    ;; Enforce the "\n\n" rule between messages
 	    (goto (end-of-buffer))
-	    (rm-enforce-msg-separator)
+	    (unless (zerop (buffer-length))
+	      (insert "\n"))
 	    (setq output-pos (cursor-pos))
 	    (insert (copy-area start input-pos))
 	    ;; Unmangle stuffed lines
