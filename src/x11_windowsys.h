@@ -27,6 +27,9 @@ struct x11_display {
 
     Display *display;
     int screen;
+    Visual *visual;
+    int depth;
+    Colormap colormap;
 
     /* Number of windows open */
     int window_count;
