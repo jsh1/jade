@@ -31,17 +31,19 @@ _PR void beep(VW *);
 
 _PR void x11_convert_selection(XSelectionRequestEvent *ev);
 _PR void x11_lose_selection(XSelectionClearEvent *ev);
-_PR void x11_window_lose_selections(Window win);
+_PR void x11_window_lose_selections(WIN *w);
 _PR void x11_misc_init(void);
 
 DEFSTRING(no_cut_buf, "No cut buffer");
 
+/* TODO: these should have a WINDOW argument, to handle multiple
+   displays */
 int
 write_clip(int buffer, char *str, int len)
 {
     int rc = TRUE;
     if((buffer >= 0) && (buffer <= 7))
-	XStoreBuffer(x11_display, str, len, buffer);
+	XStoreBuffer(x11_display_list->display, str, len, buffer);
     else
     {
 	cmd_signal(sym_error, list_2(VAL(&no_cut_buf), MAKE_INT(buffer)));
@@ -57,7 +59,7 @@ read_clip(int buffer)
     if((buffer >= 0) && (buffer <= 7))
     {
 	int len;
-	u_char *mem = XFetchBuffer(x11_display, &len, buffer);
+	u_char *mem = XFetchBuffer(x11_display_list->display, &len, buffer);
 	if(mem)
 	    return(string_dupn(mem, len));
 	return LISP_NULL;
@@ -69,7 +71,7 @@ read_clip(int buffer)
 void
 beep(VW *vw)
 {
-    XBell(x11_display, 0);
+    XBell(WINDOW_XDPY(vw->vw_Win)->display, 0);
 }
 
 
@@ -144,9 +146,10 @@ otherwise.
     if(selection == XA_PRIMARY || selection == XA_SECONDARY)
     {
 	int selno = selection_atom_to_index(selection);
-	XSetSelectionOwner(x11_display, selection,
-			   curr_win->w_Window, CurrentTime);
-	if(XGetSelectionOwner(x11_display, selection) == curr_win->w_Window)
+	XSetSelectionOwner(WINDOW_XDPY(curr_win)->display,
+			   selection, curr_win->w_Window, CurrentTime);
+	if(XGetSelectionOwner(WINDOW_XDPY(curr_win)->display,
+			      selection) == curr_win->w_Window)
 	{
 	    /* We've now got the selection. */
 	    selection_info[selno].owner = curr_win->w_Window;
@@ -194,7 +197,8 @@ Returns t if the X11 selection defined by the symbol SELECTION (either
     {
 	int selno = selection_atom_to_index(selection);
 	if(selection_info[selno].owner != WINDOW_NIL
-	   || XGetSelectionOwner(x11_display, selection) != None)
+	   || XGetSelectionOwner(WINDOW_XDPY(curr_win)->display,
+				 selection) != None)
 	{
 	    return sym_t;
 	}
@@ -271,14 +275,15 @@ If the selection currently has no value, nil is returned.
 	else
 	{
 	    /* Selection lies with another application. */
-	    Window owner = XGetSelectionOwner(x11_display, selection);
+	    struct x11_display *dpy = WINDOW_XDPY(curr_win);
+	    Window owner = XGetSelectionOwner(dpy->display, selection);
 	    if(owner != None)
 	    {
 		XEvent ev;
-		XConvertSelection(x11_display, selection, XA_STRING,
-				  x11_jade_sel, curr_win->w_Window,
+		XConvertSelection(dpy->display, selection, XA_STRING,
+				  dpy->jade_selection, curr_win->w_Window,
 				  CurrentTime);
-		XIfEvent(x11_display, &ev, selnotify_pred, (XPointer)0);
+		XIfEvent(dpy->display, &ev, selnotify_pred, (XPointer)0);
 		if(ev.xselection.property != None)
 		{
 		    /* First find the size of the property. */
@@ -288,8 +293,8 @@ If the selection currently has no value, nil is returned.
 		    unsigned char *prop;          
 		    int r;
 		    int offset;
-		    r = XGetWindowProperty(x11_display, curr_win->w_Window,
-					   x11_jade_sel, 0, 0, False,
+		    r = XGetWindowProperty(dpy->display, curr_win->w_Window,
+					   dpy->jade_selection, 0, 0, False,
 					   AnyPropertyType, &actual_type,
 					   &actual_format, &nitems,
 					   &bytes_after, &prop);
@@ -304,9 +309,9 @@ If the selection currently has no value, nil is returned.
 		    offset = 0;
 		    while(bytes_after > 0)
 		    {
-			r = XGetWindowProperty(x11_display,
+			r = XGetWindowProperty(dpy->display,
 					       curr_win->w_Window,
-					       x11_jade_sel, offset/4,
+					       dpy->jade_selection, offset/4,
 					       (bytes_after / 4) + 1,
 					       False, AnyPropertyType,
 					       &actual_type, &actual_format,
@@ -317,8 +322,8 @@ If the selection currently has no value, nil is returned.
 			XFree(prop);
 			offset += nitems;
 		    }
-		    XDeleteProperty(x11_display, curr_win->w_Window,
-				    x11_jade_sel);
+		    XDeleteProperty(dpy->display, curr_win->w_Window,
+				    dpy->jade_selection);
 		    VSTR(res)[offset] = 0;
 		}
 	    }
@@ -344,7 +349,7 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 	/* Convert to text. */
 	if(selection_info[selno].type == Sel_string)
 	{
-	    XChangeProperty(x11_display, ev->requestor, ev->property,
+	    XChangeProperty(ev->display, ev->requestor, ev->property,
 			    XA_STRING, 8, PropModeReplace,
 			    VSTR(selection_info[selno].data),
 			    STRING_LEN(selection_info[selno].data));
@@ -365,7 +370,7 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 				 selection_info[selno].start,
 				 selection_info[selno].end, string);
 		    string[tlen] = 0;
-		    XChangeProperty(x11_display, ev->requestor, ev->property,
+		    XChangeProperty(ev->display, ev->requestor, ev->property,
 				    XA_STRING, 8, PropModeReplace,
 				    string, tlen);
 		    str_free(string);
@@ -376,7 +381,7 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 	    abort();			/* shouldn't happen */
 	send_ev.xselection.property = ev->property;
     }
-    XSendEvent(x11_display, ev->requestor, False, 0, &send_ev);
+    XSendEvent(ev->display, ev->requestor, False, 0, &send_ev);
 }
 
 void
@@ -392,16 +397,16 @@ x11_lose_selection(XSelectionClearEvent *ev)
 }
 
 void
-x11_window_lose_selections(Window win)
+x11_window_lose_selections(WIN *w)
 {
     int i;
     for(i = 0; i < 2; i++)
     {
-	if(selection_info[i].owner == win)
+	if(selection_info[i].owner == w->w_Window)
 	{
 	    selection_info[i].owner = WINDOW_NIL;
 	    selection_info[i].data = sym_nil;
-	    XSetSelectionOwner(x11_display,
+	    XSetSelectionOwner(WINDOW_XDPY(w)->display,
 			       (i == 0) ? XA_PRIMARY : XA_SECONDARY,
 			       None, CurrentTime);
 	}
@@ -425,8 +430,8 @@ by Jade, relinquish ownership.
 	int selno = selection_atom_to_index(selection);
 	if(selection_info[selno].owner != WINDOW_NIL)
 	{
-	    XSetSelectionOwner(x11_display, selection, None,
-			       x11_last_event_time);
+	    XSetSelectionOwner(curr_win->w_WindowSys.ws_Display->display,
+			       selection, None, x11_last_event_time);
 	    selection_info[selno].owner = WINDOW_NIL;
 	    selection_info[selno].data = sym_nil;
 	    return sym_t;
