@@ -31,6 +31,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <pwd.h>
+#include <netdb.h>
 
 #ifdef HAVE_FCNTL_H
 # include <fcntl.h>
@@ -40,11 +41,56 @@
 # include <unistd.h>
 #endif
 
+#ifdef HAVE_SYS_UTSNAME_H
+# include <sys/utsname.h>
+#endif
+
 #ifndef PATH_MAX
 # define PATH_MAX 256
 #endif
 
 static int opt_quiet = 0;		/* dont't print results */
+
+/* copied from src/unix_main.c */
+static char *
+system_name(void)
+{
+    u_char buf[256];
+    struct hostent *h;
+
+    static char *system_name;
+    if(system_name)
+	return system_name;
+
+#ifdef HAVE_GETHOSTNAME
+    if(gethostname(buf, 256))
+	return LISP_NULL;
+#else
+    {
+	struct utsname uts;
+	uname(&uts);
+	strncpy(buf, uts.nodename, 256);
+    }
+#endif
+    h = gethostbyname(buf);
+    if(h)
+    {
+	if(!strchr(h->h_name, '.'))
+	{
+	    /* The official name is not fully qualified. Try looking
+	       through the list of alternatives. */
+	    char **aliases = h->h_aliases;
+	    while(*aliases && !strchr(*aliases, '.'))
+		aliases++;
+	    system_name = strdup(*aliases ? *aliases : h->h_name);
+	}
+	else
+	    system_name = strdup((u_char *)h->h_name);
+    }
+    else
+	system_name = strdup(buf);
+    return system_name;
+}
 
 /* Return a file descriptor of a connection to the server, or -1 if
    an error occurred. */
@@ -63,7 +109,7 @@ connect_to_jade(void)
 	    end = addr.sun_path + strlen(addr.sun_path);
 	    if(end[-1] != '/')
 		*end++ = '/';
-	    strcpy(end, JADE_SOCK_NAME);
+	    sprintf(end, JADE_SOCK_NAME, system_name());
 	    addr.sun_family = AF_UNIX;
 	    if(access(addr.sun_path, F_OK) != 0)
 	    {
