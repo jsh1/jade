@@ -535,6 +535,14 @@ DEFUN("file-modtime", cmd_file_modtime, subr_file_modtime, (VALUE file), V_Subr1
     return(make_number(file_mod_time(VSTR(file))));
 }
 
+_PR VALUE cmd_file_name_absolute_p(VALUE file);
+DEFUN("file-name-absolute-p", cmd_file_name_absolute_p, subr_file_name_absolute_p, (VALUE file), V_Subr1, DOC_file_name_absolute_p)
+{
+    DECLARE1(file, STRINGP);
+    return ((VSTR(file)[0] == '/') || (strchr(VSTR(file), ':') != 0))
+	   ? sym_t : sym_nil;
+}
+
 _PR VALUE cmd_directory_files(VALUE dir);
 DEFUN("directory-files", cmd_directory_files, subr_directory_files, (VALUE dir), V_Subr1, DOC_directory_files)
 {
@@ -672,6 +680,7 @@ sys_misc_init(void)
     ADD_SUBR(subr_file_modes);
     ADD_SUBR(subr_set_file_modes);
     ADD_SUBR(subr_file_modtime);
+    ADD_SUBR(subr_file_name_absolute_p);
     ADD_SUBR(subr_directory_files);
     ADD_SUBR(subr_user_login_name);
     ADD_SUBR(subr_user_full_name);
