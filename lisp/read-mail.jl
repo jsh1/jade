@@ -881,7 +881,7 @@ documentation for command list.")
 (defun rm-summary-select-item (item)
   (let
       ((mail-buf rm-summary-mail-buffer))
-    (with-view (other-view)
+    (with-view (other-view t)
       (goto-buffer mail-buf)
       (rm-display-message item))))
 
@@ -897,7 +897,7 @@ documentation for command list.")
       ((del-msgs rm-summary-msgs-to-delete)
        (mail-buf rm-summary-mail-buffer))
     (setq rm-summary-msgs-to-delete nil)
-    (with-view (other-view)
+    (with-view (other-view t)
       (goto-buffer mail-buf)
       (rm-delete-messages del-msgs)
       ;; After this function returns "summary-update" is called
