@@ -21,7 +21,28 @@
 (provide 'mime-quoted-printable)
 
 (defun mime-encode-quoted-printable (input output)
-  (error "quoted-printable encoding unimplemented"))
+  (let
+      ((col 0)
+       char)
+    ;; XXX: trailing TAB and SPC chars should be encoded..
+    (while (setq char (read-char input))
+      (when (>= col 76)
+	(write output "=\n")
+	(setq col 0))
+      (cond ((or (and (>= char 33) (<= char 60))
+		 (and (>= char 62) (<= char 126))
+		 (= char ? )
+		 (= char ?\t))
+	     ;; null encoding
+	     (setq col (1+ col))
+	     (write output char))
+	    ((= char ?\n)
+	     (setq col 0)
+	     (write output char))
+	    (t
+	     ;; Encode using =HH format
+	     (format output "=%02X" char)
+	     (setq col (+ col 3)))))))
 
 (defun mime-decode-quoted-printable (input output)
   (let
