@@ -52,11 +52,11 @@
 	(jade-load-all "site-init")
 
 	;; then the users rep configuration, or site-wide defaults
-	(or (load (concat (user-home-directory) ".reprc") t t)
+	(or (load (concat (user-home-directory) ".reprc") t t t)
 	    (load "rep-defaults" t))
 
 	;; then the jade specific user configuration
-	(or (load (concat (user-home-directory) ".jaderc") t t)
+	(or (load (concat (user-home-directory) ".jaderc") t t t)
 	    (load "jade-default" t)))
     (error
      (format (stderr-file) "error in local config--> %S\n" error-data))))
