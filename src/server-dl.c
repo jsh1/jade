@@ -318,13 +318,14 @@ rep_xsubr *rep_dl_subrs[] = {
     0
 };
 
-void
+repv
 rep_dl_init(repv file_name)
 {
     client_list = Qnil;
     rep_mark_static(&client_list);
     rep_mark_static(&socket_name);
     rep_INTERN(server_find_file);
+    return Qt;
 }
 
 void
