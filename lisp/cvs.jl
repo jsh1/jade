@@ -634,37 +634,41 @@ If a prefix argument is given, the directory to commit in is prompted for."
    `(lambda (m)
       (cvs-commit-callback '(,directory) m))))
 
-(defun cvs-commit-callback (cvs-commit-filenames message)
+(defun cvs-commit-callback (filenames message)
   (save-some-buffers)
   (let
-      ((cvs-command-async
-	#'(lambda ()
-	    ;; Revert all loaded files (in case of keyword substitutions, etc.)
-	    (mapc #'(lambda (f)
-		      (if (file-directory-p f)
-			  ;; Try to revert _anything_ under directory F
-			  (let
-			      ((canon-f (canonical-file-name f)))
-			    (mapc #'(lambda (b)
-				      (when (and (not
-						  (string= (buffer-file-name b)
-							   ""))
-						 (string-head-eq
-						  (canonical-file-name
-						   (buffer-file-name))
-						  canon-f))
-					    (revert-buffer b)))
-				  buffer-list))
-			;; A normal file
-			(let
-			    ((b (get-file-buffer f)))
-			  (when b
-			    (revert-buffer b))))
-		      cvs-commit-filenames))
-	    (cvs-show-output-buffer)
-	    (cvs-update-if-summary))))
-    (cvs-command nil "commit" (list* "-m" message cvs-commit-filenames))))
+      ((cvs-command-async `(lambda ()
+			     ;; Need backquote since FILENAMES won't
+			     ;; still be bound when this evaluates
+			     (cvs-revert-files ,filenames)
+			     (cvs-show-output-buffer)
+			     (cvs-update-if-summary))))
+    (cvs-command nil "commit" (list* "-m" message filenames))))
 
+(defun cvs-revert-filenames (filenames)
+  "Revert any buffers that edit a file named in the list FILENAMES. As a
+special case, if a directory is named in FILENAMES, any buffers editing
+files under that directory are also reverted."
+  (mapc #'(lambda (f)
+	    (if (file-directory-p f)
+		;; Try to revert _anything_ under directory F
+		(let
+		    ((canon-f (canonical-file-name
+			       (file-name-as-directory f))))
+		  (mapc #'(lambda (b)
+			    (when (and (not (string= (buffer-file-name b) ""))
+				       (string-head-eq (canonical-file-name
+							(buffer-file-name))
+						       canon-f))
+			      (revert-buffer b)))
+			buffer-list))
+	      ;; A normal file
+	      (let
+		  ((b (get-file-buffer f)))
+		(when b
+		  (revert-buffer b))))
+	    filenames)))
+  
 (defun cvs-revert ()
   "Any CVS files whose status is `updated' or `conflict', and who are cached
 locally in an editor buffer, are reverted to their on-disk versions."
