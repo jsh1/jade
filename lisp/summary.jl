@@ -39,9 +39,7 @@
   "DEL" 'summary-mark-delete
   "q" 'summary-quit
   "u" 'summary-unmark-item
-  "LMB-Click1" 'summary-goto-mouse
-  "LMB-Click2" 'summary-select-item
-  "LMB-Off" 'nop)
+  "LMB-Click2" 'summary-select-item)
 
 
 ;; Local variables
