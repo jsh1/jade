@@ -125,10 +125,10 @@ middle of the view (if possible).
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
     start_line = VVIEW(vw)->vw_CursorPos.pos_Line - (VVIEW(vw)->vw_MaxY / 2);
-    if(start_line < 0)
-	start_line = 0;
-    if(start_line >= VVIEW(vw)->vw_Tx->tx_NumLines)
-	start_line = VVIEW(vw)->vw_Tx->tx_NumLines - 1;
+    if(start_line < VVIEW(vw)->vw_Tx->tx_LogicalStart)
+	start_line = VVIEW(vw)->vw_Tx->tx_LogicalStart;
+    if(start_line >= VVIEW(vw)->vw_Tx->tx_LogicalEnd)
+	start_line = VVIEW(vw)->vw_Tx->tx_LogicalEnd - 1;
     VVIEW(vw)->vw_StartLine = start_line;
     return(vw);
 }
@@ -159,20 +159,32 @@ Move NUMBER (default: 1) screens backwards in the current window.
     return(sym_nil);
 }
 
-_PR VALUE cmd_buffer_end(VALUE tx);
-DEFUN("buffer-end", cmd_buffer_end, subr_buffer_end, (VALUE tx), V_Subr1, DOC_buffer_end) /*
+_PR VALUE cmd_buffer_end(VALUE tx, VALUE irp);
+DEFUN("buffer-end", cmd_buffer_end, subr_buffer_end, (VALUE tx, VALUE irp), V_Subr2, DOC_buffer_end) /*
 ::doc:buffer_end::
-buffer-end [BUFFER]
+buffer-end [BUFFER] [IGNORE-RESTRICTION-P]
 
-Return the position of the last character in BUFFER.
+Return the position of the last character in BUFFER. Unless
+IGNORE-RESTRICTION-P is non-nil the position returned is the end
+of the buffer's restriction.
 ::end:: */
 {
-    long x, y;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    y = VTX(tx)->tx_NumLines - 1;
-    x = VTX(tx)->tx_Lines[y].ln_Strlen - 1;
-    return(make_lpos2(x, y));
+    if(!NILP(irp))
+    {
+	long x, y;
+	y = VTX(tx)->tx_NumLines - 1;
+	x = VTX(tx)->tx_Lines[y].ln_Strlen - 1;
+	return(make_lpos2(x, y));
+    }
+    else
+    {
+	VALUE end = cmd_restriction_end(tx);
+	VPOS(end).pos_Line--;
+	VPOS(end).pos_Col = VTX(tx)->tx_Lines[VPOS(end).pos_Line].ln_Strlen - 1;
+	return end;
+    }
 }
 
 _PR VALUE cmd_goto_buffer_end(void);
@@ -184,20 +196,26 @@ Move to the last character in the current window.
 ::end:: */
 {
     VW *vw = curr_vw;
-    vw->vw_CursorPos.pos_Line = vw->vw_Tx->tx_NumLines - 1;
-    vw->vw_CursorPos.pos_Col = vw->vw_Tx->tx_Lines[vw->vw_CursorPos.pos_Line].ln_Strlen - 1;
+    vw->vw_CursorPos.pos_Line = vw->vw_Tx->tx_LogicalEnd - 1;
+    vw->vw_CursorPos.pos_Col
+        = vw->vw_Tx->tx_Lines[vw->vw_CursorPos.pos_Line].ln_Strlen - 1;
     return(sym_t);
 }
 
-_PR VALUE cmd_buffer_start(void);
-DEFUN("buffer-start", cmd_buffer_start, subr_buffer_start, (void), V_Subr0, DOC_buffer_start) /*
+_PR VALUE cmd_buffer_start(VALUE tx, VALUE irp);
+DEFUN("buffer-start", cmd_buffer_start, subr_buffer_start, (VALUE tx, VALUE irp), V_Subr2, DOC_buffer_start) /*
 ::doc:buffer_start::
-buffer-start
+buffer-start [BUFFER] [IGNORE-RESTRICTION-P]
 
-Return the position of the start of the buffer.
+Return the position of the start of the buffer. Unless
+IGNORE-RESTRICTION-P is non-nil the position returned is the start
+of the buffer's restriction.
 ::end:: */
 {
-    return(make_lpos2(0, 0));
+    if(!NILP(irp))
+	return(make_lpos2(0, 0));
+    else
+	return cmd_restriction_start(tx);
 }
 
 _PR VALUE cmd_goto_buffer_start(void);
@@ -209,7 +227,7 @@ Move to the first character in the buffer displayed in the current window.
 ::end:: */
 {
     curr_vw->vw_CursorPos.pos_Col = 0;
-    curr_vw->vw_CursorPos.pos_Line = 0;
+    curr_vw->vw_CursorPos.pos_Line = curr_vw->vw_Tx->tx_LogicalStart;
     return(sym_t);
 }
 
@@ -310,10 +328,10 @@ so that it is drawn as near to where it was previously as possible.
     VW *vw = curr_vw;
     VALUE res = sym_nil;
     vw->vw_CursorPos.pos_Line += NUMBERP(lines) ? VNUM(lines) : 1;
-    if(vw->vw_CursorPos.pos_Line >= vw->vw_Tx->tx_NumLines)
-	vw->vw_CursorPos.pos_Line = vw->vw_Tx->tx_NumLines - 1;
-    else if(vw->vw_CursorPos.pos_Line < 0)
-	vw->vw_CursorPos.pos_Line = 0;
+    if(vw->vw_CursorPos.pos_Line >= vw->vw_Tx->tx_LogicalEnd)
+	vw->vw_CursorPos.pos_Line = vw->vw_Tx->tx_LogicalEnd - 1;
+    else if(vw->vw_CursorPos.pos_Line < vw->vw_Tx->tx_LogicalStart)
+	vw->vw_CursorPos.pos_Line = vw->vw_Tx->tx_LogicalStart;
     else
 	res = sym_t;
     adjust_cursor_to_glyph(vw);
@@ -349,10 +367,10 @@ so that it is drawn as near to where it was previously as possible.
     VW *vw = curr_vw;
     VALUE res = sym_nil;
     vw->vw_CursorPos.pos_Line -= NUMBERP(lines) ? VNUM(lines) : 1;
-    if(vw->vw_CursorPos.pos_Line >= vw->vw_Tx->tx_NumLines)
-	vw->vw_CursorPos.pos_Line = vw->vw_Tx->tx_NumLines - 1;
-    else if(vw->vw_CursorPos.pos_Line < 0)
-	vw->vw_CursorPos.pos_Line = 0;
+    if(vw->vw_CursorPos.pos_Line >= vw->vw_Tx->tx_LogicalEnd)
+	vw->vw_CursorPos.pos_Line = vw->vw_Tx->tx_LogicalEnd - 1;
+    else if(vw->vw_CursorPos.pos_Line < vw->vw_Tx->tx_LogicalStart)
+	vw->vw_CursorPos.pos_Line = vw->vw_Tx->tx_LogicalStart;
     else
 	res = sym_t;
     adjust_cursor_to_glyph(vw);
@@ -763,9 +781,9 @@ move_down_screens(long pages)
     VW *vw = curr_vw;
     long newline, rc;
     newline = vw->vw_CursorPos.pos_Line + (pages * vw->vw_MaxY);
-    if(newline >= vw->vw_Tx->tx_NumLines)
+    if(newline >= vw->vw_Tx->tx_LogicalEnd)
     {
-	newline = vw->vw_Tx->tx_NumLines - 1;
+	newline = vw->vw_Tx->tx_LogicalEnd - 1;
 	rc = FALSE;
     }
     else
@@ -784,16 +802,16 @@ move_up_screens(long pages)
     VW *vw = curr_vw;
     long newline, rc;
     newline = vw->vw_CursorPos.pos_Line - (pages * vw->vw_MaxY);
-    if(newline < 0)
+    if(newline < vw->vw_Tx->tx_LogicalStart)
     {
-	newline = 0;
+	newline = vw->vw_Tx->tx_LogicalStart;
 	rc = FALSE;
     }
     else
     {
 	vw->vw_StartLine -= (pages * vw->vw_MaxY);
-	if(vw->vw_StartLine < 0)
-	    vw->vw_StartLine = 0;
+	if(vw->vw_StartLine < vw->vw_Tx->tx_LogicalStart)
+	    vw->vw_StartLine = vw->vw_Tx->tx_LogicalStart;
 	rc = TRUE;
     }
     vw->vw_CursorPos.pos_Line = newline;
