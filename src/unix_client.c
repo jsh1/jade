@@ -160,16 +160,25 @@ eval_lisp_form(int sock_fd, char *form)
     if(write(sock_fd, &req, 1) != 1
        || write(sock_fd, &len, sizeof(u_long)) != sizeof(u_long)
        || write(sock_fd, form, len) != len
-       || read(sock_fd, &len, sizeof(u_long)) != sizeof(u_long)
-       || (result = malloc(len + 1)) == 0
-       || read(sock_fd, result, len) != len)
+       || read(sock_fd, &len, sizeof(u_long)) != sizeof(u_long))
     {
 	perror("eval_req");
 	return 10;
     }
-    result[len] = 0;
-    if(!opt_quiet)
-	printf("%s\n => %s\n", form, result);
+    if(len > 0)
+    {
+	result = malloc(len + 1);
+	if(result == 0 || read(sock_fd, result, len) != len)
+	{
+	    perror("eval_req");
+	    return 10;
+	}
+	result[len] = 0;
+	if(!opt_quiet)
+	    printf("%s\n => %s\n", form, result);
+    }
+    else
+	printf("%s\n---> error\n", form);
     return 0;
 }
 
@@ -178,11 +187,13 @@ usage(char *prog_name)
 {
     fprintf(stderr, "usage: %s OPTIONS...\n
 where OPTIONS are any of:\n
+	[+LINE] FILE	Edit file FILE on the server, with the cursor
+			 at line number LINE optionally.
 	-q		Be quiet
 	-f FUNCTION	Call Lisp function FUNCTION on the server
 	-e FORM		Evaluate Lisp form FORM on the server
-	[+LINE] FILE	Edit file FILE on the server, with the cursor
-			 at line number LINE optionally.\n", prog_name);
+	-x DISPLAY	Connect the server to X11 display DISPLAY
+	-X		Connect to $DISPLAY\n", prog_name);
 }
 		
 int
@@ -231,6 +242,28 @@ main(int argc, char *argv[])
 		argc--; argv++;
 		break;
 
+	    case 'x':
+		if(argc < 2)
+		    goto opt_error;
+		sprintf(buf, "(open-window-on-display \"%s\")", argv[1]);
+		result = eval_lisp_form(sock_fd, buf);
+		argc--; argv++;
+		break;
+
+	    case 'X':
+		{
+		    char *dpy = getenv("DISPLAY");
+		    if(dpy == 0)
+			fprintf(stderr, "No DISPLAY environment variable\n");
+		    else
+		    {
+			sprintf(buf, "(open-window-on-display \"%s\")",
+				dpy);
+			result = eval_lisp_form(sock_fd, buf);
+		    }
+		    break;
+		}
+
 	    case '?': case 'h':
 		usage(prog_name);
 		break;
@@ -245,13 +278,13 @@ main(int argc, char *argv[])
 	}
 	else if(argc > 0)
 	{
-	    u_long linenum = 1;
+	    u_long linenum = 0;
 	    if(argc >= 1 && **argv == '+')	/* +LINE-NUMBER */
 	    {
 #ifdef HAVE_STRTOL
-		linenum = strtol(argv[0], NULL, 0) - 1;
+		linenum = strtol(*argv + 1, NULL, 0) - 1;
 #else
-		linenum = atol(argv[0]) - 1;
+		linenum = atol(*argv + 1) - 1;
 #endif
 		if(linenum <= 0)
 		    linenum = 1;
