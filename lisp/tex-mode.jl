@@ -62,7 +62,7 @@ Local bindings in this mode are:\n
 	paragraph-separate "^([\t\f\n ]|(\\$\\$))*\n"
 	page-start "^\\\\((sub)*(section|paragraph)|chapter){.*}"
 	keymap-path (cons 'tex-keymap keymap-path)
-	mode-comment-header '%'
+	mode-comment-header "%"
 	generic-exp-single-delims '(?\" ?\$)
 	generic-exp-escape-char 0
 	generic-exp-comment-string "%"
