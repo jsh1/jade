@@ -42,6 +42,7 @@ inserted in place of the format directive. These characters include:
 
 	a	A 3-character attribute string, showing the status of
 		the message
+	b	The name of the buffer containing the folder
 	D	The numeric day of the month when the message was sent
 	w	The day of the week, as a 3-character string
 	f	The address of the first sender
@@ -49,6 +50,8 @@ inserted in place of the format directive. These characters include:
 	i	Indent to column ARG (i.e. %20i => indent to column 20)
 	m	The abbreviated month name of the date
 	M	The numeric month of the message's date
+	n	The index of the message in the folder
+	N	The total number of messages in the folder
 	l	The subject line
 	t	The hour and minute at which the message was sent
 	T	The hour, minute, and second of the date
@@ -59,6 +62,11 @@ inserted in place of the format directive. These characters include:
 
 The list of formatting options can be extended by the variable
 `rm-summary-print-functions'.")
+
+(defvar rm-status-format "%b-%n/%N: %f"
+  "A string defining the format of the text replacing the `Jade: BUFFER'
+text in the mail buffer's status line. The format conversions available
+are the same as those for the `rm-summary-format' variable.")
 
 (defvar rm-summary-format-alist nil
   "An alist of (CHARACTER . FUNCTION) defining formatting directives for the
@@ -167,8 +175,7 @@ the next prompt.")
     (let
 	((mail-view (get-buffer-view rm-summary-mail-buffer)))
       (set-current-view mail-view)))
-  (unless (or (file-name-absolute-p folder)
-	      (file-exists-p folder))
+  (when (string= (file-name-directory folder) "")
     (setq folder (expand-file-name folder mail-folder-dir)))
   (when (find-file-read-only folder)
     ;; The current buffer is now the folder. Set up the major mode
@@ -521,9 +528,12 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Set the minor-mode-names list to reflect the current status
 (defun rm-fix-status-info ()
-  (setq buffer-status-id (format nil "Mail: %s (%d/%d)"
-				 (buffer-name) (1+ rm-current-msg-index)
-				 rm-message-count))
+  (setq buffer-status-id (rm-cached-form rm-current-msg 'status-id
+			   (let
+			       ((arg-list (cons rm-current-msg nil))
+				(format-hooks-alist rm-summary-format-alist))
+			     (rplacd arg-list arg-list)
+			     (apply 'format nil rm-status-format arg-list))))
   (let
       ((stat (mapcar 'symbol-name (rm-get-msg-field rm-current-msg
 						    rm-msg-flags))))
@@ -534,6 +544,14 @@ Major mode for viewing mail folders. Commands include:\n
 					  rm-current-msg))))
 			       (cons "deleted" stat)
 			     stat))))
+
+(defun rm-invalidate-status-cache ()
+  (mapc #'(lambda (m)
+	    (rm-invalidate-tag m 'status-id)) rm-before-msg-list)
+  (when rm-current-msg
+    (rm-invalidate-tag rm-current-msg 'status-id))
+  (mapc #'(lambda (m)
+	    (rm-invalidate-tag m 'status-id)) rm-after-msg-list))
 
 ;; Display an arbitrary MSG
 (defun rm-display-message (msg)
@@ -617,6 +635,7 @@ Major mode for viewing mail folders. Commands include:\n
 	  (setq start (forward-line -1 start))))
       (delete-area start end)
       (setq rm-message-count (1- rm-message-count))
+      (rm-invalidate-status-cache)
       (if (and rm-before-msg-list
 	       (or go-backwards-p (null rm-after-msg-list)))
 	  (setq rm-current-msg (car rm-before-msg-list)
@@ -752,7 +771,8 @@ Major mode for viewing mail folders. Commands include:\n
 		(setq rm-current-msg (car msgs)
 		      rm-after-msg-list (cdr msgs)
 		      rm-message-count (+ rm-message-count count)
-		      rm-cached-msg-list 'invalid))
+		      rm-cached-msg-list 'invalid)
+		(rm-invalidate-status-cache))
 	      (and keep-going count)))
 	;; Errors
 	(goto-buffer temp-buffer)
@@ -970,6 +990,9 @@ the summary buffer.")
 				((rm-test-flag m 'forwarded) ?Z)
 				(t ? ))
 			       (if (rm-test-flag m 'filed) ?F ?\ ))))
+	  (cons ?b #'(lambda (m)
+		       (buffer-name (mark-file
+				     (rm-get-msg-field m rm-msg-mark)))))
 	  (cons ?D #'(lambda (m)
 		       (let
 			   ((date (rm-get-date-vector m)))
@@ -996,6 +1019,14 @@ the summary buffer.")
 			   ((date (rm-get-date-vector m)))
 			 (when date
 			   (aref date mail-date-month-abbrev)))))
+	  (cons ?n #'(lambda (m)
+		       (with-buffer (mark-file
+				     (rm-get-msg-field m rm-msg-mark))
+			 (1+ rm-current-msg-index))))
+	  (cons ?N #'(lambda (m)
+		       (with-buffer (mark-file
+				     (rm-get-msg-field m rm-msg-mark))
+			 rm-message-count)))
 	  (cons ?l #'(lambda (m)
 		       (rm-get-subject m)))
 	  (cons ?t #'(lambda (m)
