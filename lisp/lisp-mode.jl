@@ -318,6 +318,7 @@ preceding the cursor. See `lisp-complete-sexp' for more details."
 (put 'defsubst 'lisp-indent 'defun)
 (put 'defvar 'lisp-indent 'defun)
 (put 'defconst 'lisp-indent 'defun)
+(put 'defface 'lisp-indent 'defun)
 (put 'progn 'lisp-indent 0)
 (put 'prog1 'lisp-indent 1)
 (put 'prog2 'lisp-indent 2)
