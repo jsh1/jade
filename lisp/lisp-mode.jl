@@ -300,4 +300,4 @@ in the status line."
 (put 'bind-keys 'lisp-indent 1)
 (put 'unbind-keys 'lisp-indent 1)
 (put 'save-restriction 'lisp-indent 0)
-(put 'save-cursor 'lisp-indent 0)
+(put 'save-excursion 'lisp-indent 0)
