@@ -137,7 +137,9 @@ at the bottom of the screen, otherwise it will be shown at the top.")
   "The regular expression separating each message. Actually it's interpreted
 as a single blank line or the start of the buffer, followed by this regexp.")
 
-(defvar mail-atom-re "[a-zA-Z0-9_*+!#$~%^&={}'|-]+"
+;; This is pretty close to RFC-822, all excluded chars but NUL are
+;; handled by this simple regexp (regexp lib restrictions again)
+(defvar mail-atom-re "[^][()<>@,;\\\".\001-\037 \t\177]+"
   "Regular expression defining a single atom in a mail header. May not
 include any parenthesised expressions!")
 
