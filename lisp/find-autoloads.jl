@@ -67,7 +67,7 @@
 				     ;; Can be called as a command
 				     "(autoload%s '%s %S t)"
 				   "(autoload%s '%s %S)")
-			     (if (eq (car form) 'defvar) "-variable" "")
+			     (if (eq (car form) 'defmacro) "-macro" "")
 			     (nth 1 form)
 			     short-file-name))
 	  (when (funcall line-fun form)
