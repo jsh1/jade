@@ -185,7 +185,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	VALUE glyph_tab = cmd_buffer_symbol_value(sym_glyph_table,
 						  vw->vw_DisplayOrigin,
 						  VAL(vw->vw_Tx), sym_t);
-	glyph_attr attr, true_face;
+	glyph_attr attr;
 	int tab_size = vw->vw_Tx->tx_TabSize;
 	long first_col, first_row, first_char_col;
 	int glyph_row, last_row, char_row;
@@ -223,7 +223,6 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	{
 	    Pos tem;
 	    Lisp_Extent *x, *xc;
-	    VALUE face;
 	    tem.col = 0;
 	    tem.row = char_row;
 	    extent = find_extent(vw->vw_Tx->tx_GlobalExtent, &tem);
@@ -244,13 +243,6 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    else
 		next_extent = extent->end;
 	    next_extent.row += extent_delta;
-
-	    face = cmd_extent_get(VAL(extent), sym_face);
-	    if(face && FACEP(face))
-		true_face = VFACE(face)->id;
-	    else
-		true_face = GA_DefaultFace;
-	    attr = true_face;
 	}
 
 	/* Memorise some facts about when the block starts and stops. */
@@ -322,13 +314,13 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		       && (cc) == VCOL(vw->vw_BlockS))
 		    {
 			block_active = TRUE;
-			attr = GA_BlockFace;
+			attr = merge_faces(w, extent, block_active, FALSE);
 		    }
 		    if(block_active && block_end
 		       && (cc) == VCOL(vw->vw_BlockE))
 		    {
 			block_active = FALSE;
-			attr = true_face;
+			attr = merge_faces(w, extent, block_active, FALSE);
 		    }
 		}
 		else if(block_row)
@@ -337,12 +329,12 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		    if((gc) == block_start)
 		    {
 			block_active = TRUE;
-			attr = GA_BlockFace;
+			attr = merge_faces(w, extent, block_active, FALSE);
 		    }
 		    else if((gc) == block_end)
 		    {
 			block_active = FALSE;
-			attr = true_face;
+			attr = merge_faces(w, extent, block_active, FALSE);
 		    }
 		}
 	    }
@@ -354,7 +346,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		*attrs++ = attr;
 		if(cursor_row && char_col == cursor_col)
 		{
-		    attrs[-1] |= GA_CursorFace;
+		    attrs[-1] = merge_faces(w, extent, block_active, TRUE);
 		    cursor_row = FALSE;
 		}
 	    }
@@ -403,13 +395,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		} while(extent != old);
 		if(extent != orig)
 		{
-		    VALUE face = cmd_extent_get(VAL(extent), sym_face);
-		    if(face && FACEP(face))
-			true_face = VFACE(face)->id;
-		    else
-			true_face = GA_DefaultFace;
-		    if(!block_active)
-			attr = true_face;
+		    attr = merge_faces(w, extent, block_active, FALSE);
 
 		    /* Reload the glyph table for the new extent. */
 		    glyph_tab = cmd_buffer_symbol_value(sym_glyph_table,
@@ -444,13 +430,11 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 				   && VCOL(vw->vw_BlockE) > 0)))
 			{
 			    block_active = TRUE;
-			    attr = GA_BlockFace;
 			}
 		    }
 		    else
 		    {
 			block_active = FALSE;
-			attr = true_face;
 			block_start = block_end = 0;
 		    }
 		}
@@ -463,10 +447,11 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		       && block_end > 0)
 		    {
 			block_active = TRUE;
-			attr = GA_BlockFace;
 		    }
 		}
 	    }
+
+	    attr = merge_faces(w, extent, block_active, FALSE);
 
 	    /* Start output. Two versions, dependent on whether
 	       we wrap or truncate long lines. */
@@ -582,10 +567,15 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 
 	/* In case the logical end of the buffer is before the
 	   end of the view, fill with empty lines. */
+	{
+	    VALUE face = VSYM(sym_default_face)->value;
+	    if(FACEP(face))
+		attr = get_face_id(w, VFACE(face));
+	}
 	while(glyph_row < last_row)
 	{
 	    memset(w->w_NewContent->codes[glyph_row], ' ', g->cols);
-	    memset(w->w_NewContent->attrs[glyph_row], GA_DefaultFace, g->cols);
+	    memset(w->w_NewContent->attrs[glyph_row], attr, g->cols);
 	    glyph_row++;
 	}
 
@@ -593,15 +583,20 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	   line text. TODO: should use glyph tables for this */
 	if((vw->vw_Flags & VWFF_MINIBUF) == 0)
 	{
+	    VALUE face;
 	    glyph_code *codes;
 	    glyph_attr *attrs;
+
+	    face = VSYM(sym_modeline_face)->value;
+	    if(FACEP(face))
+		attr = get_face_id(w, VFACE(face));
 
 	    glyph_row = vw->vw_FirstY + vw->vw_MaxY;
 	    codes = w->w_NewContent->codes[glyph_row];
 	    attrs = w->w_NewContent->attrs[glyph_row];
 
 	    update_status_buffer(vw, codes, g->cols);
-	    memset(attrs, GA_ModeLineFace, g->cols);
+	    memset(attrs, attr, g->cols);
 	    glyph_row++;
 	}
     }
@@ -618,6 +613,9 @@ make_message_glyphs(glyph_buf *g, WIN *w)
 {
     /* TODO: use glyph table to output message */
 
+    VALUE face;
+    glyph_attr attr;
+
     u_long msg_len = w->w_MessageLen;
     u_char *msg = w->w_Message;
     int line = w->w_MaxY - (ROUND_UP_INT(msg_len, g->cols-1) / (g->cols-1));
@@ -626,6 +624,12 @@ make_message_glyphs(glyph_buf *g, WIN *w)
 	line = w->w_MiniBuf->vw_FirstY;
 	msg_len = (g->cols-1) * w->w_MiniBuf->vw_MaxY;
     }
+
+    face = VSYM(sym_default_face)->value;
+    if(FACEP(face))
+	attr = get_face_id(w, VFACE(face));
+    else
+	attr = GA_Garbage;
 
     /* Output the message on the bottom-most lines. */
     while(line < w->w_MaxY)
@@ -640,7 +644,7 @@ make_message_glyphs(glyph_buf *g, WIN *w)
 	    memcpy(g->codes[line], msg, msg_len);
 	    memset(g->codes[line] + msg_len, ' ', g->cols - msg_len);
 	}
-	memset(g->attrs[line], GA_DefaultFace, g->cols);
+	memset(g->attrs[line], attr, g->cols);
 	msg_len -= g->cols - 1;
 	msg += g->cols - 1;
 	line++;
