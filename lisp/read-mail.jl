@@ -532,7 +532,7 @@ Major mode for viewing mail folders. Commands include:\n
       (unrestrict-buffer)
       (unless (equal end (end-of-buffer))
 	;; Now this points to the first character of the next message
-	(forward-line 1 end))
+	(setq end (forward-line 1 end)))
       (delete-area (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark))
 		   end)
       (setq rm-message-count (1- rm-message-count))
