@@ -644,7 +644,7 @@ next string in the kill ring."
       (progn
 	(setq yank-last-item (if yank-last-item
 				 (+ yank-last-item count)
-			       (1- count)))
+			       count))
 	(when (>= yank-last-item (ring-size kill-ring))
 	  (error "Nothing more to yank"))
 	;; Using undo should allow rectangles to be replaced properly
