@@ -190,17 +190,20 @@ new head of the buffer-list is displayed in the current window."
 
 ;; Storing files in buffers
 
-(defun open-file (name)
-  "If no buffer containing file NAME exits try to create one.
-After creating a new buffer (named after the file's (not path) name)
-it first call the hook `read-file-hook' with arguments `(buffer-file-name
-buffer)'.
-If this hook returns nil (ie, no members of the hook decided to read the
-file into memory) the file is read into the buffer verbatim.\n
-Once the file is in memory, through the hook or otherwise, this function
-then tries to initialise the correct editing mode for the file.\n
-`open-file' always returns the buffer holding the file, or nil if it
-doesn't exist."
+(defun find-file (name &optional dont-activate)
+  "Find a buffer containing the file called NAME, and (unless DONT-ACTIVATE
+is t) install it as the current buffer in the current view.
+
+If no buffer containing the file NAME exists one will be created. Then
+read-file-hook will be called (with arguments NAME BUFFER). If this hook
+returns nil the file will be loaded into the buffer verbatim.
+
+Once the file is in memory, through the hook or otherwise, the init-mode
+function is called to initialise the correct editing mode for the file.
+
+find-file always returns the buffer holding file NAME, or nil if no
+such buffer could be made."
+  (interactive "FFind file: ")
   (let
       ((buf (get-file-buffer name)))
     (unless buf
@@ -208,11 +211,14 @@ doesn't exist."
 	(add-buffer buf buffer-list)
 	(with-buffer buf
 	  (read-file-into-buffer name))))
+    (unless dont-activate
+      (goto-buffer buf))
     buf))
 
 (defun read-file-into-buffer (file-name)
   "Reads the file FILE-NAME into the current buffer, overwriting anything
-else in the buffer. Everything will be set up as required."
+else in the buffer. Everything will be set up as required. Before calling
+init-mode, the hook find-file-hook is dispatch."
   (interactive "fFile to read into buffer:")
   (let ((buf (current-buffer)))
     (clear-buffer)
@@ -234,7 +240,7 @@ else in the buffer. Everything will be set up as required."
       (beep))
     (set-buffer-read-only buf (and (file-exists-p file-name)
 				   (not (file-writable-p file-name))))
-    (call-hook 'open-file-hook (list buf))
+    (call-hook 'find-file-hook (list buf))
     (init-mode buf)))
 
 ;; Scans the end of a file for any local-variable definitions
@@ -277,28 +283,18 @@ else in the buffer. Everything will be set up as required."
 	      (make-local-variable name)
 	      (set name (read-from-string value))))))))))
 
-(defun find-file (name)
-  "Sets the current buffer to that containing the file NAME, if NAME
-is unspecified it will be prompted for. If the file is not already in memory
-`open-file' will be used to load it."
-  (interactive "FFind file: ")
-  (goto-buffer (open-file name)))
-
 (defun find-file-read-only (name)
   "Similar to `find-file' except that the buffer is edited in read-only mode."
   (interactive "FFind file read-only:")
-  (let
-      ((buf (open-file name)))
-    (when buf
-      (set-buffer-read-only buf t)
-      (goto-buffer buf))))
+  (when (find-file name)
+    (set-buffer-read-only (current-buffer) t)))
 
 (defun find-alternate-file (name)
   "If NAME is unspecified one will be prompted for. The current buffer is
 killed and one editing NAME is found."
   (interactive "FFind alternate file:")
   (kill-buffer (current-buffer))
-  (goto-buffer (open-file name)))
+  (find-file name))
 
 (defun backup-file (file-name)
   "If necessary make a backup of FILE-NAME. The file called FILE-NAME may or
@@ -505,15 +501,16 @@ will have to agree to this)."
 (defun goto-mark (mark)
   "Switches (if necessary) to the buffer containing MARK at the position
 of the mark. If the file containing MARK is not in memory then we
-attempt to load it with `open-file'."
+attempt to load it by calling find-file."
   (when (markp mark)
     (let
 	((file (mark-file mark))
 	 (pos (mark-pos mark)))
-      (when (stringp file)
-	(setq file (open-file file)))
       (set-auto-mark)
-      (goto-buffer file)
+      (if (stringp file)
+	  (unless (find-file file)
+	     (error "Can't load file for mark: %S" mark))
+	(goto-buffer file))
       (goto pos))))
 
 (defun set-auto-mark ()
@@ -530,9 +527,10 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
       ((a-m-file (mark-file auto-mark))
        (a-m-pos (mark-pos auto-mark)))
     (set-auto-mark)
-    (when (stringp a-m-file)
-      (setq a-m-file (open-file a-m-file)))
-    (goto-buffer a-m-file)
+    (if (stringp a-m-file)
+	(unless (find-file a-m-file)
+	  (error "Can't load file for mark: %S" mark))
+      (goto-buffer a-m-file))
     (goto a-m-pos)))
 
 
