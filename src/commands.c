@@ -136,7 +136,9 @@ interactive_spec(VALUE cmd)
 	{
 	    if(VCAR(fun) == sym_autoload)
 	    {
-		VALUE tmp = move_down_list(fun, 2);
+		VALUE tmp = cmd_nthcdr(MAKE_INT(2), fun);
+		if(tmp == LISP_NULL)
+		    return LISP_NULL;
 		if(CONSP(tmp) && !NILP(VCAR(tmp)))
 		{
 		    GC_root gc_cmd;
@@ -152,8 +154,10 @@ interactive_spec(VALUE cmd)
 	    if(VCAR(fun) == sym_lambda)
 	    {
 		/* A lambda expression, test its first proper form. */
-		fun = move_down_list(fun, 2);
-		if(fun && CONSP(fun)
+		fun = cmd_nthcdr(MAKE_INT(2), fun);
+		if(fun == LISP_NULL)
+		    return LISP_NULL;
+		if(CONSP(fun)
 		   && (STRINGP(VCAR(fun)) || INTP(VCAR(fun)))
 		   && CONSP(VCDR(fun)))
 		{
@@ -532,14 +536,16 @@ Returns t if COMMAND may be called interactively.
 	{
 	    if(VCAR(cmd) == sym_autoload)
 	    {
-		cmd = find_member_by_index(cmd, 3);
-		if(!NILP(cmd))
+		cmd = cmd_nth(MAKE_INT(2), cmd);
+		if(cmd != LISP_NULL && !NILP(cmd))
 		    return(sym_t);
 	    }
 	    else if(VCAR(cmd) == sym_lambda)
 	    {
 		/* A lambda expression, test its first proper form. */
-		cmd = move_down_list(cmd, 2);
+		cmd = cmd_nthcdr(MAKE_INT(2), cmd);
+		if(cmd == LISP_NULL)
+		    return LISP_NULL;
 		if(CONSP(cmd)
 		   && (STRINGP(VCAR(cmd)) || INTP(VCAR(cmd)))
 		   && CONSP(VCDR(cmd)))
