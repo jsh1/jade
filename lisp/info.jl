@@ -334,12 +334,18 @@ is split.")
   (unless start
     (setq start ""))
   (let*
-      ((prompt-completion-function #'(lambda (w)
-				       (unless prompt-list
-					 (with-buffer info-buffer
-					   (setq prompt-list (funcall list-fun))))
-				       (prompt-complete-from-list w)))
-       (prompt-validate-function #'prompt-validate-from-list)
+      ((prompt-completion-function
+	#'(lambda (w)
+	    (unless prompt-list
+	      (with-buffer info-buffer
+		(setq prompt-list (funcall list-fun))))
+	    (prompt-complete-from-list w)))
+       (prompt-validate-function
+	#'(lambda (w)
+	    (unless prompt-list
+	      (with-buffer info-buffer
+		(setq prompt-list (funcall list-fun))))
+	    (prompt-validate-from-list w)))
        (prompt-list-fold-case t)
        ;;(prompt-word-regexps prompt-def-regexps)
        (prompt-list '())
@@ -462,7 +468,8 @@ commands are,\n
 				     "Menu item:" menu-name))
 	(goto opos)))
     (when menu-name
-      (if (re-search-forward (concat "^\\* " (quote-regexp menu-name) ?:))
+      (if (re-search-forward (concat "^\\* " (quote-regexp menu-name) ?:)
+			     nil nil t)
 	  (progn
 	    (goto (match-start))
 	    (let
