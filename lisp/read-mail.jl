@@ -427,7 +427,9 @@ Major mode for viewing mail folders. Commands include:\n
 	(setq rm-current-msg-visible-start (rm-coalesce-visible-headers))
 	;; Look for a header to highlight
 	(when (re-search-forward mail-highlighted-headers header-start nil t)
-	  (mark-block (match-start 1) (match-end 1)))
+	  (mark-block (match-start 1)
+		      (forward-char -1 (or (mail-unfold-header (match-start 1))
+					   (end-of-buffer)))))
 	(unrestrict-buffer)
 	(setq rm-current-msg-end (rm-current-message-end))
 	(goto end-of-hdrs)
