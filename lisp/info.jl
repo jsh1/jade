@@ -21,8 +21,6 @@
 (provide 'info)
 
 ;;; Limitations:
-;;; - Depends wholly on tag tables --- does no searching for nodes just looks
-;;;   up their position (except in the dir file).
 ;;; - No support for `*' node name.
 ;;; - Doesn't work 100% with info files formatted by emacs. For best results
 ;;;   makeinfo has to be used.
@@ -31,6 +29,13 @@
 (defvar info-directory-list
   (if (amiga-p) '("INFO:") '("/usr/info" "/usr/local/info/" "~/info"))
   "List of directories to search for info files if they can't be found as-is.")
+
+(defvar info-suffixes '(("" . nil)
+			(".gz" . gzip)
+			(".Z" . gzip))
+  "List of (SUFFIX . PACKAGE) combinations. When searching for an info
+file try each SUFFIX in turn. When one matches require PACKAGE to be
+loaded so that the file can be decoded (through the `read-file-hook').")
 
 (defvar info-keymap (make-keytab)
   "Keymap for Info.")
@@ -47,13 +52,14 @@
   "List of `(FILE NODE POS)' showing how we got to the current node.")
 
 (defvar info-file-name nil
-  "The true name (in the filesystem) of the current Info file.")
+  "The true name (in the filesystem, minus possible suffix) of the root
+of the current Info file.")
+
+(defvar info-file-suffix nil
+  "The suffix of the current Info file.")
 
 (defvar info-node-name nil
   "The name of the current Info node.")
-
-(defvar info-file-modtime nil
-  "The modtime of file `info-file-name' last time we read something from it.")
 
 (defvar info-indirect-list nil
   "List of `(START-OFFSET . FILE-NAME)' saying where the current Info file
@@ -103,7 +109,8 @@ is split.")
     (setq keymap-path (cons 'info-keymap keymap-path)
 	  major-mode 'info-mode
 	  buffer-record-undo nil)
-    (set-buffer-read-only info-buffer t))
+    (set-buffer-read-only info-buffer t)
+    (setq auto-save-p nil))
   (with-buffer info-tags-buffer
     (setq buffer-record-undo nil)))
 
@@ -111,41 +118,44 @@ is split.")
 ;; Indirect list ends up in `info-indirect-list', tag table is read into the
 ;; `info-tags-buffer' buffer. `info-has-tags-p' is set to t if a tags table
 ;; was loaded.
-(defun info-read-tags (filename)
+(defun info-read-tags (filename suffix)
   (let
-      ((file (open filename "r"))
-       (dir (file-name-directory filename))
-       str)
-    (unless file
-      (signal 'info-error (list "Can't open info file" filename)))
-    (unwind-protect
-	(with-buffer info-tags-buffer
-	  (clear-buffer)
-	  (setq info-indirect-list nil
-		info-file-name nil
-		info-has-tags-p nil)
-	  ;; Read until we find the tag table or the indirect list.
-	  (setq str (read-file-until file "^(Tag Table:|Indirect:) *\n$" t))
-	  (when (and str (regexp-match "Indirect" str t))
-	    ;; Parse the indirect list
-	    (while (and (setq str (read-line file))
-			(/= (aref str 0) ?\^_))
-	      (setq info-indirect-list
-		(cons
+      ((dir (file-name-directory filename)))
+    (with-buffer info-buffer
+      (clear-buffer)
+      (setq info-indirect-list nil
+	    info-has-tags-p nil)
+      ;; Get the file into the Info buffer
+      (read-file-into-buffer (concat filename suffix))
+      ;; Scan for tag table or indirect list
+      (let
+	  ((pos (find-next-regexp "^(Tag Table:|Indirect:) *$"
+				  (pos 0 0) info-buffer t)))
+	(when (and pos (regexp-match-line "Indirect" pos nil t))
+	  ;; Parse the indirect list
+	  (next-line 1 pos)
+	  (while (and (/= (get-char pos) ?\^_)
+		      (regexp-match-line "^(.*): ([0-9]+)$" pos nil t))
+	    (setq info-indirect-list
 		  (cons
-		    (read-from-string (regexp-expand "^.*: ([0-9]+)\n$" str "\\1"))
-		    (concat dir (regexp-expand "^(.*): [0-9]+\n$" str "\\1")))
-		  info-indirect-list)))
-	    (setq info-indirect-list (nreverse info-indirect-list))
-	    ;; Now look for the tag table
-	    (setq str (read-file-until file "^Tag Table: *\n$" t)))
-	  (when (and str (regexp-match "Tag Table" str t))
-	    (read-buffer file)
-	    (setq info-has-tags-p t))
-	  (setq info-file-name filename
-		info-file-modtime (file-modtime filename))
-	  t)
-      (close file))))
+		   (cons
+		    (read (cons info-buffer (match-start 2)))
+		    (concat dir (copy-area (match-start 1) (match-end 1))))
+		   info-indirect-list))
+	    (next-line 1 pos))
+	  (setq info-indirect-list (nreverse info-indirect-list)))
+	;; Now look for the tag table
+	(when (setq pos (find-next-regexp "^Tag table: *$" pos nil t))
+	  ;; Copy this into the tags buffer
+	  (let
+	      ((end (find-next-char ?\^_ pos)))
+	    (unless end
+	      (setq end (buffer-end)))
+	    (clear-buffer info-tags-buffer)
+	    (insert (copy-area pos end) nil info-tags-buffer)
+	    (setq info-has-tags-p t)))
+	(setq info-file-name filename)))
+    t))
 
 ;; Read the `dir' file, if multiple `dir' files exist concatenate them
 (defun info-read-dir ()
@@ -160,12 +170,12 @@ is split.")
 	  (if read-dir
 	      (let
 		  ((spos (cursor-pos)))
-		(insert (read-file name))
+		(insert-file name)
 		;; lose all text from the beginning of the file to the
 		;; first menu item
 		(when (find-next-regexp "^\\* Menu:" spos nil t)
 		  (delete-area spos (next-line 1 (match-start)))))
-	    (read-buffer name)
+	    (read-file-into-buffer name)
 	    ;; try to delete the file's preamble
 	    (when (find-next-regexp "^File:" (buffer-start) nil t)
 	      (delete-area (buffer-start) (match-start)))
@@ -176,8 +186,8 @@ is split.")
       (setq path (cdr path)))
     (unless read-dir
       (signal 'info-error '("Can't find `dir' file")))
-    (setq info-file-name "dir"
-	  info-file-modtime 0
+    (setq buffer-file-modtime 0
+	  info-file-name "dir"
 	  info-node-name "Top"
 	  mode-name "(dir)")
     (goto-buffer-start)
@@ -192,42 +202,38 @@ is split.")
 				   (cursor-pos))
 			     info-history))))
 
-;; Find the actual file for the info-file FILENAME
+;; Find the actual file for the info-file FILENAME. If an uncompressor
+;; is needed to load the file it will be loaded. The returned filename
+;; is without the suffix, which is stored in info-file-suffix
 (defun info-locate-file (filename)
   (if (and info-file-name (or (not filename) (equal filename "")))
       info-file-name
     (let*
-	((filename-and-info (concat filename ".info"))
-	 (lcase-name (translate-string (copy-sequence filename)
+	((lcase-name (translate-string (copy-sequence filename)
 				       downcase-table))
-	 (lcase-and-info (concat lcase-name ".info")))
-      (cond
-       ((file-exists-p filename)
-	filename)
-       ((file-exists-p filename-and-info)
-	filename-and-info)
-       ((file-exists-p lcase-name)
-	lcase-name)
-       ((file-exists-p lcase-and-info)
-	lcase-and-info)
-       (t
-	(catch 'foo
-	  (let
-	      ((dir info-directory-list)
-	       real)
-	    (while dir
-	      (setq real (expand-file-name (car dir)))
-	      (cond
-	       ((file-exists-p (file-name-concat real filename))
-		(throw 'foo (file-name-concat real filename)))
-	       ((file-exists-p (file-name-concat real filename-and-info))
-		(throw 'foo (file-name-concat real filename-and-info)))
-	       ((file-exists-p (file-name-concat real lcase-name))
-		(throw 'foo (file-name-concat real lcase-name)))
-	       ((file-exists-p (file-name-concat real lcase-and-info))
-		(throw 'foo (file-name-concat real lcase-and-info))))
-	      (setq dir (cdr dir)))
-	    (signal 'info-error (list "Can't find file" filename)))))))))
+	 (path (cons "" info-directory-list))
+	 suffixes files)
+      (catch 'foo
+	(while path
+	  (setq files (list (file-name-concat (car path) filename)
+			    (file-name-concat (car path) (concat filename
+								 ".info"))
+			    (file-name-concat (car path) lcase-name)
+			    (file-name-concat (car path) (concat lcase-name
+								 ".info"))))
+	  (while files
+	    (setq suffixes info-suffixes)
+	    (while suffixes
+	      (when (file-exists-p (concat (car files) (car (car suffixes))))
+		(setq info-file-suffix (car (car suffixes)))
+		(when (cdr (car suffixes))
+		  ;; Load the uncompressor if necessary
+		  (require (cdr (car suffixes))))
+		(throw 'foo (car files)))
+	      (setq suffixes (cdr suffixes)))
+	    (setq files (cdr files)))
+	  (setq path (cdr path)))
+	(signal 'info-error (list "Can't find Info document" filename))))))
 
 ;; Display the node NODENAME. NODENAME can contain a file name. If no node
 ;; is specified go to `Top' node.
@@ -241,54 +247,66 @@ is split.")
     (when filename
       (unless (setq nodename (regexp-expand "^\\(.*\\)(.+)$" nodename "\\1"))
 	(setq nodename "Top")))
-    (if (member filename '("dir" "DIR" "Dir"))
+    (if (and filename (member filename '("dir" "DIR" "Dir")))
 	(info-read-dir)
       (setq filename (info-locate-file filename))
       (when (or (not (equal info-file-name filename))
-		(> (file-modtime filename) info-file-modtime))
-	(info-read-tags filename))
+		(> (file-modtime filename) buffer-file-modtime))
+	(info-read-tags filename info-file-suffix))
       (if (not info-has-tags-p)
-	  (progn
-	    (clear-buffer)
-	    (read-buffer info-file-name info-buffer)
-	    (goto-buffer-start)
-	    (setq info-node-name ""
-		  mode-name (concat ?( (file-name-nondirectory info-file-name) ?))))
-	(let
-	    ((regexp (concat "^Node: " (regexp-quote nodename) ?\^?))
-	     subfile text)
-	  (if (find-next-regexp regexp (buffer-start) info-tags-buffer t)
-	      (progn
-		(setq offset (read (cons info-tags-buffer (match-end))))
-		(if (null info-indirect-list)
-		    (setq offset (+ offset 2)
-			  subfile info-file-name)
-		  (catch 'info
-		    (let
-			((list info-indirect-list))
-		      (while (cdr list)
-			(when (< offset (car (car (cdr list))))
-			  (setq subfile (car list))
-			  (throw 'info))
-			(setq list (cdr list)))
-		      (setq subfile (car list))))
-		  ;; Use some magic to calculate the physical position of the
-		  ;; node. This seems to work?
-		  (if (eq subfile (car info-indirect-list))
-		      (setq offset (+ offset 2))
-		    (setq offset (+ (- offset (car subfile))
-				    (car (car info-indirect-list)) 2)))
-		  (setq subfile (cdr subfile)))
-		(if (setq text (read-file-from-to subfile offset ?\^_))
-		    (progn
-		      (clear-buffer)
-		      (insert text)
-		      (goto-buffer-start)
-		      (setq info-node-name nodename
-			    mode-name (concat ?( (file-name-nondirectory info-file-name)
-					      ?) info-node-name)))
-		  (signal 'info-error (list "Can't read from file" filename))))
-	    (signal 'info-error (list "Can't find node" nodename))))))))
+	  (unless (string= info-file-name filename)
+	    (read-file-into-buffer (concat filename info-file-suffix))
+	    (when (find-next-regexp (concat "^File:.* Node: *"
+					    (regexp-quote nodename))
+				    (buffer-start))
+	      (goto-char (line-start (match-start)))))
+	(if (find-next-regexp (concat "^Node: "
+				      (regexp-quote nodename)
+				      ?\^?)
+			      (pos 0 0) info-tags-buffer t)
+	    (let
+		((list info-indirect-list)
+		 (offset (read (cons info-tags-buffer (match-end))))
+		 subfile)
+	      (if (null list)
+		  ;; No indirect list
+		  (setq offset (+ offset 2)
+			subfile info-file-name)
+		;; Indirect list, chase down the list for the
+		;; correct file to use
+		(catch 'info
+		  (while (cdr list)
+		    (when (< offset (car (car (cdr list))))
+		      (setq subfile (car list))
+		      (throw 'info))
+		    (setq list (cdr list))
+		    (setq subfile (car list))))
+		;; Use some magic to calculate the physical position of the
+		;; node. This seems to work?
+		(if (eq subfile (car info-indirect-list))
+		    (setq offset (+ offset 2))
+		  (setq offset (+ (- offset (car subfile))
+				  (car (car info-indirect-list)) 2)))
+		(setq subfile (cdr subfile)))
+	      (unless (string= (buffer-file-name)
+			       (concat subfile info-file-suffix))
+		(read-file-into-buffer (concat subfile info-file-suffix)))
+	      (goto-char (offset-to-pos offset)))
+	  (signal 'info-error (list "Can't find node" nodename))))
+      ;; Now cursor should be at beginning of node text. Make sure
+      (let
+	  ((pos (find-prev-char ?\^_)))
+	(when (and pos (regexp-match-line (concat "^File:.*Node: "
+						  (regexp-quote nodename))
+					  (next-line 1 pos)))
+	  (goto-char (match-start)))
+	(setq pos (or (find-next-char ?\^_ (next-char (cursor-pos)))
+		      (buffer-end nil t)))
+	(restrict-buffer (cursor-pos) pos))
+      (setq info-node-name nodename
+	    mode-name (concat ?( (file-name-nondirectory info-file-name)
+			      ?) info-node-name))
+      t)))
 
 ;; Return a list of all node names matching START in the current tag table
 (defun info-list-nodes (start)
@@ -336,8 +354,8 @@ time that `info' has been called)."
    (start-node
     (info-remember)
     (info-find-node start-node))
-   ((and info-file-name info-node-name)
-    (when (> (file-modtime info-file-name) info-file-modtime)
+   ((and (buffer-file-name) info-node-name)
+    (when (> (file-modtime (buffer-file-name)) buffer-file-modtime)
       (info-find-node info-node-name)))
    (t
     (info-find-node "(dir)"))))
@@ -401,8 +419,10 @@ commands are,\n
 
 ;; Position the cursor at the start of the menu.
 (defun info-goto-menu-start ()
-  (when (or (find-prev-regexp "^\\* Menu:" nil nil t)
-	    (find-next-regexp "^\\* Menu:" nil nil t))
+  (when (or (and (find-prev-regexp "^\\* Menu:" nil nil t)
+		 (in-restriction-p (match-start)))
+	    (and (find-next-regexp "^\\* Menu:" nil nil t)
+		 (in-restriction-p (match-end))))
     (goto-char (next-line 1 (match-start)))))
 
 ;; Goto the ITEM-INDEX'th menu item.
@@ -502,18 +522,20 @@ commands are,\n
   (interactive)
   (let
       ((pos (find-next-regexp "(^\\* |\\*Note)" (next-char) nil t)))
-    (while (and pos (looking-at "\\* Menu:" pos nil t))
+    (while (and pos (in-restriction-p pos) (looking-at "\\* Menu:" pos nil t))
       (setq pos (find-next-regexp "(^\\* |\\*Note)" (next-char 1 pos) nil t)))
-    (goto-char pos)))
+    (when (and pos (in-restriction-p pos))
+      (goto-char pos))))
 
 ;; Move the cursor to the previous menuitem or xref
 (defun info-prev-link ()
   (interactive)
   (let
       ((pos (find-prev-regexp "(^\\* |\\*Note)" (prev-char) nil t)))
-    (while (and pos (looking-at "\\* Menu:" pos nil t))
+    (while (and pos (in-restriction-p pos) (looking-at "\\* Menu:" pos nil t))
       (setq pos (find-prev-regexp "(^\\* |\\*Note)" (prev-char 1 pos) nil t)))
-    (goto-char pos)))
+    (when (and pos (in-restriction-p pos))
+      (goto-char pos))))
 
 ;; Parse the cross-reference under the cursor into a cons-cell containing
 ;; its title and node. This is fairly hairy since it has to cope with refs
