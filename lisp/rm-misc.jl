@@ -46,8 +46,14 @@ message formatting characters are available.")
 		    (error "No current message")))
        (subject (rm-get-subject msg))
        (to (or (and (not ignore-replyto)
-		    (mapcar mail-parse-address
-			    (rm-get-msg-header msg "Reply-To" t)))
+		    (let
+			((replyto (rm-get-msg-header msg "Reply-To" t)))
+		      (when (stringp mail-ignored-reply-tos)
+			(setq replyto (delete-if
+				       (lambda (m)
+					 (string-match
+					  mail-ignored-reply-tos m)) replyto)))
+		      (mapcar mail-parse-address replyto)))
 	       (rm-get-from msg)
 	       (rm-get-sender msg)))
        (cc (if followup-p
