@@ -25,6 +25,13 @@
 (defvar change-log-file "ChangeLog"
   "File name of change logs")
 
+(defvar change-log-date-format "%Y-%m-%d"
+  "Format of dates in ChangeLog entry separators. See `current-time-string'")
+
+(defvar change-log-date-match-format change-log-date-format
+  "Format of ChangeLog date string that must match for two entries to be
+considered as referring to the same day.")
+
 ;;;###autoload
 (defun add-change-log-entry (&optional log-file file-list function-list)
   (interactive
@@ -32,7 +39,10 @@
        ((arg current-prefix-arg))
      (list (prompt-for-file "Log file:")
 	   (list (file-name-nondirectory (buffer-file-name)))
-	   (if arg nil (list (defun-at-point))))))
+	   (when (not arg)
+	     (let
+		 ((defun (defun-at-point)))
+	       (and defun (list defun)))))))
   (setq log-file (expand-file-name (or log-file "")))
   (cond
    ((file-directory-p log-file)
@@ -43,8 +53,8 @@
     (goto (start-of-buffer))
     (unless (log-in-same-day-p (copy-area (start-of-buffer)
 					  (end-of-line (start-of-buffer))))
-      (insert (concat (current-time-string) "  "
-		      (user-full-name) "  <" user-mail-address ">\n\n")))
+      (insert (concat (current-time-string nil change-log-date-format)
+		      "  " (user-full-name) "  <" user-mail-address ">\n\n")))
     (goto (pos 0 1))
     (insert "\n\t* \n")
     (goto (end-of-line (pos 0 2)))
@@ -69,12 +79,11 @@
       (fill-paragraph))))
 
 (defun log-in-same-day-p (old-header)
-  (string-match (concat (quote-regexp (substring (current-time-string) 0 11))
-			".*  "
-			(quote-regexp (user-full-name))
-			"  <"
-			(quote-regexp user-mail-address)
-			">")
+  (string-match (concat "^.*" (quote-regexp
+				(current-time-string
+				 nil change-log-date-match-format))
+			".*  " (quote-regexp (user-full-name))
+			"  <" (quote-regexp user-mail-address) ">")
 		old-header))
 
 ;;;###autoload
