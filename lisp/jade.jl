@@ -36,14 +36,12 @@
 (defun jade-load-all (file)
   (load-all file (lambda (f) (load f nil t))))
 
-;; Install all autoload hooks. This is done last so that it works
-;; when dumped. We load autoload.jl to ensure that we don't get a
-;; compiled (and possibly out of date) version
-(jade-load-all "autoload.jl" t)
+;; Install all autoload hooks
+(jade-load-all "autoload")
 
 ;; Do and operating- and window-system initialisation
-(jade-load-all (concat "os-" (symbol-name operating-system)) t)
-(jade-load-all (concat "ws-" (symbol-name window-system)) t)
+(jade-load-all (concat "os-" (symbol-name operating-system)))
+(jade-load-all (concat "ws-" (symbol-name window-system)))
 
 ;; Load site specific initialisation. Errors here are trapped since
 ;; they're probably not going to leave the editor in an unusable state
