@@ -898,17 +898,19 @@ the same."
   (when (and blink-matching-paren (or (not (listp blink-matching-paren))
 				      (memq (get-char (forward-char -1))
 					    blink-matching-paren)))
-    
-    (let
-	((match (find-matching-bracket (forward-char -1))))
-      (when match
-	(if (char-to-display-pos match)
-	    (save-excursion
-	      (goto match)
-	      (sit-for blink-matching-delay))
-	  (message (format nil "Matches: %S"
-			   (copy-area (start-of-line match)
-				      (end-of-line match)))))))))
+    (condition-case nil
+	(let
+	    ((match (find-matching-bracket (forward-char -1))))
+	  (when match
+	    (if (char-to-display-pos match)
+		(save-excursion
+		  (goto match)
+		  (sit-for blink-matching-delay))
+	      (message (format nil "Matches: %S"
+			       (copy-area (start-of-line match)
+					  (end-of-line match)))))))
+      (error
+       (message "[No matching bracket]")))))
 
 
 ;; Some macros
