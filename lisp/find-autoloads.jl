@@ -59,13 +59,14 @@
 	  (setq count (1+ count))
 	  (message form t))
 	(setq pos (forward-line 1 pos))
-	(when (and (looking-at "^\\(def(macro|un) " pos buf)
+	(when (and (looking-at "^\\(def(un|subst|var) " pos buf)
 		   (setq form (read (cons buf pos)))
-		   (memq (car form) '(defun defmacro)))
+		   (memq (car form) '(defun defsubst defvar defconst)))
 	  (setq form (format nil (if (assq 'interactive form)
 				     ;; Can be called as a command
-				     "(autoload '%s %S t)"
-				   "(autoload '%s %S)")
+				     "(autoload%s '%s %S t)"
+				   "(autoload%s '%s %S)")
+			     (if (eq (car form) 'defvar) "-variable" "")
 			     (nth 1 form)
 			     short-file-name))
 	  (when (funcall line-fun form)
