@@ -61,8 +61,11 @@
 	major-mode 'changelog-mode
 	major-mode-kill 'changelog-mode-kill
 	keymap-path (cons 'text-mode-indent-keymap
-			  (cons 'text-mode-keymap keymap-path))
-	fill-prefix "\t"
+			  (cons 'text-mode-keymap keymap-path)))
+  ;; In case fill.jl hasn't been loaded yet.
+  (make-local-variable 'fill-prefix)
+  (make-local-variable 'fill-prefix-width)
+  (setq fill-prefix "\t"
 	fill-prefix-width tab-size)
   (call-hook 'text-mode-hook)
   (call-hook 'changelog-mode-hook))
