@@ -126,7 +126,7 @@ w   `where-is'
 				       (lambda (s)
 					 (and (boundp s)
 					      (functionp (symbol-value s))))
-				     'commandp)) t)))
+				     commandp)) t)))
 
 (defun apropos-variable (regexp)
   (interactive "sRegular expression:")
