@@ -110,10 +110,17 @@ findkey(VALUE km, u_long code, u_long mods)
     }
     while(CONSP(km))
     {
-	VALUE ev = KEY_EVENT(VCAR(km));
-	if((VINT(EVENT_MODS(ev)) == mods) && VINT(EVENT_CODE(ev)) == code)
-	    return VCAR(km);
-	km = VCDR(km);
+	TEST_INT; if(INT_P) break;
+	if(CONSP(VCAR(km)))
+	{
+	    VALUE ev = KEY_EVENT(VCAR(km));
+	    if((VINT(EVENT_MODS(ev)) == mods) && VINT(EVENT_CODE(ev)) == code)
+		return VCAR(km);
+	    km = VCDR(km);
+	}
+	else
+	    /* An inherited sub-keymap. Start scanning it */
+	    km = VCDR(km);
     }
     return LISP_NULL;
 }
@@ -307,35 +314,49 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
     return(result);
 }
 
-_PR VALUE cmd_make_keytab(void);
-DEFUN("make-keytab", cmd_make_keytab, subr_make_keytab, (void), V_Subr0, DOC_make_keytab) /*
-::doc:make_keytab::
-make-keytab
+_PR VALUE cmd_make_keymap(void);
+DEFUN("make-keymap", cmd_make_keymap, subr_make_keymap, (void), V_Subr0,
+      DOC_make_keymap) /*
+::doc:make_keymap::
+make-keymap
 
-Return a new key-table suitable for storing bindings in. This is a 127
-element vector, each element is an empty list of bindings.
+Return a new keymap suitable for storing bindings in. This is a 127
+element vector, each element is an empty list of bindings for that hash
+bucket. Compare with the make-sparse-keymap function.
 ::end:: */
 {
-    return(cmd_make_vector(MAKE_INT(KEYTAB_SIZE), sym_nil));
+    return cmd_make_vector(MAKE_INT(KEYTAB_SIZE), sym_nil);
 }
 
-_PR VALUE cmd_make_keylist(void);
-DEFUN("make-keylist", cmd_make_keylist, subr_make_keylist, (void), V_Subr0, DOC_make_keylist) /*
-::doc:make_keylist::
-make-keylist
+_PR VALUE cmd_make_sparse_keymap(VALUE base);
+DEFUN("make-sparse-keymap", cmd_make_sparse_keymap, subr_make_sparse_keymap,
+      (VALUE base), V_Subr1, DOC_make_sparse_keymap) /*
+::doc:make_sparse_keymap::
+make-sparse-keymap [BASE-KEYMAP]
 
-Return a new key-list suitable for storing bindings in. This is a cons
-cell looking like `(keymap . LIST-OF-BINDINGS)', LIST-OF-BINDINGS starts
-off empty.
+Return a new keymap suitable for storing bindings in. This is a cons cell
+looking like `(keymap . LIST-OF-BINDINGS)', LIST-OF-BINDINGS is initially
+nil.
+
+If BASE-KEYMAP is non-nil, it should be an existing sparse keymap whose
+bindings are to be inherited by the new keymap.
 ::end:: */
 {
-    return(cmd_cons(sym_keymap, sym_nil));
+    if(!NILP(base) && (!CONSP(base) || VCAR(base) != sym_keymap))
+	return signal_arg_error(base, 1);
+
+    return cmd_cons(sym_keymap, base);
 }
 
 _PR VALUE cmd_bind_keys(VALUE args);
 DEFUN("bind-keys", cmd_bind_keys, subr_bind_keys, (VALUE args), V_SubrN, DOC_bind_keys) /*
 ::doc:bind_keys::
-bind-keys KEY-MAP { EVENT-DESCRIPTION COMMAND }...
+bind-keys KEYMAP { EVENT-DESCRIPTION COMMAND }...
+
+Adds key bindings to KEYMAP. Each EVENT-DESCRIPTION is a string naming an
+event to bind to the corresponding COMMAND.
+
+Returns KEYMAP when successful.
 ::end:: */
 {
     bool rc = TRUE;
@@ -384,9 +405,9 @@ bind-keys KEY-MAP { EVENT-DESCRIPTION COMMAND }...
 	    goto end;
     }
     if(rc)
-	res = sym_t;
+	res = km;
 end:
-    return(res);
+    return res;
 }
 
 _PR VALUE cmd_unbind_keys(VALUE args);
@@ -431,20 +452,26 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
 	    keyp = &VCDR(km);
 	while(CONSP(*keyp))
 	{
-	    /* This code is borrowed from cmd_delq */
-	    if((VINT(EVENT_MODS(KEY_EVENT(VCAR(*keyp)))) == mods)
-	       && (VINT(EVENT_CODE(KEY_EVENT(VCAR(*keyp)))) == code))
+	    VALUE cell = VCAR(*keyp);
+	    if(CONSP(cell))
 	    {
-		*keyp = VCDR(*keyp);
-		/* Keybindings are supposed to nest so only delete the
-		   first entry for this event  */
-		break;
+		if((VINT(EVENT_MODS(KEY_EVENT(cell))) == mods)
+		   && (VINT(EVENT_CODE(KEY_EVENT(cell))) == code))
+		{
+		    *keyp = VCDR(*keyp);
+		    /* Keybindings are supposed to nest so only delete the
+		    first entry for this event  */
+		    break;
+		}
+		else
+		    keyp = &VCDR(*keyp);
 	    }
 	    else
-		keyp = &VCDR(*keyp);
-	    TEST_INT;
-	    if(INT_P)
-		return LISP_NULL;
+		/* An inherited keymap. Only delete bindings from
+		   the initial keymap. */
+		break;
+
+	    TEST_INT; if(INT_P) return LISP_NULL;
 	}
 	rc = TRUE;
 	args = VCDR(args);
@@ -664,8 +691,8 @@ keys_init(void)
     next_keymap_path = LISP_NULL;
     mark_static(&next_keymap_path);
 
-    ADD_SUBR(subr_make_keytab);
-    ADD_SUBR(subr_make_keylist);
+    ADD_SUBR(subr_make_keymap);
+    ADD_SUBR(subr_make_sparse_keymap);
     ADD_SUBR(subr_bind_keys);
     ADD_SUBR(subr_unbind_keys);
     ADD_SUBR(subr_next_keymap_path);
