@@ -223,8 +223,6 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 "                                                                            ";
 
     VW *vw;
-    int glyph_row = 0;
-
     for(vw = w->w_ViewList;
 	vw != 0 && (!(vw->vw_Flags & VWFF_MINIBUF)
 		    || !(w->w_Flags & WINFF_MESSAGE));
@@ -238,7 +236,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	glyph_attr attr;
 	int tab_size = vw->vw_Tx->tx_TabSize;
 	long first_col, first_row, first_char_col;
-	long last_row, char_row;
+	int glyph_row, last_row, char_row;
 	long cursor_col;
 
 	bool in_block, rect_block = FALSE;
@@ -251,7 +249,8 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	first_char_col = char_col(vw->vw_Tx, VCOL(vw->vw_DisplayOrigin),
 				  VROW(vw->vw_DisplayOrigin));
 
-	/* First and last viewable rows of the buffer. */
+	/* current glyph row, first char row, and last glyph row */
+	glyph_row = vw->vw_FirstY;
 	first_row = VROW(vw->vw_DisplayOrigin);
 	last_row = glyph_row + vw->vw_MaxY;
 
