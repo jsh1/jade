@@ -21,7 +21,7 @@
 (provide 'html-decode)
 
 ;; Commentary:
-;;
+
 ;; This file provides a basic mechanism for rendering HTML source
 ;; in one buffer into another buffer. The single public entrypoint
 ;; is called as:
@@ -30,12 +30,11 @@
 ;;
 ;; All text in SOURCE-BUFFER is translated, inserted from the current
 ;; position in DEST-BUFFER.
-;;
-;; TODO:
-;;  * Definition lists (DL, DT, DD)
+
+;; todo:
+
 ;;  * FONT tags?
 ;;  * Forms
-;;  * Implicitly detect HTML, HEAD, and BODY tags
 
 
 ;; Configuration
@@ -342,8 +341,11 @@ of the document, currently only `title' and `base' keys are defined."
 
       (or (re-search-forward "--\\s*>" (match-end) source)
 	  (error "Unterminated comment: %s, %s" source point))
-      (format (stderr-file) "comment from %S to %S\n" point (match-end))
       (setq point (forward-char -1 (match-end) source)))
+     ((looking-at "<!" point source)
+      ;; some other type of SGML declaration, just scan for '>'
+      (setq point (or (char-search-forward ?> point source)
+		      (error "Unterminated SGML decl: %s, %s" source point))))
      (t
       (error "Malformed tag: %s, %s" point source)))
     (or (looking-at "[ \t\r\n\f]*>([ \t\r\n\f]*)" point source)
@@ -462,12 +464,10 @@ of the document, currently only `title' and `base' keys are defined."
     (catch 'foo
       (while (and html-decode-stack
 		  (memq (nth 2 frame) html-decode-optional-close-tags))
-	(if (eq (nth 2 frame) (car tag))
-	    (progn
-	      (setq html-decode-stack (cdr html-decode-stack))
-	      (throw 'foo t))
-	  (html-decode-close-frame (car tag) dest)
-	  (setq frame (car html-decode-stack)))))))
+	(html-decode-close-frame (car tag) dest)
+	(when (eq (nth 2 frame) (car tag))
+	  (throw 'foo t))
+	(setq frame (car html-decode-stack))))))
 
 ;; Return the face to be used for a tag of type NAME
 (defmacro html-decode-elt-face (name)
