@@ -31,10 +31,11 @@
     "p" 'summary-next-item
     "a" 'mds-add-item
     "e" 'mds-edit
+    "m" 'mds-compose
     "s" 'mds-sort-list))
 
 (defvar mds-functions
-  '((select . mds-compose)
+  '((select . mds-edit)
     (delete . md-delete-record)
     (print . mds-print)
     (list . (lambda () mail-address-list))
@@ -43,14 +44,27 @@
 
 ;;;###autoload
 (defun list-mail-dir ()
-  "List all mail directory items in a buffer."
+  "List the mail directory in a buffer."
   (interactive)
   (goto-other-view)
   (goto-buffer (open-buffer "*mail-dir*"))
   (if (eq major-mode 'summary-mode)
       (summary-update)
     (insert "Mail directory:\n\n  Name\t\t\tAddress\n  ----\t\t\t-------\n")
-    (summary-mode "Mail-Dir" mds-functions mds-keymap)))
+    (summary-mode "Mail-Dir" mds-functions mds-keymap)
+    (setq major-mode 'mds-mode)))
+
+(defun mds-mode ()
+  "Mail directory mode:
+
+This mode allows the mail directory to be displayed and edited. Each line
+represents one record, only the name and the email addresses from the
+record are displayed. Typing \\[mds-edit] or \\[summary-select-item] allows all fields in the record
+to be edited.
+
+Other local commands include:
+
+\\{mds-keymap}")
 
 (defun mds-print (item)
   (insert (if (memq 'delete (summary-get-pending-ops item)) "D " "  "))
@@ -104,12 +118,29 @@ CC: field if the prefix arg is set)."
 ;; Editing items
 
 (defvar mds-edit-keymap (bind-keys (make-sparse-keymap)
-			  "Ctrl-c" 'mds-edit-commit))
+			  "C-d" '(mds-edit-field "address")
+			  "C-w" '(mds-edit-field "company")
+			  "C-o" '(mds-edit-field "notes")
+			  "C-p" '(mds-edit-field "phone")
+			  "C-a" '(mds-edit-field "net-alias")
+			  "C-e" '(mds-edit-field "net")
+			  "C-n" '(mds-edit-field "name")
+			  "C-c" 'mds-edit-commit))
 
 (defvar mds-edit-item nil)
 (make-variable-buffer-local 'mds-edit-item)
 
 (defun mds-edit ()
+  "Mail directory editor:
+
+This mode allows individual records in the mail directory to be edited. Each
+field begins at the start of a line and is formatted as the name of the
+field, a colon, then the Lisp data object representing the field's contents.
+Generally each field will contain a list of strings.
+
+Type \\[mds-edit-commit] to finalise the edits. The full list of local keybindings is:
+
+\\{mds-edit-keymap,C-c}"
   (interactive)
   (let
       ((buffer (make-buffer "*mail-dir-edit*"))
@@ -118,6 +149,13 @@ CC: field if the prefix arg is set)."
     (goto-buffer buffer)
     (setq ctrl-c-keymap mds-edit-keymap)
     (setq major-mode 'mds-edit)
+    (setq mode-name "Mail-Dir-Edit")
+    ;; Copied from lisp-mode
+    (setq mode-comment-header ";"
+	  mode-indent-line 'lisp-indent-line
+	  mode-forward-exp 'lisp-forward-sexp
+	  mode-backward-exp 'lisp-backward-sexp
+	  mode-symbol-regexp "[^][()?'`,@\"#; \t\f\n]+")
     (setq mds-edit-item (md-get-field item ':name))
     (unless mds-edit-item
       (error "This item has no name: %s" item))
@@ -170,3 +208,14 @@ CC: field if the prefix arg is set)."
       (and (get-buffer "*mail-dir*")
 	   (with-buffer (get-buffer "*mail-dir*")
 	     (summary-update))))))
+
+(defun mds-edit-field (field)
+  (if (re-search-forward (concat ?^ (quote-regexp field) "[\t ]*:[\t ]*\\(?")
+			 (start-of-buffer))
+      (goto (match-end))
+    (goto (end-of-buffer))
+    (unless (zerop (pos-col (cursor-pos)))
+      (insert "\n"))
+    (insert field)
+    (insert ": ()\n")
+    (goto (forward-char -2))))
