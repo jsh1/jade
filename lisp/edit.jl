@@ -876,7 +876,7 @@ exit occurring (as long as the original buffer wasn't killed)."
 
 (defvar mouse-select-pos nil)
 (defvar mouse-dragging nil)
-(defvar mouse-dragging-objects nil)
+(defvar mouse-dragging-words nil)
 
 (defun mouse-pos ()
   "Return the position of the character underneath the mouse pointer in
@@ -887,7 +887,9 @@ the current view. Returns nil if no such character can be found."
     (when (and pos (setq pos (translate-pos-to-view pos)))
       (display-to-char-pos pos))))
 
-(defun mouse-select ()
+(defun goto-mouse ()
+  "Move the cursor to the view and position under the mouse pointer, returns
+the position."
   (interactive)
   (let*
       ((raw-pos (raw-mouse-pos))
@@ -897,33 +899,46 @@ the current view. Returns nil if no such character can be found."
 	(set-current-view mouse-view))
       (setq raw-pos (translate-pos-to-view raw-pos))
       (when raw-pos
-	(setq mouse-select-pos (display-to-char-pos raw-pos)
-	      mouse-dragging nil
-	      mouse-dragging-objects nil)
-	(block-kill)
-	(goto mouse-select-pos)))))
+	(goto (display-to-char-pos raw-pos))))))
+ 
+(defun mouse-select ()
+  (interactive)
+  (let
+      ((pos (goto-mouse)))
+    (when pos
+      (setq mouse-select-pos pos
+	    mouse-dragging nil
+	    mouse-dragging-words nil)
+      (block-kill))))
 
 (defun mouse-double-select ()
   (interactive)
-  (setq mouse-dragging-objects t))
+  (setq mouse-dragging-words t))
 
 (defun mouse-select-drag ()
   (interactive)
   (let
       ((pos (mouse-pos)))
-    (when mouse-dragging-objects
+    (when mouse-dragging-words
       (setq pos (forward-word (if (> pos mouse-select-pos) 1 -1) pos)))
     (goto pos)
     (if (equal pos mouse-select-pos)
 	(block-kill)
       (setq mouse-dragging pos)
       (block-kill)
-      (block-start mouse-select-pos)
+      (block-start (if mouse-dragging-words
+		       (if (>= pos mouse-select-pos)
+			   (or (word-start mouse-select-pos)
+			       mouse-select-pos)
+			 (if (in-word-p mouse-select-pos)
+			     (forward-word 1 mouse-select-pos)
+			   mouse-select-pos))
+		     mouse-select-pos))
       (block-end pos))))
 
 (defun yank-to-mouse ()
   "Yanks to the position under the mouse cursor. The cursor is left at the
 end of the inserted text."
   (interactive)
-  (mouse-select)
+  (goto-mouse)
   (yank))
