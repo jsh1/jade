@@ -127,29 +127,15 @@ interactive_spec(VALUE cmd)
 	fun = cmd_symbol_function(cmd, sym_t);
     else
 	fun = cmd;
+again:
     if(!VOIDP(fun) && !NILP(fun))
     {
 	if((VTYPE(fun) >= V_Subr0) && (VTYPE(fun) <= V_SubrN))
 	    spec = VSUBR(fun)->int_spec;
+	else if(COMPILEDP(fun))
+	    spec = VVECTI(fun, COMPILED_INTERACTIVE);
 	else if(CONSP(fun))
 	{
-	    if(VCAR(fun) == sym_autoload)
-	    {
-		VALUE tmp = cmd_nthcdr(MAKE_INT(2), fun);
-		if(tmp == LISP_NULL)
-		    return LISP_NULL;
-		if(CONSP(tmp) && !NILP(VCAR(tmp)))
-		{
-		    GC_root gc_cmd;
-		    PUSHGC(gc_cmd, cmd);
-		    fun = load_autoload(cmd, fun);
-		    POPGC;
-		    if(!fun || !CONSP(fun))
-			return LISP_NULL;
-		}
-		else
-		    return LISP_NULL;
-	    }
 	    if(VCAR(fun) == sym_lambda)
 	    {
 		/* A lambda expression, test its first proper form. */
@@ -173,6 +159,16 @@ interactive_spec(VALUE cmd)
 			spec = CONSP(VCDR(fun)) ? VCAR(VCDR(fun)) : sym_nil;
 		    }
 		}
+	    }
+	    else if(VCAR(fun) == sym_autoload)
+	    {
+		/* An autoload, load it then try again. */
+		GC_root gc_cmd;
+		PUSHGC(gc_cmd, cmd);
+		fun = load_autoload(cmd, fun);
+		POPGC;
+		if(fun != LISP_NULL)
+		    goto again;
 	    }
 	}
     }
@@ -394,12 +390,12 @@ any entered arg is given to the invoked COMMAND.
 	    }
 	    POPGC;
 	}
-	else if(int_spec != sym_t)
+	else if(!NILP(int_spec) && int_spec != sym_t)
 	    args = cmd_eval(int_spec);
 	if(clear_block)
 	    cmd_block_kill();
 	if(args)
-	    res = funcall(cmd, args);
+	    res = funcall(cmd, args, FALSE);
 	POPGC;
     }
     else
@@ -527,8 +523,9 @@ Returns t if COMMAND may be called interactively.
 	cmd = cmd_symbol_function(cmd, sym_t);
     if(!VOIDP(cmd) && !NILP(cmd))
     {
-	if(((VTYPE(cmd) >= V_Subr0) && (VTYPE(cmd) <= V_SubrN))
-	   && (VSUBR(cmd)->int_spec != LISP_NULL))
+	if((((VTYPE(cmd) >= V_Subr0) && (VTYPE(cmd) <= V_SubrN))
+	    && (VSUBR(cmd)->int_spec != LISP_NULL))
+	   || (COMPILEDP(cmd) && !NILP(VVECTI(cmd, COMPILED_INTERACTIVE))))
 	    return(sym_t);
 	else if(CONSP(cmd))
 	{
