@@ -425,7 +425,7 @@ regtry(tx, prog, matchpos)
     regstartp = prog->matches.obj.startp;
     regendp = prog->matches.obj.endp;
 
-    for (i = 0; i < NSUBEXP; i++) {
+    for (i = 0; i < rep_NSUBEXP; i++) {
 	regstartp[i] = rep_NULL;
 	regendp[i] = rep_NULL;
     }
