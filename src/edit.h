@@ -69,12 +69,11 @@ typedef struct _TX {
     /* unique name of buffer */
     VALUE	    tx_BufferName;
 
-    /* absolute name of the file in this buffer as the user sees it
-       (or a null string) */
+    /* absolute name of the file in this buffer as the user sees it (or nil) */
     VALUE	    tx_FileName;
 
     /* name of the file in this buffer such that we can compare two
-       files by comparing their canonical names. */
+       files by comparing their canonical names (or nil). */
     VALUE	    tx_CanonicalFileName;
 
     /* Data for status line */

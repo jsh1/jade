@@ -121,8 +121,8 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 		buffer_chain = tx;
 		data_after_gc += sizeof(TX);
 
-		tx->tx_FileName = null_string();
-		tx->tx_CanonicalFileName = null_string();
+		tx->tx_FileName = sym_nil;
+		tx->tx_CanonicalFileName = sym_nil;
 		tx->tx_MinorModeNameList = sym_nil;
 		tx->tx_MinorModeNameString = null_string();
 		tx->tx_StatusId = concat2("Jade: ", VSTR(tx->tx_BufferName));
@@ -272,7 +272,8 @@ Scan all buffers for one containing the file NAME.
     tx = VAL(buffer_chain);
     while(VTX(tx) != 0)
     {
-	if(STRING_LEN(VTX(tx)->tx_CanonicalFileName) == STRING_LEN(name)
+	if(STRINGP(VTX(tx)->tx_CanonicalFileName)
+	   && STRING_LEN(VTX(tx)->tx_CanonicalFileName) == STRING_LEN(name)
 	   && memcmp(VSTR(VTX(tx)->tx_CanonicalFileName), VSTR(name),
 		     STRING_LEN(name)) == 0)
 	    return tx;
@@ -412,7 +413,7 @@ DEFUN("buffer-file-name", cmd_buffer_file_name, subr_buffer_file_name, (VALUE tx
 buffer-file-name [BUFFER]
 
 Return the name of the file being edited in BUFFER. If the contents of BUFFER
-isn't associated with a particular file, returns a null string.
+isn't associated with a particular file, returns nil.
 ::end:: */
 {
     if(!BUFFERP(tx))
@@ -431,21 +432,29 @@ Set the name of the file associated with the contents of BUFFER to NAME.
     VALUE canonical;
     GC_root gc_tx, gc_name;
 
-    DECLARE1(name, STRINGP);
+    if(!NILP(name))
+	DECLARE1(name, STRINGP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
 
-    PUSHGC(gc_tx, tx);
-    PUSHGC(gc_name, name);
-    canonical = cmd_canonical_file_name(name);
-    POPGC; POPGC;
+    if(STRINGP(name))
+    {
+	PUSHGC(gc_tx, tx);
+	PUSHGC(gc_name, name);
+	canonical = cmd_canonical_file_name(name);
+	POPGC; POPGC;
+	if(!canonical || !STRINGP(canonical))
+	    canonical = name;
+    }
+    else
+	canonical = sym_nil;
 
     make_marks_non_resident(VTX(tx));
     VTX(tx)->tx_FileName = name;
-    VTX(tx)->tx_CanonicalFileName
-	= (canonical && STRINGP(canonical)) ? canonical : name;
+    VTX(tx)->tx_CanonicalFileName = canonical;
     make_marks_resident(tx);
-    return VTX(tx)->tx_FileName;
+
+    return name;
 }
 
 _PR VALUE cmd_buffer_name(VALUE);
@@ -929,8 +938,9 @@ make_marks_resident(VALUE newtx)
     {
 	Lisp_Mark *nxt = VMARK(mk)->next;
 	
-	if(strcmp(VSTR(VTX(newtx)->tx_CanonicalFileName),
-		  VSTR(VMARK(mk)->file)) == 0)
+	if(STRINGP(VTX(newtx)->tx_CanonicalFileName)
+	    && strcmp(VSTR(VTX(newtx)->tx_CanonicalFileName),
+		      VSTR(VMARK(mk)->file)) == 0)
 	{
 	    VMARK(mk)->file = newtx;
 	    VMARK(mk)->next = VTX(newtx)->tx_MarkChain;
@@ -950,12 +960,15 @@ make_marks_resident(VALUE newtx)
 void
 make_marks_non_resident(TX *oldtx)
 {
+    VALUE file = (STRINGP(oldtx->tx_CanonicalFileName)
+		  ? oldtx->tx_CanonicalFileName
+		  : null_string());
     Lisp_Mark *nxt, *mk = oldtx->tx_MarkChain;
     oldtx->tx_MarkChain = NULL;
     while(mk != NULL)
     {
 	nxt = mk->next;
-	mk->file = oldtx->tx_CanonicalFileName;
+	mk->file = file;
 	mk->next = non_resident_mark_chain;
 	non_resident_mark_chain = mk;
 	mk = nxt;
