@@ -114,7 +114,7 @@
   "Ctrl-h"	'help
   "Meta-h"	'paragraph-edges
   "Ctrl-Meta-h"	'mark-defun
-  "Ctrl-i"	'insert-block
+  "Ctrl-i"	'yank-block
   "Meta-i"	'(insert "\t")
   "Meta-j"	'goto-line
   "Ctrl-k"	'kill-line
@@ -170,7 +170,8 @@
   "LMB-Move"	'mouse-select-drag-block
   "Ctrl-LMB-Move" 'mouse-select-drag-rect
   "MMB-Click1"	'yank-to-mouse
-  "Meta-Shift-LMB-Click1" 'block-kill)
+  "Meta-Shift-LMB-Click1" 'block-kill
+  "RMB-Click1"  'copy-block-as-kill)
 
 (bind-keys ctrl-x-keymap
   "Ctrl-b"	'buffer-summary
