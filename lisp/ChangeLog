@@ -1,3 +1,9 @@
+2000-01-26  John Harper  <john@dcs.warwick.ac.uk>
+
+	* maildefs.jl (mail-ignored-reply-tos): new variable, a regexp
+	* rm-misc.jl (rm-reply): when mail-ignored-reply-tos is set,
+	ignore any reply-to addresses that match
+
 2000-01-25  John Harper  <john@dcs.warwick.ac.uk>
 
 	* buffers.jl: don't call before-exit-hook, that's done
