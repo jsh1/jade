@@ -43,7 +43,7 @@
       (with-buffer dest
 	(save-restriction
 	  (unrestrict-buffer)
-	  (save-cursor
+	  (save-excursion
 	    (goto (end-of-buffer))
 	    (rm-enforce-msg-separator)
 	    (let

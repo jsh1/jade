@@ -100,7 +100,7 @@ previous line, then works as normal."
   (cond
    ((eq op 'insert)
     (unless (zerop (pos-line pos))
-      (save-cursor
+      (save-excursion
 	(goto pos)
 	(indent-to (pos-col (indent-pos (forward-line -1)))))))
    ((eq op 'delete)
