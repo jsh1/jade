@@ -1,5 +1,7 @@
 2000-04-10  John Harper  <john@dcs.warwick.ac.uk>
 
+	* lisp-mode.jl (eval-and-print): define this function here
+
 	* jade.jl: misc fixes for modularized rep (but should be
 	backwards compatible)
 

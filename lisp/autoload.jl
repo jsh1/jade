@@ -59,6 +59,7 @@
 (autoload 'eval-sexp "lisp-mode" t)
 (autoload 'eval-insert-sexp "lisp-mode" t)
 (autoload 'eval-print-sexp "lisp-mode" t)
+(autoload 'eval-and-print "lisp-mode" t)
 (autoload 'replace-last-match "replace")
 (autoload 'replace-string "replace")
 (autoload 'replace-all "replace" t)

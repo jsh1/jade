@@ -1,5 +1,8 @@
 2000-04-10  John Harper  <john@dcs.warwick.ac.uk>
 
+	* files.c: define the file operation functions in the `rep'
+	structure
+
 	* main.c: push a `jade' structure before initializing
 	(batch_mode_p): new function
 
