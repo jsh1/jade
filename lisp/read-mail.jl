@@ -86,7 +86,7 @@ when set to the symbol `invalid'.")
   "BS" 'rm-previous-page
   "h" 'rm-summary
   "d" 'rm-mark-message-deletion
-  "Ctrl-d" '(rm-mark-message-deletion t)
+  "Ctrl-d" 'rm-mark-message-deletion
   "x" '(rm-with-summary (summary-execute))
   "#" '(rm-with-summary (summary-execute))
   "g" 'rm-get-mail
@@ -686,7 +686,8 @@ Major mode for viewing mail folders. Commands include:\n
 			       (list . rm-summary-list)
 			       (print . rm-summary-print-item)
 			       (delete . rm-summary-delete-item)
-			       (execute-end . rm-summary-execute-end))
+			       (execute-end . rm-summary-execute-end)
+			       (after-marking . rm-summary-after-marking))
   "Function vector for summary-mode.")
 
 (defvar rm-summary-mail-buffer nil
@@ -744,7 +745,9 @@ the summary buffer.")
     (let
 	((mail-buf (current-buffer)))
       (with-buffer rm-summary-buffer
-	(setq rm-summary-mail-buffer mail-buf)
+	(setq rm-summary-mail-buffer mail-buf
+	      summary-move-after-marking rm-move-after-deleting
+	      summary-activate-after-marking t)
 	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
 	(setq major-mode 'rm-summary-mode)))))
 
@@ -832,13 +835,20 @@ Major mode for displaying a summary of a mail folder.")
       (rm-delete-messages del-msgs))))
     
 (defun rm-summary-update-current ()
-  (if (rm-with-folder rm-current-msg)
+  (if (with-buffer rm-summary-mail-buffer rm-current-msg)
       (progn
 	(summary-update-item rm-summary-current-marked)
 	(summary-update-item (rm-with-folder rm-current-msg))
 	(summary-goto-item (rm-with-folder rm-current-msg-index)))
     ;; No messages, call update to clear everything
     (summary-update)))
+
+(defun rm-summary-after-marking (msg)
+  (if (and (eq (with-buffer rm-summary-mail-buffer rm-current-msg) msg)
+	   rm-move-after-deleting)
+      (rm-with-folder
+       (rm-next-message 1 t))
+    (summary-next-item 1)))
 
 
 ;; Commands, these must only be called from the folder buffer, *not*
@@ -904,16 +914,12 @@ current message."
 	       (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark)))
     (goto-char (buffer-start))))
 
-(defun rm-mark-message-deletion (&optional move-back-p)
+(defun rm-mark-message-deletion ()
   "Marks that the current message should be deleted."
   (interactive)
   (rm-with-summary
    (summary-mark-delete))
-  (rm-fix-status-info)
-  (when rm-move-after-deleting
-    (if move-back-p
-	(rm-previous-message)
-      (rm-next-message))))
+  (rm-fix-status-info))
 
 (defun rm-save-and-quit ()
   "Quit from the mail reading subsystem. The current folder will be saved
