@@ -48,29 +48,29 @@
 
 /* Global work variables for regexec(). */
 static TX      *regtx;		/* buffer */
-static POS      reginput;	/* String-input pointer. */
+static Pos      reginput;	/* String-input pointer. */
 static char	regnocase;	/* Ignore case when string-matching. */
-static POS     *regstartp;	/* Pointer to startp array. */
-static POS     *regendp;	/* Ditto for endp. */
+static VALUE   *regstartp;	/* Pointer to startp array. */
+static VALUE   *regendp;	/* Ditto for endp. */
 
 /* Forwards. */
-static int	regtry(TX *tx, regexp *, POS *);
+static int	regtry(TX *tx, regexp *, Pos *);
 static int	regmatch(char *);
 static int	regrepeat(char *);
 static char    *regnext(char *);
 
 /* Expands to the current input character at position P. This should
    not be called when P is past the end of the buffer. */
-#define REG_INPUT_CHAR(p)						\
-    (((p)->pos_Col >= regtx->tx_Lines[(p)->pos_Line].ln_Strlen - 1)	\
-     ? '\n'								\
-     : regtx->tx_Lines[(p)->pos_Line].ln_Line[(p)->pos_Col])
+#define INPUT_CHAR(p)						\
+    ((PCOL(p) >= regtx->tx_Lines[PROW(p)].ln_Strlen - 1)	\
+     ? '\n'							\
+     : regtx->tx_Lines[PROW(p)].ln_Line[PCOL(p)])
 
 /* Non-zero when position P is past the last character in the buffer. */
-#define END_OF_INPUT(p)							   \
-    ((p)->pos_Line >= regtx->tx_LogicalEnd				   \
-     || ((p)->pos_Line == regtx->tx_LogicalEnd - 1			   \
-	 && (p)->pos_Col >= regtx->tx_Lines[(p)->pos_Line].ln_Strlen - 1))
+#define END_OF_INPUT(p)						\
+    (PROW(p) >= regtx->tx_LogicalEnd				\
+     || (PROW(p) == regtx->tx_LogicalEnd - 1			\
+	 && PCOL(p) >= regtx->tx_Lines[PROW(p)].ln_Strlen - 1))
 
 /*
  * - regexec_tx - search forwards for a regexp in a buffer sub-string
@@ -80,15 +80,16 @@ int
 regexec_tx(prog, tx, start, eflags)
     register regexp *prog;
     TX *tx;
-    POS *start;
+    VALUE start;
     int eflags;
 {
-    POS s;
+    Pos s;
+
     /* For REG_NOCASE and strpbrk()  */
     static char mat[3] = "xX";
 
     /* Be paranoid... */
-    if (prog == NULL || tx == NULL || start == NULL) {
+    if (prog == NULL || tx == NULL || start == NULL || !POSP(start)) {
 	regerror("NULL parameter");
 	return (0);
     }
@@ -105,7 +106,7 @@ regexec_tx(prog, tx, start, eflags)
     if (prog->regmust != NULL)
     {
 	int found = 0;
-	s = *start;
+	s = *VPOS(start);
 	if(regnocase)
 	{
 	    mat[0] = tolower(prog->regmust[0]);
@@ -143,26 +144,26 @@ regexec_tx(prog, tx, start, eflags)
        at the start of each line after position START */
     if (prog->reganch)
     {
-	LINE *line = tx->tx_Lines + start->pos_Line;
-	s = *start;
-	if(s.pos_Col > 0)
+	LINE *line = tx->tx_Lines + VROW(start);
+	s = *VPOS(start);
+	if(PCOL(&s) > 0)
 	{
-	    s.pos_Col = 0;
-	    s.pos_Line++;
+	    PCOL(&s) = 0;
+	    PROW(&s)++;
 	    line++;
 	}
-	while(s.pos_Line < tx->tx_LogicalEnd)
+	while(PROW(&s) < tx->tx_LogicalEnd)
 	{
 	    if(regtry(tx, prog, &s))
 		return (1);
-	    s.pos_Line++;
+	    PROW(&s)++;
 	    line++;
 	}
 	return (0);
     }
 
     /* Messy cases:  unanchored match. */
-    s = *start;
+    s = *VPOS(start);
     if (prog->regstart != '\0')
     {
 	/* We know what char it must start with. */
@@ -217,15 +218,16 @@ int
 regexec_reverse_tx(prog, tx, start, eflags)
     register regexp *prog;
     TX *tx;
-    POS *start;
+    VALUE start;
     int eflags;
 {
-    POS s;
+    Pos s;
+
     /* For REG_NOCASE and strpbrk()  */
     static char mat[3] = "xX";
 
     /* Be paranoid... */
-    if (prog == NULL || tx == NULL || start == NULL) {
+    if (prog == NULL || tx == NULL || start == NULL || !POS(start)) {
 	regerror("NULL parameter");
 	return (0);
     }
@@ -242,7 +244,7 @@ regexec_reverse_tx(prog, tx, start, eflags)
     if (prog->regmust != NULL)
     {
 	int found = 0;
-	s = *start;
+	s = *VPOS(start);
 	if(regnocase)
 	{
 	    mat[0] = tolower(prog->regmust[0]);
@@ -282,21 +284,21 @@ regexec_reverse_tx(prog, tx, start, eflags)
        matching from the start of a line. */
     if (prog->reganch)
     {
-	LINE *line = tx->tx_Lines + start->pos_Line;
-	s = *start;
-	s.pos_Col = 0;
-	while(s.pos_Line >= tx->tx_LogicalStart)
+	LINE *line = tx->tx_Lines + VROW(start);
+	s = *VPOS(start);
+	PCOL(&s) = 0;
+	while(PROW(&s) >= tx->tx_LogicalStart)
 	{
 	    if(regtry(tx, prog, &s))
 		return (1);
-	    s.pos_Line--;
+	    PROW(&s)--;
 	    line--;
 	}
 	return (0);
     }
 
     /* Messy cases:  unanchored match. */
-    s = *start;
+    s = *VPOS(start);
     if (prog->regstart != '\0')
     {
 	/* We know what char it must start with. */
@@ -310,13 +312,13 @@ regexec_reverse_tx(prog, tx, start, eflags)
 		{
 		    /* Try for a longer match. */
 		    regsubs leftmost = prog->matches;
-		    while(s.pos_Col-- > 0)
+		    while(PCOL(&s)-- > 0)
 		    {
-			char c = REG_INPUT_CHAR(&s);
+			char c = INPUT_CHAR(&s);
 			if(toupper(c) == toupper(prog->regstart)
 			   && regtry(tx, prog, &s)
-			   && POS_EQUAL_P(&prog->matches.tx.endp[0],
-					  &leftmost.tx.endp[0]))
+			   && POS_EQUAL_P(prog->matches.tx.endp[0],
+					  leftmost.tx.endp[0]))
 			{
 			    /* found an equivalent match to the left,
 			       replace the original */
@@ -337,12 +339,12 @@ regexec_reverse_tx(prog, tx, start, eflags)
 		{
 		    /* Try for a longer match. */
 		    regsubs leftmost = prog->matches;
-		    while(s.pos_Col-- > 0)
+		    while(PCOL(&s)-- > 0)
 		    {
-			if(REG_INPUT_CHAR(&s) == prog->regstart
+			if(INPUT_CHAR(&s) == prog->regstart
 			   && regtry(tx, prog, &s)
-			   && POS_EQUAL_P(&prog->matches.tx.endp[0],
-					  &leftmost.tx.endp[0]))
+			   && POS_EQUAL_P(prog->matches.tx.endp[0],
+					  leftmost.tx.endp[0]))
 			{
 			    /* found an equivalent match to the left,
 			       replace the original */
@@ -364,11 +366,11 @@ regexec_reverse_tx(prog, tx, start, eflags)
 	    {
 		/* Try for a longer match. */
 		regsubs leftmost = prog->matches;
-		while(s.pos_Col-- > 0)
+		while(PCOL(&s)-- > 0)
 		{
 		    if(regtry(tx, prog, &s)
-		       && POS_EQUAL_P(&prog->matches.tx.endp[0],
-				      &leftmost.tx.endp[0]))
+		       && POS_EQUAL_P(prog->matches.tx.endp[0],
+				      leftmost.tx.endp[0]))
 		    {
 			/* found an equivalent match to the left,
 			   replace the original */
@@ -380,6 +382,7 @@ regexec_reverse_tx(prog, tx, start, eflags)
 	    }
 	} while (backward_char(1, tx, &s));
     }
+
     /* Failure. */
     return (0);
 }
@@ -392,13 +395,15 @@ int
 regmatch_tx(prog, tx, start, eflags)
     register regexp *prog;
     TX *tx;
-    POS *start;
+    VALUE start;
     int eflags;
 {
+    Pos s = *VPOS(start);
+
     /* Check for REG_NOCASE, means ignore case in string matches.  */
     regnocase = ((eflags & REG_NOCASE) != 0);
 
-    return regtry(tx, prog, start);
+    return regtry(tx, prog, &s);
 }
 
 /*
@@ -408,7 +413,7 @@ static int			/* 0 failure, 1 success */
 regtry(tx, prog, matchpos)
     TX		   *tx;
     regexp	   *prog;
-    POS	           *matchpos;
+    Pos            *matchpos;
 {
     register int    i;
 
@@ -418,12 +423,12 @@ regtry(tx, prog, matchpos)
     regendp = prog->matches.tx.endp;
 
     for (i = 0; i < NSUBEXP; i++) {
-	regstartp[i].pos_Line = -1;
-	regendp[i].pos_Line = -1;
+	regstartp[i] = NULL;
+	regendp[i] = NULL;
     }
     if (regmatch(prog->program + 1)) {
-	regstartp[0] = *matchpos;
-	regendp[0] = reginput;
+	regstartp[0] = make_pos(PCOL(matchpos), PROW(matchpos));
+	regendp[0] = make_pos(PCOL(&reginput), PROW(&reginput));
 	prog->lasttype = reg_tx;
 	return (1);
     } else
@@ -460,18 +465,18 @@ regmatch(prog)
 
 	switch (OP(scan)) {
 	case BOL:
-	    if (reginput.pos_Col > 0)
+	    if (PCOL(&reginput) > 0)
 		return (0);
 	    break;
 	case EOL:
-	    if (reginput.pos_Col
-		< regtx->tx_Lines[reginput.pos_Line].ln_Strlen - 1)
+	    if (PCOL(&reginput)
+		< regtx->tx_Lines[PROW(&reginput)].ln_Strlen - 1)
 		return (0);
 	    break;
 	case ANY:
 	    /* Don't match newlines for . */
-	    if(reginput.pos_Col
-	       == regtx->tx_Lines[reginput.pos_Line].ln_Strlen - 1)
+	    if(PCOL(&reginput)
+	       == regtx->tx_Lines[PROW(&reginput)].ln_Strlen - 1)
 		return (0);
 	    forward_char(1, regtx, &reginput);
 	    break;
@@ -485,7 +490,7 @@ regmatch(prog)
 		    char c;
 		    if(END_OF_INPUT(&reginput))
 			return (0);
-		    c = REG_INPUT_CHAR(&reginput);
+		    c = INPUT_CHAR(&reginput);
 		    if(toupper(*opnd) != toupper(c))
 			return (0);
 		    len = strlen(opnd);
@@ -503,7 +508,7 @@ regmatch(prog)
 		{
 		    /* Inline the first character, for speed. */
 		    if(END_OF_INPUT(&reginput)
-		       || *opnd != REG_INPUT_CHAR(&reginput))
+		       || *opnd != INPUT_CHAR(&reginput))
 			return (0);
 		    len = strlen(opnd);
 		    if(len == 1)
@@ -521,7 +526,7 @@ regmatch(prog)
 	case ANYOF: {
 		if (END_OF_INPUT(&reginput)
 		    || strchr(OPERAND(scan),
-			      REG_INPUT_CHAR(&reginput)) == NULL)
+			      INPUT_CHAR(&reginput)) == NULL)
 		    return (0);
 		forward_char(1, regtx, &reginput);
 	    }
@@ -529,7 +534,7 @@ regmatch(prog)
 	case ANYBUT: {
 		if (END_OF_INPUT(&reginput)
 		    || strchr(OPERAND(scan),
-			      REG_INPUT_CHAR(&reginput)) != NULL)
+			      INPUT_CHAR(&reginput)) != NULL)
 		    return (0);
 		forward_char(1, regtx, &reginput);
 	    }
@@ -548,7 +553,7 @@ regmatch(prog)
 	case OPEN + 8:
 	case OPEN + 9:{
 		register int	no;
-		POS save;
+		Pos save;
 
 		no = OP(scan) - OPEN;
 		save = reginput;
@@ -558,8 +563,8 @@ regmatch(prog)
 		     * Don't set startp if some later invocation of the same
 		     * parentheses already has.
 		     */
-		    if (regstartp[no].pos_Line == -1)
-			regstartp[no] = save;
+		    if (regstartp[no] == NULL)
+			regstartp[no] = make_pos(PCOL(&save), PROW(&save));
 		    return (1);
 		} else
 		    return (0);
@@ -575,7 +580,7 @@ regmatch(prog)
 	case CLOSE + 8:
 	case CLOSE + 9:{
 		register int	no;
-		POS save;
+		Pos save;
 
 		no = OP(scan) - CLOSE;
 		save = reginput;
@@ -585,15 +590,15 @@ regmatch(prog)
 		     * Don't set endp if some later invocation of the same
 		     * parentheses already has.
 		     */
-		    if (regendp[no].pos_Line == -1)
-			regendp[no] = save;
+		    if (regendp[no] == NULL)
+			regendp[no] = make_pos(PCOL(&save), PROW(&save));
 		    return (1);
 		} else
 		    return (0);
 	    }
 	    break;
 	case BRANCH:{
-		POS save;
+		Pos save;
 
 		if (OP(next) != BRANCH) /* No choice. */
 		    next = OPERAND(scan);	/* Avoid recursion. */
@@ -614,7 +619,7 @@ regmatch(prog)
 	case PLUS:{
 		register char	nextch;
 		register int	no;
-		POS save;
+		Pos save;
 		register int	min;
 
 		/*
@@ -631,7 +636,7 @@ regmatch(prog)
 		    /* If it could work, try it. */
 		    if (nextch == '\0'
 			|| (!END_OF_INPUT(&reginput)
-			    && REG_INPUT_CHAR(&reginput) == nextch))
+			    && INPUT_CHAR(&reginput) == nextch))
 			if (regmatch(next))
 			    return (1);
 		    /* Couldn't or didn't -- back up. */
@@ -670,7 +675,7 @@ regrepeat(p)
     char *p;
 {
     register int count = 0;
-    POS scan;
+    Pos scan;
     register char *opnd;
 
     scan = reginput;
@@ -680,9 +685,8 @@ regrepeat(p)
 	/* TODO: what to do here? How about matching up to the
 	   end of the buffer? No, this could be something like .*
 	   what we want is to match up to the end of a line. */
-	count = (regtx->tx_Lines[scan.pos_Line].ln_Strlen - 1)
-		- scan.pos_Col;
-	scan.pos_Col += count;
+	count = (regtx->tx_Lines[PROW(&scan)].ln_Strlen - 1) - PCOL(&scan);
+	PCOL(&scan) += count;
 	break;
     case EXACTLY:
 	if(regnocase)
@@ -691,7 +695,7 @@ regrepeat(p)
 	    char c;
 	    while(!END_OF_INPUT(&scan))
 	    {
-		c = REG_INPUT_CHAR(&scan);
+		c = INPUT_CHAR(&scan);
 		if(uo != toupper(c))
 		    break;
 		count++;
@@ -703,7 +707,7 @@ regrepeat(p)
 	    char c;
 	    while(!END_OF_INPUT(&scan))
 	    {
-		c = REG_INPUT_CHAR(&scan);
+		c = INPUT_CHAR(&scan);
 		if(*opnd != c)
 		    break;
 		count++;
@@ -715,7 +719,7 @@ regrepeat(p)
 	    char c;
 	    while (!END_OF_INPUT(&scan))
 	    {
-		c = REG_INPUT_CHAR(&scan);
+		c = INPUT_CHAR(&scan);
 		if(strchr(opnd, c) == NULL)
 		    break;
 		count++;
@@ -727,7 +731,7 @@ regrepeat(p)
 	    char c;
 	    while (!END_OF_INPUT(&scan))
 	    {
-		c = REG_INPUT_CHAR(&scan);
+		c = INPUT_CHAR(&scan);
 		if(strchr(opnd, c) != NULL)
 		    break;
 		count++;
@@ -740,8 +744,8 @@ regrepeat(p)
 	count = 0;		/* Best compromise. */
 	break;
     }
-    reginput = scan;
 
+    reginput = scan;
     return (count);
 }
 
