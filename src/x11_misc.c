@@ -31,6 +31,7 @@ _PR void beep(VW *);
 
 _PR void x11_convert_selection(XSelectionRequestEvent *ev);
 _PR void x11_lose_selection(Atom selection);
+_PR void x11_window_lose_selections(Window win);
 _PR void x11_misc_init(void);
 
 int
@@ -71,10 +72,15 @@ beep(VW *vw)
 
 /* Selection handling */
 
+enum Sel_type {
+    Sel_area = 0, Sel_string
+};
+
 static struct selection_info {
     Window owner;
-    VALUE buffer;
+    VALUE data;				/* either a string or a buffer */
     POS start, end;
+    enum Sel_type type;
 } selection_info[2];
 
 VALUE sym_xa_primary, sym_xa_secondary;
@@ -99,25 +105,33 @@ symbol_to_atom(VALUE sym)
 _PR VALUE cmd_x11_set_selection(VALUE sel, VALUE lstart, VALUE lend, VALUE buffer);
 DEFUN("x11-set-selection", cmd_x11_set_selection, subr_x11_set_selection, (VALUE sel, VALUE lstart, VALUE lend, VALUE buffer), V_Subr4, DOC_x11_set_selection) /*
 ::doc:x11_set_selection::
-x11-set-selection SELECTION START END [BUFFER]
+x11-set-selection SELECTION [ STRING | START END [BUFFER] ]
 
 Defines the X11 selection whose name corresponds to the symbol SELECTION
-(either `xa-primary' or `xa-secondary') to the text specified by the
-positions START and END. If BUFFER is non-nil it defines the buffer in
-which the selected text lies, otherwise the current buffer is used.
+(either `xa-primary' or `xa-secondary'). The selection can be set to
+either an arbitrary piece of text if the second argument is a string,
+or to area of BUFFER betwee START and END if the second argument is a
+position.
 
 Returns t if the current selection is now what was requested, nil
 otherwise.
 ::end:: */
 {
     Atom selection;
+    enum Sel_type type;
 
     DECLARE1(sel, SYMBOLP);
-    DECLARE2(lstart, POSP);
-    DECLARE3(lend, POSP);
-    if(!BUFFERP(buffer))
-	buffer = VAL(curr_vw->vw_Tx);
 
+    if(STRINGP(lstart))
+	type = Sel_string;
+    else
+    {
+	DECLARE2(lstart, POSP);
+	DECLARE3(lend, POSP);
+	if(!BUFFERP(buffer))
+	    buffer = VAL(curr_vw->vw_Tx);
+	type = Sel_area;
+    }
     selection = symbol_to_atom(sel);
     if(selection == XA_PRIMARY || selection == XA_SECONDARY)
     {
@@ -128,15 +142,21 @@ otherwise.
 	{
 	    /* We've now got the selection. */
 	    selection_info[selno].owner = curr_win->w_Window;
-	    selection_info[selno].buffer = buffer;
-	    selection_info[selno].start = VPOS(lstart);
-	    selection_info[selno].end = VPOS(lend);
+	    selection_info[selno].type = type;
+	    if(type == Sel_area)
+	    {
+		selection_info[selno].data = buffer;
+		selection_info[selno].start = VPOS(lstart);
+		selection_info[selno].end = VPOS(lend);
+	    }
+	    else
+		selection_info[selno].data = lstart;
 	    return sym_t;
 	}
 	else
 	{
 	    selection_info[selno].owner = WINDOW_NIL;
-	    selection_info[selno].buffer = NULL;
+	    selection_info[selno].data = sym_nil;
 	    return sym_nil;
 	}
     }
@@ -173,6 +193,27 @@ Returns t if the X11 selection defined by the symbol SELECTION (either
     return sym_nil;
 }
 
+_PR VALUE cmd_x11_own_selection_p(VALUE sel);
+DEFUN("x11-own-selection-p", cmd_x11_own_selection_p, subr_x11_own_selection_p, (VALUE sel), V_Subr1, DOC_x11_own_selection_p) /*
+::doc:x11_own_selection_p::
+x11-own-selection-p SELECTION
+
+Returns t if the X11 selection defined by the symbol SELECTION (either
+`xa-primary' or `xa-secondary') is owned by Jade.
+::end:: */
+{
+    Atom selection;
+    DECLARE1(sel, SYMBOLP);
+    selection = symbol_to_atom(sel);
+    if(selection == XA_PRIMARY || selection == XA_SECONDARY)
+    {
+	int selno = selection_atom_to_index(selection);
+	if(selection_info[selno].owner != WINDOW_NIL)
+	    return sym_t;
+    }
+    return sym_nil;
+}
+
 _PR VALUE cmd_x11_get_selection(VALUE sel);
 DEFUN("x11-get-selection", cmd_x11_get_selection, subr_x11_get_selection, (VALUE sel), V_Subr1, DOC_x11_get_selection) /*
 ::doc:x11_get_selection::
@@ -194,22 +235,29 @@ If the selection currently has no value, nil is returned.
 	if(selection_info[selno].owner != WINDOW_NIL)
 	{
 	    /* We own this selection, avoid the server. */
-	    if(check_section(VTX(selection_info[selno].buffer),
-			     &selection_info[selno].start,
-			     &selection_info[selno].end))
+	    if(selection_info[selno].type == Sel_string)
+		res = selection_info[selno].data;
+	    else if(selection_info[selno].type == Sel_area)
 	    {
-		long tlen = section_length(VTX(selection_info[selno].buffer),
-					   &selection_info[selno].start,
-					   &selection_info[selno].end);
-		res = make_string(tlen + 1);
-		if(res)
-		{
-		    copy_section(VTX(selection_info[selno].buffer),
+		if(check_section(VTX(selection_info[selno].data),
 				 &selection_info[selno].start,
-				 &selection_info[selno].end, VSTR(res));
-		    VSTR(res)[tlen] = 0;
+				 &selection_info[selno].end))
+		{
+		    long tlen = section_length(VTX(selection_info[selno].data),
+					       &selection_info[selno].start,
+					       &selection_info[selno].end);
+		    res = make_string(tlen + 1);
+		    if(res)
+		    {
+			copy_section(VTX(selection_info[selno].data),
+				     &selection_info[selno].start,
+				     &selection_info[selno].end, VSTR(res));
+			VSTR(res)[tlen] = 0;
+		    }
 		}
 	    }
+	    else
+		abort();		/* shouldn't happen */
 	}
 	else
 	{
@@ -285,26 +333,39 @@ x11_convert_selection(XSelectionRequestEvent *ev)
     if(ev->target == XA_STRING)
     {
 	/* Convert to text. */
-	if(check_section(VTX(selection_info[selno].buffer),
-			 &selection_info[selno].start,
-			 &selection_info[selno].end))
+	if(selection_info[selno].type == Sel_string)
 	{
-	    long tlen = section_length(VTX(selection_info[selno].buffer),
-				       &selection_info[selno].start,
-				       &selection_info[selno].end);
-	    char *string = str_alloc(tlen + 1);
-	    if(string)
-	    {
-		copy_section(VTX(selection_info[selno].buffer),
+	    XChangeProperty(x11_display, ev->requestor, ev->property,
+			    XA_STRING, 8, PropModeReplace,
+			    VSTR(selection_info[selno].data),
+			    STRING_LEN(selection_info[selno].data));
+	}
+	else if(selection_info[selno].type == Sel_area)
+	{
+	    if(check_section(VTX(selection_info[selno].data),
 			     &selection_info[selno].start,
-			     &selection_info[selno].end, string);
-		string[tlen] = 0;
-		XChangeProperty(x11_display, ev->requestor, ev->property,
-				XA_STRING, 8, PropModeReplace, string, tlen);
-		str_free(string);
-		send_ev.xselection.property = ev->property;
+			     &selection_info[selno].end))
+	    {
+		long tlen = section_length(VTX(selection_info[selno].data),
+					   &selection_info[selno].start,
+					   &selection_info[selno].end);
+		char *string = str_alloc(tlen + 1);
+		if(string)
+		{
+		    copy_section(VTX(selection_info[selno].data),
+				 &selection_info[selno].start,
+				 &selection_info[selno].end, string);
+		    string[tlen] = 0;
+		    XChangeProperty(x11_display, ev->requestor, ev->property,
+				    XA_STRING, 8, PropModeReplace,
+				    string, tlen);
+		    str_free(string);
+		}
 	    }
 	}
+	else
+	    abort();			/* shouldn't happen */
+	send_ev.xselection.property = ev->property;
     }
     XSendEvent(x11_display, ev->requestor, False, 0, &send_ev);
 }
@@ -314,7 +375,24 @@ x11_lose_selection(Atom selection)
 {
     int selno = selection_atom_to_index(selection);
     selection_info[selno].owner = WINDOW_NIL;
-    selection_info[selno].buffer = NULL;
+    selection_info[selno].data = sym_nil;
+}
+
+void
+x11_window_lose_selections(Window win)
+{
+    int i;
+    for(i = 0; i < 2; i++)
+    {
+	if(selection_info[i].owner == win)
+	{
+	    selection_info[i].owner = WINDOW_NIL;
+	    selection_info[i].data = sym_nil;
+	    XSetSelectionOwner(x11_display,
+			       (i == 0) ? XA_PRIMARY : XA_SECONDARY,
+			       None, CurrentTime);
+	}
+    }
 }
 
 _PR VALUE cmd_x11_lose_selection(VALUE sel);
@@ -350,8 +428,9 @@ x11_misc_init(void)
     INTERN(sym_xa_secondary, "xa-secondary");
     ADD_SUBR(subr_x11_set_selection);
     ADD_SUBR(subr_x11_selection_active_p);
+    ADD_SUBR(subr_x11_own_selection_p);
     ADD_SUBR(subr_x11_get_selection);
     ADD_SUBR(subr_x11_lose_selection);
-    mark_static(&selection_info[0].buffer);
-    mark_static(&selection_info[1].buffer);
+    mark_static(&selection_info[0].data);
+    mark_static(&selection_info[1].data);
 }
