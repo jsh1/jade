@@ -242,7 +242,7 @@ will be found, if ARG is negative rows from the bottom of the view are
 counted."
   (interactive "P")
   (goto (display-to-char-pos (pos 0 (if (null arg)
-					(/ (cdr (view-dimensions)) 2)
+					(quotient (cdr (view-dimensions)) 2)
 				      (let
 					  ((line (prefix-numeric-argument
 						  arg)))

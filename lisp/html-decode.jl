@@ -554,7 +554,7 @@ of the document, currently only `title' and `base' keys are defined."
        (t
 	(cond
 	 ((eq fill-type 'center)
-	  (set-indent-pos (pos (/ (- html-decode-width len) 2)
+	  (set-indent-pos (pos (quotient (- html-decode-width len) 2)
 			       (pos-line spos))))
 	 ((eq fill-type 'right)
 	  (set-indent-pos (pos (- html-decode-width len)

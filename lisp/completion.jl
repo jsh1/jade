@@ -98,9 +98,9 @@ matching strings.")
     (if (= max-width view-width)
 	(setq columns 1
 	      column-width view-width)
-      (setq columns (max 1 (/ view-width (+ max-width
-					    completion-column-extra)))
-	    column-width (/ view-width columns)))
+      (setq columns (max 1 (quotient view-width
+				     (+ max-width completion-column-extra)))
+	    column-width (quotient view-width columns)))
     (with-view view
       (let
 	  ((column 0))

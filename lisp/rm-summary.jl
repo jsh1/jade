@@ -236,8 +236,8 @@ for the list of formatting options available.")
     (condition-case nil
 	(let*
 	    ((total-lines (cdr (window-dimensions)))
-	     (summary-lines (/ (* (- total-lines 3)
-				  mail-summary-percent) 100)))
+	     (summary-lines (quotient (* (- total-lines 3)
+					 mail-summary-percent) 100)))
 	  (if (eq mail-display-summary 'bottom)
 	      ;; Summary at bottom
 	      (progn

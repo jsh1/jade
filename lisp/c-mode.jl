@@ -421,7 +421,7 @@ START and END except for the last line."
       (setq p (forward-line 1 p)))
     (setq max-width (1+ max-width))
     (unless (= (% max-width (tab-size)) 0)
-      (setq max-width (* (1+ (/ max-width (tab-size))) (tab-size))))
+      (setq max-width (* (1+ (quotient max-width (tab-size))) (tab-size))))
     (setq p (pos max-width (pos-line start)))
     (while (< p end)
       (when (looking-at ".*([\t ]*\\\\ *)$" (start-of-line p))

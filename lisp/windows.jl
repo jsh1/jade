@@ -114,7 +114,7 @@ or if it is the symbol t the size of the other view won't be changed."
       (unless (eq lines t)
 	(setq total (+ (cdr (view-dimensions))
 		       (cdr (view-dimensions view)))
-	      desired (or lines (/ total 2)))
+	      desired (or lines (quotient total 2)))
 	;; Only enlarge if the other-view is currently _smaller_
 	;; than it's desired size
 	(unless (> (cdr (view-dimensions view)) desired)

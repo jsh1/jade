@@ -422,7 +422,7 @@ contain its definition as a function."
 	  (error "Invalid date specification: %s" string))
 	(setq abs-time (aref date date-vec-epoch-time)))))
     (if seconds-ago
-	(list* 'relative (/ seconds-ago 86400) (mod seconds-ago 86400))
+	(list* 'relative (quotient seconds-ago 86400) (mod seconds-ago 86400))
       (cons 'absolute abs-time))))
 
 

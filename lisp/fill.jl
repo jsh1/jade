@@ -298,7 +298,7 @@ the next line is started."
       ((> len fill-column)
 	(set-indent-pos (start-of-line p)))
       (t
-	(setq spos (pos (/ (- fill-column len) 2) (pos-line spos)))
+	(setq spos (pos (quotient (- fill-column len) 2) (pos-line spos)))
 	(set-indent-pos spos)))))
 
 ;;;###autoload
