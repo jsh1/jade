@@ -197,7 +197,11 @@ may be one of these symbols:
     if(attr == sym_foreground || attr == sym_background)
     {
 	if(STRINGP(value))
+	{
 	    value = cmd_get_color(value);
+	    if(!value)
+		return value;
+	}
 	DECLARE3(value, COLORP);
 	if(attr == sym_foreground)
 	    VFACE(face)->foreground = value;
