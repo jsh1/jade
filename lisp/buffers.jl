@@ -377,15 +377,17 @@ that it is associated with."
 	  (set-file-modes name modes))
 	t))))
 
-(defun save-file (&optional buffer &aux name)
+(defun save-file (&optional buffer force)
   "Saves the buffer BUFFER, or the current buffer, to the file that it is
 associated with, then sets the number of modifications made to this file
-to zero. If no changes have been made to the buffer, it won't be saved."
-  (interactive)
+to zero. If no changes have been made to the buffer, it won't be saved
+(unless the optional FORCE parameter is non-nil; this is taken from the
+prefix-argument when the function is called interactively)."
+  (interactive "\nP")
   (unless (bufferp buffer)
     (setq buffer (current-buffer)))
   (with-buffer buffer
-    (if (not (buffer-modified-p))
+    (if (and (not force) (not (buffer-modified-p)))
 	(message "No changes need to be saved!")
       (let
 	  ((name (buffer-file-name)))
