@@ -1,3 +1,8 @@
+2000-10-19  John Harper  <jsh@eazel.com>
+
+	* read-mail.jl, maildefs.jl: hacking to support POP mailboxes
+	via suitably-configured movemail
+
 2000-10-09  John Harper  <john@dcs.warwick.ac.uk>
 
 	* mail-dir.jl: in the before-exit-hook don't bother asking
