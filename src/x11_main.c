@@ -59,6 +59,8 @@ bool x11_opt_reverse_video = FALSE;
 /* Default font name. */
 DEFSTRING(def_font_str_data, DEFAULT_FONT);
 
+int x11_cursor_shape = XC_xterm;
+
 
 /* Resource/option management */
 
@@ -340,7 +342,7 @@ x11_open_display(char *display_name)
 		    xdisplay->jade_selection
 			= XInternAtom(display, "JADE_SELECTION", False);
 		    xdisplay->text_cursor
-			= XCreateFontCursor(display, XC_xterm);
+			= XCreateFontCursor(display, x11_cursor_shape);
 		    sys_recolor_cursor(mouse_cursor_face);
 		    xdisplay->meta_mod = x11_find_meta(xdisplay);
 
