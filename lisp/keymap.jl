@@ -92,30 +92,24 @@
 
 ;; Get one event
 
-(defun km-read-event-fun ()
-  (throw 'read-event (current-event)))
-
 ;;;###autoload
 (defun read-event (&optional title)
   "Read the next event and return a cons cell containing the two integers that
 define that event."
   (let
-      ((buffer (current-buffer))
-       (old-kp keymap-path)
-       (old-nkp next-keymap-path))
-    (setq keymap-path nil
-	  next-keymap-path nil
-	  status-line-cursor t)
-    (add-hook 'unbound-key-hook 'km-read-event-fun)
-    (unwind-protect
-	(catch 'read-event
-	  (message (or title "Type a key:"))
-	  (recursive-edit))
-      (with-buffer buffer
-	(remove-hook 'unbound-key-hook 'km-read-event-fun)
-	(setq keymap-path old-kp
-	      next-keymap-path old-nkp
-	      status-line-cursor nil)))))
+      ((temp-buffer (make-buffer "*read-event*"))
+       ev)
+    (with-view (minibuffer-view)
+      (with-buffer temp-buffer
+	(add-hook 'unbound-key-hook #'(lambda ()
+					(throw 'read-event (current-event))))
+	(setq keymap-path nil
+	      next-keymap-path nil)
+	(insert (or title "Enter key: "))
+	(setq ev (catch 'read-event
+		   (recursive-edit)))))
+    (destroy-buffer temp-buffer)
+    ev))
 
 ;;;###autoload
 (defun describe-key ()
