@@ -175,8 +175,8 @@ description entered. COUNT may be negative."
   (interactive "p")
   (let
       ((level (+ (or rcs-history-level 0) (or count 1))))
-    (if (or (<= level 0) (>= level (ring-size rcs-descr-ring)))
-	(error "Invalid history item" level)
+    (if (or (<= level 0) (> level (ring-size rcs-descr-ring)))
+	(error "No more history" level)
       (clear-buffer)
       (insert (get-from-ring rcs-descr-ring level))
       (setq rcs-history-level level))))
@@ -185,7 +185,7 @@ description entered. COUNT may be negative."
   "Replace the buffer contents with the COUNT'th next RCS change
 description entered. COUNT may be negative."
   (interactive "p")
-  (rcs-down-history (- (unless count) 1)))
+  (rcs-down-history (- (or count 1))))
     
 ;; Returns t if the current buffer is locked under RCS
 (defun rcs-buffer-locked-p ()
