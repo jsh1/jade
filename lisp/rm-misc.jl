@@ -122,9 +122,10 @@ message in that all recipients of the original wil receive the reply."
 ;; Message forwarding
 
 ;;;###autoload
-(defun rm-forward (&optional to)
-  "Forward the current message."
-  (interactive)
+(defun rm-forward (&optional to all-headers-p)
+  "Forward the current message. Optional arg TO specifies who to send
+it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
+  (interactive "\nP")
   (or rm-current-msg (error "No current message"))
   (unless to
     (setq to ""))
@@ -135,22 +136,21 @@ message in that all recipients of the original wil receive the reply."
 		(cons #'(lambda (msg)
 			  (rm-set-flag msg 'forwarded))
 		      message))
-    (insert "
------ Forwarded message -----\n\n
------ End of forwarded message -----\n")
+    (insert "----- Begin Forwarded Message -----\n\n
+----- End Forwarded Message -----\n")
     (goto-prev-line 2)
-    ;; Quote ^From_
-    (insert ">")
+    (when all-headers-p
+      ;; Quote ^From_
+      (insert ">"))
     (insert (with-buffer (mark-file (rm-get-msg-field message rm-msg-mark))
 	      (save-restriction
 		(unrestrict-buffer)
 		(let*
-		    ((start (mark-pos (rm-get-msg-field message rm-msg-mark)))
-		     (end (next-line 1 (copy-pos start))))
-		  (while (and end
-			      (setq end (find-next-regexp mail-message-start
-							  end))
-			      (not (rm-message-start-p end)))
-		    (setq end (next-line 1 end)))
-		  (copy-area start (or end (buffer-end)))))))
-    (goto-next-line 2)))
+		    ((start (if all-headers-p
+				(mark-pos (rm-get-msg-field message
+							    rm-msg-mark))
+			      rm-current-msg-visible-start)))
+		  (copy-area start rm-current-msg-end)))))
+    (if (string= to "")
+	(goto-char (line-end (buffer-start)))
+      (goto-next-line 2))))
