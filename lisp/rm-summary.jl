@@ -215,12 +215,12 @@ The list of formatting options can be extended by the variable
       (window-error))
     (set-current-view summary-view)
     (goto-buffer summary-buffer)
-    (let
-	((cell (cons summary-view folder)))
-      ;; Ensure that rm-open-folders has the correct view
-      (when (member cell rm-open-folders)
-	(setq rm-open-folders (cons (cons mail-view folder)
-				    (delete cell rm-open-folders)))))
+    ;; Ensure that rm-open-folders has the correct view
+    (mapc #'(lambda (cell)
+	      (when (and (eq (cdr cell) folder)
+			 (or (not (viewp (car cell)))
+			     (eq (car cell) summary-view)))
+		(setcar cell mail-view))) rm-open-folders)
     mail-view))
 
 (defun rm-summary-list ()
