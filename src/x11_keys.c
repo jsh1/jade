@@ -35,8 +35,10 @@
 
 _PR void translate_event(u_long *, u_long *, XEvent *, struct x11_display *);
 _PR int cook_key(void *, u_char *, int);
-_PR bool lookup_event(u_long *, u_long *, u_char *);
-_PR bool lookup_event_name(u_char *, u_long, u_long);
+_PR bool sys_lookup_mod(const char *name, u_long *mods);
+_PR bool sys_lookup_code(const char *name, u_long *code, u_long *mods);
+_PR char *sys_lookup_mod_name(char *buf, u_long mod);
+_PR bool sys_lookup_code_name(char *buf, u_long code, u_long type);
 _PR u_long x11_find_meta(struct x11_display *xd);
 
 _PR u_long esc_code, esc_mods;
@@ -160,35 +162,19 @@ cook_key(void *event, u_char *buf, int buflen)
  * Stuff to translate textual key descriptions into key codes
  */
 
-typedef struct
-{
-    u_char	 *kd_Name;
-    u_long	  kd_Mods;
-    u_long	  kd_Code;
-} KeyDesc;
+struct key_def {
+    const char *name;
+    u_long mods, code;
+};
 
-static const KeyDesc KeyDescr[] =
-{
-    { "Shift",    EV_MOD_SHIFT, 0 },
-    { "SFT",      EV_MOD_SHIFT, 0 },
-    { "Ctrl",     EV_MOD_CTRL, 0 },
-    { "Control",  EV_MOD_CTRL, 0 },
-    { "CTL",      EV_MOD_CTRL, 0 },
-    { "Meta",     EV_MOD_META, 0 },
-    { "Mod1",     EV_MOD_MOD1, 0 },
-    { "Mod2",     EV_MOD_MOD2, 0 },
-    { "Amiga",    EV_MOD_MOD2, 0 },
-    { "Mod3",     EV_MOD_MOD3, 0 },
-    { "Mod4",     EV_MOD_MOD4, 0 },
+static struct key_def x11_mods[] = {
     { "LMB",      EV_MOD_LMB, 0 },
-    { "Button1",  EV_MOD_BUTTON1, 0 },
     { "MMB",      EV_MOD_MMB, 0 },
-    { "Button2",  EV_MOD_BUTTON2, 0 },
     { "RMB",      EV_MOD_RMB, 0 },
-    { "Button3",  EV_MOD_BUTTON3, 0 },
-    { "Button4",  EV_MOD_BUTTON4, 0 },
-    { "Button5",  EV_MOD_BUTTON5, 0 },
+    { 0 }
+};
 
+static struct key_def x11_codes[] = {
     { "SPC",      EV_TYPE_KEYBD, XK_space },
     { "Space",    EV_TYPE_KEYBD, XK_space },
     { "Spacebar", EV_TYPE_KEYBD, XK_space },
@@ -241,136 +227,90 @@ static const KeyDesc KeyDescr[] =
     { "|",        EV_TYPE_KEYBD, XK_bar },
     { "}",        EV_TYPE_KEYBD, XK_braceright },
     { "~",        EV_TYPE_KEYBD, XK_asciitilde },
-#if 0
-    /* It's insane but for some reason solaris seems to think
-       that strcasecmp("m", "\243") is true (comparing 'm' and the
-       pounds sterling sign). This makes any binding to "X-m" come
-       out as "X-\243"! */
-    { "£",        EV_TYPE_KEYBD, XK_sterling },
-#endif
 
-    /* Mouse events */
-    { "Click1",   EV_TYPE_MOUSE, EV_CODE_MOUSE_CLICK1 },
-    { "Click2",   EV_TYPE_MOUSE, EV_CODE_MOUSE_CLICK2 },
-    { "Off",      EV_TYPE_MOUSE, EV_CODE_MOUSE_UP },
-    { "Move",     EV_TYPE_MOUSE, EV_CODE_MOUSE_MOVE },
-
-    { NULL, 0, 0 }
+    { 0 }
 };
 
-/* Puts the integers defining the event described in DESC into CODE and
-   MODS. This needs some work, should really separate mods and codes
-   more and check for trailing unused characters at the end. */
 bool
-lookup_event(u_long *code, u_long *mods, u_char *desc)
+sys_lookup_mod(const char *name, u_long *mods)
 {
-    u_char *str = desc;
-    bool rc = TRUE;
-    *code = *mods = 0;
-    for(;;)
+    struct key_def *x = x11_mods;
+    while(x->name != 0)
     {
-	u_char buff[100];
-	u_char *tmp = buff;
-	u_char c = *str++;
-	const KeyDesc *kd = KeyDescr;
-	/* Get this one token.  The first character is read separately to
-	   allow minus characters to be used to represent itself as well as
-	   to terminate a token. */
-	if(c != 0)
+	if(strcasecmp(name, x->name) == 0)
 	{
-	    *tmp++ = c;
-	    while((c = *str) && (c != '-'))
-	    {
-		*tmp++ = c;
-		str++;
-	    }
+	    *mods |= x->mods;
+	    return TRUE;
 	}
-	else
-	    goto error;
-	*tmp = 0;
-	if(*str)
-	    str++;
-	while(kd->kd_Name)
-	{
-	    if(!strcasecmp(kd->kd_Name, buff))
-	    {
-		*mods |= kd->kd_Mods;
-		*code = kd->kd_Code;
-		if(*mods & EV_TYPE_MASK)
-		    goto end;
-		break;
-	    }
-	    kd++;
-	}
-	if(!kd->kd_Name)
-	{
-	    unsigned int ks;
-	    if((ks = XStringToKeysym(buff)) != NoSymbol)
-	    {
-		*mods |= EV_TYPE_KEYBD;
-		*code = ks;
-		goto end;
-	    }
-	    else
-	    {
-	    error:
-		cmd_signal(sym_bad_event_desc, LIST_1(string_dup(desc)));
-		rc = FALSE;
-		goto end;
-	    }
-	}
+	x++;
     }
-end:
-    return(rc);
+    return FALSE;
 }
 
-/* Constructs the name of the event defined by CODE and MODS in BUF.  */
 bool
-lookup_event_name(u_char *buf, u_long code, u_long mods)
+sys_lookup_code(const char *name, u_long *code, u_long *mods)
 {
-    /* First resolve all modifiers */
-    u_long tmp_mods;
-    const KeyDesc *kd = KeyDescr;
-    u_char *name;
-    if(mods & WINDOW_META(curr_win))
-	mods = (mods & ~WINDOW_META(curr_win)) | EV_MOD_META;
-    tmp_mods = mods & EV_MOD_MASK;
-    while(kd->kd_Name && (tmp_mods != 0))
+    struct key_def *x = x11_codes;
+    while(x->name != 0)
     {
-	if((tmp_mods & kd->kd_Mods) != 0)
+	if(strcasecmp(name, x->name) == 0)
 	{
-	    tmp_mods &= ~kd->kd_Mods;
-	    buf = stpcpy(buf, kd->kd_Name);
-	    *buf++ = '-';
+	    *mods |= x->mods;
+	    *code = x->code;
+	    return TRUE;
 	}
-	kd++;
+	x++;
     }
-    if(tmp_mods != 0)
-	return(FALSE);
-    /* Now try to find the code in our lookup table */
-    tmp_mods = mods & EV_TYPE_MASK;
-#if 0
-    /* Since all modifiers are at the start of the table this is
-       unnecessary :-) */
-    kd = KeyDescr;
-#endif
-    while(kd->kd_Name)
+
     {
-	if((kd->kd_Mods == tmp_mods) && (kd->kd_Code == code))
+	unsigned int ks = XStringToKeysym(name);
+	if(ks != NoSymbol)
 	{
-	    strcpy(buf, kd->kd_Name);
-	    return(TRUE);
+	    *mods |= EV_TYPE_KEYBD;
+	    *code = ks;
+	    return TRUE;
 	}
-	kd++;
     }
-    /* Couldn't find it here; have to go to the window-system. */
-    name = XKeysymToString((KeySym)code);
-    if(name)
+
+    return FALSE;
+}
+
+char *
+sys_lookup_mod_name(char *buf, u_long mod)
+{
+    struct key_def *x = x11_mods;
+    while(x->name != 0)
     {
-	strcpy(buf, name);
-	return(TRUE);
+	if(x->mods & mod)
+	    return stpcpy(buf, x->name);
+	x++;
     }
-    return(FALSE);
+    return buf;
+}
+
+bool
+sys_lookup_code_name(char *buf, u_long code, u_long type)
+{
+    struct key_def *x = x11_codes;
+    char *tem;
+    while(x->name != 0)
+    {
+	if(x->mods == type && x->code == code)
+	{
+	    strcpy(buf, x->name);
+	    return TRUE;
+	}
+	x++;
+    }
+
+    tem = XKeysymToString((KeySym)code);
+    if(tem != 0)
+    {
+	strcpy(buf, tem);
+	return TRUE;
+    }
+
+    return FALSE;
 }
 
 /* Return the jade modifier mask used as the meta key. This code
