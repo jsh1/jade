@@ -23,6 +23,10 @@
 (defvar completion-sorted-lists t
   "When t, displayed completion-lists are sorted into alphabetical order.")
 
+(defvar completion-column-extra 2
+  "Number of glyphs added to the width of the longest completion to find
+the column width when displaying completions.")
+
 ;; t when the view displaying this buffer was created specially
 (defvar completion-deletable-view nil)
 (make-variable-buffer-local 'completion-deletable-view)
@@ -76,7 +80,8 @@
     (if (= max-width view-width)
 	(setq columns 1
 	      column-width view-width)
-      (setq columns (max (/ view-width (+ max-width 8)) 1)
+      (setq columns (max 1 (/ view-width (+ max-width
+					    completion-column-extra)))
 	    column-width (/ view-width columns)))
     (with-view view
       (let
