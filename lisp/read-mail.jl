@@ -207,7 +207,7 @@ Major mode for viewing mail folders. Commands include:\n
   `|'			Pipe the current message through a shell command."
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
-  (setq mode-name "Mail:"
+  (setq mode-name "Mail"
 	major-mode 'read-mail-mode
 	major-mode-kill 'read-mail-mode-kill
 	mode-comment-fun 'c-insert-comment
@@ -521,19 +521,19 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Set the minor-mode-names list to reflect the current status
 (defun rm-fix-status-info ()
-  (setq minor-mode-names
-	(cons (format nil "%d/%d%s"
-		      (1+ rm-current-msg-index)
-		      rm-message-count
-		      (if (memq 'delete (with-buffer rm-summary-buffer
-					  (summary-get-pending-ops
-					   (with-buffer rm-summary-mail-buffer
-					     rm-current-msg))))
-			  " deleted"
-			""))
-	      (mapcar 'symbol-name
-		      (rm-get-msg-field rm-current-msg
-					rm-msg-flags)))))
+  (setq buffer-status-id (format nil "Mail: %s (%d/%d)"
+				 (buffer-name) (1+ rm-current-msg-index)
+				 rm-message-count))
+  (let
+      ((stat (mapcar 'symbol-name (rm-get-msg-field rm-current-msg
+						    rm-msg-flags))))
+    (setq minor-mode-names (if (memq 'delete
+				     (with-buffer rm-summary-buffer
+				       (summary-get-pending-ops
+					(with-buffer rm-summary-mail-buffer
+					  rm-current-msg))))
+			       (cons "deleted" stat)
+			     stat))))
 
 ;; Display an arbitrary MSG
 (defun rm-display-message (msg)
