@@ -94,7 +94,7 @@ read_tx(TX *tx, FILE *fh, long file_length)
 		memcpy(new, line->ln_Line, line->ln_Strlen);
 		memcpy(new + line->ln_Strlen - 1, cur, eol - cur);
 		new[newlen-1] = 0;
-		str_free(line->ln_Line);
+		free_line_buf(tx, line->ln_Line);
 		line->ln_Line = new;
 		line->ln_Strlen = newlen;
 	    }
@@ -156,7 +156,7 @@ read_tx(TX *tx, FILE *fh, long file_length)
 		memcpy(new, line->ln_Line, line->ln_Strlen - 1);
 		memcpy(new + (line->ln_Strlen - 1), buf, len);
 		new[newlen-1] = 0;
-		str_free(line->ln_Line);
+		free_line_buf(tx, line->ln_Line);
 		line->ln_Line = new;
 		line->ln_Strlen = newlen;
 	    }
