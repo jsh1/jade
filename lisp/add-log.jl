@@ -93,6 +93,7 @@ considered as referring to the same day.")
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
+  (require 'text-mode)
   (setq mode-name "ChangeLog"
 	major-mode 'changelog-mode
 	major-mode-kill 'changelog-mode-kill
