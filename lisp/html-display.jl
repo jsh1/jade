@@ -52,6 +52,9 @@
        (details (html-decode source output)))
     (when (assq 'title details)
       (set-buffer-name output (cdr (assq 'title details))))
+    (when (and (or (not url) (string= url "")) (buffer-file-name source))
+      (setq url (concat "file:/"
+			(canonical-file-name (buffer-file-name source)))))
     (when url
       (setq details (cons (cons 'url url) details)))
     (when (and (not (assq 'base details)) url)
