@@ -139,6 +139,11 @@ When called interactively, BUFFER is prompted for."
 		    (window-view-list w)))
 	  (window-list))))
 
+(defun kill-current-buffer ()
+  "Kill the current buffer."
+  (interactive)
+  (kill-buffer (current-buffer)))
+
 (defun add-buffer (buffer)
   "Make sure that BUFFER is in the `buffer-list' of all open windows. It gets
 put at the end of the list if it's not already in a member."
