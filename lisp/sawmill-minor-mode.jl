@@ -87,20 +87,15 @@ in the status line."
   (let ((module (or (smm-identify-module point buf) file)))
     (cond ((looking-at
 	    "[ \t]*\\(define-command(-to-screen)? '([^ ]+)" point buf)
-	   (let ((name (expand-last-match "\\2"))
-		 (type nil))
-	     (condition-case nil
-		 (with-buffer buf
-		   (save-excursion
-		     (goto (match-end))
-		     (goto (forward-exp 3))
-		     (let ((end (cursor-pos)))
-		       (goto (backward-exp 1))
-		       (setq type (copy-area (cursor-pos) end)))))
-	       (error))
-	     (if (and type (not (string= type "")))
-		 (format nil "(autoload-command '%s '%s %s)" name module type)
-	       (format nil "(autoload-command '%s '%s)" name module))))
+	   (let ((form (read (cons buf point))))
+	     (let ((name (cadr form))
+		   (keys (cdddr form)))
+	       ;; remove #:spec keys
+	       (let ((tem (memq #:spec keys)))
+		 (when tem
+		   (rplacd tem (cddr tem))
+		   (setq keys (delq (car tem) keys))))
+	       (prin1-to-string `(autoload-command ,name ',module ,@keys)))))
 	     
 	  ((looking-at "[ \t]*\\(define-([^ ]+) '([^ ]+)" point buf)
 	   (format nil "(autoload-%s '%s '%s)"
