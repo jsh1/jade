@@ -163,6 +163,7 @@ body form BODY."
   (let
       ((symbol (or (get name 'rm-rule-function)
 		   (error "No rule called %s" name))))
+    (require 'compiler)
     (compile-function symbol)))
 
 (defmacro rm-rule-symbol (name)
