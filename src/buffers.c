@@ -127,8 +127,6 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 
 		tx->tx_FileName = sym_nil;
 		tx->tx_CanonicalFileName = sym_nil;
-		tx->tx_MinorModeNameList = sym_nil;
-		tx->tx_MinorModeNameString = null_string();
 		tx->tx_StatusId = concat2("Jade: ", VSTR(tx->tx_BufferName));
 		tx->tx_SavedBlockStatus = -1;
 		tx->tx_TabSize = 8;
@@ -786,61 +784,6 @@ The default value for all buffers is nil.
     return val;
 }
 
-_PR VALUE var_mode_name(VALUE);
-DEFUN("mode-name", var_mode_name, subr_mode_name, (VALUE val), V_Var, DOC_mode_name) /*
-::doc:mode_name::
-This is used to display the name of the edit-mode being used in the status
-line.
-::end:: */
-{
-    TX *tx = curr_vw->vw_Tx;
-    if(val)
-    {
-	if(STRINGP(val))
-	    tx->tx_ModeName = val;
-	else
-	    tx->tx_ModeName = LISP_NULL;
-	return(val);
-    }
-    else if(tx->tx_ModeName)
-	return(tx->tx_ModeName);
-    return(sym_nil);
-}
-
-_PR VALUE var_minor_mode_names(VALUE);
-DEFUN("minor-mode-names", var_minor_mode_names, subr_minor_mode_names, (VALUE val), V_Var, DOC_minor_mode_names) /*
-::doc:minor_mode_names::
-List of strings naming all minor-modes enabled in this buffer.
-::end:: */
-{
-    TX *tx = curr_vw->vw_Tx;
-    if(!val)
-	return(tx->tx_MinorModeNameList);
-    if(!CONSP(val))
-	val = sym_nil;
-    tx->tx_MinorModeNameList = val;
-    if(NILP(val))
-	tx->tx_MinorModeNameString = null_string();
-    else
-    {
-	int len;
-	u_char *str;
-	VALUE tmp = val;
-	for(len = 0; CONSP(tmp) && STRINGP(VCAR(tmp)); tmp = VCDR(tmp))
-	    len += STRING_LEN(VCAR(tmp)) + 1;
-	tx->tx_MinorModeNameString = make_string(len + 1);
-	str = VSTR(tx->tx_MinorModeNameString);
-	tmp = val;
-	while(CONSP(tmp) && STRINGP(VCAR(tmp)))
-	{
-	    *str++ = ' ';
-	    str = stpcpy(str, VSTR(VCAR(tmp)));
-	    tmp = VCDR(tmp);
-	}
-    }
-    return(val);
-}
-
 _PR VALUE var_buffer_status_id(VALUE);
 DEFUN("buffer-status-id", var_buffer_status_id, subr_buffer_status_id,
       (VALUE val), V_Var, DOC_buffer_status_id) /*
@@ -882,9 +825,6 @@ Return a list of all allocated buffer objects.
 void
 tx_kill_local_variables(TX *tx)
 {
-    tx->tx_ModeName = 0;
-    tx->tx_MinorModeNameList = sym_nil;
-    tx->tx_MinorModeNameString = null_string();
 }
 
 
@@ -1249,8 +1189,6 @@ buffers_init(void)
     ADD_SUBR(subr_last_save_time);
     ADD_SUBR(subr_tab_size);
     ADD_SUBR(subr_truncate_lines);
-    ADD_SUBR(subr_mode_name);
-    ADD_SUBR(subr_minor_mode_names);
     ADD_SUBR(subr_buffer_status_id);
     ADD_SUBR(subr_all_buffers);
     ADD_SUBR(subr_make_mark);
