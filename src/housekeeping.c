@@ -152,7 +152,10 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
 	    UPD(thisvw->vw_BlockS.pos_Line);
 	    UPD(thisvw->vw_BlockE.pos_Line);
 	    if(thisvw != curr_vw)
+	    {
 		UPD(thisvw->vw_StartLine);
+		UPD(thisvw->vw_LastDisplayOrigin.pos_Line);
+	    }
 	}
     }
     for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
@@ -226,7 +229,10 @@ adjust_marks_sub_y(TX *tx, long suby, long ypos)
                 UPD2(thisvw->vw_BlockE.pos_Col, thisvw->vw_BlockE.pos_Line);
 	    }
 	    if(thisvw != curr_vw)
+	    {
 		UPD(thisvw->vw_StartLine);
+		UPD(thisvw->vw_LastDisplayOrigin.pos_Line);
+	    }
 	}
     }
     for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
@@ -302,7 +308,10 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
                 UPD2(thisvw->vw_BlockE.pos_Col, thisvw->vw_BlockE.pos_Line);
 	    }
 	    if(thisvw != curr_vw)
+	    {
 		UPD(thisvw->vw_StartLine);
+		UPD(thisvw->vw_LastDisplayOrigin.pos_Line);
+	    }
 	}
     }
     for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
@@ -378,7 +387,10 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
                 UPD2(thisvw->vw_BlockE.pos_Col, thisvw->vw_BlockE.pos_Line);
 	    }
 	    if(thisvw != curr_vw)
+	    {
 		UPD(thisvw->vw_StartLine);
+		UPD(thisvw->vw_LastDisplayOrigin.pos_Line);
+	    }
 	}
     }
     for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
