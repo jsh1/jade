@@ -176,8 +176,13 @@ items to be displayed and manipulated."
   (list 'nth index 'summary-items))
 
 (defun summary-get-index (item)
-  "Return the index in the menu at which ITEM is displayed."
-  (- (length summary-items) (length (memq item summary-items))))
+  "Return the index in the menu at which ITEM is displayed, or nil if ITEM
+isn't displayed in the summary."
+  (let
+      ((tail (memq item summary-items)))
+    (if tail
+	(- (length summary-items) (length tail))
+      nil)))
 
 ;;The following works as well. I'm not sure which will be fastest; I think
 ;;the memq version -- there are byte codes for length and memq. But it
@@ -212,9 +217,15 @@ items to be displayed and manipulated."
   (let*
       ((start (pos 0 (+ (pos-line summary-first-line) index)))
        (end (pos (max (car (view-dimensions)) (line-length start))
-		 (pos-line start))))
-    (delete-all-extents)
-    (make-extent start end (list 'face highlight-face))))
+		 (pos-line start)))
+       extents)
+    (map-extents #'(lambda (e)
+		     (when (extent-get e 'summary-highlight)
+		       (setq extents (cons e extents))))
+		   (start-of-buffer) (extent-end (extent-root)))
+    (mapc 'delete-extent extents)
+    (make-extent start end
+		 (list 'face highlight-face 'summary-highlight t))))
 
 (defmacro summary-get-pending-ops (item)
   "Return the list of operations pending on ITEM."
@@ -264,6 +275,7 @@ highlight."
       ((inhibit-read-only t))
     (block-kill)
     (delete-area summary-first-line (end-of-buffer))
+    (delete-all-extents)
     (setq summary-items (summary-dispatch 'list))
     (goto summary-first-line)
     (let
@@ -283,23 +295,25 @@ highlight."
       ((inhibit-read-only t)
        (index (summary-get-index item))
        (old-cursor (cursor-pos)))
-    (goto (pos 0 (+ (pos-line summary-first-line) index)))
-    (if (= (pos-line (cursor-pos)) (pos-line (end-of-buffer)))
-	(progn
-	  (delete-area (cursor-pos) (end-of-line))
-	  (summary-dispatch 'print item))
-      (delete-area (cursor-pos) (forward-line))
-      (summary-dispatch 'print item)
-      (insert "\n"))
-    (goto old-cursor)
-    (set-buffer-modified nil nil)
-    (summary-maybe-dispatch 'after-update)))
+    (when index
+      (goto (pos 0 (+ (pos-line summary-first-line) index)))
+      (if (= (pos-line (cursor-pos)) (pos-line (end-of-buffer)))
+	  (progn
+	    (delete-area (cursor-pos) (end-of-line))
+	    (summary-dispatch 'print item))
+	(delete-area (cursor-pos) (forward-line))
+	(summary-dispatch 'print item)
+	(insert "\n"))
+      (goto old-cursor)
+      (set-buffer-modified nil nil)
+      (summary-maybe-dispatch 'after-update))))
 
 (defun summary-goto-item (index)
   "Move the cursor to the INDEX'th item (from zero) in the menu. Returns
 t when this item actually exists."
   (interactive "p")
-  (unless (or (< index 0)
+  (unless (or (null index)
+	      (< index 0)
 	      (> index (- (pos-line (end-of-buffer))
 			(pos-line summary-first-line))))
     (goto (pos 0 (+ (pos-line summary-first-line) index)))
