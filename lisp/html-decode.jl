@@ -183,7 +183,7 @@ of the document, currently only `title' and `base' keys are defined."
 	(setq tag (html-decode-tag html-decode-point source))
 	(setq html-decode-point (car tag))
 	(setq tag (cdr tag))
-	(funcall (or (get (car tag) 'html-decode-fun)
+	(funcall (or (and (car tag) (get (car tag) 'html-decode-fun))
 		     html-decode-unknown-tag) tag dest)))
     (html-decode-add-pending 'line)
     (html-decode-output-pending dest)
