@@ -1,5 +1,8 @@
 2000-11-14  John Harper  <jsh@eazel.com>
 
+	* cyrillic.jl: new file, support for editing Cyrillic text.
+	From Andrew Rodionoff <arnost@mail.ru>
+
 	* ispell.jl (ispell-check-word): handle null responses for sake
 	of multi-language support (patch from Andrew Rodionoff
 	<arnost@mail.ru>)
