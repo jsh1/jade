@@ -61,8 +61,9 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
   (if (zerop (pos-line pos))
       0
     (setq pos (forward-line -1 pos))
-    (while (and (= (get-char (forward-char -2 pos)) ?\\ )
-		(> (pos-line pos) 0))
+    (while (and (> (pos-line pos) 0)
+		(or (= (get-char (forward-char -2 pos)) ?\\ )
+		    (looking-at "^[\t\f ]*$" pos)))
       (setq pos (forward-line -1 pos)))
     (pos-col (indent-pos pos))))
 
