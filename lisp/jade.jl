@@ -37,6 +37,12 @@
 (load "modes")
 (load "edit")
 
+;; ignore file errors on stdio streams
+(when (boundp 'set-file-ignore-errors)
+  (set-file-ignore-errors (stdin-file) t)
+  (set-file-ignore-errors (stdout-file) t)
+  (set-file-ignore-errors (stderr-file) t))
+
 (defun jade-load-all (file)
   (load-all file (lambda (f) (load f nil t))))
 
