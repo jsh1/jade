@@ -62,7 +62,6 @@ subexpression should contain the name of the directory.")
     "r" 'restart-compile-command
     "Ctrl-r" 'compile))
 
-(defvar compile-buffer nil)
 (defvar compile-proc nil)
 (defvar compile-errors nil "List of (ERROR-POS-MARK . ERROR-DESC-LINE)")
 (defvar compile-error-pos nil)
@@ -83,38 +82,34 @@ subexpression should contain the name of the directory.")
 
 (defun compile-init ()
   (let
-      ((original-dir default-directory))
-    (if compile-buffer
-	(clear-buffer compile-buffer)
-      (setq compile-buffer (open-buffer "*compilation*"))
-      (with-buffer compile-buffer
-	(setq ctrl-c-keymap compile-keymap)))
-    (with-buffer compile-buffer
-      (setq default-directory original-dir)))
-  (when compile-buffer
+      ((original-dir default-directory)
+       (buffer (open-buffer "*compilation*")))
+    (clear-buffer buffer)
+    (with-buffer buffer
+      (setq default-directory original-dir))
     (setq compile-errors nil
 	  compile-parsed-errors nil
 	  compile-errors-exist nil
 	  compile-error-pos (start-of-buffer))
-    t))
+    buffer))
 
 (defun compile-callback ()
   (when compile-proc
-    (cond
-     ((process-stopped-p compile-proc)
-      (write (cons compile-buffer t) "Compilation suspended..."))
-     ((process-running-p compile-proc)
-      (write (cons compile-buffer t) "restarted\n"))
-     (t
-      (beep)
-      (if (process-exit-value compile-proc)
-	  (format (cons compile-buffer t) "\n%s%d\n"
-		  "Compilation exited with value "
-		  (process-exit-value compile-proc))
-	(format (cons compile-buffer t) "\n%s%x\n"
-		"Compilation exited abnormally: status 0x"
-		(process-exit-status compile-proc)))
-      (setq compile-proc nil)))))
+    (let
+	((stream (process-output-stream compile-proc)))
+      (cond
+       ((process-stopped-p compile-proc)
+	(write stream "Compilation suspended..."))
+       ((process-running-p compile-proc)
+	(write stream "restarted\n"))
+       (t
+	(beep)
+	(if (process-exit-value compile-proc)
+	    (format stream "\nCompilation exited with value %d\n"
+		    (process-exit-value compile-proc))
+	  (format stream "\nCompilation exited abnormally: status 0x%x\n"
+		  (process-exit-status compile-proc)))
+	(setq compile-proc nil))))))
 
 ;;;###autoload
 (defun start-compile-command (command type-str)
@@ -125,13 +120,12 @@ the command may output (i.e. `errors' for a compilation)."
   (if compile-proc
       (error "Compilation process already running")
     (save-some-buffers)
-    (compile-init)
-    (goto-buffer compile-buffer)
-    (setq compile-proc (make-process (cons compile-buffer t)
+    (goto-buffer (compile-init))
+    (setq compile-proc (make-process (cons (current-buffer) t)
 				     'compile-callback))
     (let
 	((shell-cmd (concat command ?\n)))
-      (write compile-buffer shell-cmd)
+      (insert shell-cmd)
       (when (start-process compile-proc compile-shell "-c" shell-cmd)
 	(setq compile-last-type type-str
 	      compile-last-command command)
@@ -191,20 +185,22 @@ buffer in a form that `goto-next-error' understands."
   (interactive "sRegular expression")
   (when regexp
     (setq grep-buffer-regexp regexp))
-  (when (and grep-buffer-regexp (compile-init))
-    (let*
-	((scanpos (start-of-buffer))
-	 (number 0)
-	 (stream (cons compile-buffer t)))
-      (write stream ?\n)
-      (while (setq scanpos (re-search-forward grep-buffer-regexp scanpos))
-	(format stream "%s:%d:%s\n" (buffer-file-name) (pos-line scanpos)
-		(copy-area (start-of-line scanpos) (end-of-line scanpos)))
-	(setq number (+ number 1)
-	      scanpos (end-of-line scanpos)))
-      (goto-buffer compile-buffer)
-      (goto (start-of-buffer))
-      number)))
+  (let
+      ((buffer (compile-init)))
+    (when (and grep-buffer-regexp buffer)
+      (let*
+	  ((scanpos (start-of-buffer))
+	   (number 0)
+	   (stream (cons buffer t)))
+	(write stream ?\n)
+	(while (setq scanpos (re-search-forward grep-buffer-regexp scanpos))
+	  (format stream "%s:%d:%s\n" (buffer-file-name) (pos-line scanpos)
+		  (copy-area (start-of-line scanpos) (end-of-line scanpos)))
+	  (setq number (+ number 1)
+		scanpos (end-of-line scanpos)))
+	(goto-buffer buffer)
+	(goto (start-of-buffer))
+	number))))
 
 
 ;; Parsing compiler/grep output
@@ -214,7 +210,7 @@ buffer in a form that `goto-next-error' understands."
 ;; numbers won't coincide like they normally would.
 (defun compile-parse-errors ()
   (unless compile-parsed-errors
-    (with-buffer compile-buffer
+    (with-buffer (get-buffer "*compilation*")
       (let
 	  ((pos compile-error-pos)
 	   (dir-stack nil)
@@ -264,7 +260,7 @@ buffer in a form that `goto-next-error' understands."
 	(goto-mark (car error))
 	(when (and (cdr error)
 		   (looking-at compile-error-regexp (pos 0 (cdr error))
-			       compile-buffer))
+			       (get-buffer "*compilation*")))
 	  (message (expand-last-match compile-error-expand)))
 	(setq compile-errors (cdr compile-errors)))
     (error "No %s%s%s"
