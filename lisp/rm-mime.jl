@@ -29,6 +29,7 @@
 
 (require 'read-mail)
 (require 'mail-headers)
+(eval-when-compile (require 'mime-decode))
 (provide 'rm-mime)
 
 ;; Prevent warnings
@@ -102,6 +103,7 @@ inline) to be saved or manipulated."
 
 (defun rm-mime-delete-part (extent)
   (interactive (list (mime-current-part)))
+  (require 'mime-decode)
   (when extent
     (let*
 	((folder (rm-current-folder))

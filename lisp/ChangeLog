@@ -1,3 +1,8 @@
+2000-05-25  John Harper  <john@dcs.warwick.ac.uk>
+
+	* rcs.jl, prompt.jl, print.jl, mail-headers.jl, mail-dir.jl,
+	edit.jl: remove &aux variables
+
 2000-05-17  John Harper  <john@dcs.warwick.ac.uk>
 
 	* lisp-mode.jl (lisp-mode): fixed mode-defun-header to include
