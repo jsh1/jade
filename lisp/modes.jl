@@ -80,7 +80,8 @@
     ("\\.tex$|^(La)?TeX$" . tex-mode)
     ("ChangeLog$" . changelog-mode)
     ("\\.sh$|^sh(ell)?$" . sh-mode)
-    ("\\.pl$|^perl$" . perl-mode))
+    ("\\.pl$|^perl$" . perl-mode)
+    ("\\.y$|^yacc$" . yacc-mode))
   "List of all major modes which can be enabled by loading a file into
 a buffer. List is made of `(REGEXP . MODE)' cells; the REGEXP is matched
 against the mode specification (i.e. the filename), if it matches the
