@@ -30,10 +30,12 @@
 #endif
 
 /* The maximum number of unused line entries at the end of the
-   array of lines in each buffer. When allocating new line arrays
-   allocate half this many extra lines (in case it grows _or_ shrinks). */
-#define MAX_SPARE_LINES 32
-#define ALLOC_SPARE_LINES (MAX_SPARE_LINES / 2)
+   array of lines in each buffer. 128 == 1k. */
+#define MAX_SPARE_LINES 128
+
+/*  When allocating new line arrays allocate this many extra lines,
+    in case it grows. */
+#define ALLOC_SPARE_LINES 32
 
 /* Strings stored in LINEs are allocated using stringmem.c, this
    means that small strings are always allocated in chunks of GRAIN
