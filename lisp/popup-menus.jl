@@ -38,6 +38,8 @@ local mode.")
 ;; the menu was popped.
 (defvar popup-menus-pos nil)
 
+(defvar popup-menus-from-kbd nil)
+
 (setq-default popup-menus
   '(("Files"
      ("Open file..." find-file)
@@ -155,7 +157,9 @@ local mode.")
   (interactive)
   (or (fboundp 'popup-menu-from-spec)
       (error "Popup menus not supported in this window system"))
-  (setq popup-menus-pos (mouse-view-pos))
+  (setq popup-menus-pos (if (not popup-menus-from-kbd)
+			    (mouse-view-pos)
+			  (cons (current-view) (cursor-pos))))
   (let
       ((spec (or (and popup-menus-pos
 		      (posp (cdr popup-menus-pos))
@@ -171,6 +175,12 @@ local mode.")
     (when spec
       ;; This function should be defined by the window system
       (popup-menu-from-spec spec))))
+
+(defun popup-menu-from-kbd ()
+  (interactive)
+  (let
+      ((popup-menus-from-kbd t))
+    (popup-menu)))
 
 (defun popup-menu-buffers-spec ()
   (nconc (mapcar #'(lambda (b)
@@ -198,7 +208,7 @@ local mode.")
 ;; This function should be invoked when COMMAND is selected from a menu
 (defun popup-menu-dispatch-command (command)
   (let
-      ((current-command-from-mouse t)
+      ((current-command-from-mouse (not popup-menus-from-kbd))
        (location (and popup-menus-describe-location
 		      (commandp command)
 		      (where-is command))))
