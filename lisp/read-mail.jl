@@ -72,7 +72,7 @@ by default:
 	Y	The numeric year of the sending date
 	z	The timezone, as a string")
 
-(defvar rm-saved-cache-tags '(sender-list recipient-list date-vector)
+(defvar rm-saved-cache-tags '(from sender recipient-list date-vector)
   "List of cache tags whose values should be saved in the headers of each
 message (to improve performance when the folder is next loaded).")
 
@@ -914,9 +914,18 @@ key, the car the order to sort in, a positive or negative integer.")
       (mail-get-header header listp no-comma-sep))))
 
 ;; Shortcuts to some common headers
+
+(defun rm-get-from (msg)
+  (rm-cached-form msg 'from
+    (mapcar 'mail-parse-address (rm-get-msg-header msg "From" t))))
+
+(defun rm-get-sender (msg)
+  (rm-cached-form msg 'sender
+    (mapcar 'mail-parse-address (rm-get-msg-header msg "Sender" t))))
+
+;; this returns the union of the from and sender headers
 (defun rm-get-senders (msg)
-  (rm-cached-form msg 'sender-list
-    (mapcar 'mail-parse-address (rm-get-msg-header msg "(From|Sender)" t))))
+  (mail-union-addresses (rm-get-from msg) (rm-get-sender msg)))
 
 (defun rm-get-recipients (msg)
   (rm-cached-form msg 'recipient-list
