@@ -789,9 +789,9 @@ set_extent_locals(Lisp_Extent *e, VALUE value)
 
 _PR VALUE cmd_extent_get(VALUE, VALUE);
 DEFUN("extent-get", cmd_extent_get, subr_extent_get,
-      (VALUE prop, VALUE extent), V_Subr2, DOC_extent_get) /*
+      (VALUE extent, VALUE prop), V_Subr2, DOC_extent_get) /*
 ::doc:extent_get::
-extent-get PROPERTY EXTENT
+extent-get EXTENT PROPERTY
 
 Return the value of PROPERTY (a symbol) in EXTENT, or any of its parents.
 Returns nil if there is no value in this extent.
@@ -801,8 +801,8 @@ The special properties `front-sticky', `rear-sticky', `local-variables', and
 ::end:: */
 {
     Lisp_Extent *inner;
-    DECLARE1(prop, SYMBOLP);
-    DECLARE2(extent, EXTENTP);
+    DECLARE1(extent, EXTENTP);
+    DECLARE2(prop, SYMBOLP);
     inner = VEXTENT(extent);
 
     if(prop == sym_front_sticky || prop == sym_rear_sticky)
@@ -837,9 +837,9 @@ The special properties `front-sticky', `rear-sticky', `local-variables', and
 
 _PR VALUE cmd_extent_put(VALUE, VALUE, VALUE);
 DEFUN("extent-put", cmd_extent_put, subr_extent_put,
-      (VALUE prop, VALUE val, VALUE extent), V_Subr3, DOC_extent_put) /*
+      (VALUE extent, VALUE prop, VALUE val), V_Subr3, DOC_extent_put) /*
 ::doc:extent_put::
-extent-put PROPERTY VALUE EXTENT
+extent-put EXTENT PROPERTY VALUE
 
 Set the value of PROPERTY (a symbol) in EXTENT to VALUE.
 
@@ -860,8 +860,8 @@ function.
 ::end:: */
 {
     VALUE plist;
-    DECLARE1(prop, SYMBOLP);
-    DECLARE3(extent, EXTENTP);
+    DECLARE1(extent, EXTENTP);
+    DECLARE2(prop, SYMBOLP);
 
     if(prop == sym_front_sticky || prop == sym_rear_sticky)
     {
@@ -923,7 +923,7 @@ Get the value of PROPERTY (a symbol) at POSITION in BUFFER.
 
     /* FIXME: this should search back up the stack. */
     e = cmd_get_extent(pos, tx);
-    return cmd_extent_get(prop, e);
+    return cmd_extent_get(e, prop);
 }
 
 _PR VALUE cmd_buffer_symbol_value(VALUE, VALUE, VALUE, VALUE);
@@ -970,16 +970,16 @@ is signalled.
 
 _PR VALUE cmd_extent_set(VALUE extent, VALUE symbol, VALUE val);
 DEFUN("extent-set", cmd_extent_set, subr_extent_set,
-      (VALUE symbol, VALUE val, VALUE extent), V_Subr3, DOC_extent_set) /*
+      (VALUE extent, VALUE symbol, VALUE val), V_Subr3, DOC_extent_set) /*
 ::doc:extent_set::
-extent-set SYMBOL VALUE EXTENT
+extent-set EXTENT SYMBOL VALUE
 
 Set the local value of the variable named SYMBOL in EXTENT to VALUE.
 ::end:: */
 {
     VALUE vars;
-    DECLARE1(symbol, SYMBOLP);
-    DECLARE3(extent, EXTENTP);
+    DECLARE1(extent, EXTENTP);
+    DECLARE2(symbol, SYMBOLP);
     vars = VEXTENT(extent)->locals;
     if(!NILP(vars))
     {
@@ -1019,7 +1019,7 @@ buffer_set_if_bound(VALUE symbol, VALUE value)
 	    VALUE tem = cmd_get(symbol, sym_permanent_local);
 	    if(NILP(tem))
 	    {
-		cmd_extent_set(symbol, value, VAL(e));
+		cmd_extent_set(VAL(e), symbol, value);
 		return TRUE;
 	    }
 	}
