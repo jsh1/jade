@@ -250,3 +250,73 @@ last in the buffer the current command is copied to the end of the buffer."
       (goto-buffer buffer)
       (set-buffer-file-name buffer dir)
       (shell-start-process))))
+
+
+;; Running shell commands non-interactively
+
+;;;###autoload
+(defun shell-command (command &optional insertp)
+  "Run the shell command string COMMAND using the shell named by the
+variable `shell-file-name'. Leave the output in the buffer `*shell-output*'
+unless INSERTP is t in which case it's inserted in the current buffer, or
+the output is a single line in which case it goes to the status area."
+  (interactive "sShell command:\nP")
+  (shell-command-on-area command (buffer-end) (buffer-end) insertp))
+
+;;;###autoload
+(defun shell-command-on-area (command start end &optional insertp)
+  "Run the shell command string COMMAND using the shell named by the variable
+`shell-file-name', giving the area of the current buffer from START to END
+as its standard input. Output will be left in the buffer `*shell-output*'
+unless INSERTP is non-nil in which case it's inserted into the current
+buffer, or the output is a single line in which case it goes to the status
+area."
+  (interactive "-sShell command:\nm\nM\nP")
+  (let*
+      ((output (if insertp
+		   (current-buffer)
+		 (open-buffer "*shell-output*")))
+       (proc (make-process output nil
+			   (file-name-directory (buffer-file-name))
+			   shell-file-name (list "-c" command)))
+       error-output
+       result
+       used-message)
+    (unless insertp
+      (clear-buffer output))
+    (when insertp
+      (setq error-output (open-buffer "*shell-errors*"))
+      (clear-buffer error-output)
+      (set-process-error-stream proc error-output))
+    (setq result (if (equal start end)
+		     (call-process proc)
+		   (call-process-area proc start end nil)))
+    (unless insertp
+      (set-buffer-modified output nil)
+      (if (= (buffer-length output) 2)
+	  (progn
+	    (message (copy-area (buffer-start output)
+				(buffer-end output)
+				output))
+	    (setq used-message t))
+	(with-view (other-view)
+	  (goto-buffer output)
+	  (goto-buffer-start))))
+    (when (and error-output
+	       (not (equal (buffer-start error-output)
+			   (buffer-end error-output))))
+      (set-buffer-modified error-output nil)
+      (if (and (= (buffer-length error-output) 2)
+	       (not used-message))
+	  (progn
+	    (message (copy-area (buffer-start error-output)
+				(buffer-end error-output)
+				error-output))
+	    (setq used-message t))
+	(unless insertp
+	  (goto-buffer output))
+	(with-view (other-view)
+	  (goto-buffer error-output)
+	  (goto-buffer-start))))
+    (unless used-message
+      (format t "Command returned %d" result))))
