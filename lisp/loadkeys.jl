@@ -62,157 +62,159 @@ local keymaps.")
   "List of (SYMBOL . KEYMAP) defining minor-mode keybindings. If the value
 of SYMBOL is non-nil, KEYMAP is used to search for bindings.")
 
+(defvar current-command-from-mouse nil
+  "When non-nil the current command was invoked through the mouse.")
+
 (bind-keys global-keymap
-  "Meta-0"	'(numeric-arg 0)
-  "Meta-1"	'(numeric-arg 1)
-  "Meta-2"	'(numeric-arg 2)
-  "Meta-3"	'(numeric-arg 3)
-  "Meta-4"	'(numeric-arg 4)
-  "Meta-5"	'(numeric-arg 5)
-  "Meta-6"	'(numeric-arg 6)
-  "Meta-7"	'(numeric-arg 7)
-  "Meta-8"	'(numeric-arg 8)
-  "Meta-9"	'(numeric-arg 9)
-  "Meta--"	'negative-arg
+  "M-0"	'(numeric-arg 0)
+  "M-1"	'(numeric-arg 1)
+  "M-2"	'(numeric-arg 2)
+  "M-3"	'(numeric-arg 3)
+  "M-4"	'(numeric-arg 4)
+  "M-5"	'(numeric-arg 5)
+  "M-6"	'(numeric-arg 6)
+  "M-7"	'(numeric-arg 7)
+  "M-8"	'(numeric-arg 8)
+  "M-9"	'(numeric-arg 9)
+  "M--"	'negative-arg
   "Up"		'previous-line
   "Down"	'next-line
   "Left"	'backward-char
   "Right"	'forward-char
-  "Shift-Up"	'top-of-buffer
-  "Shift-Down"	'bottom-of-buffer
-  "Shift-Left"	'start-of-line
-  "Shift-Right"	'end-of-line
-  "Ctrl-Up"	'prev-screen
-  "Ctrl-Down"	'next-screen
-  "Meta-Left"	'backward-word
-  "Meta-Right"	'forward-word
-  "Meta-Up"	'backward-paragraph
-  "Meta-Down"	'forward-paragraph
-  "Ctrl-TAB"	'forward-tab
-  "Meta-TAB"	'complete-at-point
+  "S-Up"	'top-of-buffer
+  "S-Down"	'bottom-of-buffer
+  "S-Left"	'start-of-line
+  "S-Right"	'end-of-line
+  "C-Up"	'prev-screen
+  "C-Down"	'next-screen
+  "M-Left"	'backward-word
+  "M-Right"	'forward-word
+  "M-Up"	'backward-paragraph
+  "M-Down"	'forward-paragraph
+  "C-TAB"	'forward-tab
+  "M-TAB"	'complete-at-point
   "RET"		'split-line
-  "Backspace"	'backspace-char
+  "BS"		'backspace-char
   "DEL"		'delete-char
-  "Shift-Backspace" 'backward-kill-line
-  "Shift-DEL"	'kill-line
-  "Ctrl-DEL"	'kill-whole-line
-  "Meta-DEL"	'kill-word
-  "Meta-ESC"	'eval-and-print
-  "Meta-Backspace" 'backward-kill-word
-  "Ctrl-Meta-Backspace" 'backward-kill-exp
+  "S-BS"	'backward-kill-line
+  "S-DEL"	'kill-line
+  "C-DEL"	'kill-whole-line
+  "M-DEL"	'kill-word
+  "M-ESC"	'eval-and-print
+  "M-BS"	'backward-kill-word
+  "C-M-BS"	'backward-kill-exp
   "Help"	'help
-  "Meta-Help"	'toggle-iconic
+  "M-Help"	'toggle-iconic
   "Insert"	'overwrite-mode
   "Home"	'start-of-buffer
   "End"		'end-of-buffer
   "Prior"	'prev-screen
   "Next"	'next-screen
-  "Ctrl-@"	'set-auto-mark
-  "Meta-@"	'mark-word
-  "Meta-%"	'query-replace
-  "Meta-?"	'show-completions
-  "Meta-/"	'show-completions
-  "Meta-!"	'shell-command
-  "Meta-|"	'shell-command-on-area
-  "Ctrl-a"	'start-of-line
-  "Ctrl-Meta-a" 'start-of-defun
-  "Ctrl-b"	'backward-char
-  "Meta-b"	'backward-word
-  "Ctrl-Meta-b"	'backward-exp
-  "Ctrl-c"	'local-ctrl-c-keymap
-  "Ctrl-c"	'user-keymap
-  "Meta-c"	'capitalize-word
-  "Ctrl-Meta-c"	'abort-recursive-edit
-  "Ctrl-d"	'delete-char
-  "Meta-d"	'kill-word
-  "Ctrl-e"	'end-of-line
-  "Ctrl-Meta-e"	'end-of-defun
-  "Ctrl-f"	'forward-char
-  "Meta-f"	'forward-word
-  "Ctrl-Meta-f"	'forward-exp
-  "Ctrl-h"	'help
-  "Meta-h"	'paragraph-edges
-  "Ctrl-Meta-h"	'mark-defun
-  "Ctrl-i"	'yank-block
-  "Meta-i"	'(insert "\t")
-  "Meta-j"	'goto-line
-  "Ctrl-k"	'kill-line
-  "Ctrl-Meta-k"	'kill-exp
-  "Ctrl-l"	'center-display
-  "Meta-l"	'downcase-word
-  "Ctrl-m"	'block-toggle
-  "Ctrl-M"	'toggle-rect-blocks
-  "Meta-m"	'(goto-glyph (indent-pos))
-  "Ctrl-n"	'next-line
-  "Meta-n"	'find-matching-bracket
-  "Ctrl-o"	'open-line
-  "Ctrl-p"	'previous-line
-  "Ctrl-q"	'quoted-insert
-  "Meta-q"	'fill-paragraph
-  "Ctrl-r"	'isearch-backward
-  "Meta-r"	'goto-view-line
-  "Ctrl-s"	'isearch-forward
-  "Ctrl-t"	'transpose-chars
-  "Meta-t"	'transpose-words
-  "Ctrl-Meta-t"	'transpose-exps
-  "Ctrl-u"	'universal-arg
-  "Meta-u"	'upcase-word
-  "Ctrl-v"	'next-screen
-  "Meta-v"	'prev-screen
-  "Ctrl-Meta-v"	'scroll-next-view
-  "Ctrl-w"	'kill-block
-  "Ctrl-W"	'delete-block
-  "Meta-w"	'copy-block-as-kill
-  "Ctrl-x"	'ctrl-x-keymap
-  "Meta-x"	'call-command
-  "Ctrl-y"	'yank
-  "Ctrl-Y"	'yank-rectangle
-  "Meta-y"	'yank-next
-  "Ctrl-z"	'toggle-iconic
-  "Ctrl-SPC"	'block-toggle
-  "Meta-SPC"	'just-spaces
-  "Ctrl-]"	'abort-recursive-edit
-  "Meta-["	'backward-paragraph
-  "Meta-]"	'forward-paragraph
-  "Ctrl-_"	'undo
-  "Meta-<"	'start-of-buffer
-  "Meta->"	'end-of-buffer
-  "Meta-."	'find-tag
-  "Meta-,"	'tags-loop-continue
-  "Meta-;"	'insert-comment
-  "Meta-~"	'(set-buffer-modified nil nil)
-  "Meta-\\"	'no-spaces
+  "C-@"		'set-auto-mark
+  "M-@"		'mark-word
+  "M-%"		'query-replace
+  "M-?"		'show-completions
+  "M-/"		'show-completions
+  "M-!"		'shell-command
+  "M-|"		'shell-command-on-area
+  "C-a"		'start-of-line
+  "C-M-a"	'start-of-defun
+  "C-b"		'backward-char
+  "M-b"		'backward-word
+  "C-M-b"	'backward-exp
+  "C-c"		'local-ctrl-c-keymap
+  "C-c"		'user-keymap
+  "M-c"		'capitalize-word
+  "C-M-c"	'abort-recursive-edit
+  "C-d"		'delete-char
+  "M-d"		'kill-word
+  "C-e"		'end-of-line
+  "C-M-e"	'end-of-defun
+  "C-f"		'forward-char
+  "M-f"		'forward-word
+  "C-M-f"	'forward-exp
+  "C-h"		'help
+  "M-h"		'paragraph-edges
+  "C-M-h"	'mark-defun
+  "C-i"		'yank-block
+  "M-i"		'(insert "\t")
+  "M-j"		'goto-line
+  "C-k"		'kill-line
+  "C-M-k"	'kill-exp
+  "C-l"		'center-display
+  "M-l"		'downcase-word
+  "C-m"		'block-toggle
+  "C-M"		'toggle-rect-blocks
+  "M-m"		'(goto-glyph (indent-pos))
+  "C-n"		'next-line
+  "M-n"		'find-matching-bracket
+  "C-o"		'open-line
+  "C-p"		'previous-line
+  "C-q"		'quoted-insert
+  "M-q"		'fill-paragraph
+  "C-r"		'isearch-backward
+  "M-r"		'goto-view-line
+  "C-s"		'isearch-forward
+  "C-t"		'transpose-chars
+  "M-t"		'transpose-words
+  "C-M-t"	'transpose-exps
+  "C-u"		'universal-arg
+  "M-u"		'upcase-word
+  "C-v"		'next-screen
+  "M-v"		'prev-screen
+  "C-M-v"	'scroll-next-view
+  "C-w"		'kill-block
+  "C-W"		'delete-block
+  "M-w"		'copy-block-as-kill
+  "C-x"		'ctrl-x-keymap
+  "M-x"		'call-command
+  "C-y"		'yank
+  "C-Y"		'yank-rectangle
+  "M-y"		'yank-next
+  "C-z"		'toggle-iconic
+  "C-SPC"	'block-toggle
+  "M-SPC"	'just-spaces
+  "C-]"		'abort-recursive-edit
+  "M-["		'backward-paragraph
+  "M-]"		'forward-paragraph
+  "C-_"		'undo
+  "M-<"		'start-of-buffer
+  "M->"		'end-of-buffer
+  "M-."		'find-tag
+  "M-,"		'tags-loop-continue
+  "M-;"		'insert-comment
+  "M-~"		'(set-buffer-modified nil nil)
+  "M-\\"	'no-spaces
   "\)"		'blinking-insert
   "}"		'blinking-insert
   "]"		'blinking-insert
-  "Ctrl-Meta-\\" 'indent-area
-  "LMB-Click1"	'mouse-select
-  "Ctrl-LMB-Click1" 'mouse-select
-  "LMB-Click2"	'mouse-double-select
-  "Ctrl-LMB-Click2" 'mouse-double-select
-  "LMB-Move"	'mouse-select-drag-block
-  "Ctrl-LMB-Move" 'mouse-select-drag-rect
-  "MMB-Click1"	'yank-to-mouse
-  "Meta-Shift-LMB-Click1" 'block-kill
-  "RMB-Click1"  'copy-block-as-kill)
+  "C-M-\\" 'indent-area
+  "Button1-Click1" 'mouse-select
+  "C-Button1-Click1" 'mouse-select
+  "Button1-Click2" 'mouse-double-select
+  "C-Button1-Click2" 'mouse-double-select
+  "Button1-Move" 'mouse-select-drag-block
+  "C-Button1-Move" 'mouse-select-drag-rect
+  "Button2-Click1" 'yank-to-mouse
+  "Button3-Click1" 'popup-menu)
 
 (bind-keys ctrl-x-keymap
-  "Ctrl-b"	'buffer-summary
-  "Ctrl-c"	'save-and-quit
-  "Ctrl-f"	'find-file
-  "Ctrl-Meta-f"	'find-url
-  "Ctrl-l"	'downcase-area
-  "Ctrl-o"	'delete-blank-lines
-  "Ctrl-p"	'mark-page
-  "Ctrl-q"	'toggle-buffer-read-only
-  "Ctrl-r"	'find-file-read-only
-  "Ctrl-s"	'save-file
-  "Ctrl-t"	'transpose-lines
-  "Ctrl-Meta-t"	'transpose-paragraphs
-  "Ctrl-u"	'upcase-area
-  "Ctrl-v"	'find-alternate-file
-  "Ctrl-w"	'save-file-as
-  "Ctrl-x"	'swap-cursor-and-auto-mark
+  "C-b"		'buffer-summary
+  "C-c"		'save-and-quit
+  "C-f"		'find-file
+  "C-M-f"	'find-url
+  "C-l"		'downcase-area
+  "C-o"		'delete-blank-lines
+  "C-p"		'mark-page
+  "C-q"		'toggle-buffer-read-only
+  "C-r"		'find-file-read-only
+  "C-s"		'save-file
+  "C-t"		'transpose-lines
+  "C-M-t"	'transpose-paragraphs
+  "C-u"		'upcase-area
+  "C-v"		'find-alternate-file
+  "C-w"		'save-file-as
+  "C-x"		'swap-cursor-and-auto-mark
   "0"		'delete-view
   "1"		'delete-other-views
   "2"		'split-view
@@ -243,7 +245,7 @@ of SYMBOL is non-nil, KEYMAP is used to search for bindings.")
   "n"		'restrict-buffer)
 
 (bind-keys ctrl-x-4-keymap
-  "Ctrl-f"	'(in-other-view 'find-file)
+  "C-f"		'(in-other-view 'find-file)
   "a"		'(in-other-view 'add-change-log-entry)
   "b"		'(in-other-view 'switch-to-buffer)
   "f"		'(in-other-view 'find-file)
@@ -252,7 +254,7 @@ of SYMBOL is non-nil, KEYMAP is used to search for bindings.")
   "`"		'(in-other-view 'next-error))
 
 (bind-keys ctrl-x-5-keymap
-  "Ctrl-f"	'(in-new-window 'find-file)
+  "C-f"		'(in-new-window 'find-file)
   "a"		'(in-new-window 'add-change-log-entry)
   "b"		'(in-new-window 'switch-to-buffer)
   "f"		'(in-new-window 'find-file)
@@ -286,7 +288,7 @@ the key."
 	  this-command last-command)))
 
 (defun negative-arg (arg)
-  "Negate the prefix-arg. Bound to `Meta--'. "
+  "Negate the prefix-arg. Bound to `M--'. "
   (interactive "P")
   (next-keymap-path 'global-keymap)
   (setq prefix-arg (cond
