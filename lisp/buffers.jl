@@ -68,18 +68,22 @@ with `enable-local-variables'.")
   "This variable defines how many of the bottom-most lines in a file are
 searched for a `Local Variables:' section.")
 
-(defun goto-buffer (buffer)
+(defun goto-buffer (buffer &optional view)
   "Switch the current buffer to BUFFER which can either be a buffer-object
 or a string naming an existing buffer. The selected buffer is moved to
 the head of the buffer list. If BUFFER is a string and it doesn't name
-an existing buffer a new one will be created with that name."
+an existing buffer a new one will be created with that name. When VIEW
+is non-nil it defines the view to display the buffer in."
   (interactive "BSwitch to buffer")
-  (when (stringp buffer)
-    (setq buffer (open-buffer buffer)))
-  (unless (bufferp buffer)
-    (signal 'bad-arg (list buffer 1)))
-  (setq buffer-list (cons buffer (delq buffer buffer-list)))
-  (set-current-buffer buffer))
+  (unless view
+    (setq view (current-view)))
+  (with-view view
+    (when (stringp buffer)
+      (setq buffer (open-buffer buffer)))
+    (unless (bufferp buffer)
+      (signal 'bad-arg (list buffer 1)))
+    (setq buffer-list (cons buffer (delq buffer buffer-list)))
+    (set-current-buffer buffer)))
 
 (defun open-file (name)
   "If no buffer containing file NAME exits try to create one.
