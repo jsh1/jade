@@ -40,7 +40,7 @@ loaded so that the file can be decoded (through the `read-file-hook').")
 (defvar info-keymap (make-keytab)
   "Keymap for Info.")
 
-(defvar info-buffer (make-buffer "*Info*")
+(defvar info-buffer (open-buffer "*Info*" t)
   "Buffer in which Info nodes are displayed.")
 (set-buffer-special info-buffer t)
 
