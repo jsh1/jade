@@ -28,9 +28,7 @@ _PR void adjust_marks_add_y(TX *, long, long);
 _PR void adjust_marks_sub_y(TX *, long, long);
 _PR void adjust_marks_split_y(TX *, long, long);
 _PR void adjust_marks_join_y(TX *, long, long);
-_PR void resync_xy(VW *);
-_PR void set_start_col(VW *, long);
-_PR void set_start_line(VW *, long);
+
 _PR void reset_all_views(TX *);
 
 
@@ -42,7 +40,7 @@ void
 adjust_marks_add_x(TX *tx, long addx, long xpos, long ypos)
 {
     VW *thisvw;
-    Mark *thismark;
+    Lisp_Mark *thismark;
 
 #define UPD(p)						\
     do {						\
@@ -63,8 +61,8 @@ adjust_marks_add_x(TX *tx, long addx, long xpos, long ypos)
 	}
     }
 
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
-	UPD(thismark->mk_Pos);
+    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+	UPD(thismark->pos);
 
     UPD(tx->tx_SavedCPos);
     UPD(tx->tx_SavedWPos);
@@ -78,7 +76,7 @@ void
 adjust_marks_sub_x(TX *tx, long subx, long xpos, long ypos)
 {
     VW *thisvw;
-    Mark *thismark;
+    Lisp_Mark *thismark;
 
 #define UPD(p)						\
     do {						\
@@ -102,8 +100,8 @@ adjust_marks_sub_x(TX *tx, long subx, long xpos, long ypos)
 	}
     }
 
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
-	UPD(thismark->mk_Pos);
+    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+	UPD(thismark->pos);
 
     UPD(tx->tx_SavedCPos);
     UPD(tx->tx_SavedWPos);
@@ -120,7 +118,7 @@ void
 adjust_marks_add_y(TX *tx, long addy, long ypos)
 {
     VW *thisvw;
-    Mark *thismark;
+    Lisp_Mark *thismark;
 
 #define UPD(p)						\
     do {						\
@@ -145,8 +143,8 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
 		UPD(thisvw->vw_DisplayOrigin);
 	}
     }
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
-	UPD(thismark->mk_Pos);
+    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+	UPD(thismark->pos);
 
 
     if(tx->tx_LogicalStart > ypos)
@@ -169,7 +167,7 @@ void
 adjust_marks_sub_y(TX *tx, long suby, long ypos)
 {
     VW *thisvw;
-    Mark *thismark;
+    Lisp_Mark *thismark;
 
 #define UPD_Y(y)				\
     do {					\
@@ -216,8 +214,8 @@ adjust_marks_sub_y(TX *tx, long suby, long ypos)
 		UPD1(thisvw->vw_DisplayOrigin);
 	}
     }
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
-	UPD(thismark->mk_Pos);
+    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+	UPD(thismark->pos);
 
     UPD_Y(tx->tx_LogicalStart);
     UPD_Y(tx->tx_LogicalEnd);
@@ -239,7 +237,7 @@ void
 adjust_marks_split_y(TX *tx, long xpos, long ypos)
 {
     VW *thisvw;
-    Mark *thismark;
+    Lisp_Mark *thismark;
 
 #define UPD_Y(y)				\
     do {					\
@@ -282,8 +280,8 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
 		UPD1(thisvw->vw_DisplayOrigin);
 	}
     }
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
-	UPD(thismark->mk_Pos);
+    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+	UPD(thismark->pos);
 
     UPD_Y(tx->tx_LogicalStart);
     UPD_Y(tx->tx_LogicalEnd);
@@ -305,7 +303,7 @@ void
 adjust_marks_join_y(TX *tx, long xpos, long ypos)
 {
     VW *thisvw;
-    Mark *thismark;
+    Lisp_Mark *thismark;
 
 #define UPD_Y(y)				\
     do {					\
@@ -345,8 +343,8 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
 		UPD1(thisvw->vw_DisplayOrigin);
 	}
     }
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->mk_Next)
-	UPD(thismark->mk_Pos);
+    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+	UPD(thismark->pos);
 
     UPD_Y(tx->tx_LogicalStart);
     UPD_Y(tx->tx_LogicalEnd);
@@ -361,111 +359,10 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
 }
 
 
-/* These routines are called to recalculate the cursor's position on the
-   screen...  */
+/* Miscellaneous */
 
-static void
-resync_x(VW *vw)
-{
-    long offset, start_col = VCOL(vw->vw_DisplayOrigin);
-    calc_cursor_offset(vw);
-    offset = vw->vw_LastCursorOffset;
-    while((offset - start_col) >= vw->vw_MaxX)
-	start_col += vw->vw_XStep;
-    while(offset < start_col)
-    {
-	start_col -= vw->vw_XStep;
-	if(start_col < 0)
-	    start_col = 0;
-    }
-    if(VCOL(vw->vw_DisplayOrigin) != start_col)
-	vw->vw_DisplayOrigin = make_pos(start_col, VROW(vw->vw_DisplayOrigin));
-}
-
-static void
-resync_y(VW *vw)
-{
-    TX *tx = vw->vw_Tx;
-    long y, start_row = VROW(vw->vw_DisplayOrigin);
-
-    /* First check that the cursor is within the current
-       restriction, if not move the cursor until it is. */
-    if(VROW(vw->vw_CursorPos) < tx->tx_LogicalStart)
-	vw->vw_CursorPos = cmd_restriction_start(VAL(tx));
-    if(VROW(vw->vw_CursorPos) >= tx->tx_LogicalEnd)
-	vw->vw_CursorPos = cmd_restriction_end(VAL(tx));
-
-    /* Next check that the cursor is within the visible portion
-       of the buffer. If not change the visible region. */
-    y = VROW(vw->vw_CursorPos) - start_row;
-    if(y < 0)
-    {
-	if(-y > vw->vw_YStep)
-	    start_row = VROW(vw->vw_CursorPos) - (vw->vw_MaxY / 2);
-	else
-	    start_row -= vw->vw_YStep;
-    }
-    else if(y >= vw->vw_MaxY)
-    {
-	if((vw->vw_MaxY + vw->vw_YStep) <= y)
-	    start_row = VROW(vw->vw_CursorPos) - (vw->vw_MaxY / 2);
-	else
-	    start_row += vw->vw_YStep;
-    }
-
-    /* Finally do some sanity checks: ensure that nothing outside the
-       restriction is visible, and that there's no wasted space when
-       displaying the bottom of the restriction. */
-    if(start_row < tx->tx_LogicalStart)
-	start_row = tx->tx_LogicalStart;
-    else if(start_row >= tx->tx_LogicalEnd
-	    /* Check for a `gap' at the bottom of the display. This may
-	       seem to act a bit strangely---if the last screen of the
-	       buffer is being displayed, and lines are deleted from this
-	       screen, new data is scrolled into the _top_ of the screen,
-	       the bottom part _isn't_ scrolled up. This makes sense I
-	       think, since we want to keep as much of the window covered
-	       with buffer-contents as possible. */
-	    || (tx->tx_LogicalEnd - start_row) < vw->vw_MaxY)
-	start_row = MAX(tx->tx_LogicalEnd - vw->vw_MaxY, tx->tx_LogicalStart);
-
-    if(VROW(vw->vw_DisplayOrigin) != start_row)
-	vw->vw_DisplayOrigin = make_pos(VCOL(vw->vw_DisplayOrigin), start_row);
-}
-
-void
-resync_xy(VW *vw)
-{
-    resync_x(vw);
-    resync_y(vw);
-}
-
-void
-set_start_col(VW *vw, long col)
-{
-    if(VCOL(vw->vw_DisplayOrigin) != col)
-	vw->vw_DisplayOrigin = make_pos(col, VROW(vw->vw_DisplayOrigin));
-}
-
-void
-set_start_line(VW *vw, long line)
-{
-    if(line != VROW(vw->vw_DisplayOrigin))
-    {
-	long row;
-	vw->vw_DisplayOrigin = make_pos(VCOL(vw->vw_DisplayOrigin), line);
-
-	row = line + VROW(vw->vw_CursorPos) - VROW(vw->vw_DisplayOrigin);
-	if(row >= vw->vw_Tx->tx_LogicalEnd)
-	    row = vw->vw_Tx->tx_LogicalEnd - 1;
-	vw->vw_CursorPos = make_pos(VCOL(vw->vw_CursorPos), row);
-    }
-}
-
-/*
- * This makes all views of this file have their cursor at the top of the
- * file, it also refreshes each view.
- */
+/* This makes all views of this file have their cursor at the top of the
+   file, it also refreshes each view. */
 void
 reset_all_views(TX *tx)
 {
