@@ -154,10 +154,12 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
 (defun rcs-call-callback ()
   (interactive)
   (goto (end-of-buffer))
-  (when (= (pos-col (cursor-pos)) 0)
-    (goto (forward-char -1)))
+  (when (and (re-search-backward "[^\n]\n+" (end-of-buffer))
+	     (equal (match-end) (end-of-buffer)))
+    ;; Trailing newlines, delete them
+    (delete-area (forward-char 1 (match-start)) (end-of-buffer)))
   (let
-      ((text (copy-area (start-of-buffer) (cursor-pos))))
+      ((text (copy-area (start-of-buffer) (end-of-buffer))))
     (let
 	((file (nth 0 rcs-callback-args))
 	 (command (nth 2 rcs-callback-args))
