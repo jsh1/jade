@@ -73,7 +73,7 @@
   "Meta-Up"	'backward-paragraph
   "Meta-Down"	'forward-paragraph
   "Ctrl-TAB"	'forward-tab
-  "Meta-TAB"	'complete-from-buffer
+  "Meta-TAB"	'complete-at-point
   "RET"		'split-line
   "Backspace"	'backspace-char
   "DEL"		'delete-char
@@ -94,7 +94,8 @@
   "Ctrl-@"	'set-auto-mark
   "Meta-@"	'mark-word
   "Meta-%"	'query-replace
-  "Meta-?"	'show-buffer-completions
+  "Meta-?"	'show-completions
+  "Meta-/"	'show-completions
   "Meta-!"	'shell-command
   "Meta-|"	'shell-command-on-area
   "Ctrl-a"	'start-of-line
