@@ -33,7 +33,7 @@ _PR void  undo_init(void);
 
 /* Maximum number of bytes that *each buffer* may devote to undo
    information.  */
-static max_undo_size = 10000;
+static long max_undo_size = 10000;
 
 /* Lets us use the string which undo_record_deletion() creates for
    other uses.	*/
