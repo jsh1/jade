@@ -96,7 +96,8 @@ COLUMN or the current column."
     (while (looking-at paragraph-regexp start)
       (setq start (next-line 1 start)))
     ;; TODO: the next regexp hardcodes blank-line as paragraph delimiter
-    (while (not (looking-at "[\t ]*\n[\t ]*\n" start))
+    (while (and (< start (buffer-end))
+		(not (looking-at "[\t ]*\n[\t ]*\n" start)))
       (setq word-end (forward-word 1 start)
 	    word-start (forward-word -1 word-end))
       (when (looking-at "[][<>\"%^`',.-;:!?(){}]+" word-end)
