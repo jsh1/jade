@@ -21,14 +21,6 @@
 (require 'maildefs)
 (provide 'mail-headers)
 
-(defvar mail-timezone-alist
-  '(("UT" . 0) ("GMT" . 0)
-    ("EST" . -300) ("EDT" . -240)
-    ("CST" . -360) ("CDT" . -300)
-    ("MST" . -420) ("MDT" . -360)
-    ("PST" . -480) ("PDT" . -420))
-  "Alist of (TIMEZONE . MINUTES-DIFFERENCE).")
-
 
 ;; General parsing. Most of these functions don't follow RFC-822 to the
 ;; letter; instead they try to act pragmatically---accepting most forms
@@ -79,7 +71,7 @@
 			     string point t)
       (setq day-abbrev (substring string (match-start 1) (match-end 1)))
       (setq point (match-end)))
-    (when (string-looking-at "[\t ]*([0-9]+)[\t ]+([A-Za-z]+)[\t ]+([0-9]+)[\t ]+"
+    (when (string-looking-at "[\t ]*([0-9]+)[\t ]+([A-Za-z]+)[\t ]+([0-9]+)[\t ]*"
 			     string point)
       (setq day (read-from-string (substring string (match-start 1)
 					     (match-end 1)))
@@ -99,13 +91,13 @@
 		    string point)
       (setq hour (read-from-string (substring string (match-start 1)
 					      (match-end 1)))
-	  minute (read-from-string (substring string (match-start 2)
-					      (match-end 2)))
-	  second (if (equal (match-start 3) (match-end 3))
-		     0
-		   (read-from-string (substring string (1+ (match-start 3))
-						(match-end 3))))
-	  timezone (substring string (match-start 4) (match-end 4)))
+	    minute (read-from-string (substring string (match-start 2)
+						(match-end 2)))
+	    second (if (equal (match-start 3) (match-end 3))
+		       0
+		     (read-from-string (substring string (1+ (match-start 3))
+						  (match-end 3))))
+	    timezone (substring string (match-start 4) (match-end 4)))
       (if (setq tem (assoc timezone mail-timezone-alist))
 	  (setq timezone (cdr tem))
 	;; Try +-HHMM
@@ -143,12 +135,7 @@
 	    total-seconds (+ second (* 60 (+ minute
 					     (- timezone)
 					     (* 60 hour)))))
-      ;; 86400 seconds in a day
-      (when (> total-seconds 86400)
-	;; overflow
-	(setq total-days (+ total-days (/ total-seconds 86400))
-	      total-seconds (mod total-seconds 86400)))
-      (setq time_t (cons total-days total-seconds)))
+      (setq time_t (fix-time (cons total-days total-seconds))))
     (vector day-abbrev day month-abbrev month
 	    year hour minute second timezone time_t)))
 
