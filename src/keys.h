@@ -35,8 +35,9 @@
 #define EV_MOD_BUTTON4	0x00001000
 #define EV_MOD_BUTTON5	0x00002000
 
-/* Fake meta modifier. Only used when decoding key descriptions. */
-#define EV_MOD_FAKE_META 0x80000000
+/* Fake meta modifier. This is replaced by whichever of the above modifiers
+   is the result of the WINDOW_META(W) macro. */
+#define EV_MOD_META	0x00010000
 
 #define EV_MOD_MASK	0xfffffffc
 
