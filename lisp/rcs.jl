@@ -154,7 +154,7 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
     (setq rcs-callback-args (list file buffer command options
 				  text-prefix reread-p)
 	  local-keymap 'rcs-callback-keymap
-	  local-ctrl-c-keymap 'rcs-callback-ctrl-c-keymap
+	  local-ctrl-c-keymap rcs-callback-ctrl-c-keymap
 	  rcs-history-level nil)))
 
 ;; Called when Ctrl-C Ctrl-C is typed in a callback buffer.
@@ -235,7 +235,7 @@ description entered. COUNT may be negative."
 		      (if (rcs-buffer-locked-p) ?: ?-)
 		      (or (rcs-get-version) "?"))))
       (setq rcs-mode (concat " " inf)
-	    toggle-read-only-function 'rcs-toggle-read-only)
+	    toggle-read-only-function rcs-toggle-read-only)
       (unless rcs-make-backup-files
 	;; Ensure no backup files are made for this buffer
 	(make-local-variable 'make-backup-files)

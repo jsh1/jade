@@ -52,7 +52,7 @@ variable `compile-push-directory-expand'.")
 (defvar compile-command "make"
   "The command to run from `M-x compile'.")
 
-(defvar compile-shell (unless (getenv "SHELL") "/bin/sh")
+(defvar compile-shell (or (getenv "SHELL") "/bin/sh")
   "The filename of the shell to use to run the compilation in.")
 
 
