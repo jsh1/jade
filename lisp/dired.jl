@@ -196,13 +196,18 @@ the location is the name of a file to copy to."
   (let
       ((files (summary-command-items)))
     (if (= (length files) 1)
-	(copy-file (car files) (prompt-for-file "Destination file:"
-						nil (car files) (car files)))
+	(let
+	    ((dest (prompt-for-file "Destination file:"
+				    nil (car files) (car files))))
+	  (copy-file (car files) dest)
+	  (when (file-name= default-directory (file-name-directory dest))
+	    (summary-update)))
       (let
 	  ((dest (prompt-for-directory "Destination directory:" t)))
+	(when (file-name= default-directory dest)
+	  (error "Can't copy to source directory!"))
 	(mapc #'(lambda (f)
-		  (copy-file f (expand-file-name f dest))) files)))
-    (summary-update)))
+		  (copy-file f (expand-file-name f dest))) files)))))
 
 (defun dired-do-rename ()
 "Rename all selected files. If more than one file is selected, the specified
