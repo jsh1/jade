@@ -371,7 +371,10 @@ mark_glyph_buf_faces(WIN *w, glyph_buf *g)
     {
 	glyph_attr *attrs = g->attrs[row];
 	for(col = 0; col < g->cols; col++)
-	    w->w_MergedFaces[attrs[col]].valid = TRUE;
+	{
+	    if(attrs[col] != GA_Garbage)
+		w->w_MergedFaces[attrs[col]].valid = TRUE;
+	}
     }
 
     for(id = 0; id <= GA_LastFace; id++)
