@@ -431,7 +431,7 @@ redraw_all(VW *vw)
     LINE *line = vw->vw_Tx->tx_Lines + linenum;
     short y = 0;
     CLR_AREA(vw, 0, 0, vw->vw_WidthPix, vw->vw_HeightPix);
-    while((y < vw->vw_MaxY) && (linenum < vw->vw_Tx->tx_NumLines))
+    while((y < vw->vw_MaxY) && (linenum < vw->vw_Tx->tx_LogicalEnd))
     {
 	pen_to_line(vw, linenum);
 	draw_line(vw, line, linenum);
@@ -466,7 +466,7 @@ redraw_region(VW *vw, POS *start, POS *end)
 	CLR_AREA(vw, tmp * vw->vw_Win->w_FontX, yord,
 		 vw->vw_WidthPix - (tmp * vw->vw_Win->w_FontX),
 		 vw->vw_Win->w_FontY);
-	if(linenum < vw->vw_Tx->tx_NumLines)
+	if(linenum < vw->vw_Tx->tx_LogicalEnd)
 	{
 	    pen_to_glyph_pos(vw, gcol, linenum);
 	    draw_line_part(vw, line, linenum, start->pos_Col, gcol);
@@ -487,7 +487,7 @@ redraw_region(VW *vw, POS *start, POS *end)
     {
 	CLR_AREA(vw, 0, yord, vw->vw_WidthPix,
 		 (yend * vw->vw_Win->w_FontY) - yord);
-	while((y < yend) && (linenum < vw->vw_Tx->tx_NumLines))
+	while((y < yend) && (linenum < vw->vw_Tx->tx_LogicalEnd))
 	{
 	    pen_to_line(vw, linenum);
 	    draw_line(vw, line, linenum);
@@ -510,8 +510,8 @@ redraw_lines(VW *vw, long startLine, long endLine)
 	startLine = vw->vw_StartLine;
     y = startLine - vw->vw_StartLine;
     line += startLine;
-    if(endLine > vw->vw_Tx->tx_NumLines)
-	endLine = vw->vw_Tx->tx_NumLines;
+    if(endLine > vw->vw_Tx->tx_LogicalEnd)
+	endLine = vw->vw_Tx->tx_LogicalEnd;
     endLine -= vw->vw_StartLine;
     if(endLine > vw->vw_MaxY)
 	endLine = vw->vw_MaxY;
@@ -540,8 +540,8 @@ redraw_lines_clr(VW *vw, long startLine, long endLine)
 	startLine = vw->vw_StartLine;
     y = startLine - vw->vw_StartLine;
     line += startLine;
-    if(endLine > vw->vw_Tx->tx_NumLines)
-	endLine = vw->vw_Tx->tx_NumLines;
+    if(endLine > vw->vw_Tx->tx_LogicalEnd)
+	endLine = vw->vw_Tx->tx_LogicalEnd;
     endLine -= vw->vw_StartLine;
     if(endLine > vw->vw_MaxY)
 	endLine = vw->vw_MaxY;
@@ -603,8 +603,8 @@ redraw_rect(VW *vw, POS *start, POS *end, bool gapBlank)
 		 ((end->pos_Col - vw->vw_StartCol) * vw->vw_Win->w_FontX),
 		 ((end->pos_Line - vw->vw_StartLine) * vw->vw_Win->w_FontY));
     }
-    if(end->pos_Line > tx->tx_NumLines)
-	end->pos_Line = tx->tx_NumLines;
+    if(end->pos_Line > tx->tx_LogicalEnd)
+	end->pos_Line = tx->tx_LogicalEnd;
     while(end->pos_Line > start->pos_Line)
     {
 	pen_to_glyph_pos(vw, start->pos_Col, start->pos_Line);
@@ -647,7 +647,7 @@ cut_paste_lines(VW *vw, long srcLine, long dstLine)
     int ybottom = vw->vw_MaxY * vw->vw_Win->w_FontY;
     long lastline = vw->vw_StartLine + vw->vw_MaxY;
     /* number of lines which are not blank. */
-    int lastdisp = (vw->vw_Tx->tx_NumLines - vw->vw_Tx->tx_ModDelta)
+    int lastdisp = (vw->vw_Tx->tx_LogicalEnd - vw->vw_Tx->tx_ModDelta)
 		   - vw->vw_LastDisplayOrigin.pos_Line;
     if(srcLine < vw->vw_StartLine)
 	srcLine = vw->vw_StartLine;
@@ -692,10 +692,10 @@ cut_paste_lines(VW *vw, long srcLine, long dstLine)
     {
 	/* stuff we weren't able to blit.  */
 	long firstline = lastline - (srcLine - dstLine);
-	if(firstline < vw->vw_Tx->tx_NumLines)
+	if(firstline < vw->vw_Tx->tx_LogicalEnd)
 	{
 	    redraw_lines_clr(vw, firstline, lastline);
-	    if(lastline > vw->vw_Tx->tx_NumLines)
+	    if(lastline > vw->vw_Tx->tx_LogicalEnd)
 	    {
 		CLR_RECT(vw, 0, (vw->vw_Win->w_FontY * (vw->vw_Tx->tx_NumLines
 							- vw->vw_StartLine)),
