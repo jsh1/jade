@@ -93,26 +93,25 @@ v   `describe-variable'
     (help))
 
 ;; Setup the help-buffer for insertion of the help text
-(defun help-setup ()
-  (goto-other-view)
-  (clear-buffer help-buffer)
-  (goto-buffer help-buffer)
-  (insert "\n----\nType `q' to return to the buffer you were in.")
-  (goto (start-of-buffer)))
+(defmacro help-wrapper (&rest forms)
+  (list 'with-view '(other-view)
+	'(goto-buffer help-buffer)
+	'(clear-buffer)
+	(cons 'progn forms)
+	'(goto (start-of-buffer))
+	'(shrink-view-if-larger-than-buffer)))
 
 (defun apropos-function (regexp)
   (interactive "sRegular expression:")
-  (help-setup)
-  (format help-buffer "Apropos for expression %S:\n" regexp)
-  (print (apropos regexp 'fboundp) help-buffer)
-  (goto (start-of-buffer)))
+  (help-wrapper
+   (format help-buffer "Apropos for expression %S:\n" regexp)
+   (print (apropos regexp 'fboundp) help-buffer)))
 
 (defun apropos-variable (regexp)
   (interactive "sRegular expression:")
-  (help-setup)
-  (format help-buffer "Apropos for expression %S:\n" regexp)
-  (print (apropos regexp 'boundp) help-buffer)
-  (goto (start-of-buffer)))
+  (help-wrapper
+   (format help-buffer "Apropos for expression %S:\n" regexp)
+   (print (apropos regexp 'boundp) help-buffer)))
 
 (defun describe-keymap ()
   "Print the full contents of the current keymap (and the keymaps that
@@ -121,84 +120,79 @@ it leads to)."
   (let
       ((old-buf (current-buffer))
        (km-list keymap-path))
-    (help-setup)
-    (print-keymap km-list old-buf)
-    (goto (start-of-buffer))))
+    (help-wrapper
+     (print-keymap km-list old-buf))))
 
 (defun describe-function (fun &aux doc)
   "Display the documentation of a function, macro or special-form."
   (interactive "aDescribe function:")
   (setq doc (documentation fun))
-  (help-setup)
-  (let*
-      ((fval (symbol-function fun))
-       (type (cond
-	      ((special-form-p fval)
-	       "Special Form")
-	      ((subrp fval)
-	       "Built-in Function")
-	      ((eq (car fval) 'macro)
-	       "Macro")
-	      (t
-	       "Function"))))
-    (when (consp fval)
-      ;; Check if it's been compiled.
-      (when (assq 'jade-byte-code fval)
-	;; compiled forms
-	(setq type (concat "Compiled " type))))
-    (format help-buffer "\n%s: %s\n\n" type fun)
-    (when (fboundp fun)
-      (unless (subrp fval)
-	;; A Lisp function or macro, print its argument spec.
-	(let
-	    ((lambda-list (nth (if (eq (car fval) 'macro) 2 1) fval)))
-	  (prin1 fun help-buffer)
-	  (when (eq (car lambda-list) 'lambda)
-	    ;; A macro
-	    (setq lambda-list (cdr lambda-list)))
-	  ;; Print the arg list (one at a time)
-	  (while lambda-list
-	    (let
-		((arg-name (symbol-name (car lambda-list))))
-	      ;; Unless the argument starts with a `&' print it in capitals
-	      (unless (= (aref arg-name 0) ?&)
-		(setq arg-name (translate-string (copy-sequence arg-name)
-						 upcase-table)))
-	      (format help-buffer " %s" arg-name))
-	    (setq lambda-list (cdr lambda-list)))
-	  (insert "\n\n")))))
-  (insert (or doc "Undocumented."))
-  (insert "\n")
-  (goto (start-of-buffer)))
+  (help-wrapper
+   (let*
+       ((fval (symbol-function fun))
+	(type (cond
+	       ((special-form-p fval)
+		"Special Form")
+	       ((subrp fval)
+		"Built-in Function")
+	       ((eq (car fval) 'macro)
+		"Macro")
+	       (t
+		"Function"))))
+     (when (consp fval)
+       ;; Check if it's been compiled.
+       (when (assq 'jade-byte-code fval)
+	 ;; compiled forms
+	 (setq type (concat "Compiled " type))))
+     (format help-buffer "\n%s: %s\n\n" type fun)
+     (when (fboundp fun)
+       (unless (subrp fval)
+	 ;; A Lisp function or macro, print its argument spec.
+	 (let
+	     ((lambda-list (nth (if (eq (car fval) 'macro) 2 1) fval)))
+	   (prin1 fun help-buffer)
+	   (when (eq (car lambda-list) 'lambda)
+	     ;; A macro
+	     (setq lambda-list (cdr lambda-list)))
+	   ;; Print the arg list (one at a time)
+	   (while lambda-list
+	     (let
+		 ((arg-name (symbol-name (car lambda-list))))
+	       ;; Unless the argument starts with a `&' print it in capitals
+	       (unless (= (aref arg-name 0) ?&)
+		 (setq arg-name (translate-string (copy-sequence arg-name)
+						  upcase-table)))
+	       (format help-buffer " %s" arg-name))
+	     (setq lambda-list (cdr lambda-list)))
+	   (insert "\n\n")))))
+   (insert (or doc "Undocumented."))
+   (insert "\n")))
 
 (defun describe-variable (var)
   (interactive "vDescribe variable:")
   (let
       ((doc (documentation var t))
        (old-buf (current-buffer)))
-    (help-setup)
-    (format help-buffer
-	    "\n%s: %s\nCurrent value: %S\n\n%s\n"
-	    (if (const-variable-p var)
-		"Constant"
-	      "Variable")
-	    (symbol-name var)
-	    (with-buffer old-buf (symbol-value var t))
-	    (or doc "Undocumented."))
-      (goto (start-of-buffer))))
+    (help-wrapper
+     (format help-buffer
+	     "\n%s: %s\nCurrent value: %S\n\n%s\n"
+	     (if (const-variable-p var)
+		 "Constant"
+	       "Variable")
+	     (symbol-name var)
+	     (with-buffer old-buf (symbol-value var t))
+	     (or doc "Undocumented.")))))
 
 ;;;###autoload
 (defun describe-mode ()
   "Print the help text for the current editing mode."
   (interactive)
-  (let
-      ((mode major-mode))
-    (help-setup)
-    (let
-        ((doc (documentation mode)))
-      (when (stringp doc)
-	(format help-buffer "\n%s\n" doc)
-	(goto (start-of-buffer))))))
+  (let*
+      ((mode major-mode)
+       (doc (documentation mode)))
+    (help-wrapper
+     (when (stringp doc)
+       (format help-buffer "\n%s\n" doc)))))
 
 ;;;###autoload
 (defun documentation (symbol &optional is-variable)
