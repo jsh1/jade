@@ -37,6 +37,7 @@ _PR void translate_event(u_long *, u_long *, XEvent *);
 _PR int cook_key(void *, u_char *, int);
 _PR bool lookup_event(u_long *, u_long *, u_char *);
 _PR bool lookup_event_name(u_char *, u_long, u_long);
+_PR u_long sys_find_meta(void);
 
 _PR u_long esc_code, esc_mods;
 u_long esc_code = XK_Escape, esc_mods = EV_TYPE_KEYBD;
@@ -164,7 +165,7 @@ static const KeyDesc KeyDescr[] =
     { "Ctrl",     EV_MOD_CTRL, 0 },
     { "Control",  EV_MOD_CTRL, 0 },
     { "CTL",      EV_MOD_CTRL, 0 },
-    { "Meta",     EV_MOD_META, 0 },
+    { "Meta",     EV_MOD_FAKE_META, 0 },
     { "Mod1",     EV_MOD_MOD1, 0 },
     { "Mod2",     EV_MOD_MOD2, 0 },
     { "Amiga",    EV_MOD_MOD2, 0 },
@@ -284,7 +285,10 @@ lookup_event(u_long *code, u_long *mods, u_char *desc)
 	{
 	    if(!strcasecmp(kd->kd_Name, buff))
 	    {
-		*mods |= kd->kd_Mods;
+		if(kd->kd_Mods & EV_MOD_FAKE_META)
+		    *mods |= (kd->kd_Mods & ~EV_MOD_FAKE_META) | ev_mod_meta;
+		else
+		    *mods |= kd->kd_Mods;
 		*code = kd->kd_Code;
 		if(*mods & EV_TYPE_MASK)
 		    goto end;
@@ -319,9 +323,12 @@ bool
 lookup_event_name(u_char *buf, u_long code, u_long mods)
 {
     /* First resolve all modifiers */
-    u_long tmp_mods = mods & EV_MOD_MASK;
+    u_long tmp_mods;
     const KeyDesc *kd = KeyDescr;
     u_char *name;
+    if(mods & ev_mod_meta)
+	mods = (mods & ~ev_mod_meta) | EV_MOD_FAKE_META;
+    tmp_mods = mods & EV_MOD_MASK;
     while(kd->kd_Name && (tmp_mods != 0))
     {
 	if((tmp_mods & kd->kd_Mods) != 0)
@@ -358,4 +365,67 @@ lookup_event_name(u_char *buf, u_long code, u_long mods)
 	return(TRUE);
     }
     return(FALSE);
+}
+
+/* Return the jade modifier mask used as the meta key. This code
+   shamelessly stolen from Emacs 19. :-) */
+u_long
+sys_find_meta(void)
+{
+    u_long meta_mod = 0, alt_mod = 0;
+
+    int min_code, max_code;
+    KeySym *syms;
+    int syms_per_code;
+    XModifierKeymap *mods;
+
+#if HAVE_X11 == 4
+    XDisplayKeycodes(x11_display, &min_code, &max_code);
+#else
+    min_code = x11_display->min_keycode;
+    max_code = x11_display->max_keycode;
+#endif
+
+    syms = XGetKeyboardMapping(x11_display, min_code, max_code - min_code + 1,
+			       &syms_per_code);
+    mods = XGetModifierMapping(x11_display);
+
+    {
+	int row, col;
+
+	for(row = 3; row < 8; row++)
+	{
+	    for(col = 0; col < mods->max_keypermod; col++)
+	    {
+		KeyCode code = mods->modifiermap[(row * mods->max_keypermod)
+						+ col];
+		int code_col;
+		if(code == 0)
+		    continue;
+		for(code_col = 0; code_col < syms_per_code; code_col++)
+		{
+		    int sym = syms[((code - min_code) * syms_per_code)
+				  + code_col];
+		    switch(sym)
+		    {
+		    case XK_Meta_L: case XK_Meta_R:
+			meta_mod = translate_mods(0, 1 << row);
+			break;
+
+		    case XK_Alt_L: case XK_Alt_R:
+			alt_mod = translate_mods(0, 1 << row);
+			break;
+		    }
+		}
+	    }
+	}
+    }
+
+    if(meta_mod == 0)
+	meta_mod = alt_mod;
+
+    XFree((char *)syms);
+    XFreeModifiermap(mods);
+
+    return meta_mod;
 }
