@@ -56,15 +56,15 @@ or nil.")
 (bind-keys telnet-keymap
   "RET" 'telnet-send-line)
 
-;; Initialise a telnet buffer. ARG is the process argument, DIR the
+;; Initialise a telnet buffer. ARGS is the process arg list, DIR the
 ;; new value of default-directory
-(defun telnet-init (arg dir)
+(defun telnet-init (args dir)
   (set-buffer-special nil t)
   (setq default-directory dir
 	mildly-special-buffer t
 	shell-program telnet-program
 	shell-prompt-regexp telnet-prompt-regexp
-	shell-program-args (list arg)
+	shell-program-args args
 	shell-output-stream `(lambda (o) (with-buffer ,(current-buffer)
 					   (funcall 'telnet-filter o)))))
 
@@ -72,27 +72,30 @@ or nil.")
 (defun telnet (host &optional port)
   "Start a telnet session, connecting to the remote system called HOST,
 optionally using port number PORT."
-  (interactive (list (prompt-for-string "Host:")
-		     (and current-prefix-arg (prompt-for-number "Port:"))))
+  (interactive
+   (let
+       ((arg current-prefix-arg))
+     (list (prompt-for-string "Host:")
+	   (and arg (prompt-for-number "Port:")))))
   (let*
       ((buffer-name (concat "*telnet-" host "*"))
        (buffer (get-buffer buffer-name))
        (dir default-directory)
-       (arg (if port
-		(format nil "%s:%d" host port)
-	      host)))
+       (args (if port
+		 (list host (format nil "%d" port))
+	      (list host))))
     (goto-other-view)
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
 	  (goto-buffer (open-buffer buffer-name t))
-	  (telnet-init arg dir)
+	  (telnet-init args dir)
 	  (shell-mode)
 	  (setq major-mode 'telnet-mode)
 	  (setq mode-name "Telnet"
 		keymap-path (cons 'telnet-keymap (delq 'shell-keymap
 						       keymap-path))))
       (goto-buffer buffer)
-      (telnet-init arg dir)
+      (telnet-init args dir)
       (shell-start-process))))
 
 ;; All output from the telnet process goes though this function, by
