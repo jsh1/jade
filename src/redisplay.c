@@ -202,17 +202,38 @@ redisplay_do_draw(WIN *w, glyph_buf *old_g, glyph_buf *new_g, int line)
 
     /* So we have PREFIX glyphs in common at the start of the line, and
        SUFFIX in common at the end. Just draw the bit inbetween,
-       taking care to detect attribute changes. */
+       taking care to detect attribute changes. Also track if the chunk
+       to be drawn consists solely of SPC characters (if so we can
+       just fill or clear a rectangle, instead of drawing the text) */
     while(prefix < suffix)
     {
 	glyph_attr attr = new_attrs[prefix];
 	int end;
+	bool all_spaces = TRUE;
 
 	for(end = prefix; end < suffix; end++)
+	{
 	    if(new_attrs[end] != attr)
 		break;
+	    if(all_spaces && new_codes[end] != ' ')
+		all_spaces = FALSE;
+	}
 
-	DRAW_GLYPHS(w, prefix, line-1, attr, new_codes + prefix, end - prefix);
+	if(!all_spaces)
+	    DRAW_GLYPHS(w, prefix, line-1, attr,
+			new_codes + prefix, end - prefix);
+	else
+	{
+	    if(attr == GA_Text)
+		CLEAR_GLYPHS(w, prefix, line-1, end - prefix);
+	    else
+	    {
+		static int fill_pens[GA_MAX] = {
+		    P_TEXT_RV, P_TEXT, P_BLOCK_RV, P_BLOCK
+		};
+		FILL_GLYPHS(w, prefix, line-1, fill_pens[attr], end - prefix);
+	    }
+	}
 	prefix = end;
     }
 }
