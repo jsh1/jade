@@ -38,7 +38,7 @@ local mode.")
 ;; the menu was popped.
 (defvar popup-menus-pos nil)
 
-(defvar popup-menus
+(setq-default popup-menus
   '(("Files"
      ("Open file..." find-file)
      ("Open directory..." dired)
@@ -106,11 +106,15 @@ local mode.")
       ("Kill spell subprocesses" ispell-kill-process))
      ("Read mail" read-mail)
      ("Send mail" mail-setup)
+     ("Telnet..." telnet)
+     ("Rlogin..." rlogin)
      ("Display URL..." find-url)
      ()
      ("Compile" compile)
      ("Next compilation error" next-error)
-     ("Run GDB" gdb))
+     ("Run debugger"
+      ("GDB" gdb)
+      ("Perldb" perldb)))
     ("Edit"
      ("Undo" undo)
      ("Cut" kill-block)
