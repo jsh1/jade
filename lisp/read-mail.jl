@@ -258,7 +258,7 @@ Major mode for viewing mail folders. Commands include:\n
       ((pos (buffer-start))
        (msgs nil)
        (count 0))
-    (while (and pos (setq pos (find-next-regexp mail-message-start pos nil t)))
+    (while (and pos (setq pos (find-next-regexp mail-message-start pos)))
       (when (rm-message-start-p pos)
 	(setq msgs (cons (rm-build-message-struct pos) msgs)
 	      count (1+ count)))
@@ -348,7 +348,7 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Returns t if POS is the start of a message. Munges the regexp history
 (defun rm-message-start-p (pos)
-  (and (regexp-match-line mail-message-start pos nil t)
+  (and (regexp-match-line mail-message-start pos)
        (or (equal pos (buffer-start))
 	   (regexp-match-line "^$" (prev-line 1 (match-start))))))
 
@@ -370,7 +370,7 @@ Major mode for viewing mail folders. Commands include:\n
       (let
 	  ((header-start (mark-pos (rm-get-msg-field rm-current-msg
 						     rm-msg-mark))))
-	(unless (regexp-match-line mail-message-start header-start nil t)
+	(unless (regexp-match-line mail-message-start header-start)
 	  (error "Position isn't start of header: %s" header-start))
 	(let
 	    ((end-of-hdrs (find-next-regexp "^$" header-start))
@@ -601,8 +601,7 @@ Major mode for viewing mail folders. Commands include:\n
 		 (setq keep-going nil)))
 	      (setq pos (buffer-end))
 	      (while (and pos (>= pos start)
-			  (setq pos (find-prev-regexp mail-message-start
-						      pos nil t)))
+			  (setq pos (find-prev-regexp mail-message-start pos)))
 		(when (rm-message-start-p pos)
 		  (setq msgs (cons (rm-build-message-struct pos) msgs)
 			count (1+ count))
