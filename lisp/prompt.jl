@@ -32,7 +32,8 @@
     "Meta-/"	'prompt-list-completions
     "Meta-n"	'prompt-next-history
     "Meta-p"	'prompt-previous-history
-    "Ctrl-g"	'prompt-cancel))
+    "Ctrl-g"	'prompt-cancel
+    "Ctrl-a"	'prompt-start-of-line))
   
 
 ;; Configuration variables
@@ -145,15 +146,19 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 		(enlarge-view 1)
 	      (error)))
 	  (with-buffer prompt-buffer
-	    (when prompt-glyph-table
-	      (setq glyph-table prompt-glyph-table))
 	    (setq prompt-title-extent
 		  (make-extent (start-of-buffer) (insert prompt-title)
 			       (list 'face prompt-title-face)))
 	    (extent-set prompt-title-extent 'read-only t)
+	    (extent-set prompt-title-extent 'glyph-table glyph-table)
 	    (extent-put prompt-title-extent 'front-sticky t)
+	    (setq buffer-undo-list nil)
+	    (when prompt-glyph-table
+	      (setq glyph-table prompt-glyph-table))
 	    (when (stringp start)
-	      (insert start))
+	      (insert start)
+	      ;; Make this a separate undo operation
+	      (setq buffer-undo-list (cons nil buffer-undo-list)))
 	    (make-local-variable 'pre-command-hook)
 	    (setq keymap-path '(prompt-keymap global-keymap)
 		  result (catch 'prompt (recursive-edit)))
@@ -206,8 +211,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	   (comp-list (with-view prompt-original-view
 			(with-buffer prompt-original-buffer
 			  (funcall prompt-completion-function word))))
-	   (num-found (length comp-list))
-	   (buffer-record-undo nil))
+	   (num-found (length comp-list)))
 	(cond
 	 ((= num-found 0)
 	  (completion-remove-view)
@@ -289,6 +293,12 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
    (t
     (error "No previous item")))
   (setq prompt-history-index (1+ prompt-history-index)))
+
+(defun prompt-start-of-line ()
+  (interactive "@")
+  (if (zerop (pos-line (cursor-pos)))
+      (extent-end prompt-title-extent)
+    (start-of-line)))
 
 
 ;; Various completion/validation functions
