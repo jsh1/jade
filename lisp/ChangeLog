@@ -1,5 +1,11 @@
 1999-12-10  John Harper  <john@dcs.warwick.ac.uk>
 
+	* mime-encode.jl (mime-encode-stream): new optional arg, the
+	output stream, defaults to the current buffer
+
+	* mail-headers.jl (mail-encode-header-string): new function
+	(mail-quote-phrase): encode any non-ASCII characters
+
 	* read-mail.jl (rm-get-msg-header): new optional arg DECODE;
 	whether to decode header before returning
 	(rm-get-from, rm-get-sender, rm-get-recipients,
