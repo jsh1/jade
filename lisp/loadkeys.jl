@@ -128,6 +128,7 @@
   "Ctrl-q"	'(setq next-keymap-path t)
   "Meta-q"	'fill-paragraph
   "Ctrl-r"	'isearch-backward
+  "Meta-r"	'goto-view-line
   "Ctrl-s"	'isearch-forward
   "Ctrl-t"	'transpose-chars
   "Meta-t"	'transpose-words
