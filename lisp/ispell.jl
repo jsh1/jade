@@ -463,10 +463,12 @@ whole of the buffer (if no block)."
 (defun ispell-idle-function ()
   (when ispell-minor-mode-last-scan
     (let
-	((start (or (display-to-char-pos '(0 . 0)) (end-of-buffer)))
+	((start (display-to-char-pos '(0 . 0)))
 	 (end (view-dimensions)))
-      (setq end (or (display-to-char-pos (pos (1- (car end)) (1- (cdr end))))
-		    (end-of-buffer)))
+      (setq end (display-to-char-pos (pos (1- (car end)) (1- (cdr end)))))
+      (when (or (null end)
+		(> end (end-of-buffer)))
+	(setq end (end-of-buffer)))
       (if (> (buffer-changes) (aref ispell-minor-mode-last-scan 0))
 	  ;; Rescan entirely
 	  (progn
