@@ -1,3 +1,31 @@
+1999-06-23  John Harper  <john@dcs.warwick.ac.uk>
+
+	* mime-base64.jl (mime-decode-base64): don't drop the last
+	decoded character
+
+	* mime-encode.jl (mime-encode-auto-type-alist): added some more
+	content type patterns, some of which may not be widely-used?
+	(mime-encode-insert): make the extent include the surrounding
+	`[[..]]' brackets (and the terminating newline)
+	(mime-encode-message): be (slightly) intelligent about where
+	attachments need to be separated by text/plain parts (where the
+	attachments don't immediately follow one-another)
+
+	* mime-decode.jl (mime-highlight-face): changed this again
+
+1999-06-21  John Harper  <john@dcs.warwick.ac.uk>
+
+	* mail-headers.jl (mail-union-addresses): new function,
+	combines two lists of mail addresses into one, unique by
+	address
+
+	* read-mail.jl (rm-get-from, rm-get-sender): two new functions
+	from the old rm-get-senders (which now does a union of these
+	two functions)
+	* rm-misc.jl (rm-reply): try to get the From: header before
+	the Sender: header when looking for a reply address (but both
+	after looking for Reply-To:)
+
 1999-06-12    <john@dcs.warwick.ac.uk>
 
 	* send-mail.jl (send-mail-defer, send-mail-restore): new
