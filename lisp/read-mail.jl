@@ -210,7 +210,6 @@ Major mode for viewing mail folders. Local bindings are:\n
     (when major-mode-kill
       (funcall major-mode-kill (current-buffer)))
     (setq rm-open-mailboxes (cons (current-buffer) rm-open-mailboxes)
-	  mode-name "Mail"
 	  major-mode 'read-mail-mode
 	  major-mode-kill 'read-mail-mode-kill
 	  keymap-path (cons 'rm-keymap keymap-path))
@@ -896,8 +895,8 @@ key, the car the order to sort in, a positive or negative integer.")
 (defun rm-fix-status-info (message)
   (setq buffer-status-id (rm-cached-form message 'status-id
 			   (rm-format rm-status-format message)))
-  (setq minor-mode-names (mapcar 'symbol-name
-				 (rm-get-msg-field message rm-msg-flags))))
+  (setq mode-name (mapcar 'symbol-name
+			  (rm-get-msg-field message rm-msg-flags))))
 
 ;; Invalidate all cached status messages in FOLDER
 (defun rm-invalidate-status-cache (folder)
