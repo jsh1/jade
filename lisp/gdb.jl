@@ -21,7 +21,7 @@
 (require 'shell)
 (provide 'gdb)
 
-(defvar gdb-file-name "gdb"
+(defvar gdb-program "gdb"
   "The file name of the gdb program to run.")
 
 (defvar gdb-auto-centre nil
@@ -80,24 +80,23 @@ centred each time it changes.")
   "Ctrl-a" 'gdb-ctrl-c-keymap)
 
 ;;;###autoload
-(defun gdb (prog)
-  "Run the gdb debugger in an editor buffer (called `*gdb*'). PROG is the
-program which is to be debugged.
+(defun gdb (args)
+  "Run the gdb debugger in an editor buffer (called `*gdb*'). ARGS is a string
+giving all arguments to the gdb subprocess (including the program to debug).
 See the `gdb-mode' documentation for details of the available commands.
 There is no limit to the number of gdb processes you may run at once."
-  (interactive "fProgram to debug:")
+  (interactive "sArguments to gdb:")
   (let*
-      ((buffer (get-buffer "*gdb*")))
-    (unless (setq prog (local-file-name prog))
-      (error "Can only debug local programs"))
+      ((buffer (get-buffer "*gdb*"))
+       (directory default-directory))
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(setq buffer (open-buffer "*gdb*" t))
       (clear-buffer buffer))
     (goto-buffer buffer)
     (kill-all-local-variables)
-    (setq default-directory (file-name-directory prog)
-	  shell-program gdb-file-name
-	  shell-program-args (list "-fullname" (file-name-nondirectory prog))
+    (setq default-directory directory
+	  shell-program-args (list "-c" (concat gdb-program
+						" -fullname " args))
 	  shell-prompt-regexp "^(\\(gdb\\) *|.*\\(.+\\) *|.+---)"
 	  shell-output-stream (list 'lambda '(x)
 				    (list 'gdb-output-filter
@@ -105,7 +104,7 @@ There is no limit to the number of gdb processes you may run at once."
 					  'x))
 	  shell-callback-function 'gdb-callback)
     (shell-mode)
-    (setq buffer-status-id (concat "GDB: " (file-name-nondirectory prog))
+    (setq buffer-status-id (concat "GDB: " args)
 	  major-mode 'gdb-mode
 	  mode-name "GDB"
 	  local-ctrl-c-keymap gdb-ctrl-c-keymap
