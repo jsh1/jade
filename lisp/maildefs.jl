@@ -99,6 +99,10 @@ the current year, i.e. 1997 -> \"19\", 2001 -> \"20\".")
 (defvar mail-summary-lines 16
   "The number of lines that the summary view of a mail folder contains.")
 
+(defvar mail-display-summary nil
+  "When non-nil a summary of the current folder is always displayed when
+reading mail.")
+
 (defvar mail-message-start "^From "
   "The regular expression separating each message. Actually it's interpreted
 as a single blank line or the start of the buffer, followed by this regexp.")
