@@ -239,6 +239,7 @@ of the document, currently only `title' and `base' keys are defined."
     (cond
      ((eq html-decode-fill nil)
       ;; <pre> text
+      ;; XXX should really indent each line by html-decode-indent
       (insert (html-decode-string (copy-area start end source)) nil dest))
      (t
       ;; right/left/centered currently, justify not supported
@@ -345,9 +346,13 @@ of the document, currently only `title' and `base' keys are defined."
       (error "Malformed tag: %s, %s" point source)))
     (or (looking-at "[ \t\r\n\f]*>([ \t\r\n\f]*)" point source)
 	(error "No closing greater-than character %s, %s" point source))
-    (setq point (match-end))
-    (when (not (equal (match-start 1) (match-end 1)))
-      (html-decode-add-pending 'space))
+    ;; XXX kludge so we don't lose anything following <pre> tag
+    (if (not (and (eq name 'pre) entering))
+	(progn
+	  (setq point (match-end))
+	  (when (not (equal (match-start 1) (match-end 1)))
+	    (html-decode-add-pending 'space)))
+      (setq point (match-start 1)))
     (list* point name entering (nreverse params))))
 
 
