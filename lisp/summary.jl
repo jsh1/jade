@@ -172,14 +172,16 @@ items to be displayed and manipulated."
 				      summary-pending-ops))
       (summary-update-item item))))
 
-(defun summary-unmark-item (item)
+(defun summary-unmark-item (item &optional move-after-p)
   "Discard all operations pending on ITEM."
-  (interactive (list (summary-current-item)))
+  (interactive (list (summary-current-item) t))
   (let
       ((ops (summary-get-pending-ops item)))
     (when ops
       (setq summary-pending-ops (delq ops summary-pending-ops))
-      (summary-update-item item))))
+      (summary-update-item item)))
+  (when move-after-p
+    (summary-next-item 1)))
 
 (defun summary-update ()
   "Redraw the menu, after rebuilding the list of items."
@@ -206,14 +208,15 @@ items to be displayed and manipulated."
   (let*
       ((inhibit-read-only t)
        (index (summary-get-index item)))
-    (goto-char (pos 0 (+ (pos-line summary-first-line) index)))
-    (if (= (pos-line (cursor-pos)) (pos-line (buffer-end)))
-	(progn
-	  (delete-area (cursor-pos) (line-end))
-	  (summary-dispatch 'print item))
-      (delete-area (cursor-pos) (next-line))
-      (summary-dispatch 'print item)
-      (insert "\n"))))
+    (save-cursor
+      (goto-char (pos 0 (+ (pos-line summary-first-line) index)))
+      (if (= (pos-line (cursor-pos)) (pos-line (buffer-end)))
+	  (progn
+	    (delete-area (cursor-pos) (line-end))
+	    (summary-dispatch 'print item))
+	(delete-area (cursor-pos) (next-line))
+	(summary-dispatch 'print item)
+	(insert "\n")))))
 
 (defun summary-goto-item (index)
   "Move the cursor to the INDEX'th item (from zero) in the menu."
@@ -272,7 +275,9 @@ non-nil it should be a list containing the operations which may be performed."
   "Mark that the current item should be deleted."
   (interactive)
   (if (assq 'delete summary-functions)
-      (summary-add-pending-op (summary-current-item) 'delete)
+      (progn
+	(summary-add-pending-op (summary-current-item) 'delete)
+	(summary-next-item 1))
     (error "No delete operation in the menu.")))
 
 (defun summary-quit ()
