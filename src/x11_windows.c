@@ -370,7 +370,7 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 	XDrawLine(WINDOW_XDPY(w)->display, w->w_Window,
 		  w->w_WindowSys.ws_GC,
 		  x, y + w->w_WindowSys.ws_Font->ascent + 1,
-		  x + len * w->w_FontX,
+		  x + len * w->w_FontX - 1,
 		  y + w->w_WindowSys.ws_Font->ascent + 1);
     }
 
