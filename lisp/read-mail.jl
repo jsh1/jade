@@ -959,78 +959,80 @@ the summary buffer.")
      rm-cached-msg-list)))
 
 ;; Add standard format conversions; they're appended in case the user
-;; added some of their own
-(setq rm-summary-format-alist
-      (nconc
-       rm-summary-format-alist
-       (list
-	(cons ?a #'(lambda (m)
-		     (concat (cond
-			      ((rm-test-flag m 'unread) ?U)
-			      ((memq 'delete (summary-get-pending-ops m)) ?D)
-			      (t ? ))
-			     (cond
-			      ((rm-test-flag item 'replied) ?R)
-			      ((rm-test-flag item 'forwarded) ?Z)
-			      (t ? ))
-			     (if (rm-test-flag item 'filed) ?F ?\ ))))
-	(cons ?D #'(lambda (m)
-		     (let
-			 ((date (rm-get-date-vector m)))
-		       (when date
-			 (format nil "%02d" (aref date mail-date-day) "")))))
-	(cons ?w #'(lambda (m)
-		     (let
-			 ((date (rm-get-date-vector m)))
-		       (when date
-			 (aref date mail-date-day-abbrev)))))
-	(cons ?f #'(lambda (m)
-		     (car (car (rm-get-senders m)))))
-	(cons ?F #'(lambda (m)
-		     (let
-			 ((from (car (rm-get-senders m))))
-		       (or (cdr from) (car from)))))
-	(cons ?M #'(lambda (m)
-		     (let
-			 ((date (rm-get-date-vector m)))
-		       (when date
-			 (format nil "%02d" (aref date mail-date-month))))))
-	(cons ?m #'(lambda (m)
-		     (let
-			 ((date (rm-get-date-vector m)))
-		       (when date
-			 (aref date mail-date-month-abbrev)))))
-	(cons ?l #'(lambda (m)
-		     (rm-get-subject m)))
-	(cons ?t #'(lambda (m)
-		     (let
-			 ((date (rm-get-date-vector m)))
-		       (when date
-			 (format nil "%02d:%02d"
-				 (aref date mail-date-hour)
-				 (aref date mail-date-minute))))))
-	(cons ?T #'(lambda (m)
-		     (let
-			 ((date (rm-get-date-vector m)))
-		       (when date
-			 (format nil "%02d:%02d:%02d"
-				 (aref date mail-date-hour)
-				 (aref date mail-date-minute)
-				 (aref date mail-date-second))))))
-	(cons ?r #'(lambda (m)
-		     (let
-			 ((to (car (rm-get-recipients m))))
-		       (or (cdr to) (car to)))))
-	(cons ?Y #'(lambda (m)
-		     (let
-			 ((date (rm-get-date-vector m)))
-		       (when date
-			 (format nil "%d" (aref date mail-date-year))))))
-	(cons ?z #'(lambda (m)
-		     (let
-			 ((date (rm-get-date-vector m)))
-		       (when date
-			 (aref date mail-date-timezone))))))))
+;; added some of their own. The progn is to ensure compilation; this is
+;; also why the alist is built dynamically
+(progn
+  (setq rm-summary-format-alist
+	(nconc
+	 rm-summary-format-alist
+	 (list
+	  (cons ?a #'(lambda (m)
+		       (concat (cond
+				((rm-test-flag m 'unread) ?U)
+				((memq 'delete (summary-get-pending-ops m)) ?D)
+				(t ? ))
+			       (cond
+				((rm-test-flag m 'replied) ?R)
+				((rm-test-flag m 'forwarded) ?Z)
+				(t ? ))
+			       (if (rm-test-flag m 'filed) ?F ?\ ))))
+	  (cons ?D #'(lambda (m)
+		       (let
+			   ((date (rm-get-date-vector m)))
+			 (when date
+			   (format nil "%02d" (aref date mail-date-day) "")))))
+	  (cons ?w #'(lambda (m)
+		       (let
+			   ((date (rm-get-date-vector m)))
+			 (when date
+			   (aref date mail-date-day-abbrev)))))
+	  (cons ?f #'(lambda (m)
+		       (car (car (rm-get-senders m)))))
+	  (cons ?F #'(lambda (m)
+		       (let
+			   ((from (car (rm-get-senders m))))
+			 (or (cdr from) (car from)))))
+	  (cons ?M #'(lambda (m)
+		       (let
+			   ((date (rm-get-date-vector m)))
+			 (when date
+			   (format nil "%02d" (aref date mail-date-month))))))
+	  (cons ?m #'(lambda (m)
+		       (let
+			   ((date (rm-get-date-vector m)))
+			 (when date
+			   (aref date mail-date-month-abbrev)))))
+	  (cons ?l #'(lambda (m)
+		       (rm-get-subject m)))
+	  (cons ?t #'(lambda (m)
+		       (let
+			   ((date (rm-get-date-vector m)))
+			 (when date
+			   (format nil "%02d:%02d"
+				   (aref date mail-date-hour)
+				   (aref date mail-date-minute))))))
+	  (cons ?T #'(lambda (m)
+		       (let
+			   ((date (rm-get-date-vector m)))
+			 (when date
+			   (format nil "%02d:%02d:%02d"
+				   (aref date mail-date-hour)
+				   (aref date mail-date-minute)
+				   (aref date mail-date-second))))))
+	  (cons ?r #'(lambda (m)
+		       (let
+			   ((to (car (rm-get-recipients m))))
+			 (or (cdr to) (car to)))))
+	  (cons ?Y #'(lambda (m)
+		       (let
+			   ((date (rm-get-date-vector m)))
+			 (when date
+			   (format nil "%d" (aref date mail-date-year))))))
+	  (cons ?z #'(lambda (m)
+		       (let
+			   ((date (rm-get-date-vector m)))
+			 (when date
+			   (aref date mail-date-timezone)))))))))
 			 
 (defun rm-summary-print-item (item)
   ;; Cache the summary line with the summary buffer as the tag
