@@ -31,6 +31,9 @@
 (require 'mail-headers)
 (provide 'rm-mime)
 
+;; Prevent warnings
+(eval-when-compile (require 'rm-summary))
+
 ;; Called from the rm-display-message-hook
 (defun rm-mime-display-msg-function (msg folder)
   (when (rm-get-msg-header msg "MIME-Version")
@@ -86,9 +89,24 @@
 
 (add-hook 'rm-display-message-hook 'rm-mime-display-msg-function)
 
+;; Command to decode the message again, giving markers to _all_ MIME parts
+(defun rm-mime-display-markers ()
+  "When displaying a MIME message, redisplay it with markers inserted for
+every MIME part in the message. This allows all parts (even those displayed
+inline) to be saved or manipulated."
+  (interactive)
+  (let*
+      ((folder (rm-current-folder))
+       (mime-decode-mark-inlines t))
+    (rm-display-current-message folder t)))
+
 ;; Extra bindings in read-mail folders
 (bind-keys rm-keymap
   "RET" 'mime-decode-part
   "C-w" 'mime-save-part
   "TAB" 'mime-next-part
-  "M-TAB" 'mime-previous-part)
+  "M-TAB" 'mime-previous-part
+  "D" 'rm-mime-display-markers)
+
+(lazy-bind-keys rm-summary rm-summary-keymap
+  "D" '(rm-command-with-folder 'rm-mime-display-markers))
