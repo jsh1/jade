@@ -1,5 +1,9 @@
 2000-01-31  John Harper  <john@dcs.warwick.ac.uk>
 
+	* buffers.jl (save-and-quit): call before-exit-hook manually,
+	then clear it before exiting (it needs to run with the usual
+	recursive-edit in place..)
+
 	* read-mail.jl (rm-reparse-message): new function, refreshes
 	some of the message attributes (just the positions mostly)
 	* rm-mime.jl (rm-mime-delete-part): new command, bound to C-d,

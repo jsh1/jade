@@ -367,7 +367,7 @@ first_buffer(void)
     TX *tx = VTX(Fmake_buffer(rep_VAL(&first_buffer_name), Qnil, Qt));
     if(!curr_win)
     {
-	curr_win = VWIN(Fmake_window(Qnil, Qnil, Qnil, Qnil));
+	curr_win = VWIN(Fmake_window(Qnil));
 	if(!curr_win)
 	    return(NULL);
     }
