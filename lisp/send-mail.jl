@@ -38,7 +38,7 @@ being sent."
 		(y-or-n-p "Okay to lose contents of *mail* buffer?"))
 	    (progn
 	      (set-buffer-read-only buffer nil)
-	      (clear-buffer))
+	      (clear-buffer buffer))
 	  (error "Mail buffer in use"))
       (setq buffer (make-buffer "*mail*")))
     (goto-buffer buffer)
