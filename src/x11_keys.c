@@ -25,6 +25,8 @@
 
 u_long esc_code = XK_Escape, esc_mods = EV_TYPE_KEYBD;
 
+static u_long num_lock_mod, scroll_lock_mod, all_lock_mask;
+
 static u_long
 translate_mods(u_long mods, unsigned int state, bool subst_meta)
 {
@@ -68,7 +70,7 @@ translate_event(u_long *code, u_long *mods,
     switch(xev->type)
     {
     case KeyPress:
-	*mods = translate_mods(*mods, xev->xkey.state, TRUE);
+	*mods = translate_mods(*mods, xev->xkey.state & ~all_lock_mask, TRUE);
 	if(*mods & EV_MOD_SHIFT)
 	{
 	    /* Some keys don't have keysym at index 1, if not treat it as
@@ -101,8 +103,7 @@ translate_event(u_long *code, u_long *mods,
     case ButtonRelease:
 	*code = EV_CODE_MOUSE_UP;
     button:
-	*mods = (EV_TYPE_MOUSE
-		 | translate_mods(*mods, xev->xbutton.state, TRUE));
+	*mods = (EV_TYPE_MOUSE | translate_mods(*mods, xev->xbutton.state & ~all_lock_mask, TRUE));
 	switch(xev->xbutton.button)
 	{
 	case Button1:
@@ -125,8 +126,7 @@ translate_event(u_long *code, u_long *mods,
 
     case MotionNotify:
 	*code = EV_CODE_MOUSE_MOVE;
-	*mods = (EV_TYPE_MOUSE
-		 | translate_mods(*mods, xev->xmotion.state, TRUE));
+	*mods = (EV_TYPE_MOUSE | translate_mods(*mods, xev->xmotion.state & ~all_lock_mask, TRUE));
 	break;
     }
 }
@@ -342,11 +342,21 @@ x11_find_meta(struct x11_display *xd)
 		    case XK_Alt_L: case XK_Alt_R:
 			alt_mod = translate_mods(0, 1 << row, FALSE);
 			break;
+
+		    case XK_Num_Lock:
+			num_lock_mod = 1 << row;
+			break;
+
+		    case XK_Scroll_Lock:
+			scroll_lock_mod = 1 << row;
+			break;
 		    }
 		}
 	    }
 	}
     }
+
+    all_lock_mask = LockMask | num_lock_mod | scroll_lock_mod;
 
     if(meta_mod == 0)
 	meta_mod = alt_mod;
