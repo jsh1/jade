@@ -196,7 +196,7 @@ it leads to)."
   (interactive
    (list (prompt-for-function "Describe function:" (symbol-at-point))))
   (let
-      ((doc (substitute-command-keys (documentation fun))))
+      ((doc (documentation fun)))
     (help-wrapper
      (describe-function-1 fun)
      (insert (or doc "Undocumented."))
