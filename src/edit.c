@@ -29,6 +29,12 @@
 # include <memory.h>
 #endif
 
+/* The maximum number of unused line entries at the end of the
+   array of lines in each buffer. When allocating new line arrays
+   allocate half this many extra lines (in case it grows _or_ shrinks). */
+#define MAX_SPARE_LINES 32
+#define ALLOC_SPARE_LINES (MAX_SPARE_LINES / 2)
+
 _PR bool clear_line_list(TX *);
 _PR void kill_line_list(TX *);
 _PR LINE *resize_line_list(TX *, long, long);
@@ -61,21 +67,6 @@ _PR bool read_only(TX *);
 #define FREE_LL(l)    myfree(l)
 
 /*
- * This copies a line list (or part of one).
- * d = destination
- * s = source
- * n = number of LINE's to copy.
- */
-#define MOV_LL(d,s,n) memcpy((d), (s), (n) * sizeof(LINE))
-/*
- * void
- * MOV_LL(LINE *dst, LINE *src, long number)
- * {
- *     memcpy(dst, src, number * sizeof(LINE));
- * }
- */
-
-/*
  * Makes file empty (null string in first line)
  */
 bool
@@ -83,7 +74,7 @@ clear_line_list(TX *tx)
 {
     if(tx->tx_Lines)
 	kill_line_list(tx);
-    tx->tx_Lines = ALLOC_LL(1);
+    tx->tx_Lines = ALLOC_LL(ALLOC_SPARE_LINES);
     if(tx->tx_Lines)
     {
 	tx->tx_Lines[0].ln_Line = str_dupn("", 0);
@@ -92,6 +83,7 @@ clear_line_list(TX *tx)
 	else
 	    tx->tx_Lines[0].ln_Strlen = 0;
 	tx->tx_NumLines = 1;
+	tx->tx_TotalLines = ALLOC_SPARE_LINES;
 	tx->tx_LogicalStart = 0;
 	tx->tx_LogicalEnd = 1;
 	return(TRUE);
@@ -117,6 +109,7 @@ kill_line_list(TX *tx)
 	FREE_LL(tx->tx_Lines);
 	tx->tx_Lines = NULL;
 	tx->tx_NumLines = 0;
+	tx->tx_TotalLines = 0;
     }
 }
 
@@ -149,53 +142,61 @@ kill_some_lines(TX *tx, long start, long number)
 LINE *
 resize_line_list(TX *tx, long change, long where)
 {
-    LINE *newlines;
     long newsize = tx->tx_NumLines + change;
-    if((newsize > 0) && (newlines = ALLOC_LL(newsize)))
+    if(newsize <= 0)
+	return NULL;
+    if(tx->tx_Lines != NULL
+       && newsize <= tx->tx_TotalLines
+       && (tx->tx_TotalLines - newsize) <= MAX_SPARE_LINES)
     {
+	/* Just use/create slack in the line array */
+	if(change > 0)
+	{
+	    /* Make some space */
+	    memmove(tx->tx_Lines + where + change,
+		    tx->tx_Lines + where,
+		    (tx->tx_NumLines - where) * sizeof(LINE));
+	}
+	else if(change < 0)
+	{
+	    /* Lose some lines */
+	    kill_some_lines(tx, where, -change);
+	    memmove(tx->tx_Lines + where,
+		    tx->tx_Lines + where - change,
+		    (tx->tx_NumLines - where + change) * sizeof(LINE));
+	}
+    }
+    else
+    {
+	LINE *newlines = ALLOC_LL(newsize + ALLOC_SPARE_LINES);
+	if(newlines == 0)
+	    return FALSE;
 	if(tx->tx_Lines)
 	{
+	    memcpy(newlines, tx->tx_Lines, where * sizeof(LINE));
 	    if(change > 0)
 	    {
-		MOV_LL(newlines, tx->tx_Lines, where);
-		MOV_LL(newlines + where + change, tx->tx_Lines + where,
-		       tx->tx_NumLines - where);
+		memcpy(newlines + where + change,
+		       tx->tx_Lines + where,
+		       (tx->tx_NumLines - where) * sizeof(LINE));
 	    }
 	    else
 	    {
-		MOV_LL(newlines, tx->tx_Lines, where);
-		MOV_LL(newlines + where, tx->tx_Lines + where - change,
-		       tx->tx_NumLines - where + change);
+		memcpy(newlines + where,
+		       tx->tx_Lines + where - change,
+		       (tx->tx_NumLines - where + change) * sizeof(LINE));
 		kill_some_lines(tx, where, -change);
 	    }
 	    FREE_LL(tx->tx_Lines);
 	}
-	if(change > 0)
-	    memset(newlines + where, 0, change * sizeof(LINE));
 	tx->tx_Lines = newlines;
-	tx->tx_NumLines = newsize;
-	return(newlines);
+	tx->tx_TotalLines = newsize + ALLOC_SPARE_LINES;
     }
-    return(FALSE);
+    if(change > 0)
+	memset(tx->tx_Lines + where, 0, change * sizeof(LINE));
+    tx->tx_NumLines = newsize;
+    return tx->tx_Lines;
 }
-
-#if 0
-/*
- * Pastes a line into the current view at line num.
- * a LINE should have been made if it is wanted.
- * text is not copied, it should have been mymalloc()'ed (or savestring()'ed)
- */
-bool
-stuffline(TX *tx, u_char *text, long lineNum)
-{
-    LINE *line = tx->tx_Lines + lineNum;
-    if(line->ln_Strlen)
-	str_free(line->ln_Line);
-    line->ln_Strlen = strlen(text) + 1;
-    line->ln_Line = text;
-    return(TRUE);
-}
-#endif
 
 /*
  * Inserts some `space' at pos. The gap will be filled with random garbage.
@@ -253,8 +254,8 @@ insert_str_n(TX *tx, const u_char *text, long textLen, POS *pos)
 }
 
 /*
- * Inserts a null teminated string, this routine acts on any '\n' characters
- * that it finds. I expect that this routine will be incredibly slow.
+ * Inserts a string, this routine acts on any '\n' characters that it finds.
+ * I expect that this routine will be incredibly slow.
  */
 bool
 insert_string(TX *tx, const u_char *text, long textLen, POS *pos)
