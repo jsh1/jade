@@ -296,7 +296,7 @@ backwards. If MOVEP is non-nil move the cursor to the position."
   "If a block is marked in the current window, return the text it contains and
 unmark the block."
   (when (blockp)
-    (setq rc (funcall (if (rect-blocks-p) 'copy-rect 'copy-area)
+    (setq rc (funcall (if (rect-blocks-p) 'copy-rectangle 'copy-area)
 		      (block-start) (block-end)))
     (block-kill))
   rc)
@@ -305,7 +305,7 @@ unmark the block."
   "Similar to `copy-block' except the block is cut (copied then deleted) from
 the buffer."
   (when (blockp)
-    (setq rc (funcall (if (rect-blocks-p) 'cut-rect 'cut-area)
+    (setq rc (funcall (if (rect-blocks-p) 'cut-rectangle 'cut-area)
 		      (block-start) (block-end)))
     (block-kill))
   rc)
@@ -314,7 +314,7 @@ the buffer."
   "Deletes the block marked in the current window (if one exists)."
   (interactive)
   (when (blockp)
-    (funcall (if (rect-blocks-p) 'delete-rect 'delete-area)
+    (funcall (if (rect-blocks-p) 'delete-rectangle 'delete-area)
 	     (block-start) (block-end))
     (block-kill)))
 
@@ -324,7 +324,7 @@ unmark the block."
   (interactive)
   (when (blockp)
     (if (rect-blocks-p)
-	(insert-rect (copy-rect (block-start) (block-end)) pos)
+	(insert-rectangle (copy-rectangle (block-start) (block-end)) pos)
       (insert (copy-area (block-start) (block-end)) pos))
     (block-kill)))
 
@@ -493,7 +493,7 @@ killed text."
 	  ((string (if (blockp)
 		       (copy-block)
 		     (x11-get-selection 'xa-primary))))
-	(insert-rect string))))
+	(insert-rectangle string))))
 
 (defun yank-next ()
   "If the last command was a yank, replace the yanked text with the next
@@ -505,7 +505,7 @@ yanked a rectangle of text."
 	     (< yank-last-item (1- (ring-size kill-ring))))
     (goto yank-last-start)
     (delete-area yank-last-start yank-last-end)
-    (setq yank-last-end (insert-rect (killed-string (1+ yank-last-item)))
+    (setq yank-last-end (insert-rectangle (killed-string (1+ yank-last-item)))
 	  yank-last-item (1+ yank-last-item)
 	  this-command 'yank)))
 
