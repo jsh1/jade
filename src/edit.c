@@ -48,10 +48,10 @@
 
 /* Allocate a chunk of memory to store a string of size X (including
    terminating zero). */
-#define ALLOC_LINE_BUF(tx, x) sm_alloc(&tx->tx_StringPool, LINE_BUF_SIZE(x))
+#define ALLOC_LINE_BUF(tx, x) sm_alloc(&TX_STRINGPOOL(tx), LINE_BUF_SIZE(x))
 
 /* Free something allocated with the previous macro. */
-#define FREE_LINE_BUF(tx, p)  sm_free(&tx->tx_StringPool, p)
+#define FREE_LINE_BUF(tx, p)  sm_free(&TX_STRINGPOOL(tx), p)
 
 /* Allocate a buffer to contain N LINE structures. */
 #define ALLOC_LL(n)   sys_alloc(sizeof(LINE) * (n))
