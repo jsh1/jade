@@ -163,10 +163,12 @@
   "Meta-\\"	'no-spaces
   "Ctrl-Meta-\\" 'indent-area
   "LMB-Click1"	'mouse-select
+  "Ctrl-LMB-Click1" 'mouse-select
   "LMB-Click2"	'mouse-double-select
-  "LMB-Move"	'mouse-select-drag
+  "Ctrl-LMB-Click2" 'mouse-double-select
+  "LMB-Move"	'mouse-select-drag-block
+  "Ctrl-LMB-Move" 'mouse-select-drag-rect
   "MMB-Click1"	'yank-to-mouse
-  "RMB-Click1"	'toggle-iconic
   "Meta-Shift-LMB-Click1" 'block-kill)
 
 (bind-keys ctrl-x-keymap
