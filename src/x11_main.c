@@ -23,6 +23,7 @@
 
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
+#include <X11/keysym.h>
 #include <string.h>
 
 #ifdef HAVE_UNIX
@@ -32,10 +33,11 @@
 _PR struct x11_display *x11_open_display(char *display_name);
 _PR void x11_close_display(struct x11_display *xdisplay);
 _PR void x11_close_all_displays(void);
+static void x11_handle_sync_input(int fd);
+_PR void x11_handle_async_input(void);
 
 _PR void sys_usage(void);
 _PR int sys_init(int, char **);
-static void x11_handle_input(int fd);
 
 /* The window in which the current event occurred. */
 _PR WIN *x11_current_event_win;
@@ -292,7 +294,8 @@ x11_open_display(char *display_name)
 	    xdisplay->display = display;
 	    xdisplay->screen = DefaultScreen(display);
 
-	    sys_register_input_fd(ConnectionNumber(display), x11_handle_input);
+	    sys_register_input_fd(ConnectionNumber(display),
+				  x11_handle_sync_input);
 
 	    if(is_first)
 	    {
@@ -364,8 +367,32 @@ x11_close_all_displays(void)
 
 /* X11 event handling. */
 
+static Bool
+x11_async_event_pred(Display *dpy, XEvent *ev, XPointer arg)
+{
+    if(ev->xany.type == Expose
+       || ev->xany.type == GraphicsExpose
+       || ev->xany.type == MappingNotify
+       || ev->xany.type == ConfigureNotify
+       || ev->xany.type == SelectionRequest
+       || ev->xany.type == SelectionClear)
+	return True;
+    else if(ev->xany.type == KeyPress)
+    {
+	u_long code = 0, mods = 0;
+	translate_event(&code, &mods, ev);
+	if(code == XK_g && mods == (EV_TYPE_KEYBD | EV_MOD_CTRL))
+	{
+	    /* Got one. */
+	    throw_value = int_cell;
+	    return True;
+	}
+    }
+    return False;
+}
+
 static void
-x11_handle_input(int fd)
+x11_handle_input(int fd, bool synchronous)
 {
     struct x11_display *xdisplay = 0;
 
@@ -386,10 +413,24 @@ x11_handle_input(int fd)
 	    if(xdisplay == 0)
 		break;
 	}
-	if(XEventsQueued(xdisplay->display, QueuedAfterReading) <= 0)
-	    break;
 
-	XNextEvent(xdisplay->display, &xev);
+	if(synchronous)
+	{
+	    if(XEventsQueued(xdisplay->display, QueuedAfterReading) <= 0)
+		break;
+	    XNextEvent(xdisplay->display, &xev);
+	}
+	else
+	{
+	    if(!XCheckIfEvent(xdisplay->display, &xev,
+			      &x11_async_event_pred, NULL))
+		break;
+
+	    if(xev.xany.type == KeyPress)
+		continue;
+
+	    /* Should only be ``safe'' events that pass through here */
+	}
 
 	ev_win = x11_find_window(xev.xany.window);
 	if(ev_win != NULL)
@@ -453,10 +494,12 @@ x11_handle_input(int fd)
 		    curr_win = ev_win;
 		    curr_vw = curr_win->w_CurrVW;
 		}
+		undo_end_of_command();
 		break;
 
 	    case FocusOut:
 		ev_win->w_WindowSys.ws_HasFocus = FALSE;
+		undo_end_of_command();
 		break;
 
 	    case MotionNotify:
@@ -517,6 +560,7 @@ x11_handle_input(int fd)
 		}
 		x11_current_event_win = NULL;
 		xdisplay = 0;
+		undo_end_of_command();
 		break;
 
 	    case SelectionRequest:
@@ -529,7 +573,24 @@ x11_handle_input(int fd)
 		x11_lose_selection(&xev.xselectionclear);
 		break;
 	    }
-	    undo_end_of_command();
 	}
+    }
+}
+
+static void
+x11_handle_sync_input(int fd)
+{
+    x11_handle_input(fd, TRUE);
+}
+
+void
+x11_handle_async_input(void)
+{
+    struct x11_display *dpy = WINDOW_XDPY(curr_win);
+    int fd = ConnectionNumber(dpy->display);
+    if(sys_poll_input(fd))
+    {
+	x11_handle_input(fd, FALSE);
+	cmd_redisplay(sym_nil);
     }
 }
