@@ -353,6 +353,9 @@ before the cursor in the current buffer.
 	long len;
 	repv pos = curr_vw->vw_CursorPos;
 
+	if (!pad_pos(tx, pos))
+	    return rep_NULL;
+
 	if(rep_FILEP(file))
 	    fh = rep_FILE(file)->file.fh;
 	else
@@ -364,6 +367,7 @@ before the cursor in the current buffer.
 
 	while(pos != rep_NULL && (len = fread(buf, 1, BUFSIZ, fh)) > 0)
 	    pos = insert_string(tx, buf, len, pos);
+
 	if(!rep_FILEP(file))
 	    fclose(fh);
 	return rep_VAL(tx);
