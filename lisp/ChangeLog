@@ -1,3 +1,7 @@
+2000-06-12  John Harper  <john@dcs.warwick.ac.uk>
+
+	* telnet.jl: fixed lisp-2 lossage
+
 2000-05-26  John Harper  <john@dcs.warwick.ac.uk>
 
 	* shell.jl, rm-restrict.jl, popup-menus.jl, mime-decode.jl,
