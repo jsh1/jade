@@ -398,7 +398,7 @@ to reflect NAME. Also sets the modification count to zero."
 	    buffer-file-modtime (file-modtime name)
 	    default-directory (file-name-directory name))
       (delete-auto-save-file)
-      (format t "Saved file `%s'." name))))
+      (message (concat "Wrote file `" name ?\') t))))
 
 (defun insert-file (name &optional buffer)
   "Inserts the file NAME into the buffer BUFFER (or the current one) before
@@ -493,7 +493,7 @@ name of the file stored in BUFFER."
   (with-buffer buffer
     (if (or (call-hook 'auto-save-hook (list buffer) 'or)
 	    (write-buffer-contents (make-auto-save-name (buffer-file-name))))
-	(format t "done.")
+	(message (concat "Auto-saving `" (buffer-name buffer) "'...done"))
       (error "Can't auto-save" buffer)
       nil)))
 
