@@ -26,8 +26,7 @@
 ;; Also need "news:", "rlogin:", "wais:", "gopher:"...
 ;; see: http://www.w3.org/Addressing/URL/url-spec.txt
 
-(defvar find-url-alist '(("^http:" . find-url-external)
-			 ("^file:" . find-url-file)
+(defvar find-url-alist '(("^file:" . find-url-file)
 			 ("^ftp:" . find-url-ftp)
 			 ("^telnet:" . find-url-telnet)
 			 ("^mailto:" . find-mailto-url))
