@@ -58,7 +58,6 @@ bool x11_opt_reverse_video = FALSE;
 
 /* Default font name. */
 DEFSTRING(def_font_str_data, DEFAULT_FONT);
-repv def_font_str;
 
 
 /* Resource/option management */
@@ -71,8 +70,8 @@ sys_init(char *program_name)
     char *display_name = 0;
     repv opt;
 
-    def_font_str = rep_VAL(&def_font_str_data);
     prog_name = program_name;
+    def_font_str = rep_VAL (&def_font_str_data);
 
     if (rep_get_option ("--display", &opt))
 	display_name = strdup (rep_STR(opt));
