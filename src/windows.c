@@ -24,7 +24,9 @@
 #include <string.h>
 
 DEFSYM(make_window_hook, "make-window-hook");
-DEFSYM(delete_window_hook, "delete-window-hook"); /*
+DEFSYM(delete_window_hook, "delete-window-hook");
+DEFSYM(visible_bell, "visible-bell");
+DEFSYM(visible_bell_length, "visible-bell-length"); /*
 ::doc:Vmake-window-hook::
 Hook called when a new window is created. Called with the new window
 selected.
@@ -32,6 +34,13 @@ selected.
 ::doc:Vdelete-window-hook::
 Hook called when a window is deleted. Called with a single argument, the
 window in question.
+::end::
+::doc:Vvisible-bell::
+When non-nil, the `beep' function attempts to visibly flash the window.
+::end::
+::doc:Vvisible-bell-length::
+The number of milliseconds to hold the inverted display for when the
+`visible-bell' variable is set.
 ::end:: */
 
 int window_type;
@@ -656,6 +665,23 @@ the standard window system conventions.
 }
 
 static void
+beep (void)
+{
+    repv tem = Fsymbol_value (Qvisible_bell, Qt);
+    if (tem == Qnil)
+	sys_beep (curr_win);
+    else
+    {
+	tem = Fsymbol_value (Qvisible_bell_length, Qt);
+	invert_all_faces = !invert_all_faces;
+	Fredisplay_window (rep_VAL(curr_win), Qnil);
+	Fsit_for (rep_MAKE_INT (0), rep_INTP (tem) ? tem : rep_MAKE_INT (250));
+	Fflush_output ();
+	invert_all_faces = !invert_all_faces;
+    }
+}
+
+static void
 window_sweep(void)
 {
     WIN *w = win_chain;
@@ -785,6 +811,11 @@ windows_init(void)
     rep_INTERN(make_window_hook);
     rep_INTERN(delete_window_hook);
     rep_INTERN(save_and_quit);
+    rep_INTERN(visible_bell);
+    rep_SYM(Qvisible_bell)->value = Qnil;
+    rep_INTERN(visible_bell_length);
+    rep_SYM(Qvisible_bell_length)->value = rep_MAKE_INT (250);
+    rep_beep_fun = beep;
 }
 
 void
