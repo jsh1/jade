@@ -1,3 +1,9 @@
+1999-11-26  John Harper  <john@dcs.warwick.ac.uk>
+
+	* windows.c, server-dl.c, keys.c, commands.c, buffers.c:
+	updated for single namespace and scheme-like function call
+	semantics
+
 1999-11-10  John Harper  <john@dcs.warwick.ac.uk>
 
 	* main.c (main): Fload () has five arguments now

@@ -1,3 +1,25 @@
+1999-11-26  John Harper  <john@dcs.warwick.ac.uk>
+
+	* yacc-mode.jl, ws-x11.jl, ws-gtk.jl, windows.jl, text-mode.jl,
+	texinfo-mode.jl, tex-shell.jl, tex-mode.jl, telnet.jl, tags.jl,
+	summary.jl, sm-mail-dir.jl, shell.jl, sh-mode.jl, server.jl,
+	send-mail.jl, rm-urls.jl, rm-thread.jl, rm-summary.jl,
+	rm-restrict.jl, rm-msg-links.jl, rm-misc.jl, rm-mime.jl,
+	rm-mail-dir.jl, replace.jl, rectangle.jl, read-mail.jl, rcs.jl,
+	rcs-hooks.jl, pwd-prompt.jl, prompt.jl, prompt-menu.jl,
+	popup-menus.jl, php3-mode.jl, perl-mode.jl, modes.jl,
+	mime-encode.jl, mime-decode.jl, maildefs.jl, mail-headers.jl,
+	mail-dir.jl, mail-dir-summary.jl, loadkeys.jl, lisp-mode.jl,
+	keymap.jl, jade.jl, ispell.jl, isearch.jl, info.jl,
+	html-display.jl, html-decode.jl, help.jl, gzip.jl,
+	gtk-prompt.jl, gtk-menu.jl, gtk-mail-dir.jl, gtk-decor.jl,
+	gdb.jl, find-url.jl, find-autoloads.jl, fill.jl, file-subst.jl,
+	edit.jl, dired.jl, dired-hooks.jl, diff.jl, dict.jl, cvs.jl,
+	completion.jl, compile.jl, c-mode.jl, buffers.jl,
+	buffer-summary.jl, bookmarks.jl, autoload.jl, asm-mode.jl,
+	add-log.jl: updated for single namespace and scheme-like
+	function call semantics
+
 1999-11-12  John Harper  <john@dcs.warwick.ac.uk>
 
 	* lisp-mode.jl: set indent properties for flet and macrolet
