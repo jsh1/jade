@@ -124,10 +124,10 @@ static VALUE
 lookup_binding(u_long code, u_long mods)
 {
     VALUE kp;
-    if(!NILP(next_keymap_path))
+    if(next_keymap_path != LISP_NULL)
     {
 	kp = next_keymap_path;
-	next_keymap_path = sym_nil;
+	next_keymap_path = LISP_NULL;
     }
     else
     {
@@ -202,8 +202,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 	    /* Found a binding for this event; evaluate it. */
 	    result = cmd_call_command(cmd, sym_nil);
 	}
-	else if(!NILP(orig_next_keymap_path)
-		&& orig_next_keymap_path != sym_t
+	else if(orig_next_keymap_path != LISP_NULL
 		&& (tem = cmd_symbol_value(sym_keymap_path, sym_t))
 		&& orig_next_keymap_path != tem)
 	{
@@ -299,14 +298,11 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 	if(print_prefix)
 	{
 	    print_event_prefix();
-	    if(NILP(next_keymap_path)
-	       && !pending_meta)
-	    {
+	    if(next_keymap_path == LISP_NULL && !pending_meta)
 		print_prefix = FALSE;
-	    }
 	}
     }
-    if(NILP(next_keymap_path) && !pending_meta)
+    if(next_keymap_path == LISP_NULL && !pending_meta)
 	event_index = 0;
     return(result);
 }
@@ -462,20 +458,29 @@ end:
     return(res);
 }
 
-_PR VALUE var_next_keymap_path(VALUE val);
-DEFUN("next-keymap-path", var_next_keymap_path, subr_next_keymap_path, (VALUE val), V_Var, DOC_next_keymap_path) /*
+_PR VALUE cmd_next_keymap_path(VALUE path);
+DEFUN("next-keymap-path", cmd_next_keymap_path, subr_next_keymap_path,
+      (VALUE path), V_Subr1, DOC_next_keymap_path) /*
 ::doc:next_keymap_path::
-The value of `keymap-path' to be used for the *next* keypress. This is
-usually used to chain together multi-key bindings.
+next-keymap-path [PATH]
+
+Install a temporary list of keymaps, PATH, to be used when the next input
+event is received. This function sets this-command to nil, and prefix-arg
+to current-prefix-arg (i.e. it preserves the context for the next command).
+
+As a special case, if PATH is the symbol t, the keymap to be used
+for the next input event is returned, without changing anything.
 ::end:: */
 {
-    if(val)
-	next_keymap_path = val;
-    /* This isn't a true command */
-    this_command = sym_nil;
-    /* Pass the prefix-arg along */
-    var_prefix_arg(var_current_prefix_arg(LISP_NULL));
-    return(next_keymap_path);
+    if(path != sym_t)
+    {
+	next_keymap_path = path;
+	/* This isn't a true command */
+	this_command = sym_nil;
+	/* Pass the prefix-arg along */
+	var_prefix_arg(var_current_prefix_arg(LISP_NULL));
+    }
+    return next_keymap_path ? next_keymap_path : sym_nil;
 }
 
 DEFSTRING(not_in_handler, "Not in event handler");
@@ -619,7 +624,7 @@ print_event_prefix(void)
     int i;
     u_char buf[256];
     u_char *bufp = buf;
-    if((NILP(next_keymap_path) && !pending_meta)
+    if((next_keymap_path == LISP_NULL && !pending_meta)
        && (!print_prefix || printed_this_prefix))
     {
 	print_prefix = FALSE;
@@ -635,7 +640,7 @@ print_event_prefix(void)
 	    *bufp++ = ' ';
 	}
     }
-    if(!NILP(next_keymap_path) || pending_meta)
+    if(next_keymap_path != LISP_NULL || pending_meta)
     {
 	if(bufp > buf)
 	    bufp--;			/* erase the last space */
@@ -657,7 +662,7 @@ keys_init(void)
     VSYM(sym_esc_means_meta)->value = sym_t;
     INTERN(idle_hook); DOC(idle_hook);
     INTERN(keymap);
-    next_keymap_path = sym_nil;
+    next_keymap_path = LISP_NULL;
     mark_static(&next_keymap_path);
 
     ADD_SUBR(subr_make_keytab);
