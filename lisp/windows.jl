@@ -32,12 +32,12 @@ If the symbol NAME is already bound, only the documentation property is set."
   "Set the editor's current view to VIEW (and the current window to that
 containing VIEW) evaluate FORMS..., then reinstall the originals
 afterwards, returning the value of (progn FORMS...)"
-  (list* 'with-object view forms))
+  (list 'call-with-object view (list* 'lambda nil forms)))
 
 (defmacro with-window (win &rest forms)
   "Set the editor's current window to WINDOW and evaluate FORMS, then
 reinstall the original window as the current one."
-  (list* 'with-object win forms))
+  (list 'call-with-object win (list* 'lambda nil forms)))
 
 
 ;; Some more standard faces

@@ -78,7 +78,7 @@ searched for a `Local Variables:' section.")
 (defmacro with-buffer (buffer &rest forms)
   "Temporarily switches to buffer, then executes the FORMS in it before
 returning to the original buffer."
-  (list* 'with-object buffer forms))
+  (list 'call-with-object buffer (list* 'lambda nil forms)))
 
 (defun open-buffer (name &optional always-create)
   "If no buffer called NAME exists, creates one and adds it to the main
