@@ -46,6 +46,6 @@ contents of the prompt will be masked out whilst being entered."
     ;; This relies upon the assumption that the next caller of
     ;; get-prompt-buffer will be the prompt function itself
     (return-prompt-buffer buffer)
-    (prog1
+    (unwind-protect
 	(prompt prompt)
       (set-buffer-glyph-table buffer orig))))
