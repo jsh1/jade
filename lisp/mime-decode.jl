@@ -74,6 +74,15 @@ in software always.")
   "Only pass chunks of text with more than this number of lines to the
 external mmencode program, otherwise handle locally.")
 
+(defvar mime-decode-link-menus
+  '(("Decode MIME part" mime-decode-part)
+    ("Display MIME part" mime-display-part)
+    ("Save MIME part" mime-save-part)))
+
+(defvar mime-decode-link-map
+  (bind-keys (make-sparse-keymap)
+    "button2-click1" '(progn (goto-mouse) (call-command 'mime-decode-part))))
+
 (defconst mime-token-re "[^][()<>@,;:\\\"/?=\001-\037 \t\177]+")
 
 
@@ -147,9 +156,8 @@ external mmencode program, otherwise handle locally.")
       (filename (cdr (or (assq 'filename (cdr content-disp))
 			 ;; seems some mailers (sun dtmail) put the filename
 			 ;; in the content-type parameters!?
-			 (assq 'name (nthcdr 2 content-type)))))
-      tem)
-   (insert "[[ ")
+			 (assq 'name (nthcdr 2 content-type))))))
+   (insert "(")
    (when content-disp
      (format (current-buffer) "%s: " (car content-disp)))
    (when filename
@@ -157,12 +165,13 @@ external mmencode program, otherwise handle locally.")
    (format (current-buffer) "%s/%s " (car content-type) (nth 1 content-type))
 ;  (when (nth 2 content-type)
 ;    (format (current-buffer) "params: %S " (nth 2 content-type)))
-   (format (current-buffer) "(%s encoding) " content-xfer-enc)
-   (insert "]]\n")
-   (setq tem (forward-char 2 out-start))
-   (make-extent tem (forward-char -2 (end-of-line tem))
+   (format (current-buffer) "(%s encoding)" content-xfer-enc)
+   (insert ")\n")
+   (make-extent out-start (end-of-line out-start)
 		(list 'face mime-highlight-face
 		      'mouse-face active-face
+		      'mouse-keymap mime-decode-link-map
+		      'popup-menus mime-decode-link-menus
 		      'content-type content-type
 		      'content-xfer-enc content-xfer-enc
 		      'content-disp content-disp
