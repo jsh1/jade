@@ -281,6 +281,7 @@ in the status line."
 (put 'let 'lisp-indent 1)
 (put 'let* 'lisp-indent 1)
 (put 'letrec 'lisp-indent 1)
+(put 'fluid-let 'lisp-indent 1)
 (put 'if 'lisp-indent 2)
 (put 'when 'lisp-indent 1)
 (put 'unless 'lisp-indent 1)
