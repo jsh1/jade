@@ -41,8 +41,8 @@
     (delete-area (match-start)
 		 (start-of-line (forward-line 1 (match-start))))))
 
-(defun autoload-do-magic (buf line-fun)
-  (when (find-file (expand-file-name "autoload.jl" lisp-lib-directory))
+(defun autoload-do-magic (output-file buf line-fun)
+  (when (find-file output-file)
     (let
 	((pos (start-of-buffer))
 	 form
@@ -51,8 +51,8 @@
 					      (buffer-file-name buf)))
 			       (expand-last-match "\\1")))
 	 (count 0))
-      (while (setq pos (re-search-forward "^;;;###autoload[\t ]*(.*)$"
-					  pos buf))
+      (while (setq pos (re-search-forward
+			"^;;;###autoload[\t ]*(.*)$" pos buf))
 	(setq form (expand-last-match "\\1"))
 	(when (and form (not (equal "" form)))
 	  (funcall line-fun form)
@@ -76,19 +76,25 @@
       count)))
 
 ;;;###autoload
-(defun add-autoloads (&optional buffer)
+(defun add-autoloads (autoload-file &optional buffer)
   "Add all functions, macros or variables in the BUFFER marked by the magic
 rune `;;;###autoload' to the `autoload.jl' file."
-  (interactive)
+  (interactive (list (prompt-for-file "Autoload file:" t
+				      (expand-file-name "autoload.jl"
+							(car load-path)))))
   (message (format nil "Found %d autoload definition(s)"
-		   (autoload-do-magic (unless buffer (current-buffer))
-				      #'autoload-insert-entry))))
+		   (autoload-do-magic autoload-file
+				      (or buffer (current-buffer))
+				      'autoload-insert-entry))))
 
 ;;;###autoload
-(defun remove-autoloads (&optional buffer)
+(defun remove-autoloads (autoload-file &optional buffer)
   "Removes all autoload definitions in the buffer BUFFER which are marked by
 the string `;;;###autoload' from the `autoload.jl' file."
-  (interactive)
+  (interactive (list (prompt-for-file "Autoload file:" t
+				      (expand-file-name "autoload.jl"
+							(car load-path)))))
   (message (format nil "Removed %d autoload definition(s)"
-		   (autoload-do-magic (unless buffer (current-buffer))
-				      #'autoload-remove-entry))))
+		   (autoload-do-magic autoload-file
+				      (or buffer (current-buffer))
+				      'autoload-remove-entry))))
