@@ -256,20 +256,20 @@ eval_lisp_form(int sock_fd, char *form)
 static void
 usage(char *prog_name)
 {
-    fprintf(stderr, "usage: %s OPTIONS...\n
-where OPTIONS are any of:\n
-	-w		Don't wait for server if not already running,
-			 return with exit code 1
-	[+LINE] FILE	Edit file FILE on the server, with the cursor
-			 at line number LINE optionally.
-	-q		Be quiet (perform commands asynchronously)
-	-f FUNCTION	Call Lisp function FUNCTION on the server
-	-e FORM		Evaluate Lisp form FORM on the server
-	-x DISPLAY	Connect the server to X11 display DISPLAY
-	-X		Connect to $DISPLAY
-	-		Read lines of input until EOF, evaluating each
-			 one as it is read
-	--		Read forms from standard input until EOF, evaluating
+    fprintf(stderr, "usage: %s OPTIONS...\n\n\
+where OPTIONS are any of:\n\n\
+	-w		Don't wait for server if not already running,\n\
+			 return with exit code 1\n\
+	[+LINE] FILE	Edit file FILE on the server, with the cursor\n\
+			 at line number LINE optionally.\n\
+	-q		Be quiet (perform commands asynchronously)\n\
+	-f FUNCTION	Call Lisp function FUNCTION on the server\n\
+	-e FORM		Evaluate Lisp form FORM on the server\n\
+	-x DISPLAY	Connect the server to X11 display DISPLAY\n\
+	-X		Connect to $DISPLAY\n\
+	-		Read lines of input until EOF, evaluating each\n\
+			 one as it is read\n\
+	--		Read forms from standard input until EOF, evaluating\n\
 			 the whole lot in one go (inside a progn)\n",
 	    prog_name);
 }
