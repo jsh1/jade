@@ -18,6 +18,7 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(require 'help)
 (provide 'keymap)
 
 ;;;###autoload
@@ -133,14 +134,12 @@ would invoke."
 	      ;; A link to another keymap
 	      (call-command command)
 	    ;; End of the chain
-	    (require 'help)
-	    (help-setup)
-	    (format (current-buffer) "\n%s -> %S\n" names command)
-	    (when (functionp command)
-	      (format (current-buffer)
-		      "\n%s\n"
-		      (or (documentation command) "")))
-	    (goto (start-of-buffer))
+	    (help-wrapper
+	     (format (current-buffer) "\n%s -> %S\n" names command)
+	     (when (functionp command)
+	       (format (current-buffer)
+		       "\n%s\n"
+		       (or (documentation command) ""))))
 	    (setq done t))
 	(message (concat names " is unbound. "))
 	(setq done t
