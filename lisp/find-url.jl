@@ -18,15 +18,24 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(provide 'find-url)
 
 ;; Configuration
+
+;; Need to implement find-url-ftp
+;; Also need "news:", "rlogin:", "wais:", "gopher:"...
+;; see: http://www.w3.org/Addressing/URL/url-spec.txt
 
 (defvar find-url-alist '(("^http:" . find-url-external)
 			 ("^file:" . find-url-file)
 			 ("^ftp:" . find-url-ftp)
-			 ("^telnet:" . find-url-telnet))
+			 ("^telnet:" . find-url-telnet)
+			 ("^mailto:" . find-mailto-url))
   "Alist of (REGEXP . FUNC) matching URLs to the Lisp functions used to
-display them. If none match, the first in the list is used.")
+display them.")
+
+(defvar find-url-default 'find-url-external
+  "The function to pass any urls to that aren't matched by find-url-alist.")
 
 (defvar find-url-external-command
   "netscape -remote 'openUrl(%s)' || netscape '%s' &"
@@ -47,7 +56,7 @@ kind of editor buffer, or spawning an external process."
 		(throw 'foo (funcall (cdr cell) url))))
 	  find-url-alist)
     ;; Call default function
-    (funcall (cdr (car find-url-alist)) url)))
+    (funcall find-url-default url)))
 
 (defun find-url-external (url)
   "Spawn an external process (using find-url-external-command as template)
@@ -62,7 +71,23 @@ to view URL."
 (defun find-url-file (url)
   "Decode URL assuming that it locates a local file, then find this file in
 a buffer."
-  (when (string-match "^(file:|)/(/localhost|)(.*)$" url nil t)
+  (when (string-match "^(file:/|)(/localhost|)(.*)$" url nil t)
     (find-file (expand-last-match "\\3"))))
 
-;; Need to implement find-url-ftp and find-url-telnet
+(defun find-url-telnet (url)
+  "Decode a telnet URL, and invoke the telnet package."
+  (when (string-match "^(telnet://|)([^:]+)(:[0-9]+|)$" url nil t)
+    (let
+	((host (expand-last-match "\\2"))
+	 (port (if (= (match-start 3) (match-end 3))
+		   nil
+		 (read-from-string
+		  (substring url (1+ (match-start 3)) (match-end 3))))))
+      (telnet host port))))
+
+(defun find-mailto-url (url)
+  "Decode a mailto url, and setup a mail message."
+  (when (string-match "^(mailto:|)(.*)$" url nil t)
+    (let
+	((addr (expand-last-match "\\2")))
+      (mail-setup addr))))
