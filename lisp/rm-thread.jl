@@ -82,6 +82,10 @@ threaded.")
 	(cons 'recipients
 	      #'(lambda (x y)
 		  (< (rm-get-recipients x) (rm-get-recipients y))))
+	(cons 'score
+	      #'(lambda (x y)
+		  (< (or (rm-message-get x 'score) 0)
+		     (or (rm-message-get y 'score) 0))))
 	(cons 'lines
 	      #'(lambda (x y)
 		  (< (rm-get-msg-field x rm-msg-total-lines)
@@ -203,12 +207,14 @@ be shown before the second.")
   "Select the order in which messages are displayed in FOLDER as that defined
 by the symbol KEY. Standard options for KEY include:
 
-location		Sort by physical location in the folder
-date			Sort by date of sending
-subject		Sort by subject line
-sender		Sort by name of sender
-recipients		Sort by names of recipients
-lines			Sort by the number of lines in the message
+	location		Sort by physical location in the folder
+	date			Sort by date of sending
+	subject			Sort by subject line
+	sender			Sort by name of sender
+	recipients		Sort by names of recipients
+	score			Sort by the value of the messages'
+				 score property
+	lines			Sort by the number of lines in the message
 
 Extra sort options can be added by changing the `rm-sort-predicates'
 variable.
