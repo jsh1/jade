@@ -46,10 +46,6 @@
 (make-variable-buffer-local 'keymap-path)
 (make-variable-buffer-local 'unbound-key-hook)
 
-(setq mark-1 (make-mark)
-      mark-2 (make-mark)
-      mark-3 (make-mark))
-
 (bind-keys global-keymap
   "Meta-0"	'(numeric-arg 0)
   "Meta-1"	'(numeric-arg 1)
@@ -164,12 +160,6 @@
   "Meta-~"	'(set-buffer-modified nil nil)
   "Meta-\\"	'no-spaces
   "Ctrl-Meta-\\" 'indent-area
-  "F1"		'(goto-mark mark-1)
-  "F2"		'(goto-mark mark-2)
-  "F3"		'(goto-mark mark-3)
-  "Shift-F1"	'(set-mark mark-1 (cursor-pos) (current-buffer))
-  "Shift-F2"	'(set-mark mark-2 (cursor-pos) (current-buffer))
-  "Shift-F3"	'(set-mark mark-3 (cursor-pos) (current-buffer))
   "LMB-Click1"	'mouse-select
   "LMB-Click2"	'mouse-double-select
   "LMB-Move"	'mouse-select-drag
