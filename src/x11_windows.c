@@ -353,9 +353,10 @@ example "topaz.font-8" to get an 8-point topaz font).
     }
     else
     {
-	cmd_signal(sym_error, list_2(MKSTR("Can't open font"), fontname));
+	static DEFSTRING(no_font, "Can't open font");
+	cmd_signal(sym_error, list_2(VAL(no_font), fontname));
 	VWIN(win)->w_FontName = oldfont;
-	return(NULL);
+	return LISP_NULL;
     }
 }
 
@@ -382,7 +383,7 @@ sys_get_mouse_pos(WIN *w)
 			    (y - w->w_TopPix) / w->w_FontY);
 	}
 	else
-	    return NULL;
+	    return LISP_NULL;
     }
     else
 	return make_pos(x11_current_mouse_x, x11_current_mouse_y);
@@ -403,7 +404,7 @@ Forces any cached window output to be drawn. This is usually unnecessary.
 void
 sys_windows_init(void)
 {
-    ADD_SUBR(subr_set_font);
+    ADD_SUBR_INT(subr_set_font);
     ADD_SUBR(subr_flush_output);
 
     x11_misc_init();

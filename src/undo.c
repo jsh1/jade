@@ -47,7 +47,7 @@ static TX *pending_deletion_tx;
 static bool in_undo;
 static TX *last_undid_tx;
 
-static VALUE sym_undo;
+static DEFSYM(undo, "undo");
 
 /* If not in an undo, this will re-combine the waiting_undo and
    tx_UndoList. */
@@ -55,7 +55,7 @@ static void
 coalesce_undo(TX *tx)
 {
     if(!in_undo
-       && (tx->tx_ToUndoList != NULL))
+       && (tx->tx_ToUndoList != LISP_NULL))
     {
 	VALUE tmp = cmd_nreverse(tx->tx_UndoneList);
 	if(tmp)
@@ -65,7 +65,7 @@ coalesce_undo(TX *tx)
 					       tx->tx_ToUndoList));
 	}
 	tx->tx_UndoneList = sym_nil;
-	tx->tx_ToUndoList = NULL;
+	tx->tx_ToUndoList = LISP_NULL;
 	last_undid_tx = NULL;
     }
 }
@@ -92,7 +92,7 @@ undo_record_deletion(TX *tx, VALUE start, VALUE end)
     if((tx->tx_Flags & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
     {
 	VALUE string;
-	if((pending_deletion_string != NULL)
+	if((pending_deletion_string != LISP_NULL)
 	   && (pending_deletion_tx = tx)
 	   && (POS_EQUAL_P(pending_deletion_start, start))
 	   && (POS_EQUAL_P(pending_deletion_end, end)))
@@ -107,7 +107,7 @@ undo_record_deletion(TX *tx, VALUE start, VALUE end)
 	    {
 		/* A deletion of 1 character is recorded as a character. */
 		string = cmd_get_char(start, VAL(tx));
-		if(!string || !NUMBERP(string))
+		if(!string || !INTP(string))
 		    return;
 	    }
 	    else
@@ -122,7 +122,7 @@ undo_record_deletion(TX *tx, VALUE start, VALUE end)
 	tx->tx_UndoList = cmd_cons(cmd_cons(start, string),
 				   tx->tx_UndoList);
     }
-    pending_deletion_string = NULL;
+    pending_deletion_string = LISP_NULL;
 }
 
 /* Lets the saved deletion be used for more than the undo list. Call
@@ -145,7 +145,7 @@ undo_push_deletion(TX *tx, VALUE start, VALUE end)
 	return(string);
     }
     else
-	return null_string;
+	return VAL(null_string);
 }
 
 /* Adds an insertion between START and END to the TX buffer's undo-list.
@@ -226,10 +226,10 @@ ARG is the number of commands to undo, when called interactively this is
 taken from the prefix argument.
 ::end:: */
 {
-    long count = NUMBERP(arg) ? VNUM(arg) : 1;
+    long count = INTP(arg) ? VINT(arg) : 1;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    if(VTX(tx)->tx_ToUndoList == NULL)
+    if(VTX(tx)->tx_ToUndoList == LISP_NULL)
     {
 	/* First call. */
 	VTX(tx)->tx_ToUndoList = VTX(tx)->tx_UndoList;
@@ -239,7 +239,10 @@ taken from the prefix argument.
 	    count++;
     }
     if(NILP(VTX(tx)->tx_ToUndoList))
-	return(cmd_signal(sym_error, LIST_1(MKSTR("Nothing to undo!"))));
+    {
+	static DEFSTRING(nothing, "Nothing to undo!");
+	return(cmd_signal(sym_error, LIST_1(VAL(nothing))));
+    }
     in_undo = TRUE;
     last_undid_tx = VTX(tx);
     while(CONSP(VTX(tx)->tx_ToUndoList))
@@ -262,11 +265,11 @@ taken from the prefix argument.
 		if(new && POSP(new))
 		    cmd_goto(new);
 	    }
-	    else if(NUMBERP(VCDR(item)))
+	    else if(INTP(VCDR(item)))
 	    {
 		/* A deleted character */
 		VALUE tmp = make_string(2);
-		VSTR(tmp)[0] = (u_char)VNUM(VCDR(item));
+		VSTR(tmp)[0] = (u_char)VINT(VCDR(item));
 		VSTR(tmp)[1] = 0;
 		tmp = cmd_insert(tmp, VCAR(item), tx);
 		if(tmp && POSP(tmp))
@@ -297,12 +300,12 @@ undo information.
 {
     if(val)
     {
-	if(NUMBERP(val))
-	    max_undo_size = VNUM(val);
-	return(NULL);
+	if(INTP(val))
+	    max_undo_size = VINT(val);
+	return LISP_NULL;
     }
     else
-	return(make_number(max_undo_size));
+	return(MAKE_INT(max_undo_size));
 }
 
 _PR VALUE var_buffer_record_undo(VALUE val);
@@ -318,7 +321,7 @@ When nil no undo information is kept in this buffer.
 	    tx->tx_Flags |= TXFF_NO_UNDO;
 	else
 	    tx->tx_Flags &= ~TXFF_NO_UNDO;
-	return(NULL);
+	return LISP_NULL;
     }
     else
 	return((tx->tx_Flags & TXFF_NO_UNDO) ? sym_nil : sym_t);
@@ -357,10 +360,10 @@ undo_trim(void)
 	while(CONSP(*undo_list))
 	{
 	    VALUE item = VCAR(*undo_list);
-	    size_count += sizeof(Cons);
+	    size_count += sizeof(Lisp_Cons);
 	    if(CONSP(item))
 	    {
-		size_count += sizeof(Cons);
+		size_count += sizeof(Lisp_Cons);
 		if(POSP(VCDR(item)))
 		    size_count += sizeof(Pos) * 2;
 		else if(STRINGP(VCDR(item)))
@@ -390,8 +393,8 @@ undo_init(void)
     mark_static(&pending_deletion_string);
     mark_static(&pending_deletion_start);
     mark_static(&pending_deletion_end);
-    INTERN(sym_undo, "undo");
-    ADD_SUBR(subr_undo);
+    INTERN(undo);
+    ADD_SUBR_INT(subr_undo);
     ADD_SUBR(subr_max_undo_size);
     ADD_SUBR(subr_buffer_record_undo);
     ADD_SUBR(subr_buffer_undo_list);

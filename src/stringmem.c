@@ -137,7 +137,13 @@ sm_alloc(StrMem *sm, int size)
     assert(size > 0);
     if(size > MAXBUCKETSIZE)
     {
+#if MALLOC_ALIGNMENT >= STRMEM_ALIGNMENT
 	mc = mymalloc(MCHNK_SIZE(size));
+#else
+  /* Note that if this is ever implemented properly, values.c:string_sweep()
+     will probably need to be updated. */
+# error Need an aligned malloc()
+#endif
 	if(mc)
 	{
 #ifdef STRMEM_STATS

@@ -38,7 +38,11 @@ _PR void windows_kill(void);
 _PR void window_sweep(void);
 _PR void window_prin(VALUE, VALUE);
 
-VALUE sym_make_window_hook, sym_destroy_window_hook;
+static DEFSYM(make_window_hook, "make-window-hook");
+static DEFSYM(destroy_window_hook, "destroy-window-hook");
+
+_PR VALUE sym_window_closed_hook;
+DEFSYM(window_closed_hook, "window-closed-hook");
 
 /* This can contain `dead' windows, ie w_Window==NULL, they have been
    close'd but must hang around until we're sure all refs are dead.  */
@@ -92,20 +96,19 @@ active window.
 {
     WIN *w;
     VALUE tx = curr_vw ? VAL(curr_vw->vw_Tx) : sym_nil;
-    if(NUMBERP(xv))
-	def_dims[0] = VNUM(xv);
-    if(NUMBERP(yv))
-	def_dims[1] = VNUM(yv);
-    if(NUMBERP(wv))
-	def_dims[2] = VNUM(wv);
-    if(NUMBERP(hv))
-	def_dims[3] = VNUM(hv);
-    w = mycalloc(sizeof(WIN));
-    if(w)
+    if(INTP(xv))
+	def_dims[0] = VINT(xv);
+    if(INTP(yv))
+	def_dims[1] = VINT(yv);
+    if(INTP(wv))
+	def_dims[2] = VINT(wv);
+    if(INTP(hv))
+	def_dims[3] = VINT(hv);
+    w = ALLOC_OBJECT(sizeof(WIN));
+    if(w != NULL)
     {
+	memset(w, 0, sizeof(WIN));
 	w->w_Type = V_Window;
-	w->w_Next = win_chain;
-	win_chain = w;
 	copy_win_prefs(w, curr_win);
 	if(sys_set_font(w))
 	{
@@ -121,6 +124,8 @@ active window.
 		    if(make_view(NULL, w, NULL, 0, TRUE))
 		    {
 			w->w_Flags |= WINFF_FORCE_REFRESH;
+			w->w_Next = win_chain;
+			win_chain = w;
 			if(curr_win == 0)
 			{
 			    curr_win = w;
@@ -134,9 +139,9 @@ active window.
 	    }
 	    sys_unset_font(w);
 	}
-	myfree(w);
+	FREE_OBJECT(w);
     }
-    return(NULL);
+    return LISP_NULL;
 }
 
 _PR VALUE cmd_destroy_window(VALUE win);
@@ -182,8 +187,8 @@ memory are flushed and jade will exit.
 	curr_win->w_CurrVW = NULL;
 	curr_win = NULL;
 	curr_vw = NULL;
-	throw_value = cmd_cons(sym_quit, make_number(0)); /* experimental. */
-	return(NULL);
+	throw_value = cmd_cons(sym_quit, MAKE_INT(0)); /* experimental. */
+	return LISP_NULL;
     }
     return(VAL(curr_win));
 }
@@ -436,7 +441,7 @@ window-count
 Number of opened windows.
 ::end:: */
 {
-    return(make_number(window_count));
+    return(MAKE_INT(window_count));
 }
 
 _PR VALUE cmd_position_window(VALUE left, VALUE top, VALUE width, VALUE height);
@@ -448,12 +453,12 @@ Sets the position and dimensions of the current window. These are all
 *pixel* measurememnts.
 ::end:: */
 {
-    DECLARE1(left, NUMBERP);
-    DECLARE2(top, NUMBERP);
-    DECLARE3(width, NUMBERP);
-    DECLARE4(height, NUMBERP);
-    sys_set_win_pos(curr_win, VNUM(left), VNUM(top),
-		    VNUM(width), VNUM(height));
+    DECLARE1(left, INTP);
+    DECLARE2(top, INTP);
+    DECLARE3(width, INTP);
+    DECLARE4(height, INTP);
+    sys_set_win_pos(curr_win, VINT(left), VINT(top),
+		    VINT(width), VINT(height));
     return(sym_t);
 }
 
@@ -481,17 +486,17 @@ reinstall the original window as the current one.
 {
     if(CONSP(args))
     {
-	GCVAL gcv_args;
+	GC_root gc_args;
 	VALUE res;
-	PUSHGC(gcv_args, args);
+	PUSHGC(gc_args, args);
 	if((res = cmd_eval(VCAR(args))) && WINDOWP(res))
 	{
 	    VALUE oldwin = VAL(curr_win);
-	    GCVAL gcv_oldwin;
+	    GC_root gc_oldwin;
 	    curr_win = VWIN(res);
 	    curr_vw = curr_win->w_CurrVW;
 
-	    PUSHGC(gcv_oldwin, oldwin);
+	    PUSHGC(gc_oldwin, oldwin);
 	    res = cmd_progn(VCDR(args));
 	    POPGC;
 
@@ -506,7 +511,7 @@ reinstall the original window as the current one.
 	POPGC;
 	return(res);
     }
-    return(NULL);
+    return LISP_NULL;
 }
 
 _PR VALUE cmd_set_current_window(VALUE win, VALUE activ);
@@ -540,7 +545,7 @@ under Intuition a pointer (integer) to the window structure.
 {
     if(!WINDOWP(win))
 	win = VAL(curr_win);
-    return(make_number((long)VWIN(win)->w_Window));
+    return(MAKE_LONG_INT((u_long)VWIN(win)->w_Window));
 }
 
 _PR VALUE cmd_font_x_size(VALUE win);
@@ -553,7 +558,7 @@ Returns the width of the window's font (in pixels).
 {
     if(!WINDOWP(win))
 	win = VAL(curr_win);
-    return(make_number((long)VWIN(win)->w_FontX));
+    return(MAKE_INT((long)VWIN(win)->w_FontX));
 }
 
 _PR VALUE cmd_font_y_size(VALUE win);
@@ -566,7 +571,7 @@ Returns the height of the window's font (in pixels).
 {
     if(!WINDOWP(win))
 	win = VAL(curr_win);
-    return(make_number((long)VWIN(win)->w_FontY));
+    return(MAKE_INT((long)VWIN(win)->w_FontY));
 }
 
 _PR VALUE cmd_window_dimensions(VALUE win);
@@ -580,8 +585,8 @@ the current window).
 {
     if(!WINDOWP(win))
 	win = VAL(curr_win);
-    return cmd_cons(make_number(VWIN(win)->w_MaxX),
-		    make_number(VWIN(win)->w_MaxY));
+    return cmd_cons(MAKE_INT(VWIN(win)->w_MaxX),
+		    MAKE_INT(VWIN(win)->w_MaxY));
 }
 
 _PR VALUE cmd_window_view_list(VALUE win);
@@ -601,7 +606,7 @@ bottom order, ending with the mini-buffer.
     for(vw = VWIN(win)->w_ViewList; vw != 0; vw = vw->vw_NextView)
     {
 	if(!(*ptr = cmd_cons(VAL(vw), sym_nil)))
-	    return(NULL);
+	    return LISP_NULL;
 	ptr = &VCDR(*ptr);
     }
     return res;
@@ -618,7 +623,7 @@ minibuffer view, whether it's active or not.
 {
     if(!WINDOWP(win))
 	win = VAL(curr_win);
-    return make_number(VWIN(win)->w_ViewCount);
+    return MAKE_INT(VWIN(win)->w_ViewCount);
 }
 
 _PR VALUE cmd_window_first_view(VALUE win);
@@ -639,9 +644,9 @@ windows_init(void)
 {
     ADD_SUBR(subr_make_window);
     ADD_SUBR(subr_destroy_window);
-    ADD_SUBR(subr_sleep_window);
-    ADD_SUBR(subr_unsleep_window);
-    ADD_SUBR(subr_next_window);
+    ADD_SUBR_INT(subr_sleep_window);
+    ADD_SUBR_INT(subr_unsleep_window);
+    ADD_SUBR_INT(subr_next_window);
     ADD_SUBR(subr_message);
     ADD_SUBR(subr_font_name);
     ADD_SUBR(subr_window_asleep_p);
@@ -657,8 +662,9 @@ windows_init(void)
     ADD_SUBR(subr_window_view_list);
     ADD_SUBR(subr_window_view_count);
     ADD_SUBR(subr_window_first_view);
-    INTERN(sym_make_window_hook, "make-window-hook");
-    INTERN(sym_destroy_window_hook, "destroy-window-hook");
+    INTERN(make_window_hook);
+    INTERN(destroy_window_hook);
+    INTERN(window_closed_hook);
 }
 
 void
@@ -671,7 +677,7 @@ windows_kill(void)
     while(w)
     {
 	next = w->w_Next;
-	myfree(w);
+	FREE_OBJECT(w);
 	w = next;
     }
     win_chain = NULL;
@@ -685,14 +691,14 @@ window_sweep(void)
     while(w)
     {
 	WIN *next = w->w_Next;
-	if(GC_MARKEDP(VAL(w)))
+	if(GC_NORMAL_MARKEDP(VAL(w)))
 	{
-	    GC_CLR(VAL(w));
+	    GC_CLR_NORMAL(VAL(w));
 	    w->w_Next = win_chain;
 	    win_chain = w;
 	}
 	else
-	    myfree(w);
+	    FREE_OBJECT(w);
 	w = next;
     }
 }

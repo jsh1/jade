@@ -111,7 +111,7 @@ handle_event(XEvent *xev)
 		}
 		else
 		    cursor(ev_win->w_CurrVW, CURS_OFF);
-		result = cmd_eval_hook2(MKSTR("window-closed-hook"), sym_nil);
+		result = cmd_eval_hook2(sym_window_closed_hook, sym_nil);
 		if(curr_win)
 		{
 		    refresh_world();
@@ -227,7 +227,7 @@ event_loop(void)
 	while(INT_P || XEventsQueued(x11_display, QueuedAfterReading) > 0)
 	{
 	    if(INT_P)
-		result = NULL;
+		result = LISP_NULL;
 	    else
 	    {
 		XEvent ev;
@@ -240,7 +240,7 @@ event_loop(void)
 		{
 		    VALUE tv = throw_value;
 		    VALUE car = VCAR(tv);
-		    throw_value = NULL;
+		    throw_value = LISP_NULL;
 		    if(car == sym_exit)
 		    {
 			result = VCDR(tv);

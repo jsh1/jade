@@ -395,7 +395,7 @@ rendered.
     if(check_line(VTX(tx), pos))
 	return make_pos(glyph_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
     else
-	return NULL;
+	return LISP_NULL;
 }
 
 _PR VALUE cmd_glyph_to_char_pos(VALUE pos, VALUE tx);
@@ -413,7 +413,7 @@ position.
     if(check_line(VTX(tx), pos))
 	return make_pos(char_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
     else
-	return NULL;
+	return LISP_NULL;
 }
 
 _PR VALUE cmd_default_glyph_table(void);
@@ -437,7 +437,7 @@ SRC is a buffer that buffer's glyph-table will be copied. If SRC is nil the
 default glyph-table will be copied.
 ::end:: */
 {
-    GlyphTable *newgt = mymalloc(sizeof(GlyphTable));
+    GlyphTable *newgt = ALLOC_OBJECT(sizeof(GlyphTable));
     if(newgt)
     {
 	GlyphTable *srcgt;
@@ -454,7 +454,7 @@ default glyph-table will be copied.
 	data_after_gc += sizeof(GlyphTable);
 	return(VAL(newgt));
     }
-    return(sym_nil);
+    return mem_error();
 }
 
 _PR VALUE cmd_set_glyph(VALUE gt, VALUE ch, VALUE glyph);
@@ -469,27 +469,27 @@ for each character CHARACTER in any buffers which use the GLYPH-TABLE.
     int glyphlen;
     TX *tx;
     DECLARE1(gt, GLYPHTABP);
-    DECLARE2(ch, NUMBERP);
+    DECLARE2(ch, INTP);
     DECLARE3(glyph, STRINGP);
-    if((VNUM(ch) < 0) || (VNUM(ch) >= 256))
+    if((VINT(ch) < 0) || (VINT(ch) >= 256))
     {
 	signal_arg_error(ch, 1);
-	return(NULL);
+	return LISP_NULL;
     }
     glyphlen = STRING_LEN(glyph);
     if(glyphlen > 4)
     {
 	signal_arg_error(glyph, 2);
-	return(NULL);
+	return LISP_NULL;
     }
-    VGLYPHTAB(gt)->gt_Widths[VNUM(ch)] = glyphlen;
+    VGLYPHTAB(gt)->gt_Widths[VINT(ch)] = glyphlen;
     if(glyphlen == 0)
     {
 	/* put a space in the first character */
-	VGLYPHTAB(gt)->gt_Glyphs[VNUM(ch)][0] = ' ';
+	VGLYPHTAB(gt)->gt_Glyphs[VINT(ch)][0] = ' ';
     }
     else
-	memcpy(&VGLYPHTAB(gt)->gt_Glyphs[VNUM(ch)][0], VSTR(glyph), glyphlen);
+	memcpy(&VGLYPHTAB(gt)->gt_Glyphs[VINT(ch)][0], VSTR(glyph), glyphlen);
 
     tx = buffer_chain;
     while(tx)
@@ -513,14 +513,14 @@ GLYPH-TABLE.
 ::end:: */
 {
     DECLARE1(gt, GLYPHTABP);
-    DECLARE2(ch, NUMBERP);
-    if((VNUM(ch) < 0) || (VNUM(ch) >= 256))
+    DECLARE2(ch, INTP);
+    if((VINT(ch) < 0) || (VINT(ch) >= 256))
     {
 	signal_arg_error(ch, 1);
-	return(NULL);
+	return LISP_NULL;
     }
-    return(string_dupn(&VGLYPHTAB(gt)->gt_Glyphs[VNUM(ch)][0],
-		       VGLYPHTAB(gt)->gt_Widths[VNUM(ch)]));
+    return(string_dupn(&VGLYPHTAB(gt)->gt_Glyphs[VINT(ch)][0],
+		       VGLYPHTAB(gt)->gt_Widths[VINT(ch)]));
 }
 
 _PR VALUE cmd_buffer_glyph_table(VALUE tx);
@@ -560,11 +560,11 @@ glyphtable_sweep(void)
     while(gt)
     {
 	GlyphTable *nxt = gt->gt_Next;
-	if(!GC_MARKEDP(VAL(gt)) && !(gt->gt_Flags & GTF_STATIC))
-	    myfree(gt);
+	if(!GC_NORMAL_MARKEDP(VAL(gt)) && !(gt->gt_Flags & GTF_STATIC))
+	    FREE_OBJECT(gt);
 	else
 	{
-	    GC_CLR(VAL(gt));
+	    GC_CLR_NORMAL(VAL(gt));
 	    gt->gt_Next = gt_chain;
 	    gt_chain = gt;
 	}
@@ -600,7 +600,7 @@ glyphs_kill(void)
     {
 	GlyphTable *nxt = gt->gt_Next;
 	if(!(gt->gt_Flags & GTF_STATIC))
-	    myfree(gt);
+	    FREE_OBJECT(gt);
 	gt = nxt;
     }
     gt_chain = NULL;

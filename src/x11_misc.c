@@ -34,6 +34,8 @@ _PR void x11_lose_selection(XSelectionClearEvent *ev);
 _PR void x11_window_lose_selections(Window win);
 _PR void x11_misc_init(void);
 
+static DEFSTRING(no_cut_buf, "No cut buffer");
+
 int
 write_clip(int buffer, char *str, int len)
 {
@@ -42,7 +44,7 @@ write_clip(int buffer, char *str, int len)
 	XStoreBuffer(x11_display, str, len, buffer);
     else
     {
-	cmd_signal(sym_error, list_2(MKSTR("No cut buffer"), make_number(buffer)));
+	cmd_signal(sym_error, list_2(VAL(no_cut_buf), MAKE_INT(buffer)));
 	rc = FALSE;
     }
     return(rc);
@@ -51,16 +53,17 @@ write_clip(int buffer, char *str, int len)
 VALUE
 read_clip(int buffer)
 {
+    
     if((buffer >= 0) && (buffer <= 7))
     {
 	int len;
 	u_char *mem = XFetchBuffer(x11_display, &len, buffer);
 	if(mem)
 	    return(string_dupn(mem, len));
-	return(NULL);
+	return LISP_NULL;
     }
-    cmd_signal(sym_error, list_2(MKSTR("Not cut-buffer"), make_number(buffer)));
-    return(NULL);
+    cmd_signal(sym_error, list_2(VAL(no_cut_buf), MAKE_INT(buffer)));
+    return LISP_NULL;
 }
 
 void
@@ -84,7 +87,10 @@ static struct selection_info {
     enum Sel_type type;
 } selection_info[2];
 
-VALUE sym_xa_primary, sym_xa_secondary;
+static DEFSYM(xa_primary, "xa-primary");
+static DEFSYM(xa_secondary, "xa-secondary");
+
+static DEFSTRING(no_atom, "No atom for symbol");
 
 static INLINE int
 selection_atom_to_index(Atom atom)
@@ -162,7 +168,7 @@ otherwise.
 	    return sym_nil;
 	}
     }
-    return cmd_signal(sym_error, list_2(MKSTR("No atom for symbol"), sel));
+    return cmd_signal(sym_error, list_2(VAL(no_atom), sel));
 }
 
 static Bool
@@ -318,7 +324,7 @@ If the selection currently has no value, nil is returned.
 	}
 	return res;
     }
-    return cmd_signal(sym_error, list_2(MKSTR("No atom for symbol"), sel));
+    return cmd_signal(sym_error, list_2(VAL(no_atom), sel));
 }
 
 void
@@ -426,7 +432,7 @@ by Jade, relinquish ownership.
 	}
 	return sym_nil;
     }
-    return cmd_signal(sym_error, list_2(MKSTR("No atom for symbol"), sel));
+    return cmd_signal(sym_error, list_2(VAL(no_atom), sel));
 }
 
 void
@@ -439,8 +445,8 @@ x11_misc_init(void)
 	mark_static(&selection_info[i].start);
 	mark_static(&selection_info[i].end);
     }
-    INTERN(sym_xa_primary, "xa-primary");
-    INTERN(sym_xa_secondary, "xa-secondary");
+    INTERN(xa_primary);
+    INTERN(xa_secondary);
     ADD_SUBR(subr_x11_set_selection);
     ADD_SUBR(subr_x11_selection_active_p);
     ADD_SUBR(subr_x11_own_selection_p);

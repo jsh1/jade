@@ -22,6 +22,10 @@
 #include "jade_protos.h"
 
 #include <stdlib.h>
+#include <string.h>
+#ifdef NEED_MEMORY_H
+# include <memory.h>
+#endif
 
 _PR void kill_all_views(WIN *w);
 _PR void update_views_dimensions(WIN *w);
@@ -32,7 +36,8 @@ _PR void view_sweep(void);
 _PR void view_prin(VALUE, VALUE);
 _PR VW *make_view(VW *, WIN *, TX *, long, bool);
 
-VALUE sym_make_view_hook, sym_destroy_view_hook;
+static DEFSYM(make_view_hook, "make-view-hook");
+static DEFSYM(destroy_view_hook, "destroy-view-hook");
 
 static void set_scroll_steps(VW *vw);
 static void recalc_pixel_measures(WIN *w);
@@ -140,19 +145,20 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	{
 	    if(parent->w_MaxY < lines + 2)
 	    {
+		static DEFSTRING(too_few, "Too few lines to split");
 	    size_error:
 		cmd_signal(sym_window_error,
-			   list_2(VAL(parent),
-				  MKSTR("Too few lines to split")));
+			   list_2(VAL(parent), VAL(too_few)));
 		return NULL;
 	    }
 	}
     }
 
     /* Now the construction of the view proper... */
-    vw = mycalloc(sizeof(VW));
-    if(vw)
+    vw = ALLOC_OBJECT(sizeof(VW));
+    if(vw != NULL)
     {
+	memset(vw, 0, sizeof(VW));
 	vw->vw_Type = V_View;
 	vw->vw_Next = view_chain;
 	view_chain = vw;
@@ -245,7 +251,7 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 
 
 _PR VALUE cmd_make_view(VALUE split_vw, VALUE tx, VALUE lines);
-DEFUN_INT("make-view", cmd_make_view, subr_make_view, (VALUE split_vw, VALUE tx, VALUE lines), V_Subr3, DOC_make_view, "") /*
+DEFUN("make-view", cmd_make_view, subr_make_view, (VALUE split_vw, VALUE tx, VALUE lines), V_Subr3, DOC_make_view) /*
 ::doc:make_view::
 make-view [VIEW-TO-SPLIT] [BUFFER] [LINES]
 
@@ -258,11 +264,11 @@ the number of lines desired in the new view.
 	split_vw = VAL(curr_vw);
     return VAL(make_view(VVIEW(split_vw), VVIEW(split_vw)->vw_Win,
 			 BUFFERP(tx) ? VTX(tx) : VVIEW(split_vw)->vw_Tx,
-			 NUMBERP(lines) ? VNUM(lines) : 0, FALSE));
+			 INTP(lines) ? VINT(lines) : 0, FALSE));
 }
 
 _PR VALUE cmd_destroy_view(VALUE view);
-DEFUN_INT("destroy-view", cmd_destroy_view, subr_destroy_view, (VALUE view), V_Subr1, DOC_destroy_view, "") /*
+DEFUN("destroy-view", cmd_destroy_view, subr_destroy_view, (VALUE view), V_Subr1, DOC_destroy_view) /*
 ::doc:destroy_view::
 destroy-view [VIEW]
 
@@ -275,16 +281,14 @@ views (minibuffer and one other) in any window.
     if(vw->vw_Win->w_ViewCount <= 2)
     {
 	/* Only two views are left. Don't destroy it. */
-	return cmd_signal(sym_window_error,
-			  list_2(MKSTR("Can't kill the sole view in a window"),
-				 VAL(vw)));
+	static DEFSTRING(sole_view, "Can't kill the sole view in a window");
+	return cmd_signal(sym_window_error, list_2(VAL(sole_view), VAL(vw)));
     }
     else if(vw->vw_Flags & VWFF_MINIBUF)
     {
 	/* Can't kill the minibuffer */
-	return cmd_signal(sym_window_error,
-			  list_2(MKSTR("Can't kill minibuffer view"),
-				 VAL(vw)));
+	static DEFSTRING(mini_view, "Can't kill minibuffer view");
+	return cmd_signal(sym_window_error, list_2(VAL(mini_view), VAL(vw)));
     }
     cmd_eval_hook2(sym_destroy_view_hook, VAL(vw));
     sys_kill_vw(vw);
@@ -488,11 +492,11 @@ scrolled further than this the whole view is redrawn.
     VW *vw = curr_vw;
     if(val)
     {
-	if(NUMBERP(val))
-	    vw->vw_MaxScroll = VNUM(val);
-	return(NULL);
+	if(INTP(val))
+	    vw->vw_MaxScroll = VINT(val);
+	return LISP_NULL;
     }
-    return(make_number(vw->vw_MaxScroll));
+    return(MAKE_INT(vw->vw_MaxScroll));
 }
 
 _PR VALUE var_y_scroll_step_ratio(VALUE val);
@@ -508,14 +512,14 @@ If the value is 0 then the window will be scrolled by one line.
     VW *vw = curr_vw;
     if(val)
     {
-	if(NUMBERP(val))
+	if(INTP(val))
 	{
-	    vw->vw_YStepRatio = VNUM(val);
+	    vw->vw_YStepRatio = VINT(val);
 	    set_scroll_steps(vw);
 	}
-	return(NULL);
+	return LISP_NULL;
     }
-    return(make_number(vw->vw_YStepRatio));
+    return(MAKE_INT(vw->vw_YStepRatio));
 }
 
 _PR VALUE var_x_scroll_step_ratio(VALUE val);
@@ -531,14 +535,14 @@ If the value is 0 then the window will be scrolled by one column.
     VW *vw = curr_vw;
     if(val)
     {
-	if(NUMBERP(val))
+	if(INTP(val))
 	{
-	    vw->vw_XStepRatio = VNUM(val);
+	    vw->vw_XStepRatio = VINT(val);
 	    set_scroll_steps(vw);
 	}
-	return(NULL);
+	return LISP_NULL;
     }
-    return(make_number(vw->vw_XStepRatio));
+    return(MAKE_INT(vw->vw_XStepRatio));
 }
 
 _PR VALUE cmd_rect_blocks_p(VALUE vw);
@@ -758,18 +762,18 @@ afterwards, returning the value of (progn FORMS...).
 {
     if(CONSP(args))
     {
-	GCVAL gcv_args;
+	GC_root gc_args;
 	VALUE res;
-	PUSHGC(gcv_args, args);
+	PUSHGC(gc_args, args);
 	if((res = cmd_eval(VCAR(args))) && VIEWP(res))
 	{
 	    VALUE oldvw = VAL(curr_vw);
-	    GCVAL gcv_oldvw;
+	    GC_root gc_oldvw;
 	    curr_vw = VVIEW(res);
 	    curr_win = curr_vw->vw_Win;
 	    curr_win->w_CurrVW = curr_vw;
 
-	    PUSHGC(gcv_oldvw, oldvw);
+	    PUSHGC(gc_oldvw, oldvw);
 	    res = cmd_progn(VCDR(args));
 	    POPGC;
 
@@ -787,7 +791,7 @@ afterwards, returning the value of (progn FORMS...).
 	POPGC;
 	return(res);
     }
-    return(NULL);
+    return LISP_NULL;
 }
 
 _PR VALUE cmd_view_origin(VALUE vw);
@@ -815,8 +819,8 @@ the current view).
 {
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
-    return cmd_cons(make_number(VVIEW(vw)->vw_MaxX),
-		    make_number(VVIEW(vw)->vw_MaxY));
+    return cmd_cons(MAKE_INT(VVIEW(vw)->vw_MaxX),
+		    MAKE_INT(VVIEW(vw)->vw_MaxY));
 }
 
 _PR VALUE cmd_set_view_dimensions(VALUE vw, VALUE cols, VALUE rows);
@@ -836,17 +840,21 @@ the COLUMNS parameter is always ignored (for the moment).
     long new_sibling_height;
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
-    if(!NUMBERP(rows))
+    if(!INTP(rows))
 	return vw;
     sibling = VVIEW(vw)->vw_NextView;
     if(sibling == 0 || sibling->vw_Flags & VWFF_MINIBUF)
-	return cmd_signal(sym_window_error,
-			  list_2(MKSTR("No view to expand into"), vw));
-    new_sibling_height = sibling->vw_MaxY - (VNUM(rows) - VVIEW(vw)->vw_MaxY);
-    if(new_sibling_height < 1 || VNUM(rows) < 1)
-	return cmd_signal(sym_window_error,
-			  list_2(MKSTR("Not enough room"), vw));
-    VVIEW(vw)->vw_MaxY = VNUM(rows);
+    {
+	static DEFSTRING(no_view, "No view to expand into");
+	return cmd_signal(sym_window_error, list_2(VAL(no_view), vw));
+    }
+    new_sibling_height = sibling->vw_MaxY - (VINT(rows) - VVIEW(vw)->vw_MaxY);
+    if(new_sibling_height < 1 || VINT(rows) < 1)
+    {
+	static DEFSTRING(no_room, "Not enough room");
+	return cmd_signal(sym_window_error, list_2(VAL(no_room), vw));
+    }
+    VVIEW(vw)->vw_MaxY = VINT(rows);
     sibling->vw_MaxY = new_sibling_height;
     recalc_pixel_measures(VVIEW(vw)->vw_Win);
     set_scroll_steps(VVIEW(vw));
@@ -982,8 +990,8 @@ If TEXT is the symbol nil, the normal behaviour is reinstated.
 void
 views_init(void)
 {
-    mb_unused_buffer = VTX(cmd_make_buffer(MKSTR("*unused-minibuf*"),
-					   sym_nil, sym_t));
+    static DEFSTRING(unused_mb, "*unused-minibuf*");
+    mb_unused_buffer = VTX(cmd_make_buffer(VAL(unused_mb), sym_nil, sym_t));
     cmd_set_buffer_special(VAL(mb_unused_buffer), sym_t);
     cmd_set_buffer_read_only(VAL(mb_unused_buffer), sym_t);
 
@@ -1009,8 +1017,8 @@ views_init(void)
     ADD_SUBR(subr_minibuffer_view);
     ADD_SUBR(subr_minibuffer_active_p);
     ADD_SUBR(subr_set_status_message);
-    INTERN(sym_make_view_hook, "make-view-hook");
-    INTERN(sym_destroy_view_hook, "destroy-view-hook");
+    INTERN(make_view_hook);
+    INTERN(destroy_view_hook);
 }
 
 void
@@ -1020,7 +1028,7 @@ views_kill(void)
     while(vw != 0)
     {
 	VW *next = vw->vw_Next;
-	myfree(vw);
+	FREE_OBJECT(vw);
 	vw = next;
     }
     view_chain = NULL;
@@ -1034,14 +1042,14 @@ view_sweep(void)
     while(vw)
     {
 	VW *next = vw->vw_Next;
-	if(GC_MARKEDP(VAL(vw)))
+	if(GC_NORMAL_MARKEDP(VAL(vw)))
 	{
-	    GC_CLR(VAL(vw));
+	    GC_CLR_NORMAL(VAL(vw));
 	    vw->vw_Next = view_chain;
 	    view_chain = vw;
 	}
 	else
-	    myfree(vw);
+	    FREE_OBJECT(vw);
 	vw = next;
     }
 }

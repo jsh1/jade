@@ -32,7 +32,21 @@ static VALUE sym_prompt_for_function, sym_prompt_for_buffer,
     sym_prompt_for_symbol, sym_prompt_for_variable, sym_prompt_for_lisp,
     sym_read_event;
 
-static VALUE sym_interactive;
+static DEFSYM(prompt_for_function, "prompt-for-function");
+static DEFSYM(prompt_for_buffer, "prompt-for-buffer");
+static DEFSYM(prompt_for_char, "prompt-for-char");
+static DEFSYM(prompt_for_command, "prompt-for-command");
+static DEFSYM(prompt_for_directory, "prompt-for-directory");
+static DEFSYM(prompt_for_file, "prompt-for-file");
+static DEFSYM(prompt_for_number, "prompt-for-number");
+static DEFSYM(prompt_for_string, "prompt-for-string");
+static DEFSYM(prompt_for_symbol, "prompt-for-symbol");
+static DEFSYM(prompt_for_variable, "prompt-for-variable");
+static DEFSYM(prompt_for_lisp, "prompt-for-lisp");
+static DEFSYM(read_event, "read-event");
+
+static DEFSYM(interactive, "interactive");
+static DEFSTRING(err_interactive, "Bad interactive specification");
 
 /* Prefix argument for the next command and the current command. */
 static VALUE prefix_arg, current_prefix_arg;
@@ -48,9 +62,12 @@ Hook called before evaluating each command.
 ::doc:post_command_hook::
 Hook callled after evaluating each command.
 ::end:: */
-_PR VALUE sym_pre_command_hook, sym_post_command_hook;
-VALUE sym_pre_command_hook, sym_post_command_hook;
 
+_PR VALUE sym_pre_command_hook, sym_post_command_hook;
+DEFSYM(pre_command_hook, "pre-command-hook");
+DEFSYM(post_command_hook, "post-command-hook");
+
+
 _PR VALUE var_this_command(VALUE val);
 DEFUN("this-command", var_this_command, subr_this_command, (VALUE val), V_Var, DOC_this_command) /*
 ::doc:this_command::
@@ -105,15 +122,16 @@ Value of the prefix argument for the current command.
 static VALUE
 interactive_spec(VALUE cmd)
 {
-    VALUE fun, spec = NULL;
+    VALUE fun, spec = LISP_NULL;
     if(SYMBOLP(cmd))
 	fun = cmd_symbol_function(cmd, sym_t);
     else
 	fun = cmd;
     if(!VOIDP(fun) && !NILP(fun))
     {
-	if((VTYPE(fun) >= V_Subr0) && (VTYPE(fun) <= V_SubrN))
-	    spec = VSUBR(fun)->subr_IntSpec;
+	if(NORMALP(fun)
+	   && (VNORMAL_TYPE(fun) >= V_Subr0) && (VNORMAL_TYPE(fun) <= V_SubrN))
+	    spec = VSUBR(fun)->int_spec;
 	else if(CONSP(fun))
 	{
 	    if(VCAR(fun) == sym_autoload)
@@ -121,22 +139,22 @@ interactive_spec(VALUE cmd)
 		VALUE tmp = move_down_list(fun, 2);
 		if(CONSP(tmp) && !NILP(VCAR(tmp)))
 		{
-		    GCVAL gcv_cmd;
-		    PUSHGC(gcv_cmd, cmd);
+		    GC_root gc_cmd;
+		    PUSHGC(gc_cmd, cmd);
 		    fun = load_autoload(cmd, fun);
 		    POPGC;
 		    if(!fun || !CONSP(fun))
-			return(NULL);
+			return LISP_NULL;
 		}
 		else
-		    return(NULL);
+		    return LISP_NULL;
 	    }
 	    if(VCAR(fun) == sym_lambda)
 	    {
 		/* A lambda expression, test its first proper form. */
 		fun = move_down_list(fun, 2);
 		if(fun && CONSP(fun)
-		   && (STRINGP(VCAR(fun)) || NUMBERP(VCAR(fun)))
+		   && (STRINGP(VCAR(fun)) || INTP(VCAR(fun)))
 		   && CONSP(VCDR(fun)))
 		{
 		    /* A doc-string */
@@ -175,7 +193,7 @@ current-prefix-arg. This is used in call-command's interactive spec so that
 any entered arg is given to the invoked COMMAND.
 ::end:: */
 {
-    VALUE res = NULL;
+    VALUE res = LISP_NULL;
     this_command = cmd;
 
     /* Move the prefix arg. */
@@ -193,19 +211,20 @@ any entered arg is given to the invoked COMMAND.
 	VALUE int_spec = interactive_spec(cmd);
 	VALUE args = sym_nil;
 	VALUE *argsp = &args;
-	GCVAL gcv_cmd;
+	GC_root gc_cmd;
 	bool clear_block = FALSE;
-	if(int_spec == NULL)
+	if(int_spec == LISP_NULL)
 	{
-	    cmd_signal(sym_error, list_2(MKSTR("Not a command"), cmd));
+	    static DEFSTRING(not_command, "Not a command");
+	    cmd_signal(sym_error, list_2(VAL(not_command), cmd));
 	    goto exit;
 	}
-	PUSHGC(gcv_cmd, cmd);
+	PUSHGC(gc_cmd, cmd);
 	if(STRINGP(int_spec))
 	{
 	    u_char *spec_str = VSTR(int_spec);
 	    u_char c;
-	    GCVAL gcv_args;
+	    GC_root gc_args;
 	    while(1)
 	    {
 		/* check for read-only flag */
@@ -228,7 +247,7 @@ any entered arg is given to the invoked COMMAND.
 		else
 		    break;
 	    }
-	    PUSHGC(gcv_args, args);
+	    PUSHGC(gc_args, args);
 	    while((c = *spec_str++) != 0)
 	    {
 		VALUE prompt, arg = sym_nil;
@@ -305,9 +324,9 @@ any entered arg is given to the invoked COMMAND.
 			                 : cmd_block_end(sym_nil);
 			if(!arg || NILP(arg))
 			{
-			    arg = NULL;
-			    cmd_signal(sym_error,
-				       LIST_1(MKSTR("No block marked")));
+			    static DEFSTRING(no_block, "No block marked");
+			    arg = LISP_NULL;
+			    cmd_signal(sym_error, LIST_1(VAL(no_block)));
 			}
 			break;
 		    case 'n':
@@ -350,20 +369,19 @@ any entered arg is given to the invoked COMMAND.
 			can_be_nil = TRUE;
 			break;
 		    default:
-			arg = NULL;
+			arg = LISP_NULL;
 			cmd_signal(sym_interactive, list_2(cmd, int_spec));
 		    }
 		    if(!arg)
 		    {
-			args = NULL;
+			args = LISP_NULL;
 			break;
 		    }
 		    if(!can_be_nil && NILP(arg))
 		    {
-			cmd_signal(sym_error,
-				   list_2(MKSTR("Nil argument to command"),
-					  cmd));
-			args = NULL;
+			static DEFSTRING(nil_arg, "Nil argument to command");
+			cmd_signal(sym_error, list_2(VAL(nil_arg), cmd));
+			args = LISP_NULL;
 			break;
 		    }
 		}
@@ -403,15 +421,15 @@ Returns the numeric value of the raw prefix argument ARG.
     switch(VTYPE(arg))
     {
     case V_Symbol:
-	arg = make_number(NILP(arg) ? 1 : -1);
+	arg = MAKE_INT(NILP(arg) ? 1 : -1);
 	break;
-    case V_Number:
+    case V_Int:
 	break;
     case V_Cons:
 	arg = VCAR(arg);
 	break;
     default:
-	arg = make_number(1);
+	arg = MAKE_INT(1);
     }
     return(arg);
 }
@@ -506,8 +524,9 @@ Returns t if COMMAND may be called interactively.
 	cmd = cmd_symbol_function(cmd, sym_t);
     if(!VOIDP(cmd) && !NILP(cmd))
     {
-	if(((VTYPE(cmd) >= V_Subr0) && (VTYPE(cmd) <= V_SubrN))
-	   && (VSUBR(cmd)->subr_IntSpec != NULL))
+	if((NORMALP(cmd)
+	    && (VTYPE(cmd) >= V_Subr0) && (VTYPE(cmd) <= V_SubrN))
+	   && (VSUBR(cmd)->int_spec != LISP_NULL))
 	    return(sym_t);
 	else if(CONSP(cmd))
 	{
@@ -522,7 +541,7 @@ Returns t if COMMAND may be called interactively.
 		/* A lambda expression, test its first proper form. */
 		cmd = move_down_list(cmd, 2);
 		if(CONSP(cmd)
-		   && (STRINGP(VCAR(cmd)) || NUMBERP(VCAR(cmd)))
+		   && (STRINGP(VCAR(cmd)) || INTP(VCAR(cmd)))
 		   && CONSP(VCDR(cmd)))
 		{
 		    /* A doc-string */
@@ -547,22 +566,20 @@ void
 commands_init(void)
 {
     /* Create the function symbols. */
-    INTERN(sym_prompt_for_function, "prompt-for-function");
-    INTERN(sym_prompt_for_buffer, "prompt-for-buffer");
-    INTERN(sym_prompt_for_char, "prompt-for-char");
-    INTERN(sym_prompt_for_command, "prompt-for-command");
-    INTERN(sym_prompt_for_directory, "prompt-for-directory");
-    INTERN(sym_prompt_for_file, "prompt-for-file");
-    INTERN(sym_prompt_for_number, "prompt-for-number");
-    INTERN(sym_prompt_for_string, "prompt-for-string");
-    INTERN(sym_prompt_for_symbol, "prompt-for-symbol");
-    INTERN(sym_prompt_for_variable, "prompt-for-variable");
-    INTERN(sym_prompt_for_lisp, "prompt-for-lisp");
-    INTERN(sym_read_event, "read-event");
+    INTERN(prompt_for_function);
+    INTERN(prompt_for_buffer);
+    INTERN(prompt_for_char);
+    INTERN(prompt_for_command);
+    INTERN(prompt_for_directory);
+    INTERN(prompt_for_file);
+    INTERN(prompt_for_number);
+    INTERN(prompt_for_string);
+    INTERN(prompt_for_symbol);
+    INTERN(prompt_for_variable);
+    INTERN(prompt_for_lisp);
+    INTERN(read_event);
 
-    INTERN(sym_interactive, "interactive");
-    cmd_put(sym_interactive, sym_error_message,
-	    MKSTR("Bad interactive specification"));
+    INTERN(interactive); ERROR(interactive);
 
     prefix_arg = current_prefix_arg = sym_nil;
     mark_static(&prefix_arg);
@@ -572,16 +589,14 @@ commands_init(void)
     mark_static(&this_command);
     mark_static(&last_command);
 
-    INTERN(sym_pre_command_hook, "pre-command-hook");
-    DOC_VAR(sym_pre_command_hook, DOC_pre_command_hook);
-    INTERN(sym_post_command_hook, "post-command-hook");
-    DOC_VAR(sym_post_command_hook, DOC_post_command_hook);
+    INTERN(pre_command_hook); DOC(pre_command_hook);
+    INTERN(post_command_hook); DOC(post_command_hook);
 
     ADD_SUBR(subr_this_command);
     ADD_SUBR(subr_last_command);
     ADD_SUBR(subr_prefix_arg);
     ADD_SUBR(subr_current_prefix_arg);
-    ADD_SUBR(subr_call_command);
+    ADD_SUBR_INT(subr_call_command);
     ADD_SUBR(subr_prefix_numeric_argument);
     ADD_SUBR(subr_interactive);
     ADD_SUBR(subr_commandp);

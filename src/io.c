@@ -225,11 +225,11 @@ FILE is either a string naming the file to be opened or a Lisp file object
     bool closefh;
     long file_length = -1;
     VALUE start, end;
-    if(FILEP(file) && VFILE(file)->lf_Name)
+    if(FILEP(file) && VFILE(file)->name)
     {
-	fh = VFILE(file)->lf_File;
+	fh = VFILE(file)->file;
 	closefh = FALSE;
-	file_length = sys_file_length(VSTR(VFILE(file)->lf_Name));
+	file_length = sys_file_length(VSTR(VFILE(file)->name));
     }
     else
     {
@@ -477,17 +477,17 @@ read-file-from-to FILENAME OFFSET CHAR
 ::end:: */
 {
     FILE *fh;
-    VALUE str = NULL;
+    VALUE str = LISP_NULL;
     DECLARE1(file, STRINGP);
-    DECLARE2(offset, NUMBERP);
-    DECLARE3(ch, CHARP);
-    if((fh = fopen(VSTR(file), "r")) && !fseek(fh, VNUM(offset), 0 /*SEEK_SET*/))
+    DECLARE2(offset, INTP);
+    DECLARE3(ch, INTP);
+    if((fh = fopen(VSTR(file), "r")) && !fseek(fh, VINT(offset), 0 /*SEEK_SET*/))
     {
 	int buflen = 128, i = 0, c;
 	u_char *buf = str_alloc(buflen);
 	if(buf)
 	{
-	    while(((c = getc(fh)) != VCHAR(ch)) && (c != EOF))
+	    while(((c = getc(fh)) != VINT(ch)) && (c != EOF))
 	    {
 		if(i >= buflen)
 		{
@@ -509,7 +509,10 @@ error:
 	fclose(fh);
     }
     else
-	return(cmd_signal(sym_file_error, list_2(MKSTR("Can't open file"), file)));
+    {
+	static DEFSTRING(str, "Can't open file");
+	return(cmd_signal(sym_file_error, list_2(VAL(str), file)));
+    }
     return(str);
 }
 
@@ -521,9 +524,9 @@ write-clip UNIT STRING
 Writes STRING to unit UNIT of the standard clipboard.
 ::end:: */
 {
-    DECLARE1(unit, NUMBERP);
+    DECLARE1(unit, INTP);
     DECLARE2(str, STRINGP);
-    if(write_clip(VNUM(unit), VSTR(str), STRING_LEN(str)))
+    if(write_clip(VINT(unit), VSTR(str), STRING_LEN(str)))
 	return(sym_t);
     return(sym_nil);
 }
@@ -536,8 +539,8 @@ read-clip UNIT
 Returns the string which unit UNIT of the clipboard holds.
 ::end:: */
 {
-    DECLARE1(unit, NUMBERP);
-    return(read_clip(VNUM(unit)));
+    DECLARE1(unit, INTP);
+    return(read_clip(VINT(unit)));
 }
 
 bool
@@ -574,7 +577,7 @@ io_init(void)
 {
     ADD_SUBR(subr_read_buffer);
     ADD_SUBR(subr_write_buffer);
-    ADD_SUBR(subr_write_buffer_area);
+    ADD_SUBR_INT(subr_write_buffer_area);
     ADD_SUBR(subr_cd);
     ADD_SUBR(subr_write_file);
     ADD_SUBR(subr_read_file);

@@ -73,8 +73,9 @@ static char *hl_str = "skyblue3";
 static char *geom_str = "80x24";
 static char *prog_name;
 
+static DEFSTRING(def_font_str_data, DEFAULT_FONT);
 _PR VALUE def_font_str;
-VALUE def_font_str = MKSTR(DEFAULT_FONT);
+VALUE def_font_str = VAL(def_font_str_data);
 
 static int
 get_resources(void)

@@ -51,8 +51,12 @@ static bool print_prefix, printed_this_prefix;
 static u_long event_buf[EVENT_BUFSIZ]; /* one event = (code,mods) */
 static int event_index;
 
-static VALUE sym_keymap_path, sym_unbound_key_hook, sym_esc_means_meta,
-	     next_keymap_path, sym_keymap;
+static DEFSYM(keymap_path, "keymap-path");
+static DEFSYM(unbound_key_hook, "unbound-key-hook");
+static DEFSYM(esc_means_meta, "esc-means-meta");
+static DEFSYM(keymap, "keymap");
+
+static VALUE next_keymap_path;
 
 /* TRUE when the Meta qualifier should be added to the next event. */
 static bool pending_meta;
@@ -63,7 +67,7 @@ u_long ev_mod_meta;
 
 /* This doesn't belong here but I couldn't find anywhere else :-( */
 _PR VALUE sym_idle_hook;
-VALUE sym_idle_hook;
+DEFSYM(idle_hook, "idle-hook");
 
 /* Some doc strings
 ::doc:keymap_path::
@@ -90,6 +94,7 @@ periods only!
 ::end::
 */
 
+
 /* Search the keymap KM for a binding of CODE&MODS.  */
 static VALUE
 findkey(VALUE km, u_long code, u_long mods)
@@ -97,9 +102,9 @@ findkey(VALUE km, u_long code, u_long mods)
     switch(VTYPE(km))
     {
     case V_Vector:
-	if(VVECT(km)->vc_Size != KEYTAB_SIZE)
-	    return(NULL);
-	km = VVECT(km)->vc_Array[KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE];
+	if(VVECT(km)->size != KEYTAB_SIZE)
+	    return LISP_NULL;
+	km = VVECTI(km, KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE);
 	break;
     case V_Cons:
 	km = VCDR(km);
@@ -108,12 +113,12 @@ findkey(VALUE km, u_long code, u_long mods)
     while(CONSP(km))
     {
 	VALUE this = VCAR(km);
-	if((VNUM(VVECTI(this, KEY_MODS)) == mods)
-	   && (VNUM(VVECTI(this, KEY_CODE)) == code))
+	if((VINT(VVECTI(this, KEY_MODS)) == mods)
+	   && (VINT(VVECTI(this, KEY_CODE)) == code))
 	    return(this);
 	km = VCDR(km);
     }
-    return(NULL);
+    return LISP_NULL;
 }
 
 /* Search for a binding of CODE&MODS.  */
@@ -130,7 +135,7 @@ lookup_binding(u_long code, u_long mods)
     {
 	kp = cmd_symbol_value(sym_keymap_path, sym_t);
 	if(VOIDP(kp))
-	    return(NULL);
+	    return LISP_NULL;
     }
     while(CONSP(kp))
     {
@@ -149,7 +154,7 @@ lookup_binding(u_long code, u_long mods)
 	}
 	kp = VCDR(kp);
     }
-    return(NULL);
+    return LISP_NULL;
 }
 
 /* Process the event CODE+MODS, CURS-STATE is TRUE if the cursor is drawn.
@@ -164,7 +169,7 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
     if(event_index == EVENT_BUFSIZ)
 	event_index = 0;
     printed_this_prefix = FALSE;
-    if(!NILP(VSYM(sym_esc_means_meta)->sym_Value)
+    if(!NILP(VSYM(sym_esc_means_meta)->value)
        && !pending_meta
        && (code == esc_code) && (mods == esc_mods))
     {
@@ -221,7 +226,7 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 		    {
 			if(!read_only(vw->vw_Tx))
 			{
-			    VALUE old_undo_head = NULL;
+			    VALUE old_undo_head = LISP_NULL;
 			    cmd_eval_hook2(sym_pre_command_hook, sym_nil);
 			    if(last_command == sym_t
 			       && CONSP(vw->vw_Tx->tx_UndoList)
@@ -237,7 +242,7 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 			    if(pad_cursor(vw))
 				insert_string(vw->vw_Tx, buff,
 					      len, vw->vw_CursorPos);
-			    if(old_undo_head != NULL)
+			    if(old_undo_head != LISP_NULL)
 			    {
 				VCDR(old_undo_head) = vw->vw_Tx->tx_UndoList;
 				vw->vw_Tx->tx_UndoList = old_undo_head;
@@ -247,7 +252,7 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 			    result = sym_t;
 			}
 			else
-			    result = NULL;
+			    result = LISP_NULL;
 		    }
 		}
 		else
@@ -289,7 +294,7 @@ Return a new key-table suitable for storing bindings in. This is a 127
 element vector, each element is an empty list of bindings.
 ::end:: */
 {
-    return(cmd_make_vector(make_number(KEYTAB_SIZE), sym_nil));
+    return(cmd_make_vector(MAKE_INT(KEYTAB_SIZE), sym_nil));
 }
 
 _PR VALUE cmd_make_keylist(void);
@@ -312,9 +317,9 @@ bind-keys KEY-MAP { EVENT-DESCRIPTION COMMAND }...
 ::end:: */
 {
     bool rc = TRUE;
-    VALUE km, arg1, res = NULL;
+    VALUE km, arg1, res = LISP_NULL;
     if(!CONSP(args))
-	return(NULL);
+	return LISP_NULL;
     km = VCAR(args);
     args = VCDR(args);
     while(rc && CONSP(args) && CONSP(VCDR(args)))
@@ -330,8 +335,8 @@ bind-keys KEY-MAP { EVENT-DESCRIPTION COMMAND }...
 	}
 	else if(!NILP(cmd_eventp(arg1)))
 	{
-	    code = VNUM(VCAR(arg1));
-	    mods = VNUM(VCDR(arg1));
+	    code = VINT(VCAR(arg1));
+	    mods = VINT(VCDR(arg1));
 	}
 	else
 	{
@@ -342,8 +347,8 @@ bind-keys KEY-MAP { EVENT-DESCRIPTION COMMAND }...
 	key = make_vector(3);
 	if(key)
 	{
-	    VVECTI(key, KEY_CODE) = make_number(code);
-	    VVECTI(key, KEY_MODS) = make_number(mods);
+	    VVECTI(key, KEY_CODE) = MAKE_INT(code);
+	    VVECTI(key, KEY_MODS) = MAKE_INT(mods);
 	    VVECTI(key, KEY_COMMAND) = VCAR(args);
 	    if(VECTORP(km))
 	    {
@@ -372,11 +377,11 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
 ::end:: */
 {
     bool rc = TRUE;
-    VALUE km, arg1, res = NULL;
+    VALUE km, arg1, res = LISP_NULL;
     if(!CONSP(args))
-	return(NULL);
+	return LISP_NULL;
     km = VCAR(args);
-    if(!((VECTORP(km) && VVECT(km)->vc_Size == KEYTAB_SIZE)
+    if(!((VECTORP(km) && VVECT(km)->size == KEYTAB_SIZE)
        || CONSP(km)))
 	return(signal_arg_error(km, 1));
     args = VCDR(args);
@@ -392,8 +397,8 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
 	}
 	else if(!NILP(cmd_eventp(arg1)))
 	{
-	    code = VNUM(VCAR(arg1));
-	    mods = VNUM(VCDR(arg1));
+	    code = VINT(VCAR(arg1));
+	    mods = VINT(VCDR(arg1));
 	}
 	else
 	{
@@ -408,8 +413,8 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
 	while(CONSP(*keyp))
 	{
 	    /* This code is borrowed from cmd_delq */
-	    if((VNUM(VVECTI(VCAR(*keyp), KEY_MODS)) == mods)
-	       && (VNUM(VVECTI(VCAR(*keyp), KEY_CODE)) == code))
+	    if((VINT(VVECTI(VCAR(*keyp), KEY_MODS)) == mods)
+	       && (VINT(VVECTI(VCAR(*keyp), KEY_CODE)) == code))
 	    {
 		*keyp = VCDR(*keyp);
 		/* Keybindings are supposed to nest so only delete the
@@ -420,7 +425,7 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
 		keyp = &VCDR(*keyp);
 	    TEST_INT;
 	    if(INT_P)
-		return(NULL);
+		return LISP_NULL;
 	}
 	rc = TRUE;
 	args = VCDR(args);
@@ -443,7 +448,7 @@ usually used to chain together multi-key bindings.
     /* This isn't a true command */
     this_command = sym_nil;
     /* Pass the prefix-arg along */
-    var_prefix_arg(var_current_prefix_arg(NULL));
+    var_prefix_arg(var_current_prefix_arg(LISP_NULL));
     return(next_keymap_path);
 }
 
@@ -459,11 +464,14 @@ a Lisp function hadn't been called instead.
     u_char buff[256];
     int len;
     if(!current_os_event)
-	return(cmd_signal(sym_error, LIST_1(MKSTR("Not in event handler"))));
+    {
+	static DEFSTRING(str, "Not in event handler");
+	return(cmd_signal(sym_error, LIST_1(VAL(str))));
+    }
     len = cook_key(current_os_event, buff, 256 - 1);
     if(len > 0)
 	return(string_dupn(buff, len));
-    return(null_string);
+    return(VAL(null_string));
 }
 
 _PR VALUE cmd_current_event(void);
@@ -475,8 +483,8 @@ Return the event which caused the current command to be invoked.
 ::end:: */
 {
     if(current_event[1])
-	return(cmd_cons(make_number(current_event[0]),
-			make_number(current_event[1])));
+	return(cmd_cons(MAKE_INT(current_event[0]),
+			MAKE_INT(current_event[1])));
     else
 	return(sym_nil);
 }
@@ -490,8 +498,8 @@ Return the previous event which occurred.
 ::end:: */
 {
     if(last_event[1])
-	return(cmd_cons(make_number(last_event[0]),
-			make_number(last_event[1])));
+	return(cmd_cons(MAKE_INT(last_event[0]),
+			MAKE_INT(last_event[1])));
     else
 	return(sym_nil);
 }
@@ -507,7 +515,7 @@ Returns a string naming the event EVENT.
     u_char buf[256];
     if(NILP(cmd_eventp(ev)))
 	return(signal_arg_error(ev, 1));
-    if(lookup_event_name(buf, VNUM(VCAR(ev)), VNUM(VCDR(ev))))
+    if(lookup_event_name(buf, VINT(VCAR(ev)), VINT(VCDR(ev))))
 	return(string_dup(buf));
     return(sym_nil);
 }
@@ -523,7 +531,7 @@ Return the event whose name is EVENT-NAME.
     u_long code, mods;
     DECLARE1(name, STRINGP);
     if(lookup_event(&code, &mods, VSTR(name)))
-	return(cmd_cons(make_number(code), make_number(mods)));
+	return(cmd_cons(MAKE_INT(code), MAKE_INT(mods)));
     else
 	return(sym_nil);
 }
@@ -542,7 +550,7 @@ after being used.
     VALUE res;
     if(NILP(cmd_eventp(ev)))
 	return(signal_arg_error(ev, 1));
-    res = lookup_binding(VNUM(VCAR(ev)), VNUM(VCDR(ev)));
+    res = lookup_binding(VINT(VCAR(ev)), VINT(VCDR(ev)));
     if(NILP(reset))
     {
 	/* We don't want next-keymap-path to be reset */
@@ -559,7 +567,7 @@ keymapp ARG
 Returns t if ARG can be used as a keymap.
 ::end:: */
 {
-    if((VECTORP(arg) && VVECT(arg)->vc_Size == KEYTAB_SIZE)
+    if((VECTORP(arg) && VVECT(arg)->size == KEYTAB_SIZE)
        || (CONSP(arg) && VCAR(arg) == sym_keymap))
 	return(sym_t);
     return(sym_nil);
@@ -573,7 +581,7 @@ eventp ARG
 Returns t if the ARG is an input event.
 ::end:: */
 {
-    if(CONSP(arg) && NUMBERP(VCAR(arg)) && NUMBERP(VCDR(arg)))
+    if(CONSP(arg) && INTP(VCAR(arg)) && INTP(VCDR(arg)))
 	return(sym_t);
     else
 	return(sym_nil);
@@ -621,18 +629,15 @@ keys_init(void)
 {
     ev_mod_meta = sys_find_meta();
 
-    INTERN(sym_keymap_path, "keymap-path");
-    DOC_VAR(sym_keymap_path, DOC_keymap_path);
-    INTERN(sym_unbound_key_hook, "unbound-key-hook");
-    DOC_VAR(sym_unbound_key_hook, DOC_unbound_key_hook);
-    INTERN(sym_esc_means_meta, "esc-means-meta");
-    VSYM(sym_esc_means_meta)->sym_Value = sym_t;
-    DOC_VAR(sym_esc_means_meta, DOC_esc_means_meta);
-    INTERN(sym_idle_hook, "idle-hook");
-    DOC_VAR(sym_idle_hook, DOC_idle_hook);
-    INTERN(sym_keymap, "keymap");
+    INTERN(keymap_path); DOC(keymap_path);
+    INTERN(unbound_key_hook); DOC(unbound_key_hook);
+    INTERN(esc_means_meta); DOC(esc_means_meta);
+    VSYM(sym_esc_means_meta)->value = sym_t;
+    INTERN(idle_hook); DOC(idle_hook);
+    INTERN(keymap);
     next_keymap_path = sym_nil;
     mark_static(&next_keymap_path);
+
     ADD_SUBR(subr_make_keytab);
     ADD_SUBR(subr_make_keylist);
     ADD_SUBR(subr_bind_keys);

@@ -22,6 +22,7 @@
 #include "jade_protos.h"
 
 #include <stdlib.h>
+#include <assert.h>
 
 _PR void *mymalloc(int length);
 _PR void *mycalloc(int length);
@@ -35,7 +36,11 @@ mymalloc(int length)
 {
     void *mem = malloc(length);
     if(mem)
+    {
+	/* Check that the alignment promised actually occurs */
+	assert((((PTR_SIZED_INT)mem) & (MALLOC_ALIGNMENT - 1)) == 0);
 	return(mem);
+    }
     sm_flush(&main_strmem);
     return(malloc(length));
 }

@@ -61,7 +61,7 @@ void
 refresh_init(void)
 {
     ADD_SUBR(subr_cursor);
-    ADD_SUBR(subr_refresh_all);
+    ADD_SUBR_INT(subr_refresh_all);
 }
 
 /*
@@ -358,7 +358,7 @@ refresh_view(VW *vw)
 	    {
 		vert_scroll(vw);
 		if(vw->vw_Flags & VWFF_REFRESH_BLOCK)
-		    refresh_block(vw, NULL, NULL);
+		    refresh_block(vw, LISP_NULL, LISP_NULL);
 	    }
 	    else
 	    {
@@ -371,7 +371,7 @@ refresh_view(VW *vw)
 		    /* nope. just do any easy scrolling. */
 		    vert_scroll(vw);
 		    if(vw->vw_Flags & VWFF_REFRESH_BLOCK)
-			refresh_block(vw, NULL, NULL);
+			refresh_block(vw, LISP_NULL, LISP_NULL);
 		}
 		else if((vscrl = vert_scroll(vw)) != 2)
 		{

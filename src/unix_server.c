@@ -35,7 +35,7 @@ _PR void server_kill(void);
 /* List of (FILE-NAME . SOCK-FD) */
 static VALUE client_list;
 
-static VALUE sym_server_open_file;
+static DEFSYM(server_open_file, "server-open-file");
 
 /* fd of the socket which clients connect to, or zero. */
 static int socket_fd = -1;
@@ -65,13 +65,13 @@ server_accept_connection(int unused_fd)
 	VSTR(filename)[filenamelen] = 0;
 	if(read(confd, &tmp, sizeof(u_long)) != sizeof(u_long))
 	{
+	    static DEFSTRING(err, "server_make_connection:read");
 	readerror:
-	    cmd_signal(sym_error,
-		       LIST_1(MKSTR("server_make_connection:read")));
+	    cmd_signal(sym_error, LIST_1(VAL(err)));
 	    return;
 	}
-	linenum = make_number(tmp - 1);
-	client_list = cmd_cons(cmd_cons(filename, make_number(confd)),
+	linenum = MAKE_INT(tmp - 1);
+	client_list = cmd_cons(cmd_cons(filename, MAKE_INT(confd)),
 			       client_list);
 	/* lose this on exec() */
 	fcntl(confd, F_SETFD, 1);
@@ -103,10 +103,11 @@ Creates the socket (or whatever) so that the editor's client program can
 send us messages.
 ::end:: */
 {
+    static DEFSTRING(unexp_name, "~/" JADE_SOCK_NAME);
     VALUE name;
     if(socket_fd >= 0)
 	return(sym_t);
-    name = cmd_expand_file_name(MKSTR("~/" JADE_SOCK_NAME), sym_nil);
+    name = cmd_expand_file_name(VAL(unexp_name), sym_nil);
     if(name && STRINGP(name))
     {
 	VALUE tmp = cmd_file_exists_p(name);
@@ -137,20 +138,20 @@ send us messages.
 		    socket_name = name;
 		    return(sym_t);
 		}
-		else
-		    signal_file_error(MKSTR("bind()"));
 	    }
-	    else
-		signal_file_error(MKSTR("listen()"));
+		signal_file_error(sym_nil);
 	}
 	else
-	    cmd_signal(sym_error, LIST_1(MKSTR("Can't make socket name")));
+	{
+	    static DEFSTRING(no_name, "Can't make socket name");
+	    cmd_signal(sym_error, LIST_1(VAL(no_name)));
+	}
 	close(socket_fd);
 	socket_fd = -1;
     }
     else
-	signal_file_error(MKSTR("socket()"));
-    return(NULL);
+	signal_file_error(sym_nil);
+    return LISP_NULL;
 }
 
 _PR VALUE cmd_server_close(void);
@@ -170,7 +171,7 @@ Stops listening for client messages.
 	close(socket_fd);
 	socket_fd = -1;
 	unlink(VSTR(socket_name));
-	socket_name = NULL;
+	socket_name = LISP_NULL;
     }
     return(sym_t);
 }
@@ -199,8 +200,8 @@ which denotes no errors. Returns nil if the file doesn't have a client.
 	if(STRINGP(VCAR(car)) && same_files(VSTR(file), VSTR(VCAR(car))))
 	{
 	    /* Send the result to our client. */
-	    int con_fd = VNUM(VCDR(car));
-	    u_long result = NUMBERP(rc) ? VNUM(rc) : 0;
+	    int con_fd = VINT(VCDR(car));
+	    u_long result = INTP(rc) ? VINT(rc) : 0;
 	    if(write(con_fd, &result, sizeof(result)) != sizeof(result))
 		res = signal_file_error(file);
 	    else
@@ -223,10 +224,10 @@ server_init(void)
     client_list = sym_nil;
     mark_static(&client_list);
     mark_static(&socket_name);
-    INTERN(sym_server_open_file, "server-open-file");
+    INTERN(server_open_file);
     ADD_SUBR(subr_server_open_p);
-    ADD_SUBR(subr_server_open);
-    ADD_SUBR(subr_server_close);
+    ADD_SUBR_INT(subr_server_open);
+    ADD_SUBR_INT(subr_server_close);
     ADD_SUBR(subr_server_reply);
 }
 
@@ -240,7 +241,7 @@ server_kill(void)
 	/* Any client-opened files still around are replied to with
 	   a result of 5 (fail).  */
 	static u_long failrc = 5;
-	int fd = VNUM(VCDR(VCAR(tmp)));
+	int fd = VINT(VCDR(VCAR(tmp)));
 	write(fd, &failrc, sizeof(u_long));
 	close(fd);
 	tmp = VCDR(tmp);

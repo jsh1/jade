@@ -24,16 +24,16 @@
 /* This is in its own file so I can remove some circular dependancies from
    the editor's header files.  */
 
-typedef struct {
-    /* Tag defining the type of this object. Bit 7 is reserved for gc,
-       at all other times it will be zero.  */
-    u_char	type;
-    /* Data follows, in real objects. */
-} LispObject;
+/* A VALUE is a pointer to an object, not a real pointer; it's
+   lowest three bits define its type. */
 
-/* VALUE used to be defined as a (void *) but it posed some problems with
-   a certain well-known Amiga compiler.  */
+/* In case one of the configuration header files needs to re-define
+   this. It should be an implicitly signed integer, the same size as a
+   standard `void *' pointer on the target machine. */
+#ifndef PTR_SIZED_INT
+# define PTR_SIZED_INT long int
+#endif
 
-typedef LispObject *VALUE;
+typedef unsigned PTR_SIZED_INT VALUE;
 
 #endif /* _VALUE_H */

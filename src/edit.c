@@ -276,7 +276,7 @@ insert_bytes(TX *tx, const u_char *text, long textLen, VALUE pos)
 	return make_pos(VCOL(pos) + textLen, VROW(pos));
     }
     else
-	return NULL;
+	return LISP_NULL;
 }
 
 /* Inserts a string, this routine acts on any '\n' characters that it
@@ -378,7 +378,7 @@ insert_string(TX *tx, const u_char *text, long textLen, VALUE pos)
 	}
 	else
 	abort:
-	    return NULL;
+	    return LISP_NULL;
     }
 
     {
@@ -401,7 +401,7 @@ delete_chars(TX *tx, VALUE pos, long size)
 	if(size >= line->ln_Strlen - VCOL(pos))
 	    size = line->ln_Strlen - VCOL(pos) - 1;
 	if(size <= 0)
-	    return NULL;
+	    return LISP_NULL;
 	new_length = line->ln_Strlen - size;
 	if(LINE_BUF_SIZE(new_length) == LINE_BUF_SIZE(line->ln_Strlen))
 	{
@@ -417,7 +417,7 @@ delete_chars(TX *tx, VALUE pos, long size)
 	    if(new_line == NULL)
 	    {
 		mem_error();
-		return NULL;
+		return LISP_NULL;
 	    }
             memcpy(new_line, line->ln_Line, VCOL(pos));
             memcpy(new_line + VCOL(pos), line->ln_Line + VCOL(pos) + size,
@@ -429,7 +429,7 @@ delete_chars(TX *tx, VALUE pos, long size)
 	adjust_marks_sub_x(tx, size, VCOL(pos), VROW(pos));
 	return pos;
     }
-    return NULL;
+    return LISP_NULL;
 }
 
 /* Deletes from START to END; returns END if okay. */
@@ -500,7 +500,7 @@ delete_section(TX *tx, VALUE start, VALUE end)
 		    if(new_line == NULL)
 		    {
 			mem_error();
-			return NULL;
+			return LISP_NULL;
 		    }
 		    memcpy(new_line, line1->ln_Line, line1->ln_Strlen - 1);
 		    memcpy(new_line + (line1->ln_Strlen - 1),

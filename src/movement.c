@@ -86,8 +86,8 @@ go from the bottom of the view.
 	xarg = 0;
     else if(SYMBOLP(arg))
 	xarg = -1;
-    else if(NUMBERP(arg))
-	xarg = VNUM(arg);
+    else if(INTP(arg))
+	xarg = VINT(arg);
     else
 	xarg = 1;
 
@@ -162,7 +162,7 @@ next-screen [NUMBER]
 Move NUMBER (default: 1) screens forwards in the current window.
 ::end:: */
 {
-    if(move_down_screens(NUMBERP(number) ? VNUM(number) : 1))
+    if(move_down_screens(INTP(number) ? VINT(number) : 1))
 	return(sym_t);
     return(sym_nil);
 }
@@ -175,7 +175,7 @@ prev-screen [NUMBER]
 Move NUMBER (default: 1) screens backwards in the current window.
 ::end:: */
 {
-    if(move_up_screens(NUMBERP(number) ? VNUM(number) : 1))
+    if(move_up_screens(INTP(number) ? VINT(number) : 1))
 	return(sym_t);
     return(sym_nil);
 }
@@ -276,7 +276,7 @@ nil is returned.
     long row;
     if(!POSP(pos))
 	pos = curr_vw->vw_CursorPos;
-    row = VROW(pos) + (NUMBERP(lines) ? VNUM(lines) : 1);
+    row = VROW(pos) + (INTP(lines) ? VINT(lines) : 1);
     if(row >= 0)
     {
 	pos = make_pos(VCOL(pos), row);
@@ -309,9 +309,9 @@ beginning or the end of the buffer is passed, nil is returned.
     else
     {
 	if(!check_pos(VTX(tx), pos))
-	    return NULL;
+	    return LISP_NULL;
     }
-    dist = NUMBERP(count) ? VNUM(count) : 1;
+    dist = INTP(count) ? VINT(count) : 1;
     if(dist == 0)
 	return pos;
     pos = cmd_copy_pos(pos);
@@ -336,9 +336,9 @@ the character position POS (or the cursor). COUNT is assumed 1 when
 undefined; negative values move towards the left hand side of the screen.
 ::end:: */
 {
-    int tabs = NUMBERP(num) ? VNUM(num) : 1;
+    int tabs = INTP(num) ? VINT(num) : 1;
     VW *vw = curr_vw;
-    int tabsize = NUMBERP(size) ? VNUM(size) : vw->vw_Tx->tx_TabSize;
+    int tabsize = INTP(size) ? VINT(size) : vw->vw_Tx->tx_TabSize;
     long col;
     if(!POSP(pos))
     {
@@ -382,6 +382,9 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 	'<', '>'
     };
 
+    static DEFSTRING(no_brac, "No matching bracket");
+    static DEFSTRING(no_op_brac, "No opening bracket");
+
 /* Test for an escape character preceding COL in the string LINE. Beware
    that COL is referenced more than once, so no side effects please!   */
 #define TST_ESC(line, col) ((col) > 0 && (line)[(col)-1] == esc)
@@ -413,8 +416,7 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 		    {
 			if(--y < tx->tx_LogicalStart)
 			{
-			    cmd_signal(sym_error,
-				       LIST_1(MKSTR("No matching bracket")));
+			    cmd_signal(sym_error, LIST_1(VAL(no_brac)));
 			    return(FALSE);
 			}
 			line--;
@@ -444,8 +446,7 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 		    {
 			if(++y >= tx->tx_LogicalEnd)
 			{
-			    cmd_signal(sym_error,
-				       LIST_1(MKSTR("No matching bracket")));
+			    cmd_signal(sym_error, LIST_1(VAL(no_brac)));
 			    return(FALSE);
 			}
 			line++;
@@ -469,7 +470,7 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 	    return TRUE;
 	}
     }
-    cmd_signal(sym_error, LIST_1(MKSTR("No opening bracket")));
+    cmd_signal(sym_error, LIST_1(VAL(no_op_brac)));
     return FALSE;
 }
 
@@ -483,7 +484,7 @@ each other are,  { }, ( ), [ ], ` ', < >. POS is altered.
 Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
 ::end:: */
 {
-    u_char esc_char = NUMBERP(esc) ? VNUM(esc) : '\\';
+    u_char esc_char = INTP(esc) ? VINT(esc) : '\\';
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     if(!POSP(pos))
@@ -491,7 +492,7 @@ Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
     else
     {
 	if(!check_pos(VTX(tx), pos))
-	    return NULL;
+	    return LISP_NULL;
     }
     pos = cmd_copy_pos(pos);
     if(find_matching_bracket(VPOS(pos), VTX(tx), esc_char))
@@ -508,7 +509,7 @@ Return the glyph position of the mouse, relative to the current window.
 ::end:: */
 {
     VALUE pos = sys_get_mouse_pos(curr_win);
-    if(pos != NULL)
+    if(pos != LISP_NULL)
 	return pos;
     else
 	return sym_nil;
@@ -551,16 +552,16 @@ movement_init(void)
 {
     ADD_SUBR(subr_goto);
     ADD_SUBR(subr_goto_glyph);
-    ADD_SUBR(subr_center_display);
-    ADD_SUBR(subr_next_screen);
-    ADD_SUBR(subr_prev_screen);
+    ADD_SUBR_INT(subr_center_display);
+    ADD_SUBR_INT(subr_next_screen);
+    ADD_SUBR_INT(subr_prev_screen);
     ADD_SUBR(subr_end_of_buffer);
     ADD_SUBR(subr_start_of_buffer);
-    ADD_SUBR(subr_end_of_line);
-    ADD_SUBR(subr_start_of_line);
-    ADD_SUBR(subr_forward_line);
-    ADD_SUBR(subr_forward_char);
-    ADD_SUBR(subr_forward_tab);
+    ADD_SUBR_INT(subr_end_of_line);
+    ADD_SUBR_INT(subr_start_of_line);
+    ADD_SUBR_INT(subr_forward_line);
+    ADD_SUBR_INT(subr_forward_char);
+    ADD_SUBR_INT(subr_forward_tab);
     ADD_SUBR(subr_find_matching_bracket);
     ADD_SUBR(subr_mouse_pos);
     ADD_SUBR(subr_raw_mouse_pos);

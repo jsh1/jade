@@ -30,13 +30,13 @@
 
 _PR void edit_init(void);
 
-static VALUE sym_upcase_table, sym_downcase_table, sym_flatten_table;
+static DEFSYM(upcase_table, "upcase-table");
+static DEFSYM(downcase_table, "downcase-table");
+static DEFSYM(flatten_table, "flatten-table");
+static DEFSYM(block_status_hook, "block-status-hook");
 
 _PR VALUE sym_inhibit_read_only;
-VALUE sym_inhibit_read_only;
-
-_PR VALUE sym_block_status_hook;
-VALUE sym_block_status_hook;
+DEFSYM(inhibit_read_only, "inhibit-read-only");
 
 /* Some doc strings
 ::doc:upcase_table::
@@ -61,6 +61,7 @@ The hook called when the status of the block changes. It will be called
 with a single argument, t if the block is now marked, nil if it isn't.
 ::end:: */
 
+
 _PR VALUE cmd_insert(VALUE string, VALUE pos, VALUE buff);
 DEFUN_INT("insert", cmd_insert, subr_insert, (VALUE string, VALUE pos, VALUE buff), V_Subr3, DOC_insert, "sString to insert:") /*
 ::doc:insert::
@@ -78,7 +79,7 @@ character after the end of the inserted text.
     if(!read_only(VTX(buff)) && pad_pos(VTX(buff), pos))
     {
 	pos = insert_string(VTX(buff), VSTR(string), STRING_LEN(string), pos);
-	if(pos != NULL)
+	if(pos != LISP_NULL)
 	    return pos;
     }
     return(sym_nil);
@@ -216,7 +217,7 @@ it is used as the new position of the start of the block.
     {
 	switch(vw->vw_BlockStatus)
 	{
-	    GCVAL gcv_res;
+	    GC_root gc_res;
 	    case 0:
 		set_block_refresh(vw);
 		vw->vw_BlockS = pos;
@@ -228,7 +229,7 @@ it is used as the new position of the start of the block.
 		vw->vw_BlockStatus = 0;
 		order_block(vw);
 		set_block_refresh(vw);
-		PUSHGC(gcv_res, res);
+		PUSHGC(gc_res, res);
 		cmd_eval_hook2(sym_block_status_hook,
 			       vw->vw_BlockStatus == 0 ? sym_t : sym_nil);
 		POPGC;
@@ -263,7 +264,7 @@ it is used as the new position of the end of the block.
     {
 	switch(vw->vw_BlockStatus)
 	{
-	    GCVAL gcv_res;
+	    GC_root gc_res;
 	    case 0:
 		set_block_refresh(vw);
 		vw->vw_BlockE = pos;
@@ -275,7 +276,7 @@ it is used as the new position of the end of the block.
 		vw->vw_BlockStatus = 0;
 		order_block(vw);
 		set_block_refresh(vw);
-		PUSHGC(gcv_res, res);
+		PUSHGC(gc_res, res);
 		cmd_eval_hook2(sym_block_status_hook,
 			       vw->vw_BlockStatus == 0 ? sym_t : sym_nil);
 		POPGC;
@@ -370,7 +371,7 @@ unchanged.
 	}
 	return(sym_t);
     }
-    return(NULL);
+    return LISP_NULL;
 }
 
 _PR VALUE cmd_translate_string(VALUE string, VALUE table);
@@ -427,10 +428,10 @@ character exists at that position, nil is returned.
 	if(VROW(pos) == VTX(tx)->tx_LogicalEnd - 1)
 	    return(sym_nil);
 	else
-	    return(make_number('\n'));
+	    return(MAKE_INT('\n'));
     }
     else
-	return(make_number(line->ln_Line[VCOL(pos)]));
+	return(MAKE_INT(line->ln_Line[VCOL(pos)]));
 }
 
 _PR VALUE cmd_set_char(VALUE ch, VALUE pos, VALUE tx);
@@ -443,7 +444,7 @@ Sets the character at position POS in BUFFER to CHARACTER.
 {
     /* FIXME: make this handle insertion of newlines */
     VALUE end;
-    DECLARE1(ch, CHARP);
+    DECLARE1(ch, INTP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     if(!POSP(pos))
@@ -455,11 +456,11 @@ Sets the character at position POS in BUFFER to CHARACTER.
     {
 	LINE *line = VTX(tx)->tx_Lines + VROW(pos);
 	undo_record_modification(VTX(tx), pos, end);
-	line->ln_Line[VCOL(pos)] = VCHAR(ch);
+	line->ln_Line[VCOL(pos)] = VINT(ch);
 	flag_modification(VTX(tx), pos, end);
 	return(ch);
     }
-    return(NULL);
+    return LISP_NULL;
 }
 
 _PR VALUE cmd_alpha_char_p(VALUE ch);
@@ -470,7 +471,7 @@ alpha-char-p CHAR
 Returns t if CHAR is an alphabetic character.
 ::end:: */
 {
-    if(CHARP(ch) && isalpha(VCHAR(ch)))
+    if(INTP(ch) && isalpha(VINT(ch)))
 	return(sym_t);
     return(sym_nil);
 }
@@ -483,7 +484,7 @@ upper-case-p CHAR
 Returns t if CHAR is upper case.
 ::end:: */
 {
-    if(CHARP(ch) && isupper(VCHAR(ch)))
+    if(INTP(ch) && isupper(VINT(ch)))
 	return(sym_t);
     return(sym_nil);
 }
@@ -496,7 +497,7 @@ lower-case-p CHAR
 Returns t if CHAR is lower case.
 ::end:: */
 {
-    if(CHARP(ch) && islower(VCHAR(ch)))
+    if(INTP(ch) && islower(VINT(ch)))
 	return(sym_t);
     return(sym_nil);
 }
@@ -509,7 +510,7 @@ digit-char-p CHAR
 Returns t if CHAR is a digit.
 ::end:: */
 {
-    if(CHARP(ch) && isdigit(VCHAR(ch)))
+    if(INTP(ch) && isdigit(VINT(ch)))
 	return(sym_t);
     return(sym_nil);
 }
@@ -522,7 +523,7 @@ alphanumericp CHAR
 Returns t if CHAR is alpha-numeric.
 ::end:: */
 {
-    if(CHARP(ch) && isalnum(VCHAR(ch)))
+    if(INTP(ch) && isalnum(VINT(ch)))
 	return(sym_t);
     return(sym_nil);
 }
@@ -535,7 +536,7 @@ space-char-p CHAR
 Returns t if CHAR is whitespace.
 ::end:: */
 {
-    if(CHARP(ch) && isspace(VCHAR(ch)))
+    if(INTP(ch) && isspace(VINT(ch)))
 	return(sym_t);
     return(sym_nil);
 }
@@ -548,8 +549,8 @@ char-upcase CHAR
 Returns the upper-case equivalent of CHAR.
 ::end:: */
 {
-    DECLARE1(ch, CHARP);
-    return(make_number(toupper(VCHAR(ch))));
+    DECLARE1(ch, INTP);
+    return(MAKE_INT(toupper(VINT(ch))));
 }
 
 _PR VALUE cmd_char_downcase(VALUE ch);
@@ -560,8 +561,8 @@ char-downcase CHAR
 Returns the lower-case equivalent of CHAR.
 ::end:: */
 {
-    DECLARE1(ch, CHARP);
-    return(make_number(toupper(VCHAR(ch))));
+    DECLARE1(ch, INTP);
+    return(MAKE_INT(toupper(VINT(ch))));
 }
 
 _PR VALUE cmd_pos_line(VALUE pos);
@@ -573,7 +574,7 @@ Returns the line number which POS points to.
 ::end:: */
 {
     DECLARE1(pos, POSP);
-    return(make_number(VROW(pos)));
+    return(MAKE_INT(VROW(pos)));
 }
 
 _PR VALUE cmd_pos_col(VALUE pos);
@@ -585,7 +586,7 @@ Return the column number which POS points to.
 ::end:: */
 {
     DECLARE1(pos, POSP);
-    return(make_number(VCOL(pos)));
+    return(MAKE_INT(VCOL(pos)));
 }
 
 _PR VALUE cmd_posp(VALUE arg);
@@ -776,14 +777,14 @@ COLUMN counts from zero.
 {
     VW *vw = curr_vw;
     TX *tx = vw->vw_Tx;
-    DECLARE1(col, NUMBERP);
+    DECLARE1(col, INTP);
     if(!read_only(tx) && pad_cursor(vw))
     {
 	int spaces, tabs;
 	long curr_col, dest_col;
         calc_cursor_offset(vw);
         curr_col = vw->vw_LastCursorOffset;
-        dest_col = VNUM(col);
+        dest_col = VINT(col);
         if(dest_col <= curr_col)
             return(sym_t);
 	if(NILP(spaces_p))
@@ -814,7 +815,7 @@ COLUMN counts from zero.
 	}
 	return(sym_nil);
     }
-    return(NULL);
+    return LISP_NULL;
 }
 	    
 _PR VALUE cmd_clear_buffer(VALUE tx);
@@ -862,10 +863,10 @@ is from the beginning of the buffer.
 	for(offset = line_num = 0; line_num < VROW(pos); line++, line_num++)
 	    offset += line->ln_Strlen; /* includes the theoretical '\n' */
 	offset += VCOL(pos);
-	return make_number(offset);
+	return MAKE_INT(offset);
     }
     else
-	return NULL;
+	return LISP_NULL;
 }
 
 _PR VALUE cmd_offset_to_pos(VALUE voffset, VALUE tx);
@@ -879,8 +880,8 @@ Returns the position which is OFFSET characters from the start of the buffer.
     long offset;
     long col, row;
     LINE *line;
-    DECLARE1(voffset, NUMBERP);
-    offset = VNUM(voffset);
+    DECLARE1(voffset, INTP);
+    offset = VINT(voffset);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     row = 0;
@@ -899,19 +900,19 @@ void
 edit_init(void)
 {
     int i;
-    ADD_SUBR(subr_insert);
-    ADD_SUBR(subr_delete_area);
+    ADD_SUBR_INT(subr_insert);
+    ADD_SUBR_INT(subr_delete_area);
     ADD_SUBR(subr_copy_area);
     ADD_SUBR(subr_cut_area);
-    ADD_SUBR(subr_block_toggle);
+    ADD_SUBR_INT(subr_block_toggle);
     ADD_SUBR(subr_block_start);
     ADD_SUBR(subr_block_end);
-    ADD_SUBR(subr_block_kill);
+    ADD_SUBR_INT(subr_block_kill);
     ADD_SUBR(subr_blockp);
     ADD_SUBR(subr_translate_area);
     ADD_SUBR(subr_translate_string);
     ADD_SUBR(subr_get_char);
-    ADD_SUBR(subr_set_char);
+    ADD_SUBR_INT(subr_set_char);
     ADD_SUBR(subr_alpha_char_p);
     ADD_SUBR(subr_upper_case_p);
     ADD_SUBR(subr_lower_case_p);
@@ -927,36 +928,30 @@ edit_init(void)
     ADD_SUBR(subr_empty_line_p);
     ADD_SUBR(subr_indent_pos);
     ADD_SUBR(subr_set_indent_pos);
-    ADD_SUBR(subr_indent_to);
-    ADD_SUBR(subr_clear_buffer);
+    ADD_SUBR_INT(subr_indent_to);
+    ADD_SUBR_INT(subr_clear_buffer);
     ADD_SUBR(subr_offset_to_pos);
     ADD_SUBR(subr_pos_to_offset);
 
-    INTERN(sym_upcase_table, "upcase-table");
-    DOC_VAR(sym_upcase_table, DOC_upcase_table);
-    VSYM(sym_upcase_table)->sym_Value = make_string(257);
-    INTERN(sym_downcase_table, "downcase-table");
-    DOC_VAR(sym_downcase_table, DOC_downcase_table);
-    VSYM(sym_downcase_table)->sym_Value = make_string(257);
+    INTERN(upcase_table); DOC(upcase_table);
+    VSYM(sym_upcase_table)->value = make_string(257);
+    INTERN(downcase_table); DOC(downcase_table);
+    VSYM(sym_downcase_table)->value = make_string(257);
     for(i = 0; i < 256; i++)
     {
-	VSTR(VSYM(sym_upcase_table)->sym_Value)[i] = toupper(i);
-	VSTR(VSYM(sym_downcase_table)->sym_Value)[i] = tolower(i);
+	VSTR(VSYM(sym_upcase_table)->value)[i] = toupper(i);
+	VSTR(VSYM(sym_downcase_table)->value)[i] = tolower(i);
     }
-    VSTR(VSYM(sym_upcase_table)->sym_Value)[256] = 0;
-    VSTR(VSYM(sym_downcase_table)->sym_Value)[256] = 0;
+    VSTR(VSYM(sym_upcase_table)->value)[256] = 0;
+    VSTR(VSYM(sym_downcase_table)->value)[256] = 0;
 
-    INTERN(sym_flatten_table, "flatten-table");
-    DOC_VAR(sym_flatten_table, DOC_flatten_table);
-    VSYM(sym_flatten_table)->sym_Value = make_string(12);
+    INTERN(flatten_table); DOC(flatten_table);
+    VSYM(sym_flatten_table)->value = make_string(12);
     for(i = 0; i < 10; i++)
-	VSTR(VSYM(sym_flatten_table)->sym_Value)[i] = i;
-    VSTR(VSYM(sym_flatten_table)->sym_Value)[10] = ' ';
-    VSTR(VSYM(sym_flatten_table)->sym_Value)[11] = 0;
+	VSTR(VSYM(sym_flatten_table)->value)[i] = i;
+    VSTR(VSYM(sym_flatten_table)->value)[10] = ' ';
+    VSTR(VSYM(sym_flatten_table)->value)[11] = 0;
     
-    INTERN(sym_inhibit_read_only, "inhibit-read-only");
-    DOC_VAR(sym_inhibit_read_only, DOC_inhibit_read_only);
-
-    INTERN(sym_block_status_hook, "block-status-hook");
-    DOC_VAR(sym_block_status_hook, DOC_block_status_hook);
+    INTERN(inhibit_read_only); DOC(inhibit_read_only);
+    INTERN(block_status_hook); DOC(block_status_hook);
 }
