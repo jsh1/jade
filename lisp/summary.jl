@@ -40,7 +40,8 @@
     "u" 'summary-unmark-item
     "U" 'summary-unmark-all
     "m" 'summary-mark-item
-    "LMB-Click2" 'summary-select-item)
+    "Button1-Click2" 'summary-select-item
+    "Button2-Click1" 'summary-select-mouse-item)
   "Base keymap for modes deriving from summary.")
 
 
@@ -288,6 +289,8 @@ highlight."
 	((items summary-items))
       (while items
 	(summary-dispatch 'print (car items))
+	(make-extent (start-of-line) (cursor-pos)
+		     (list 'mouse-face active-face))
 	(setq items (cdr items))
 	(when items
 	  (insert "\n")))
@@ -344,6 +347,12 @@ t when this item actually exists."
   "Select the current menu item."
   (interactive)
   (summary-dispatch 'select (summary-current-item)))
+
+(defun summary-select-mouse-item ()
+  "Select the menu item under the mouse cursor."
+  (interactive)
+  (goto-mouse)
+  (summary-select-item))
 
 (defun summary-execute (&optional types)
   "Perform all pending operations on the current summary menu. If TYPES is
