@@ -24,9 +24,9 @@
 #include <sys/stat.h>
 
 void
-x11_beep(void)
+sys_beep(WIN *w)
 {
-    XBell(WINDOW_XDPY(curr_win)->display, 0);
+    XBell(WINDOW_XDPY(w)->display, 0);
 }
 
 
@@ -390,6 +390,38 @@ by Jade, relinquish ownership.
     return Fsignal(Qerror, rep_list_2(rep_VAL(&no_atom), sel));
 }
 
+
+
+DEFUN("x11-cursor-shape", var_x11_cursor_shape, Sx11_cursor_shape, (repv arg), rep_Var) /*
+::doc:Vx11-cursor-shape::
+An integer identifying the X cursor to use for editor windows. See
+<X11/cursorfont.h> for the list of available cursors.
+::end:: */
+{
+    if (arg != rep_NULL && rep_INTP(arg) && rep_INT(arg) != x11_cursor_shape)
+    {
+	struct x11_display *dpy = x11_display_list;
+	WIN *win = win_chain;
+	x11_cursor_shape = rep_INT(arg);
+	while (dpy != 0)
+	{
+	    dpy->text_cursor = XCreateFontCursor (dpy->display,
+						  x11_cursor_shape);
+	    dpy = dpy->next;
+	}
+	sys_recolor_cursor (mouse_cursor_face);
+	while (win != 0)
+	{
+	    XDefineCursor (WINDOW_XDPY(win)->display, win->w_Window,
+			   WINDOW_XDPY(win)->text_cursor);
+	    win = win->w_Next;
+	}
+	return arg;
+    }
+    else
+	return rep_MAKE_INT(x11_cursor_shape);
+}
+    
 void
 x11_misc_init(void)
 {
@@ -407,6 +439,5 @@ x11_misc_init(void)
     rep_ADD_SUBR(Sx11_own_selection_p);
     rep_ADD_SUBR(Sx11_get_selection);
     rep_ADD_SUBR(Sx11_lose_selection);
-
-    rep_beep_fun = x11_beep;
+    rep_ADD_SUBR(Sx11_cursor_shape);
 }
