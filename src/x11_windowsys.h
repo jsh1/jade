@@ -48,6 +48,9 @@ struct x11_display {
 
     /* Mouse cursor for the window */
     Cursor text_cursor;
+
+    /* Modifier code of the Meta key in this display */
+    u_long meta_mod;
 };
 
 typedef struct {
@@ -62,6 +65,7 @@ typedef struct {
 #define WINDOW_NIL	(0)
 
 #define WINDOW_XDPY(w)	((w)->w_WindowSys.ws_Display)
+#define WINDOW_META(w)  (WINDOW_XDPY(w)->meta_mod)
 
 #if 0
 typedef struct {
