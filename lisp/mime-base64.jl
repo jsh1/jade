@@ -23,6 +23,7 @@
 (defvar mime-base64-alphabet
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
 
+;;;###autoload
 (defun mime-encode-base64 (input output)
   (let
       ((col 0)
@@ -69,6 +70,7 @@
 	  (throw 'done t)))))
     (write output ?\n)))
 
+;;;###autoload
 (defun mime-decode-base64 (input output)
   (let
       ((reg 0)

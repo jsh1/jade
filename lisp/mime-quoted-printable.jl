@@ -20,6 +20,7 @@
 
 (provide 'mime-quoted-printable)
 
+;;;###autoload
 (defun mime-encode-quoted-printable (input output)
   (let
       ((col 0)
@@ -44,6 +45,7 @@
 	     (format output "=%02X" char)
 	     (setq col (+ col 3)))))))
 
+;;;###autoload
 (defun mime-decode-quoted-printable (input output)
   (let
       (char tem)
