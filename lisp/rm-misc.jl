@@ -52,7 +52,7 @@
 	    msg-id (mail-get-header "Message-Id")
 	    references (append (mail-get-header "References" t t)
 			       (list msg-id))))
-    (when (string-match rm-Re-regexp subject t)
+    (when (and subject (string-match rm-Re-regexp subject t))
       (setq subject (concat mail-reply-prefix
 			    (substring subject (match-end)))))
     (mail-setup to subject msg-id cc references
@@ -126,15 +126,17 @@ message in that all recipients of the original wil receive the reply."
 
 ;;;###autoload
 (defun rm-forward (&optional to all-headers-p)
-  "Forward the current message. Optional arg TO specifies who to send
-it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
+  "Forward the current message using RFC-934 message encapsulation. Optional
+arg TO specifies who to send it to. When ALL-HEADERS-P is non-nil non-visible
+headers will be included."
   (interactive "\nP")
   (or rm-current-msg (error "No current message"))
   (unless to
     (setq to ""))
   (let
       ((subject (rm-get-msg-field rm-current-msg rm-msg-subject))
-       (message rm-current-msg))
+       (message rm-current-msg)
+       start tem)
     (mail-setup to subject nil nil nil
 		(list (cons #'(lambda (buffer message)
 				(rm-set-flag message 'forwarded)
@@ -142,32 +144,32 @@ it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
 				  (rm-with-summary
 				   (summary-update-item message))))
 			    (list (current-buffer) message))))
-    (insert "----- begin forwarded message -----\n\n
------ end forwarded message -----\n")
-    (goto (forward-line -2))
-    (when all-headers-p
-      ;; Quote ^From_
-      (insert ">"))
-    (restrict-buffer (cursor-pos) (end-of-line))
-    (insert (with-buffer (mark-file (rm-get-msg-field message rm-msg-mark))
-	      (save-restriction
-		(unrestrict-buffer)
-		(let*
-		    ((start (if all-headers-p
-				(mark-pos (rm-get-msg-field message
+    (insert "----- begin forwarded message -----\n")
+    (setq start (cursor-pos))
+    (goto (insert (with-buffer (mark-file (rm-get-msg-field message
 							    rm-msg-mark))
-			      rm-current-msg-visible-start)))
-		  (copy-area start rm-current-msg-end)))))
+		    (let*
+			((start (if all-headers-p
+				    (mark-pos (rm-get-msg-field message
+								rm-msg-mark))
+				  rm-current-msg-visible-start)))
+		      (save-restriction
+			(unrestrict-buffer)
+			(copy-area start rm-current-msg-end))))))
     ;; Quote "^-" as "- -" as specified by RFC-934
-    (let
-	((pos (start-of-buffer)))
-      (while (re-search-forward "^-" pos)
-	(insert "- " (match-start))
-	(setq pos (end-of-line (match-start)))))
-    (unrestrict-buffer)
-    (if (string= to "")
-	(goto (end-of-line (start-of-buffer)))
-      (goto (forward-line 2)))))
+    (setq tem start)
+    (while (re-search-forward "^-" tem)
+      (insert "- " (match-start))
+      (setq tem (end-of-line (match-start))))
+    (setq tem (start-of-line (forward-line -1)))
+    (while (looking-at "^[\t ]*\n" tem)
+      (delete-area (match-start) (match-end))
+      (setq pos (forward-line -1 tem)))
+    (insert "----- end forwarded message -----\n")
+    (if (null to)
+	(send-mail-go-to)
+      (send-mail-go-text))
+    (set-buffer-modified nil nil)))
 
 
 ;; Message bursting
