@@ -273,6 +273,7 @@ highlight."
 	(when items
 	  (insert "\n")))
       (summary-goto-item (or (summary-maybe-dispatch 'current) 0))
+      (set-buffer-modified nil nil)
       (summary-maybe-dispatch 'after-update))))
 
 (defun summary-update-item (item)
@@ -290,6 +291,7 @@ highlight."
       (summary-dispatch 'print item)
       (insert "\n"))
     (goto old-cursor)
+    (set-buffer-modified nil nil)
     (summary-maybe-dispatch 'after-update)))
 
 (defun summary-goto-item (index)
@@ -405,6 +407,32 @@ PRESERVE-MARKS is t, all marks are unset. FUNCTION is called as
 		(rplacd o (delq 'mark (cdr o))))
 	      (funcall function (car o))))
 	summary-pending-ops))
+
+(defun summary-command-items ()
+  "Return a list of items from the current summary buffer. Either all marked
+items, or if no items are marked, the item under the cursor."
+  (or (filter #'(lambda (x)
+		  (memq 'mark (summary-get-pending-ops x)))
+	      summary-items)
+      (let
+	  ((arg (prefix-numeric-argument current-prefix-arg))
+	   (current (summary-current-index)))
+	(if (= arg 1)
+	    (list (summary-get-item current))
+	  (when (< arg 0)
+	    (setq current (+ current arg 1)
+		  arg (- arg))
+	    (when (< current 0)
+	      (setq arg (+ arg current)
+		    current 0)))
+	  (let
+	      ((in (nthcdr current summary-items))
+	       (out nil))
+	    (while (and (> arg 0) in)
+	      (setq out (cons (car in) out)
+		    in (cdr in)
+		    arg (1- arg)))
+	    (nreverse out))))))
 
 (defun summary-item-marked-p (item)
   "Returns t if ITEM is marked for future use."
