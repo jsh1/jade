@@ -43,9 +43,11 @@ typedef struct lisp_mark {
     /* The position of the marked character. */
     VALUE pos;
 
-    /* The file. Either a buffer, or a string canonically naming an
-       unloaded file. */
+    /* The file. Either a buffer, or the name of the file. */
     VALUE file;
+
+    /* For non-resident marks, the canonical name of the file. */
+    VALUE canon_file;
 } Lisp_Mark;
 
 #define MARK_RESIDENT_P(m) BUFFERP((m)->file)
