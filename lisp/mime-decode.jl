@@ -41,6 +41,9 @@
   "When non-nil multipart pieces of messages that are displayed inline are
 still given a highlighted header.")
 
+(defvar mime-decode-force-inlining nil
+  "When non-nil, any attachments that can be displayed inline will be.")
+
 (defvar mime-xfer-encodings-alist
   '((base64
      (lambda (in out)
@@ -241,7 +244,7 @@ external mmencode program, otherwise handle locally.")
 				 (end-of-buffer src-buffer)
 				 content-type content-xfer-enc content-disp))
       (when (or (null content-disp)
-		(eq (car content-disp) 'inline))
+		(eq (car content-disp) 'inline) mime-decode-force-inlining)
 	(cond
 	 ((eq (nth 1 content-type) 'html)
 	  ;; HTML code, have to decode it
@@ -273,7 +276,7 @@ external mmencode program, otherwise handle locally.")
 				 (end-of-buffer src-buffer)
 				 content-type content-xfer-enc content-disp))
       (when (or (null content-disp)
-		(eq (car content-disp) 'inline))
+		(eq (car content-disp) 'inline) mime-decode-force-inlining)
 	(if (eq (nth 1 content-type) 'external-body)
 	    ;; XXX: FIXME
 	    (error "message/external-body as yet unsupported")
