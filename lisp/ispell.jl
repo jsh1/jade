@@ -418,7 +418,7 @@ for. When called interactively, spell-check the current block."
 	  end)
       ;; Scan a line at a time, checking if input is pending
       (catch 'abort
-	(while (< start end)
+	(while (and start (< start end))
 	  (let
 	      ((this-end (end-of-line start)))
 	    (ispell-delete-highlights start this-end)
@@ -502,4 +502,3 @@ for. When called interactively, spell-check the current block."
   (ispell-start-process)
   (format ispell-process "*%s\n" word)
   (ispell-invalidate-past-scans))
-
