@@ -34,6 +34,23 @@ int extent_type;
 
 static Lisp_Extent *allocated_extents;
 
+#ifdef DEBUG
+static void
+assert_invariants (Lisp_Extent *e)
+{
+    if (e == 0)
+	return;
+    assert (e->left_sibling == 0 || e->left_sibling->right_sibling == e);
+    assert (e->right_sibling == 0 || e->right_sibling->left_sibling == e);
+    assert (e->first_child == 0 || e->first_child->parent == e);
+    assert (e->last_child == 0 || e->last_child->parent == e);
+    assert (e->frag_pred == 0 || e->frag_pred->frag_next == e);
+    assert (e->frag_next == 0 || e->frag_next->frag_pred == e);
+}
+#else
+# define assert_invariants(e) do { } while (0)
+#endif
+
 /* Make all links in E null. */
 static inline void
 clean_node(Lisp_Extent *e)
@@ -75,6 +92,8 @@ alloc_extent(Lisp_Extent *clonee)
 	x->plist = Qnil;
     }
 
+    assert_invariants (x);
+
     return x;
 }
 
@@ -83,7 +102,11 @@ static inline Lisp_Extent *
 find_first_frag(Lisp_Extent *e)
 {
     while(e->frag_pred != 0)
+    {
+	assert_invariants (e);
 	e = e->frag_pred;
+    }
+    assert_invariants (e);
     return e;
 }
 
@@ -92,7 +115,11 @@ static inline Lisp_Extent *
 find_last_frag(Lisp_Extent *e)
 {
     while(e->frag_next != 0)
+    {
+	assert_invariants (e);
 	e = e->frag_next;
+    }
+    assert_invariants (e);
     return e;
 }
 
@@ -112,8 +139,12 @@ try_to_coalesce(Lisp_Extent *left, Lisp_Extent *right)
 	left->end = right->end;
 	if(left->parent->last_child == right)
 	    left->parent->last_child = left;
+	left->frag_next = right->frag_next;
 
 	clean_node(right);
+	
+	assert_invariants (left);
+	assert_invariants (right);
     }
 }
 
@@ -129,6 +160,9 @@ unlink_extent_fragment(Lisp_Extent *e)
     if(e->frag_pred != 0)
 	e->frag_pred->frag_next = e->frag_next;
 
+    assert_invariants (e->frag_next);
+    assert_invariants (e->frag_pred);
+
     if(e->first_child != 0)
     {
 	/* Replace E by its children. */
@@ -141,6 +175,7 @@ unlink_extent_fragment(Lisp_Extent *e)
 	    x->start.row += e->start.row;
 	    x->end.row += e->start.row;
 	    x->parent = e->parent;
+	    assert_invariants (x);
 	}
 
 	e->first_child->left_sibling = e->left_sibling;
@@ -160,6 +195,11 @@ unlink_extent_fragment(Lisp_Extent *e)
 	    try_to_coalesce(e->last_child, e->right_sibling);
 	if(e->left_sibling != 0)
 	    try_to_coalesce(e->left_sibling, e->first_child);
+
+	assert_invariants (e->left_sibling);
+	assert_invariants (e->right_sibling);
+	assert_invariants (e->first_child);
+	assert_invariants (e->last_child);
     }
     else
     {
@@ -176,6 +216,11 @@ unlink_extent_fragment(Lisp_Extent *e)
 
 	if(e->left_sibling != 0 && e->right_sibling != 0)
 	    try_to_coalesce(e->left_sibling, e->right_sibling);
+
+	assert_invariants (e->left_sibling);
+	assert_invariants (e->right_sibling);
+	assert_invariants (e->first_child);
+	assert_invariants (e->last_child);
     }
     clean_node(e);
 }
@@ -184,14 +229,26 @@ unlink_extent_fragment(Lisp_Extent *e)
 static void
 unlink_extent(Lisp_Extent *e)
 {
+    int n, i;
+    Lisp_Extent *x, **buf;
+
     if(e->parent == 0)
 	return;
+
     e = find_first_frag(e);
-    while(e != 0)
+
+    /* scan the frags into a buffer (the linkage gets broken) */
+    n = 0;
+    for (x = e; x != 0; x = x->frag_next)
+	n++;
+    buf = alloca (sizeof (Lisp_Extent *) * n);
+    for (x = e, i = 0; x != 0; x = x->frag_next, i++)
+	buf[i] = x;
+
+    for (i = 0; i < n; i++)
     {
-	Lisp_Extent *next = e->frag_next;
-	unlink_extent_fragment(e);
-	e = next;
+	unlink_extent_fragment(buf[i]);
+	assert_invariants (buf[i]);
     }
 }
 
@@ -202,6 +259,7 @@ unlink_extent_recursively(Lisp_Extent *e)
 	unlink_extent_recursively(e->first_child);
     if(e->parent != 0)
 	unlink_extent_fragment(e);
+    assert_invariants (e);
 }
 
 /* Insert extent E into the tree rooted at extent ROOT. The row-positions
@@ -227,6 +285,8 @@ top:
 	    if(root->first_child == x)
 		root->first_child = e;
 
+	    assert_invariants (e);
+	    assert_invariants (x);
 	    return;
 	}
 	else if(PPOS_LESS_P(&e->start, &x->start))
@@ -246,7 +306,15 @@ top:
 	    frag->frag_next = e;
 	    e->frag_pred = frag;
 
+	    assert_invariants (e);
+	    assert_invariants (x);
+	    assert_invariants (frag);
+
 	    insert_extent(frag, x->parent);
+
+	    assert_invariants (e);
+	    assert_invariants (x);
+	    assert_invariants (frag);
 	    continue;
 	}
 	else if(PPOS_LESS_P(&e->start, &x->end))
@@ -278,7 +346,17 @@ top:
 
 		e->start.row -= x->start.row;
 		e->end.row -= x->start.row;
+
+		assert_invariants (e);
+		assert_invariants (x);
+		assert_invariants (frag);
+
 		insert_extent(e, x);
+
+		assert_invariants (e);
+		assert_invariants (x);
+		assert_invariants (frag);
+
 		e = frag;
 		continue;
 	    }
@@ -298,6 +376,9 @@ top:
     root->last_child = e;
     if(root->first_child == 0)
 	root->first_child = e;
+
+    assert_invariants (e);
+    assert_invariants (root);
 }
 
 /* Find the global offset of the first row of extent E. */
@@ -335,6 +416,7 @@ find_extent_forwards(Lisp_Extent *root, Pos *pos)
 	    continue;
 	}
 	x = x->right_sibling;
+	assert_invariants (x);
     }
     return root;
 }
@@ -411,6 +493,7 @@ find_extent(Lisp_Extent *root, Pos *pos)
     tx->tx_ExtentCache[oldest].pos = *pos;
     tx->tx_ExtentCache[oldest].lru_clock = ++lru_time;
 
+    assert_invariants (x);
     return x;
 }
 
@@ -454,6 +537,7 @@ map_section_extents(void (*map_func)(Lisp_Extent *x, void *data),
 	}
 	else
 	    break;
+	assert_invariants (x);
     }
 }
 
