@@ -41,7 +41,7 @@ DEFSYM(make_view_hook, "make-view-hook");
 DEFSYM(destroy_view_hook, "destroy-view-hook");
 
 static void set_scroll_steps(VW *vw);
-static void recalc_pixel_measures(WIN *w);
+static void recalc_measures(WIN *w);
 
 /* view_chain is a list of all allocated VW structures, linked through
    their vw_Next fields. curr_vw is the currently active view; a mirror
@@ -61,13 +61,11 @@ copy_view_prefs(VW *dest, VW *src)
 {
     if(src)
     {
-	dest->vw_MaxScroll = src->vw_MaxScroll;
 	dest->vw_XStepRatio = src->vw_XStepRatio;
 	dest->vw_YStepRatio = src->vw_YStepRatio;
     }
     else
     {
-	dest->vw_MaxScroll = 20;
 	dest->vw_XStepRatio = 4;
 #ifdef HAVE_AMIGA
 	dest->vw_YStepRatio = 0;
@@ -198,12 +196,6 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	    vw->vw_MaxY = lines;
 	    sibling->vw_MaxY = ((sibling->vw_MaxY + 1)
 				- (vw->vw_MaxY + 1)) - 1;
-#if 0
-	    /* Is this necessary? I don't think so.. */
-	    sibling->vw_Flags |= VWFF_FORCE_REFRESH;
-#else
-	    sibling->vw_Flags |= VWFF_REFRESH_STATUS;
-#endif
 	    set_scroll_steps(sibling);
 	}
 	else
@@ -214,7 +206,7 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	    vw->vw_MaxX = parent->w_MaxX;
 	    vw->vw_MaxY = parent->w_MaxY - 2;	/* status & minibuf */
 	}
-	recalc_pixel_measures(parent);
+	recalc_measures(parent);
 	set_scroll_steps(vw);
 
 	/* Now try to initialise the new view's buffer. */
@@ -229,7 +221,6 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 		vw->vw_BlockS = sibling->vw_BlockS;
 		vw->vw_BlockE = sibling->vw_BlockE;
 		vw->vw_BlockStatus = sibling->vw_BlockStatus;
-		vw->vw_LastRefTx = NULL;
 	    }
 	    else
 	    {
@@ -241,7 +232,6 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	    sys_update_scroller(vw);
 #endif
 	}
-	vw->vw_Flags |= VWFF_FORCE_REFRESH;
 	if(curr_vw == 0)
 	    curr_vw = vw;
 	if(parent->w_CurrVW == 0)
@@ -251,7 +241,6 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
     }
     return NULL;
 }
-
 
 _PR VALUE cmd_make_view(VALUE split_vw, VALUE tx, VALUE lines);
 DEFUN("make-view", cmd_make_view, subr_make_view, (VALUE split_vw, VALUE tx, VALUE lines), V_Subr3, DOC_make_view) /*
@@ -301,8 +290,16 @@ views (minibuffer and one other) in any window.
 
     if(vw->vw_Win->w_ViewList == vw)
     {
+	/* There's no predecessor to VW. So give its space to
+	   the following view. If possible fix the display origin
+	   of the following view to minimise scrolling. */
+	long new_origin;
 	pred = vw->vw_NextView;
 	vw->vw_Win->w_ViewList = pred;
+	new_origin = VROW(pred->vw_DisplayOrigin) - (vw->vw_MaxY + 1);
+	pred->vw_DisplayOrigin = make_pos(VCOL(pred->vw_DisplayOrigin),
+					  MAX(new_origin,
+					      pred->vw_Tx->tx_LogicalStart));
     }
     else
     {
@@ -320,9 +317,8 @@ views (minibuffer and one other) in any window.
 	curr_vw = pred;
     /* VW is now unlinked; now gives its window-space to PRED. */
     pred->vw_MaxY += vw->vw_MaxY + 1;
-    recalc_pixel_measures(pred->vw_Win);
+    recalc_measures(pred->vw_Win);
     set_scroll_steps(pred);
-    pred->vw_Flags |= VWFF_FORCE_REFRESH;
     vw->vw_Win->w_ViewCount--;
     vw->vw_Win = NULL;
     vw->vw_NextView = NULL;
@@ -361,23 +357,18 @@ set_scroll_steps(VW *vw)
 	vw->vw_YStep = 1;
 }
 
-/* For each view in window W, recalculate all pixel measurements from
+/* For each view in window W, recalculate all view positions from
    the MaxX and MaxY settings. */
 static void
-recalc_pixel_measures(WIN *w)
+recalc_measures(WIN *w)
 {
     VW *vw;
-    int ypix = w->w_TopPix;
+    int row = 0;
     for(vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
     {
-	vw->vw_LeftPix = w->w_LeftPix;
-	vw->vw_RightPix = w->w_RightPix;
-	vw->vw_WidthPix = vw->vw_RightPix - vw->vw_LeftPix;
-	vw->vw_TopPix = ypix;
-	ypix += (vw->vw_MaxY) * w->w_FontY;
-	vw->vw_BottomPix = ypix;
-	ypix += w->w_FontY;
-	vw->vw_HeightPix = vw->vw_BottomPix - vw->vw_TopPix;
+	vw->vw_FirstX = 0;
+	vw->vw_FirstY = row;
+	row += vw->vw_MaxY + ((vw->vw_Flags & VWFF_MINIBUF) ? 0 : 1);
     }
 }
 
@@ -399,9 +390,7 @@ update_views_dimensions(WIN *w)
 	return;
     for(vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
     {
-	vw->vw_LeftPix = w->w_LeftPix;
-	vw->vw_RightPix = w->w_RightPix;
-	vw->vw_WidthPix = vw->vw_RightPix - vw->vw_LeftPix;
+	vw->vw_FirstX = 0;
 	vw->vw_MaxX = w->w_MaxX;
 	if(vw->vw_Flags & VWFF_MINIBUF)
 	    vw->vw_MaxY = 1;
@@ -416,11 +405,8 @@ update_views_dimensions(WIN *w)
 		vw->vw_MaxY = (((vw->vw_MaxY + 1) * w->w_MaxY)
 			       / old_total_lines) - 1;
 	}
-	vw->vw_TopPix = lines_given * w->w_FontY;
-	lines_given += vw->vw_MaxY;
-	vw->vw_BottomPix = lines_given * w->w_FontY;
-	lines_given++;
-	vw->vw_HeightPix = vw->vw_BottomPix - vw->vw_TopPix;
+	vw->vw_FirstY = lines_given;
+	lines_given += vw->vw_MaxY + 1;
 	set_scroll_steps(vw);
     }
 }
@@ -482,25 +468,6 @@ update_status_buffer(VW *vw)
 	    position,
 	    lines, lines != 1 ? "lines" : "line",
 	    block);
-
-    vw->vw_Flags |= VWFF_REFRESH_STATUS;
-}
-
-_PR VALUE var_max_scroll(VALUE val);
-DEFUN("max-scroll", var_max_scroll, subr_max_scroll, (VALUE val), V_Var, DOC_max_scroll) /*
-::doc:max_scroll::
-Maximum scroll distance (number of lines). If a set of lines has to be
-scrolled further than this the whole view is redrawn.
-::end:: */
-{
-    VW *vw = curr_vw;
-    if(val)
-    {
-	if(INTP(val))
-	    vw->vw_MaxScroll = VINT(val);
-	return LISP_NULL;
-    }
-    return(MAKE_INT(vw->vw_MaxScroll));
 }
 
 _PR VALUE var_y_scroll_step_ratio(VALUE val);
@@ -582,11 +549,6 @@ rectangles in VIEW. When STATUS is t rectangles are used.
 	VVIEW(vw)->vw_Flags &= ~VWFF_RECTBLOCKS;
     else
 	VVIEW(vw)->vw_Flags |= VWFF_RECTBLOCKS;
-    if((VVIEW(vw)->vw_BlockStatus == 0) && (VVIEW(vw)->vw_Flags != oflags))
-    {
-	set_block_refresh(VVIEW(vw));
-	VVIEW(vw)->vw_Flags |= VWFF_FORCE_REFRESH;
-    }
     return(stat);
 }
 
@@ -861,11 +823,9 @@ the COLUMNS parameter is always ignored (for the moment).
     }
     VVIEW(vw)->vw_MaxY = VINT(rows);
     sibling->vw_MaxY = new_sibling_height;
-    recalc_pixel_measures(VVIEW(vw)->vw_Win);
+    recalc_measures(VVIEW(vw)->vw_Win);
     set_scroll_steps(VVIEW(vw));
     set_scroll_steps(sibling);
-    VVIEW(vw)->vw_Flags |= VWFF_FORCE_REFRESH;
-    sibling->vw_Flags |= VWFF_FORCE_REFRESH;
     return vw;
 }
 
@@ -880,18 +840,16 @@ the glyph at position POS in the window. Returns nil if no such view exists.
 {
     WIN *w = WINDOWP(win) ? VWIN(win) : curr_win;
     VW *vw = w->w_ViewList;
-    long y_pix;
     DECLARE1(pos, POSP);
     if(VROW(pos) < 0)
 	return sym_nil;
-    y_pix = VROW(pos) * w->w_FontY;
     while(vw != NULL)
     {
-	/* vw_BottomPix doesn't include the status line */
-	long bottom = ((vw->vw_Flags & VWFF_MINIBUF)
-		       ? vw->vw_BottomPix
-		       : vw->vw_BottomPix + w->w_FontY);
-	if(y_pix < bottom)
+	/* vw_MaxY doesn't include the status line */
+	long bottom = vw->vw_FirstY + vw->vw_MaxY;
+	if(vw->vw_Flags & VWFF_MINIBUF)
+	   bottom++;
+	if(VROW(pos) < bottom)
 	    return VAL(vw);
 	vw = vw->vw_NextView;
     }
@@ -914,7 +872,7 @@ invalid.
 	vw = VAL(curr_vw);
     col = VCOL(pos) + VCOL(VVIEW(vw)->vw_DisplayOrigin);
     row = (VROW(VVIEW(vw)->vw_DisplayOrigin)
-	   + (VROW(pos) - (VVIEW(vw)->vw_TopPix / VVIEW(vw)->vw_Win->w_FontY)));
+	   + (VROW(pos) - VVIEW(vw)->vw_FirstY));
     if(row < VVIEW(vw)->vw_Tx->tx_LogicalStart
        || row > VVIEW(vw)->vw_Tx->tx_LogicalEnd)
 	return sym_nil;
@@ -982,13 +940,10 @@ If TEXT is the symbol nil, the normal behaviour is reinstated.
 	    len = STATUS_BUFSIZ - 1;
 	memcpy(VVIEW(vw)->vw_StatusBuf, VSTR(text), len);
 	VVIEW(vw)->vw_StatusBuf[len] = 0;
-	VVIEW(vw)->vw_Flags |= VWFF_CUSTOM_STATUS | VWFF_REFRESH_STATUS;
+	VVIEW(vw)->vw_Flags |= VWFF_CUSTOM_STATUS;
     }
     else
-    {
 	VVIEW(vw)->vw_Flags &= ~VWFF_CUSTOM_STATUS;
-	VVIEW(vw)->vw_Flags |= VWFF_REFRESH_STATUS;
-    }
     return res;
 }
 	
@@ -1001,7 +956,6 @@ views_init(void)
 
     ADD_SUBR(subr_make_view);
     ADD_SUBR(subr_destroy_view);
-    ADD_SUBR(subr_max_scroll);
     ADD_SUBR(subr_y_scroll_step_ratio);
     ADD_SUBR(subr_x_scroll_step_ratio);
     ADD_SUBR(subr_rect_blocks_p);
