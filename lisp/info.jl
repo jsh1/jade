@@ -170,13 +170,10 @@ is split.")
 		  ((spos (cursor-pos)))
 		(insert-file name)
 		;; lose all text from the beginning of the file to the
-		;; first menu item
+		;; first menu item, unless this is the first dir file
 		(when (find-next-regexp "^\\* Menu:" spos nil t)
 		  (delete-area spos (next-line 1 (match-start)))))
 	    (read-file-into-buffer name)
-	    ;; try to delete the file's preamble
-	    (when (find-next-regexp "^File:" (buffer-start) nil t)
-	      (delete-area (buffer-start) (match-start)))
 	    (goto-buffer-end)
 	    (setq read-dir t))
 	  (unless (equal (cursor-pos) (line-start))
@@ -187,8 +184,10 @@ is split.")
     (setq buffer-file-modtime 0
 	  info-file-name "dir"
 	  info-node-name "Top"
+	  info-has-tags-p nil
 	  mode-name "(dir)")
-    (goto-buffer-start)
+    (goto-char (or (find-next-char ?\^_ (buffer-start))
+		   (buffer-start)))
     t))
 
 ;; Record the file, node and cursor-position in the `info-history' list
@@ -242,6 +241,7 @@ is split.")
       ((filename (regexp-expand "^\\((.*)\\).*$" nodename "\\1"))
        (inhibit-read-only t)
        offset)
+    (unrestrict-buffer)
     (when filename
       (unless (setq nodename (regexp-expand "^\\(.*\\)(.+)$" nodename "\\1"))
 	(setq nodename "Top")))
@@ -253,8 +253,10 @@ is split.")
 	(info-read-tags filename info-file-suffix)
 	(setq info-file-name filename))
       (if (not info-has-tags-p)
-	  (unless (string= info-file-name filename)
-	    (read-file-into-buffer (concat filename info-file-suffix))
+	  (progn
+	    ;; No tag list
+	    (unless (string= info-file-name filename)
+	      (read-file-into-buffer (concat filename info-file-suffix)))
 	    (when (find-next-regexp (concat "^File:.* Node: *"
 					    (regexp-quote nodename))
 				    (buffer-start))
@@ -287,26 +289,25 @@ is split.")
 		  (setq offset (+ (- offset (car subfile))
 				  (car (car info-indirect-list)) 2)))
 		(setq subfile (cdr subfile)))
-	      (if (string= (buffer-file-name)
-			   (concat subfile info-file-suffix))
-		  (unrestrict-buffer)
+	      (unless (string= (buffer-file-name)
+			       (concat subfile info-file-suffix))
 		(read-file-into-buffer (concat subfile info-file-suffix)))
 	      (goto-char (offset-to-pos offset)))
-	  (signal 'info-error (list "Can't find node" nodename))))
-      ;; Now cursor should be at beginning of node text. Make sure
-      (let
-	  ((pos (find-prev-char ?\^_)))
-	(when (and pos (regexp-match-line (concat "^File:.*Node: "
-						  (regexp-quote nodename))
-					  (next-line 1 pos)))
-	  (goto-char (match-start)))
-	(setq pos (or (find-next-char ?\^_ (next-char (cursor-pos)))
-		      (buffer-end nil t)))
-	(restrict-buffer (cursor-pos) pos))
-      (setq info-node-name nodename
-	    mode-name (concat ?( (file-name-nondirectory info-file-name)
-			      ?) info-node-name))
-      t)))
+	  (signal 'info-error (list "Can't find node" nodename)))))
+    ;; Now cursor should be at beginning of node text. Make sure
+    (let
+	((pos (find-prev-char ?\^_)))
+      (when (and pos (regexp-match-line (concat "^File:.*Node: "
+						(regexp-quote nodename))
+					(next-line 1 pos)))
+	(goto-char (match-start)))
+      (setq pos (or (find-next-char ?\^_ (next-char (cursor-pos)))
+		    (buffer-end nil t)))
+      (restrict-buffer (cursor-pos) pos))
+    (setq info-node-name nodename
+	  mode-name (concat ?( (file-name-nondirectory info-file-name)
+			    ?) info-node-name))
+    t))
 
 ;; Return a list of all node names matching START in the current tag table
 (defun info-list-nodes (start)
