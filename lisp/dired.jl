@@ -36,7 +36,9 @@
   "f" 'dired-find-file
   "o" 'dired-find-file-other-view
   "Ctrl-o" 'dired-display-file
-  "g" 'summary-update)
+  "g" 'summary-update
+  "C" 'dired-do-copy
+  "R" 'dired-do-rename)
 
 (defvar dired-%-keymap (make-keylist))
 (bind-keys dired-%-keymap
@@ -103,7 +105,14 @@ is used with the following commands that are specific to Dired:
   `o'			Edit the current item in the other view
   `Ctrl-o'		Display the current item in the other view, but
 			 leave the cursor in the Dired view
-  `g', `Ctrl-l'		Refresh the directory listing\n")
+  `g', `Ctrl-l'		Refresh the directory listing
+  `C NEW RET'		Copy all selected files (either all files that
+			 are marked, or the file under the cursor) to
+			 location `NEW'. If more than one file is selected
+			 `NEW' is a directory to copy to, otherwise it
+			 is the name of the new file
+  `R NEW RET'		Rename all selected files. `NEW' works like with
+			 the `C' command\n")
 
 (defun dired-list ()
   (sort (directory-files default-directory)))
@@ -178,3 +187,33 @@ is used with the following commands that are specific to Dired:
       ((name (expand-file-name item)))
     (with-view (other-view)
       (find-file name))))
+
+(defun dired-do-copy ()
+  "Copy all selected files to a specified location. If more than one file
+is selected, the location is a directory to copy all files into, otherwise
+the location is the name of a file to copy to."
+  (interactive)
+  (let
+      ((files (summary-command-items)))
+    (if (= (length files) 1)
+	(copy-file (car files) (prompt-for-file "Destination file:" nil))
+      (let
+	  ((dest (prompt-for-directory "Destination directory:" t)))
+	(mapc #'(lambda (f)
+		  (copy-file f (expand-file-name f dest))) files)))
+    (summary-update)))
+
+(defun dired-do-rename ()
+"Rename all selected files. If more than one file is selected, the specified
+location is a directory to move all files into, otherwise the location is
+the new name for the file."
+  (interactive)
+  (let
+      ((files (summary-command-items)))
+    (if (= (length files) 1)
+	(rename-file (car files) (prompt-for-file "New name of file:" nil))
+      (let
+	  ((dest (prompt-for-directory "Destination directory:" nil)))
+	(mapc #'(lambda (f)
+		  (rename-file f (expand-file-name f dest))) files)))
+    (summary-update)))
