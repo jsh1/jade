@@ -21,6 +21,12 @@
 (require 'shell)
 (provide 'tex-shell)
 
+(defvar tex-shell-program shell-program
+  "The name of the program used to start the tex-shell subprocess.")
+
+(defvar tex-shell-program-args shell-program-args
+  "The list of argumemts to give to the tex-shell subprocess.")
+
 (defvar tex-directory "."
   "Directory for running TeX in.")
 
@@ -51,6 +57,8 @@
       (unless shell-process
 	(clear-buffer)
 	(kill-all-local-variables)
+	(setq shell-program tex-shell-program)
+	(setq shell-program-args tex-shell-program-args)
 	(shell-mode)
 	(call-hook 'tex-shell-hook)))
     (with-view (other-view)
