@@ -242,7 +242,7 @@ last in the buffer the current command is copied to the end of the buffer."
        (dir (file-name-directory (buffer-file-name))))
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
-	  (goto-buffer (make-buffer "*shell*"))
+	  (goto-buffer (open-buffer "*shell*" t))
 	  (set-buffer-file-name nil dir)
 	  (set-buffer-special nil t)
 	  (setq mildly-special-buffer t)

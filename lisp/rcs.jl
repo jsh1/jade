@@ -109,7 +109,7 @@ when initialising RCS files.")
        (buffer (get-buffer buf-name)))
     (if buffer
 	(goto-buffer buffer)
-      (setq buffer (make-buffer buf-name))
+      (setq buffer (open-buffer buf-name))
       (set-buffer-special buffer t)
       (goto-buffer buffer)
       (setq mildly-special-buffer t
@@ -272,8 +272,7 @@ revision, or nil, in which case it will be prompted for."
   (when revision
     (let*
 	((buffer-name (concat (buffer-name buffer) ?~ revision ?~))
-	 (new-buffer (or (get-buffer buffer-name)
-			 (make-buffer buffer-name))))
+	 (new-buffer (open-buffer buffer-name)))
       (when (check-changes new-buffer)
 	(clear-buffer new-buffer)
 	(set-buffer-read-only new-buffer nil)

@@ -43,7 +43,7 @@ being sent."
 	      (set-buffer-read-only buffer nil)
 	      (clear-buffer buffer))
 	  (error "Mail buffer in use"))
-      (setq buffer (make-buffer "*mail*")))
+      (setq buffer (open-buffer "*mail*")))
     (goto-buffer buffer)
     (setq send-mail-actions actions)
     (insert "To: ")
