@@ -28,16 +28,6 @@ version="4.0-alpha"
 version_major=4
 version_minor=0
 
-dir_version=`pwd | sed -e 's/.*-//'`
-case "${dir_version}" in
-  *.*)
-    ;;
-  *)
-    version=${dir_version}
-    ;;
-esac
-unset dir_version
-
 jadedir='${datadir}/jade'
 lispdir='${jadedir}/${version}/lisp'
 jadeexecdir='${libexecdir}/jade/${version}/${host_type}'
