@@ -78,13 +78,13 @@ typedef struct _TX {
     VALUE	    tx_MinorModeNameList;
     VALUE	    tx_MinorModeNameString;
 
-    long	    tx_Changes;
-    long	    tx_AutoSaveInterval; /* seconds between saves */
+    int		    tx_Changes;
+    int		    tx_LastSaveChanges;	 /* changes at last save (any type) */
+    int		    tx_ProperSaveChanges; /* changes at last `proper' save */
+    int		    tx_AutoSaveInterval; /* seconds between saves */
     long	    tx_LastSaveTime;	 /* time at last save (auto or user) */
-    long	    tx_LastSaveChanges;	 /* changes at last save (any type) */
-    long	    tx_ProperSaveChanges; /* changes at last `proper' save */
 
-    long	    tx_TabSize;
+    int		    tx_TabSize;
 
     /* Section of buffer which may have changed since last refresh.  */
     VALUE	    tx_ModStart, tx_ModEnd;
