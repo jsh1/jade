@@ -86,6 +86,8 @@ being sent."
       (format buffer "FCC: %s\n" mail-archive-file-name))
     (insert mail-header-separator)
     (insert "\n")
+    ;; Make the separator read-only
+    (extent-set 'read-only t (make-extent (forward-line -1) (cursor-pos)))
     (when mail-signature
       (let
 	  ((old (cursor-pos)))
@@ -250,7 +252,9 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 			      (start-of-buffer))
       (error "Can't find header-separator string"))
     ;; Delete the header separator and restrict to the headers
-    (delete-area (match-start) (match-end))
+    (let
+	((inhibit-read-only t))
+      (delete-area (match-start) (match-end)))
     (restrict-buffer (start-of-buffer) (forward-line -1 (match-start)))
 
     ;; First, insert From: unless it's already there.
@@ -327,6 +331,11 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 		    ;; explicitly, otherwise tell sendmail to find the
 		    ;; addresses itself
 		    (or resent-addresses '("-t"))))
+      ;; Reinsert the header-separator
+      (when (re-search-forward "^[\t ]*$" (start-of-buffer))
+	(let
+	    ((inhibit-read-only t))
+	  (insert mail-header-separator (match-start))))
       (unless (zerop (process-exit-value proc))
 	;; Errors. Display the buffer they were output to and throw
 	;; an exception
