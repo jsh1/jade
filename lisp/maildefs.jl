@@ -81,6 +81,10 @@ two arguments, the start and end of the inserted text.")
 (defvar mail-reply-prefix "Re: "
   "String to prepend to subject of replied messages.")
 
+(defvar mail-re-regexp "^[\t ]*(Re(\\([0-9]+\\)|\\^[0-9]+)?:[\t ]*)*"
+  "This matches most forms of "Re: SUBJECT" strings, leaving SUBJECT
+starting at the end of the first substring")
+
 (defvar mail-yank-prefix ">"
   "String to insert before quoted text in mail messages.")
 
