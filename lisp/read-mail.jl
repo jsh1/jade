@@ -531,14 +531,11 @@ key, the car the order to sort in, a positive or negative integer.")
 	;; Now remove duplicates
 	(while lst
 	  (setq id (rm-get-message-id (car lst)))
-	  (when (setq tem (catch 'foo
-			    (mapc #'(lambda (m)
-				      (when (string= id (rm-get-message-id m))
-					(throw 'foo m))) (cdr lst))
-			    nil))
-	    ;; this message has a duplicate
-	    (mapc (lambda (r)
-		    (rm-apply-rule r (car lst))) rm-duplicate-rules))
+	  (mapc (lambda (m)
+		  (when (string= id (rm-get-message-id m))
+		    (mapc (lambda (r)
+			    (rm-apply-rule r (m))) rm-duplicate-rules)))
+		(cdr lst))
 	  (setq lst (cdr lst)))))
     msgs))
 
