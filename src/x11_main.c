@@ -367,6 +367,7 @@ x11_close_all_displays(void)
 
 /* X11 event handling. */
 
+/* arg == x11_display */
 static Bool
 x11_async_event_pred(Display *dpy, XEvent *ev, XPointer arg)
 {
@@ -379,7 +380,7 @@ x11_async_event_pred(Display *dpy, XEvent *ev, XPointer arg)
     else if(ev->xany.type == KeyPress)
     {
 	u_long code = 0, mods = 0;
-	translate_event(&code, &mods, ev);
+	translate_event(&code, &mods, ev, (struct x11_display *)arg);
 	if(code == XK_g && mods == (EV_TYPE_KEYBD | EV_MOD_CTRL))
 	{
 	    /* Got one. */
@@ -423,7 +424,7 @@ x11_handle_input(int fd, bool synchronous)
 	else
 	{
 	    if(!XCheckIfEvent(xdisplay->display, &xev,
-			      &x11_async_event_pred, NULL))
+			      &x11_async_event_pred, (XPointer)xdisplay))
 		break;
 
 	    if(xev.xany.type == KeyPress)
@@ -573,7 +574,7 @@ x11_handle_input(int fd, bool synchronous)
 		    = ((x11_current_mouse_y - ev_win->w_TopPix)
 		       / ev_win->w_FontY);
 		code = mods = 0;
-		translate_event(&code, &mods, &xev);
+		translate_event(&code, &mods, &xev, xdisplay);
 		if(mods & EV_TYPE_MASK)
 		{
 		    curr_win = ev_win;
