@@ -59,8 +59,12 @@ buffer.")
 			(and (with-buffer buffer major-mode)
 			     (cdr (assq (with-buffer buffer major-mode)
 					print-mode-alist)))
-			(and output-file
-			     (concat print-file-prefix output-file))
+			(when output-file
+			  (let
+			      ((local-output (or (local-file-name output-file)
+						 (error "File not local: %s"
+							output-file))))
+			    (concat print-file-prefix local-output)))
 			(and printer
 			     (concat print-printer-prefix printer)))))
     (if (and prefix-arg (not (numberp prefix-arg)))
