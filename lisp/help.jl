@@ -142,7 +142,7 @@ w   `where-is'
 (defun apropos-variable (regexp)
   (interactive "sRegular expression:")
   (help-wrapper
-   (format standard-output "Apropos variable %s:\n" regexp)
+   (format standard-output "Apropos variable `%s':\n" regexp)
    (apropos-output (apropos regexp 'boundp) nil)))
 
 (defun describe-keymap ()
