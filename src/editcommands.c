@@ -30,7 +30,7 @@
 
 _PR void edit_init(void);
 
-static VALUE sym_upcase_table, sym_downcase_table;
+static VALUE sym_upcase_table, sym_downcase_table, sym_flatten_table;
 
 _PR VALUE sym_inhibit_read_only;
 VALUE sym_inhibit_read_only;
@@ -46,6 +46,9 @@ upper-case equivalent.
 ::doc:downcase_table::
 256-byte string holding translations to turn each character into its
 lower-case equivalent.
+::end::
+::doc:flatten_table::
+Translation table to convert newline characters to spaces.
 ::end::
 ::doc:inhibit_read_only::
 When bound and non-nil this variable cancels the effect of the set-buffer-
@@ -1022,6 +1025,14 @@ edit_init(void)
     VSTR(VSYM(sym_upcase_table)->sym_Value)[256] = 0;
     VSTR(VSYM(sym_downcase_table)->sym_Value)[256] = 0;
 
+    INTERN(sym_flatten_table, "flatten-table");
+    DOC_VAR(sym_flatten_table, DOC_flatten_table);
+    VSYM(sym_flatten_table)->sym_Value = make_string(12);
+    for(i = 0; i < 10; i++)
+	VSTR(VSYM(sym_flatten_table)->sym_Value)[i] = i;
+    VSTR(VSYM(sym_flatten_table)->sym_Value)[10] = ' ';
+    VSTR(VSYM(sym_flatten_table)->sym_Value)[11] = 0;
+    
     INTERN(sym_inhibit_read_only, "inhibit-read-only");
     DOC_VAR(sym_inhibit_read_only, DOC_inhibit_read_only);
 
