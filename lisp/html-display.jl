@@ -41,6 +41,9 @@
     "q" 'html-display-quit
     "g" 'find-url))
 
+(fset 'html-display-map 'keymap)
+;;;###autoload (autoload-keymap 'html-display-map "html-display")
+
 ;;;###autoload
 (defun html-display (source &optional url other-view)
   (interactive "bBuffer with HTML:\nsURL of document\nP")
@@ -59,22 +62,22 @@
 	(setq details (cons (cons 'base url) details))))
     (set-buffer-modified output nil)
     (set-buffer-read-only output t)
-    (when other-view
-      (if (viewp other-view)
-	  (set-current-view other-view)
-	(goto-other-view)))
-    (goto-buffer output)
-    (goto (start-of-buffer))
-    (setq html-display-details details)
-    (setq mode-name "HTML-Display"
-	  major-mode 'html-display-mode
-	  local-keymap html-display-map)
-    (call-hook 'html-display-hook)))
+    (with-view (if other-view
+		   (if (viewp other-view) other-view (other-view))
+		 (current-view))
+      (goto-buffer output)
+      (goto (start-of-buffer))
+      (setq html-display-details details)
+      (setq mode-name "HTML-Display"
+	    major-mode 'html-display-mode
+	    local-keymap html-display-map)
+      (call-hook 'html-display-hook))))
 
 (defun html-display-current-link (&optional failable)
   (let
       ((e (get-extent)))
-    (while (and e (not (extent-get e 'html-anchor-params)))
+    ;; can't use extent-get since that searches up the stack
+    (while (and e (not (memq 'html-anchor-params (extent-plist e))))
       (setq e (extent-parent e)))
     (or e (if failable
 	      nil
@@ -139,10 +142,18 @@
   (let*
       ((e (html-display-current-link))
        (params (extent-get e 'html-anchor-params))
-       (href (cdr (or (assq 'href params) (error "Not a link!")))))
-    (unless (string-match "^[a-z]+:" href)
-      (setq href (concat (cdr (or (assq 'base html-display-details)
-				  (error "No known URL base"))) href)))
+       (href (cdr (or (assq 'href params) (error "Not a link!"))))
+       (base (cdr (assq 'base html-display-details))))
+    (cond ((string-match "^[a-z]+:" href))
+	  ((string-match "^/" href)
+	   ;; Relative to the root of the web site?
+	   (or (string-match "^[a-z]+://[^/]+"
+			     (or base (error "No known URL base")))
+	       (error "Can't find root URL: %s" base))
+	   (setq href (concat (expand-last-match "\\0") href)))
+	  (t
+	   ;; Relative to the current base
+	   (setq href (concat (or base (error "No known URL base")) href))))
     (when other-view
       (goto-other-view))
     (find-url href)))
