@@ -31,11 +31,14 @@
 (defun mail-setup (&optional to subject in-reply-to cc references actions)
   "Initialises a buffer in which a mail message may be composed, prior to
 being sent."
+  (interactive)
   (let
       (buffer)
     (if (setq buffer (get-buffer "*mail*"))
 	(if (or (buffer-read-only-p buffer)
-		(y-or-n-p "Okay to lose contents of *mail* buffer?"))
+		(progn
+		  (goto-buffer buffer)
+		  (y-or-n-p "Okay to lose contents of *mail* buffer?")))
 	    (progn
 	      (set-buffer-read-only buffer nil)
 	      (clear-buffer buffer))
@@ -121,6 +124,7 @@ Major mode for composing and sending mail messages."
 	ctrl-c-keymap send-mail-c-keymap)
   ;; Need to turn on autosaving and associate the buffer with a
   ;; temporary file...
+  (eval-hook 'text-mode-hook)
   (eval-hook 'mail-setup-hook))
 
 (defun send-mail-mode-kill ()
