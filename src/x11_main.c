@@ -458,16 +458,21 @@ x11_handle_input(int fd, bool synchronous)
 		    int width = (xev.xexpose.width / ev_win->w_FontX) + 2;
 		    int height = (xev.xexpose.height / ev_win->w_FontY) + 2;
 
-		    /* If we're in the middle of doing something else,
-		       don't let the expose cause the current display
-		       state to be redrawn; preserve the window contents
-		       at the last redisplay */
-		    if(!synchronous 
-		       && (ev_win->w_Flags & WINFF_PRESERVING) == 0)
+		    if(!synchronous)
 		    {
-			copy_glyph_buf(ev_win->w_NewContent,
-				       ev_win->w_Content);
-			ev_win->w_Flags |= WINFF_PRESERVING;
+			/* If we're in the middle of doing something else,
+			   don't let the expose cause the current display
+			   state to be redrawn; preserve the window contents
+			   at the last redisplay */
+			WIN *w;;
+			for(w = win_chain; w != 0; w = w->w_Next)
+			{
+			    if(!(w->w_Flags & WINFF_PRESERVING))
+			    {
+				copy_glyph_buf(w->w_NewContent, w->w_Content);
+				w->w_Flags |= WINFF_PRESERVING;
+			    }
+			}
 		    }
 
 		    garbage_glyphs(ev_win, x, y, width, height);
