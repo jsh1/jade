@@ -430,14 +430,16 @@ Forces any cached window output to be drawn. This is usually unnecessary.
 
 DEFSTRING(no_display, "Can't open display");
 _PR VALUE cmd_make_window_on_display(VALUE display);
-DEFUN("make-window-on-display", cmd_make_window_on_display,
-      subr_make_window_on_display, (VALUE display), V_Subr1,
-      DOC_make_window_on_display) /*
+DEFUN_INT("make-window-on-display", cmd_make_window_on_display,
+	  subr_make_window_on_display, (VALUE display), V_Subr1,
+	  DOC_make_window_on_display, "sDisplay to open window on:") /*
 ::doc:make_window_on_display::
 make-window-on-display DISPLAY-NAME
 
 Create a new window, as with make-window, but opened on the X11 display
 called DISPLAY-NAME.
+
+When called interactively, DISPLAY-NAME is prompted for.
 ::end:: */
 {
     struct x11_display *xdisplay;
@@ -460,7 +462,7 @@ sys_windows_init(void)
 {
     ADD_SUBR_INT(subr_set_font);
     ADD_SUBR(subr_flush_output);
-    ADD_SUBR(subr_make_window_on_display);
+    ADD_SUBR_INT(subr_make_window_on_display);
 
     x11_misc_init();
 }
