@@ -336,10 +336,12 @@ static void
 set_scroll_steps(VW *vw)
 {
     if((vw->vw_XStepRatio <= 0)
-       || ((vw->vw_XStep = vw->vw_MaxX / vw->vw_XStepRatio) <= 0))
+       || ((vw->vw_XStep = vw->vw_MaxX / vw->vw_XStepRatio) <= 0)
+       || (vw->vw_XStep > vw->vw_MaxX))
 	vw->vw_XStep = 1;
     if((vw->vw_YStepRatio <= 0)
-       || ((vw->vw_YStep = vw->vw_MaxY / vw->vw_YStepRatio) <= 0))
+       || ((vw->vw_YStep = vw->vw_MaxY / vw->vw_YStepRatio) <= 0)
+       || (vw->vw_YStep > vw->vw_MaxY))
 	vw->vw_YStep = 1;
 }
 
@@ -759,6 +761,58 @@ afterwards, returning the value of (progn FORMS...).
     return(NULL);
 }
 
+_PR VALUE cmd_view_dimensions(VALUE vw);
+DEFUN("view-dimensions", cmd_view_dimensions, subr_view_dimensions, (VALUE vw), V_Subr2, DOC_view_dimensions) /*
+::doc:view_dimensions::
+view-dimensions [VIEW]
+
+Returns (COLUMNS . ROWS) defining the size (in glyphs) of VIEW (by default
+the current view).
+::end:: */
+{
+    if(!VIEWP(vw))
+	vw = VAL(curr_vw);
+    return cmd_cons(make_number(VVIEW(vw)->vw_MaxX),
+		    make_number(VVIEW(vw)->vw_MaxY));
+}
+
+_PR VALUE cmd_set_view_dimensions(VALUE vw, VALUE cols, VALUE rows);
+DEFUN("set-view-dimensions", cmd_set_view_dimensions, subr_set_view_dimensions, (VALUE vw, VALUE cols, VALUE rows), V_Subr3, DOC_set_view_dimensions) /*
+::doc:set_view_dimensions::
+set-view-dimensions [VIEW] [COLUMNS] [ROWS]
+
+Set the size of VIEW (or the current view) to COLUMNSxROWS glyphs. This is
+done by changing the size of the following view, but no others (except VIEW
+of course). If there isn't enough room a window-error is signalled.
+
+Note that due to horizontal division of windows not actually being supported
+the COLUMNS parameter is always ignored (for the moment).
+::end:: */
+{
+    VW *sibling;
+    long new_sibling_height;
+    if(!VIEWP(vw))
+	vw = VAL(curr_vw);
+    if(!NUMBERP(rows))
+	return vw;
+    sibling = VVIEW(vw)->vw_NextView;
+    if(sibling == 0 || sibling->vw_Flags & VWFF_MINIBUF)
+	return cmd_signal(sym_window_error,
+			  list_2(MKSTR("No view to expand into"), vw));
+    new_sibling_height = sibling->vw_MaxY - (VNUM(rows) - VVIEW(vw)->vw_MaxY);
+    if(new_sibling_height < 1 || VNUM(rows) < 1)
+	return cmd_signal(sym_window_error,
+			  list_2(MKSTR("Not enough room"), vw));
+    VVIEW(vw)->vw_MaxY = VNUM(rows);
+    sibling->vw_MaxY = new_sibling_height;
+    recalc_pixel_measures(VVIEW(vw)->vw_Win);
+    set_scroll_steps(VVIEW(vw));
+    set_scroll_steps(sibling);
+    VVIEW(vw)->vw_Flags |= VWFF_FORCE_REFRESH;
+    sibling->vw_Flags |= VWFF_FORCE_REFRESH;
+    return vw;
+}
+
 _PR VALUE cmd_minibuffer_view_p(VALUE vw);
 DEFUN("minibuffer-view-p", cmd_minibuffer_view_p, subr_minibuffer_view_p, (VALUE vw), V_Subr1,  DOC_minibuffer_view_p) /*
 ::doc:minibuffer_view_p::
@@ -850,6 +904,8 @@ views_init(void)
     ADD_SUBR(subr_next_view);
     ADD_SUBR(subr_previous_view);
     ADD_SUBR(subr_with_view);
+    ADD_SUBR(subr_view_dimensions);
+    ADD_SUBR(subr_set_view_dimensions);
     ADD_SUBR(subr_minibuffer_view_p);
     ADD_SUBR(subr_minibuffer_view);
     ADD_SUBR(subr_minibuffer_active_p);
