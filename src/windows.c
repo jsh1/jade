@@ -530,28 +530,18 @@ under Intuition a pointer (integer) to the window structure.
     return(rep_MAKE_LONG_INT((u_long)VWIN(win)->w_Window));
 }
 
-DEFUN("font-x-size", Ffont_x_size, Sfont_x_size, (repv win), rep_Subr1) /*
-::doc:Sfont-x-size::
-font-x-size [WINDOW]
+DEFUN("font-dimensions", Ffont_dimensions, Sfont_dimensions,
+      (repv win), rep_Subr1) /*
+::doc:Sfont-dimensions::
+font-dimensions [WINDOW]
 
-Returns the width of the window's font (in pixels).
+Returns (WIDTH . HEIGHT) of the window's font (in pixels).
 ::end:: */
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return(rep_MAKE_INT((long)VWIN(win)->w_FontX));
-}
-
-DEFUN("font-y-size", Ffont_y_size, Sfont_y_size, (repv win), rep_Subr1) /*
-::doc:Sfont-y-size::
-font-y-size [WINDOW]
-
-Returns the height of the window's font (in pixels).
-::end:: */
-{
-    if(!WINDOWP(win))
-	win = rep_VAL(curr_win);
-    return(rep_MAKE_INT((long)VWIN(win)->w_FontY));
+    return Fcons(rep_MAKE_INT((long)VWIN(win)->w_FontX),
+		 rep_MAKE_INT((long)VWIN(win)->w_FontY));
 }
 
 DEFUN("window-dimensions", Fwindow_dimensions, Swindow_dimensions, (repv win), rep_Subr2) /*
@@ -762,8 +752,7 @@ windows_init(void)
     rep_ADD_SUBR(Scurrent_window);
     rep_ADD_SUBR(Sset_current_window);
     rep_ADD_SUBR(Swindow_id);
-    rep_ADD_SUBR(Sfont_x_size);
-    rep_ADD_SUBR(Sfont_y_size);
+    rep_ADD_SUBR(Sfont_dimensions);
     rep_ADD_SUBR(Swindow_dimensions);
     rep_ADD_SUBR(Swindow_list);
     rep_ADD_SUBR(Swindow_view_list);
