@@ -167,7 +167,11 @@ RULE is the message restriction rule to apply."
 ;; Ensure that the mailbox named MAILBOX is in a buffer. Return that buffer
 (defun rm-open-mailbox (mailbox)
   (let
-      ((buffer (find-file-read-only mailbox t)))
+      ((buffer (let
+		   ;; This stops a possible security risk. Maybe
+		   ;; I should just disable enable-local-eval?
+		   ((enable-local-variables nil))
+		 (find-file-read-only mailbox t))))
     (unless buffer
       (error "Can't open mailbox %s" mailbox))
     (with-buffer buffer
