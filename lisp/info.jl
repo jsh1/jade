@@ -288,8 +288,9 @@ is split.")
 		  (setq offset (+ (- offset (car subfile))
 				  (car (car info-indirect-list)) 2)))
 		(setq subfile (cdr subfile)))
-	      (unless (string= (buffer-file-name)
-			       (concat subfile info-file-suffix))
+	      (if (string= (buffer-file-name)
+			   (concat subfile info-file-suffix))
+		  (unrestrict-buffer)
 		(read-file-into-buffer (concat subfile info-file-suffix)))
 	      (goto-char (offset-to-pos offset)))
 	  (signal 'info-error (list "Can't find node" nodename))))
@@ -419,10 +420,8 @@ commands are,\n
 
 ;; Position the cursor at the start of the menu.
 (defun info-goto-menu-start ()
-  (when (or (and (find-prev-regexp "^\\* Menu:" nil nil t)
-		 (in-restriction-p (match-start)))
-	    (and (find-next-regexp "^\\* Menu:" nil nil t)
-		 (in-restriction-p (match-end))))
+  (when (or (find-prev-regexp "^\\* Menu:" nil nil t)
+	    (find-next-regexp "^\\* Menu:" nil nil t))
     (goto-char (next-line 1 (match-start)))))
 
 ;; Goto the ITEM-INDEX'th menu item.
@@ -522,9 +521,9 @@ commands are,\n
   (interactive)
   (let
       ((pos (find-next-regexp "(^\\* |\\*Note)" (next-char) nil t)))
-    (while (and pos (in-restriction-p pos) (looking-at "\\* Menu:" pos nil t))
+    (while (and pos (looking-at "\\* Menu:" pos nil t))
       (setq pos (find-next-regexp "(^\\* |\\*Note)" (next-char 1 pos) nil t)))
-    (when (and pos (in-restriction-p pos))
+    (when pos
       (goto-char pos))))
 
 ;; Move the cursor to the previous menuitem or xref
@@ -532,9 +531,9 @@ commands are,\n
   (interactive)
   (let
       ((pos (find-prev-regexp "(^\\* |\\*Note)" (prev-char) nil t)))
-    (while (and pos (in-restriction-p pos) (looking-at "\\* Menu:" pos nil t))
+    (while (and pos (looking-at "\\* Menu:" pos nil t))
       (setq pos (find-prev-regexp "(^\\* |\\*Note)" (prev-char 1 pos) nil t)))
-    (when (and pos (in-restriction-p pos))
+    (when pos
       (goto-char pos))))
 
 ;; Parse the cross-reference under the cursor into a cons-cell containing
