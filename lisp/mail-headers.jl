@@ -367,3 +367,8 @@
   (if (and string (string-match mail-re-regexp string nil t))
       (substring string (match-end))
     string))
+
+;; Return t if ADDR1 and ADDR2 refer to the same mailbox.
+(defun mail-compare-addresses (addr1 addr2)
+  (equal (if (consp addr1) (car addr1) addr1)
+	 (if (consp addr2) (car addr2) addr2)))
