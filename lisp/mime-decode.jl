@@ -21,14 +21,13 @@
 ;; TODO:
 ;;
 ;; * When running an external viewer there's no way to safely delete the
-;;   temporary file, the viewer must do it itself. What should happen is
-;;   that the viewer process should be run asynchronously..
-;; * Various MIME types aren't supported, multipart/alternative, messages
-;;   with external-body's
-;; * Prettify text/enriched and text/richtext
+;;   temporary file, the viewer must do it itself. The viewer process
+;;   should be run asynchronously..
+;; * Various MIME types aren't supported: messages with external-body's
+;; * Prettify text/enriched and text/richtext as much as possible
 ;; * Do something with text/html
 ;; * Replace the mime-viewer-alist with something that has finer
-;;   granularity, i.e. by subtype
+;;   granularity, i.e. by subtype (look in .mailcap?)
 ;; * Should process embedded messages if they're MIME
 
 (require 'maildefs)
@@ -37,6 +36,10 @@
 
 
 ;; Configuration
+
+(defvar mime-decode-mark-inlines nil
+  "When non-nil multipart pieces of messages that are displayed inline are
+still given a highlighted header.")
 
 (defvar mime-xfer-encodings-alist
   '((base64 mime-base64 mime-encode-base64 mime-decode-base64)
@@ -50,7 +53,7 @@ functions that operate as filters on their argument streams.")
   '((image . "( xview %s ; rm -f %s ) >/dev/null 2>&1 </dev/null &"))
   "Alist of (TYPE . COMMAND)")
 
-(defface mime-highlight-face "Face to highlight MIME non-inline components."
+(defface mime-highlight-face "Face to highlight MIME stubs."
   (set-face-attribute mime-highlight-face 'background "turquoise")
   (set-face-attribute mime-highlight-face 'underline t))
 
@@ -146,6 +149,8 @@ functions that operate as filters on their argument streams.")
 		      'start start
 		      'end end))))
 
+;; Decode all of SRC-BUFFER to the stream OUTPUT, according to the mime
+;; content-transfer-encoding ENCODING (a symbol)
 (defun mime-decode-buffer (encoding src-buffer output)
   (let
       ((tem (assq encoding mime-xfer-encodings-alist)))
@@ -170,25 +175,23 @@ functions that operate as filters on their argument streams.")
     (cond
      ((eq (car content-type) 'text)
       ;; Some sort of text
-      (if (or in-multipart
-	      (and content-disp (eq (car content-disp) 'attachment)))
-	  (mime-decode-insert-stub src-buffer
-				   (start-of-buffer src-buffer)
-				   (end-of-buffer src-buffer)
-				   content-type content-xfer-enc content-disp)
-	(insert "\n"))
+      (when (or (and content-disp (eq (car content-disp) 'attachment))
+		(and in-multipart mime-decode-mark-inlines))
+	(mime-decode-insert-stub src-buffer
+				 (start-of-buffer src-buffer)
+				 (end-of-buffer src-buffer)
+				 content-type content-xfer-enc content-disp))
       (when (or (null content-disp)
 		(eq (car content-disp) 'inline))
 	(mime-decode-buffer content-xfer-enc src-buffer (current-buffer))))
      ((eq (car content-type) 'message)
       ;; Mail/news message
-      (if (or in-multipart
-	      (and content-disp (eq (car content-disp) 'attachment)))
-	  (mime-decode-insert-stub src-buffer
-				   (start-of-buffer src-buffer)
-				   (end-of-buffer src-buffer)
-				   content-type content-xfer-enc content-disp)
-	(insert "\n"))
+      (when (or (and content-disp (eq (car content-disp) 'attachment))
+		(and in-multipart mime-decode-mark-inlines))
+	(mime-decode-insert-stub src-buffer
+				 (start-of-buffer src-buffer)
+				 (end-of-buffer src-buffer)
+				 content-type content-xfer-enc content-disp))
       (when (or (null content-disp)
 		(eq (car content-disp) 'inline))
 	(if (eq (nth 1 content-type) 'external-body)
@@ -299,6 +302,9 @@ functions that operate as filters on their argument streams.")
 ;; Manipulating embedded parts of messages
 
 (defun mime-save-part (extent &optional file-name)
+  "Save the MIME part of the message marked by EXTENT to the file FILE-NAME.
+When called interactively, the MIME part under the cursor is used, and
+FILE-NAME is prompted for."
   (interactive (let
 		   ((e (get-extent)))
 		 (while (and e (not (extent-get e 'content-type)))
@@ -335,6 +341,9 @@ functions that operate as filters on their argument streams.")
 				 (extent-get extent 'end)))))))
 
 (defun mime-decode-part (extent)
+  "Attempt to view the MIME part of the message marked by EXTENT. If there is
+no known viewing method, use mime-save-part to save it to a file. When called
+interactively the MIME part under the cursor is used."
   (interactive (list (let
 			 ((e (get-extent)))
 		       (while (and e (not (extent-get e 'content-type)))
@@ -364,6 +373,7 @@ functions that operate as filters on their argument streams.")
 ;; Moving through MIME parts in buffers
 
 (defun mime-next-part (count)
+  "Move to the COUNT'th next MIME part in the current message."
   (interactive "p")
   (while (> count 0)
     (let
@@ -399,5 +409,6 @@ functions that operate as filters on their argument streams.")
     (setq count (1+ count))))
 
 (defun mime-previous-part (count)
+  "Move to the COUNT'th previous MIME part in the current message."
   (interactive "p")
   (mime-next-part (- count)))

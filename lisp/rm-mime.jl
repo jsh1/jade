@@ -18,6 +18,15 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+;; Commentary:
+;;
+;; The easiest way to enable MIME decoding for messages that need it is
+;; to put the form:
+;;
+;;	(eval-after-load "read-mail" '(require 'rm-mime))
+;;
+;; in your .jaderc file (or the system-wide site-init.jl).
+
 (require 'read-mail)
 (require 'mail-headers)
 (provide 'rm-mime)
