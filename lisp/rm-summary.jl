@@ -124,7 +124,8 @@ The list of formatting options can be extended by the variable
       (setq buffer (make-buffer "*mail-summary*"))
       (with-buffer buffer
 	(setq rm-summary-folder folder
-	      truncate-lines t)
+	      truncate-lines t
+	      y-scroll-step-ratio 2)
 	(call-hook 'rm-summary-mode-hook)
 	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
 	(setq major-mode 'read-mail-mode)))
