@@ -307,7 +307,8 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    long real_glyph_col = 0, glyph_col = 0, char_col = 0;
 
 	    /* Is the cursor in this row? */
-	    bool cursor_row = (vw == w->w_CurrVW
+	    bool cursor_row = (vw->vw_Win == curr_win
+			       && vw == w->w_CurrVW
 			       && VROW(vw->vw_CursorPos) == char_row);
 	    bool block_row = FALSE;
 	    attr = GA_Text;
