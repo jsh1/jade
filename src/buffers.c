@@ -33,6 +33,7 @@ _PR TX *swap_buffers_tmp(VW *, TX *);
 _PR VALUE *get_tx_cursor_ptr(TX *tx);
 _PR VALUE get_tx_cursor(TX *);
 _PR int auto_save_buffers(bool);
+
 _PR void make_marks_resident(TX *);
 _PR void make_marks_non_resident(TX *);
 _PR void mark_sweep(void);
@@ -41,9 +42,7 @@ _PR void mark_prin(VALUE, VALUE);
 _PR void buffers_init(void);
 _PR void buffers_kill(void);
 
-/*
- * Chain of all allocated TXs.
- */
+/* Chain of all allocated TXs. */
 _PR TX *buffer_chain;
 TX *buffer_chain;
 
@@ -781,21 +780,20 @@ Return the position of the last character that may be displayed in BUFFER
 		    VTX(tx)->tx_LogicalEnd - 1);
 }
 
-_PR VALUE cmd_in_restriction_p(VALUE pos, VALUE tx);
-DEFUN("in-restriction-p", cmd_in_restriction_p, subr_in_restriction_p, (VALUE pos, VALUE tx), V_Subr2, DOC_in_restriction_p) /*
-::doc:in_restriction_p::
-in-restriction-p [POS] [BUFFER]
+_PR VALUE cmd_buffer_restricted_p(VALUE tx);
+DEFUN("buffer-restricted-p", cmd_buffer_restricted_p, subr_buffer_restricted_p, (VALUE tx), V_Subr1, DOC_buffer_restricted_p) /*
+::doc:buffer_restricted_p::
+buffer-restricted-p [BUFFER]
 
-Returns t when POS (or the cursor) is inside the current display restriction
-of BUFFER (or the current buffer).
+Returns t when BUFFER (or the current buffer) has been restricted to display
+less than its full contents.
 ::end:: */
 {
-    if(!POSP(pos))
-	pos = curr_vw->vw_CursorPos;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    return (VROW(pos) >= VTX(tx)->tx_LogicalStart
-	    && VROW(pos) < VTX(tx)->tx_LogicalEnd) ? sym_t : sym_nil;
+    return ((VTX(tx)->tx_LogicalStart > 0
+	     || VTX(tx)->tx_LogicalEnd < VTX(tx)->tx_NumLines)
+	    ? sym_t : sym_nil);
 }
 
 _PR VALUE var_auto_save_interval(VALUE);
@@ -843,6 +841,27 @@ Sets the size of tab-stops.
 ::end:: */
 {
     return(handle_var_int(val, &curr_vw->vw_Tx->tx_TabSize));
+}
+
+_PR VALUE var_truncate_lines(VALUE);
+DEFUN("truncate-lines", var_truncate_lines, subr_truncate_lines, (VALUE val), V_Var, DOC_truncate_lines) /*
+::doc:truncate_lines::
+When t lines that continue past the rightmost column of the screen are
+truncated, not wrapped onto the next row as when this variable is nil.
+The default value for all buffers is nil.
+::end:: */
+{
+    TX *tx = curr_vw->vw_Tx;
+    if(val != LISP_NULL)
+    {
+	if(!NILP(val))
+	    tx->tx_Flags |= TXFF_DONT_WRAP_LINES;
+	else
+	    tx->tx_Flags &= ~TXFF_DONT_WRAP_LINES;
+    }
+    else
+	val = TX_WRAP_LINES_P(tx) ? sym_nil : sym_t;
+    return val;
 }
 
 _PR VALUE var_mode_name(VALUE);
@@ -900,74 +919,75 @@ List of strings naming all minor-modes enabled in this buffer.
     return(val);
 }
 
-/* chain of all non-resident marks, linked via `mk_Next' */
-static Mark *non_resident_mark_chain;
-/* chain of all marks, linked via `mk_NextAlloc' */
-static Mark *mark_chain;
+
+/* Marks */
 
-/*
- * For all non-resident marks, see if any point to NEWTX, if so link them
- * onto NEWTX's `tx_Marks' chain.
- */
+/* chain of all non-resident marks, linked via `next' */
+static Lisp_Mark *non_resident_mark_chain;
+
+/* chain of all allocated marks */
+static Lisp_Mark *mark_chain;
+
+/* For all non-resident marks, see if any point to NEWTX, if so link them
+   onto NEWTX's `tx_Marks' chain. */
 void
 make_marks_resident(TX *newtx)
 {
-    Mark *nxt, *mk = non_resident_mark_chain;
+    Lisp_Mark *nxt, *mk = non_resident_mark_chain;
     non_resident_mark_chain = NULL;
-    while(mk)
+    while(mk != NULL)
     {
-	nxt = mk->mk_Next;
-	if(same_files(VSTR(newtx->tx_FileName), VSTR(mk->mk_File.name)))
+	nxt = mk->next;
+	if(same_files(VSTR(newtx->tx_FileName), VSTR(mk->file)))
 	{
-	    mk->mk_File.tx = newtx;
-	    mk->mk_Flags |= MKFF_RESIDENT;
-	    mk->mk_Next = newtx->tx_MarkChain;
+	    mk->file = VAL(newtx);
+	    mk->next = newtx->tx_MarkChain;
 	    newtx->tx_MarkChain = mk;
 	}
 	else
 	{
-	    mk->mk_Next = non_resident_mark_chain;
+	    mk->next = non_resident_mark_chain;
 	    non_resident_mark_chain = mk;
 	}
 	mk = nxt;
     }
 }
 
+/* Put all marks pointing to buffer OLDTX onto the list of non-resident
+   marks */
 void
 make_marks_non_resident(TX *oldtx)
 {
-    Mark *nxt, *mk = oldtx->tx_MarkChain;
+    Lisp_Mark *nxt, *mk = oldtx->tx_MarkChain;
     oldtx->tx_MarkChain = NULL;
-    while(mk)
+    while(mk != NULL)
     {
-	nxt = mk->mk_Next;
-	mk->mk_File.name = oldtx->tx_FileName;
-	mk->mk_Flags &= ~MKFF_RESIDENT;
-	mk->mk_Next = non_resident_mark_chain;
+	nxt = mk->next;
+	mk->file = oldtx->tx_FileName;
+	mk->next = non_resident_mark_chain;
 	non_resident_mark_chain = mk;
 	mk = nxt;
     }
 }
 
-/*
- * Takes MK off the buffer mark chain that it's on (or the non_resident_mark_chain).
- */
+/* Takes MK off the buffer mark chain that it's on (or the list of non-
+   resident marks). */
 static void
-unchain_mark(Mark *mk)
+unchain_mark(Lisp_Mark *mk)
 {
-    Mark **headp, *this;
-    if(!(mk->mk_Flags & MKFF_RESIDENT))
+    Lisp_Mark **headp, *this;
+    if(!MARK_RESIDENT_P(mk))
 	headp = &non_resident_mark_chain;
     else
-	headp = &(mk->mk_File.tx->tx_MarkChain);
+	headp = &(VTX(mk->file)->tx_MarkChain);
     this = *headp;
     *headp = NULL;
     while(this)
     {
-	Mark *tmp = this->mk_Next;
+	Lisp_Mark *tmp = this->next;
 	if(this != mk)
 	{
-	    this->mk_Next = *headp;
+	    this->next = *headp;
 	    *headp = this;
 	}
 	this = tmp;
@@ -977,11 +997,11 @@ unchain_mark(Mark *mk)
 void
 mark_sweep(void)
 {
-    Mark *mk = mark_chain;
+    Lisp_Mark *mk = mark_chain;
     mark_chain = NULL;
     while(mk)
     {
-	Mark *nxt = mk->mk_NextAlloc;
+	Lisp_Mark *nxt = mk->next_alloc;
 	if(!GC_CELL_MARKEDP(VAL(mk)))
 	{
 	    unchain_mark(mk);
@@ -990,7 +1010,7 @@ mark_sweep(void)
 	else
 	{
 	    GC_CLR_CELL(VAL(mk));
-	    mk->mk_NextAlloc = mark_chain;
+	    mk->next_alloc = mark_chain;
 	    mark_chain = mk;
 	}
 	mk = nxt;
@@ -1004,21 +1024,21 @@ mark_cmp(VALUE v1, VALUE v2)
     if(VTYPE(v1) == VTYPE(v2))
     {
 	u_char *name1, *name2;
-	if(VMARK(v1)->mk_Flags & MKFF_RESIDENT)
-	    name1 = VSTR(VMARK(v1)->mk_File.tx->tx_FileName);
+	if(MARK_RESIDENT_P(VMARK(v1)))
+	    name1 = VSTR(VTX(VMARK(v1)->file)->tx_FileName);
 	else
-	    name1 = VSTR(VMARK(v1)->mk_File.name);
-	if(VMARK(v2)->mk_Flags & MKFF_RESIDENT)
-	    name2 = VSTR(VMARK(v2)->mk_File.tx->tx_FileName);
+	    name1 = VSTR(VMARK(v1)->file);
+	if(MARK_RESIDENT_P(VMARK(v2)))
+	    name2 = VSTR(VTX(VMARK(v2)->file)->tx_FileName);
 	else
-	    name2 = VSTR(VMARK(v2)->mk_File.name);
+	    name2 = VSTR(VMARK(v2)->file);
 	if(same_files(name1, name2))
 	{
-	    if(!(rc = VROW(VMARK(v1)->mk_Pos) - VROW(VMARK(v2)->mk_Pos)))
-		rc = VCOL(VMARK(v1)->mk_Pos) - VROW(VMARK(v2)->mk_Pos);
+	    if(!(rc = VROW(VMARK(v1)->pos) - VROW(VMARK(v2)->pos)))
+		rc = VCOL(VMARK(v1)->pos) - VROW(VMARK(v2)->pos);
 	}
     }
-    return(rc);
+    return rc;
 }
 
 void
@@ -1026,131 +1046,119 @@ mark_prin(VALUE strm, VALUE obj)
 {
     u_char tbuf[40];
     stream_puts(strm, "#<mark ", -1, FALSE);
-    if(VMARK(obj)->mk_Flags & MKFF_RESIDENT)
-	buffer_prin(strm, VAL(VMARK(obj)->mk_File.tx));
+    if(MARK_RESIDENT_P(VMARK(obj)))
+	buffer_prin(strm, VMARK(obj)->file);
     else
     {
 	stream_putc(strm, '"');
-	stream_puts(strm, VPTR(VMARK(obj)->mk_File.name), -1, TRUE);
+	stream_puts(strm, VSTR(VMARK(obj)->file), -1, TRUE);
 	stream_putc(strm, '"');
     }
     sprintf(tbuf, " #<pos %ld %ld>>",
-	    VCOL(VMARK(obj)->mk_Pos),
-	    VROW(VMARK(obj)->mk_Pos));
+	    VCOL(VMARK(obj)->pos),
+	    VROW(VMARK(obj)->pos));
     stream_puts(strm, tbuf, -1, FALSE);
 }
 
 _PR VALUE cmd_make_mark(VALUE, VALUE);
 DEFUN("make-mark", cmd_make_mark, subr_make_mark, (VALUE pos, VALUE buffer), V_Subr2, DOC_make_mark) /*
 ::doc:make_mark::
-make-mark [POS] [BUFFER | FILE-NAME]
+make-mark [POS] [FILE]
 
-Creates a new mark pointing to position POS either in the current file
-or in FILE-NAME, or BUFFER.
-
-Note that FILE-NAME doesn't have to be a file that has been loaded, it's
-stored as a string, the file it points to is only opened when needed.
+Creates a new mark pointing to position POS either in FILE or the current
+buffer. FILE may be either a buffer, or a file name. If a file name, it
+does not have to have been loaded into the editor, buffers are created on
+demand.
 
 Unlike position objects, the position in a file that a mark points to is
 updated as the file changes -- it will always point to the same character
 (for as long as that character exists, anyway).
 ::end:: */
 {
-    Mark *mk = ALLOC_OBJECT(sizeof(Mark));
+    Lisp_Mark *mk = ALLOC_OBJECT(sizeof(Lisp_Mark));
     if(mk != NULL)
     {
-	mk->mk_Car = V_Mark;
-	mk->mk_NextAlloc = mark_chain;
+	mk->car = V_Mark;
+	mk->next_alloc = mark_chain;
 	mark_chain = mk;
-	data_after_gc += sizeof(Mark);
-	mk->mk_Pos = POSP(pos) ? pos : curr_vw->vw_CursorPos;
+	data_after_gc += sizeof(Lisp_Mark);
+	mk->pos = POSP(pos) ? pos : curr_vw->vw_CursorPos;
 	if(STRINGP(buffer))
 	{
-	    VALUE tx;
-	    if((tx = cmd_get_file_buffer(buffer)) && BUFFERP(tx))
-	    {
-		mk->mk_Flags |= MKFF_RESIDENT;
-		mk->mk_File.tx = VTX(tx);
-		mk->mk_Next = VTX(tx)->tx_MarkChain;
-		VTX(tx)->tx_MarkChain = mk;
-	    }
-	    else
-	    {
-		mk->mk_Flags |= MKFF_RESIDENT;
-		mk->mk_File.name = buffer;
-		mk->mk_Next = non_resident_mark_chain;
-		non_resident_mark_chain = mk;
-	    }
+	    VALUE tem = cmd_get_file_buffer(buffer);
+	    if(tem != LISP_NULL && BUFFERP(tem))
+		buffer = tem;
+	}
+	if(STRINGP(buffer))
+	{
+	    mk->file = buffer;
+	    mk->next = non_resident_mark_chain;
+	    non_resident_mark_chain = mk;
 	}
 	else
 	{
 	    if(!BUFFERP(buffer))
 		buffer = VAL(curr_vw->vw_Tx);
-	    mk->mk_Flags |= MKFF_RESIDENT;
-	    mk->mk_File.tx = VTX(buffer);
-	    mk->mk_Next = VTX(buffer)->tx_MarkChain;
+	    mk->file = buffer;
+	    mk->next = VTX(buffer)->tx_MarkChain;
 	    VTX(buffer)->tx_MarkChain = mk;
 	}
-	return(VAL(mk));
+	return VAL(mk);
     }
     return mem_error();
 }
 
-_PR VALUE cmd_set_mark(VALUE, VALUE, VALUE);
-DEFUN("set-mark", cmd_set_mark, subr_set_mark, (VALUE mark, VALUE pos, VALUE buffer), V_Subr3, DOC_set_mark) /*
-::doc:set_mark::
-set-mark MARK [POS] [FILE-NAME | BUFFER]
+_PR VALUE cmd_set_mark_pos(VALUE mark, VALUE pos);
+DEFUN("set-mark-pos", cmd_set_mark_pos, subr_set_mark_pos,
+      (VALUE mark, VALUE pos), V_Subr2, DOC_set_mark_pos) /*
+::doc:set_mark_pos::
+set-mark-pos MARK POSITION
 
-Sets the position which MARK points to POS in FILE-NAME or BUFFER.
+Set the position pointed at by MARK to POSITION.
 ::end:: */
 {
     DECLARE1(mark, MARKP);
-    if(POSP(pos))
-	VMARK(mark)->mk_Pos = pos;
-    if(BUFFERP(buffer) || STRINGP(buffer))
+    DECLARE2(pos, POSP);
+    VMARK(mark)->pos = pos;
+    return pos;
+}
+
+_PR VALUE cmd_set_mark_file(VALUE mark, VALUE file);
+DEFUN("set-mark-file", cmd_set_mark_file, subr_set_mark_file,
+      (VALUE mark, VALUE file), V_Subr2, DOC_set_mark_file) /*
+::doc:set_mark_file::
+set-mark-file MARK FILE
+
+Set the file pointed at by MARK to FILE, a buffer or a file name.
+::end:: */
+{
+    DECLARE1(mark, MARKP);
+    if(STRINGP(file))
     {
-	Mark *mk, **chain;
-	if(VMARK(mark)->mk_Flags & MKFF_RESIDENT)
-	    chain = &(VMARK(mark)->mk_File.tx->tx_MarkChain);
-	else
-	    chain = &non_resident_mark_chain;
-	mk = *chain;
-	*chain = NULL;
-	while(mk)
+	VALUE tem = cmd_get_file_buffer(file);
+	if(tem != LISP_NULL && BUFFERP(tem))
+	    file = tem;
+    }
+    if(BUFFERP(file))
+    {
+	if(VMARK(mark)->file != file)
 	{
-	    Mark *nxt = mk->mk_Next;
-	    if(mk != VMARK(mark))
-	    {
-		mk->mk_Next = *chain;
-		*chain = mk;
-	    }
-	    else
-		mk->mk_Next = NULL;
-	    mk = nxt;
-	}
-	VMARK(mark)->mk_File.name = buffer;
-	switch(VTYPE(buffer))
-	{
-	    VALUE tmp;
-	case V_String:
-	    tmp = cmd_get_file_buffer(buffer);
-	    if((tmp == LISP_NULL) || NILP(tmp))
-	    {
-		VMARK(mark)->mk_Flags &= ~MKFF_RESIDENT;
-		VMARK(mark)->mk_Next = non_resident_mark_chain;
-		non_resident_mark_chain = VMARK(mark);
-		break;
-	    }
-	    VMARK(mark)->mk_File.name = tmp;
-	    /* FALL THROUGH */
-	case V_Buffer:
-	    VMARK(mark)->mk_Flags |= MKFF_RESIDENT;
-	    VMARK(mark)->mk_Next = VMARK(mark)->mk_File.tx->tx_MarkChain;
-	    VMARK(mark)->mk_File.tx->tx_MarkChain = VMARK(mark);
-	    break;
+	    unchain_mark(VMARK(mark));
+	    VMARK(mark)->next = VTX(file)->tx_MarkChain;
+	    VTX(file)->tx_MarkChain = VMARK(mark);
 	}
     }
-    return(mark);
+    else if(STRINGP(file))
+    {
+	if(!MARK_RESIDENT_P(VMARK(mark)))
+	{
+	    unchain_mark(VMARK(mark));
+	    VMARK(mark)->next = non_resident_mark_chain;
+	    non_resident_mark_chain = VMARK(mark);
+	}
+    }
+    VMARK(mark)->file = file;
+    return file;
 }
 
 _PR VALUE cmd_mark_pos(VALUE);
@@ -1164,7 +1172,7 @@ really sure you know what you're doing)
 ::end:: */
 {
     DECLARE1(mark, MARKP);
-    return VMARK(mark)->mk_Pos;
+    return VMARK(mark)->pos;
 }
 
 _PR VALUE cmd_mark_file(VALUE);
@@ -1176,7 +1184,7 @@ Returns the file-name or buffer that MARK points to.
 ::end:: */
 {
     DECLARE1(mark, MARKP);
-    return(VMARK(mark)->mk_File.name);
+    return(VMARK(mark)->file);
 }
 
 _PR VALUE cmd_mark_resident_p(VALUE);
@@ -1188,9 +1196,7 @@ Returns t if the file that MARK points to is in a buffer.
 ::end:: */
 {
     DECLARE1(mark, MARKP);
-    if(VMARK(mark)->mk_Flags & MKFF_RESIDENT)
-	return(sym_t);
-    return(sym_nil);
+    return MARK_RESIDENT_P(VMARK(mark)) ? sym_t : sym_nil;
 }
 
 _PR VALUE cmd_markp(VALUE);
@@ -1201,10 +1207,11 @@ markp ARG
 Return t if ARG is a mark.
 ::end:: */
 {
-    if(MARKP(mark))
-	return(sym_t);
-    return(sym_nil);
+    return MARKP(mark) ? sym_t : sym_nil;
 }
+
+
+/* initialisation */
 
 void
 buffers_init(void)
@@ -1237,16 +1244,18 @@ buffers_init(void)
     ADD_SUBR_INT(subr_unrestrict_buffer);
     ADD_SUBR(subr_restriction_start);
     ADD_SUBR(subr_restriction_end);
-    ADD_SUBR(subr_in_restriction_p);
+    ADD_SUBR(subr_buffer_restricted_p);
     ADD_SUBR(subr_auto_save_interval);
     ADD_SUBR(subr_last_save_changes);
     ADD_SUBR(subr_last_user_save_changes);
     ADD_SUBR(subr_last_save_time);
     ADD_SUBR(subr_tab_size);
+    ADD_SUBR(subr_truncate_lines);
     ADD_SUBR(subr_mode_name);
     ADD_SUBR(subr_minor_mode_names);
     ADD_SUBR(subr_make_mark);
-    ADD_SUBR(subr_set_mark);
+    ADD_SUBR(subr_set_mark_pos);
+    ADD_SUBR(subr_set_mark_file);
     ADD_SUBR(subr_mark_pos);
     ADD_SUBR(subr_mark_file);
     ADD_SUBR(subr_mark_resident_p);
@@ -1257,7 +1266,7 @@ void
 buffers_kill(void)
 {
     TX *tx = buffer_chain;
-    Mark *mk = mark_chain;
+    Lisp_Mark *mk = mark_chain;
     while(tx)
     {
 	TX *nxttx = tx->tx_Next;
@@ -1268,7 +1277,7 @@ buffers_kill(void)
     buffer_chain = NULL;
     while(mk)
     {
-	Mark *nxtmk = mk->mk_NextAlloc;
+	Lisp_Mark *nxtmk = mk->next_alloc;
 	FREE_OBJECT(mk);
 	mk = nxtmk;
     }
