@@ -125,7 +125,8 @@ The list of formatting options can be extended by the variable
       (with-buffer buffer
 	(setq rm-summary-folder folder
 	      truncate-lines t
-	      y-scroll-step-ratio 2)
+	      y-scroll-step-ratio 2
+	      mode-line-format '("----Mail summary: message %l %(%p%)%-"))
 	(call-hook 'rm-summary-mode-hook)
 	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
 	(setq major-mode 'read-mail-mode)))
