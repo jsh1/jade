@@ -227,6 +227,8 @@ gtk_jade_new (WIN *win, int width, int height)
     jade = gtk_type_new (gtk_jade_get_type ());
 
     jade->win = win;
+    jade->width = width;
+    jade->height = height;
     gtk_jade_set_font (jade);
 
     /* this is copied from gedit */
