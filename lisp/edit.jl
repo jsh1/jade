@@ -166,57 +166,59 @@ set to this position."
 
 ;; Page handling
 
-(defun forward-page (&optional count)
-  "Move forward COUNT pages. If COUNT is negative, move backwards."
-  (interactive "p")
+(defun forward-page (&optional count pos movep)
+  "Return the position COUNT pages forwards. If COUNT is negative, go
+backwards. If MOVEP is non-nil move the cursor to the position."
+  (interactive "p\n\nt")
   (unless count
     (setq count 1))
   (if (> count 0)
       (progn
-	(when (looking-at page-regexp)
-	  (goto-char (match-end)))
-	(while (and (> count 0) (find-next-regexp page-regexp))
-	  (goto-char (match-end))
-	  (setq count (1- count)))
+	(when (looking-at page-regexp pos)
+	  (setq pos (match-end)))
+	(while (and (> count 0) (find-next-regexp page-regexp pos))
+	  (setq pos (match-end)
+		count (1- count)))
 	(when (= count 1)
-	  (goto-buffer-end)
-	  (setq count 0)))
-    (when (looking-at page-regexp (line-start))
-      (goto-prev-line))
-    (while (and (< count 0) (find-prev-regexp page-regexp))
-      (goto-char (if (= count -1)
-		     (match-end)
-		   (prev-char 1 (match-start))))
-      (setq count (1+ count)))
+	  (setq pos buffer-end
+		count 0)))
+    (when (looking-at page-regexp (line-start pos))
+      (setq pos (prev-line 1 pos)))
+    (while (and (< count 0) (find-prev-regexp page-regexp pos))
+      (setq pos (if (= count -1)
+		    (match-end)
+		  (prev-char 1 (match-start)))
+	    count (1+ count)))
     (when (= count -1)
-      (goto-buffer-start)
-      (setq count 0)))
+      (setq pos (buffer-start)
+	    count 0)))
   (if (zerop count)
-      (cursor-pos)
-    (error (if (> count 0) "End of buffer" "Start of buffer"))))
+      (setq pos (cursor-pos))
+    (error (if (> count 0) "End of buffer" "Start of buffer")))
+  (when movep
+    (goto-char pos))
+  pos)
 
-(defun backward-page (&optional count)
-  "Move backwards COUNT pages. If COUNT is negative, move forwards."
-  (interactive "p")
-  (forward-page (- (or count 1))))
+(defun backward-page (&optional count pos movep)
+  "Basically (forward-page (- COUNT) POS MOVEP)."
+  (interactive "p\n\nt")
+  (forward-page (- (or count 1)) pos movep))
 
 (defun mark-page ()
   "Set the block to mark the current page of text."
   (interactive)
-  (save-cursor
-    (let
-	((end (forward-page))
-	 (start (backward-page)))
-      (mark-block start end))))
+  (let
+      ((end (forward-page))
+       (start (backward-page)))
+    (mark-block start end)))
 
 (defun restrict-to-page ()
   "Restrict the buffer to the current page of text."
   (interactive)
-  (save-cursor
-    (let
-	((end (forward-page))
-	 (start (backward-page)))
-      (restrict-buffer start end))))
+  (let
+      ((end (forward-page))
+       (start (backward-page)))
+    (restrict-buffer start end)))
 
 
 ;; Block handling
@@ -320,10 +322,11 @@ a block marked to save lots of flicker."
     (upcase-area (cursor-pos) pos)
     (goto-char pos)))
 
-(defun capitalize-word ()
-  "The first character of this word (the one under the cursor) is made
-upper-case, the rest lower-case."
-  (interactive)
+(defun capitalize-word (count)
+  "The first character of the COUNT'th next word is made upper-case, the
+rest lower-case."
+  (interactive "p")
+  (forward-word count nil t)
   (unless (in-word-p)
     (goto-char (find-next-regexp word-regexp)))
   (translate-area (cursor-pos) (next-char) upcase-table)
@@ -495,6 +498,8 @@ cursor is left at the end of the inserted text."
   (yank))
 
 
+;; Transposing
+
 (defun transpose-items (forward-item backward-item count)
   "Transpose the areas defined by the functions FORWARD-ITEM and BACKWARD-
 ITEM (in the style of `forward-word', `backward-word' etc).
@@ -535,6 +540,11 @@ over the COUNT following items."
       (goto-char (insert text1 start2))
       (delete-area start1 end1)
       (insert text2 start1))))
+
+(defun transpose-lines (count)
+  "Move the line under the cursor COUNT lines forwards."
+  (interactive "p")
+  (transpose-items 'next-line 'prev-line count))
 
 
 (defun abort-recursive-edit (&optional ret-val)
@@ -640,6 +650,18 @@ its original position."
   (if toggle-read-only-function
       (funcall toggle-read-only-function)
     (set-buffer-read-only nil (not (buffer-read-only-p)))))
+
+(defun delete-blank-lines ()
+  "Delete all blank lines surrounding the line the cursor is on."
+  (interactive)
+  (when (regexp-match-line "^[\t ]*$")
+    (while (regexp-match-line "^[\t ]*$" (prev-line))
+      (delete-area (line-start (prev-line)) (line-start))))
+  (while (regexp-match-line "^[\t ]*$" (next-line))
+    (delete-area (line-end) (line-end (next-line)))))
+
+
+;; Some macros
 
 (defmacro save-restriction (&rest forms)
   "Evaluate FORMS, restoring the original buffer restriction when they
