@@ -445,14 +445,15 @@ update_status_buffer(VW *vw)
 
     if(lines < vw->vw_MaxY)
 	position = "All";
-    else if(vw->vw_StartLine <= tx->tx_LogicalStart)
+    else if(VROW(vw->vw_DisplayOrigin) <= tx->tx_LogicalStart)
 	position = "Top";
-    else if(vw->vw_StartLine + vw->vw_MaxY >= tx->tx_LogicalEnd)
+    else if(VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY >= tx->tx_LogicalEnd)
 	position = "Bottom";
     else
     {
 	sprintf(position_buf, "%ld%%",
-		((vw->vw_StartLine - tx->tx_LogicalStart) * 100) / lines);
+		((VROW(vw->vw_DisplayOrigin) - tx->tx_LogicalStart)
+		 * 100) / lines);
 	position = position_buf;
     }
 
@@ -468,7 +469,7 @@ update_status_buffer(VW *vw)
 	    (recurse_depth ? ']' : ')'),
 	    restriction ? '[' : '(',
 	    vw->vw_LastCursorOffset + 1,
-	    vw->vw_CursorPos.pos_Line - tx->tx_LogicalStart + 1,
+	    VROW(vw->vw_CursorPos) - tx->tx_LogicalStart + 1,
 	    restriction ? ']' : ')',
 	    position,
 	    lines, lines != 1 ? "lines" : "line",
@@ -789,6 +790,20 @@ afterwards, returning the value of (progn FORMS...).
     return(NULL);
 }
 
+_PR VALUE cmd_view_origin(VALUE vw);
+DEFUN("view-origin", cmd_view_origin, subr_view_origin, (VALUE vw), V_Subr1, DOC_view_origin) /*
+::doc:view_origin::
+view-origin [VIEW]
+
+Return the position of the character displayed in the top-left corner of
+either VIEW or the current view.
+::end:: */
+{
+    if(!VIEWP(vw))
+	vw = VAL(curr_vw);
+    return VVIEW(vw)->vw_DisplayOrigin;
+}
+
 _PR VALUE cmd_view_dimensions(VALUE vw);
 DEFUN("view-dimensions", cmd_view_dimensions, subr_view_dimensions, (VALUE vw), V_Subr2, DOC_view_dimensions) /*
 ::doc:view_dimensions::
@@ -854,9 +869,9 @@ the glyph at position POS in the window. Returns nil if no such view exists.
     VW *vw = w->w_ViewList;
     long y_pix;
     DECLARE1(pos, POSP);
-    if(VPOS(pos).pos_Line < 0)
+    if(VROW(pos) < 0)
 	return sym_nil;
-    y_pix = VPOS(pos).pos_Line * w->w_FontY;
+    y_pix = VROW(pos) * w->w_FontY;
     while(vw != NULL)
     {
 	/* vw_BottomPix doesn't include the status line */
@@ -880,21 +895,18 @@ the glyph position POS in the view's window. Returns nil if this position is
 invalid.
 ::end:: */
 {
-    VALUE res;
+    long col, row;
     DECLARE1(pos, POSP);
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
-    res = make_lpos(&VPOS(pos));
-    VPOS(res).pos_Col += VVIEW(vw)->vw_StartCol;
-    VPOS(res).pos_Line
-	= (VVIEW(vw)->vw_StartLine
-	   + (VPOS(pos).pos_Line
-	      - (VVIEW(vw)->vw_TopPix / VVIEW(vw)->vw_Win->w_FontY)));
-    if(VPOS(res).pos_Line < VVIEW(vw)->vw_Tx->tx_LogicalStart
-       || VPOS(res).pos_Line > VVIEW(vw)->vw_Tx->tx_LogicalEnd)
+    col = VCOL(pos) + VCOL(VVIEW(vw)->vw_DisplayOrigin);
+    row = (VROW(VVIEW(vw)->vw_DisplayOrigin)
+	   + (VROW(pos) - (VVIEW(vw)->vw_TopPix / VVIEW(vw)->vw_Win->w_FontY)));
+    if(row < VVIEW(vw)->vw_Tx->tx_LogicalStart
+       || row > VVIEW(vw)->vw_Tx->tx_LogicalEnd)
 	return sym_nil;
     else
-	return res;
+	return make_pos(col, row);
 }
 
 _PR VALUE cmd_minibuffer_view_p(VALUE vw);
@@ -988,6 +1000,7 @@ views_init(void)
     ADD_SUBR(subr_next_view);
     ADD_SUBR(subr_previous_view);
     ADD_SUBR(subr_with_view);
+    ADD_SUBR(subr_view_origin);
     ADD_SUBR(subr_view_dimensions);
     ADD_SUBR(subr_set_view_dimensions);
     ADD_SUBR(subr_find_view_by_pos);
