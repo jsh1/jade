@@ -26,7 +26,8 @@
   (bind-keys (make-sparse-keymap)
     "Ctrl-j" 'eval-insert-sexp
     "Meta-Ctrl-x" 'eval-print-sexp
-    "TAB" 'indent-line))
+    "TAB" 'indent-line
+    "Meta-TAB" 'lisp-complete-sexp))
 
 ;;;###autoload
 (defun lisp-mode ()
@@ -81,6 +82,36 @@ in the status line."
   (unless pos
     (setq pos (cursor-pos)))
   (set-indent-pos (lisp-indent-pos pos)))
+
+(defun lisp-complete-sexp (&optional all-symbols)
+  (interactive "P")
+  (require 'completion)
+  (let
+      ((beg (lisp-backward-sexp))
+       (is-function nil)
+       sexp completions count)
+    (when (and (> beg (start-of-buffer))
+	       (= (get-char (forward-char -1 beg)) ?\())
+      (setq is-function t))
+    (setq sexp (copy-area beg (cursor-pos)))
+    (setq completions (mapcar 'symbol-name
+			      (apropos (concat ?^ (quote-regexp sexp))
+				       (if all-symbols
+					   nil
+					 (if is-function 'fboundp 'boundp)))))
+    (setq count (length completions))
+    (if (zerop count)
+	(progn
+	  (completion-remove-view)
+	  (message "[No completions!]"))
+      (if (= count 1)
+	  (progn
+	    (insert (substring (car completions) (length sexp)))
+	    (completion-remove-view)
+	    (message "[Unique completion]"))
+	(insert (substring (complete-string sexp completions) (length sexp)))
+	(completion-list completions)
+	(message (format nil "[%d completion(s)]" count))))))
 
 
 ;; Expressions
