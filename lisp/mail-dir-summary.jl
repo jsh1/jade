@@ -22,6 +22,9 @@
 (require 'mail-dir)
 (provide 'mail-dir-summary)
 
+;; Suppress annoying compiler warnings
+(eval-when-compile (require 'send-mail))
+
 (defvar mds-alias-buffer (make-buffer "*mail-aliases*"))
 (defvar mds-address-buffer (make-buffer "*mail-addresses*"))
 
