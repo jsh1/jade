@@ -27,29 +27,8 @@
 copied verbatim except for formatting directives introduced by percent
 signs (%). Each directive consists of a percent character, an optional
 numeric argument, and a single character specifying what should be
-inserted in place of the format directive. These characters include:
-
-	a	A 3-character attribute string, showing the status of
-		the message
-	b	The name of the buffer containing the folder
-	D	The numeric day of the month when the message was sent
-	w	The day of the week, as a 3-character string
-	f	The address of the first sender
-	F	The name of address of the first sender
-	m	The abbreviated month name of the date
-	M	The numeric month of the message's date
-	n	The index of the message in the folder
-	N	The total number of messages in the folder
-	l	The subject line
-	t	The hour and minute at which the message was sent
-	T	The hour, minute, and second of the date
-	%	Insert a percent character
-	r	The name of the first recipient of the message
-	Y	The numeric year of the sending date
-	z	The timezone, as a string
-
-The list of formatting options can be extended by the variable
-`rm-summary-print-functions'.")
+inserted in place of the format directive. See the variable 'rm-format-alist'
+for the list of formatting options available.")
 
 
 ;; Summary interface
@@ -134,8 +113,7 @@ The list of formatting options can be extended by the variable
     (with-view (rm-configure-views buffer folder)
       (rm-display-current-message folder))
     (unless dont-update
-      (summary-update)
-      (rm-summary-update-current))))
+      (summary-update))))
 
 (defun rm-kill-summary (folder)
   (let
@@ -249,7 +227,13 @@ The list of formatting options can be extended by the variable
 	     ;; bindings of rm-summary-format to work correctly
 	     (with-buffer (mark-file (rm-get-msg-field item rm-msg-mark))
 	       rm-summary-format)
-	     item))))
+	     item)))
+  ;; The summary-face property of the message allows the face of
+  ;; the item to be set
+  (let
+      ((face (rm-message-get item 'summary-face)))
+    (when face
+      (make-extent (start-of-line) (cursor-pos) (list 'face face)))))
 
 ;; Delete all cached summary lines for MSG
 (defun rm-invalidate-summary (msg)
