@@ -20,6 +20,10 @@
 
 (provide 'help)
 
+(defvar lisp-documentation-file (expand-file-name "DOC" lisp-lib-dir)
+  "The name of the file of documentation strings from the pre-compiled Lisp
+libraries.")
+
 (defvar help-buffer (open-buffer "*Help*"))
 
 (defvar help-keymap (make-keylist))
@@ -229,7 +233,10 @@ the function doc is provided."
   "Return the documentation string starting at position OFFSET in the file
 of such strings."
   (let
-      ((file (open-file documentation-file 'read)))
+      ((file (open-file (if (>= offset 0)
+			    documentation-file
+			  (setq offset (1- (- offset)))
+			  lisp-documentation-file) 'read)))
     (when file
       (unwind-protect
 	  (let
@@ -249,11 +256,13 @@ of such strings."
   "Adds a documentation string STRING to the file of such strings, returning
 the integer offset at which the string starts in the file."
   (let
-      ((file (open-file documentation-file 'append)))
+      ((file (open-file lisp-documentation-file 'append)))
     (when file
       (unwind-protect
 	  (prog1
-	      (seek-file file)
+	      ;; Since we can't have -0, shift all offsets so that the
+	      ;; first character is offset -1
+	      (1- (- (seek-file file)))
 	    (write file string)
 	    (write file ?\f))
 	(close-file file)))))
