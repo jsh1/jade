@@ -112,7 +112,8 @@ functions that operate as filters on their argument streams.")
   (let
       ((type (intern (translate-string (expand-last-match "\\1")
 				       downcase-table)))
-       (params (when (= (aref text (match-end)) ?\;)
+       (params (when (and (> (length text) (match-end))
+			  (= (aref text (match-end)) ?\;))
 		 (mime-decode-params text (match-end)))))
     (cons type params)))
 
