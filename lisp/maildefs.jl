@@ -49,6 +49,14 @@ when showing a mail message.")
 (defvar mail-folder-dir (expand-file-name "~/Mail")
   "The directory in which mail folders are stored by default.")
 
+(defvar mail-default-folder "INBOX"
+  "The default mail folder.")
+
+(defvar mail-spool-files (concat "/usr/spool/mail/" (user-login-name))
+  "The inboxes to check for new mail. This can be a single file name, a list
+of file names, or a list of association-lists, each associating a mail
+folder with a particular spool file (or list of spool files).")
+
 (defvar mail-header-separator "--text follows this line--"
   "Text used to separate headers from message body; removed before the
 message is sent.")
@@ -82,6 +90,9 @@ be sent. Should throw an error when unsucessful.")
 
 (defvar sendmail-program "/usr/lib/sendmail"
   "Location in the filesystem of the sendmail program.")
+
+(defvar movemail-program nil
+  "Location of the movemail program.")
 
 ;; This is defined as 1 or more characters followed by a colon. The
 ;; characters may not include SPC, any control characters, or ASCII DEL.
@@ -178,3 +189,30 @@ include any parenthesised expressions!")
       ;; previous newline instead of the next
       (delete-area (prev-char 1 (copy-pos pos)) (buffer-end))
       nil)))
+
+;; Return a list of inboxes for the mail folder FOLDER
+(defun mail-find-inboxes (folder)
+  (cond
+   ((null mail-spool-files)
+    nil)
+   ((stringp mail-spool-files)
+    (list mail-spool-files))
+   ((and (consp mail-spool-files) (stringp (car mail-spool-files)))
+    mail-spool-files)
+   (t
+    ;; Must be a list of lists.
+    (let
+	((tem mail-spool-files)
+	 list)
+      (while tem
+	(when (or (and (file-exists-p (car (car tem)))
+		       (file-name= folder (car (car tem))))
+		  (and (file-exists-p (file-name-concat mail-folder-dir
+							(car (car tem))))
+		       (file-name= folder (file-name-concat mail-folder-dir
+							    (car (car tem))))))
+	  (setq list (append list (if (consp (cdr (car tem)))
+				      (cdr (car tem))
+				    (cons (cdr (car tem)))))))
+	(setq tem (cdr tem)))
+      list))))
