@@ -110,10 +110,9 @@ findkey(VALUE km, u_long code, u_long mods)
     }
     while(CONSP(km))
     {
-	VALUE this = VCAR(km);
-	if((VINT(VVECTI(this, KEY_MODS)) == mods)
-	   && (VINT(VVECTI(this, KEY_CODE)) == code))
-	    return(this);
+	VALUE ev = KEY_EVENT(VCAR(km));
+	if((VINT(EVENT_MODS(ev)) == mods) && VINT(EVENT_CODE(ev)) == code)
+	    return VCAR(km);
 	km = VCDR(km);
     }
     return LISP_NULL;
@@ -157,8 +156,8 @@ lookup_binding(u_long code, u_long mods)
 	    if(!NILP(cmd_keymapp(thispath)))
 	    {
 		k = findkey(thispath, code, mods);
-		if(k && VECTORP(k))
-		    return(VVECTI(k, KEY_COMMAND));
+		if(k && KEYP(k))
+		    return KEY_COMMAND(k);
 	    }
 	}
 	kp = VCDR(kp);
@@ -367,12 +366,9 @@ bind-keys KEY-MAP { EVENT-DESCRIPTION COMMAND }...
 	    goto end;
 	}
 	rc = FALSE;
-	key = make_vector(3);
-	if(key)
+	key = MAKE_KEY(MAKE_EVENT(MAKE_INT(code), MAKE_INT(mods)), VCAR(args));
+	if(key != LISP_NULL)
 	{
-	    VVECTI(key, KEY_CODE) = MAKE_INT(code);
-	    VVECTI(key, KEY_MODS) = MAKE_INT(mods);
-	    VVECTI(key, KEY_COMMAND) = VCAR(args);
 	    if(VECTORP(km))
 	    {
 		u_long hash = KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE;
@@ -436,8 +432,8 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
 	while(CONSP(*keyp))
 	{
 	    /* This code is borrowed from cmd_delq */
-	    if((VINT(VVECTI(VCAR(*keyp), KEY_MODS)) == mods)
-	       && (VINT(VVECTI(VCAR(*keyp), KEY_CODE)) == code))
+	    if((VINT(EVENT_MODS(KEY_EVENT(VCAR(*keyp)))) == mods)
+	       && (VINT(EVENT_CODE(KEY_EVENT(VCAR(*keyp)))) == code))
 	    {
 		*keyp = VCDR(*keyp);
 		/* Keybindings are supposed to nest so only delete the
@@ -513,10 +509,10 @@ Return the event which caused the current command to be invoked.
 ::end:: */
 {
     if(current_event[1])
-	return(cmd_cons(MAKE_INT(current_event[0]),
-			MAKE_INT(current_event[1])));
+	return MAKE_EVENT(MAKE_INT(current_event[0]),
+			  MAKE_INT(current_event[1]));
     else
-	return(sym_nil);
+	return sym_nil;
 }
 
 _PR VALUE cmd_last_event(void);
@@ -528,10 +524,10 @@ Return the previous event which occurred.
 ::end:: */
 {
     if(last_event[1])
-	return(cmd_cons(MAKE_INT(last_event[0]),
-			MAKE_INT(last_event[1])));
+	return MAKE_EVENT(MAKE_INT(last_event[0]),
+			  MAKE_INT(last_event[1]));
     else
-	return(sym_nil);
+	return sym_nil;
 }
 
 _PR VALUE cmd_event_name(VALUE ev);
@@ -543,11 +539,13 @@ Returns a string naming the event EVENT.
 ::end:: */
 {
     u_char buf[256];
-    if(NILP(cmd_eventp(ev)))
-	return(signal_arg_error(ev, 1));
-    if(lookup_event_name(buf, VINT(VCAR(ev)), VINT(VCDR(ev))))
-	return(string_dup(buf));
-    return(sym_nil);
+    if(!EVENTP(ev))
+	return signal_arg_error(ev, 1);
+
+    if(lookup_event_name(buf, VINT(EVENT_CODE(ev)), VINT(EVENT_MODS(ev))))
+	return string_dup(buf);
+    else
+	return sym_nil;
 }
 
 _PR VALUE cmd_lookup_event(VALUE name);
@@ -560,10 +558,11 @@ Return the event whose name is EVENT-NAME.
 {
     u_long code, mods;
     DECLARE1(name, STRINGP);
+
     if(lookup_event(&code, &mods, VSTR(name)))
-	return(cmd_cons(MAKE_INT(code), MAKE_INT(mods)));
+	return MAKE_EVENT(MAKE_INT(code), MAKE_INT(mods));
     else
-	return(sym_nil);
+	return sym_nil;
 }
 
 _PR VALUE cmd_lookup_event_binding(VALUE ev, VALUE reset);
@@ -578,15 +577,16 @@ after being used.
 {
     VALUE old_next_km_path = next_keymap_path;
     VALUE res;
-    if(NILP(cmd_eventp(ev)))
+    if(!EVENTP(ev))
 	return(signal_arg_error(ev, 1));
-    res = lookup_binding(VINT(VCAR(ev)), VINT(VCDR(ev)));
+
+    res = lookup_binding(VINT(EVENT_CODE(ev)), VINT(EVENT_MODS(ev)));
     if(NILP(reset))
     {
 	/* We don't want next-keymap-path to be reset */
 	next_keymap_path = old_next_km_path;
     }
-    return(res ? res : sym_nil);
+    return res ? res : sym_nil;
 }
 
 _PR VALUE cmd_keymapp(VALUE arg);
@@ -599,8 +599,9 @@ Returns t if ARG can be used as a keymap.
 {
     if((VECTORP(arg) && VVECT_LEN(arg) == KEYTAB_SIZE)
        || (CONSP(arg) && VCAR(arg) == sym_keymap))
-	return(sym_t);
-    return(sym_nil);
+	return sym_t;
+    else
+	return sym_nil;
 }
 
 _PR VALUE cmd_eventp(VALUE arg);
@@ -611,10 +612,7 @@ eventp ARG
 Returns t if the ARG is an input event.
 ::end:: */
 {
-    if(CONSP(arg) && INTP(VCAR(arg)) && INTP(VCDR(arg)))
-	return(sym_t);
-    else
-	return(sym_nil);
+    return EVENTP(arg) ? sym_t : sym_nil;
 }
 
 /* If necessary, print the name of the current event prefix and return

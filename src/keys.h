@@ -57,8 +57,14 @@
 #define EV_CODE_MOUSE_MOVE   3
 #define EV_CODE_MOUSE_UP     4
 
-/* A `key' is a vector of length 3, it's data is as follows,  */
-#define KEY_CODE 0		/* code, i.e. keysym */
-#define KEY_MODS 1		/* type & mods */
-#define KEY_COMMAND 2		/* command to evaluate */
-#define KEY_SIZE 3
+/* An event object is (CODE . MODS) */
+#define EVENTP(v)	(CONSP(v) && INTP(VCAR(v)) && INTP(VCDR(v)))
+#define MAKE_EVENT(c, m) cmd_cons(c, m)
+#define EVENT_CODE(v)	VCAR(v)
+#define EVENT_MODS(v)	VCDR(v)
+
+/* A `key' is (COMMAND . EVENT) */
+#define KEYP(v)		(CONSP(v) && CONSP(VCDR(v)))
+#define KEY_COMMAND(v)	VCAR(v)
+#define KEY_EVENT(v)	VCDR(v)
+#define MAKE_KEY(e, c)	cmd_cons(c, e)
