@@ -122,61 +122,56 @@ static glyph_table_t *gt_chain = &default_glyph_table;
 
 /* Filling glyph buffers */
 
-/* Output a glyph CH. Check for attribute changes, output
-   attribute, and advance glyph_col variable */
-#define OUTPUT(ch)					\
+/* Assuming a block is active, check if it starts or ends at the current
+   position, if so update the attribute value. */
+#define CHECK_BLOCK_ATTR()				\
     do {						\
-	if(!in_block && !cursor_row)			\
-	    *attrs++ = attr;				\
-	else if(!in_block)				\
+	if(!rect_block)					\
 	{						\
-	    /* check for cursor pos. */			\
-	    if(char_col == cursor_col)			\
-	    {						\
-		*attrs++ = cursor_attrs[attr];		\
-		cursor_row = FALSE;			\
-	    }						\
-	    else					\
-		*attrs++ = attr;			\
+	    /* check for a normal block */		\
+	    if(attr == GA_Text && block_start		\
+	       && char_col == VCOL(vw->vw_BlockS))	\
+		attr = GA_Block;			\
+	    if(attr == GA_Block && block_end		\
+	       && char_col == VCOL(vw->vw_BlockE))	\
+		attr = GA_Text;				\
 	}						\
-	else						\
+	else if(block_row)				\
 	{						\
-	    if(!rect_block)				\
-	    {						\
-		/* check for a normal block */		\
-		if(attr == GA_Text && block_start	\
-		   && char_col == VCOL(vw->vw_BlockS))	\
-		    attr = GA_Block;			\
-		if(attr == GA_Block && block_end	\
-		   && char_col == VCOL(vw->vw_BlockE))	\
-		    attr = GA_Text;			\
-	    }						\
-	    else if(block_row)				\
-	    {						\
-		/* check for a rectangular block */	\
-		if(glyph_col == block_start)		\
-		    attr = GA_Block;			\
-		else if(glyph_col == block_end)		\
-		    attr = GA_Text;			\
-	    }						\
-	    if(cursor_row && char_col == cursor_col)	\
-	    {						\
-		*attrs++ = cursor_attrs[attr];		\
-		cursor_row = FALSE;			\
-	    }						\
-	    else					\
-		*attrs++ = attr;			\
+	    /* check for a rectangular block */		\
+	    if(glyph_col == block_start)		\
+		attr = GA_Block;			\
+	    else if(glyph_col == block_end)		\
+		attr = GA_Text;				\
 	}						\
-	*codes++ = ch;					\
-	glyph_col++;					\
     } while(0)
 
-/* Same as above, but check for overflowing past
-   the last column in the window. */
-#define OUTPUT_CHK(ch)					\
+/* Output a glyph CH. Check for attribute changes, output
+   attribute, and advance glyph_col variable. If the current glyph
+   isn't visible ignore it. */
+#define OUTPUT(ch)					\
     do {						\
-	if(glyph_col < last_col)			\
-	    OUTPUT(ch);					\
+	if(in_block)					\
+	    CHECK_BLOCK_ATTR();				\
+	if(glyph_col >= first_col			\
+	   && glyph_col < last_col)			\
+	{						\
+	    if(!cursor_row)				\
+		*attrs++ = attr;			\
+	    else					\
+	    {						\
+		/* check for cursor pos. */		\
+		if(char_col == cursor_col)		\
+		{					\
+		    *attrs++ = cursor_attrs[attr];	\
+		    cursor_row = FALSE;			\
+		}					\
+		else					\
+		    *attrs++ = attr;			\
+	    }						\
+	    *codes++ = ch;				\
+	}						\
+	glyph_col++;					\
     } while(0)
 
 /* Fill glyph buffer G with whatever should be displayed in window W. */
@@ -205,17 +200,27 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 
 	glyph_attr attr;
 	int tab_size = vw->vw_Tx->tx_TabSize;
-	long first_col = VCOL(vw->vw_DisplayOrigin);
-	long first_row = VROW(vw->vw_DisplayOrigin);
-	long last_col = first_col + vw->vw_MaxX;
-	long last_row = MIN(first_row + vw->vw_MaxY, vw->vw_Tx->tx_LogicalEnd);
+	long first_col, first_row, last_col, last_row, char_row;
 	long cursor_col = VCOL(vw->vw_CursorPos);
-	long char_row = first_row;
 
 	bool in_block, rect_block = FALSE;
 	long block_start = 0, block_end = 0;
 
 	update_status_buffer(vw);
+
+	/* First and last glyph columns of the viewable part of the buffer. */
+	first_col = VCOL(vw->vw_DisplayOrigin);
+	if(first_col != 0)
+	    first_col = glyph_col(vw->vw_Tx, first_col,
+				  VROW(vw->vw_DisplayOrigin));
+	last_col = first_col + vw->vw_MaxX;
+
+	/* First and last viewable rows of the buffer. */
+	first_row = VROW(vw->vw_DisplayOrigin);
+	last_row = MIN(first_row + vw->vw_MaxY, vw->vw_Tx->tx_LogicalEnd);
+
+	/* Current row in the buffer. */
+	char_row = first_row;
 
 	/* Memorise some facts about when the block starts and stops. */
 	if(vw->vw_BlockStatus == 0)
@@ -244,7 +249,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 			    block_end = tem;
 			}
 			block_start = MAX(block_start, first_col);
-			block_end = MIN(block_end, first_col + vw->vw_MaxX);
+			block_end = MIN(block_end, last_col);
 		    }
 		}
 		else
@@ -274,117 +279,79 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		if(!rect_block)
 		{
 		    /* Does the block start or end in this row? */
-		    block_start = VROW(vw->vw_BlockS) == char_row;
-		    block_end = VROW(vw->vw_BlockE) == char_row;
-		    if((char_row > VROW(vw->vw_BlockS)
-			|| (char_row == VROW(vw->vw_BlockS)
-			    && char_col >= VCOL(vw->vw_BlockS)))
-		       && (char_row < VROW(vw->vw_BlockE)
-			   || (char_row == VROW(vw->vw_BlockE)
-			       && char_col < VCOL(vw->vw_BlockE))))
-			attr = GA_Block;
+		    if(block_row)
+		    {
+			block_start = VROW(vw->vw_BlockS) == char_row;
+			block_end = VROW(vw->vw_BlockE) == char_row;
+			/* Is the block active in the first column
+			   of this row? */
+			if((char_row > VROW(vw->vw_BlockS)
+			    || (char_row == VROW(vw->vw_BlockS)
+				&& VCOL(vw->vw_BlockS) == 0))
+			   && (char_row < VROW(vw->vw_BlockE)
+			       || (char_row == VROW(vw->vw_BlockE)
+				   && VCOL(vw->vw_BlockE) > 0)))
+			    attr = GA_Block;
+		    }
+		    else
+			block_start = block_end = 0;
 		}
 		else
 		{
+		    /* Is the block active in the first column of this row? */
 		    if(char_row >= VROW(vw->vw_BlockS)
-		       && first_col >= VCOL(vw->vw_BlockS)
+		       && VCOL(vw->vw_BlockS) == 0
 		       && char_row < VROW(vw->vw_BlockE)
-		       && first_col < VCOL(vw->vw_BlockE))
+		       && VCOL(vw->vw_BlockE) > 0)
 			attr = GA_Block;
 		}
 	    }
 
-	    if(first_col > 0)
-	    {
-		/* First, skip glyphs up to the first displayed column. */
-		while(glyph_col < first_col && src_len-- > 0)
-		{
-		    int width = (*width_table)[*src++];
-		    if(width == 0)
-		    {
-			/* TAB */
-			glyph_col += tab_size - (glyph_col % tab_size);
-			if(glyph_col > first_col)
-			{
-			    int i = glyph_col - first_col;
-			    glyph_col = first_col;
-			    while(i-- > 0)
-				OUTPUT(' ');
-			}
-		    }
-		    else
-		    {
-			glyph_col += width;
-			if(glyph_col > first_col)
-			{
-			    int i = glyph_col - first_col;
-			    u_char *out = &(*glyph_table)[src[-1]][width - i];
-			    glyph_col = first_col;
-			    while(i-- > 0)
-				OUTPUT(*out++);
-			}
-		    }
-		    char_col++;
-		}
-	    }
-
-	    /* Now start outputting properly. */
+	    /* Start outputting. */
 	    while(glyph_col < last_col && src_len-- > 0)
 	    {
-		u_char *ptr = &(*glyph_table)[*src][0];
-		switch((*width_table)[*src++])
+		static char spaces[] = "                                     \
+                                                                             ";
+		register u_char *ptr = &(*glyph_table)[*src][0];
+		register int width = (*width_table)[*src++];
+		if(width == 0)
 		{
-		case 0:
-		    {
-			/* TAB */
-			int i = tab_size - (glyph_col % tab_size);
-			while(glyph_col < last_col && i-- > 0)
-			    OUTPUT(' ');
-			break;
-		    }
-
-		    /* Do some funky fall through stuff to minimise
-		       calls to the big OUTPUT macro. */
-		case 4:
-		    OUTPUT_CHK(*ptr++);
-		case 3:
-		    OUTPUT_CHK(*ptr++);
-		case 2:
-		    OUTPUT_CHK(*ptr++);
-		case 1:
-		    OUTPUT_CHK(*ptr);
+		    /* TAB special case. */
+		    width = tab_size - (glyph_col % tab_size);
+		    ptr = spaces;
 		}
+		while(width-- > 0)
+		    OUTPUT(*ptr++);
 		char_col++;
 	    }
 
-	    if(glyph_col < first_col)
-		/* in case EOL before first column */
-		char_col = glyph_col = first_col;
-
+	    /* In case the line ends before the last column in the
+	       window -- fill with spaces. */
 	    while(glyph_col < last_col)
 	    {
-		/* This line ends before the last column in the
-		   window -- fill with spaces. */
 		OUTPUT(' ');
 		char_col++;		/* in case the cursor is past EOL */
 	    }
+
 	    glyph_row++;
 	    char_row++;
 	}
+
+	/* In case the logical end of the buffer is before the
+	   end of the view, fill with empty lines. */
 	while(glyph_row < vw->vw_FirstY + vw->vw_MaxY)
 	{
-	    /* We reached the [logical] end of the buffer. Fill with
-	       blank lines */
 	    memset(codes, ' ', g->cols);
 	    memset(attrs, GA_Text, g->cols);
 	    codes += g->cols;
 	    attrs += g->cols;
 	    glyph_row++;
 	}
+
+	/* If we're not outputting a minibuffer view, output the status
+	   line text. TODO: should use glyph tables for this */
 	if((vw->vw_Flags & VWFF_MINIBUF) == 0)
 	{
-	    /* Do status line
-	       TODO: use glyph table to output status buffer */
 	    int len = strlen(vw->vw_StatusBuf);
 	    memcpy(codes, vw->vw_StatusBuf, MIN(len, g->cols));
 	    if(len < g->cols)
@@ -395,6 +362,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    glyph_row++;
 	}
     }
+
     if(vw != 0)
     {
 	/* A minibuffer with a message obscuring it.
