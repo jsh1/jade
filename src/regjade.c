@@ -106,7 +106,7 @@ regexec_tx(prog, tx, start, eflags)
     if (prog->regmust != NULL)
     {
 	int found = 0;
-	s = *VPOS(start);
+	COPY_VPOS(&s, start);
 	if(regnocase)
 	{
 	    mat[0] = tolower(prog->regmust[0]);
@@ -145,7 +145,7 @@ regexec_tx(prog, tx, start, eflags)
     if (prog->reganch)
     {
 	LINE *line = tx->tx_Lines + VROW(start);
-	s = *VPOS(start);
+	COPY_VPOS(&s, start);
 	if(PCOL(&s) > 0)
 	{
 	    PCOL(&s) = 0;
@@ -163,7 +163,7 @@ regexec_tx(prog, tx, start, eflags)
     }
 
     /* Messy cases:  unanchored match. */
-    s = *VPOS(start);
+    COPY_VPOS(&s, start);
     if (prog->regstart != '\0')
     {
 	/* We know what char it must start with. */
@@ -244,7 +244,7 @@ regexec_reverse_tx(prog, tx, start, eflags)
     if (prog->regmust != NULL)
     {
 	int found = 0;
-	s = *VPOS(start);
+	COPY_VPOS(&s, start);
 	if(regnocase)
 	{
 	    mat[0] = tolower(prog->regmust[0]);
@@ -285,7 +285,7 @@ regexec_reverse_tx(prog, tx, start, eflags)
     if (prog->reganch)
     {
 	LINE *line = tx->tx_Lines + VROW(start);
-	s = *VPOS(start);
+	COPY_VPOS(&s, start);
 	PCOL(&s) = 0;
 	while(PROW(&s) >= tx->tx_LogicalStart)
 	{
@@ -298,7 +298,7 @@ regexec_reverse_tx(prog, tx, start, eflags)
     }
 
     /* Messy cases:  unanchored match. */
-    s = *VPOS(start);
+    COPY_VPOS(&s, start);
     if (prog->regstart != '\0')
     {
 	/* We know what char it must start with. */
@@ -398,11 +398,11 @@ regmatch_tx(prog, tx, start, eflags)
     VALUE start;
     int eflags;
 {
-    Pos s = *VPOS(start);
+    Pos s;
+    COPY_VPOS(&s, start);
 
     /* Check for REG_NOCASE, means ignore case in string matches.  */
     regnocase = ((eflags & REG_NOCASE) != 0);
-
     return regtry(tx, prog, &s);
 }
 
