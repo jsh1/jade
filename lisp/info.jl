@@ -296,11 +296,26 @@ is split.")
 	(goto (match-start)))
       (setq pos (or (char-search-forward ?\^_ (forward-char))
 		    (end-of-buffer nil t)))
-      (restrict-buffer (cursor-pos) pos))
+      (restrict-buffer (cursor-pos) pos)
+      (info-highlight-buffer))
     (setq info-node-name nodename)
     (setq buffer-status-id
 	  (concat "Info: " ?( info-file-name ?) info-node-name))
     t))
+
+;; Make some extents
+(defun info-highlight-buffer ()
+  (delete-all-extents)
+  (let
+      ((tem (start-of-buffer)))
+    (while (re-search-forward "\\*[\t\n ]*note ([^:]+)" tem nil t)
+      (setq tem (match-end 1))
+      (make-extent (match-start 1) tem (list 'face underline-face)))
+    (when (re-search-forward "^\\* menu:" (start-of-buffer) nil t)
+      (setq tem (match-end))
+      (while (re-search-forward "^\\*[\t ]+([^:.\n]+)" tem)
+	(setq tem (match-end 1))
+	(make-extent (match-start 1) tem (list 'face underline-face))))))
 
 ;; Return a list of all node names matching START in the current tag table
 (defun info-list-nodes (start)
