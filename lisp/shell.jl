@@ -257,24 +257,57 @@ last in the buffer the current command is copied to the end of the buffer."
 ;;;###autoload
 (defun shell-command (command &optional insertp)
   "Run the shell command string COMMAND using the shell named by the
-variable `shell-file-name'. Leave the output in the buffer `*shell-output*'
+variable `shell-file-name'. Leave the output in the buffer *shell-output*
 unless INSERTP is t in which case it's inserted in the current buffer, or
-the output is a single line in which case it goes to the status area."
+the output is a single line in which case it goes to the status area.
+
+This simply calls shell-command-on-area with a nil input region, and with
+the DELETEP parameter also nil."
   (interactive "sShell command:\nP")
-  (shell-command-on-area command (buffer-end) (buffer-end) insertp))
+  (shell-command-on-area command (buffer-end) (buffer-end) nil insertp))
 
 ;;;###autoload
-(defun shell-command-on-area (command start end &optional insertp)
+(defun shell-command-on-buffer (command &optional replacep)
+  "Run the shell command string COMMAND using the shell named by the
+variable `shell-file-name' with the contents of the current buffer as its
+standard input. If REPLACEP is non-nil the output of the command replaces
+the current contents of the buffer; otherwise output is sent to the
+*shell-output* buffer. See `shell-command-on-area' for more details."
+  (interactive "sShell command on buffer:\nP")
+  (shell-command-on-area command
+			 (buffer-start) (buffer-end)
+			 replacep replacep))
+
+;;;###autoload
+(defun shell-command-on-area (command start end &optional deletep insertp)
   "Run the shell command string COMMAND using the shell named by the variable
 `shell-file-name', giving the area of the current buffer from START to END
-as its standard input. Output will be left in the buffer `*shell-output*'
-unless INSERTP is non-nil in which case it's inserted into the current
-buffer, or the output is a single line in which case it goes to the status
-area."
-  (interactive "-sShell command:\nm\nM\nP")
+as its standard input. If DELETEP is t the input area will be deleted.
+
+What happens to the output depends on the INSERTP and DELETEP arguments:
+
+  1. INSERTP nil. Output to the *shell-output* buffer or the status line.
+  2. INSERTP t, DELETEP nil. Output goes to the current position of the
+     current buffer
+  3. Both t. Output replaces the input area START to END.
+
+If standard output is directed to the *shell-output* buffer this buffer
+will be displayed in the other view, unless it's a single line in which case
+it's displayed in the status line.
+
+If INSERTP is t only standard *output* is redirected, standard error is
+sent to the buffer *shell-errors* which will be displayed in a view if
+there is something to display; when INSERTP is nil standard error is sent
+to the *shell-output* buffer.
+
+When called interactively a non-nil prefix argument means both insert and
+delete, i.e. replace the marked area with the output of the command."
+  (interactive "-sShell command on block:\nm\nM\nP\nP")
   (let*
       ((output (if insertp
-		   (current-buffer)
+		   (if (and insertp deletep)
+		       (cons (current-buffer) start)
+		     (current-buffer))
 		 (open-buffer "*shell-output*")))
        (proc (make-process output nil
 			   (file-name-directory (buffer-file-name))
@@ -290,7 +323,7 @@ area."
       (set-process-error-stream proc error-output))
     (setq result (if (equal start end)
 		     (call-process proc)
-		   (call-process-area proc start end nil)))
+		   (call-process-area proc start end deletep)))
     (unless insertp
       (set-buffer-modified output nil)
       (if (= (buffer-length output) 2)
