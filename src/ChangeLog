@@ -1,3 +1,8 @@
+1999-03-02  John Harper  <john@dcs.warwick.ac.uk>
+
+	* x11_main.c (sys_init, get_options): use the rep_get_option
+	function to scan the command line parameters
+
 1999-02-28  John Harper  <john@dcs.warwick.ac.uk>
 
         * MAJOR CHANGES: separated all LISP interpreter specific parts
