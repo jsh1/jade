@@ -64,11 +64,21 @@ message is sent.")
 (defvar mail-setup-hook nil
   "A hook called after initialising a mail message in the current buffer.")
 
+(defvar mail-yank-hooks nil
+  "A hook called when a message has been cited in a reply. Called with
+two arguments, the start and end of the inserted text.")
+
 (defvar mail-default-reply-to nil
   "If non-nil an address to put in the Reply-to header.")
 
+(defvar mail-reply-prefix "Re: "
+  "String to prepend to subject of replied messages.")
+
 (defvar mail-yank-prefix ">"
   "String to insert before quoted text in mail messages.")
+
+(defvar mail-fill-column 72
+  "Column to wrap at when inserting lists, and filling messages.")
 
 (defvar mail-signature nil
   "String inserted at end of message being sent. If t means to insert the
@@ -174,7 +184,34 @@ include any parenthesised expressions!")
 		pos nil))
 	 (t
 	  (error "Shouldn't happen"))))
-      list)))
+      (nreverse list))))
+
+;; Return the position at which a header matching HEADER occurs, or
+;; nil if one doesn't
+(defun mail-find-header (header &optional pos)
+  (when (and (find-next-regexp (concat "^(" header "[\t ]*:[\t ]*|$)")
+			       (or pos (buffer-start)) nil t)
+	     (> (match-end) (match-start)))
+    (match-end)))
+
+;; Return a copy of the header named HEADER in the current buffer. This
+;; will be a string with newlines converted to spaces, unless LISTP is
+;; non-nil in which case the header will be split into a list of items
+;; (separated by commas).
+(defun mail-get-header (header &optional listp)
+  (let
+      ((pos (mail-find-header header)))
+    (when pos
+      (if listp
+	  (let
+	      ((list (mail-parse-list pos)))
+	    (while (setq pos (mail-find-header header
+					       (mail-unfold-header pos)))
+	      (setq list (nconc list (mail-parse-list pos))))
+	    list)
+	(translate-string (copy-area pos (or (mail-unfold-header pos)
+					     (buffer-end)))
+			  flatten-table)))))
 
 ;; Delete the header at POS and return the position of the following
 ;; header, or nil for when the end of the buffer/restriction is reached
@@ -214,3 +251,19 @@ include any parenthesised expressions!")
 				    (cons (cdr (car tem)))))))
 	(setq tem (cdr tem)))
       list))))
+
+;; Insert a list of comma separated items. Breaks the list to satisfy
+;; mail-fill-column
+(defun mail-insert-list (list)
+  (let
+      ((initial-indent (pos-col (char-to-glyph-pos))))
+    (while list
+      (when (> (+ (length (car list))
+		  (pos-col (char-to-glyph-pos (cursor-pos))))
+	     mail-fill-column)
+      (insert "\n")
+      (indent-to initial-indent))
+      (insert (car list))
+      (when (cdr list)
+	    (insert ", "))
+      (setq list (cdr list)))))
