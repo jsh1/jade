@@ -48,7 +48,17 @@ message formatting characters are available.")
        (to (or (mapcar 'mail-parse-address
 		       (rm-get-msg-header message "Reply-To" t))
 	       (rm-get-senders message)))
-       (cc (and followup-p (rm-get-recipients message)))
+       (cc (if followup-p
+	       ;; Only include addresses not in the To or BCC headers
+	       (filter #'(lambda (addr)
+			   (catch 'foo
+			     (mapc #'(lambda (addr2)
+				       (and (mail-compare-addresses addr addr2)
+					    (throw 'foo nil)))
+				   (if mail-self-blind
+				       (cons user-mail-address to)
+				     to))
+			     t)) (rm-get-recipients message))))
        (msg-id (rm-get-msg-header message "Message-Id"))
        (references (append (rm-get-msg-header message "References" t t)
 			   (and msg-id (list msg-id)))))
