@@ -95,10 +95,12 @@ There is no limit to the number of gdb processes you may run at once."
 	  shell-output-stream (list 'lambda '(x)
 				    (list 'gdb-output-filter
 					  (current-buffer)
-					  'x)))
+					  'x))
+	  shell-callback-function 'gdb-callback)
     (shell-mode)
-    (setq mode-name (concat "GDB:" (file-name-nondirectory prog))
+    (setq buffer-status-id (concat "GDB: " (file-name-nondirectory prog))
 	  major-mode 'gdb-mode
+	  mode-name "GDB"
 	  ctrl-c-keymap gdb-ctrl-c-keymap
 	  gdb-last-buffer buffer
 	  gdb-buffer-p t)
@@ -201,3 +203,13 @@ with `Ctrl-x Ctrl-a'.")
       (mark-block line-pos (end-of-line line-pos))
       (goto (glyph-to-char-pos (indent-pos line-pos)))
       (center-display))))
+
+;; Called when the current buffer's process changes state
+(defun gdb-callback ()
+  ;; Use the default callback function
+  (shell-default-callback)
+  ;; Then do our own cleanup at process termination
+  (unless shell-process
+    (when (eq gdb-last-buffer (current-buffer))
+      ;; Ensure the buffer can be gc'd in the future
+      (setq gdb-last-buffer nil))))
