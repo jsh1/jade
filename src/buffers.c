@@ -472,6 +472,12 @@ Set the name of BUFFER to NAME.
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     VTX(tx)->tx_BufferName = name;
+    if(VTX(tx)->tx_StatusId == LISP_NULL
+       || !strncmp("Jade: ", VSTR(VTX(tx)->tx_StatusId), 5))
+    {
+	/* Reset the status-id */
+	VTX(tx)->tx_StatusId = concat2("Jade: ", VSTR(name));
+    }
     sys_reset_sleep_titles(VTX(tx));
     return name;
 }
