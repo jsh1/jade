@@ -106,11 +106,6 @@ x11_update_dimensions(WIN *w, int width, int height)
 	w->w_BottomPix = height;
 	w->w_WidthPix = w->w_RightPix - w->w_LeftPix;
 	w->w_HeightPix = w->w_BottomPix - w->w_TopPix;
-
-	w->w_FontStart = w->w_TopPix + w->w_Font->ascent;
-
-	w->w_MaxX = w->w_WidthPix / w->w_FontX;
-	w->w_MaxY = w->w_HeightPix / w->w_FontY;
     }
 }
 
@@ -173,7 +168,7 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	xgcv.foreground = x11_fore_pixel;
 	xgcv.background = x11_back_pixel;
 	xgcv.line_width = 1;
-	xgcv.font = w->w_Font->fid;
+	xgcv.font = w->w_WindowSys.ws_Font->fid;
 	w->w_WindowSys.ws_GC_array[P_TEXT] = XCreateGC(x11_display,
 						       w->w_Window,
 						       GCForeground
@@ -279,11 +274,11 @@ sys_set_font(WIN *w)
     if((font = XLoadQueryFont(x11_display, VSTR(w->w_FontName)))
        || (font = XLoadQueryFont(x11_display, DEFAULT_FONT)))
     {
-	if(w->w_Font)
-	    XFreeFont(x11_display, w->w_Font);
-	w->w_Font = font;
+	if(w->w_WindowSys.ws_Font)
+	    XFreeFont(x11_display, w->w_WindowSys.ws_Font);
+	w->w_WindowSys.ws_Font = font;
 	w->w_FontX = XTextWidth(font, "M", 1);
-	w->w_FontY = w->w_Font->ascent + w->w_Font->descent;
+	w->w_FontY = font->ascent + font->descent;
 	if(w->w_Window)
 	{
 	    int i;
@@ -319,10 +314,10 @@ sys_set_font(WIN *w)
 void
 sys_unset_font(WIN *w)
 {
-    if(w->w_Font)
+    if(w->w_WindowSys.ws_Font)
     {
-	XFreeFont(x11_display, w->w_Font);
-	w->w_Font = NULL;
+	XFreeFont(x11_display, w->w_WindowSys.ws_Font);
+	w->w_WindowSys.ws_Font = NULL;
     }
 }
 
