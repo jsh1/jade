@@ -21,6 +21,7 @@
 #include "jade.h"
 #include <lib/jade_protos.h>
 #include <limits.h>
+#include <setjmp.h>
 
 #define DEBUG
 
@@ -38,6 +39,7 @@ _PR void adjust_extents_join_rows(Lisp_Extent *, long, long);
 _PR void mark_extent(Lisp_Extent *e);
 _PR void extent_sweep(void);
 _PR void extent_prin(VALUE strm, VALUE e);
+_PR int extent_cmp(VALUE e1, VALUE e2);
 _PR void extent_init(void);
 
 DEFSYM(front_sticky, "front-sticky");
@@ -46,6 +48,16 @@ DEFSYM(local_variables, "local-variables");
 _PR VALUE sym_front_sticky, sym_rear_sticky, sym_local_variables;
 
 static Lisp_Extent *allocated_extents;
+
+/* Make all links in E null. */
+static inline void
+clean_node(Lisp_Extent *e)
+{
+    e->parent = 0;
+    e->left_sibling = e->right_sibling = 0;
+    e->first_child = e->last_child = 0;
+    e->frag_next = e->frag_pred = 0;
+}
 
 /* Create a new extent. All links are null. If CLONEE is non-null, copy
    the START, END, TX and PLIST fields from it. */
@@ -62,11 +74,7 @@ alloc_extent(Lisp_Extent *clonee)
     x->car = V_Extent;
     x->next = allocated_extents;
     allocated_extents = x;
-
-    x->parent = 0;
-    x->left_sibling = x->right_sibling = 0;
-    x->first_child = x->last_child = 0;
-    x->frag_next = x->frag_pred = 0;
+    clean_node(x);
 
     if(clonee != 0)
     {
@@ -78,16 +86,6 @@ alloc_extent(Lisp_Extent *clonee)
     }
 
     return x;
-}
-
-/* Make all links in E null. */
-static inline void
-clean_node(Lisp_Extent *e)
-{
-    e->parent = 0;
-    e->left_sibling = e->right_sibling = 0;
-    e->first_child = e->last_child = 0;
-    e->frag_next = e->frag_pred = 0;
 }
 
 /* Return the first fragment in the chain that E is a member of. */
@@ -133,6 +131,9 @@ try_to_coalesce(Lisp_Extent *left, Lisp_Extent *right)
 static void
 unlink_extent_fragment(Lisp_Extent *e)
 {
+    if(e->parent == 0)
+	return;
+
     if(e->frag_next != 0)
 	e->frag_next->frag_pred = e->frag_pred;
     if(e->frag_pred != 0)
@@ -193,6 +194,8 @@ unlink_extent_fragment(Lisp_Extent *e)
 static void
 unlink_extent(Lisp_Extent *e)
 {
+    if(e->parent == 0)
+	return;
     e = find_first_frag(e);
     while(e != 0)
     {
@@ -411,7 +414,8 @@ find_extent(Lisp_Extent *root, Pos *pos)
 }
 
 /* Map the function MAP_FUNC(E, DATA) over all innermost extents E
-   containing part of the section of TX specified by START, END. */
+   containing part of the section of TX specified by START, END.
+   This function can be (and is) safely longjmp'd through. */
 void
 map_section_extents(void (*map_func)(Lisp_Extent *x, void *data),
 		    Lisp_Extent *root, Pos *start, Pos *end, void *data)
@@ -424,7 +428,12 @@ map_section_extents(void (*map_func)(Lisp_Extent *x, void *data),
     while(x != 0 && PPOS_LESS_P(&x->start, &e_copy))
     {
 	if(PPOS_GREATER_P(&x->end, &s_copy))
+	{
+	    /* Deleting X in here would screw things up..
+	       Not much that can be done though. And it shouldn't
+	       crash (famous last words..) */
 	    map_func(x, data);
+	}
 
 	/* Try to work downwards and rightwards as much as possible */
 	if(x->first_child != 0)
@@ -494,6 +503,9 @@ make-extent START END [PLIST]
 Create and return a new extent in the current buffer from START to END.
 It's property list is initially set to PLIST. It will have no local
 variables.
+
+Note that an extent may not always be `eq' to itself. The `equal' comparison
+will work reliably however.
 ::end:: */
 {
     Lisp_Extent *extent;
@@ -535,7 +547,7 @@ EXTENT is the root extent covering the entire buffer.
 {
     DECLARE1(extent, EXTENTP);
 
-    if(VEXTENT(extent)->parent == 0)
+    if(VEXTENT(extent) == VEXTENT(extent)->tx->tx_GlobalExtent)
 	return cmd_signal(sym_error, list_2(VAL(&no_delete_root), extent));
 
     unlink_extent(VEXTENT(extent));
@@ -565,6 +577,9 @@ DEFUN("move-extent", cmd_move_extent, subr_move_extent,
       (VALUE extent, VALUE start, VALUE end), V_Subr3, DOC_move_extent) /*
 ::doc:move_extent::
 move-extent EXTENT START END
+
+Set the start and end positions of EXTENT to START and END respectively,
+without changing the buffer that EXTENT refers to.
 ::end:: */
 {
     Lisp_Extent *e;
@@ -613,6 +628,49 @@ position of the current buffer).
     e = find_extent(VTX(tx)->tx_GlobalExtent, &ppos);
 
     return (e != 0) ? VAL(e) : sym_nil;
+}
+
+_PR VALUE cmd_map_extents(VALUE, VALUE, VALUE);
+DEFUN("map-extents", cmd_map_extents, subr_map_extents,
+      (VALUE fun, VALUE start, VALUE end), V_Subr3, DOC_map_extents) /*
+::doc:map_extents::
+map-extents FUNCTION START END
+
+Call (FUNCTION EXTENT) for all innermost extent fragments containing
+positions between START and END in the current buffer.
+
+Note that the behaviour of this function is undefined if extents are
+deleted from within the callback function.
+::end:: */
+{
+    Pos s_copy, e_copy;
+    jmp_buf exit;
+
+    DECLARE2(start, POSP);
+    DECLARE3(end, POSP);
+
+    COPY_VPOS(&s_copy, start);
+    COPY_VPOS(&e_copy, end);
+
+    switch(setjmp(exit))
+    {
+	/* FIXME: remove this GNU CC thing */
+	void map_func(Lisp_Extent *e, void *data) {
+	    /* The call to funcall will protect FUN and E thoughout. */
+	    if(!call_lisp1(fun, VAL(e)))
+		longjmp(exit, 1);
+	}
+
+    case 0:
+	map_section_extents(map_func, curr_vw->vw_Tx->tx_GlobalExtent,
+			    &s_copy, &e_copy, NULL);
+	break;
+
+    case 1:
+	return LISP_NULL;
+    }
+
+    return sym_t;
 }
 
 _PR VALUE cmd_extent_start(VALUE);
@@ -839,24 +897,6 @@ Get the value of PROPERTY (a symbol) at POSITION in BUFFER.
     return cmd_extent_get(prop, e);
 }
 
-_PR VALUE cmd_buffer_put(VALUE, VALUE, VALUE, VALUE);
-DEFUN("buffer-put", cmd_buffer_put, subr_buffer_put,
-      (VALUE prop, VALUE val, VALUE pos, VALUE tx), V_Subr4, DOC_buffer_put) /*
-::doc:buffer_put::
-buffer-put PROPERTY VALUE [POSITION] [BUFFER]
-
-Set the value of PROPERTY (a symbol) at POSITION in BUFFER to VALUE. Note
-that this sets the property in the innermost extent containing POSITION,
-possibly falling back to the global extent covering the entire buffer.
-::end:: */
-{
-    VALUE e;
-    DECLARE1(prop, SYMBOLP);
-
-    e = cmd_get_extent(pos, tx);
-    return cmd_extent_put(prop, val, e);
-}
-
 _PR VALUE cmd_buffer_symbol_value(VALUE, VALUE, VALUE, VALUE);
 DEFUN("buffer-symbol-value", cmd_buffer_symbol_value, subr_buffer_symbol_value,
       (VALUE symbol, VALUE pos, VALUE tx, VALUE no_err), V_Subr4,
@@ -920,6 +960,7 @@ Set the local value of the variable named SYMBOL in EXTENT to VALUE.
     }
     vars = cmd_cons(cmd_cons(symbol, val), vars);
     set_extent_locals(VEXTENT(extent), vars);
+    VSYM(symbol)->car |= SF_BUFFER_LOCAL;
     return val;
 }
 
@@ -1129,6 +1170,14 @@ extent_prin(VALUE strm, VALUE e)
     stream_putc(strm, '>');
 }
 
+int
+extent_cmp(VALUE e1, VALUE e2)
+{
+    Lisp_Extent *f1 = find_first_frag(VEXTENT(e1));
+    Lisp_Extent *f2 = find_first_frag(VEXTENT(e2));
+    return !(f1 == f2);
+}
+
 void
 extent_init(void)
 {
@@ -1137,6 +1186,7 @@ extent_init(void)
     ADD_SUBR(subr_delete_all_extents);
     ADD_SUBR(subr_move_extent);
     ADD_SUBR(subr_get_extent);
+    ADD_SUBR(subr_map_extents);
     ADD_SUBR(subr_extent_start);
     ADD_SUBR(subr_extent_end);
     ADD_SUBR(subr_extent_parent);
@@ -1146,7 +1196,6 @@ extent_init(void)
     ADD_SUBR(subr_extent_get);
     ADD_SUBR(subr_buffer_get);
     ADD_SUBR(subr_extent_put);
-    ADD_SUBR(subr_buffer_put);
     ADD_SUBR(subr_buffer_symbol_value);
     ADD_SUBR(subr_extent_set);
     INTERN(front_sticky);
