@@ -431,6 +431,11 @@ for. When called interactively, spell-check the current block."
 				  "C-s" 'ispell-add-word-for-session))
 (fset 'ispell-minor-c-c-keymap 'keymap)
 
+(defvar ispell-minor-menus '(("Ispell word" ispell-misspelt-word)
+			     ("Add to dictionary"
+			     ispell-add-word-to-dictionary)
+			     ("Add for session" ispell-add-word-for-session)))
+
 (defun ispell-delete-highlights (start end)
   (interactive (if (blockp)
 		   (list (block-start) (block-end))
@@ -461,6 +466,7 @@ whole of the buffer (if no block)."
 				 wstart wend
 				 (list 'face ispell-misspelt-face))))
 			  (extent-set e 'ispell-misspelt t)
+			  (extent-set e 'popup-extent-menus ispell-minor-menus)
 			  wend))))
     (if (not abort-on-input)
 	;; Just scan the whole thing in one chunk

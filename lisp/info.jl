@@ -72,11 +72,27 @@ decoded (through the `read-file-hook').")
     "?" 'describe-mode
     "HELP" 'describe-mode
     "RET" 'info-goto-link
-    "LMB-CLICK2" 'info-goto-link
+    "button1-click2" 'info-goto-link
+    "button2-click1" '(progn (goto-mouse) (info-goto-link))
     "TAB" 'info-next-link
     "Meta-TAB" 'info-prev-link
     "Shift-TAB" 'info-prev-link)
   "Keymap for Info.")
+
+(defvar info-popup-menus '("Info"
+			   ("Goto next node" info-next)
+			   ("Goto previous node" info-prev)
+			   ("Goto parent node" info-up)
+			   ("Goto last visited node" info-last)
+			   ()
+			   ("Choose menu entry" info-menu)
+			   ("Follow link" info-goto-link)
+			   ("Find next link" info-next-link)
+			   ("Find previous link" info-prev-link)
+			   ()
+			   ("Open info file..." info-visit-file)
+			   ("Quit info" info-quit)
+			   ("Bury buffer" bury-buffer)))
 
 (defvar info-tags-buffer nil
   "Buffer for storing the current Info file's tag table.")
@@ -375,6 +391,7 @@ time that `info' has been called)."
 	major-mode 'info-mode
 	mode-name "Info"
 	buffer-record-undo nil
+	popup-local-menus info-popup-menus
 	auto-save-p nil)
   (set-buffer-read-only nil t)
   (unless info-tags-buffer

@@ -29,10 +29,9 @@
     "SPC" 'next-screen
     "BS" 'prev-screen
     "RET" 'html-display-select
-    "LMB-Click2" 'html-display-select
-    "MMB-Click1" 'goto-mouse
-    "MMB-Off" 'html-display-mouse-select
-    "RMB-Click1" 'kill-current-buffer
+    "Button1-Click2" 'html-display-select
+    "Button2-Click1" 'goto-mouse
+    "Button2-Off" 'html-display-mouse-select
     "TAB" 'html-display-next-link
     "M-TAB" 'html-display-previous-link
     "M-?" 'html-display-describe-link
@@ -48,6 +47,23 @@
 
 (fset 'html-display-map 'keymap)
 ;;;###autoload (autoload-keymap 'html-display-map "html-display")
+
+(defvar html-display-menus '("WWW"
+			     ("Find next link" html-display-next-link)
+			     ("Find previous link" html-display-previous-link)
+			     ("Find named anchor..." html-display-goto-anchor)
+			     ("Describe current link"
+			      html-display-describe-link)
+			     ()
+			     ("Find URL..." find-url)
+			     ("Retrace last move" kill-current-buffer)
+			     ("Quit WWW browser" html-display-quit)))
+
+(defvar html-display-link-menus
+  '(("Follow link" html-display-select)
+    ("Follow link in other view" html-display-select-other-view)
+    ("Follow link in other window" html-display-select-other-window)
+    ("Describe link" html-display-describe-link)))
 
 ;;;###autoload
 (defun html-display (source &optional url other-view)
@@ -79,7 +95,13 @@
       (setq mode-name "HTML-Display"
 	    major-mode 'html-display-mode
 	    local-keymap html-display-map
-	    local-ctrl-c-keymap html-display-c-c-map)
+	    local-ctrl-c-keymap html-display-c-c-map
+	    popup-local-menus html-display-menus)
+      (map-extents #'(lambda (e)
+		       (when (html-display-extent-is-link-p e)
+			 (extent-set e 'popup-extent-menus
+				     html-display-link-menus)))
+		   (start-of-buffer) (end-of-buffer))
       (call-hook 'html-display-hook))))
 
 (defun html-display-current-link (&optional failable)
@@ -101,8 +123,23 @@
 			     buffer-list)))
     (mapc 'kill-buffer html-buffers)))
 
+(defun html-display-find-url (url)
+  (catch 'exit
+    (mapc #'(lambda (b)
+	      (with-buffer b
+		(when (and html-display-details
+			   (assq 'url html-display-details)
+			   (string=
+			    url (cdr (assq 'url html-display-details))))
+		  (throw 'exit b)))) (all-buffers))
+    nil))
+
 
 ;; Moving between links
+
+(defun html-display-extent-is-link-p (extent)
+  (and (setq extent (extent-get extent 'html-anchor-params))
+       (assq 'href extent)))
 
 (defun html-display-next-link (count)
   "Move to the COUNT'th next link part in the current buffer."
@@ -116,9 +153,7 @@
 	(setq start (extent-end tem)))
       (goto (catch 'foo
 	      (map-extents #'(lambda (e)
-			       (when (and (setq tem (extent-get
-						     e 'html-anchor-params))
-					  (assq 'href tem))
+			       (when (html-display-extent-is-link-p e)
 				 (throw 'foo (extent-start e))))
 			   start (end-of-buffer)))))
     (setq count (1- count)))
@@ -132,9 +167,7 @@
       (goto (let
 		(last)
 	      (map-extents #'(lambda (e)
-			       (when (and (setq tem (extent-get
-						     e 'html-anchor-params))
-					  (assq 'href tem))
+			       (when (html-display-extent-is-link-p e)
 				 (setq last (extent-start e))))
 			   (start-of-buffer) end)
 	      last)))
@@ -192,6 +225,15 @@
 (defun html-display-select-other-view ()
   (interactive)
   (html-display-select t))
+
+(defun html-display-select-other-window ()
+  (interactive)
+  (let
+      ((pos (cursor-pos)))
+    (with-window (make-window)
+      ;; XXX why is this required?!
+      (goto pos)
+      (html-display-select))))
 
 (defun html-display-describe-link ()
   (interactive)
