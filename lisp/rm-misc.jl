@@ -108,7 +108,7 @@ message in that all recipients of the original wil receive the reply."
 		"%s writes:\n" (or (rm-get-msg-field msg rm-msg-from-name)
 				   (rm-get-msg-field msg rm-msg-from-addr)))
 	(setq start (next-line 1 (buffer-start))))
-      (setq body-end (find-prev-regexp "^." (buffer-end)))
+      (setq body-end (find-prev-regexp "^[^\t\n ]+$" (buffer-end)))
       (while (<= start (or body-end (buffer-end)))
 	(insert mail-yank-prefix start)
 	(setq start (next-line 1 start)))
