@@ -25,7 +25,7 @@ top_srcdir=@top_srcdir@
 
 jade_prog = $(rep_LIBTOOL) --mode=execute ../src/jade --batch --no-rc
 COMPILE_ENV = JADELISPDIR=. \
-	      JADEEXECDIR=$(top_builddir)/src/.libs \
+	      REP_DL_PATH=$(top_builddir)/src/.libs \
 	      JADEDOCFILE=../DOC
 
 INSTALL_FILES = $(wildcard *.jl) $(wildcard *.jlc) $(wildcard *.jld)
