@@ -32,7 +32,7 @@
     "#" 'dired-delete-autosaves
     "~" 'dired-delete-backups
     "&" 'dired-delete-garbage
-    "%" '(next-keymap-path '(dired-%-keymap))
+    "%" 'dired-%-keymap
     "f" 'dired-find-file
     "o" 'dired-find-file-other-view
     "Ctrl-o" 'dired-display-file
@@ -45,6 +45,7 @@
   (bind-keys (make-sparse-keymap)
     "d" 'dired-delete-by-regexp
     "m" 'dired-mark-by-regexp))
+(fset 'dired-%-keymap 'keymap)
 
 (defvar dired-garbage-files "\\.(orig|rej|aux|log)$"
   "Regular expression matching files under dired that should be marked for

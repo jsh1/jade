@@ -153,7 +153,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	      ;; Make this a separate undo operation
 	      (setq buffer-undo-list (cons nil buffer-undo-list)))
 	    (make-local-variable 'pre-command-hook)
-	    (setq keymap-path '(prompt-keymap global-keymap))
+	    (setq local-keymap prompt-keymap)
 	    (call-hook 'before-prompt-hook)
 	    (setq result (catch 'prompt (recursive-edit)))
 	    (when (and result prompt-history
@@ -445,7 +445,7 @@ symbol must agree with it."
 	(cons #'(lambda ()
 		  (lisp-mode)
 		  ;; This is something of a kludge
-		  (setq keymap-path (delq 'lisp-mode-keymap keymap-path)))
+		  (setq local-keymap 'prompt-keymap))
 	      before-prompt-hook)))
     (read-from-string (prompt prompt start))))
 
@@ -521,18 +521,15 @@ string QUESTION, returns t for `y'."
        (prompt-buffer (make-buffer "*y-or-n*")))
     (with-view (minibuffer-view)
       (with-buffer prompt-buffer
-	(let
-	    ((old-u-k-h unbound-key-hook)
-	     (old-k-p keymap-path))
-	  (setq unbound-key-hook '(beep)
-		keymap-path (cons (or keymap y-or-n-keymap) keymap-path))
-	  (insert (concat question ?  (or help-string "(y or n)") ? )
-		  (start-of-buffer))
-	  (unwind-protect
-	      (catch 'ask
-		(recursive-edit))
-	    (with-buffer prompt-buffer
-	      (kill-all-local-variables))))))))
+	(setq unbound-key-hook '(beep)
+	      local-keymap (or keymap 'y-or-n-keymap))
+	(insert (concat question ?  (or help-string "(y or n)") ? )
+		(start-of-buffer))
+	(unwind-protect
+	    (catch 'ask
+	      (recursive-edit))
+	  (with-buffer prompt-buffer
+	    (kill-all-local-variables)))))))
 
 (defvar map-y-or-n-keymap
   (bind-keys (make-sparse-keymap y-or-n-keymap)

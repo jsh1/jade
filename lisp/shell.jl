@@ -117,8 +117,8 @@ from the buffer before being sent (since the shell will echo them anyway)")
   "Shell Mode:\n
 Major mode for running a subprocess in a buffer. Local bindings are:\n
 \\{shell-keymap}\\{shell-ctrl-c-keymap,Ctrl-c}"
-  (setq keymap-path (cons 'shell-keymap keymap-path)
-	ctrl-c-keymap shell-ctrl-c-keymap
+  (setq local-keymap 'shell-keymap
+	local-ctrl-c-keymap shell-ctrl-c-keymap
 	mode-name "Shell"
 	major-mode 'shell-mode
 	major-mode-kill 'shell-mode-kill)

@@ -306,7 +306,7 @@ direction."
 	    isearch-forwards forwards
 	    isearch-view (current-view)
 	    isearch-original-buffer (current-buffer (minibuffer-view)))
-      (setq keymap-path (cons 'isearch-keymap keymap-path))
+      (setq local-keymap 'isearch-keymap)
       (make-local-variable 'unbound-key-hook)
       (add-hook 'unbound-key-hook 'isearch-unbound-key-fun))
     (set-current-view (minibuffer-view))

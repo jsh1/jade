@@ -138,7 +138,7 @@ items to be displayed and manipulated."
 	major-mode 'summary-mode
 	major-mode-kill 'summary-mode-kill
 	mode-name name
-	keymap-path (cons summary-actual-keymap keymap-path)
+	local-keymap summary-actual-keymap
 	buffer-record-undo nil
 	buffer-undo-list nil)
   (set-buffer-read-only (current-buffer) t)
@@ -150,7 +150,7 @@ items to be displayed and manipulated."
   (setq major-mode nil
 	major-mode-kill nil
 	mode-name nil
-	keymap-path (delq summary-actual-keymap keymap-path))
+	local-keymap nil)
   (remove-hook 'unbound-key-hook 'nop))
 
 

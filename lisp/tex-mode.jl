@@ -29,7 +29,7 @@
 
 (defvar tex-ctrl-c-keymap
   (bind-keys (make-sparse-keymap)
-    "C-c" '(next-keymap-path '(tex-ctrl-c-ctrl-c-keymap))
+    "C-c" 'tex-ctrl-c-ctrl-c-keymap
     "C-f" 'tex-file
     "TAB" 'bibtex-file
     "C-l" 'tex-recenter-output-buffer
@@ -54,6 +54,7 @@
     "{" 'tex-insert-braces
     "]" 'tex-move-over-braces
     "}" 'tex-move-over-braces))
+(fset 'tex-ctrl-c-ctrl-c-keymap 'keymap)
 
 ;;;###autoload
 (defun tex-mode (&optional from-sub-mode)
@@ -68,11 +69,11 @@ Local bindings in this mode are:\n
   (setq mode-name "TeX"
 	major-mode 'tex-mode
 	major-mode-kill 'tex-mode-kill
-	ctrl-c-keymap tex-ctrl-c-keymap
+	local-ctrl-c-keymap tex-ctrl-c-keymap
 	paragraph-separate "^(([\t\f\n ]|(\\$\\$))*|\\\\(begin|end|noindent).*)\n"
 	paragraph-start "^( +|\\\\item)"
 	page-start "^\\\\((sub)*(section|paragraph)|chapter){.*}"
-	keymap-path (cons 'tex-keymap keymap-path)
+	local-keymap 'tex-keymap
 	mode-comment-header "%"
 	generic-exp-single-delims '(?\" ?\$)
 	generic-exp-escape-char 0
@@ -95,7 +96,7 @@ Local bindings in this mode are:\n
   (setq mode-name nil
 	major-mode nil
 	major-mode-kill nil
-	keymap-path (delq 'tex-keymap keymap-path)))
+	local-keymap nil))
 
 (defun latex-mode (&optional from-super-mode)
   "LaTeX Mode:\n

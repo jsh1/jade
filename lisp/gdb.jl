@@ -74,9 +74,10 @@ centred each time it changes.")
     "Ctrl-d" '(gdb-command "clear %d\n"
 			   (gdb-current-line))
     "Ctrl-l" 'gdb-redisplay-frame))
+(fset 'gdb-ctrl-c-keymap 'keymap)
 
 (bind-keys ctrl-x-keymap
-  "Ctrl-a" '(next-keymap-path '(gdb-ctrl-c-keymap)))
+  "Ctrl-a" 'gdb-ctrl-c-keymap)
 
 ;;;###autoload
 (defun gdb (prog)
@@ -107,7 +108,7 @@ There is no limit to the number of gdb processes you may run at once."
     (setq buffer-status-id (concat "GDB: " (file-name-nondirectory prog))
 	  major-mode 'gdb-mode
 	  mode-name "GDB"
-	  ctrl-c-keymap gdb-ctrl-c-keymap
+	  local-ctrl-c-keymap gdb-ctrl-c-keymap
 	  gdb-last-buffer buffer
 	  gdb-buffer-p t)
     (call-hook 'gdb-hook)))

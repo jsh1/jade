@@ -115,10 +115,10 @@ being sent."
   (bind-keys (make-sparse-keymap)
     "Ctrl-c" 'send-mail-send-and-exit
     "Ctrl-s" 'send-mail-send
-    "Ctrl-f" '(next-keymap-path '(send-mail-c-f-keymap))
+    "Ctrl-f" 'send-mail-c-f-keymap
     "Ctrl-t" 'send-mail-go-text
     "Ctrl-w" 'send-mail-signature
-    "Ctrl-m" '(next-keymap-path '(mime-encode-keymap))
+    "Ctrl-m" 'mime-encode-keymap
     "Ctrl-y" 'mail-yank-original
     "Ctrl-q" 'mail-fill-yanked-message))
 
@@ -129,6 +129,7 @@ being sent."
     "Ctrl-c" 'send-mail-go-cc
     "Ctrl-b" 'send-mail-go-bcc
     "Ctrl-f" 'send-mail-go-fcc))
+(fset 'send-mail-c-f-keymap 'keymap)
 
 (defun send-mail-mode ()
   "Mail Mode:\n
@@ -146,7 +147,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 	paragraph-start (concat "^([\t\f ]|"
 				(quote-regexp mail-yank-prefix)
 				?| (quote-regexp mail-header-separator) ")*$")
-	ctrl-c-keymap send-mail-c-keymap)
+	local-ctrl-c-keymap send-mail-c-keymap)
   ;; Need to turn on autosaving and associate the buffer with a
   ;; temporary file...
   (call-hook 'text-mode-hook)
@@ -155,7 +156,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 (defun send-mail-mode-kill ()
   (setq major-mode nil
 	major-mode-kill nil
-	ctrl-c-keymap nil))
+	local-ctrl-c-keymap nil))
 
 (defun send-mail-go-text ()
   "Put the cursor at the start of the message body."

@@ -49,7 +49,7 @@ Major mode for editing Lisp source. Local bindings in this mode are:\n
 	mode-defun-footer nil
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
-	keymap-path (cons 'lisp-mode-keymap keymap-path)
+	local-keymap 'lisp-mode-keymap
 	completion-hooks (cons 'lisp-complete-sexp completion-hooks))
   (call-hook 'lisp-mode-hook))
 

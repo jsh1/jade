@@ -26,16 +26,38 @@
 
 (defvar map-keymap-recursively t
   "When nil, the map-keymap function will only map over the first level of
-keymaps, i.e. all `next-keymap-path' declarations are ignored.")
+keymaps, i.e. all prefix keys are ignored.")
 
 (defvar km-prefix-string nil)
 (defvar km-keymap-list nil)
 
+(defun active-keymaps (buffer)
+  (with-buffer buffer
+    (let
+	((maps nil)
+	 (e (get-extent))
+	 (minor minor-mode-keymap-alist)
+	 tem)
+      (while e
+	(setq tem (extent-get e 'keymap))
+	(when tem
+	  (setq maps (cons tem maps)))
+	(setq e (extent-parent e)))
+      (while minor
+	(when (symbol-value (car (car minor)))
+	  (setq maps (cons (cdr (car minor)) maps)))
+	(setq minor (cdr minor)))
+      (when local-keymap
+	(setq maps (cons local-keymap maps)))
+      (when global-keymap
+	(setq maps (cons global-keymap maps)))
+      (nreverse maps))))
+
 ;;;###autoload
 (defun map-keymap (function &optional keymap buffer)
   "Map FUNCTION over all key bindings under the keymap or list of keymaps
-KEYMAP (by default, the contents of the keymap-path variable). If BUFFER
-is defined it gives the buffer to dereference all variables in.
+KEYMAP (by default, the active keymaps of BUFFER). If BUFFER is defined it
+gives the buffer to dereference all variables in.
 
 FUNCTION is called as (FUNCTION KEY PREFIX), where KEY is a cons cell
 (COMMAND . EVENT), and PREFIX a string describing the prefix keys of this
@@ -45,7 +67,7 @@ binding, or nil if there was no prefix."
   (when (keymapp keymap)
     (setq keymap (list keymap)))
   (let
-      ((km-keymap-list (or keymap (with-buffer buffer keymap-path)))
+      ((km-keymap-list (or keymap (active-keymaps buffer)))
        (done-list nil))
     (while km-keymap-list
       (let
@@ -73,11 +95,15 @@ binding, or nil if there was no prefix."
   (mapc #'(lambda (k)
 	    (cond
 	     ((eq k 'keymap))		;An inherited sparse keymap
-	     ((eq (car (car k)) 'next-keymap-path)
+	     ((or (and (symbolp (car k))
+		       (eq (symbol-function (car k) t) 'keymap))
+		  (eq (car (car k)) 'next-keymap-path))
 	      ;; A prefix key
 	      (when map-keymap-recursively
 		(let
-		    ((this-list (with-buffer buffer (eval (nth 1 (car k)))))
+		    ((this-list (if (symbolp (car k))
+				    (list (symbol-value (car k) t))
+				  (with-buffer buffer (eval (nth 1 (car k))))))
 		     (event-str (event-name (cdr k))))
 		  (when (listp this-list)
 		    ;; Another keymap-list, add it to the list of those waiting
@@ -101,7 +127,7 @@ binding, or nil if there was no prefix."
 (defun substitute-key-definition (olddef newdef &optional keymap)
   "Substitute all occurrences of the command OLDDEF for the command NEWDEF
 in the keybindings under the keymap or list of keymaps KEYMAP. When KEYMAP
-is nil, the value of `keymap-path' is used, i.e. all key bindings currently
+is nil, the currently active keymaps used, i.e. all key bindings currently
 in effect."
   (interactive "COld command:\nCReplacement command:")
   (map-keymap #'(lambda (k pfx)
@@ -176,7 +202,6 @@ define that event."
       (with-buffer temp-buffer
 	(add-hook 'unbound-key-hook #'(lambda ()
 					(throw 'read-event (current-event))))
-	(setq keymap-path nil)
 	(next-keymap-path nil)
 	(insert (or title "Enter key: "))
 	(setq ev (catch 'read-event
@@ -189,7 +214,7 @@ define that event."
 would invoke."
   (interactive)
   (let
-      ((path keymap-path)
+      ((path 'global-keymap)
        names event command done)
     (while (not done)
       (setq event (read-event (concat "Enter a key sequence: " names))
@@ -197,19 +222,23 @@ would invoke."
       (next-keymap-path path)
       (setq command (lookup-event-binding event t))
       (if command
-	  (if (eq (car command) 'next-keymap-path)
-	      ;; A link to another keymap
-	      (progn
-		(call-command command)
-		(setq path (next-keymap-path t)))
-	    ;; End of the chain
-	    (help-wrapper
-	     (format (current-buffer) "\n%s -> %S\n" names command)
-	     (when (functionp command)
-	       (format (current-buffer)
-		       "\n%s\n"
-		       (or (documentation command) ""))))
-	    (setq done t))
+	  (cond ((and (symbolp command)
+		      (eq (symbol-function command t) 'keymap))
+		 ;; a prefix key
+		 (setq path (list command)))
+		((eq (car command) 'next-keymap-path)
+		 ;; A link to another keymap
+		 (call-command command)
+		 (setq path (next-keymap-path t)))
+		(t
+		 ;; End of the chain
+		 (help-wrapper
+		  (format (current-buffer) "\n%s -> %S\n" names command)
+		  (when (functionp command)
+		    (format (current-buffer)
+			    "\n%s\n"
+			    (or (documentation command) ""))))
+		 (setq done t)))
 	(message (concat names " is unbound. "))
 	(setq done t)
-	(next-keymap-path nil)))))
+	(next-keymap-path 'global-keymap)))))

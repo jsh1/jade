@@ -31,7 +31,7 @@
     "Meta-=" 'word-count-area))
 
 (defvar text-mode-indent-keymap
-  (bind-keys (make-sparse-keymap)
+  (bind-keys (make-sparse-keymap text-mode-keymap)
     "TAB" 'text-mode-indent-tab))
 
 (defun text-mode-init ()
@@ -48,7 +48,7 @@
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Text"
 	major-mode 'text-mode
-	keymap-path (cons 'text-mode-keymap keymap-path))
+	local-keymap 'text-mode-keymap)
   (text-mode-init)
   (call-hook 'text-mode-hook))
 
@@ -62,8 +62,7 @@ previous line, then works as normal. Local bindings in this mode are:\n
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Indented Text"
 	major-mode 'indented-text-mode
-	keymap-path (cons 'text-mode-indent-keymap
-			  (cons 'text-mode-keymap keymap-path)))
+	local-keymap 'text-mode-indent-keymap)
   (make-local-variable 'fill-prefix)
   (setq fill-prefix 'text-mode-fill-prefix)
   (text-mode-init)
@@ -72,8 +71,7 @@ previous line, then works as normal. Local bindings in this mode are:\n
 
 (defun text-mode-kill ()
   (setq mode-name nil
-	keymap-path (delq 'text-mode-keymap 
-			  (delq 'text-mode-indent-keymap keymap-path))
+	local-keymap nil
 	major-mode nil
 	major-mode-kill nil)
   (when (and (boundp 'fill-prefix) (functionp fill-prefix))

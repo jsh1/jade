@@ -58,7 +58,6 @@ visually.")
 (defvar rcs-descr-ring (make-ring 16)
   "Ring buffer containing RCS history entries.")
 
-;;;###autoload
 (defvar rcs-keymap
   (bind-keys (make-sparse-keymap)
     "i" 'rcs-register-buffer
@@ -68,7 +67,10 @@ visually.")
     "~" 'rcs-view-revision
     "b" 'rcs-set-default-branch)
   "Keymap containing RCS commands.")
-;;;###autoload (bind-keys ctrl-x-keymap "v" '(next-keymap-path '(rcs-keymap)))
+(fset 'rcs-keymap 'keymap)
+
+;;;###autoload (autoload-keymap 'rcs-keymap "rcs")
+;;;###autoload (bind-keys ctrl-x-keymap "v" 'rcs-keymap)
 
 (defvar rcs-callback-ctrl-c-keymap
   (bind-keys (make-sparse-keymap)
@@ -149,11 +151,11 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
 	(goto-buffer buffer)
       (setq buffer (open-buffer buf-name))
       (goto-buffer buffer)
-      (setq keymap-path (cons rcs-callback-keymap keymap-path)))
+      (setq local-keymap 'rcs-callback-keymap))
     (text-mode)
     (setq rcs-callback-args (list file buffer command options
 				  text-prefix reread-p)
-	  ctrl-c-keymap rcs-callback-ctrl-c-keymap
+	  local-ctrl-c-keymap rcs-callback-ctrl-c-keymap
 	  rcs-history-level nil)))
 
 ;; Called when Ctrl-C Ctrl-C is typed in a callback buffer.

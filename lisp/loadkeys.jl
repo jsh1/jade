@@ -19,32 +19,45 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (defvar global-keymap (make-keymap)
-  "The root keymap.")
+  "The root keymap, active in all buffers.")
+(make-variable-buffer-local 'global-keymap)
+
+(defvar local-keymap nil
+  "A keymap local to the current buffer.")
+(make-variable-buffer-local 'local-keymap)
+
+(defvar local-ctrl-c-keymap nil
+  "A keymap hung from C-c, local to the current buffer.")
+(make-variable-buffer-local 'local-ctrl-c-keymap)
+(fset 'local-ctrl-c-keymap 'keymap)
 
 (defvar ctrl-x-keymap (make-keymap)
   "Default `Ctrl-x' keymap.")
+(fset 'ctrl-x-keymap 'keymap)
 
 (defvar ctrl-x-4-keymap (make-sparse-keymap)
   "Default `Ctrl-x 4' keymap.")
+(fset 'ctrl-x-4-keymap 'keymap)
 
 (defvar ctrl-x-5-keymap (make-sparse-keymap)
   "Default `Ctrl-x 5' keymap.")
+(fset 'ctrl-x-5-keymap 'keymap)
 
 (defvar ctrl-x-n-keymap (make-sparse-keymap)
   "Default `Ctrl-x n' keymap.")
-
-(defvar ctrl-c-keymap nil
-  "Hook to hang major mode `Ctrl-c' keymap from.")
-(make-variable-buffer-local 'ctrl-c-keymap)
+(fset 'ctrl-x-n-keymap 'keymap)
 
 (defvar user-keymap (make-sparse-keymap)
   "Keymap for user-defined bindings, hung from `Ctrl-c'.")
+(fset 'user-keymap 'keymap)
 
-(setq unbound-key-hook nil
-      keymap-path '(global-keymap))
-
-(make-variable-buffer-local 'keymap-path)
+(defvar unbound-key-hook nil
+  "Called when no binding can be found for the current event.")
 (make-variable-buffer-local 'unbound-key-hook)
+
+(defvar minor-mode-keymap-alist nil
+  "List of (SYMBOL . KEYMAP) defining minor-mode keybindings. If the value
+of SYMBOL is non-nil, KEYMAP is used to search for bindings.")
 
 (bind-keys global-keymap
   "Meta-0"	'(numeric-arg 0)
@@ -103,7 +116,8 @@
   "Ctrl-b"	'backward-char
   "Meta-b"	'backward-word
   "Ctrl-Meta-b"	'backward-exp
-  "Ctrl-c"	'(next-keymap-path '(ctrl-c-keymap user-keymap))
+  "Ctrl-c"	'local-ctrl-c-keymap
+  "Ctrl-c"	'user-keymap
   "Meta-c"	'capitalize-word
   "Ctrl-Meta-c"	'abort-recursive-edit
   "Ctrl-d"	'delete-char
@@ -146,7 +160,7 @@
   "Ctrl-w"	'kill-block
   "Ctrl-W"	'delete-block
   "Meta-w"	'copy-block-as-kill
-  "Ctrl-x"	'(next-keymap-path '(ctrl-x-keymap))
+  "Ctrl-x"	'ctrl-x-keymap
   "Meta-x"	'call-command
   "Ctrl-y"	'yank
   "Ctrl-Y"	'yank-rectangle
@@ -195,8 +209,8 @@
   "0"		'delete-view
   "1"		'delete-other-views
   "2"		'split-view
-  "4"		'(next-keymap-path '(ctrl-x-4-keymap))
-  "5"		'(next-keymap-path '(ctrl-x-5-keymap))
+  "4"		'ctrl-x-4-keymap
+  "5"		'ctrl-x-5-keymap
   "b"		'switch-to-buffer
   "f"		'set-fill-column
   "."		'set-fill-prefix
@@ -204,7 +218,7 @@
   "i"		'insert-file
   "k"		'kill-buffer
   "m"		'mail-setup
-  "n"		'(next-keymap-path '(ctrl-x-n-keymap))
+  "n"		'ctrl-x-n-keymap
   "o"		'goto-next-view
   "s"		'save-some-buffers
   "u"		'undo
@@ -254,7 +268,7 @@ the key."
     ;; Set the `next-keymap-path' to ensure echoing
     ;; continues. `prefix-arg' *must* be set after
     ;; `next-keymap-path' for this all to work!
-    (next-keymap-path keymap-path)
+    (next-keymap-path 'global-keymap)
     (setq prefix-arg (cond
 		      ((numberp current-prefix-arg)
 		       (+ (* current-prefix-arg 10) digit))
@@ -267,7 +281,7 @@ the key."
 (defun negative-arg (arg)
   "Negate the prefix-arg. Bound to `Meta--'. "
   (interactive "P")
-  (next-keymap-path keymap-path)
+  (next-keymap-path 'global-keymap)
   (setq prefix-arg (cond
 		    ((numberp arg)
 		     (* arg -1))
@@ -279,7 +293,7 @@ the key."
 
 (defun universal-arg (arg)
   (interactive "P")
-  (next-keymap-path keymap-path)
+  (next-keymap-path 'global-keymap)
   (setq prefix-arg (cond
 		    ((consp arg)
 		     (rplaca arg (* 4 (car arg)))

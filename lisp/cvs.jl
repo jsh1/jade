@@ -73,7 +73,6 @@ and hence hasn't been processed yet; or nil.")
 (defvar cvs-after-update-hook nil
   "Hook called after completing a cvs-update command.")
 
-;;;###autoload
 (defvar cvs-keymap
   (bind-keys (make-sparse-keymap summary-keymap)
     "a" 'cvs-add
@@ -98,8 +97,10 @@ and hence hasn't been processed yet; or nil.")
     "%" 'cvs-summary-clean
     "~" 'cvs-undo-modification
     "`" 'cvs-next-conflict-marker))
+(fset 'cvs-keymap 'keymap)
 
-;;;###autoload (bind-keys ctrl-x-keymap "c" '(next-keymap-path '(cvs-keymap)))
+;;;###autoload (autoload-keymap 'cvs-keymap "cvs")
+;;;###autoload (bind-keys ctrl-x-keymap "c" 'cvs-keymap)
 
 (defvar cvs-callback-ctrl-c-keymap
   (bind-keys (make-sparse-keymap)
@@ -351,7 +352,7 @@ entered in a new buffer, under the heading TITLE."
     (goto-buffer buffer)
     (text-mode)
     (setq cvs-callback-function function
-	  ctrl-c-keymap cvs-callback-ctrl-c-keymap)))
+	  local-ctrl-c-keymap cvs-callback-ctrl-c-keymap)))
 
 (defun cvs-callback-finished ()
   "Signal that the message in current buffer is complete, and therefore

@@ -147,7 +147,7 @@ Type \\[mds-edit-commit] to finalise the edits. The full list of local keybindin
        (item (summary-current-item)))
     (goto-other-view)
     (goto-buffer buffer)
-    (setq ctrl-c-keymap mds-edit-keymap)
+    (setq local-ctrl-c-keymap mds-edit-keymap)
     (setq major-mode 'mds-edit)
     (setq mode-name "Mail-Dir-Edit")
     ;; Copied from lisp-mode

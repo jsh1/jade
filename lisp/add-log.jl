@@ -96,8 +96,7 @@ considered as referring to the same day.")
   (setq mode-name "ChangeLog"
 	major-mode 'changelog-mode
 	major-mode-kill 'changelog-mode-kill
-	keymap-path (cons 'text-mode-indent-keymap
-			  (cons 'text-mode-keymap keymap-path)))
+	local-keymap 'text-mode-indent-keymap)
   ;; In case fill.jl hasn't been loaded yet.
   (make-local-variable 'fill-prefix)
   (make-local-variable 'fill-prefix-width)
@@ -108,7 +107,6 @@ considered as referring to the same day.")
 
 (defun changelog-mode-kill ()
   (setq mode-name nil
-	keymap-path (delq 'text-mode-keymap 
-			  (delq 'text-mode-indent-keymap keymap-path))
+	local-keymap nil
 	major-mode nil
 	major-mode-kill nil))

@@ -31,13 +31,6 @@
   "Regexp matching where it's permittable to break a line.")
 (make-variable-buffer-local 'fill-break-re)
 
-(defvar fill-mode-active nil
-  "Non-nil when fill-mode is enabled.")
-(make-variable-buffer-local 'fill-mode-active)
-
-(setq minor-mode-alist (cons '(fill-mode-active " Fill")
-			     minor-mode-alist))
-
 (defvar fill-prefix nil
   "When non-nil, a string that is removed from the start of each line before
 filling, and added to the start of each line after filling.\n
@@ -229,6 +222,15 @@ and POS. When called interactively, POS is bound to the cursor position."
 
 ;; Filling minor mode
 
+(defvar fill-mode-active nil
+  "Non-nil when fill-mode is enabled.")
+(make-variable-buffer-local 'fill-mode-active)
+
+(setq minor-mode-alist (cons '(fill-mode-active " Fill")
+			     minor-mode-alist))
+(setq minor-mode-keymap-alist (cons '(fill-mode-active . fill-mode-keymap)
+				    minor-mode-keymap-alist))
+
 (defvar fill-mode-keymap
   (bind-keys (make-sparse-keymap)
     "SPC" 'fill-mode-spc
@@ -242,11 +244,8 @@ the SPC and RET keys check if the cursor is past the fill-column. If so,
 the next line is started."
   (interactive)
   (if fill-mode-active
-      (progn
-	(setq fill-mode-active nil)
-	(setq keymap-path (delq fill-mode-keymap keymap-path)))
-    (setq fill-mode-active t)
-    (setq keymap-path (cons fill-mode-keymap keymap-path))))
+      (setq fill-mode-active nil)
+    (setq fill-mode-active t)))
 
 ;;;###autoload
 (defun fill-mode-on ()

@@ -196,7 +196,7 @@ command for more details."
        (esc-means-meta nil))
     (with-view (minibuffer-view)
       (with-buffer minibuf
-	(setq keymap-path (cons diff-keymap keymap-path))
+	(setq local-keymap diff-keymap)
 	(make-extent (start-of-buffer)
 		     (insert "Visual diff: (n, p, q) ")
 		     (list 'face prompt-title-face))

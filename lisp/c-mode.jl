@@ -110,8 +110,8 @@ Commands defined by this mode are:\n
 	mode-defun-footer "^}"
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
-	ctrl-c-keymap c-mode-ctrl-c-keymap
-	keymap-path (cons 'c-mode-keymap keymap-path))
+	local-ctrl-c-keymap c-mode-ctrl-c-keymap
+	local-keymap 'c-mode-keymap)
   (call-hook 'c-mode-hook))
 
 (defun c-open-brace ()

@@ -55,7 +55,7 @@ first group of non-empty lines is displayed."
     (with-view (other-view)
       (goto-buffer output)
       (setq page-summary-file (buffer-file-name buffer))
-      (setq keymap-path (cons 'page-summary-keymap keymap-path))
+      (setq local-keymap 'page-summary-keymap)
       (setq major-mode 'page-summary-mode)
       (setq mode-name "Page-Summary")
       (goto (start-of-buffer)))))

@@ -71,7 +71,7 @@ Major mode for editing Perl source code. Local keybindings are:\n
 	mode-defun-footer "^}"
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
-	keymap-path (cons 'perl-mode-keymap keymap-path))
+	local-keymap 'perl-mode-keymap)
   (call-hook 'perl-mode-hook))
 
 (defun perl-indent-line (&optional pos)

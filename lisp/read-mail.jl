@@ -258,7 +258,7 @@ Major mode for viewing mail folders. Local bindings are:\n
     (setq rm-open-mailboxes (cons (current-buffer) rm-open-mailboxes)
 	  major-mode 'read-mail-mode
 	  major-mode-kill 'read-mail-mode-kill
-	  keymap-path (cons 'rm-keymap keymap-path))
+	  local-keymap 'rm-keymap)
     (call-hook 'read-mail-mode-hook)))
 
 ;; Remove the major-mode of mailbox buffers
@@ -953,8 +953,7 @@ key, the car the order to sort in, a positive or negative integer.")
 	      (unless (eq (current-buffer) (mark-file mark))
 		(setq rm-proxy-folder folder
 		      major-mode 'read-mail-mode
-		      keymap-path (cons 'rm-keymap
-					(delq rm-keymap keymap-path)))
+		      local-keymap 'rm-keymap)
 		(set-buffer-read-only nil t))
 	      (rm-fix-status-info folder current))))
       ;; No message to display. Try for an empty buffer

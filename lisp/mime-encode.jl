@@ -36,13 +36,14 @@
     ("\\.au$" . "audio/basic"))
   "Alist of (REGEXP . CONTENT-TYPE-STRING).")
 
-;;;###autoload
 (defvar mime-encode-keymap (bind-keys (make-sparse-keymap)
 			     "C-a" 'mime-encode-attach-file
 			     "C-b" 'mime-encode-attach-buffer
 			     "C-n" 'mime-next-part
 			     "C-p" 'mime-previous-part
 			     "C-d" 'mime-encode-delete-part))
+
+;;;###autoload (autoload-keymap 'mime-encode-keymap "mime-encode")
 
 
 ;; Message composition functions

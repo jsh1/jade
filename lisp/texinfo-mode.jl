@@ -26,7 +26,7 @@
 
 (defvar texinfo-ctrl-c-keymap
   (bind-keys (make-sparse-keymap)
-    "Ctrl-c" '(next-keymap-path '(texinfo-ctrl-c-ctrl-c-keymap))))
+    "Ctrl-c" 'texinfo-ctrl-c-ctrl-c-keymap))
 
 (defvar texinfo-ctrl-c-ctrl-c-keymap
   (bind-keys (make-sparse-keymap)
@@ -44,6 +44,7 @@
     "{" 'texinfo-insert-braces
     "]" 'texinfo-move-over-braces
     "}" 'texinfo-move-over-braces))
+(fset 'texinfo-ctrl-c-ctrl-c-keymap 'keymap)
 
 ;;;###autoload
 (defun texinfo-mode ()
@@ -58,11 +59,11 @@ Local bindings in this mode are:\n
   (setq mode-name "Texinfo"
 	major-mode 'texinfo-mode
 	major-mode-kill 'texinfo-mode-kill
-	ctrl-c-keymap texinfo-ctrl-c-keymap
+	local-ctrl-c-keymap texinfo-ctrl-c-keymap
 	paragraph-separate "^@node.*\n"
 	paragraph-start "^ +"
 	mode-comment-header "@c"
-	keymap-path (cons 'texinfo-keymap keymap-path))
+	local-keymap 'texinfo-keymap)
   (call-hook 'text-mode-hook)
   (call-hook 'texinfo-mode-hook))
 
@@ -70,7 +71,7 @@ Local bindings in this mode are:\n
   (setq mode-name nil
 	major-mode nil
 	major-mode-kill nil
-	keymap-path (delq 'texinfo-keymap keymap-path)))
+	local-keymap nil))
 
 (defun texinfo-insert-@end ()
   (interactive)

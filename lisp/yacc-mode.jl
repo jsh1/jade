@@ -71,8 +71,8 @@ scan."
 	mode-backward-exp 'c-backward-exp
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start "^([\n\t\f ]*\n|[a-zA-z0-9_]+:)"
-	ctrl-c-keymap yacc-mode-ctrl-c-keymap
-	keymap-path (cons 'yacc-mode-keymap keymap-path))
+	local-ctrl-c-keymap yacc-mode-ctrl-c-keymap
+	local-keymap 'yacc-mode-keymap)
   (call-hook 'yacc-mode-hook)
   (when yacc-mode-scan-when-idle
     (make-local-variable 'idle-hook)

@@ -45,7 +45,7 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
 	mode-indent-line 'sh-indent-line
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
-	keymap-path (cons 'sh-keymap keymap-path))
+	local-keymap 'sh-keymap)
   (call-hook 'sh-mode-hook))
 
 (defun sh-insert-comment ()

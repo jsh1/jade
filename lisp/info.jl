@@ -371,7 +371,7 @@ show, otherwise the current node is used (or `(dir)' if this is the first
 time that `info' has been called)."
   (interactive "\nP")
   (goto-buffer (open-buffer "*Info*" new-buffer))
-  (setq keymap-path '(info-keymap global-keymap)
+  (setq local-keymap 'info-keymap
 	major-mode 'info-mode
 	mode-name "Info"
 	buffer-record-undo nil
