@@ -44,6 +44,9 @@
 /* default directory to look for scripts in */
 #define LISP_LIB_DIR "JADE:lisp/"
 
+/* Site scripts directory */
+#define SITE_LISP_DIR "JADE:site-lisp/"
+
 /* file containing doc-strings */
 #define DOC_FILE "JADE:DOC"
 
