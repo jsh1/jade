@@ -69,6 +69,8 @@ Local bindings in this mode are:\n
 	generic-exp-comment-string "%"
 	generic-exp-symbol-re "[a-zA-Z0-9]+"
 	generic-exp-special-re "[][(){}\"\$a-zA-Z0-9]")
+  (make-local-variable 'ispell-ignore-word-hook)
+  (add-hook 'ispell-ignore-word-hook 'tex-ispell-ignore-word-hook)
   (call-hook 'text-mode-hook)
   (call-hook 'tex-mode-hook))
 
@@ -119,3 +121,6 @@ Local bindings in this mode are:\n
 (defun tex-move-over-braces ()
   (interactive)
   (goto (forward-char 1 (char-search-forward ?}))))
+
+(defun tex-ispell-ignore-word-hook (word start end)
+  (= (get-char (forward-char -1 start)) ?\\ ))
