@@ -29,7 +29,8 @@
 
 (defvar auto-compression-alist
   '(("\\.g?z$" ("gunzip" "-c") ("gzip" "-c"))
-    ("\\.Z$" ("uncompress" "-c") ("compress" "-c")))
+    ("\\.Z$" ("uncompress" "-c") ("compress" "-c"))
+    ("\\.bz2$" ("bzip2" "-d") ("bzip2" "-f")))
   "List of (FILE-REGEXP DECOMPRESS-COMMAND COMPRESS-COMMAND) where
 DECOMPRESS-COMMAND and COMPRESS-COMMAND are lists of strings, the command
 names followed by their argument lists, such that they uncompress or compress
@@ -110,7 +111,7 @@ match well-known suffixes."
 	      (progn
 		(setq proc (make-process dst-file))
 		(message (concat "Compressing `" file-name "'... ") t)
-		(when (/= (apply 'call-process proc tmp-name (nth 1 rule)) 0)
+		(when (/= (apply 'call-process proc tmp-name (nth 2 rule)) 0)
 		  (signal 'file-error
 			  (list "Can't compress file" tmp-name))))
 	    (close-file dst-file)
