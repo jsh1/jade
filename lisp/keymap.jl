@@ -117,16 +117,20 @@ define that event."
 would invoke."
   (interactive)
   (let
-      (names event command done)
+      ((path keymap-path)
+       names event command done)
     (while (not done)
       (setq event (read-event (concat "Enter a key sequence: " names))
-	    names (concat names (if names ?\ )
-			  (event-name event)))
-      (if (setq command (lookup-event-binding event t))
+	    names (concat names (if names ?\ ) (event-name event))
+	    next-keymap-path path
+	    command (lookup-event-binding event t))
+      (if command
 	  (if (and (eq (car command) 'setq)
 		   (eq (nth 1 command) 'next-keymap-path))
 	      ;; A link to another keymap
-	      (call-command command)
+	      (progn
+		(call-command command)
+		(setq path next-keymap-path))
 	    ;; End of the chain
 	    (help-wrapper
 	     (format (current-buffer) "\n%s -> %S\n" names command)
