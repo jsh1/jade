@@ -212,7 +212,8 @@
   "`"		'next-error
   "#"		'server-close-file
   "["		'backward-page
-  "]"		'forward-page)
+  "]"		'forward-page
+  "|"		'shell-command-on-buffer)
 
 (bind-keys ctrl-x-n-keymap
   "p"		'restrict-to-page
