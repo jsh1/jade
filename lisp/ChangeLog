@@ -1,3 +1,8 @@
+2000-09-21  John Harper  <john@dcs.warwick.ac.uk>
+
+	* rm-restrict.jl (rm-filter-by-rule): fixed to deref the symbol
+	before applying it as a function
+
 2000-09-08  John Harper  <john@dcs.warwick.ac.uk>
 
 	* jade.jl: Require the necessary modules that aren't included
