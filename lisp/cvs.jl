@@ -202,7 +202,7 @@ Returns the new value of the list."
 Unless IGNORE-ERRORS is non-nil, an error will be signalled if the command
 returns anything less than total success.
 
-All output (both stdout and stderr from the command will be directed to
+All output (both stdout and stderr) from the command will be directed to
 OUTPUT-STREAM of the `*cvs-output*' buffer if this is undefined. The command
 will be run in the directory DIRECTORY, or the `default-directory' of the
 `*cvs*' buffer, if DIRECTORY is undefined.
@@ -222,7 +222,7 @@ Finally, unless the DONT-CLEAR-OUTPUT parameter is non-nil, the
 					       cvs-output-buffer))
     (set-process-error-stream cvs-process (or output-stream
 					      cvs-output-buffer))
-    (format t "Running CVS command: %s..." arg-list)
+    (message (format nil "Calling CVS: %s..." arg-list) t)
     (unless (or (zerop (apply 'call-process cvs-process
 			      nil cvs-program arg-list))
 		 ignore-errors)
