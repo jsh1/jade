@@ -494,6 +494,18 @@ interactively the MIME part under the cursor is used."
       (goto-buffer buffer)
       (goto (start-of-buffer)))))
 
+(defun mime-delete-part (extent)
+  (interactive (list (mime-current-part)))
+  (let
+      ((start (extent-get extent 'start))
+       (end (extent-get extent 'end))
+       (buffer (extent-get extent 'buffer)))
+    (when (re-search-backward "^--" start buffer)
+      (setq start (match-start)))
+    (when (re-search-forward "^--" end buffer)
+      (setq end (match-start)))
+    (delete-area start end buffer)))
+
 
 ;; Moving through MIME parts in buffers
 
