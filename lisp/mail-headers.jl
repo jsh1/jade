@@ -30,7 +30,7 @@
 ;; POINT in STRING
 (defun mail-parse-address (string &optional point)
   (unless point (setq point 0))
-  (let
+  (let*
       ((mail-addr-re (concat "[\t ]*" mail-atom-re "(\\." mail-atom-re ")*@"
 			     mail-atom-re "(\\." mail-atom-re ")*"))
        (mail-angle-addr-re (concat ".*<(" mail-addr-re ")>"))
