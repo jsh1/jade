@@ -106,6 +106,7 @@ is split.")
   (with-buffer info-buffer
     (setq keymap-path (cons 'info-keymap keymap-path)
 	  major-mode 'info-mode
+	  mode-name "Info"
 	  buffer-record-undo nil)
     (set-buffer-read-only info-buffer t)
     (setq auto-save-p nil))
@@ -184,8 +185,7 @@ is split.")
     (setq buffer-file-modtime (cons 0 0)
 	  info-file-name "dir"
 	  info-node-name "Top"
-	  info-has-tags-p nil
-	  mode-name "(dir)")
+	  info-has-tags-p nil)
     (goto (or (char-search-forward ?\^_ (start-of-buffer))
 		   (start-of-buffer)))
     t))
@@ -308,8 +308,9 @@ is split.")
       (setq pos (or (char-search-forward ?\^_ (forward-char))
 		    (end-of-buffer nil t)))
       (restrict-buffer (cursor-pos) pos))
-    (setq info-node-name nodename
-	  mode-name (concat ?( info-file-name ?) info-node-name))
+    (setq info-node-name nodename)
+    (setq buffer-status-id
+	  (concat "Info: " ?( info-file-name ?) info-node-name))
     t))
 
 ;; Return a list of all node names matching START in the current tag table
