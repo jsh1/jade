@@ -124,9 +124,7 @@ Local bindings for this mode are,\n
 
 (defun bs-select-other-view ()
   (interactive)
-  (let
-      ((buf (summary-current-item)))
-    (in-other-view '(goto-buffer buf))))
+  (in-other-view `(goto-buffer ',(summary-current-item))))
 
 (defun bs-toggle-modified ()
   (interactive)
