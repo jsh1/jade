@@ -183,7 +183,8 @@ functions that operate as filters on their argument streams.")
 				 content-type content-xfer-enc content-disp))
       (when (or (null content-disp)
 		(eq (car content-disp) 'inline))
-	(mime-decode-buffer content-xfer-enc src-buffer (current-buffer))))
+	(mime-decode-buffer content-xfer-enc src-buffer (current-buffer))
+	(insert "\n")))
      ((eq (car content-type) 'message)
       ;; Mail/news message
       (when (or (and content-disp (eq (car content-disp) 'attachment))
@@ -197,7 +198,8 @@ functions that operate as filters on their argument streams.")
 	(if (eq (nth 1 content-type) 'external-body)
 	    ;; XXX: FIXME
 	    (error "message/external-body as yet unsupported")
-	  (mime-decode-buffer content-xfer-enc src-buffer (current-buffer)))))
+	  (mime-decode-buffer content-xfer-enc src-buffer (current-buffer))
+	  (insert "\n"))))
      ((eq (car content-type) 'multipart)
       ;; Recursive embedded message
       (let
@@ -285,7 +287,6 @@ functions that operate as filters on their argument streams.")
 		(restrict-buffer start (forward-char -1 end))
 		(with-buffer dest
 		  ;; Recursively decode each part
-		  (insert "\n")
 		  (mime-decode actual-src type enc disp t))))
 	    (setq parts (cdr parts))))))
      ;; end of multipart
@@ -301,17 +302,20 @@ functions that operate as filters on their argument streams.")
 
 ;; Manipulating embedded parts of messages
 
+(defun mime-current-part (&optional no-error)
+  (let
+      ((e (get-extent)))
+    (while (and e (not (extent-get e 'content-type)))
+      (setq e (extent-parent e)))
+    (unless (or e no-error)
+      (error "No MIME part here!"))
+    e))
+
 (defun mime-save-part (extent &optional file-name)
   "Save the MIME part of the message marked by EXTENT to the file FILE-NAME.
 When called interactively, the MIME part under the cursor is used, and
 FILE-NAME is prompted for."
-  (interactive (let
-		   ((e (get-extent)))
-		 (while (and e (not (extent-get e 'content-type)))
-		   (setq e (extent-parent e)))
-		 (unless e
-		   (error "No part to save here"))
-		 (list e)))
+  (interactive (list (mime-current-part)))
   (unless file-name
     (setq file-name (prompt-for-file
 		     "Save attachment to file:" nil
@@ -344,13 +348,7 @@ FILE-NAME is prompted for."
   "Attempt to view the MIME part of the message marked by EXTENT. If there is
 no known viewing method, use mime-save-part to save it to a file. When called
 interactively the MIME part under the cursor is used."
-  (interactive (list (let
-			 ((e (get-extent)))
-		       (while (and e (not (extent-get e 'content-type)))
-			 (setq e (extent-parent e)))
-		       (unless e
-			 (error "No part to decode here"))
-		       e)))
+  (interactive (list (mime-current-part)))
   (let*
       ((content-type (extent-get extent 'content-type))
        (content-xfer-enc (extent-get extent 'content-xfer-enc))
