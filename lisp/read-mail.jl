@@ -51,6 +51,10 @@ page past the limits of the current message.")
   "The index in the folder of the current message.")
 (make-variable-buffer-local 'rm-current-msg-index)
 
+(defvar rm-message-count nil
+  "The number of messages in the current folder.")
+(make-variable-buffer-local 'rm-message-count)
+
 (defvar rm-current-msg-end nil
   "The position of the last line of the current message.")
 (defvar rm-current-msg-visible-start nil
@@ -75,17 +79,21 @@ when set to the symbol `invalid'.")
 (bind-keys rm-keymap
   "n" 'rm-next-message
   "p" 'rm-previous-message
+  "N" '(rm-next-message (prefix-numeric-argument current-prefix-arg) t)
+  "P" '(rm-previous-message (prefix-numeric-argument current-prefix-arg) t)
   "t" 'rm-toggle-all-headers
   "SPC" 'rm-next-page
   "BS" 'rm-previous-page
   "h" 'rm-summary
-  "d" '(rm-with-summary (summary-mark-delete))
-  "Ctrl-d" '(rm-with-summary (summary-mark-delete t))
-  "DEL" '(rm-with-summary (summary-mark-delete))
+  "d" 'rm-mark-message-deletion
+  "Ctrl-d" '(rm-mark-message-deletion t)
   "x" '(rm-with-summary (summary-execute))
   "#" '(rm-with-summary (summary-execute))
   "g" 'rm-get-mail
   "q" 'rm-save-and-quit
+  "u" '(rm-with-summary (summary-unmark-item
+			 (with-buffer rm-summary-mail-buffer
+			   rm-current-msg)))
   "v" 'read-mail-folder
   "r" 'rm-reply
   "R" '(rm-reply t)
@@ -93,6 +101,9 @@ when set to the symbol `invalid'.")
   "F" '(rm-followup t)
   "z" 'rm-forward)
   
+(defvar rm-last-folder mail-folder-dir
+  "File name of the most recently opened folder. Used as a default value for
+the next prompt.")
 
 
 ;;;; Entry points
@@ -106,7 +117,10 @@ when set to the symbol `invalid'.")
 ;;;###autoload
 (defun read-mail-folder (folder)
   "Read mail stored in the file FOLDER."
-  (interactive "FMail folder to open:")
+  (interactive (list (prompt-for-file "Mail folder to open:"
+				      nil
+				      (file-name-directory rm-last-folder)
+				      rm-last-folder)))
   (when (and (boundp 'rm-summary-mail-buffer) rm-summary-mail-buffer)
     ;; In summary
     (let
@@ -118,6 +132,7 @@ when set to the symbol `invalid'.")
     (setq folder (expand-file-name (file-name-concat mail-folder-dir folder))))
   (when (find-file-read-only folder)
     ;; The current buffer is now the folder. Set up the major mode
+    (setq rm-last-folder folder)
     (read-mail-mode)))
 
 (defun read-mail-mode ()
@@ -137,7 +152,7 @@ Major mode for viewing mail folders. Commands include:\n
   `q'			Quit."
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
-  (setq mode-name "Read-Mail"
+  (setq mode-name "Mail:"
 	major-mode 'read-mail-mode
 	major-mode-kill 'read-mail-mode-kill
 	mode-comment-fun 'c-insert-comment
@@ -254,7 +269,8 @@ Major mode for viewing mail folders. Commands include:\n
 	  rm-before-msg-list (cdr msgs)
 	  rm-after-msg-list '()
 	  rm-current-msg-index (1- count)
-	  rm-cached-msg-list 'invalid)
+	  rm-cached-msg-list 'invalid
+	  rm-message-count count)
     rm-current-msg))
 
 ;; Parse one message and return a message structure. The buffer
@@ -369,12 +385,29 @@ Major mode for viewing mail folders. Commands include:\n
 	  (goto-char end-of-hdrs)
 	  (rm-restrict-to-message)
 	  (rm-clear-flag rm-current-msg 'unread)
+	  (rm-fix-status-info)
 	  ;; Called when the current restriction is about to be
 	  ;; displayed
 	  (eval-hook 'read-mail-display-message-hook rm-current-msg))))
     ;; Fix the summary buffer if it exists
     (rm-with-summary
      (rm-summary-update-current)))
+
+;; Set the minor-mode-names list to reflect the current status
+(defun rm-fix-status-info ()
+  (setq minor-mode-names
+	(cons (format nil "%d/%d%s"
+		      (1+ rm-current-msg-index)
+		      rm-message-count
+		      (if (memq 'delete (with-buffer rm-summary-buffer
+					  (summary-get-pending-ops
+					   (with-buffer rm-summary-mail-buffer
+					     rm-current-msg))))
+			  " deleted"
+			""))
+	      (mapcar 'symbol-name
+		      (rm-get-msg-field rm-current-msg
+					rm-msg-flags)))))
 
 ;; Display an arbitrary MSG
 (defun rm-display-message (msg)
@@ -454,6 +487,7 @@ Major mode for viewing mail folders. Commands include:\n
 	(next-line 1 end))
       (delete-area (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark))
 		   end)
+      (setq rm-message-count (1- rm-message-count))
       (if (and rm-before-msg-list
 	       (or go-backwards-p (null rm-after-msg-list)))
 	  (setq rm-current-msg (car rm-before-msg-list)
@@ -582,6 +616,7 @@ Major mode for viewing mail folders. Commands include:\n
 			rm-current-msg-index (1+ rm-current-msg-index)))
 		(setq rm-current-msg (car msgs)
 		      rm-after-msg-list (cdr msgs)
+		      rm-message-count (+ rm-message-count count)
 		      rm-cached-msg-list 'invalid))
 	      (and keep-going count)))
 	;; Errors
@@ -627,8 +662,14 @@ Major mode for viewing mail folders. Commands include:\n
 
 (defvar rm-summary-keymap (copy-sequence summary-keymap))
 (bind-keys rm-summary-keymap
-  "n" '(rm-with-folder (rm-next-message))
-  "p" '(rm-with-folder (rm-previous-message))
+  "n" '(rm-with-folder (rm-next-message
+			(prefix-numeric-argument current-prefix-arg) nil))
+  "p" '(rm-with-folder (rm-previous-message
+			(prefix-numeric-argument current-prefix-arg) nil))
+  "N" '(rm-with-folder (rm-next-message
+			(prefix-numeric-argument current-prefix-arg) t))
+  "P" '(rm-with-folder (rm-previous-message
+			(prefix-numeric-argument current-prefix-arg) t))
   "SPC" '(rm-with-folder (rm-next-page))
   "BS" '(rm-with-folder (rm-previous-page))
   "t" '(rm-with-folder (rm-toggle-all-headers))
@@ -639,10 +680,7 @@ Major mode for viewing mail folders. Commands include:\n
   "R" '(rm-in-folder (rm-reply t))
   "f" '(rm-in-folder (rm-followup))
   "F" '(rm-in-folder (rm-followup t))
-  "z" '(rm-in-folder (rm-forward nil current-prefix-arg))
-  "d" '(rm-with-folder (rm-mark-message-deletion))
-  "DEL" '(rm-with-folder (rm-mark-message-deletion))
-  "Ctrl-d" '(rm-with-folder (rm-mark-message-deletion t)))
+  "z" '(rm-in-folder (rm-forward nil current-prefix-arg)))
 
 (defvar rm-summary-functions '((select . rm-summary-select-item)
 			       (list . rm-summary-list)
@@ -660,7 +698,7 @@ Major mode for viewing mail folders. Commands include:\n
 (make-variable-buffer-local 'rm-summary-current-marked)
 
 (defvar rm-summary-msgs-to-delete nil
-  "List of messages to be deleted. Build up during the execute phase of
+  "List of messages to be deleted. Built up during the execute phase of
 the summary buffer.")
 (make-variable-buffer-local 'rm-summary-msgs-to-delete)
 
@@ -871,6 +909,7 @@ current message."
   (interactive)
   (rm-with-summary
    (summary-mark-delete))
+  (rm-fix-status-info)
   (when rm-move-after-deleting
     (if move-back-p
 	(rm-previous-message)
