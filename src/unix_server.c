@@ -38,8 +38,8 @@ _PR void server_kill(void);
 /* List of (FILE-NAME . SOCK-FD) */
 static VALUE client_list;
 
-_PR VALUE sym_server_open_file;
-DEFSYM(server_open_file, "server-open-file");
+_PR VALUE sym_server_find_file;
+DEFSYM(server_find_file, "server-find-file");
 
 /* fd of the socket which clients connect to, or zero. */
 static int socket_fd = -1;
@@ -59,7 +59,7 @@ server_accept_connection(int unused_fd)
 	   2. read LENGTH bytes for the filename
 	   3. read the line number
 	   4. add (FILE . SOCK-FD) to list of client files
-	   5. call client-open-file with FILE and LINE */
+	   5. call server-find-file with FILE and LINE */
 	u_short filenamelen;
 	u_long tmp;
 	VALUE filename, linenum;
@@ -80,7 +80,7 @@ server_accept_connection(int unused_fd)
 			       client_list);
 	/* lose this on exec() */
 	fcntl(confd, F_SETFD, 1);
-	call_lisp2(sym_server_open_file, filename, linenum);
+	call_lisp2(sym_server_find_file, filename, linenum);
     }
 }
 
@@ -223,7 +223,7 @@ server_init(void)
     client_list = sym_nil;
     mark_static(&client_list);
     mark_static(&socket_name);
-    INTERN(server_open_file);
+    INTERN(server_find_file);
     ADD_SUBR(subr_server_open_p);
     ADD_SUBR_INT(subr_server_open);
     ADD_SUBR_INT(subr_server_close);
