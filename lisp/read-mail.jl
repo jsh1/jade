@@ -47,6 +47,7 @@ as a single blank line or the start of the buffer, followed by this regexp.")
 ;; characters may not include SPC, any control characters, or ASCII DEL.
 ;; Unfortunately the regexp library doesn't allow NUL bytes in regexps so
 ;; they slip through..
+;; This is also defined in send-mail.jl
 (defvar mail-header-name "^([^\001- \^?]+)[ \t]*:"
   "A regexp matching a header field name. The name is left in the match
 buffer as the first substring.")
