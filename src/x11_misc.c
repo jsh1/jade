@@ -80,7 +80,7 @@ static struct selection_info {
     Window owner;
     Time birthdate;
     VALUE data;				/* either a string or a buffer */
-    POS start, end;
+    VALUE start, end;
     enum Sel_type type;
 } selection_info[2];
 
@@ -103,8 +103,8 @@ symbol_to_atom(VALUE sym)
 	return (Atom) 0;
 }
 
-_PR VALUE cmd_x11_set_selection(VALUE sel, VALUE lstart, VALUE lend, VALUE buffer);
-DEFUN("x11-set-selection", cmd_x11_set_selection, subr_x11_set_selection, (VALUE sel, VALUE lstart, VALUE lend, VALUE buffer), V_Subr4, DOC_x11_set_selection) /*
+_PR VALUE cmd_x11_set_selection(VALUE sel, VALUE start, VALUE end, VALUE buffer);
+DEFUN("x11-set-selection", cmd_x11_set_selection, subr_x11_set_selection, (VALUE sel, VALUE start, VALUE end, VALUE buffer), V_Subr4, DOC_x11_set_selection) /*
 ::doc:x11_set_selection::
 x11-set-selection SELECTION [ STRING | START END [BUFFER] ]
 
@@ -123,12 +123,12 @@ otherwise.
 
     DECLARE1(sel, SYMBOLP);
 
-    if(STRINGP(lstart))
+    if(STRINGP(start))
 	type = Sel_string;
     else
     {
-	DECLARE2(lstart, POSP);
-	DECLARE3(lend, POSP);
+	DECLARE2(start, POSP);
+	DECLARE3(end, POSP);
 	if(!BUFFERP(buffer))
 	    buffer = VAL(curr_vw->vw_Tx);
 	type = Sel_area;
@@ -148,11 +148,11 @@ otherwise.
 	    if(type == Sel_area)
 	    {
 		selection_info[selno].data = buffer;
-		selection_info[selno].start = VPOS(lstart);
-		selection_info[selno].end = VPOS(lend);
+		selection_info[selno].start = start;
+		selection_info[selno].end = end;
 	    }
 	    else
-		selection_info[selno].data = lstart;
+		selection_info[selno].data = start;
 	    return sym_t;
 	}
 	else
@@ -246,14 +246,14 @@ If the selection currently has no value, nil is returned.
 				 &selection_info[selno].end))
 		{
 		    long tlen = section_length(VTX(selection_info[selno].data),
-					       &selection_info[selno].start,
-					       &selection_info[selno].end);
+					       selection_info[selno].start,
+					       selection_info[selno].end);
 		    res = make_string(tlen + 1);
 		    if(res)
 		    {
 			copy_section(VTX(selection_info[selno].data),
-				     &selection_info[selno].start,
-				     &selection_info[selno].end, VSTR(res));
+				     selection_info[selno].start,
+				     selection_info[selno].end, VSTR(res));
 			VSTR(res)[tlen] = 0;
 		    }
 		}
@@ -349,14 +349,14 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 			     &selection_info[selno].end))
 	    {
 		long tlen = section_length(VTX(selection_info[selno].data),
-					   &selection_info[selno].start,
-					   &selection_info[selno].end);
+					   selection_info[selno].start,
+					   selection_info[selno].end);
 		char *string = str_alloc(tlen + 1);
 		if(string)
 		{
 		    copy_section(VTX(selection_info[selno].data),
-				 &selection_info[selno].start,
-				 &selection_info[selno].end, string);
+				 selection_info[selno].start,
+				 selection_info[selno].end, string);
 		    string[tlen] = 0;
 		    XChangeProperty(x11_display, ev->requestor, ev->property,
 				    XA_STRING, 8, PropModeReplace,
@@ -432,6 +432,13 @@ by Jade, relinquish ownership.
 void
 x11_misc_init(void)
 {
+    int i;
+    for(i = 0; i < 2; i++)
+    {
+	mark_static(&selection_info[i].data);
+	mark_static(&selection_info[i].start);
+	mark_static(&selection_info[i].end);
+    }
     INTERN(sym_xa_primary, "xa-primary");
     INTERN(sym_xa_secondary, "xa-secondary");
     ADD_SUBR(subr_x11_set_selection);
@@ -439,6 +446,4 @@ x11_misc_init(void)
     ADD_SUBR(subr_x11_own_selection_p);
     ADD_SUBR(subr_x11_get_selection);
     ADD_SUBR(subr_x11_lose_selection);
-    mark_static(&selection_info[0].data);
-    mark_static(&selection_info[1].data);
 }

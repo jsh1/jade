@@ -30,28 +30,6 @@ typedef struct LINE {
 } LINE;
 
 /*
- * Structure to uniquely identify a character position
- */
-typedef struct POS {
-    long	    pos_Col, pos_Line;
-} POS;
-
-#define POS_EQUAL_P(s,e) \
-    (((s)->pos_Line == (e)->pos_Line) && ((s)->pos_Col == (e)->pos_Col))
-#define POS_GREATER_P(s,e) \
-    (((s)->pos_Line > (e)->pos_Line) \
-     || (((s)->pos_Line == (e)->pos_Line) && ((s)->pos_Col > (e)->pos_Col)))
-#define POS_GREATER_EQUAL_P(s,e) \
-    (((s)->pos_Line > (e)->pos_Line) \
-     || (((s)->pos_Line == (e)->pos_Line) && ((s)->pos_Col >= (e)->pos_Col)))
-#define POS_LESS_P(s,e) \
-    (((s)->pos_Line < (e)->pos_Line) \
-     || (((s)->pos_Line == (e)->pos_Line) && ((s)->pos_Col < (e)->pos_Col)))
-#define POS_LESS_EQUAL_P(s,e) \
-    (((s)->pos_Line < (e)->pos_Line) \
-     || (((s)->pos_Line == (e)->pos_Line) && ((s)->pos_Col <= (e)->pos_Col)))
-
-/*
  * Each bookmark has one of these in the tx_Marks list
  */
 typedef struct _Mark {
@@ -109,7 +87,7 @@ typedef struct _TX {
     long	    tx_TabSize;
 
     /* Section of buffer which may have changed since last refresh.  */
-    POS		    tx_ModStart, tx_ModEnd;
+    VALUE	    tx_ModStart, tx_ModEnd;
     /* How many more lines in the above area than at the last refresh.	*/
     long	    tx_ModDelta;
     /* `tx_Changes' at last refresh.  */
@@ -124,9 +102,9 @@ typedef struct _TX {
     VALUE	    tx_UndoneList;
 
     /* Saved state for buffers which are not being displayed.  */
-    POS		    tx_SavedCPos;
-    POS		    tx_SavedWPos;
-    POS		    tx_SavedBlockPos[2];
+    VALUE	    tx_SavedCPos;
+    VALUE	    tx_SavedWPos;
+    VALUE	    tx_SavedBlockPos[2];
     char	    tx_SavedBlockStatus;
 } TX;
 
@@ -153,18 +131,17 @@ typedef struct _VW
     struct _VW	   *vw_NextView;	/* for w_ViewList */
 
     /* Cursor positioning data.  */
-    POS		    vw_CursorPos;
+    VALUE	    vw_CursorPos;
     u_long	    vw_LastCursorOffset; /* number of glyphs from col 0 */
-    POS		    vw_LastCursorPos;
+    VALUE	    vw_LastCursorPos;
     u_long	    vw_LastCursorChanges;
     TX		   *vw_LastCursorTx;
 
-    POS		    vw_DisplayOrigin;
-#define vw_StartLine vw_DisplayOrigin.pos_Line
-#define vw_StartCol vw_DisplayOrigin.pos_Col
+    VALUE	    vw_DisplayOrigin;
+    VALUE	    vw_LastDisplayOrigin;
 
-    POS		    vw_BlockS, vw_BlockE;
-    POS		    vw_LastBlockS, vw_LastBlockE;
+    VALUE	    vw_BlockS, vw_BlockE;
+    VALUE	    vw_LastBlockS, vw_LastBlockE;
     /* 0=block marked, 1=start marked, 2=end marked, -1=none marked */
     char	    vw_BlockStatus, vw_LastBlockStatus;
 
@@ -175,7 +152,6 @@ typedef struct _VW
     int		    vw_TopPix, vw_BottomPix;
 
     TX		   *vw_LastRefTx;
-    POS		    vw_LastDisplayOrigin;
     short	    vw_DeferRefresh;
 
     u_char	   *vw_StatusBuf;

@@ -30,7 +30,7 @@ redraw_exposed_area(WIN *w, u_int x1, u_int y1, u_int x2, u_int y2)
     VW *vw;
     for(vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
     {
-	POS start, end;
+	Pos start, end;
 	u_int first_row, last_row;
 	if(vw->vw_TopPix > y2)
 	    return;
@@ -50,14 +50,14 @@ redraw_exposed_area(WIN *w, u_int x1, u_int y1, u_int x2, u_int y2)
 			? (y2 - vw->vw_TopPix) / w->w_FontY
 			: vw->vw_MaxY-1);
 
-	    start.pos_Col = (((x1 - vw->vw_LeftPix) / w->w_FontX)
-			     + vw->vw_StartCol);
-	    start.pos_Line = first_row + vw->vw_StartLine;
-	    end.pos_Col = ((((x2 - 1)- vw->vw_LeftPix) / w->w_FontX)
-			   + vw->vw_StartCol);
-	    end.pos_Line = last_row + vw->vw_StartLine;
+	    PCOL(&start) = (((x1 - vw->vw_LeftPix) / w->w_FontX)
+			    + VCOL(vw->vw_DisplayOrigin));
+	    PROW(&start) = first_row + VROW(vw->vw_DisplayOrigin);
+	    PCOL(&end) = ((((x2 - 1)- vw->vw_LeftPix) / w->w_FontX)
+			  + VCOL(vw->vw_DisplayOrigin));
+	    PROW(&end) = last_row + VROW(vw->vw_DisplayOrigin);
 
-	    redraw_rect(vw, &start, &end, FALSE);
+	    redraw_rect(vw, VAL(&start), VAL(&end), FALSE);
 	}
 	if(!(vw->vw_Flags & VWFF_MINIBUF)
 	   && vw->vw_BottomPix < y2)
