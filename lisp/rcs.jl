@@ -47,6 +47,11 @@ cause the new revision _not_ to be locked, only checked out. A successive
 (defvar rcs-display-log-args '()
   "A list of extra arguments to be passed to the RCS rlog command.")
 
+(defvar rcs-diff-options 'visual
+  "Either a list of strings defining extra options to be passed to the
+rcsdiff program, or the symbol `visual' meaning to compare the two revisions
+visually.")
+
 
 ;; Program variables
 
@@ -128,7 +133,8 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
       (with-view (other-view)
 	(goto-buffer buffer)
 	(goto (start-of-buffer))
-	(shrink-view-if-larger-than-buffer)))))
+	(shrink-view-if-larger-than-buffer)))
+    buffer))
 
 ;; Arrange for (rcs-command COMMAND FILE OPTIONS REREAD-P) to be called
 ;; later including a piece of text entered by the user. It will be added
@@ -387,12 +393,29 @@ file with the working copy."
 	 (list first (prompt-for-string
 		      (concat "Newer revision: (older: " first ")")))))))
   (maybe-save-buffer (current-buffer))
-  (rcs-command "rcsdiff" (buffer-file-name)
-	       (append (when (and rev1 (not (string= rev1 "")))
-			 (if (and rev2 (not (string= rev2 "")))
-			     (list (concat "-r" rev1) (concat "-r" rev2))
-			   (list (concat "-r" rev1))))
-		       '("-c")) nil t nil t))
+  (if (eq rcs-diff-options 'visual)
+      (let*
+	  ((kill1 t)
+	   (kill2 t)
+	   (rev2-buffer (if rev2
+			    (and (rcs-view-revision rev2)
+				 (current-buffer))
+			  (setq kill2 nil)
+			  (current-buffer)))
+	   (rev1-buffer (and (rcs-view-revision rev1)
+			     (current-buffer))))
+	(diff-buffers rev1-buffer rev2-buffer)
+	(when kill1
+	  (kill-buffer rev1-buffer))
+	(when kill2
+	  (kill-buffer rev2-buffer)))
+    (rcs-command "rcsdiff" (buffer-file-name)
+		 (append (when (and rev1 (not (string= rev1 "")))
+			   (if (and rev2 (not (string= rev2 "")))
+			       (list (concat "-r" rev1) (concat "-r" rev2))
+			     (list (concat "-r" rev1))))
+			 (and (listp rcs-diff-options) rcs-diff-options))
+		 nil t nil t)))
 
 ;; Called by toggle-buffer-read-only for the current buffer
 (defun rcs-toggle-read-only ()
