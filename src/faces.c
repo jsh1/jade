@@ -250,7 +250,7 @@ get_merged_face(WIN *w, u_short car,
 
     /* Find a space in the MergedFaces table, either containing
        an equivalent of this one, or an empty slot. */
-    for(id = GA_FirstFace; id <= GA_LastFace; id++)
+    for(id = 0; id <= GA_LastFace; id++)
     {
 	if(w->w_MergedFaces[id].valid)
 	{
@@ -265,8 +265,7 @@ get_merged_face(WIN *w, u_short car,
 	else if(empty == -1)
 	    empty = id;
     }
-    if(empty == -1)
-	return GA_FirstFace;	/* lame */
+    assert(empty != -1);		/* FIXME: handle gracefully? */
 
     /* Fill the new face */
     w->w_MergedFaces[empty].car = car;
@@ -346,7 +345,7 @@ mark_merged_faces(WIN *w)
     int row, col;
     int id;
 
-    for(id = GA_FirstFace; id <= GA_LastFace; id++)
+    for(id = 0; id <= GA_LastFace; id++)
 	w->w_MergedFaces[id].valid = FALSE;
 
     for(row = 0; row < g->rows; row++)
@@ -356,7 +355,7 @@ mark_merged_faces(WIN *w)
 	    w->w_MergedFaces[attrs[col]].valid = TRUE;
     }
 
-    for(id = GA_FirstFace; id <= GA_LastFace; id++)
+    for(id = 0; id <= GA_LastFace; id++)
     {
 	if(w->w_MergedFaces[id].valid)
 	{

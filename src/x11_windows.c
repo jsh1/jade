@@ -314,7 +314,7 @@ face_to_gc(WIN *w, Merged_Face *f, bool invert)
 	mask |= GCFont;
     }
 
-    /* FIXME: Bold, italic?! */
+    /* FIXME: italic?! */
 
     if(mask != 0)
 	XChangeGC(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_GC,
@@ -329,7 +329,7 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
     Merged_Face *f;
     int x, y;
 
-    assert(attr >= GA_FirstFace && attr <= GA_LastFace);
+    assert(attr <= GA_LastFace);
 
     f = &w->w_MergedFaces[attr];
     if(!f->valid)

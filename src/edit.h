@@ -261,7 +261,6 @@ typedef u_char glyph_code;
 typedef u_char glyph_attr;
 
 enum Glyph_Attrs {
-    GA_FirstFace = 0,
     GA_LastFace = 63,			/* max faces per window */
     GA_Garbage = 255,
 };
