@@ -82,17 +82,17 @@ cause the new revision _not_ to be locked, only checked out. A successive
     "Meta-n" 'rcs-up-history)
   "Keymap for callback buffer.")
 
-(defvar rcs-current-info-string nil)
-(make-variable-buffer-local 'rcs-current-info-string)
-
-(defvar rcs-controlled-buffer nil
-  "Local variable that is t when the buffer is controlled by RCS.")
-(make-variable-buffer-local 'rcs-controlled-buffer)
+(defvar rcs-mode nil
+  "Local variable that is the current minor-mode info string when the buffer
+is controlled by RCS, nil otherwise.")
+(make-variable-buffer-local 'rcs-mode)
+(put 'rcs-mode 'permanent-local t)
 
 (defvar rcs-revision nil
   "Local variable storing the revision number of buffer's controlled by RCS,
 as a string. May be nil if revision is unknown.")
 (make-variable-buffer-local 'rcs-revision)
+(put 'rcs-revision 'permanent-local t)
 
 (defvar rcs-callback-args nil
   "Arguments stored for when `Ctrl-c Ctrl-c' is typed in the callback buffer.
@@ -230,11 +230,10 @@ description entered. COUNT may be negative."
 		       (if (rcs-buffer-locked-p) ?: ?-)
 		       (or (rcs-get-version) "?"))))
       (when (minor-mode-installed-p 'rcs-mode)
-	(remove-minor-mode 'rcs-mode rcs-current-info-string))
-      (add-minor-mode 'rcs-mode info)
-      (setq rcs-current-info-string info
-	    toggle-read-only-function 'rcs-toggle-read-only
-	    rcs-controlled-buffer t)
+	(remove-minor-mode 'rcs-mode rcs-mode))
+      (setq rcs-mode info
+	    toggle-read-only-function 'rcs-toggle-read-only)
+      (add-minor-mode 'rcs-mode rcs-mode)
       (unless rcs-make-backup-files
 	;; Ensure no backup files are made for this buffer
 	(make-local-variable 'make-backup-files)
@@ -242,7 +241,7 @@ description entered. COUNT may be negative."
 
 ;; Signals an error if the current buffer is not under RCS control
 (defun rcs-verify-buffer ()
-  (unless rcs-controlled-buffer
+  (unless rcs-mode
     (error "Buffer not under RCS control" (current-buffer))))
 
 
