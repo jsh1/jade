@@ -42,9 +42,7 @@
 		      (file-name-directory file-name) "RCS"
 		      (concat (file-name-nondirectory file-name) ",v")))))
 
+;; Function called from the find-file-hook
 (defun rcs-find-file-function (buffer)
   (when (rcs-file-p (buffer-file-name buffer))
-    (require 'rcs)
-    (rcs-init-file buffer)
-    ;; Other hooks should still be called
-    nil))
+    (rcs-init-file buffer)))
