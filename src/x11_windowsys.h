@@ -30,7 +30,28 @@ enum {
     P_MAX
 };
 
+/* Per display data */
+struct x11_display {
+    struct x11_display *next;
+
+    Display *display;
+    int screen;
+
+    /* Number of windows open */
+    int window_count;
+
+    /* Allocated colours */
+    u_long fore_pixel, back_pixel, high_pixel;
+
+    /* Interned atoms */
+    Atom wm_delete_window, jade_selection;
+
+    /* Mouse cursor for the window */
+    Cursor text_cursor;
+};
+
 typedef struct {
+    struct x11_display *ws_Display;
     Window		ws_Window;
     GC			ws_GC_array[P_MAX];
     int			ws_PenX, ws_PenY;
@@ -40,6 +61,8 @@ typedef struct {
 
 #define w_Window	w_WindowSys.ws_Window
 #define WINDOW_NIL	(0)
+
+#define WINDOW_XDPY(w)	((w)->w_WindowSys.ws_Display)
 
 #if 0
 typedef struct {
@@ -56,7 +79,7 @@ typedef struct {
 	int xpix = (win)->w_LeftPix + (win)->w_FontX * (x);		\
 	int ypix = ((win)->w_TopPix + (win)->w_FontY * (y)		\
 		    + (win)->w_WindowSys.ws_Font->ascent);		\
-	XDrawImageString(x11_display, (win)->w_Window,			\
+	XDrawImageString(WINDOW_XDPY(win)->display, (win)->w_Window,	\
 			 (win)->w_WindowSys.ws_GC_array[pen],		\
 			 xpix, ypix, str, len);				\
     } while(0)
@@ -70,7 +93,8 @@ typedef struct {
 	int y2pix = (win)->w_TopPix + (win)->w_FontY * (y2);		\
 	int width = (w) * (win)->w_FontX;				\
 	int height = (h) * (win)->w_FontY;				\
-	XCopyArea(x11_display, (win)->w_Window, (win)->w_Window,	\
+	XCopyArea(WINDOW_XDPY(win)->display,				\
+		  (win)->w_Window, (win)->w_Window,			\
 		  (win)->w_WindowSys.ws_GC_array[P_TEXT],		\
 		  x1pix, y1pix, width, height, x2pix, y2pix);		\
     } while(0)
