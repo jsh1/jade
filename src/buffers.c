@@ -124,6 +124,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 		tx->tx_CanonicalFileName = null_string();
 		tx->tx_MinorModeNameList = sym_nil;
 		tx->tx_MinorModeNameString = null_string();
+		tx->tx_StatusId = concat2("Jade: ", VSTR(tx->tx_BufferName));
 		tx->tx_SavedBlockStatus = -1;
 		tx->tx_TabSize = 8;
 		tx->tx_LocalVariables = sym_nil;
@@ -848,6 +849,26 @@ List of strings naming all minor-modes enabled in this buffer.
     return(val);
 }
 
+_PR VALUE var_buffer_status_id(VALUE);
+DEFUN("buffer-status-id", var_buffer_status_id, subr_buffer_status_id,
+      (VALUE val), V_Var, DOC_buffer_status_id) /*
+::doc:buffer_status_id::
+This buffer-local string is displayed in the status line of the buffer. When
+the buffer is created it is set to `Jade: BUFFER-NAME'.
+::end:: */
+{
+    TX *tx = curr_vw->vw_Tx;
+    if(val)
+    {
+	tx->tx_StatusId = STRINGP(val) ? val : LISP_NULL;
+	return val;
+    }
+    else if(tx->tx_StatusId)
+	return tx->tx_StatusId;
+    else
+	return sym_nil;
+}
+
 
 /* Marks */
 
@@ -1200,6 +1221,7 @@ buffers_init(void)
     ADD_SUBR(subr_truncate_lines);
     ADD_SUBR(subr_mode_name);
     ADD_SUBR(subr_minor_mode_names);
+    ADD_SUBR(subr_buffer_status_id);
     ADD_SUBR(subr_make_mark);
     ADD_SUBR(subr_set_mark_pos);
     ADD_SUBR(subr_set_mark_file);
