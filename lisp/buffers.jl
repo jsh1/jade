@@ -130,7 +130,8 @@ When called interactively, BUFFER is prompted for."
    ((stringp buffer)
     (setq buffer (get-buffer buffer))))
   (when (and buffer (check-changes buffer))
-    (call-hook 'kill-buffer-hook (list buffer))
+    (with-buffer buffer
+      (call-hook 'kill-buffer-hook (list buffer)))
     (mapc #'(lambda (w)
 	      (mapc #'(lambda (v)
 			(with-view v
