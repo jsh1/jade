@@ -449,7 +449,7 @@ redraw_region(VW *vw, POS *start, POS *end)
     long y, yend, yord;
     if(POS_EQUAL_P(start, end)
        || (end->pos_Line < vw->vw_StartLine)
-       || (end->pos_Line < vw->vw_Tx->tx_LogicalStart+1)
+       || (end->pos_Line < vw->vw_Tx->tx_LogicalStart)
        || (start->pos_Line > (vw->vw_StartLine + vw->vw_MaxY))
        || (start->pos_Line > (vw->vw_Tx->tx_LogicalEnd)))
 	return;
