@@ -297,8 +297,11 @@ init-mode, the hook after-find-file-hook is dispatched."
 (defun find-file-read-only (name &optional dont-activate)
   "Similar to `find-file' except that the buffer is edited in read-only mode."
   (interactive "FFind file read-only:")
-  (when (find-file name dont-activate)
-    (set-buffer-read-only (current-buffer) t)))
+  (let
+      ((buffer (find-file name dont-activate)))
+    (when buffer
+      (set-buffer-read-only buffer t))
+    buffer))
 
 (defun find-alternate-file (name)
   "If NAME is unspecified one will be prompted for. The current buffer is
