@@ -598,7 +598,7 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
   "SPC" '(throw 'ask t))
 
 ;;;###autoload
-(defun y-or-n-p (question)
+(defun y-or-n-p (question &optional keymap help-string)
   "Prompts the user for a single keypress response, either `y' or `n' to the
 string QUESTION, returns t for `y'."
   (let
@@ -611,8 +611,9 @@ string QUESTION, returns t for `y'."
 	    ((old-u-k-h unbound-key-hook)
 	     (old-k-p keymap-path))
 	  (setq unbound-key-hook '(beep)
-		keymap-path '(y-or-n-keymap))
-	  (insert (concat question " (y or n) ") (start-of-buffer))
+		keymap-path (list (or keymap y-or-n-keymap)))
+	  (insert (concat question ?  (or help-string "(y or n)") ? )
+		  (start-of-buffer))
 	  (unwind-protect
 	      (catch 'ask
 		(recursive-edit))
@@ -620,3 +621,41 @@ string QUESTION, returns t for `y'."
 	      (setq keymap-path old-k-p
 		    unbound-key-hook old-u-k-h))
 	    (return-prompt-buffer prompt-buffer)))))))
+
+(defvar map-y-or-n-keymap (copy-sequence y-or-n-keymap))
+(bind-keys map-y-or-n-keymap
+  "!" '(throw 'map 'all-t)
+  "q" '(throw 'map 'quit))
+
+;;;###autoload
+(defun map-y-or-n-p (question inputs callback)
+  "Ask the user a yes-or-no question for each object in the list of INPUTS.
+QUESTION defines the question asked, either a string that will be passed to
+the format function with the current input object as an argument, or a
+function that will be called with a single argument, the input, that will
+return a string.
+
+CALLBACK is a function of a single argument that will be called (with the
+input as its parameter), when the user answers `yes' for that input. If the
+answer is `no', no function is called.
+
+The function returns t only if _all_ of the inputs were answered with yes."
+  (let
+      ((all-t t))
+    (when (eq 'all-t (catch 'map
+		       (while inputs
+			 (let*
+			     ((q (if (stringp question)
+				     (format nil question (car inputs))
+				   (funcall question (car inputs))))
+			      (a (y-or-n-p q map-y-or-n-keymap
+					   "(y, n, !, q)")))
+			   (if a
+			       (funcall callback (car inputs))
+			     (setq all-t nil))
+			   (setq inputs (cdr inputs))))))
+      ;; User answered with "!", so loop over all remaining inputs
+      (while inputs
+	(funcall callback (car inputs))
+	(setq inputs (cdr inputs))))
+    all-t))
