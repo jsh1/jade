@@ -98,6 +98,7 @@ Local bindings in this mode are:\n
 	major-mode-kill nil
 	local-keymap nil))
 
+;;;###autoload
 (defun latex-mode (&optional from-super-mode)
   "LaTeX Mode:\n
 Major mode for editing LaTeX source files.\n
@@ -113,6 +114,7 @@ Local bindings in this mode are:\n
     (setq tex-run-command latex-run-command))
   (call-hook 'latex-mode-hook))  
 
+;;;###autoload
 (defun plain-tex-mode (&optional from-super-mode)
   "Plain TeX Mode:\n
 Major mode for editing Plain TeX source files.\n
