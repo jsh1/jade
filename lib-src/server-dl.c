@@ -18,9 +18,6 @@
    along with Jade; see the file COPYING. If not, write to
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* Define this to create a debug-buffer of all server traffic */
-#undef DEBUG_SERVER
-
 #include "jade.h"
 #include "jade_protos.h"
 
@@ -54,24 +51,6 @@ static int socket_fd = -1;
 /* pathname of the socket. */
 static VALUE socket_name;
 
-#ifdef DEBUG_SERVER
-  static void *db_unix_server;
-# define DB(x) DB_ x
-# define void_DB(x) DB_ x
-  static inline int
-  DB_(char *fmt, ...)
-  {
-      va_list args;
-      va_start(args, fmt);
-      db_vprintf(db_unix_server, fmt, args);
-      va_end(args);
-      return 1;
-  }
-#else
-# define DB(x) 1
-# define void_DB(x)
-#endif
-
 DEFSTRING(io_error, "server_make_connection:io");
 DEFSTRING(val_fmt, "%S");
 
@@ -79,10 +58,8 @@ static void
 server_handle_request(int fd)
 {
     char req;
-    void_DB((__FUNCTION__ ": fd=%d", fd));
     if(read(fd, &req, 1) != 1)
 	goto disconnect;
-    void_DB((", req=%d", req));
     switch(req)
     {
 	u_long len, tem;
@@ -95,21 +72,16 @@ server_handle_request(int fd)
 	   4. add (FILE . SOCK-FD) to list of client files
 	   5. call server-find-file with FILE and LINE */
 	if(read(fd, &len, sizeof(u_long)) != sizeof(u_long)
-	   || !DB((", read one u_long"))
 	   || (val = make_string(len + 1)) == LISP_NULL
 	   || read(fd, VSTR(val), len) != len
-	   || !DB((", read %d bytes", len))
-	   || read(fd, &tem, sizeof(u_long)) != sizeof(u_long)
-	   || !DB((", read one u_long")))
+	   || read(fd, &tem, sizeof(u_long)) != sizeof(u_long))
 	    goto io_error;
 	VSTR(val)[len] = 0;
-	void_DB((", file=`%s', calling server-find-file.\n", VSTR(val)));
 	client_list = cmd_cons(cmd_cons(val, MAKE_INT(fd)), client_list);
 	call_lisp2(sym_server_find_file, val, MAKE_INT(tem));
 	/* Block any more input on this fd until we've replied to
 	   the original message. */
 	sys_deregister_input_fd(fd);
-	void_DB((__FUNCTION__ ": blocked input from fd %d\n", fd));
 	break;
 
     case req_eval:
@@ -119,13 +91,10 @@ server_handle_request(int fd)
 	   4. write length of result-string
 	   5. write LENGTH bytes of result string */
 	if(read(fd, &len, sizeof(u_long)) != sizeof(u_long)
-	   || !DB((", read one u_long"))
 	   || (val = make_string(len + 1)) == LISP_NULL
-	   || read(fd, VSTR(val), len) != len
-	   || !DB((", read %d bytes", len)))
+	   || read(fd, VSTR(val), len) != len)
 	    goto io_error;
 	VSTR(val)[len] = 0;
-	void_DB((", form=`%s'\n", VSTR(val)));
 	val = cmd_read(cmd_cons(MAKE_INT(0), val));
 	if(val != LISP_NULL)
 	    val = cmd_eval(val);
@@ -134,34 +103,26 @@ server_handle_request(int fd)
 	if(val != LISP_NULL && STRINGP(val))
 	{
 	    len = STRING_LEN(val);
-	    void_DB((__FUNCTION__ ": output=`%s'", VSTR(val)));
 	    if(write(fd, &len, sizeof(u_long)) != sizeof(u_long)
-	       || !DB((", wrote one u_long"))
-	       || write(fd, VSTR(val), len) != len
-	       || !DB((", wrote %d bytes\n", len)))
+	       || write(fd, VSTR(val), len) != len)
 		goto io_error;
 	}
 	else
 	{
 	    len = 0;
-	    void_DB((__FUNCTION__ ": nil output"));
-	    if(write(fd, &len, sizeof(u_long)) != sizeof(u_long)
-	       || !DB((", wrote one u_long\n")))
+	    if(write(fd, &len, sizeof(u_long)) != sizeof(u_long))
 		goto io_error;
 	}
 	break;
 
     io_error:
-	void_DB((__FUNCTION__ ": at io_error, errno=%d\n", errno));
 	cmd_signal(sym_error, LIST_1(VAL(&io_error)));
 	return;
 
     case req_end_of_session:
-	void_DB((", disconnect"));
     disconnect:
 	sys_deregister_input_fd(fd);
 	close(fd);
-	void_DB((", closed fd %d\n", fd));
     }
 }
 
@@ -169,7 +130,6 @@ static void
 server_accept_connection(int unused_fd)
 {
     int confd = accept(socket_fd, NULL, NULL);
-    void_DB((__FUNCTION__ ": confd=%d\n", confd));
     if(confd >= 0)
     {
 	/* Once upon a time, I started reading commands here. I think
@@ -179,8 +139,6 @@ server_accept_connection(int unused_fd)
 	/* CONFD will inherit the properties of SOCKET-FD, i.e. non-
 	   blocking. Make it block.. */
 	unix_set_fd_blocking(confd);
-
-	void_DB((__FUNCTION__ ": registered, made-blocking, fd %d\n", confd));
     }
 }
 
@@ -197,7 +155,6 @@ t if the edit-server is open.
     return(sym_nil);
 }
 
-DEFSTRING(unexp_name, "~/" JADE_SOCK_NAME);
 DEFSTRING(no_name, "Can't make socket name");
 
 DEFUN_INT("server-open", cmd_server_open, subr_server_open,
@@ -209,21 +166,42 @@ Creates the socket (or whatever) so that the editor's client program can
 send us messages.
 ::end:: */
 {
+    char namebuf[256];
     VALUE name;
-    GC_root gc_name;
     if(socket_fd >= 0)
 	return(sym_t);
-    name = cmd_local_file_name(VAL(&unexp_name));
+    name = cmd_system_name();
+    if(!name || !STRINGP(name))
+	return LISP_NULL;
+#ifdef HAVE_SNPRINTF
+    snprintf(namebuf, sizeof(namebuf), "~/" JADE_SOCK_NAME, VSTR(name));
+#else
+    sprintf(namebuf, "~/" JADE_SOCK_NAME, VSTR(name));
+#endif
+    name = cmd_local_file_name(string_dup(namebuf));
     if(name && STRINGP(name))
     {
-	VALUE tmp;
-	PUSHGC(gc_name, name);
-	tmp = cmd_file_exists_p(name);
-	POPGC;
-	if(!tmp || !NILP(tmp))
+	if(access(VSTR(name), F_OK) == 0)
 	{
-	    message("A server is already open.");
-	    return(sym_nil);
+	    /* Socket already exists. See if it's live */
+	    struct sockaddr_un addr;
+	    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+	    if(sock >= 0)
+	    {
+		strcpy(addr.sun_path, VSTR(name));
+		addr.sun_family = AF_UNIX;
+		if(connect(sock, (struct sockaddr *)&addr,
+                   sizeof(addr.sun_family) + strlen(addr.sun_path)) == 0)
+		{
+		    close(sock);
+		    message("A server is already open.");
+		    return(sym_nil);
+		}
+		close(sock);
+		/* Socket is probably parentless; delete it */
+		message("Deleted stale socket.");
+		unlink(VSTR(name));
+	    }
 	}
 	socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if(socket_fd >= 0)
@@ -314,15 +292,12 @@ which denotes no errors. Returns nil if the file doesn't have a client.
 	    /* Send the result to our client. */
 	    int con_fd = VINT(VCDR(car));
 	    u_long result = INTP(rc) ? VINT(rc) : 0;
-	    void_DB((__FUNCTION__ ": fd=%d, result=%ld", con_fd, result));
 	    if(write(con_fd, &result, sizeof(result)) != sizeof(result))
 		res = signal_file_error(file);
 	    else
 		res = sym_t;
-	    void_DB((", wrote one u_long"));
 	    /* We can handle input on this fd again now. */
 	    sys_register_input_fd(con_fd, server_handle_request);
-	    void_DB((", unblocking input on fd %d\n", con_fd));
 	}
 	else
 	{
@@ -353,10 +328,6 @@ jade_init(VALUE file_name)
     mark_static(&client_list);
     mark_static(&socket_name);
     INTERN(server_find_file);
-
-#ifdef DEBUG_SERVER
-    db_unix_server = db_alloc(__FILE__, 4096);
-#endif
 }
 
 void
