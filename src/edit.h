@@ -224,9 +224,6 @@ typedef struct _VW
     int		    vw_FirstX, vw_FirstY;
     int		    vw_MaxX, vw_MaxY;
 
-    /* When non-null, a string to replace the normal status line. */
-    VALUE	    vw_StatusOverride;
-
 #ifndef NOSCRLBAR
     ScrollBar	    vw_SBar;
 #endif
