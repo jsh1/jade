@@ -704,14 +704,16 @@ focus_callback (GtkJade *jade, gpointer data)
 static gint
 focus_in_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
 {
-    gtk_jade_foreach (GTK_CONTAINER (widget), focus_callback, (gpointer) 1);
+    gtk_jade_foreach (GTK_CONTAINER (widget),
+		      (GtkCallback) focus_callback, (gpointer) 1);
     return TRUE;
 }
 
 static gint
 focus_out_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
 {
-    gtk_jade_foreach (GTK_CONTAINER(widget), focus_callback, (gpointer) 0);
+    gtk_jade_foreach (GTK_CONTAINER(widget),
+		      (GtkCallback) focus_callback, (gpointer) 0);
     return TRUE;
 }
 
@@ -978,6 +980,12 @@ An integer identifying the cursor to use for editor windows. See
 	return rep_MAKE_INT(cursor_shape);
 }
 
+DEFUN("gtk-last-timestamp", Fgtk_last_timestamp, 
+      Sgtk_last_timestamp, (void), rep_Subr0)
+{
+    return rep_MAKE_LONG_INT(gtk_jade_last_event_time);
+}
+
 
 /* Asyncronous event handling. X11 specific. */
 
@@ -1082,6 +1090,8 @@ sys_windows_init(void)
     rep_ADD_SUBR (Sflush_output);
     rep_ADD_SUBR (Smake_window_on_display);
     rep_ADD_SUBR (Sgtk_cursor_shape);
+    rep_ADD_SUBR (Sgtk_last_timestamp);
+
     rep_INTERN_SPECIAL (gtk_jade_new_hook);
     rep_INTERN (dnd_drop_uri_list);
 #if 0
