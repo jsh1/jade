@@ -1,3 +1,7 @@
+1999-04-27  John Harper  <john@dcs.warwick.ac.uk>
+
+	* keys.c: implement the mouse-keymap extent property
+
 1999-04-26  John Harper  <john@dcs.warwick.ac.uk>
 
 	* edit.h: moved the w_MouseExtents field to the VW structure,

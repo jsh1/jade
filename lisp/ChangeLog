@@ -1,4 +1,48 @@
+1999-04-27  John Harper  <john@dcs.warwick.ac.uk>
+
+	* rm-msg-links.jl: new file, hooks into the
+	rm-display-message-hook creating "hyperlinks" for header
+	entities, i.e. menus to create context-sensitive restrictions
+	or whatever
+
+	* rm-restrict.jl (rule-lambda): new function, creates an
+	anonymous rule
+	(rm-apply-rule, rm-filter-by-rule, rm-prompt-for-rule): handle
+	anonymous rules
+	(rm-prompt-for-anon-rule): new function
+	(rm-restrict-to-sender, rm-restrict-to-recipient,
+	rm-restrict-to-address, rm-restrict-to-subject,
+	rm-restrict-to-message-id): new commands
+
+	* read-mail.jl: added some popup menus
+	(rm-change-rule): when called with a prefix arg, prompts for an
+	anonymous rule
+	(rm-find-message-by-id, rm-display-message-by-id): new
+	functions
+	* rm-summary.jl: added some popup menus. Put the cursor in the
+	mail view, not the summary view (since commands generally don't
+	work as-is in the summary view)
+
+	* popup-menus.jl: deleted the popup-extent-menus variable,
+	instead extents may have a popup-menus property. Also, only
+	activate the view under the mouse when a local set of menus was
+	used
+
+	* mime-decode.jl: give each mime tag some menus
+
+	* maildefs.jl (mail-message-id-re): new variable
+
+	* mail-headers.jl (mail-get-actual-subject): strip any trailing
+	whitespace
+
+	* gtk-menu.jl: allow anonymous functions as the action of menus
+
 1999-04-26  John Harper  <john@dcs.warwick.ac.uk>
+
+	* summary.jl: fix the last change
+
+	* rm-urls.jl (rm-urls-max-lines): maximum number of lines in
+	each message to search for urls
 
 	* summary.jl: bind 'Button2-Click1' to summary-mouse-select,
 	and give each item a mouse-face property
