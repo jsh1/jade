@@ -445,22 +445,33 @@ void
 redraw_region(VW *vw, POS *start, POS *end)
 {
     long linenum = start->pos_Line;
-    LINE *line = vw->vw_Tx->tx_Lines + linenum;
-    short y = linenum - vw->vw_StartLine;
-    short yend = end->pos_Line - vw->vw_StartLine + 1;
-    int yord = y * vw->vw_Win->w_FontY;
-    if(POS_EQUAL_P(start, end))
+    LINE *line;
+    long y, yend, yord;
+    if(POS_EQUAL_P(start, end)
+       || (end->pos_Line < vw->vw_StartLine)
+       || (end->pos_Line < vw->vw_Tx->tx_LogicalStart+1)
+       || (start->pos_Line > (vw->vw_StartLine + vw->vw_MaxY))
+       || (start->pos_Line > (vw->vw_Tx->tx_LogicalEnd)))
 	return;
+    if(linenum < vw->vw_StartLine)
+	linenum = vw->vw_StartLine;
+    line = vw->vw_Tx->tx_Lines + linenum;
+    y = linenum - vw->vw_StartLine;
+    yend = end->pos_Line - vw->vw_StartLine + 1;
     if(yend > vw->vw_MaxY)
 	yend = vw->vw_MaxY;
+    yord = y * vw->vw_Win->w_FontY;
     if((y >= 0) && (y < yend))
     {
-	long gcol = glyph_col(vw->vw_Tx, start->pos_Col, start->pos_Line);
+	long start_col = (linenum == start->pos_Line
+			  ? start->pos_Col
+			  : vw->vw_StartCol);
+	long gcol = glyph_col(vw->vw_Tx, start_col, start->pos_Line);
 	long tmp = gcol - vw->vw_StartCol;
 	if(tmp < 0)
 	{
 	    gcol = vw->vw_StartCol;
-	    start->pos_Col = char_col(vw->vw_Tx, gcol, start->pos_Line);
+	    start_col = char_col(vw->vw_Tx, gcol, start->pos_Line);
 	    tmp = 0;
 	}
 	CLR_AREA(vw, tmp * vw->vw_Win->w_FontX, yord,
@@ -469,7 +480,7 @@ redraw_region(VW *vw, POS *start, POS *end)
 	if(linenum < vw->vw_Tx->tx_LogicalEnd)
 	{
 	    pen_to_glyph_pos(vw, gcol, linenum);
-	    draw_line_part(vw, line, linenum, start->pos_Col, gcol);
+	    draw_line_part(vw, line, linenum, start_col, gcol);
 	}
 	line++;
 	linenum++;
