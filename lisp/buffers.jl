@@ -397,16 +397,38 @@ them."
       (yes-or-no-p (format nil "OK to lose change(s) to buffer `%s'"
 			   (file-name-nondirectory (buffer-name buffer))))))
 
-(defun revert-buffer (&optional buffer)
+(defun revert-buffer (&optional buffer force)
   "Restores the contents of BUFFER (or current buffer) to the contents of the
-file it was loaded from."
+file it was loaded from. Unless FORCE is t, unsaved modifications will only
+be lost after confirmation from the user."
   (interactive)
   (unless buffer
     (setq buffer (current-buffer)))
-  (when (check-changes buffer)
+  (when (or force (check-changes buffer))
     (with-buffer buffer
       (delete-auto-save-file)
-      (read-file-into-buffer (buffer-file-name buffer)))))
+      (let*
+	  ((old-pos (cursor-pos))
+	   (context-pre (max 0 (1- (pos-line old-pos))))
+	   (context-post (min (1- (buffer-length)) (1+ (pos-line old-pos))))
+	   (context (copy-area (pos 0 context-pre)
+			       (end-of-line (pos 0 context-post))))
+	   (window-line (- (pos-line (char-to-display-pos old-pos))
+			   (pos-line (view-origin)))))
+	(read-file-into-buffer (buffer-file-name buffer))
+	;; Try to restore the cursor to it's original position
+	(goto (min old-pos (end-of-buffer)))
+	(let*
+	    ((match-pre (max 0 (1- (pos-line (cursor-pos))))))
+	  (unless (buffer-compare-string context match-pre)
+	    ;; First, try to search for this string.
+	    (when (or (search-forward context match-pre)
+		      (search-backward context match-pre))
+	      (goto (pos (pos-col old-pos)
+			 (1+ (pos-line (match-start)))))))
+	  ;; Assuming we found the text, now try to recenter the view as
+	  ;; it was originally
+	  (center-display nil window-line))))))
 
 (defun save-some-buffers ()
   "Asks whether or not to save any modified buffers, returns t if no modified
