@@ -35,6 +35,9 @@
   "Non-nil when fill-mode is enabled.")
 (make-variable-buffer-local 'fill-mode-active)
 
+(setq minor-mode-alist (cons '(fill-mode-active " Fill")
+			     minor-mode-alist))
+
 (defvar fill-prefix nil
   "When non-nil, a string that is removed from the start of each line before
 filling, and added to the start of each line after filling.\n
@@ -241,9 +244,9 @@ the next line is started."
   (if fill-mode-active
       (progn
 	(setq fill-mode-active nil)
-	(remove-minor-mode 'fill-mode "Fill" fill-mode-keymap))
+	(setq keymap-path (delq fill-mode-keymap keymap-path)))
     (setq fill-mode-active t)
-    (add-minor-mode 'fill-mode "Fill" fill-mode-keymap)))
+    (setq keymap-path (cons fill-mode-keymap keymap-path))))
 
 ;;;###autoload
 (defun fill-mode-on ()

@@ -64,6 +64,9 @@ and hence hasn't been processed yet; or nil.")
 (defvar cvs-update-in-progress nil
   "Non-nil when a `cvs update' process is running asynchronously.")
 
+(setq minor-mode-alist (cons '(cvs-update-in-progress " CVS-update")
+			     minor-mode-alist))
+
 (defvar cvs-update-file-list nil
   "Used by the `cvs update' filter to build the new list.")
 
@@ -223,8 +226,7 @@ that each of the FILENAMES contains no directory specifiers."
 	(format (current-buffer) "[CVS] %s:\n\n" cvs-default-directory)
 	(setq default-directory cvs-default-directory)
 	(summary-mode "CVS" cvs-summary-functions cvs-keymap)
-	(setq major-mode 'cvs-summary-mode))
-      (remove-minor-mode 'cvs-update "Updating"))
+	(setq major-mode 'cvs-summary-mode)))
     (unless (cvs-buffer-p)
       (with-view (other-view)
 	(goto-buffer buffer)
@@ -251,10 +253,7 @@ that each of the FILENAMES contains no directory specifiers."
 	;; Need to construct a call using the _current_ value of
 	;; cvs-after-update-hook (in case it's bound dynamically)
 	`(lambda () (cvs-update-finished ,cvs-after-update-hook))))
-    (setq cvs-update-in-progress (cvs-command '() "update" '()))
-    (when cvs-update-in-progress
-      (with-buffer (cvs-buffer)
-	(add-minor-mode 'cvs-update "Updating")))))
+    (setq cvs-update-in-progress (cvs-command '() "update" '()))))
 
 (defun cvs-buffer ()
   (or (get-buffer "*cvs*")

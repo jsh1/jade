@@ -88,6 +88,8 @@ is controlled by RCS, nil otherwise.")
 (make-variable-buffer-local 'rcs-mode)
 (put 'rcs-mode 'permanent-local t)
 
+(setq minor-mode-alist (cons '(rcs-mode rcs-mode) minor-mode-alist))
+
 (defvar rcs-revision nil
   "Local variable storing the revision number of buffer's controlled by RCS,
 as a string. May be nil if revision is unknown.")
@@ -229,11 +231,8 @@ description entered. COUNT may be negative."
 	((info (concat "RCS"
 		       (if (rcs-buffer-locked-p) ?: ?-)
 		       (or (rcs-get-version) "?"))))
-      (when (minor-mode-installed-p 'rcs-mode)
-	(remove-minor-mode 'rcs-mode rcs-mode))
-      (setq rcs-mode info
+      (setq rcs-mode (concat " " info)
 	    toggle-read-only-function 'rcs-toggle-read-only)
-      (add-minor-mode 'rcs-mode rcs-mode)
       (unless rcs-make-backup-files
 	;; Ensure no backup files are made for this buffer
 	(make-local-variable 'make-backup-files)
