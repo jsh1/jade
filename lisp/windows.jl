@@ -1,4 +1,4 @@
-;;;; windows.jl -- Window handling
+;;;; windows.jl -- Window and view handling
 ;;;  Copyright (C) 1993, 1994 John Harper <john@dcs.warwick.ac.uk>
 ;;;  $Id$
 
@@ -18,58 +18,13 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
-(defvar window-list (cons (current-window) nil)
-  "List of all opened windows.")
-
-(defvar window-closed-hook '(close-window)
-  "Hook called when an input event saying that a window should be closed
-is received.")
-
-;; Call this from the original window
-(defun setup-new-window (win &optional buffer)
-  (let
-      ((old-buf-list buffer-list))
-    (unless buffer
-      (setq buffer (current-buffer)))
-    (setq window-list (cons win window-list))
-    (with-window win
-      (setq buffer-list (cons buffer
-			      (delq buffer (copy-sequence old-buf-list))))
-      (set-current-buffer buffer win)))
-  win)
-
-(defun open-window (&optional buffer x y w h)
-  "Creates a new window display BUFFER or the buffer that the current window is
-showing."
-  (interactive)
-  (setup-new-window (make-window x y w h) buffer))
-
-(defun open-window-on-display (display &optional buffer)
-  "Create a new window on DISPLAY, optionally showing BUFFER. The new window
-is also set as the current window."
-  (interactive "sDisplay:")
-  (unless (fboundp 'make-window-on-display)
-    (error "Multiple displays aren't supported by this window system"))
-  (set-current-window
-   (setup-new-window (make-window-on-display display) buffer)))
-
-(defun close-window (&optional win)
-  "Close window WIN, or the current window."
-  (interactive)
-  (unless win
-    (setq win (current-window)))
-  (if (= (window-count) 1)
-      (save-and-quit)
-    (setq window-list (delq win window-list))
-    (destroy-window win)))
-
 (defun in-new-window (command)
   (goto-new-window)
   (call-command command))
 
 (defun goto-new-window ()
   (interactive)
-  (set-current-window (open-window) t))
+  (set-current-window (make-window) t))
 
 (defun toggle-iconic ()
   "Toggle the current window between iconified and normal states."
