@@ -43,6 +43,7 @@ dumped_lisp_files=@dumped_lisp_files@
 CC=@CC@
 CPPFLAGS=@CPPFLAGS@
 CFLAGS=$(CPPFLAGS) @CFLAGS@ @X_CFLAGS@
+DL_CFLAGS=-fpic -shared
 LDFLAGS=@LDFLAGS@
 LIBS=@LIBS@
 X11LIBS=@X_PRE_LIBS@ -lX11 @X_LIBS@ @X_EXTRA_LIBS@
@@ -54,6 +55,10 @@ JADE_SRCS = $(wildcard $(top_srcdir)/src/*.c)
 
 .c.o :
 	$(CC) -c $(CFLAGS) -DJADE -DJADE_DIR=$(jadedir) -I. -I.. -o $@ $<
+
+.c.so :
+	$(CC) -c $(CFLAGS) $(DL_CFLAGS) -DJADE -DJADE_DL \
+	  -I. -I.. -I$(top_srcdir)/src $@ $<
 
 .PHONY: clean realclean
 
