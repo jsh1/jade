@@ -1202,7 +1202,6 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; and display a message noting that messages are left in FILE.
 ;; Returns t if everything went ok, nil otherwise.
 (defun rm-append-save-and-delete-file (file)
-  (unrestrict-buffer)
   (goto (end-of-buffer))
   (unless (zerop (1- (buffer-length)))
     ;; Unless this is going to be the first message
@@ -1238,6 +1237,7 @@ key, the car the order to sort in, a positive or negative integer.")
     ;; Ensure the buffer is already parsed. We need this later
     (when (eq rm-buffer-messages 'invalid)
       (rm-parse-mailbox (buffer-file-name)))
+    (unrestrict-buffer)
     (let*
 	((tofile (local-file-name (expand-file-name
 				   (concat ".newmail-"
