@@ -115,7 +115,7 @@ argument."
     (cond
      ((= view-count 2)
       (error "Can't resize a single view"))
-     ((>= view-index (- view-count 2))
+     ((> view-index (- view-count 2))
       ;; Last view in window or minibuffer, expand the previous view negatively
       (setq view (previous-view)
 	    count (- count)))
