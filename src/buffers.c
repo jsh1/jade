@@ -767,7 +767,14 @@ DEFUN("last-save-time", var_last_save_time, subr_last_save_time, (VALUE val), V_
 System time at last save of this buffer (could be from an auto-save).
 ::end:: */
 {
-    return(handle_var_long_int(val, &curr_vw->vw_Tx->tx_LastSaveTime));
+    if(val != LISP_NULL)
+    {
+	if(TIMEP(val))
+	    curr_vw->vw_Tx->tx_LastSaveTime = GET_TIME(val);
+	return LISP_NULL;
+    }
+    else
+	return MAKE_TIME(curr_vw->vw_Tx->tx_LastSaveTime);
 }
 
 _PR VALUE var_tab_size(VALUE);
