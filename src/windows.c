@@ -696,6 +696,7 @@ window_mark_active (void)
 	{
 	    rep_MARKVAL(rep_VAL(win));
 	    mark_merged_faces(win);
+	    mark_visible_extents (win);
 	}
 	win = win->w_Next;
     }
