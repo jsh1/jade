@@ -19,12 +19,16 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;; TODO:
-;;;   - options to work on specific revisions
-;;;   - commands for working with branches
-;;;   - command to convert change descriptions to Changelog entries
+;;;  - command to convert log entries to Changelog entries
+;;;  - change into generic version control, with backends for RCS, CVS,
+;;;    SCCS, PRCS, ...
 
 (require 'ring)
+(require 'rcs-hooks)
 (provide 'rcs)
+
+
+;; User options
 
 (defvar rcs-initial-comment nil
   "When non-nil ask for a string describing the file being registered,
@@ -36,12 +40,15 @@ are saved.")
 
 (defvar rcs-only-lock-seen-files t
   "When this variable is t, doing `Ctrl-u Ctrl-x Ctrl-q' on an unlocked
-buffer, for a revision different to the currently displayed revision will
+buffer, for a revision different to the currently displayed revision, will
 cause the new revision _not_ to be locked, only checked out. A successive
 `Ctrl-x Ctrl-q' will lock it.")
 
+(defvar rcs-display-log-args '()
+  "A list of extra arguments to be passed to the RCS rlog command.")
+
 
-;; Initialisation
+;; Program variables
 
 (defvar rcs-output-buffer (make-buffer "*rcs*")
   "Buffer used for output from RCS commands.")
@@ -77,6 +84,15 @@ as a string. May be nil if revision is unknown.")
     "Meta-n" 'rcs-up-history)
   (setq rcs-initialised t))
 
+(defvar rcs-callback-args nil
+  "Arguments stored for when `Ctrl-c Ctrl-c' is typed in the callback buffer.
+A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
+(make-variable-buffer-local 'rcs-callback-args)
+
+(defvar rcs-history-level nil
+  "Depth of last inserted history item")
+(make-variable-buffer-local 'rcs-history-level)
+
 
 ;; Internal functions
 
@@ -108,12 +124,6 @@ as a string. May be nil if revision is unknown.")
     (goto-buffer rcs-output-buffer)
     (goto (start-of-buffer))
     (shrink-view-if-larger-than-buffer)))
-
-;; (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD)
-(make-variable-buffer-local 'rcs-callback-args)
-
-;; Depth of last inserted history item
-(make-variable-buffer-local 'rcs-history-level)
 
 ;; Arrange for (rcs-command COMMAND FILE OPTIONS REREAD-P) to be called
 ;; later including a piece of text entered by the user. It will be added
@@ -164,11 +174,9 @@ as a string. May be nil if revision is unknown.")
 description entered. COUNT may be negative."
   (interactive "p")
   (let
-      ((level (if rcs-history-level
-		  (+ rcs-history-level (unless count 1))
-		1)))
+      ((level (+ (or rcs-history-level 0) (or count 1))))
     (if (or (<= level 0) (>= level (ring-size rcs-descr-ring)))
-	(error 'RCS "Invalid history item" level)
+	(error "Invalid history item" level)
       (clear-buffer)
       (insert (get-from-ring rcs-descr-ring level))
       (setq rcs-history-level level))))
@@ -185,8 +193,8 @@ description entered. COUNT may be negative."
   (not (buffer-read-only-p)))
 
 ;; Initialises rcs-revision to a string defining the current revision
-;; number of the current buffer
-(defun rcs-find-version ()
+;; number of the current buffer. Returns this string, or nil
+(defun rcs-get-version ()
   ;; First look for a Header, Id, or Revision keyword
   (let
       ((revision-pos (re-search-forward
@@ -195,7 +203,7 @@ description entered. COUNT may be negative."
     (if revision-pos
 	(setq rcs-revision (copy-area (match-start 3) (match-end 3)))
       ;; Could run rlog -h FILE or something and look through
-      ;; the output.. later maybe
+      ;; the output.. but how to deal with branches..
       (setq rcs-revision nil))))
 
 ;; Called from the find-file-hook in rcs-hooks.jl
@@ -214,7 +222,7 @@ description entered. COUNT may be negative."
     (let
 	((info (concat "RCS"
 		       (if (rcs-buffer-locked-p) ?: ?-)
-		       (or (rcs-find-version) "?"))))
+		       (or (rcs-get-version) "?"))))
       (when (minor-mode-installed-p 'rcs-mode)
 	(remove-minor-mode 'rcs-mode rcs-current-info-string))
       (add-minor-mode 'rcs-mode info)
@@ -271,7 +279,7 @@ be prompted for."
 		       (error "No revision specified"))))
   (rcs-verify-buffer)
   (maybe-save-buffer (current-buffer))
-  (rcs-callback-with-description "changes to" (buffer-file-name)
+  (rcs-callback-with-description "log for" (buffer-file-name)
 				 "ci" (list (concat "-u" (or revision "")))
 				 "-m" t))
 
@@ -291,8 +299,8 @@ prompted for."
 			    (apply 'concat "Revision to lock:"
 				   (and rcs-revision
 					(list " (currently "
-					      rcs-revision ")")))
-			    (error "No revision specified")))
+					      rcs-revision ")"))))
+			   (error "No revision specified"))
 		     rcs-revision)))
   (rcs-verify-buffer)
   (when (or (not (buffer-modified-p))
@@ -340,18 +348,40 @@ naming the revision, or nil, in which case it will be prompted for."
 (defun rcs-display-log (file-name)
   "Displays the RCS log of FILE-NAME."
   (interactive (list (buffer-file-name)))
-  (rcs-command "rlog" file-name '() nil)
+  (rcs-command "rlog" file-name rcs-display-log-args nil)
   (rcs-goto-buffer))
 
-;;;###autoload
-(defun rcs-display-diffs (file-name)
-  "Displays the differences between the last two versions of FILE-NAME."
-  (interactive (list (buffer-file-name)))
-  (let
-      ((buffer (get-file-buffer file-name)))
-    (when buffer
-      (maybe-save-buffer buffer)))
-  (rcs-command "rcsdiff" file-name '("-c") nil t)
+(defun rcs-compare-revisions (rev1 rev2)
+  "Displays the differences between two revisions of the current buffer.
+
+The two revisions are defined by REV1 and REV2, if both REV1 and REV2 are
+strings, REV1 specifies the older revision, REV2 the newer. Else if REV1 is
+a string but REV2 is nil, REV1 is compared with the current working version
+of the buffer. When both REV1 and REV2 are nil, the head of the current
+branch is compared with the working version.
+
+When called interactively, if a prefix argument is given REV1 and REV2 will
+be prompted for. Otherwise compare the currently selected revision of the
+file with the working copy."
+  (interactive
+   (progn
+     (rcs-verify-buffer)
+     (if (not current-prefix-arg)
+	 (list rcs-revision nil)
+       (let
+	   ((first (prompt-for-string (apply 'concat "Older revision:"
+					     (when rcs-revision
+					       (list " (working on "
+						     rcs-revision ")"))))))
+	 (list first (prompt-for-string
+		      (concat "Newer revision: (older: " first ")")))))))
+  (maybe-save-buffer (current-buffer))
+  (rcs-command "rcsdiff" (buffer-file-name)
+	       (append (when (and rev1 (not (string= rev1 "")))
+			 (if (and rev2 (not (string= rev2 "")))
+			     (list (concat "-r" rev1) (concat "-r" rev2))
+			   (list (concat "-r" rev1))))
+		       '("-c")) nil t)
   (rcs-goto-buffer))
 
 ;; Called by toggle-buffer-read-only for the current buffer
