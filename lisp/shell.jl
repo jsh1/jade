@@ -335,7 +335,8 @@ delete, i.e. replace the marked area with the output of the command."
 	    (setq used-message t))
 	(with-view (other-view)
 	  (goto-buffer output)
-	  (goto (start-of-buffer)))))
+	  (goto (start-of-buffer))
+	  (shrink-view-if-larger-than-buffer))))
     (when (and error-output
 	       (not (equal (start-of-buffer error-output)
 			   (end-of-buffer error-output))))
@@ -351,6 +352,7 @@ delete, i.e. replace the marked area with the output of the command."
 	  (goto-buffer output))
 	(with-view (other-view)
 	  (goto-buffer error-output)
-	  (goto (start-of-buffer)))))
+	  (goto (start-of-buffer))
+	  (shrink-view-if-larger-than-buffer))))
     (unless used-message
       (format t "Command returned %d" result))))
