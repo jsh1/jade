@@ -101,6 +101,8 @@
   "Ctrl-@"	'set-auto-mark
   "Meta-@"	'mark-word
   "Meta-%"	'query-replace
+  "Meta-!"	'shell-command
+  "Meta-|"	'shell-command-on-area
   "Ctrl-a"	'goto-line-start
   "Ctrl-b"	'goto-prev-char
   "Meta-b"	'backward-word
@@ -158,7 +160,6 @@
   "Meta-["	'backward-paragraph
   "Meta-]"	'forward-paragraph
   "Ctrl-_"	'undo
-  "Meta-!"	'system
   "Meta-<"	'(progn (set-auto-mark) (goto-buffer-start))
   "Meta->"	'(progn (set-auto-mark) (goto-buffer-end))
   "Meta-;"	'insert-comment
