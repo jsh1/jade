@@ -1,4 +1,4 @@
-;;;; telnet.jl -- Telnet session-in-a-buffer
+;;;; telnet.jl -- Telnet/rlogin sessions-in-a-buffer
 ;;;  Copyright (C) 1998 John Harper <john@dcs.warwick.ac.uk>
 ;;;  $Id$
 
@@ -27,19 +27,29 @@
 (defvar telnet-program "telnet"
   "Program to start for a telnet session.")
 
-(defvar telnet-echos t
-  "Should be t when the remote telnet will echo back all input sent to it.")
+(defvar rlogin-program "rlogin"
+  "Program to start for an rlogin session.")
+
+(defvar telnet-grab-passwords t
+  "When t, any line of output matching telnet-password-regexp will be
+treated as a password prompt. The password will be prompted for using a
+secure mechanism, then sent to the subprocess.
+
+If this value is an integer N, passwords will only be recognised in the
+first N lines of the buffer.")
 
 (defvar telnet-password-regexp "^Password: *"
-  "Regexp matching the string found when the remote host prompts for
-a password. When this is found, the password will be prompted for
-confidentially, then sent to the system.")
+  "Regexp matching what the remote host uses to prompt for passwords.")
+
+(defvar telnet-echos t
+  "Should be t when the remote telnet or rlogin will echo back all input
+sent to it.")
 
 (defvar telnet-prompt-regexp "^[^#$%>\n]*[#$%>] *"
-  "Regexp matching a prompt from the remote telnet.")
+  "Regexp matching a prompt from the remote telnet or rlogin session.")
 
 
-;; Program
+;; Program variables
 
 (defvar telnet-last-output nil
   "A position defining the end of the last output from the telnet process,
@@ -51,52 +61,87 @@ or nil.")
 or nil.")
 (make-variable-buffer-local 'telnet-last-input)
 
+(defvar telnet-using-rlogin nil
+  "Non-nil when the session in this buffer is actually using rlogin.")
+(make-variable-buffer-local 'telnet-using-rlogin)
+
 (defvar telnet-keymap (copy-sequence shell-keymap))
 (unbind-keys telnet-keymap "RET")
 (bind-keys telnet-keymap
   "RET" 'telnet-send-line)
 
+
+;; Functions
+
 ;; Initialise a telnet buffer. ARGS is the process arg list, DIR the
 ;; new value of default-directory
-(defun telnet-init (args dir)
+(defun telnet-init (host arg dir use-rlogin)
   (set-buffer-special nil t)
   (setq default-directory dir
 	mildly-special-buffer t
-	shell-program telnet-program
+	shell-program (if use-rlogin rlogin-program telnet-program)
+	telnet-using-rlogin use-rlogin
 	shell-prompt-regexp telnet-prompt-regexp
-	shell-program-args args
+	shell-program-args (if arg
+			       (if use-rlogin
+				   (list "-l" arg host)
+				 (list host (format nil "%d" arg)))
+			     (list host))
 	shell-output-stream `(lambda (o) (with-buffer ,(current-buffer)
-					   (funcall 'telnet-filter o)))))
+					   (funcall 'telnet-filter o))))
+  (call-hook 'telnet-mode-hook))
 
 ;;;###autoload
-(defun telnet (host &optional port)
+(defun telnet (host &optional arg use-rlogin)
   "Start a telnet session, connecting to the remote system called HOST,
-optionally using port number PORT."
+optionally using port number ARG. When USE-RLOGIN is t, use the rlogin
+mechanism, not telnet, in this case ARG may be a string specifying the
+user name to use.
+
+When called interactively, HOST will be prompted for, ARG will only be
+prompted for if a prefix argument is given."
   (interactive
    (let
        ((arg current-prefix-arg))
      (list (prompt-for-string "Host:")
 	   (and arg (prompt-for-number "Port:")))))
   (let*
-      ((buffer-name (concat "*telnet-" host "*"))
+      ((buffer-name (concat (if use-rlogin "*rlogin-" "*telnet-")
+			    (if arg
+				(if use-rlogin
+				    (format nil "%s@%s" arg host)
+				  (format nil "%s:%d" host arg))
+			      host)
+			    "*"))
        (buffer (get-buffer buffer-name))
-       (dir default-directory)
-       (args (if port
-		 (list host (format nil "%d" port))
-	      (list host))))
+       (dir default-directory))
     (goto-other-view)
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
 	  (goto-buffer (open-buffer buffer-name t))
-	  (telnet-init args dir)
+	  (telnet-init host arg dir use-rlogin)
 	  (shell-mode)
-	  (setq major-mode 'telnet-mode)
-	  (setq mode-name "Telnet"
+	  (setq major-mode 'telnet-mode
+		mode-name (if use-rlogin "rlogin" "Telnet")
 		keymap-path (cons 'telnet-keymap (delq 'shell-keymap
 						       keymap-path))))
       (goto-buffer buffer)
-      (telnet-init args dir)
+      (clear-buffer)
+      (telnet-init host arg dir use-rlogin)
       (shell-start-process))))
+
+;;;###autoload
+(defun rlogin (host &optional user)
+  "Use the rlogin command to connect to run a shell on the remote host HOST,
+optionally as the user called USER. When called interactively, HOST will
+be prompted for, USER will only be prompted for if a prefix argument is
+given. See the `telnet' function for more details."
+  (interactive
+   (let
+       ((arg current-prefix-arg))
+     (list (prompt-for-string "Host:")
+	   (and arg (prompt-for-string "User:")))))
+  (telnet host user t))
 
 ;; All output from the telnet process goes though this function, by
 ;; the time it's called the current buffer will be the buffer associated
@@ -105,21 +150,24 @@ optionally using port number PORT."
   (goto (end-of-buffer))
   (unless (stringp output)
     (setq output (make-string 1 output)))
-  (when (and telnet-echos telnet-last-input telnet-last-output
-	     (> telnet-last-input telnet-last-output))
-    (delete-area telnet-last-output telnet-last-input)
-    (setq telnet-last-input nil))
   (let
       ((start (cursor-pos)))
     (setq telnet-last-output (insert output))
     (while (setq start (char-search-forward ?\r start))
       (delete-area start (forward-char 1 start))))
   (when (and (not (zerop (pos-col telnet-last-output)))
+	     (or (eq telnet-grab-passwords t)
+		 (< (pos-line telnet-last-output) telnet-grab-passwords))
 	     (looking-at telnet-password-regexp
 			 (start-of-line telnet-last-output) nil t))
-    ;; Found a password
-    (write shell-process (concat (or (pwd-prompt "Password:")) ?\n))
-    (setq telnet-last-output nil)))
+    ;; Found a password, cancelling the prompt will _not_ send anything,
+    ;; in case this isn't actually a password prompt..
+    (let
+	((pass (pwd-prompt "Password: (Ctrl-g to ignore)")))
+      (when pass
+	(write shell-process pass)
+	(write shell-process ?\n)
+	(setq telnet-last-output nil)))))
 
 (defun telnet-send-line ()
   "If the cursor is after the last output from the telnet subprocess, send
@@ -130,7 +178,9 @@ to identify a command on the current line, and send that."
       (progn
 	(insert "\n")
 	(setq telnet-last-input (cursor-pos))
-	(write shell-process (copy-area telnet-last-output telnet-last-input)))
+	(write shell-process
+	       (funcall (if telnet-echos 'cut-area 'copy-area)
+			telnet-last-output telnet-last-input)))
     ;; Fall back to using shell-modes version, it might work
     (setq telnet-last-input nil)
     (shell-enter-line)))
