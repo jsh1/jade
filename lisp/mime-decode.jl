@@ -363,9 +363,15 @@ external mmencode program, otherwise handle locally.")
 		    (mapc #'(lambda (part)
 			      (let
 				  ((type (nth 3 part)))
-				(when (memq (car type)
-					    '(multipart message text))
-				  (throw 'foo (list part))))) parts)
+				(cond ((and (eq (car type) 'text)
+					    (eq (cadr type) 'html))
+				       ;; I hate HTML email, only choose
+				       ;; this if no lesser representation
+				       (when (null (cdr (memq part parts)))
+					 (throw 'foo (list part))))
+				      ((memq (car type)
+					     '(multipart message text))
+				       (throw 'foo (list part)))))) parts)
 		    nil))
 	  (setq parts (nreverse parts)))
 	(while parts
