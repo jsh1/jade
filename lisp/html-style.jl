@@ -81,7 +81,7 @@
 (defvar html-style-home-page-name "John Harper"
   "Name to associate with home page URL.")
 
-(defvar html-style-bg-color "#8b8b7a"
+(defvar html-style-bg-color "#8b8b83"
   "Background colour of files created by html-style commands")
 
 (defvar html-style-text-color "#000000"
@@ -99,7 +99,7 @@
 (defvar html-style-header-bg-color "#cdcdc1"
   "Background colour of headings in files created by html-style commands")
 
-(defvar html-style-body-bg-color "#ffffff"
+(defvar html-style-body-bg-color "#eeeee0"
   "Background colour of body text in files created by html-style commands")
 
 (defvar html-style-templates
