@@ -135,8 +135,8 @@ static glyph_table_t *gt_chain = &default_glyph_table;
    better maybe, but then more searching needs to be done. It's also the
    case that a lot of misses are due to the blanket invalidation, so
    making the cache too big is pointless anyway.. */
-#define GL_CACHE_SETS	100		/* number of cache sets */
-#define GL_CACHE_ASSOC	2		/* entries in each set */
+#define GL_CACHE_SETS	256		/* number of cache sets */
+#define GL_CACHE_ASSOC	1		/* entries in each set */
 
 /* Map a line number to a gl-cache set */
 #define GL_MAP_LINE(l) ((l) % GL_CACHE_SETS)
@@ -146,12 +146,16 @@ typedef struct {
     TX *tx;				/* buffer */
     u_long glyphs;			/* number of glyphs in line */
     u_long changes;			/* change-count at calc. time */
+#if GL_CACHE_ASSOC > 1
     u_long lru_clock;			/* last access time */
+#endif
 } gl_cache_entry_t;
 
 typedef struct {
     gl_cache_entry_t data[GL_CACHE_SETS * GL_CACHE_ASSOC];
+#if GL_CACHE_ASSOC > 1
     u_long lru_clock;
+#endif
     u_long misses, valid_hits, invalid_hits;
 } gl_cache_t;
 
@@ -723,35 +727,52 @@ recenter_cursor(VW *vw)
 		   Try scrolling vw_YStep lines forwards. */
 		if(skip_glyph_rows_forwards(vw, vw->vw_YStep,
 					    next_line_col, next_line_row,
-					    &next_line_col, &next_line_row)
-		   && (VROW(vw->vw_CursorPos) > next_line_row
-		       || (VROW(vw->vw_CursorPos) == next_line_row
-			   && offset >= next_line_col)))
+					    &next_line_col, &next_line_row))
 		{
-		    /* The scroll step is too small. recenter */
-		    if(!skip_glyph_rows_backwards(vw, vw->vw_MaxY / 2,
-						  VCOL(vw->vw_CursorPos),
-						  VROW(vw->vw_CursorPos),
-						  &start_col, &start_row))
+		    if(VROW(vw->vw_CursorPos) > next_line_row
+		       || (VROW(vw->vw_CursorPos) == next_line_row
+			   && offset >= next_line_col))
 		    {
-			start_col = 0; start_row = tx->tx_LogicalStart;
+			/* The scroll step is too small. recenter */
+			if(!skip_glyph_rows_backwards(vw, vw->vw_MaxY / 2,
+						      VCOL(vw->vw_CursorPos),
+						      VROW(vw->vw_CursorPos),
+						      &start_col, &start_row))
+			{
+			    start_col = 0; start_row = tx->tx_LogicalStart;
+			}
+		    }
+		    else
+		    {
+			/* This is ok, but we need to find the new
+			   start of the display. */
+			skip_glyph_rows_forwards(vw, vw->vw_YStep,
+						 start_col, start_row,
+						 &start_col, &start_row);
 		    }
 		}
 		else
 		{
-		    /* This is ok, but we need to find the new
-		       start of the display. */
-		    skip_glyph_rows_forwards(vw, vw->vw_YStep,
-					     start_col, start_row,
-					     &start_col, &start_row);
+		    /* Couldn't move forward YStep lines, so we must be
+		       at the end of the buffer. This isn't very clean,
+		       but by setting start_row==tx_LogicalEnd-1 the
+		       gap detection code below should solve the problem. */
+		    start_row = tx->tx_LogicalEnd - 1;
+		    start_col = line_glyph_length(tx, start_row);
 		}
 	    }
 	}
 
 	if(start_row < tx->tx_LogicalStart)
+	{
 	    start_row = tx->tx_LogicalStart;
+	    start_col = 0;
+	}
 	else if(start_row >= tx->tx_LogicalEnd)
+	{
 	    start_row = tx->tx_LogicalEnd - 1;
+	    start_col = line_glyph_length(tx, start_row);
+	}
 
 	vw->vw_Flags &= ~VWFF_AT_BOTTOM;
 	if(start_row + vw->vw_MaxY >= tx->tx_LogicalEnd)
@@ -759,7 +780,7 @@ recenter_cursor(VW *vw)
 	    /* There's the possibility of a gap at the bottom of
 	       the view. If so, supress it. */
 	    long row = tx->tx_LogicalEnd - 1;
-	    long col = tx->tx_Lines[row].ln_Strlen - 1;
+	    long col = line_glyph_length(tx, row);
 	    if(skip_glyph_rows_backwards(vw, vw->vw_MaxY - 1,
 					 col, row, &col, &row))
 	    {
@@ -809,13 +830,43 @@ uncached_string_glyph_length(TX *tx, const u_char *src, long srcLen)
 }
 
 /* Return the total number of glyphs needed to display the whole of line
-   LINE in buffer TX. This caches the results from recently examined
-   lines (the cache handling is copied from my libsim.a cache simulator) */
+   LINE in buffer TX. This caches the results from recently examined lines */
 static long
 line_glyph_length(TX *tx, long line)
 {
     u_long set = GL_MAP_LINE(line);
     gl_cache_entry_t *set_data = GL_GET_SET(&gl_cache, set);
+
+#if GL_CACHE_ASSOC == 1 /* Direct-mapped cache */
+
+    if(set_data->line == line
+       && set_data->tx == tx)
+    {
+	/* Found the entry. Is it still valid? */
+	if(set_data->changes != tx->tx_Changes)
+	{
+	    /* No. Recalculate */
+	    LINE *l = tx->tx_Lines + line;
+	    set_data->glyphs = uncached_string_glyph_length(tx, l->ln_Line,
+							    l->ln_Strlen - 1);
+	    set_data->changes = tx->tx_Changes;
+	    gl_cache.invalid_hits++;
+	}
+	else
+	    gl_cache.valid_hits++;
+	return set_data->glyphs;
+    }
+    set_data->line = line;
+    set_data->tx = tx;
+    set_data->glyphs
+        = uncached_string_glyph_length(tx, tx->tx_Lines[line].ln_Line,
+				       tx->tx_Lines[line].ln_Strlen - 1);
+    set_data->changes = tx->tx_Changes;
+    gl_cache.misses++;
+    return set_data->glyphs;
+
+#else /* Set associative cache */
+
     int i, lru_set = 0;
     u_long lru_time = ~0;
     for(i = 0; i < GL_CACHE_ASSOC; i++)
@@ -856,6 +907,8 @@ line_glyph_length(TX *tx, long line)
     set_data->lru_clock = ++gl_cache.lru_clock;
     gl_cache.misses++;
     return set_data->glyphs;
+
+#endif
 }
 
 /* Return the glyph index of (COL,LINE) in TX.	*/
