@@ -75,13 +75,13 @@
 
 ;; Configuration
 
-(defvar html-style-home-page-url "http://www.dcs.warwick.ac.uk/~john/"
+(defvar html-style-home-page-url "http://foo.bar.com/~baz/"
   "Default home page URL.")
 
-(defvar html-style-home-page-name "John Harper"
+(defvar html-style-home-page-name "J. Random User"
   "Name to associate with home page URL.")
 
-(defvar html-style-bg-color "#8b8b83"
+(defvar html-style-bg-color "#ffffff"
   "Background colour of files created by html-style commands")
 
 (defvar html-style-text-color "#000000"
@@ -96,44 +96,32 @@
 (defvar html-style-vlink-color "#9900DD"
   "Visited link colour for files created by html-style commands")
 
-(defvar html-style-header-bg-color "#cdcdc1"
-  "Background colour of headings in files created by html-style commands")
-
-(defvar html-style-body-bg-color "#eeeee0"
-  "Background colour of body text in files created by html-style commands")
-
+;; The standard style is very simple
 (defvar html-style-templates
   '((header . "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\"
             \"http://www.w3.org/TR/REC-html40/strict.dtd\">
 <HTML>
 <HEAD>
 <LINK REV=\"MADE\" HREF=\"mailto:@mail-address@\">
-<TITLE>
-@title@
-</TITLE>
-</HEAD>\n\n
+<TITLE>@title@</TITLE>
+</HEAD>
 <BODY BGCOLOR=\"@bg-color@\"
       TEXT=\"@text-color@\"
       LINK=\"@link-color@\"
       ALINK=\"@alink-color@\"
       VLINK=\"@vlink-color@\">\n")
-    (title . "<CENTER><TABLE WIDTH=95% CELLSPACING=1 CELLPADDING=4 BORDER=1>
-<TR><TD BGCOLOR=\"@header-bg-color@\" ALIGN=center>
-<BIG><B>
-@title@
-</B></BIG>
-</TD></TR>
-<TR><TD BGCOLOR=\"@body-bg-color@\">\n\n")
-    (section-start . "<CENTER><TABLE WIDTH=95% CELLSPACING=1 CELLPADDING=4 BORDER=1>
-<TR><TD BGCOLOR=\"@body-bg-color@\">\n")
-    (section-end . "</TD></TR></TABLE></CENTER><P>\n")
-    (break . "</TD></TR><TR>\n<TD BGCOLOR=\"@body-bg-color\">\n")
-    (footer . "<ADDRESS>
+  (title . "<H1 ALIGN=CENTER>@title@</H1>")
+  (section-start . "")
+  (section-end . "<P>")
+  (break . "<P>\n")
+  (footer . "<HR><ADDRESS>
 <A HREF=\"@home-page-url@\">@home-page-name@</A><BR>
 <A HREF=\"mailto:@mail-address@\">@mail-address@</A><BR>
-Created: @date@.@id-string@
-</ADDRESS>\n</BODY>\n</HTML>")
-    (id-string . "\n<BR><SMALL><TT>@id@</TT></SMALL>"))
+Created: @date@.
+</ADDRESS><HR>@id-string@
+</BODY>
+</HTML>")
+  (id-string . "\n<TT><SMALL>@id@</SMALL></TT>"))
   "Alist of insertion templates for html-style.")
 
 
@@ -164,9 +152,7 @@ are only set if they don't already have a value."
 		   (cons 'text-color html-style-text-color)
 		   (cons 'link-color html-style-link-color)
 		   (cons 'alink-color html-style-alink-color)
-		   (cons 'vlink-color html-style-vlink-color)
-		   (cons 'header-bg-color html-style-header-bg-color)
-		   (cons 'body-bg-color html-style-body-bg-color))))
+		   (cons 'vlink-color html-style-vlink-color))))
     ;; Merge in file-subst variables that aren't already set
     (mapc #'(lambda (cell)
 	      (unless (assq (car cell) file-subst-vars)
