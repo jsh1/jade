@@ -168,9 +168,8 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 	     (concat ?^ (quote-regexp mail-header-separator) ?$)
 	     (start-of-buffer))
       (error "Can't find header separator"))
-    (goto (match-start))
-    (insert (concat header ": \n"))
-    (goto (forward-char -1))))
+    (goto (forward-char -1 (match-start)))
+    (insert (concat ?\n header ": "))))
     
 (defun send-mail-go-to ()
   "Move to the message's To: header."
