@@ -217,7 +217,7 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	size_hints.width = width,
 	size_hints.height = height,
 	size_hints.base_width = 0;
-	size_hints.base_height = 2 * w->w_FontY;
+	size_hints.base_height = 0;
 	size_hints.width_inc = w->w_FontX;
 	size_hints.height_inc = w->w_FontY;
 	size_hints.min_width = size_hints.base_width + size_hints.width_inc;
