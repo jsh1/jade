@@ -44,3 +44,8 @@ contents of the prompt will be masked out whilst being entered."
        ;; Don't want this item in the history ring
        (prompt-history nil))
     (prompt title)))
+
+;; replace rep.system#pwd-prompt with Jade's implementation
+(structure () (open rep rep.structures)
+  (structure-define (get-structure 'rep.system) 'pwd-prompt
+		    (%structure-ref (get-structure 'jade) 'pwd-prompt)))
