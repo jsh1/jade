@@ -250,7 +250,7 @@ main(int argc, char *argv[])
 	    case 'x':
 		if(argc < 2)
 		    goto opt_error;
-		sprintf(buf, "(open-window-on-display \"%s\")", argv[1]);
+		sprintf(buf, "(make-window-on-display \"%s\")", argv[1]);
 		result = eval_lisp_form(sock_fd, buf);
 		argc--; argv++;
 		break;
@@ -262,8 +262,7 @@ main(int argc, char *argv[])
 			fprintf(stderr, "No DISPLAY environment variable\n");
 		    else
 		    {
-			sprintf(buf, "(open-window-on-display \"%s\")",
-				dpy);
+			sprintf(buf, "(make-window-on-display \"%s\")", dpy);
 			result = eval_lisp_form(sock_fd, buf);
 		    }
 		    break;
