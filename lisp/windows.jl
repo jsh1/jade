@@ -51,6 +51,9 @@ reinstall the original window as the current one."
 (defface italic-face "Face used for italicized text."
   (set-face-attribute italic-face 'italic t))
 
+(defface active-face "Face used for ``active'' text, i.e. clickable"
+  (set-face-attribute active-face 'background "palegreen2"))
+
 
 
 (defun in-new-window (command)
