@@ -186,7 +186,9 @@ Major mode for composing and sending mail messages."
 	  ((pos (find-prev-string "\n\n--\n" (buffer-end)))
 	   (old-pos (cursor-pos)))
 	(if pos
-	    (delete-area pos (buffer-end))
+	    (progn
+	      (goto-char (match-end))
+	      (delete-area (cursor-pos) (buffer-end)))
 	  (goto-buffer-end)
 	  (insert "\n\n--\n"))
 	(insert-file (expand-file-name mail-signature-file))
