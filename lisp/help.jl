@@ -133,27 +133,25 @@ it leads to)."
 	(type (cond
 	       ((special-form-p fval)
 		"Special Form")
+	       ((macrop fval)
+		"Macro")
 	       ((subrp fval)
 		"Built-in Function")
-	       ((eq (car fval) 'macro)
-		"Macro")
 	       (t
 		"Function"))))
-     (when (consp fval)
-       ;; Check if it's been compiled.
-       (when (assq 'jade-byte-code fval)
-	 ;; compiled forms
-	 (setq type (concat "Compiled " type))))
+     ;; Check if it's been compiled.
+     (when (or (bytecodep fval)
+	       (and (consp fval) (assq 'jade-byte-code fval)))
+       (setq type (concat "Compiled " type)))
      (format help-buffer "\n%s: %s\n\n" type fun)
      (when (fboundp fun)
-       (unless (subrp fval)
+       (when (or (consp fval) (bytecodep fval))
 	 ;; A Lisp function or macro, print its argument spec.
 	 (let
-	     ((lambda-list (nth (if (eq (car fval) 'macro) 2 1) fval)))
+	     ((lambda-list (if (consp fval)
+			       (nth (if (eq (car fval) 'macro) 2 1) fval)
+			     (aref fval 0))))
 	   (prin1 fun help-buffer)
-	   (when (eq (car lambda-list) 'lambda)
-	     ;; A macro
-	     (setq lambda-list (cdr lambda-list)))
 	   ;; Print the arg list (one at a time)
 	   (while lambda-list
 	     (let
@@ -209,7 +207,8 @@ the function doc is provided."
 	  (load (nth 1 (symbol-function symbol))))
 	(setq symbol (symbol-function symbol))
 	(cond
-	 ((subrp symbol)
+	 ((or (subrp symbol)
+	      (bytecodep symbol))
 	  (setq doc (subr-documentation symbol)))
 	 ((or (eq 'macro (car symbol)) (eq 'special (car symbol)))
 	  (setq doc (nth 3 symbol)))
