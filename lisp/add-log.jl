@@ -31,22 +31,22 @@
       ((log-buffer (open-file log-file)))
     (when log-buffer
       (goto-buffer log-buffer)
-      (goto-buffer-start)
-      (unless (log-in-same-day-p (copy-area (buffer-start)
-					    (line-end (buffer-start))))
+      (goto (start-of-buffer))
+      (unless (log-in-same-day-p (copy-area (start-of-buffer)
+					    (end-of-line (start-of-buffer))))
 	(insert (concat (current-time-string) "  "
 			(user-full-name) "  <" user-mail-address ">\n\n")))
-      (goto-char (pos 0 1))
+      (goto (pos 0 1))
       (insert "\n\t* \n")
-      (goto-char (line-end (pos 0 2)))
+      (goto (end-of-line (pos 0 2)))
       (unless major-mode
 	(indented-text-mode)))))
 
 (defun log-in-same-day-p (old-header)
-  (regexp-match (concat (regexp-quote (substring (current-time-string) 0 11))
+  (string-match (concat (quote-regexp (substring (current-time-string) 0 11))
 			".*  "
-			(regexp-quote (user-full-name))
+			(quote-regexp (user-full-name))
 			"  <"
-			(regexp-quote user-mail-address)
+			(quote-regexp user-mail-address)
 			">")
 		old-header))

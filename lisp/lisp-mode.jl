@@ -75,7 +75,7 @@ Major mode for editing Lisp source. Special commands in this mode are,\n
 (defun eval-sexp ()
   "Evaluates the Lisp expression before the cursor and returns its value."
   (interactive)
-  (goto-char (lisp-backward-sexp))
+  (goto (lisp-backward-sexp))
   (eval (read (current-buffer))))
 
 ;;;###autoload
@@ -112,8 +112,8 @@ in the status line."
   (while (> number 0)
     ;; first, skip empty lines & comments
     (while (looking-at "[\t\f ]*$|[\t\f ]*;.*$" pos)
-      (setq pos (next-line 1 (line-start pos)))
-      (when (> pos (buffer-end))
+      (setq pos (forward-line 1 (start-of-line pos)))
+      (when (> pos (end-of-buffer))
 	(error "End of buffer")))
     ;; now any other whitespace
     (when (looking-at "[\t\f ]+" pos)
@@ -123,21 +123,21 @@ in the status line."
       (cond
        ((= c ?\")
 	;; move over string
-	(if (setq pos (find-next-char ?\" (next-char 1 pos)))
-	    (while (= (get-char (prev-char 1 (copy-pos pos))) ?\\ )
-	      (unless (setq pos (find-next-char ?\" (next-char 1 pos)))
+	(if (setq pos (char-search-forward ?\" (forward-char 1 pos)))
+	    (while (= (get-char (forward-char -1 pos)) ?\\ )
+	      (unless (setq pos (char-search-forward ?\" (forward-char 1 pos)))
 		(error "String doesn't end!")))
 	  (error "String doesn't end!"))
-	(setq pos (next-char 1 pos)))
+	(setq pos (forward-char 1 pos)))
        ((member c '(?\( ?\[ ?\<))
 	;; move over brackets
-	(unless (setq pos (match-brackets pos))
+	(unless (setq pos (find-matching-bracket pos))
 	  (error "Expression doesn't end!"))
-	(setq pos (next-char 1 pos)))
+	(setq pos (forward-char 1 pos)))
        ((member c '(?' ?#))
 	;; iterate one more time
 	(setq number (1+ number)
-	      pos (next-char 1 pos)))
+	      pos (forward-char 1 pos)))
        ((member c '(?\) ?\]))
 	(error "End of containing sexp"))
        (t
@@ -155,43 +155,43 @@ in the status line."
   (unless orig-pos 
     (setq orig-pos (cursor-pos)))
   (let
-      ((pos (copy-pos orig-pos)))
+      ((pos orig-pos))
     (while (> number 0)
       ;; skip preceding white space
-      (unless (setq pos (find-prev-regexp "[^\t\f\n ]" (prev-char 1 pos)))
+      (unless (setq pos (re-search-backward "[^\t\f\n ]" (forward-char -1 pos)))
 	(error "No expression!"))
-      (while (regexp-match-line "^[\f\t ]*;|^[\f\t ]*$" pos)
-	(unless (setq pos (prev-line 1 pos))
+      (while (looking-at "^[\f\t ]*;|^[\f\t ]*$" (start-of-line pos))
+	(unless (setq pos (forward-line -1 pos))
 	  (error "Beginning of buffer"))
-	(setq pos (line-end pos)))
+	(setq pos (end-of-line pos)))
       (when (if (/= (pos-line orig-pos) (pos-line pos))
-		(regexp-match-line "[\f\t ]+;|[\f\t ]*$" pos)
-	      (regexp-match-line "[\f\t ]+;" pos))
-	(setq pos (prev-char 1 (match-start))))
+		(looking-at ".*([\f\t ]+;|[\f\t ]*$)" (start-of-line pos))
+	      (looking-at ".*([\f\t ]+;)" (start-of-line pos)))
+	(setq pos (forward-char -1 (match-start 1))))
       (let
 	  ((c (get-char pos)))
 	(cond
 	 ((member c '(?\) ?\] ?\>))
-	  (unless (setq pos (match-brackets pos))
+	  (unless (setq pos (find-matching-bracket pos))
 	    (error "Brackets don't match"))
 	  (when (= c ?\>)
-	    (prev-char 1 pos)))
+	    (forward-char -1 pos)))
 	 ((= c ?\")
-	  (if (setq pos (find-prev-char ?\" (prev-char 1 pos)))
-	      (while (= (get-char (prev-char 1 (copy-pos pos))) ?\\ )
-		(unless (setq pos (find-prev-char ?\" (prev-char 1 pos)))
+	  (if (setq pos (char-search-backward ?\" (forward-char -1 pos)))
+	      (while (= (get-char (forward-char -1 pos)) ?\\ )
+		(unless (setq pos (char-search-backward ?\" (forward-char -1 pos)))
 		  (error "String doesn't start!")))
 	    (error "String doesn't start!")))
 	 ((member c '(?\( ?\[))
 	  (error "Start of containing sexp"))
 	 (t
 	  ;; a symbol?
-	 (unless (setq pos (find-prev-regexp "[^][\f\t\n ()'\"]+|^" pos))
+	 (unless (setq pos (re-search-backward "[^][\f\t\n ()'\"]+|^" pos))
 	   (error "Symbol doesn't start??"))))
-	(when (= (get-char (prev-char 1 (copy-pos pos))) ?')
-	  (setq pos (prev-char 1 pos))
-	  (when (= (get-char (prev-char 1 (copy-pos pos))) ?#)
-	    (setq pos (prev-char 1 pos)))))
+	(when (= (get-char (forward-char -1 pos)) ?')
+	  (setq pos (forward-char -1 pos))
+	  (when (= (get-char (forward-char -1 pos)) ?#)
+	    (setq pos (forward-char -1 pos)))))
       (setq number (1- number)))
     pos))
 
@@ -206,16 +206,17 @@ in the status line."
   (unless line-pos
     (setq line-pos (cursor-pos)))
   (let*
-      ((pos (line-start line-pos))
+      ((pos (start-of-line line-pos))
        (index 0)
-       (sexp-ind (copy-pos pos))
+       (sexp-ind pos)
        last-ind
-       (form-pos (buffer-end))
+       (form-pos (end-of-buffer))
        form)
     (if (looking-at "^[\t\f ]*(;;;|;[^;])" pos)
-	(set-pos-col sexp-ind (if (looking-at "^[\t\f ]*;;;" pos)
-				  0
-				(1- comment-column)))
+	(setq sexp-ind (pos (if (looking-at "^[\t\f ]*;;;" pos)
+				0
+			      (1- comment-column))
+			    (pos-line sexp-ind)))
       ;; Work back to the beginning of the containing sexp. The error-handler
       ;; catches the error that's signalled when the start is reached.
       (error-protect
@@ -223,7 +224,7 @@ in the status line."
 	    (when (<= form-pos pos)
 	      (error "Infinite loop"))
 	    (when (zerop (pos-col pos))
-	      (set-pos-col sexp-ind 0)
+	      (setq sexp-ind (pos 0 (pos-line sexp-ind)))
 	      (return sexp-ind))
 	    (setq form-pos pos
 		  index (1+ index))
@@ -238,40 +239,40 @@ in the status line."
 				    (>= (length last-ind) 2))
 			       (nth 1 last-ind)
 			     (car last-ind)))
-	  (setq last-ind (copy-pos pos)))
+	  (setq last-ind pos))
 	;; pos now points to the first sexp in the containing sexp
-	(set-pos-col sexp-ind
-		     (pos-col (char-to-glyph-pos
-			       (or (find-prev-regexp "[\(\[]" pos)
-				   pos))))
-	(setq form-pos (copy-pos pos)
-	      form (read (cons (current-buffer) form-pos)))
+	(setq sexp-ind (pos (pos-col (char-to-glyph-pos
+				      (or (re-search-backward "[\(\[]" pos)
+					  pos)))
+			    (pos-line sexp-ind)))
+	(setq form (read (cons (current-buffer) pos)))
 	(when (symbolp form)
 	  (let
 	      ((type (get form 'lisp-indent)))
 	    (cond
 	     ((null type)
 	      ;; standard indentation
-	      (if (= (- (pos-line line-pos) (pos-line pos)) 1)
-		  ;; on the second line of this sexp
-		  (if (< index 2)
-		      (set-pos-col sexp-ind (pos-col (char-to-glyph-pos pos)))
-		    (when (looking-at "[\t\f ]*" form-pos)
-		      (set-pos-col sexp-ind
-				   (pos-col (char-to-glyph-pos
-					     (match-end))))))
-		(set-pos-col sexp-ind (pos-col last-ind))))
+	      (if (and (= (- (pos-line line-pos) (pos-line pos)) 1)
+		       (< index 2))
+		  ;; on the second line of this sexp, with the first
+		  ;; argument, line up under the function name
+		  (setq sexp-ind (pos (pos-col (char-to-glyph-pos pos))
+				      (pos-line sexp-ind)))
+		;; otherwise line up under the first argument
+		(setq sexp-ind (pos (pos-col last-ind)
+				    (pos-line sexp-ind)))))
 	     ((eq type 'defun)
 	      ;; defun type indentation
 	      (if (or (= index 2) (= (- (pos-line line-pos) (pos-line pos)) 1))
-		  (right-char lisp-body-indent sexp-ind)
-		(set-pos-col sexp-ind (pos-col last-ind))))
+		  (setq sexp-ind (right-char lisp-body-indent sexp-ind))
+		(setq sexp-ind (pos (pos-col last-ind)
+				    (pos-line sexp-ind)))))
 	     ((numberp type)
 	      ;; first TYPE sexps are indented double
-	      (right-char (if (<= index type)
-			      (* 2 lisp-body-indent)
-			    lisp-body-indent)
-			  sexp-ind)))))))
+	      (setq sexp-ind (right-char (if (<= index type)
+					     (* 2 lisp-body-indent)
+					   lisp-body-indent)
+					 sexp-ind))))))))
     sexp-ind))
 
 ;; Set up indentation hints

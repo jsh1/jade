@@ -40,33 +40,34 @@
     
 ;; In the read-file-hook
 (defun gzip-read-file (file-name buffer)
-  (when (regexp-match "\\.(gz|Z)$" file-name)
+  (when (string-match "\\.(gz|Z)$" file-name)
     ;; gzipped file, decompress it into the buffer
     (let
 	((old-pos (cursor-pos)))
       (with-buffer buffer
 	(gzip-uncompress file-name)
-	(goto-char old-pos)
+	(goto old-pos)
 	(unless mode-name
 	  ;; so init-mode has a chance
-	  (setq mode-name (regexp-expand "^(.*)\\.(gz|Z)$" file-name "\\1")))
+	  (setq mode-name (and (string-match "^(.*)\\.(gz|Z)$" file-name)
+			       (expand-last-match "\\1"))))
 	(setq buffer-file-modtime (file-modtime file-name))
 	(set-buffer-file-name buffer file-name))
       t)))
 
 ;; In insert-file-hook
 (defun gzip-insert-file (file-name)
-  (when (regexp-match "\\.(gz|Z)$" file-name)
+  (when (string-match "\\.(gz|Z)$" file-name)
     ;; compressed file
     (gzip-uncompress file-name)))
 
 ;; In write-file-hook
 (defun gzip-write-file (file-name buffer)
-  (when (regexp-match "\\.(gz|Z)$" file-name)
+  (when (string-match "\\.(gz|Z)$" file-name)
     (let
 	((modes (when (file-exists-p file-name) (file-modes file-name)))
 	 (tmp-name (tmp-file-name))
-	 (compressor (if (regexp-match "\\.Z$" file-name) "compress" "gzip"))
+	 (compressor (if (string-match "\\.Z$" file-name) "compress" "gzip"))
 	 dst-file proc)
       (backup-file file-name)
       (when (and (write-buffer tmp-name buffer)

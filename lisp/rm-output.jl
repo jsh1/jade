@@ -44,7 +44,7 @@
 	(save-restriction
 	  (unrestrict-buffer)
 	  (save-cursor
-	    (goto-buffer-end)
+	    (goto (end-of-buffer))
 	    (rm-enforce-msg-separator)
 	    (let
 		((ins-start (cursor-pos))
@@ -102,7 +102,7 @@ otherwise write straight to the folder's file."
 				     (mark-pos (rm-get-msg-field
 						(car (cdr msg-list))
 						rm-msg-mark))
-				   (buffer-end))
+				   (end-of-buffer))
 				 real-dest)
 	      (setq count (1- count)
 		    msg-list (cdr msg-list)))

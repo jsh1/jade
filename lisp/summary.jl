@@ -123,7 +123,7 @@ items to be displayed and manipulated."
     (funcall major-mode-kill))
   (setq summary-functions functions
 	summary-pending-ops nil
-	summary-first-line (line-start (buffer-end))
+	summary-first-line (start-of-line (end-of-buffer))
 	summary-actual-keymap (or keymap summary-keymap)
 	major-mode 'summary-mode
 	major-mode-kill 'summary-mode-kill
@@ -245,9 +245,9 @@ highlight."
   (let
       ((inhibit-read-only t))
     (block-kill)
-    (delete-area summary-first-line (buffer-end))
+    (delete-area summary-first-line (end-of-buffer))
     (setq summary-items (summary-dispatch 'list))
-    (goto-char summary-first-line)
+    (goto summary-first-line)
     (let
 	((items summary-items))
       (while items
@@ -264,12 +264,12 @@ highlight."
       ((inhibit-read-only t)
        (index (summary-get-index item)))
     (save-cursor
-      (goto-char (pos 0 (+ (pos-line summary-first-line) index)))
-      (if (= (pos-line (cursor-pos)) (pos-line (buffer-end)))
+      (goto (pos 0 (+ (pos-line summary-first-line) index)))
+      (if (= (pos-line (cursor-pos)) (pos-line (end-of-buffer)))
 	  (progn
-	    (delete-area (cursor-pos) (line-end))
+	    (delete-area (cursor-pos) (end-of-line))
 	    (summary-dispatch 'print item))
-	(delete-area (cursor-pos) (next-line))
+	(delete-area (cursor-pos) (forward-line))
 	(summary-dispatch 'print item)
 	(insert "\n"))
       (summary-maybe-dispatch 'after-update))))
@@ -279,9 +279,9 @@ highlight."
 t when this item actually exists."
   (interactive "p")
   (unless (or (< index 0)
-	      (> index (- (pos-line (buffer-end))
+	      (> index (- (pos-line (end-of-buffer))
 			(pos-line summary-first-line))))
-    (goto-char (pos 0 (+ (pos-line summary-first-line) index)))
+    (goto (pos 0 (+ (pos-line summary-first-line) index)))
     (summary-maybe-dispatch 'after-move index)
     t))
 

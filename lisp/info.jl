@@ -86,7 +86,7 @@ is split.")
     "7" 'info-menu-nth
     "8" 'info-menu-nth
     "9" 'info-menu-nth
-    "b" 'goto-buffer-start
+    "b" 'goto-start-of-buffer
     "d" '(info "(dir)Top")
     "f" 'info-follow-ref
     "h" '(info "(info)Help")
@@ -129,28 +129,28 @@ is split.")
       (read-file-into-buffer (concat filename suffix))
       ;; Scan for tag table or indirect list
       (let
-	  ((pos (find-next-regexp "^(Tag Table:|Indirect:) *$"
+	  ((pos (re-search-forward "^(Tag Table:|Indirect:) *$"
 				  (pos 0 0) info-buffer t)))
-	(when (and pos (regexp-match-line "Indirect" pos nil t))
+	(when (and pos (looking-at "Indirect:" pos nil t))
 	  ;; Parse the indirect list
-	  (next-line 1 pos)
+	  (setq pos (forward-line 1 pos))
 	  (while (and (/= (get-char pos) ?\^_)
-		      (regexp-match-line "^(.*): ([0-9]+)$" pos nil t))
+		      (looking-at "^(.*): ([0-9]+)$" pos nil t))
 	    (setq info-indirect-list
 		  (cons
 		   (cons
 		    (read (cons info-buffer (match-start 2)))
 		    (concat dir (copy-area (match-start 1) (match-end 1))))
 		   info-indirect-list))
-	    (next-line 1 pos))
+	    (setq pos (forward-line 1 pos)))
 	  (setq info-indirect-list (nreverse info-indirect-list)))
 	;; Now look for the tag table
-	(when (setq pos (find-next-regexp "^Tag table: *$" pos nil t))
+	(when (setq pos (re-search-forward "^Tag table: *$" pos nil t))
 	  ;; Copy this into the tags buffer
 	  (let
-	      ((end (find-next-char ?\^_ pos)))
+	      ((end (char-search-forward ?\^_ pos)))
 	    (unless end
-	      (setq end (buffer-end)))
+	      (setq end (end-of-buffer)))
 	    (clear-buffer info-tags-buffer)
 	    (insert (copy-area pos end) nil info-tags-buffer)
 	    (setq info-has-tags-p t)))))))
@@ -171,12 +171,12 @@ is split.")
 		(insert-file name)
 		;; lose all text from the beginning of the file to the
 		;; first menu item, unless this is the first dir file
-		(when (find-next-regexp "^\\* Menu:" spos nil t)
-		  (delete-area spos (next-line 1 (match-start)))))
+		(when (re-search-forward "^\\* Menu:" spos nil t)
+		  (delete-area spos (forward-line 1 (match-start)))))
 	    (read-file-into-buffer name)
-	    (goto-buffer-end)
+	    (goto (end-of-buffer))
 	    (setq read-dir t))
-	  (unless (equal (cursor-pos) (line-start))
+	  (unless (equal (cursor-pos) (start-of-line))
 	    (split-line))))
       (setq path (cdr path)))
     (unless read-dir
@@ -186,8 +186,8 @@ is split.")
 	  info-node-name "Top"
 	  info-has-tags-p nil
 	  mode-name "(dir)")
-    (goto-char (or (find-next-char ?\^_ (buffer-start))
-		   (buffer-start)))
+    (goto (or (char-search-forward ?\^_ (start-of-buffer))
+		   (start-of-buffer)))
     t))
 
 ;; Record the file, node and cursor-position in the `info-history' list
@@ -238,12 +238,14 @@ is split.")
 ;; with `makeinfo' generated files.
 (defun info-find-node (nodename)
   (let
-      ((filename (regexp-expand "^\\((.*)\\).*$" nodename "\\1"))
+      ((filename (and (string-match "^\\((.*)\\).*$" nodename)
+		      (expand-last-match "\\1")))
        (inhibit-read-only t)
        offset)
     (unrestrict-buffer)
     (when filename
-      (unless (setq nodename (regexp-expand "^\\(.*\\)(.+)$" nodename "\\1"))
+      (unless (setq nodename (and (string-match "^\\(.*\\)(.+)$" nodename)
+				  (expand-last-match "\\1")))
 	(setq nodename "Top")))
     (if (and filename (member filename '("dir" "DIR" "Dir")))
 	(info-read-dir)
@@ -257,12 +259,12 @@ is split.")
 	    ;; No tag list
 	    (unless (string= info-file-name filename)
 	      (read-file-into-buffer (concat filename info-file-suffix)))
-	    (when (find-next-regexp (concat "^File:.* Node: *"
-					    (regexp-quote nodename))
-				    (buffer-start))
-	      (goto-char (line-start (match-start)))))
-	(if (find-next-regexp (concat "^Node: "
-				      (regexp-quote nodename)
+	    (when (re-search-forward (concat "^File:.* Node: *"
+					    (quote-regexp nodename))
+				    (start-of-buffer))
+	      (goto (start-of-line (match-start)))))
+	(if (re-search-forward (concat "^Node: "
+				      (quote-regexp nodename)
 				      ?\^?)
 			      (pos 0 0) info-tags-buffer t)
 	    (let
@@ -292,17 +294,17 @@ is split.")
 	      (unless (string= (buffer-file-name)
 			       (concat subfile info-file-suffix))
 		(read-file-into-buffer (concat subfile info-file-suffix)))
-	      (goto-char (offset-to-pos offset)))
+	      (goto (offset-to-pos offset)))
 	  (signal 'info-error (list "Can't find node" nodename)))))
     ;; Now cursor should be at beginning of node text. Make sure
     (let
-	((pos (find-prev-char ?\^_)))
-      (when (and pos (regexp-match-line (concat "^File:.*Node: "
-						(regexp-quote nodename))
-					(next-line 1 pos)))
-	(goto-char (match-start)))
-      (setq pos (or (find-next-char ?\^_ (next-char (cursor-pos)))
-		    (buffer-end nil t)))
+	((pos (char-search-backward ?\^_)))
+      (when (and pos (looking-at (concat "^File:.*Node: "
+					 (quote-regexp nodename))
+				 (forward-line 1 pos)))
+	(goto (match-start)))
+      (setq pos (or (char-search-forward ?\^_ (forward-char))
+		    (end-of-buffer nil t)))
       (restrict-buffer (cursor-pos) pos))
     (setq info-node-name nodename
 	  mode-name (concat ?( (file-name-nondirectory info-file-name)
@@ -312,13 +314,13 @@ is split.")
 ;; Return a list of all node names matching START in the current tag table
 (defun info-list-nodes (start)
   (let
-      ((regexp (concat "^Node: (" (regexp-quote start) ".*)\^?"))
+      ((regexp (concat "^Node: (" (quote-regexp start) ".*)\^?"))
        (list ()))
     (with-buffer info-tags-buffer
-      (goto-buffer-start)
-      (while (find-next-regexp regexp nil nil t)
-	(goto-char (match-end))
-	(setq list (cons (regexp-expand-line regexp "\\1" nil nil t) list))))
+      (goto (start-of-buffer))
+      (while (re-search-forward regexp nil nil t)
+	(setq list (cons (expand-last-match "\\1") list))
+	(goto (match-end))))
     list))
 
 ;; "prompt" variant. LIST-FUN is a function to call the first time a list
@@ -336,7 +338,7 @@ is split.")
 					 (with-buffer info-buffer
 					   (setq prompt-list (funcall list-fun))))
 				       (prompt-complete-from-list w)))
-       (prompt-validate-function 'prompt-validate-from-list)
+       (prompt-validate-function #'prompt-validate-from-list)
        (prompt-list-fold-case t)
        ;;(prompt-word-regexps prompt-def-regexps)
        (prompt-list '())
@@ -405,8 +407,10 @@ commands are,\n
 
 ;; Returns the node name of the menu item on the current line
 (defun info-parse-menu-line ()
-  (or (regexp-expand-line "^\\* (.*[^ ]+)[ ]*::" "\\1")
-      (regexp-expand-line "^\\* .+:[\t ]*((\\([^ ]+\\)|)([^,.]+|))\\." "\\1")))
+  (when (or (looking-at "^\\* (.*[^ ]+)[ ]*::" (start-of-line))
+	    (looking-at "^\\* .+:[\t ]*((\\([^ ]+\\)|)([^,.]+|))\\."
+			(start-of-line)))
+    (expand-last-match "\\1")))
 
 ;; Return a list of the names of all menu items. Starts searching from
 ;; the cursor position.
@@ -414,28 +418,28 @@ commands are,\n
   (let
       ((list ())
        (opos (cursor-pos)))
-    (while (find-next-regexp "^\\* [a-zA-Z0-9]+.*:")
-      (goto-char (match-end))
-      (setq list (cons (regexp-expand-line "^\\* ([^:.]+)" "\\1") list)))
+    (while (re-search-forward "^\\* ([a-zA-Z0-9]+[^:.]*)" opos)
+      (setq list (cons (expand-last-match "\\1") list))
+      (setq opos (match-end)))
     list))
 
 ;; Position the cursor at the start of the menu.
 (defun info-goto-menu-start ()
-  (when (or (find-prev-regexp "^\\* Menu:" nil nil t)
-	    (find-next-regexp "^\\* Menu:" nil nil t))
-    (goto-char (next-line 1 (match-start)))))
+  (when (or (re-search-backward "^\\* Menu:" nil nil t)
+	    (re-search-forward "^\\* Menu:" nil nil t))
+    (goto (forward-line 1 (match-start)))))
 
 ;; Goto the ITEM-INDEX'th menu item.
 (defun info-menu-nth (item-index)
-  (interactive (list (- (strtoc (current-event-string)) ?0)))
+  (interactive (list (- (aref (current-event-string) 0) ?0)))
   (unless (info-goto-menu-start)
     (signal 'info-error (list "Can't find menu")))
-  (while (and (> item-index 0) (find-next-regexp "^\\* .*:"))
-    (goto-char (match-end))
+  (while (and (> item-index 0) (re-search-forward "^\\* .*:"))
+    (goto (match-end))
     (setq item-index (1- item-index)))
   (when (/= item-index 0)
     (signal 'info-error (list "Can't find menu node")))
-  (goto-line-start)
+  (goto (start-of-line))
   (let
       ((nodename (info-parse-menu-line)))
     (if nodename
@@ -448,17 +452,18 @@ commands are,\n
 (defun info-menu ()
   (interactive)
   (let
-      ((menu-name (regexp-expand-line "^\\* ([^:.]+)" "\\1")))
+      ((menu-name (and (looking-at "^\\* ([^:.]+)" (start-of-line))
+		       (expand-last-match "\\1"))))
     (when (info-goto-menu-start)
       (let
 	  ((opos (cursor-pos)))
 	(setq menu-name (info-prompt 'info-list-menu-items
 				     "Menu item:" menu-name))
-	(goto-char opos)))
+	(goto opos)))
     (when menu-name
-      (if (find-next-regexp (concat "^\\* " (regexp-quote menu-name) ?:))
+      (if (re-search-forward (concat "^\\* " (quote-regexp menu-name) ?:))
 	  (progn
-	    (goto-char (match-start))
+	    (goto (match-start))
 	    (let
 		((node-name (info-parse-menu-line)))
 	      (if node-name
@@ -477,7 +482,7 @@ commands are,\n
 	    ((hist (car info-history)))
 	  (setq info-history (cdr info-history))
 	  (when (info-find-node (concat ?( (car hist) ?) (nth 1 hist)))
-	    (goto-char (nth 2 hist))
+	    (goto (nth 2 hist))
 	    t)))
     (message "No more history")
     (beep)))
@@ -496,8 +501,10 @@ commands are,\n
 
 (defun info-find-link (link-type)
   (let*
-      ((regexp (concat link-type ": ([^,]*)(,|[\t ]*$)"))
-       (new-node (regexp-expand-line regexp "\\1" (buffer-start) nil t)))
+      ((regexp (concat ".*" link-type ": ([^,\n]*)(,|[\t ]*$)"))
+       new-node)
+    (when (looking-at regexp (start-of-buffer) nil t)
+      (setq new-node (expand-last-match "\\1")))
     (if new-node
 	(progn
 	  (info-remember)
@@ -511,7 +518,7 @@ commands are,\n
   (let
       (node)
     (unless (setq node (cdr (info-parse-ref)))
-      (goto-line-start)
+      (goto (start-of-line))
       (unless (setq node (info-parse-menu-line))
 	(signal 'info-error '("Nothing on this line to go to"))))
     (info-remember)
@@ -521,21 +528,23 @@ commands are,\n
 (defun info-next-link ()
   (interactive)
   (let
-      ((pos (find-next-regexp "(^\\* |\\*Note)" (next-char) nil t)))
+      ((pos (re-search-forward "(^\\* |\\*Note)" (forward-char) nil t)))
     (while (and pos (looking-at "\\* Menu:" pos nil t))
-      (setq pos (find-next-regexp "(^\\* |\\*Note)" (next-char 1 pos) nil t)))
+      (setq pos (re-search-forward "(^\\* |\\*Note)"
+				  (forward-char 1 pos) nil t)))
     (when pos
-      (goto-char pos))))
+      (goto pos))))
 
 ;; Move the cursor to the previous menuitem or xref
 (defun info-prev-link ()
   (interactive)
   (let
-      ((pos (find-prev-regexp "(^\\* |\\*Note)" (prev-char) nil t)))
+      ((pos (re-search-backward "(^\\* |\\*Note)" (forward-char -1) nil t)))
     (while (and pos (looking-at "\\* Menu:" pos nil t))
-      (setq pos (find-prev-regexp "(^\\* |\\*Note)" (prev-char 1 pos) nil t)))
+      (setq pos (re-search-backward "(^\\* |\\*Note)"
+				  (forward-char -1 pos) nil t)))
     (when pos
-      (goto-char pos))))
+      (goto pos))))
 
 ;; Parse the cross-reference under the cursor into a cons-cell containing
 ;; its title and node. This is fairly hairy since it has to cope with refs
@@ -545,32 +554,32 @@ commands are,\n
     (let
 	((pos (match-end))
 	 end ref-title ref-node)
-      (if (setq end (find-next-regexp "[\t ]*:"))
+      (if (setq end (re-search-forward "[\t ]*:"))
 	  (progn
 	    (while (> (pos-line end) (pos-line pos))
 	      (let
-		  ((bit (copy-area pos (find-next-regexp "[\t ]*$" pos))))
+		  ((bit (copy-area pos (re-search-forward "[\t ]*$" pos))))
 		(unless (equal bit "")
 		  (setq ref-title (cons ?\  (cons bit ref-title)))))
-	      (setq pos (find-next-regexp "[^\n\t ]" (match-end)))
+	      (setq pos (re-search-forward "[^\n\t ]" (match-end)))
 	      (unless pos
 		(signal 'info-error '("Malformed reference"))))
 	    (setq ref-title (apply 'concat (nreverse (cons (copy-area pos end)
 							   ref-title)))
-		  pos (next-char 1 end))
+		  pos (forward-char 1 end))
 	    (if (= (get-char pos) ?:)
 		(setq ref-node ref-title)
 	      (when (looking-at " +" pos)
 		(setq pos (match-end)))
-	      (if (setq end (find-next-regexp "[\t ]*[:,.]" pos))
+	      (if (setq end (re-search-forward "[\t ]*[:,.]" pos))
 		  (progn
 		    (while (> (pos-line end) (pos-line pos))
 		      (let
-			  ((bit (copy-area pos (find-next-regexp "[\t ]*$"
+			  ((bit (copy-area pos (re-search-forward "[\t ]*$"
 								 pos))))
 			(unless (equal bit "")
 			  (setq ref-node (cons ?\  (cons bit ref-node))))
-			(setq pos (find-next-regexp "[^\n\t ]" (match-end))))
+			(setq pos (re-search-forward "[^\n\t ]" (match-end))))
 		      (unless pos
 			(signal 'info-error '("Malformed reference"))))
 		    (setq ref-node (apply 'concat (nreverse (cons (copy-area
@@ -586,7 +595,7 @@ commands are,\n
 (defun info-follow-ref ()
   (interactive)
   (unless (looking-at "\\*Note" nil nil t)
-    (goto-char (find-next-regexp "\\*Note" nil nil t)))
+    (goto (re-search-forward "\\*Note" nil nil t)))
   (let
       ((ref (info-parse-ref)))
     (when ref

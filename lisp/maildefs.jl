@@ -94,9 +94,8 @@ contents of the file specified by mail-signature-file.")
 (defvar mail-signature-file "~/.signature"
   "File to insert at end of message being sent.")
 
-(defvar mail-default-headers (format nil "X-Mailer: Jade %s.%s"
-				     (major-version-number)
-				     (minor-version-number))
+(defvar mail-default-headers (format nil "X-Mailer: %s"
+				     (version-string))
   "Text to insert into the header section of all outgoing mail messages.")
 
 (defvar mail-send-hook nil
@@ -166,17 +165,17 @@ include any parenthesised expressions!")
       (cons pos (match-end)))
      ((= char ?\")
       ;; A string
-      (unless (find-next-regexp "[^\\]\"" (next-char 1 (copy-pos pos)))
+      (unless (re-search-forward "[^\\]\"" (forward-char 1 pos))
 	(error "Unterminated string in list, %s" pos))
       (cons pos (match-end)))
      ((= char ?\()
       ;; A comment
-      (unless (find-next-regexp "[^\\]\\)" (next-char 1 (copy-pos pos)))
+      (unless (re-search-forward "[^\\]\\)" (forward-char 1 pos))
 	(error "Unterminated comment in list, %s" pos))
       (cons pos (match-end)))
      ((= char ?\<)
       ;; An address spec
-      (unless (find-next-regexp "[^\\]>" (next-char 1 (copy-pos pos)))
+      (unless (re-search-forward "[^\\]>" (forward-char 1 pos))
 	(error "Unterminated address in list, %s" pos))
       (cons pos (match-end)))
      ((= char ?,)
@@ -209,8 +208,8 @@ include any parenthesised expressions!")
 (defun mail-parse-list (pos &optional no-comma-seps)
   (save-restriction
     ;; Restrict ourselves to the current header
-    (restrict-buffer pos (prev-char 1 (or (mail-unfold-header pos)
-					  (buffer-end))))
+    (restrict-buffer pos (forward-char -1 (or (mail-unfold-header pos)
+					      (end-of-buffer))))
     (when (looking-at (concat mail-header-name "[\t ]*") pos)
       (setq pos (match-end)))
     (if no-comma-seps
@@ -227,8 +226,8 @@ include any parenthesised expressions!")
 ;; Return the position at which a header matching HEADER occurs, or
 ;; nil if one doesn't
 (defun mail-find-header (header &optional pos)
-  (when (and (find-next-regexp (concat "^(" header "[\t ]*:[\t ]*|$)")
-			       (or pos (buffer-start)) nil t)
+  (when (and (re-search-forward (concat "^(" header "[\t ]*:[\t ]*|$)")
+			       (or pos (start-of-buffer)) nil t)
 	     (> (match-end) (match-start)))
     (match-end)))
 
@@ -249,7 +248,7 @@ include any parenthesised expressions!")
 						      not-comma-separated))))
 	    list)
 	(translate-string (copy-area pos (or (mail-unfold-header pos)
-					     (buffer-end)))
+					     (end-of-buffer)))
 			  flatten-table)))))
 
 ;; Delete the header at POS and return the position of the following
@@ -263,7 +262,7 @@ include any parenthesised expressions!")
 	  pos)
       ;; Header goes up to the end of the restriction, delete the
       ;; previous newline instead of the next
-      (delete-area (prev-char 1 (copy-pos pos)) (buffer-end))
+      (delete-area (forward-char -1 pos) (end-of-buffer))
       nil)))
 
 ;; Return a list of inboxes for the mail folder FOLDER

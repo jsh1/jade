@@ -145,7 +145,7 @@ that mode are available as well.")
 	 (gdb-get-buffer-var shell-process)
 	 format-spec format-args)
   (with-buffer gdb-last-buffer
-    (when (regexp-match-line "^\\(.*gdb.*\\) *" (buffer-end))
+    (when (looking-at "^\\(.*gdb.*\\) *" (start-of-line (end-of-buffer)))
       (setq gdb-delete-prompt t))))
 
 ;; Receives all output from the gdb subprocess, it acts upon and removes
@@ -156,12 +156,12 @@ that mode are available as well.")
     (with-buffer buffer
       (when gdb-spare-output
 	(setq data (concat gdb-spare-output data)))
-      (goto-buffer-end)
+      (goto (end-of-buffer))
       (when (and gdb-delete-prompt
-		 (regexp-match-line shell-prompt-regexp))
+		 (looking-at shell-prompt-regexp (start-of-line)))
 	(delete-area (match-start) (match-end))
 	(setq gdb-delete-prompt nil))
-      (while (regexp-match "\032\032([^:\n]+):([0-9]+):([0-9]+):.*\n" data)
+      (while (string-match "\032\032([^:\n]+):([0-9]+):([0-9]+):.*\n" data)
 	;; A whole marker to process
 	(insert (substring data 0 (match-start 0)))
 	(setq
@@ -171,7 +171,7 @@ that mode are available as well.")
 							   (match-end 2))))))
 	 new-frame t
 	 data (substring data (match-end 0))))
-      (if (regexp-match "\032" data)
+      (if (string-match "\032" data)
 	  ;; Start of an incomplete marker; save it for later
 	  (progn
 	    (insert (substring data 0 (match-start 0)))
@@ -189,8 +189,8 @@ that mode are available as well.")
 	(with-view view
 	  (setq old-buf (current-buffer))
 	  (goto-buffer (open-file (car frame)))
-	  (mark-block line-pos (line-end line-pos))
-	  (goto-char (line-end line-pos))
+	  (mark-block line-pos (end-of-line line-pos))
+	  (goto (end-of-line line-pos))
 	  (when (or gdb-auto-centre (not (eq old-buf (current-buffer))))
 	    (center-display)))))))
 
@@ -203,6 +203,6 @@ that mode are available as well.")
 	((frame (gdb-get-buffer-var gdb-last-frame))
 	 (line-pos (pos 0 (cdr frame))))
       (goto-buffer (open-file (car frame)))
-      (mark-block line-pos (line-end line-pos))
-      (goto-char (line-end line-pos))
+      (mark-block line-pos (end-of-line line-pos))
+      (goto (end-of-line line-pos))
       (center-display))))

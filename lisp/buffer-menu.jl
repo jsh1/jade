@@ -49,7 +49,7 @@
   "Shift-TAB" 'bm-prev
   "Meta-TAB" 'bm-prev
   "Ctrl-l" 'bm-update
-  "LMB-Click1" '(goto-char (mouse-pos))
+  "LMB-Click1" '(goto (mouse-pos))
   "LMB-Click2" 'bm-select-buffer
   "LMB-Off" 'nop)
 
@@ -107,7 +107,7 @@ Commands available are,\n
   (unless (eq major-mode 'buffer-menu-mode)
     (buffer-menu-mode))
   (bm-list-buffers)
-  (goto-char (pos 0 2)))
+  (goto (pos 0 2)))
 
 
 (defun bm-unbound-function ()
@@ -145,13 +145,13 @@ Commands available are,\n
   (unless (> (pos-line (cursor-pos)) 1)
     ;; on the heading
     (error "Can't work on the heading!"))
-  (if (regexp-match-line "^[^\t]+[\t]+([^\t]+)\t")
+  (if (looking-at "^[^\t]+[\t]+([^\t]+)\t" (start-of-line))
       (get-buffer (copy-area (match-start 1) (match-end 1)))
     (error "Can't find buffer name")))
 
 (defun bm-find-buffer-line (buf)
-  (find-next-regexp (concat "^[^\t]+[\t]+"
-			    (regexp-quote (buffer-name buf))
+  (re-search-forward (concat "^[^\t]+[\t]+"
+			    (quote-regexp (buffer-name buf))
 			    "\t")
 		    (pos 0 2)))
 
@@ -215,7 +215,7 @@ Commands available are,\n
 	  ((pos (bm-find-buffer-line buf)))
 	(when (kill-buffer buf)
 	  (when pos
-	    (delete-area pos (next-line 1 (copy-pos pos))))))
+	    (delete-area pos (forward-line 1 pos)))))
       (setq list (cdr list)))))
 
 (defun bm-select-buffer ()
@@ -285,19 +285,19 @@ Commands available are,\n
   (let
       ((old-buf (bm-get-buffer)))
     (bm-list-buffers)
-    (goto-char (or (bm-find-buffer-line old-buf)
-		   (pos 0 2)))))
+    (goto (or (bm-find-buffer-line old-buf)
+	      (pos 0 2)))))
 
 (defun bm-next ()
   (interactive)
   (if (>= (pos-line (cursor-pos)) (- (buffer-length) 2))
       ;; last line
       (goto-glyph (pos nil 2))
-    (goto-next-line)))
+    (goto (forward-line))))
 
 (defun bm-prev ()
   (interactive)
   (if (<= (pos-line (cursor-pos)) 2)
       ;; first line
       (goto-glyph (pos nil (- (buffer-length) 2)))
-    (goto-prev-line)))
+    (goto (forward-line -1))))

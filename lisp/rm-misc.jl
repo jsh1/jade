@@ -52,7 +52,7 @@
 	    msg-id (mail-get-header "Message-Id")
 	    references (append (mail-get-header "References" t t)
 			       (list msg-id))))
-    (when (regexp-match rm-Re-regexp subject t)
+    (when (string-match rm-Re-regexp subject t)
       (setq subject (concat mail-reply-prefix
 			    (substring subject (match-end)))))
     (mail-setup to subject msg-id cc references
@@ -86,35 +86,35 @@ message in that all recipients of the original wil receive the reply."
 	      (save-restriction
 		(unrestrict-buffer)
 		;; Insert everything but the initial ^From_ line
-		(setq start (next-line 1 (copy-pos
+		(setq start (forward-line 1 (copy-pos
 					  (mark-pos
 					   (rm-get-msg-field msg
 							     rm-msg-mark))))
 		      end start)
-		(while (and end (setq end (find-next-regexp mail-message-start
+		(while (and end (setq end (re-search-forward mail-message-start
 							    end))
 			    (not (rm-message-start-p end)))
-		  (setq end (next-line 1 end)))
-		(copy-area start (or end (buffer-end))))))
+		  (setq end (forward-line 1 end)))
+		(copy-area start (or end (end-of-buffer))))))
     (eval-hook 'mail-yank-hooks yank-begin (cursor-pos) rm-reply-message)))
 
 (defun rm-default-yank-function (start end &optional msg)
   (when msg
     (restrict-buffer start end)
     (let
-	((body-start (and (find-next-regexp "^\n" start) (match-end)))
+	((body-start (and (re-search-forward "^\n" start) (match-end)))
 	 body-end)
       (when body-start
 	(delete-area start body-start)
-	(format (cons (current-buffer) (buffer-start))
+	(format (cons (current-buffer) (start-of-buffer))
 		"%s writes:\n" (or (rm-get-msg-field msg rm-msg-from-name)
 				   (rm-get-msg-field msg rm-msg-from-addr)))
-	(setq start (next-line 1 (buffer-start))))
-      (setq body-end (find-prev-regexp "^.*[^\t\n ].*$" (buffer-end)))
-      (while (<= start (or body-end (buffer-end)))
+	(setq start (forward-line 1 (start-of-buffer))))
+      (setq body-end (re-search-backward "^.*[^\t\n ].*$" (end-of-buffer)))
+      (while (<= start (or body-end (end-of-buffer)))
 	(insert mail-yank-prefix start)
-	(setq start (next-line 1 start)))
-      (delete-area start (buffer-end)))
+	(setq start (forward-line 1 start)))
+      (delete-area start (end-of-buffer)))
     (unrestrict-buffer)
     t))
 
@@ -141,13 +141,13 @@ it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
 				  (rm-with-summary
 				   (summary-update-item message))))
 			    (list (current-buffer) message))))
-    (insert "----- Begin Forwarded Message -----\n\n
------ End Forwarded Message -----\n")
-    (goto-prev-line 2)
+    (insert "----- begin forwarded message -----\n\n
+----- end forwarded message -----\n")
+    (goto (forward-line -2))
     (when all-headers-p
       ;; Quote ^From_
       (insert ">"))
-    (restrict-buffer (cursor-pos) (line-end))
+    (restrict-buffer (cursor-pos) (end-of-line))
     (insert (with-buffer (mark-file (rm-get-msg-field message rm-msg-mark))
 	      (save-restriction
 		(unrestrict-buffer)
@@ -159,14 +159,14 @@ it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
 		  (copy-area start rm-current-msg-end)))))
     ;; Quote "^-" as "- -" as specified by RFC-934
     (let
-	((pos (buffer-start)))
-      (while (find-next-regexp "^-" pos)
+	((pos (start-of-buffer)))
+      (while (re-search-forward "^-" pos)
 	(insert "- " (match-start))
-	(setq pos (line-end (match-start)))))
+	(setq pos (end-of-line (match-start)))))
     (unrestrict-buffer)
     (if (string= to "")
-	(goto-char (line-end (buffer-start)))
-      (goto-next-line 2))))
+	(goto (end-of-line (start-of-buffer)))
+      (goto (forward-line 2)))))
 
 
 ;; Message bursting
@@ -200,11 +200,11 @@ it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
 
     ;; Find the start of the first message
     (restrict-buffer input-pos input-end)
-    (unless (setq input-pos (find-next-regexp preamble-sep input-pos))
+    (unless (setq input-pos (re-search-forward preamble-sep input-pos))
       (error "Can't find digest preamble!"))
-    (setq input-pos (next-line 1 input-pos)
+    (setq input-pos (forward-line 1 input-pos)
 	  last-pos input-pos)
-    (while (setq input-pos (find-next-regexp message-sep input-pos))
+    (while (setq input-pos (re-search-forward message-sep input-pos))
       (unrestrict-buffer)
       (let
 	  ((start last-pos))
@@ -217,7 +217,7 @@ it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
 		       (looking-at mail-header-name start)))
 	      (message "Ignoring nonsense message!")
 	    ;; Enforce the "\n\n" rule between messages
-	    (goto-buffer-end)
+	    (goto (end-of-buffer))
 	    (rm-enforce-msg-separator)
 	    (setq output-pos (cursor-pos))
 	    (insert (copy-area start input-pos))
@@ -225,13 +225,13 @@ it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
 	    (let
 		((pos (cursor-pos)))
 	      (restrict-buffer output-pos pos)
-	      (while (setq pos (find-prev-regexp stuffed-re pos))
+	      (while (setq pos (re-search-backward stuffed-re pos))
 		(replace-regexp stuffed-re "\\1" pos)
-		(setq pos (prev-line 1 pos)))
+		(setq pos (forward-line -1 pos)))
 	      (unrestrict-buffer))
 	    ;; Unmangle quoted ^From_
 	    (when (looking-at "^>From " output-pos)
-	      (delete-area output-pos (next-char 1 (copy-pos output-pos))))
+	      (delete-area output-pos (forward-char 1 output-pos)))
 	    (unless (looking-at mail-message-start output-pos)
 	      ;; No ^From_ line, kludge one ourselves
 	      (insert (concat "From jade " (current-time-string) ?\n)
@@ -240,7 +240,7 @@ it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
 	      (setq count (1+ count)
 		    msgs (cons new-msg msgs))
 	      (rm-set-flag new-msg 'unread))))
-	(setq input-pos (next-line 1 input-pos)
+	(setq input-pos (forward-line 1 input-pos)
 	      last-pos input-pos)
 	(restrict-buffer input-pos input-end)))
     (unrestrict-buffer)
@@ -264,7 +264,7 @@ it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
 of the folder. Prompts for the digest type, RFC-934 or RFC-1153."
   (interactive)
   (let
-      ((tem (find-next-regexp rm-rfc934-preamble-sep (buffer-start))))
+      ((tem (re-search-forward rm-rfc934-preamble-sep (start-of-buffer))))
     (when tem
       (if (looking-at rm-rfc1153-preamble-sep tem)
 	  (setq tem 'rfc1153)

@@ -168,15 +168,15 @@ Major mode for running a subprocess in a buffer. Special commands are,\n
 (defun shell-bol ()
   "Go to the beginning of this shell line (but after the prompt)."
   (interactive)
-  (if (regexp-match-line shell-prompt-regexp)
-      (goto-char (match-end))
-    (goto-char (line-start))))
+  (if (looking-at shell-prompt-regexp (start-of-line))
+      (goto (match-end))
+    (goto (start-of-line))))
 
 (defun shell-del-or-eof (count)
   "When at the very end of the buffer send the subprocess the EOF character,
 otherwise delete the first COUNT characters under the cursor."
   (interactive "p")
-  (if (equal (cursor-pos) (buffer-end))
+  (if (equal (cursor-pos) (end-of-buffer))
       (shell-send-eof)
     (delete-char count)))
 
@@ -187,21 +187,21 @@ last in the buffer the current command is copied to the end of the buffer."
   (if (null shell-process)
       (insert "\n")
     (let
-	((start (if (regexp-match-line shell-prompt-regexp)
+	((start (if (looking-at shell-prompt-regexp (start-of-line))
 		    (match-end)
-		  (line-start)))
+		  (start-of-line)))
 	 cmdstr)
       (if (= (pos-line start) (1- (buffer-length)))
 	  ;; last line in buffer
 	  (progn
 	    (when shell-whole-line
-	      (goto-line-end))
+	      (goto (end-of-line)))
 	    (insert "\n")
 	    (setq cmdstr (copy-area start (cursor-pos))))
 	;; copy the command at this line to the end of the buffer
-	(setq cmdstr (copy-area start (next-line 1 (line-start))))
+	(setq cmdstr (copy-area start (forward-line 1 (start-of-line))))
 	(set-auto-mark)
-	(goto-buffer-end)
+	(goto (end-of-buffer))
 	(insert cmdstr))
       (write shell-process cmdstr))))
 
@@ -223,13 +223,14 @@ last in the buffer the current command is copied to the end of the buffer."
 
 (defun shell-next-prompt ()
   (interactive)
-  (when (find-next-regexp shell-prompt-regexp (line-end))
-    (goto-char (match-end))))
+  (when (re-search-forward shell-prompt-regexp (end-of-line))
+    (goto (match-end))))
 
 (defun shell-prev-prompt ()
   (interactive)
-  (when (find-prev-regexp shell-prompt-regexp (prev-char 1 (line-start)))
-    (goto-char (match-end))))
+  (when (re-search-backward shell-prompt-regexp
+			  (forward-char -1 (start-of-line)))
+    (goto (match-end))))
 
 
 ;;;###autoload
@@ -264,7 +265,7 @@ the output is a single line in which case it goes to the status area.
 This simply calls shell-command-on-area with a nil input region, and with
 the DELETEP parameter also nil."
   (interactive "sShell command:\nP")
-  (shell-command-on-area command (buffer-end) (buffer-end) nil insertp))
+  (shell-command-on-area command (end-of-buffer) (end-of-buffer) nil insertp))
 
 ;;;###autoload
 (defun shell-command-on-buffer (command &optional replacep)
@@ -275,7 +276,7 @@ the current contents of the buffer; otherwise output is sent to the
 *shell-output* buffer. See `shell-command-on-area' for more details."
   (interactive "sShell command on buffer:\nP")
   (shell-command-on-area command
-			 (buffer-start) (buffer-end)
+			 (start-of-buffer) (end-of-buffer)
 			 replacep replacep))
 
 ;;;###autoload
@@ -328,28 +329,28 @@ delete, i.e. replace the marked area with the output of the command."
       (set-buffer-modified output nil)
       (if (= (buffer-length output) 2)
 	  (progn
-	    (message (copy-area (buffer-start output)
-				(buffer-end output)
+	    (message (copy-area (start-of-buffer output)
+				(end-of-buffer output)
 				output))
 	    (setq used-message t))
 	(with-view (other-view)
 	  (goto-buffer output)
-	  (goto-buffer-start))))
+	  (goto (start-of-buffer)))))
     (when (and error-output
-	       (not (equal (buffer-start error-output)
-			   (buffer-end error-output))))
+	       (not (equal (start-of-buffer error-output)
+			   (end-of-buffer error-output))))
       (set-buffer-modified error-output nil)
       (if (and (= (buffer-length error-output) 2)
 	       (not used-message))
 	  (progn
-	    (message (copy-area (buffer-start error-output)
-				(buffer-end error-output)
+	    (message (copy-area (start-of-buffer error-output)
+				(end-of-buffer error-output)
 				error-output))
 	    (setq used-message t))
 	(unless insertp
 	  (goto-buffer output))
 	(with-view (other-view)
 	  (goto-buffer error-output)
-	  (goto-buffer-start))))
+	  (goto (start-of-buffer)))))
     (unless used-message
       (format t "Command returned %d" result))))

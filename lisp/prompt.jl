@@ -196,7 +196,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 (defun prompt-enter-line ()
   (interactive)
   (let
-      ((line (copy-area (buffer-start) (buffer-end))))
+      ((line (copy-area (start-of-buffer) (end-of-buffer))))
     (if (or (not prompt-validate-function)
 	    (let
 		((res (funcall prompt-validate-function line)))
@@ -258,7 +258,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	(prompt-message "[No completion function]")
 	0)
     (let*
-	((word (copy-area (buffer-start) (cursor-pos)))
+	((word (copy-area (start-of-buffer) (cursor-pos)))
 	 ;; Before making the list of completions, try to
 	 ;; restore the original context
 	 (comp-list (with-view prompt-original-view
@@ -272,7 +272,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	  (clear-buffer prompt-completion-buffer))
 	(prompt-message "[No completions]"))
        ((= num-found 1)
-	(goto-char (replace-string word (car comp-list) (buffer-start)))
+	(goto (replace-string word (car comp-list) (start-of-buffer)))
 	(when prompt-completion-buffer
 	  (clear-buffer prompt-completion-buffer))
 	(prompt-message "[Unique completion]"))
@@ -280,11 +280,11 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	(prompt-print-completions comp-list)
 	(when (not (string-head-eq (car comp-list) word))
 	  ;; Completions don't match their source at all.
-	  (delete-area (buffer-start) (cursor-pos))
+	  (delete-area (start-of-buffer) (cursor-pos))
 	  (setq word ""))
-	(goto-char (replace-string word
+	(goto (replace-string word
 				   (make-completion-string word comp-list)
-				   (buffer-start)))
+				   (start-of-buffer)))
 	(prompt-message (format nil "[%d completions]" num-found))))
       num-found)))
 
@@ -295,7 +295,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	(prompt-message "[No completion function]")
 	0)
     (let*
-	((word (copy-area (buffer-start) (cursor-pos)))
+	((word (copy-area (start-of-buffer) (cursor-pos)))
 	 ;; Before making the list of completions, try to
 	 ;; restore the original context
 	 (comp-list (with-view prompt-original-view
@@ -306,7 +306,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 
 (defun prompt-print-completions (comp-list)
   (let*
-      ((ipos (buffer-start))
+      ((ipos (start-of-buffer))
        ;; Don't want to record undo information for the completion list
        (buffer-record-undo nil))
     (prompt-setup-completion-buffer)
@@ -315,7 +315,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
       (while (consp comp-list)
 	(format (cons (current-buffer) ipos) "%s\n" (car comp-list))
 	(setq comp-list (cdr comp-list)))
-      (goto-buffer-start))))
+      (goto (start-of-buffer)))))
 
 (defun prompt-cancel ()
   (interactive)
@@ -329,7 +329,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	(and (= prompt-history-index 0) (null prompt-default-value)))
     (error "No next item"))
    ((= prompt-history-index 0)
-    (setq prompt-history-top (copy-area (buffer-start) (buffer-end)))
+    (setq prompt-history-top (copy-area (start-of-buffer) (end-of-buffer)))
     (clear-buffer)
     (insert prompt-default-value))
    ((>= prompt-history-index 1)
@@ -348,7 +348,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
    ((and (>= prompt-history-index 0)
 	 (> (ring-size prompt-history) prompt-history-index))
     (when (zerop prompt-history-index)
-      (setq prompt-history-top (copy-area (buffer-start) (buffer-end))))
+      (setq prompt-history-top (copy-area (start-of-buffer) (end-of-buffer))))
     (clear-buffer)
     (insert (get-from-ring prompt-history (1+ prompt-history-index))))
    (t
@@ -359,7 +359,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 ;; Various completion/validation functions
 
 (defun prompt-complete-symbol (word)
-  (mapcar 'symbol-name (apropos (concat ?^ (regexp-quote word))
+  (mapcar 'symbol-name (apropos (concat ?^ (quote-regexp word))
 				prompt-symbol-predicate)))
 
 (defun prompt-validate-symbol (name)
@@ -402,7 +402,7 @@ is rejected.")
 		y)
 	    (delete-if #'(lambda (f)
 			   (or (not (string-head-eq f file))
-			       (regexp-match prompt-file-exclude f)))
+			       (string-match prompt-file-exclude f)))
 		       files))))
 
 (defun prompt-validate-filename (name)
@@ -429,7 +429,7 @@ is rejected.")
       ((src prompt-list)
        (dst ()))
     (while src
-      (when (regexp-match (concat ?^ (regexp-quote word))
+      (when (string-match (concat ?^ (quote-regexp word))
 			  (car src) prompt-list-fold-case)
 	(setq dst (cons (car src) dst)))
       (setq src (cdr src)))
@@ -442,7 +442,7 @@ is rejected.")
     (let
 	((list prompt-list))
       (while list
-	(when (regexp-match (concat ?^ (regexp-quote name) ?$)
+	(when (string-match (concat ?^ (quote-regexp name) ?$)
 			    (car list) t)
 	  (return t))
 	(setq list (cdr list))))))
@@ -633,7 +633,7 @@ string QUESTION, returns t for `y'."
 	     (old-k-p keymap-path))
 	  (setq unbound-key-hook '(beep)
 		keymap-path '(y-or-n-keymap))
-	  (insert (concat question " (y or n) ") (buffer-start))
+	  (insert (concat question " (y or n) ") (start-of-buffer))
 	  (unwind-protect
 	      (catch 'ask
 		(recursive-edit))

@@ -25,44 +25,45 @@
 ;;; and macros to the list and `ESC x remove-autoloads' to take them out.
 
 (defun autoload-insert-entry (str)
-  (if (find-next-string str (buffer-start))
+  (if (search-forward str (start-of-buffer))
       (progn
-	(delete-area (match-start) (line-end (match-start)))
-	(goto-char (match-start)))
-    (unless (find-prev-regexp "^;;; ::autoload-end::" (buffer-end))
+	(delete-area (match-start) (end-of-line (match-start)))
+	(goto (match-start)))
+    (unless (re-search-backward "^;;; ::autoload-end::" (end-of-buffer))
       (error "autoload.jl file malformed"))
-    (goto-char (line-end (prev-line 1 (match-start))))
+    (goto (end-of-line (forward-line -1 (match-start))))
     (insert "\n"))
   (insert str))
 
 (defun autoload-remove-entry (str)
-  (when (find-next-string str (buffer-start))
-    (goto-char (match-start))
+  (when (search-forward str (start-of-buffer))
+    (goto (match-start))
     (delete-area (match-start)
-		 (line-start (next-line 1 (match-start))))))
+		 (start-of-line (forward-line 1 (match-start))))))
 
 (defun autoload-do-magic (buf line-fun)
   (let
       (aload-buf)
-    (when (setq aload-buf (open-file (file-name-concat lisp-lib-dir "autoload.jl")))
+    (when (setq aload-buf (open-file (file-name-concat lisp-lib-dir
+						       "autoload.jl")))
       (goto-buffer aload-buf)
       (let
-	  ((pos (buffer-start))
+	  ((pos (start-of-buffer))
 	   form
-	   (short-file-name (regexp-expand "^(.+)\\.jl$"
-					   (file-name-nondirectory
-					    (buffer-file-name buf))
-					   "\\1"))
+	   (short-file-name (and (string-match "^(.+)\\.jl$"
+					       (file-name-nondirectory
+						(buffer-file-name buf)))
+				 (expand-last-match "\\1")))
 	   (count 0))
-	(while (setq pos (find-next-regexp "^;;;###autoload" pos buf))
-	  (setq form (regexp-expand-line "^;;;###autoload[\t ]*(.*)$" "\\1"
-					  pos buf))
+	(while (setq pos (re-search-forward "^;;;###autoload[\t ]*(.*)$"
+					   pos buf))
+	  (setq form (expand-last-match "\\1"))
 	  (when (and form (not (equal "" form)))
 	    (funcall line-fun form)
 	    (setq count (1+ count))
 	    (message form t))
-	  (next-line 1 pos)
-	  (when (and (regexp-match-line "^\\(def(macro|un) " pos buf)
+	  (setq pos (forward-line 1 pos))
+	  (when (and (looking-at "^\\(def(macro|un) " pos buf)
 		     (setq form (read (cons buf pos)))
 		     (memq (car form) '(defun defmacro)))
 	    (setq form (format nil (if (assq 'interactive form)

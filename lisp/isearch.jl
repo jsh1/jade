@@ -37,7 +37,7 @@ searching.")
 (defun isearch-find-next-regexp (pos)
   (setq isearch-re-error nil)
   (error-protect
-      (find-next-regexp (car (car isearch-trace)) pos nil case-fold-search)
+      (re-search-forward (car (car isearch-trace)) pos nil case-fold-search)
     (regexp-error
       (setq isearch-re-error t)
       'regexp-error)))
@@ -45,7 +45,7 @@ searching.")
 (defun isearch-find-prev-regexp (pos)
   (setq isearch-re-error nil)
   (error-protect
-      (find-prev-regexp (car (car isearch-trace)) pos nil case-fold-search)
+      (re-search-backward (car (car isearch-trace)) pos nil case-fold-search)
     (regexp-error
       (setq isearch-re-error t)
       'regexp-error)))
@@ -72,9 +72,9 @@ searching.")
       ((item (car isearch-trace)))
     (if (cdr item)
 	(progn
-	  (goto-char (nth 1 item))
+	  (goto (nth 1 item))
 	  (rplaca isearch-trace (cons (car item) (nthcdr 2 item))))
-      (goto-char isearch-initial-pos)))
+      (goto isearch-initial-pos)))
   (setq isearch-failing nil))
 
 ;; Pops the top string, then moves to the top match of the next string.
@@ -97,11 +97,11 @@ searching.")
   (unless (isearch-looking-at)
     (let
 	((next (if isearch-forwards
-		   (isearch-find-next-regexp (next-char))
-		 (isearch-find-prev-regexp (prev-char)))))
+		   (isearch-find-next-regexp (forward-char))
+		 (isearch-find-prev-regexp (forward-char -1)))))
       (cond
 	((posp next)
-	  (goto-char next)
+	  (goto next)
 	  (setq isearch-failing nil))
 	((null next)
 	  (setq isearch-failing t)
@@ -150,7 +150,7 @@ searching.")
 	(while (and (not (isearch-looking-at)) (cdr isearch-trace))
 	  (isearch-rubout))
 	(isearch-title))
-    (goto-char isearch-initial-pos)
+    (goto isearch-initial-pos)
     (throw 'isearch nil)))
 
 ;; Copy the rest of the current word to the search string
@@ -167,7 +167,7 @@ searching.")
   (interactive)
   (when (isearch-looking-at)
     (isearch-push-string (concat (car (car isearch-trace))
-				 (copy-area (match-end) (line-end)))))
+				 (copy-area (match-end) (end-of-line)))))
   (isearch-title))
 
 ;; Backup one match/string
@@ -244,14 +244,14 @@ direction."
 	((next (if (and isearch-failing isearch-forwards)
 	           (progn
 		     (setq isearch-wrapped t)
-		     (buffer-start))
-		 (next-char))))
+		     (start-of-buffer))
+		 (forward-char))))
       (setq next (isearch-find-next-regexp next))
       (cond
         ((posp next)
 	  (isearch-push-match (cursor-pos))
 	  (setq isearch-failing nil)
-	  (goto-char next))
+	  (goto next))
 	((null next)
 	  (setq isearch-failing t)
 	  (beep)))
@@ -268,14 +268,14 @@ direction."
 	((next (if (and isearch-failing (not isearch-forwards))
 		   (progn
 		     (setq isearch-wrapped t)
-		     (buffer-end))
-		 (prev-char))))
+		     (end-of-buffer))
+		 (forward-char -1))))
       (setq next (isearch-find-prev-regexp next))
       (cond
        ((posp next)
 	(isearch-push-match (cursor-pos))
 	(setq isearch-failing nil)
-	(goto-char next))
+	(goto next))
        ((null next)
 	(setq isearch-failing t)
 	(beep)))

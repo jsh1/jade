@@ -265,14 +265,14 @@ Major mode for viewing mail folders. Commands include:\n
   (let
       ;; If we scan the buffer from start to end we can create the
       ;; list in reverse order, just what we want.
-      ((pos (buffer-start))
+      ((pos (start-of-buffer))
        (msgs nil)
        (count 0))
-    (while (and pos (setq pos (find-next-regexp mail-message-start pos)))
+    (while (and pos (setq pos (re-search-forward mail-message-start pos)))
       (when (rm-message-start-p pos)
 	(setq msgs (cons (rm-build-message-struct pos) msgs)
 	      count (1+ count)))
-      (next-line 1 pos))
+      (setq pos (forward-line 1 pos)))
     ;; Okay, the current message is the last in the buffer. There's
     ;; no messages after the current one, all the rest go before.
     (setq rm-current-msg (car msgs)
@@ -287,18 +287,18 @@ Major mode for viewing mail folders. Commands include:\n
 ;; should be unrestricted.
 (defun rm-build-message-struct (start)
   (let
-      ((end (find-next-regexp "^$" start))
+      ((end (re-search-forward "^$" start))
        (msg (rm-make-msg))
        pos)
-    (restrict-buffer start (unless end (buffer-end)))
+    (restrict-buffer start (unless end (end-of-buffer)))
     (rm-set-msg-field msg rm-msg-mark (make-mark start))
-    (when (or (find-next-regexp "^From[ \t]*:[ \t]*" start nil t)
-	      (find-next-regexp "^Sender[ \t]*:[ \t]*" start nil t))
+    (when (or (re-search-forward "^From[ \t]*:[ \t]*" start nil t)
+	      (re-search-forward "^Sender[ \t]*:[ \t]*" start nil t))
       (setq pos (match-end))
       (let*
 	  ((addr-re (concat mail-atom-re "(\\." mail-atom-re ")*@"
 			    mail-atom-re "(\\." mail-atom-re ")*"))
-	   (angle-addr-re (concat "<(" addr-re ")>"))
+	   (angle-addr-re (concat ".*<(" addr-re ")>"))
 	   (angle-name-re "[\t ]*\"?([^<\t\" \n\f]([\t ]*[^<\t\" \n\f])*)")
 	   (paren-name-re "[\t ]*\\(\"?([^\n\"]+)\"?\\)"))
 	(cond
@@ -310,7 +310,7 @@ Major mode for viewing mail folders. Commands include:\n
 	    ;; ..with a "(Foo Bar)" comment following
 	    (rm-set-msg-field msg rm-msg-from-name
 			      (copy-area (match-start 1) (match-end 1)))))
-	 ((regexp-match-line angle-addr-re pos)
+	 ((looking-at angle-addr-re pos)
 	  ;; "..<foo@bar.baz>..." format
 	  (rm-set-msg-field msg rm-msg-from-addr
 			    (copy-area (match-start 1) (match-end 1)))
@@ -318,10 +318,10 @@ Major mode for viewing mail folders. Commands include:\n
 	  (when (looking-at angle-name-re pos)
 	    (rm-set-msg-field msg rm-msg-from-name
 			      (copy-area (match-start 1) (match-end 1))))))))
-    (when (find-next-regexp "^Subject[ \t]*:[\t ]*(.*)[\t ]*$" start nil t)
+    (when (re-search-forward "^Subject[ \t]*:[\t ]*(.*)[\t ]*$" start nil t)
       (rm-set-msg-field msg rm-msg-subject
 			(copy-area (match-start 1) (match-end 1))))
-    (when (find-next-regexp "^Date[\t ]*:[\t ]*" start nil t)
+    (when (re-search-forward "^Date[\t ]*:[\t ]*" start nil t)
       (setq pos (match-end))
       (when (looking-at "[\t ]*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[\t ]*,[\t ]*"
 			pos nil t)
@@ -351,10 +351,10 @@ Major mode for viewing mail folders. Commands include:\n
 			  (copy-area (match-start 1) (match-end 1)))
 	(rm-set-msg-field msg rm-msg-zone
 			  (copy-area (match-start 4) (match-end 4)))))
-    (when (find-next-regexp "^X-Jade-Flags-v1[\t ]*:[\t ]*" start nil t)
+    (when (re-search-forward "^X-Jade-Flags-v1[\t ]*:[\t ]*" start nil t)
       (rm-set-msg-field msg rm-msg-flags
 			(read (cons (current-buffer) (match-end)))))
-    (when (find-next-regexp "^Replied[\t ]*:" start nil t)
+    (when (re-search-forward "^Replied[\t ]*:" start nil t)
       ;; MH annotates replied messages like this
       (rm-set-flag msg 'replied))
     (unrestrict-buffer)
@@ -362,17 +362,18 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Returns t if POS is the start of a message. Munges the regexp history
 (defun rm-message-start-p (pos)
-  (and (regexp-match-line mail-message-start pos)
-       (or (equal pos (buffer-start))
-	   (regexp-match-line "^$" (prev-line 1 (match-start))))))
+  (and (looking-at mail-message-start pos)
+       (or (equal pos (start-of-buffer))
+	   (looking-at "\n\n" (forward-char -2 (match-start))))))
 
 ;; Returns the position of the start of the last line in the current message.
 ;; Works no matter what the restriction is set to.
 (defun rm-current-message-end ()
   (if rm-after-msg-list
-      (prev-line 1 (copy-pos (mark-pos (rm-get-msg-field
-					(car rm-after-msg-list) rm-msg-mark))))
-    (buffer-end nil t)))
+      (forward-line -1 (copy-pos (mark-pos
+				  (rm-get-msg-field
+				   (car rm-after-msg-list) rm-msg-mark))))
+    (end-of-buffer nil t)))
 
 ;; Updates the flags embedded in the message headers. Leaves the buffer
 ;; unrestricted.
@@ -390,15 +391,15 @@ Major mode for viewing mail folders. Commands include:\n
 	(when (setq msg (car list))
 	  (setq start (mark-pos (rm-get-msg-field msg rm-msg-mark)))
 	  (unrestrict-buffer)
-	  (when (find-next-regexp "^$" start)
+	  (when (re-search-forward "^$" start)
 	    (restrict-buffer start (match-end)))
-	  (if (find-next-regexp "^X-Jade-Flags-v1[\t ]*:[\t ]*(.*)$"
+	  (if (re-search-forward "^X-Jade-Flags-v1[\t ]*:[\t ]*(.*)$"
 				start nil t)
 	      (progn
 		(setq start (match-start 1))
 		(delete-area (match-start 1) (match-end 1)))
-	    (setq start (prev-char 1 (insert "X-Jade-Flags-v1: \n"
-					     (mail-unfold-header start)))))
+	    (setq start (forward-char -1 (insert "X-Jade-Flags-v1: \n"
+						 (mail-unfold-header start)))))
 	  (prin1 (rm-get-msg-field msg rm-msg-flags)
 		 (cons (current-buffer) start)))
 	(setq list (cdr list))))
@@ -414,10 +415,10 @@ Major mode for viewing mail folders. Commands include:\n
     (let
 	((header-start (mark-pos (rm-get-msg-field rm-current-msg
 						   rm-msg-mark))))
-      (unless (regexp-match-line mail-message-start header-start)
+      (unless (looking-at mail-message-start header-start)
 	(error "Position isn't start of header: %s" header-start))
       (let
-	  ((end-of-hdrs (find-next-regexp "^$" header-start))
+	  ((end-of-hdrs (re-search-forward "^$" header-start))
 	   (inhibit-read-only t))
 	(setq rm-current-msg-body end-of-hdrs)
 	;; Just operate on the headers
@@ -425,11 +426,11 @@ Major mode for viewing mail folders. Commands include:\n
 	;; First of all, move all visible headers after non-visible ones
 	(setq rm-current-msg-visible-start (rm-coalesce-visible-headers))
 	;; Look for a header to highlight
-	(when (find-next-regexp mail-highlighted-headers header-start nil t)
+	(when (re-search-forward mail-highlighted-headers header-start nil t)
 	  (mark-block (match-start 1) (match-end 1)))
 	(unrestrict-buffer)
 	(setq rm-current-msg-end (rm-current-message-end))
-	(goto-char end-of-hdrs)
+	(goto end-of-hdrs)
 	(rm-restrict-to-message)
 	(rm-clear-flag rm-current-msg 'unread)
 	(rm-fix-status-info)
@@ -469,29 +470,29 @@ Major mode for viewing mail folders. Commands include:\n
 ;; visible header.
 (defun rm-coalesce-visible-headers ()
   (let*
-      ((first-visible (find-next-regexp mail-visible-headers
-					(buffer-start) nil t))
+      ((first-visible (re-search-forward mail-visible-headers
+					(start-of-buffer) nil t))
        (current-hdr first-visible)
        (next-hdr first-visible))
-    (while (and current-hdr (< current-hdr (buffer-end)))
+    (while (and current-hdr (< current-hdr (end-of-buffer)))
       ;; Move over all visible headers from CURRENT-HDR until
       ;; reaching an invisible one
       (setq next-hdr current-hdr)
-      (while (and next-hdr (< next-hdr (buffer-end))
+      (while (and next-hdr (< next-hdr (end-of-buffer))
 		  (looking-at mail-visible-headers next-hdr nil t))
 	(setq next-hdr (mail-unfold-header next-hdr)))
       ;; Now we have a block of visible headers from CURRENT-HDR to
       ;; NEXT-HDR (but not including NEXT-HDR). Next find the following
       ;; visible header to delimit the block of invisible ones
       (setq current-hdr next-hdr)
-      (while (and next-hdr (< next-hdr (buffer-end))
+      (while (and next-hdr (< next-hdr (end-of-buffer))
 		  (not (looking-at mail-visible-headers next-hdr nil t)))
 	(setq next-hdr (mail-unfold-header next-hdr)))
       ;; Now we have a block of invisible headers, CURRENT-HDR to NEXT-HDR
       ;; Move them to before the FIRST-VISIBLE-HDR, updating this to
       ;; point to the end of the insertion
       (unless next-hdr
-	(setq next-hdr (buffer-end)))
+	(setq next-hdr (end-of-buffer)))
       (when (and current-hdr
 	       (> current-hdr first-visible)
 	       (> next-hdr current-hdr))
@@ -529,9 +530,9 @@ Major mode for viewing mail folders. Commands include:\n
 	 ;; Don't use rm-curr-msg-end, it may not be initialised.
 	 (end (rm-current-message-end)))
       (unrestrict-buffer)
-      (unless (equal end (buffer-end))
+      (unless (equal end (end-of-buffer))
 	;; Now this points to the first character of the next message
-	(next-line 1 end))
+	(forward-line 1 end))
       (delete-area (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark))
 		   end)
       (setq rm-message-count (1- rm-message-count))
@@ -608,8 +609,8 @@ Major mode for viewing mail folders. Commands include:\n
 ;; Leaves the cursor at the position to insert at.
 ;; The buffer should be unrestricted
 (defun rm-enforce-msg-separator ()
-  (unless (or (equal (cursor-pos) (buffer-start))
-	      (looking-at "\n\n" (prev-char)))
+  (unless (or (equal (cursor-pos) (start-of-buffer))
+	      (looking-at "\n\n" (forward-char -1)))
     (if (= (get-char) ?\n)
 	(insert "\n")
       (insert "\n\n"))))
@@ -648,7 +649,7 @@ Major mode for viewing mail folders. Commands include:\n
 	      (while rm-after-msg-list
 		(rm-move-forwards))
 	      ;; Ensure that there's a blank line at the end of the buffer
-	      (goto-buffer-end)
+	      (goto (end-of-buffer))
 	      (rm-enforce-msg-separator)
 	      (setq start (cursor-pos))
 	      (insert-file tofile)
@@ -663,14 +664,14 @@ Major mode for viewing mail folders. Commands include:\n
 		 (message (concat "Couldn't save folder; new messages left in "
 				  tofile) t)
 		 (setq keep-going nil)))
-	      (setq pos (buffer-end))
+	      (setq pos (end-of-buffer))
 	      (while (and pos (>= pos start)
-			  (setq pos (find-prev-regexp mail-message-start pos)))
+			  (setq pos (re-search-backward mail-message-start pos)))
 		(when (rm-message-start-p pos)
 		  (setq msgs (cons (rm-build-message-struct pos) msgs)
 			count (1+ count))
 		  (rm-set-flag (car msgs) 'unread))
-		(prev-line 1 pos))
+		(setq pos (forward-line -1 pos)))
 	      (when msgs
 		(when rm-current-msg
 		  (setq rm-before-msg-list (cons rm-current-msg
@@ -990,7 +991,7 @@ documentation for command list.")
 (defun rm-next-page ()
   "Display the next page in the current message."
   (interactive)
-  (if (>= (cursor-pos) (buffer-end))
+  (if (>= (cursor-pos) (end-of-buffer))
       (when rm-auto-next-message
 	(rm-next-undeleted-message))
     (next-screen)))
@@ -998,7 +999,7 @@ documentation for command list.")
 (defun rm-previous-page ()
   "Display the previous page in the current message."
   (interactive)
-  (if (<= (cursor-pos) (buffer-start))
+  (if (<= (cursor-pos) (start-of-buffer))
       (when rm-auto-next-message
 	(rm-previous-message))
     (prev-screen)))
@@ -1013,7 +1014,7 @@ current message."
   ;; now. Otherwise it can look as though nothing happened.
   (when (equal (restriction-start)
 	       (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark)))
-    (goto-char (buffer-start))))
+    (goto (start-of-buffer))))
 
 (defun rm-mark-message-deletion ()
   "Marks that the current message should be deleted."

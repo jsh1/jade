@@ -75,25 +75,23 @@ contain.")
 
 ;; Work out where to indent LINE-POS to.
 (defun xc-indent-pos (&optional line-pos)
-  (setq line-pos (if line-pos
-		     (line-start line-pos)
-		   (line-start)))
+  (setq line-pos (start-of-line line-pos))
   ;; Check for cpp op
-  (if (regexp-match-line "^[\t ]*#" line-pos)
+  (if (looking-at "^[\t ]*#" line-pos)
       (pos 0 (pos-line line-pos))
     (let*
-	((pos (copy-pos line-pos))
+	((pos line-pos)
 	 (exp-pos (xc-backward-stmt pos))
 	 exp-ind)
       ;; Find the beginning of the expression to indent relative to
       (unless exp-pos
 	;; Start of the containing expression
-	(when (find-prev-regexp "[\{\(]" pos)
+	(when (re-search-backward "[\{\(]" pos)
 	  (setq exp-pos (match-start))))
       (setq exp-ind (char-to-glyph-pos exp-pos))
       (unless (equal (indent-pos exp-pos) exp-ind)
-	(when (and (regexp-match-line "^[\t ]*([^][(){}\"'a-zA-Z0-9_\t ]+)"
-				      (line-start exp-pos))
+	(when (and (looking-at "^[\t ]*([^][(){}\"'a-zA-Z0-9_\t ]+)"
+			       (start-of-line exp-pos))
 		   (< (match-start 1) exp-pos))
 	  ;; Back up over the bits of punctuation
 	  (setq exp-ind (char-to-glyph-pos (match-start 1)))))
@@ -102,12 +100,12 @@ contain.")
       (cond
        ((= (get-char exp-pos) ?\})
 	(unless (zerop (pos-col exp-pos))
-	  (left-char (+ c-body-indent c-brace-indent) exp-ind)))
+	  (setq exp-ind (left-char (+ c-body-indent c-brace-indent) exp-ind))))
        ((looking-at ".*{" exp-pos)
 	(setq exp-ind (right-char c-body-indent (indent-pos exp-pos))))
        ((looking-at "(if|for|while|switch)[\t ]*\\(.*$|(else|do)([^a-zA-Z0-9_]|$)"
 		    exp-pos)
-	(right-char c-body-indent exp-ind))
+	(setq exp-ind (right-char c-body-indent exp-ind)))
        ((= (get-char exp-pos) ?\}))
        ((looking-at ".*\;" exp-pos)
 	(let
@@ -126,27 +124,28 @@ contain.")
 		  (setq prev tmp)
 		  (unless (setq tmp (xc-backward-stmt tmp))
 		    (error "Beginning of buffer")))))
-	    (set-pos-col exp-ind (pos-col (char-to-glyph-pos prev))))))
+	    (setq exp-ind (pos (pos-col (char-to-glyph-pos prev))
+			       (pos-line exp-ind))))))
        ((looking-at "case .*:|default[\t ]*:" exp-pos)
-	(left-char c-case-indent exp-ind))
+	(setq exp-ind (left-char c-case-indent exp-ind)))
        ((looking-at "[a-zA-Z_][a-zA-Z0-9_]+:([\t ]|$)" exp-pos)
 	(unless (left-char c-label-indent exp-ind)
 	  (setq exp-ind (pos 0 (pos-line exp-pos))))))
       ;; Next, look at the contents of this line and see if it needs any
       ;; special treatment
       (unless (empty-line-p line-pos)
-	(when (regexp-match-line "^[\t\f ]+" line-pos)
+	(when (looking-at "^[\t\f ]+" line-pos)
 	  (setq line-pos (match-end)))
 	(cond
 	 ((= (get-char line-pos) ?\{)
 	  (if (< (pos-col exp-ind) (- c-brace-indent))
-	      (set-pos-col exp-ind 0)
-	    (right-char c-brace-indent exp-ind)))
+	      (setq exp-ind (pos 0 (pos-line exp-ind)))
+	    (setq exp-ind (right-char c-brace-indent exp-ind))))
 	 ((= (get-char line-pos) ?\})
-	  (left-char c-body-indent exp-ind))
+	  (setq exp-ind (left-char c-body-indent exp-ind)))
 	 ((looking-at "case .*:|default[\t ]*:" line-pos)
-	  (right-char c-case-indent exp-ind))
+	  (setq exp-ind (right-char c-case-indent exp-ind)))
 	 ((looking-at "[a-zA-Z_]+[a-zA-Z0-9_]*:([\t ]|$)" line-pos)
-	  (right-char c-label-indent exp-ind))))
-      (set-pos-line exp-ind (pos-line line-pos))
+	  (setq exp-ind (right-char c-label-indent exp-ind)))))
+      (setq exp-ind (pos (pos-col exp-ind) (pos-line line-pos)))
       exp-ind)))

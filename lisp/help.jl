@@ -87,9 +87,9 @@ m   `describe-mode'
 
 v   `describe-variable'
 	View the documentation and value of a variable."
-    (buffer-start) help-buffer)
+    (start-of-buffer) help-buffer)
     (goto-buffer help-buffer)
-    (goto-buffer-start)
+    (goto (start-of-buffer))
     (help))
 
 ;; Setup the help-buffer for insertion of the help text
@@ -98,21 +98,21 @@ v   `describe-variable'
   (clear-buffer help-buffer)
   (goto-buffer help-buffer)
   (insert "\n----\nType `q' to return to the buffer you were in.")
-  (goto-buffer-start))
+  (goto (start-of-buffer)))
 
 (defun apropos-function (regexp)
   (interactive "sRegular expression:")
   (help-setup)
   (format help-buffer "Apropos for expression %S:\n" regexp)
   (print (apropos regexp 'fboundp) help-buffer)
-  (goto-buffer-start))
+  (goto (start-of-buffer)))
 
 (defun apropos-variable (regexp)
   (interactive "sRegular expression:")
   (help-setup)
   (format help-buffer "Apropos for expression %S:\n" regexp)
   (print (apropos regexp 'boundp) help-buffer)
-  (goto-buffer-start))
+  (goto (start-of-buffer)))
 
 (defun describe-keymap ()
   "Print the full contents of the current keymap (and the keymaps that
@@ -123,7 +123,7 @@ it leads to)."
        (km-list keymap-path))
     (help-setup)
     (print-keymap km-list old-buf)
-    (goto-buffer-start)))
+    (goto (start-of-buffer))))
 
 (defun describe-function (fun &aux doc)
   "Display the documentation of a function, macro or special-form."
@@ -169,7 +169,7 @@ it leads to)."
 	  (insert "\n\n")))))
   (insert (or doc "Undocumented."))
   (insert "\n")
-  (goto-buffer-start))
+  (goto (start-of-buffer)))
 
 (defun describe-variable (var)
   (interactive "vDescribe variable:")
@@ -185,7 +185,7 @@ it leads to)."
 	    (symbol-name var)
 	    (with-buffer old-buf (symbol-value var t))
 	    (or doc "Undocumented."))
-      (goto-buffer-start)))
+      (goto (start-of-buffer))))
 
 ;;;###autoload
 (defun describe-mode ()
@@ -198,7 +198,7 @@ it leads to)."
         ((doc (documentation mode)))
       (when (stringp doc)
 	(format help-buffer "\n%s\n" doc)
-	(goto-buffer-start)))))
+	(goto (start-of-buffer))))))
 
 ;;;###autoload
 (defun documentation (symbol &optional is-variable)

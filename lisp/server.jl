@@ -48,7 +48,7 @@ into a new buffer and display it at line LINE-NUMBER."
 	(open-window))))
     (with-window win
       (goto-buffer buf)
-      (goto-char (pos 0 line-number))
+      (goto (pos 0 line-number))
       (message (format nil "Client file `%s'." file)))
     (with-buffer buf
       (add-hook 'kill-buffer-hook 'server-file-kill))

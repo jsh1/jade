@@ -76,18 +76,18 @@ previous line, then works as normal."
 (defun text-mode-indent-tab ()
   (interactive)
   (let
-      ((pos (find-prev-regexp "^.+$" (prev-line 1))))
+      ((pos (re-search-backward "^.+$" (forward-line -1))))
     (if (or (null pos) (> (pos-col (cursor-pos)) (line-length pos)))
 	(insert "\t")
       (let
           ((gcurs (char-to-glyph-pos (cursor-pos))))
-        (set-pos-line gcurs (pos-line pos))
-        (setq pos (glyph-to-char-pos gcurs))
-	(find-next-regexp "[\t ]+|$" pos)
-	(if (equal (match-end) (line-end pos))
+        (setq gcurs (pos (pos-col gcurs) (pos-line pos))
+	      pos (glyph-to-char-pos gcurs))
+	(re-search-forward "[\t ]+|$" pos)
+	(if (equal (match-end) (end-of-line pos))
 	    (insert "\t")
-	  (setq pos (char-to-glyph-pos (match-end)))
-	  (set-pos-line pos (pos-line (cursor-pos)))
+	  (setq pos (pos (pos-col (char-to-glyph-pos (match-end)))
+			 (pos-line (cursor-pos))))
 	  (if (empty-line-p pos)
 	      (set-indent-pos pos)
 	    (indent-to (pos-col pos))))))))
@@ -96,17 +96,16 @@ previous line, then works as normal."
 (defun center-line (&optional pos)
   "Centre the line at POS."
   (interactive)
-  (regexp-match-line " *$" pos)
   (let*
       ((spos (indent-pos pos))
-       (epos (char-to-glyph-pos (match-start)))
+       (epos (char-to-glyph-pos (re-search-forward " *$" (start-of-line pos))))
        (len (- (pos-col epos) (pos-col spos))))
     (cond
       ((<= len 0))
       ((> len fill-column)
-	(set-indent-pos (line-start pos)))
+	(set-indent-pos (start-of-line pos)))
       (t
-	(set-pos-col spos (/ (- fill-column len) 2))
+	(setq spos (pos (/ (- fill-column len) 2) (pos-line spos)))
 	(set-indent-pos spos)))))
 
 ;;;###autoload
@@ -118,7 +117,7 @@ previous line, then works as normal."
        (spos (backward-paragraph epos)))
     (while (< spos epos)
       (center-line spos)
-      (next-line 1 spos))))
+      (forward-line 1 spos))))
 
 ;;;###autoload
 (defun word-count-area (start end &optional print)

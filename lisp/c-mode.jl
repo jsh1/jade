@@ -93,53 +93,52 @@ Special commands are,\n
 (defun c-indent-pos (&optional line-pos)
   "*Attempts* to guess the correct indentation for this line. Returns the
 position for the first non-space in the line."
-  (setq line-pos (line-start line-pos))
+  (setq line-pos (start-of-line line-pos))
   (let*
       ((ind-pos (c-indent-pos-empty line-pos)))
     (when (not (empty-line-p line-pos))
       (cond
-       ((regexp-match-line "^[\t ]*({|}|case .*:|default *:)" line-pos)
-	(prev-tab 1 ind-pos c-mode-tab))
-       ((regexp-match-line "^[\t ]*([a-zA-Z0-9_]*:|#)" line-pos)
-	(set-pos-col ind-pos 0))))
+       ((looking-at "^[\t ]*({|}|case .*:|default *:)" line-pos)
+	(setq ind-pos (forward-tab -1 ind-pos c-mode-tab)))
+       ((looking-at "^[\t ]*([a-zA-Z0-9_]*:|#)" line-pos)
+	(setq ind-pos (pos 0 (pos-line ind-pos))))))
     ind-pos))
 
 (defun c-indent-pos-empty (&optional line-pos)
   "Returns the position for the first non-space in the line. Bases its guess
 upon the assumption that the line is empty.
 All positions depend on the indentation of the previous line(s)."
-  (setq line-pos (line-start line-pos))
+  (setq line-pos (start-of-line line-pos))
   (let*
-      ((p-line-pos (prev-line 1 (copy-pos line-pos))))
+      ((p-line-pos (forward-line -1 line-pos)))
     (while (or (empty-line-p p-line-pos)
-	       (regexp-match-line "^([a-zA-Z0-9_]+:|#)" p-line-pos))
-      (unless (prev-line 1 p-line-pos)
+	       (looking-at "^([a-zA-Z0-9_]+:|#)" p-line-pos))
+      (unless (setq p-line-pos (forward-line -1 p-line-pos))
 	(return)))
     (let*
-	((ind-pos (indent-pos p-line-pos)))
-      (set-pos-line ind-pos (pos-line line-pos))
+	((ind-pos (pos (pos-col (indent-pos p-line-pos)) (pos-line line-pos))))
       (cond
-       ((regexp-match-line "{|case .*:|default[\t ]*:|do($| )|else|(if|for|while|switch)[\t ]*\\(.*\\)" p-line-pos)
-	(next-tab 1 ind-pos c-mode-tab))
-       ((regexp-match-line ";" p-line-pos)
-	(prev-line 1 p-line-pos)
+       ((looking-at ".*({|case .*:|default[\t ]*:|do($| )|else|(if|for|while|switch)[\t ]*\\(.*\\))" p-line-pos)
+	(setq ind-pos (forward-tab 1 ind-pos c-mode-tab)))
+       ((looking-at ".*;" p-line-pos)
+	(setq p-line-pos (forward-line -1 p-line-pos))
 	(while (or (empty-line-p p-line-pos)
-		   (regexp-match-line "^([a-zA-Z0-9_]+:|#)" p-line-pos))
-	  (unless (prev-line 1 p-line-pos)
+		   (looking-at "^([a-zA-Z0-9_]+:|#)" p-line-pos))
+	  (unless (setq p-line-pos (forward-line -1 p-line-pos))
 	    (return)))
-	(when (and (regexp-match-line
-		    "do($| )|else|(if|for|while|switch)[\t ]*\\(.*\\)"
+	(when (and (looking-at
+		    ".*(do($| )|else|(if|for|while|switch)[\t ]*\\(.*\\))"
 		    p-line-pos)
-		   (not (regexp-match-line " {[\t ]*(/\\*.*\\*/|)[\t ]*$"
-					   p-line-pos)))
-	  (prev-tab 1 ind-pos c-mode-tab)))
-       ((regexp-match-line "^[\t ]*/\\*" p-line-pos)
-	(unless (regexp-match-line "\\*/" p-line-pos)
-	  (right-char 3 ind-pos)))
-       ((regexp-match-line "^[\t ]*\\*/ *$" p-line-pos)
-	(left-char 1 ind-pos))
-       ((regexp-match-line "\\*/" p-line-pos)
-	(left-char 3 ind-pos)))
+		   (not (looking-at ".* {[\t ]*(/\\*.*\\*/|)[\t ]*$"
+				    p-line-pos)))
+	  (setq ind-pos (forward-tab -1 ind-pos c-mode-tab))))
+       ((looking-at "^[\t ]*/\\*" p-line-pos)
+	(unless (looking-at ".*\\*/" p-line-pos)
+	  (setq ind-pos (forward-char 3 ind-pos))))
+       ((looking-at "^[\t ]*\\*/ *$" p-line-pos)
+	(setq ind-pos (forward-char -1 ind-pos)))
+       ((looking-at ".*\\*/" p-line-pos)
+	(setq ind-pos (forward-char -3 ind-pos))))
       ind-pos)))
 
 ;;;###autoload
@@ -149,35 +148,34 @@ START and END except for the last line."
   (interactive "-m\nM")
   (let
       ((max-width 0)
-       (pos (copy-pos start))
+       (pos (start-of-line start))
        tmp)
     (while (<= pos end)
-      (setq tmp (char-to-glyph-pos (if (regexp-match-line "[\t ]*\\\\ *$" pos)
-				       (match-start)
-				     (line-end pos))))
+      (setq tmp (char-to-glyph-pos (if (looking-at ".*([\t ]*\\\\ *)$" pos)
+				       (match-start 1)
+				     (end-of-line pos))))
       (when (> (pos-col tmp) max-width)
 	(setq max-width (pos-col tmp)))
-      (setq pos (next-line 1 pos)))
+      (setq pos (forward-line 1 pos)))
     (setq max-width (1+ max-width))
     (unless (= (% max-width tab-size) 0)
       (setq max-width (* (1+ (/ max-width tab-size)) tab-size)))
-    (set-pos-line pos (pos-line start))
-    (set-pos-col pos max-width)
+    (setq pos (pos max-width (pos-line start)))
     (while (< pos end)
-      (when (regexp-match-line "[\t ]*\\\\ *$" pos)
-	(delete-area (match-start) (match-end)))
-      (goto-char (line-end pos))
+      (when (looking-at ".*([\t ]*\\\\ *)$" (start-of-line pos))
+	(delete-area (match-start 1) (match-end 1)))
+      (goto (end-of-line pos))
       (indent-to max-width)
       (insert "\\")
-      (setq pos (next-line 1 pos)))
-    (goto-char end)))
+      (setq pos (forward-line 1 pos)))
+    (goto end)))
 
 ;;;###autoload
 (defun c-insert-comment ()
   (interactive)
   (find-comment-pos)
   (insert "/*  */")
-  (goto-left-char 3))
+  (goto (forward-char -3)))
 
 
 ;; Experimental expression stuff
@@ -190,41 +188,41 @@ START and END except for the last line."
     (while (looking-at "[\t\f ]*$|[\t\f ]*/\\*.*$" pos)
       (if (looking-at "[\t\f ]*/\\*" pos)
 	  (progn
-	    (unless (find-next-regexp "\\*/" pos)
+	    (unless (re-search-forward "\\*/" pos)
 	      (error "Comment doesn't end!"))
 	    (setq pos (match-end)))
-	(setq pos (next-line 1 (line-start pos)))
-	(when (> pos (buffer-end))
+	(setq pos (forward-line 1 (start-of-line pos)))
+	(when (> pos (end-of-buffer))
 	  (error "End of buffer"))))
     ;; Check for a cpp line
-    (if (regexp-match-line "^[\t ]*#" pos)
-	(setq pos (line-end pos))
+    (if (looking-at "^[\t ]*#" (start-of-line pos))
+	(setq pos (end-of-line pos))
       ;; now any other whitespace
       (when (looking-at "[\t\f ]+" pos)
 	(setq pos (match-end)))
       ;; Skip weird stuff
       (while (looking-at "[!*~&<>/+%?:^-]+" pos)
 	(setq pos (match-end))
-	(when (equal pos (line-end pos))
-	  (setq pos (next-char 1 pos))))
+	(when (equal pos (end-of-line pos))
+	  (setq pos (forward-char 1 pos))))
       (let
 	  ((c (get-char pos)))
 	(cond
 	 ((member c '(?\" ?\'))
 	  ;; move over string/character
-	  (if (setq pos (find-next-char c (next-char 1 pos)))
-	      (while (= (get-char (prev-char 1 (copy-pos pos))) ?\\ )
-		(unless (setq pos (find-next-char c (next-char 1 pos)))
+	  (if (setq pos (char-search-forward c (forward-char 1 pos)))
+	      (while (= (get-char (forward-char -1 pos)) ?\\ )
+		(unless (setq pos (char-search-forward c (forward-char 1 pos)))
 		  (error "String doesn't end!")))
 	    (error "String doesn't end!"))
-	  (setq pos (next-char 1 pos)))
+	  (setq pos (forward-char 1 pos)))
 	 ((member c '(?\( ?\[ ?\{))
 	  ;; move over brackets
-	  (unless (setq pos (match-brackets pos))
+	  (unless (setq pos (find-matching-bracket pos))
 	    (error "Expression doesn't end!"))
-	  (setq pos (next-char 1 pos)))
+	  (setq pos (forward-char 1 pos)))
 	 ((member c '(?, ?\; ?:))
-	  (setq pos (next-char 1 pos)
+	  (setq pos (forward-char 1 pos)
 		number (1+ number)))
 	 ((member c '(?\) ?\] ?\}))
 	  (error "End of containing expression"))
@@ -232,7 +230,7 @@ START and END except for the last line."
 	  ;; a symbol?
 	  (if (looking-at "[a-zA-Z0-9_]+" pos)
 	      (setq pos (match-end))
-	    (unless (setq pos (find-next-regexp "[][a-zA-Z0-9_ \t\f(){}'\"]"
+	    (unless (setq pos (re-search-forward "[][a-zA-Z0-9_ \t\f(){}'\"]"
 						pos))
 	      (error "Can't classify expression"))
 	    (setq number (1+ number))))))
@@ -245,36 +243,38 @@ START and END except for the last line."
   (unless orig-pos 
     (setq orig-pos (cursor-pos)))
   (let
-      ((pos (copy-pos orig-pos))
+      ((pos orig-pos)
        tmp)
     (while (> number 0)
       ;; skip preceding white space
-      (when (or (equal pos (buffer-start))
-		(not (setq pos (find-prev-regexp "[^\t\f\n ]" (prev-char 1 pos)))))
+      (when (or (equal pos (start-of-buffer))
+		(not (setq pos (re-search-backward "[^\t\f\n ]"
+						 (forward-char -1 pos)))))
 	(error "No expression!"))
-      (setq tmp (prev-char 1 (copy-pos pos)))
+      (setq tmp (forward-char -1 pos))
       (while (looking-at "\\*/" tmp)
 	;; comment to skip
-	(unless (setq tmp (find-prev-regexp "/\\*" tmp))
+	(unless (setq tmp (re-search-backward "/\\*" tmp))
 	  (error "Comment doesn't start!"))
-	(when (or (equal tmp (buffer-start))
-		  (not (setq tmp (find-prev-regexp "[^\t\f\n ]" (prev-char 1 tmp)))))
+	(when (or (equal tmp (start-of-buffer))
+		  (not (setq tmp (re-search-backward "[^\t\f\n ]"
+						   (forward-char -1 tmp)))))
 	  (error "Beginning of buffer"))
 	(setq pos tmp))
       ;; Check for a cpp line
-      (if (regexp-match-line "^[\t ]*#" pos)
-	  (setq pos (line-start pos))
+      (if (looking-at "^[\t ]*#" (start-of-line pos))
+	  (setq pos (start-of-line pos))
 	(let
 	    ((c (get-char pos)))
 	  (cond
 	   ((member c '(?\) ?\] ?\}))
 	    (when (or (/= c ?\}) (not no-blocks))
-	      (unless (setq pos (match-brackets pos))
+	      (unless (setq pos (find-matching-bracket pos))
 		(error "Brackets don't match"))))
 	   ((member c '(?\" ?\'))
-	    (if (setq pos (find-prev-char c (prev-char 1 pos)))
-		(while (= (get-char (prev-char 1 (copy-pos pos))) ?\\ )
-		  (unless (setq pos (find-prev-char c (prev-char 1 pos)))
+	    (if (setq pos (char-search-backward c (forward-char -1 pos)))
+		(while (= (get-char (forward-char -1 pos)) ?\\ )
+		  (unless (setq pos (char-search-backward c (forward-char -1 pos)))
 		    (error "String doesn't start!")))
 	      (error "String doesn't start!")))
 	   ((member c '(?\; ?: ?,))
@@ -285,16 +285,16 @@ START and END except for the last line."
 	   (t
 	    ;; a symbol?
 	    (if (looking-at "[a-zA-Z0-9_]" pos)
-		(unless (setq pos (find-prev-regexp "(^#[\t ]*|)[a-zA-Z0-9_]+"
+		(unless (setq pos (re-search-backward "(^#[\t ]*|)[a-zA-Z0-9_]+"
 						    pos))
 		  (error "Can't classify expression"))
 	      ;; Assume that it's some extraneous piece of punctuation..
-;	      (unless (setq pos (find-prev-regexp "[][a-zA-Z0-9_ \t\f(){}'\"]"
+;	      (unless (setq pos (re-search-backward "[][a-zA-Z0-9_ \t\f(){}'\"]"
 ;						  pos))
 ;		(error "Can't classify expression"))
 	      (setq number (1+ number)))))
-	  (when (member (get-char (prev-char 1 (copy-pos pos))) '(?! ?* ?- ?~))
+	  (when (member (get-char (forward-char -1 pos)) '(?! ?* ?- ?~))
 	    ;; unary operator, skip over it
-	    (setq pos (prev-char 1 pos))))
+	    (setq pos (forward-char -1 pos))))
 	(setq number (1- number))))
     pos))

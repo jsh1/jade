@@ -89,17 +89,17 @@ Special commands available are,\n
 (defun tex-insert-end ()
   (interactive)
   (let
-      ((pos (prev-char))
+      ((pos (forward-char -1))
        (depth 0))
     (if (catch 'foo
-	  (while (find-prev-regexp "\\\\(end|begin)\{([^\}]+)" pos)
+	  (while (re-search-backward "\\\\(end|begin)\{([^\}]+)" pos)
 	    (if (= (get-char (match-start 1)) ?b)
 		;; no end
 		(if (zerop depth)
 		    (throw 'foo t)
 		  (setq depth (1- depth)))
 	      (setq depth (1+ depth)))
-	    (setq pos (prev-char 1 (match-start)))))
+	    (setq pos (forward-char -1 (match-start)))))
 	(format (current-buffer) "\\end{%s}\n" (copy-area (match-start 2)
 							  (match-end 2)))
       (tex-insert-braces "end")
@@ -113,7 +113,7 @@ Special commands available are,\n
     (if (null count)
 	(progn
 	  (insert (if command (concat ?\\ command "{}") "{}"))
-	  (goto-prev-char))
+	  (goto (forward-char -1)))
       (if (> count 0)
 	  (progn
 	    (insert (if command (concat ?\\ command ?\{) "\{"))
@@ -126,4 +126,4 @@ Special commands available are,\n
 
 (defun tex-move-over-braces ()
   (interactive)
-  (goto-char (next-char 1 (find-next-char ?}))))
+  (goto (forward-char 1 (char-search-forward ?}))))

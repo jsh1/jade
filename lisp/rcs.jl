@@ -85,12 +85,12 @@ when initialising RCS files.")
     (let
 	((old-pos (cursor-pos)))
       (read-file-into-buffer file-name)
-      (goto-char old-pos))))
+      (goto old-pos))))
 
 ;; Switch to the buffer containing all RCS output
 (defun rcs-goto-buffer ()
   (goto-buffer rcs-output-buffer)
-  (goto-buffer-start))
+  (goto (start-of-buffer)))
 
 ;; (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD)
 (make-variable-buffer-local 'rcs-callback-args)
@@ -123,15 +123,15 @@ when initialising RCS files.")
 ;; Called when Ctrl-C Ctrl-C is typed in a callback buffer.
 (defun rcs-call-callback ()
   (interactive)
-  (goto-buffer-end)
+  (goto (end-of-buffer))
   (when (= (pos-col (cursor-pos)) 0)
-    (goto-prev-char))
+    (goto (forward-char -1)))
   (let
-      ((text (copy-area (buffer-start) (cursor-pos))))
+      ((text (copy-area (start-of-buffer) (cursor-pos))))
     (let
 	((file (nth 0 rcs-callback-args))
 	 (command (nth 2 rcs-callback-args))
-	 (options (if (regexp-match "^[ \t\n]*$" text)
+	 (options (if (string-match "^[ \t\n]*$" text)
 		      (nth 3 rcs-callback-args)
 		    (cons (concat (nth 4 rcs-callback-args) text)
 			  (nth 3 rcs-callback-args))))
@@ -171,9 +171,9 @@ description entered. COUNT may be negative."
 (defun rcs-version (buffer)
   ;; First look for a Header, Id, or Revision keyword
   (let
-      ((revision-pos (find-next-regexp
+      ((revision-pos (re-search-forward
 		      "\\$((Header|Id): .*,v |Revision: )([0-9.]+) "
-		      (buffer-start) buffer nil)))
+		      (start-of-buffer) buffer nil)))
     (if revision-pos
 	;; Found the id
 	(copy-area (match-start 3) (match-end 3) buffer)
@@ -281,7 +281,7 @@ revision, or nil, in which case it will be prompted for."
 	(set-buffer-read-only new-buffer t)
 	(set-buffer-modified new-buffer nil)
 	(goto-buffer new-buffer)
-	(goto-buffer-start)))))
+	(goto (start-of-buffer))))))
 
 (defun rcs-revert-buffer (&optional buffer)
   "Discards any changes made since locking BUFFER."

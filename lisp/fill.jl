@@ -59,12 +59,12 @@ line is started."
       (setq pos (or (word-start pos) (forward-word -1 pos)))
       (insert "\n" pos)
       (let
-	  ((end (left-char 1 (copy-pos pos))))
+	  ((end (forward-char -1 pos)))
 	(when (equal (get-char end) ?\ )
 	  (delete-area end pos)))
       ;; Hack to auto-indent new line in indented-text-mode
       (when (eq major-mode 'indented-text-mode)
-	(set-indent-pos (next-line 1 (indent-pos (prev-line))))))))
+	(set-indent-pos (forward-line 1 (indent-pos (forward-line -1))))))))
 
 (defun fill-mode-spc ()
   (interactive)
@@ -94,9 +94,9 @@ COLUMN or the current column."
       ((start (backward-paragraph (forward-paragraph)))
        word-start word-end)
     (while (looking-at paragraph-regexp start)
-      (setq start (next-line 1 start)))
+      (setq start (forward-line 1 start)))
     ;; TODO: the next regexp hardcodes blank-line as paragraph delimiter
-    (while (and (< start (buffer-end))
+    (while (and (< start (end-of-buffer))
 		(not (looking-at "[\t ]*\n[\t ]*\n" start)))
       (setq word-end (forward-word 1 start)
 	    word-start (forward-word -1 word-end))
@@ -120,7 +120,7 @@ COLUMN or the current column."
 	(if (> (pos-col (char-to-glyph-pos word-end)) fill-column)
 	    ;; It doesn't fit, move it to the start of the next line
 	    (progn
-	      (if (and (find-prev-regexp "[\t ]+" word-start)
+	      (if (and (re-search-backward "[\t ]+" word-start)
 		       (equal (match-end) word-start))
 		  (progn
 		    (delete-area (match-start) (match-end))
@@ -128,8 +128,7 @@ COLUMN or the current column."
 		(setq start (insert "\n" word-start)))
 	      ;; Hack to auto-indent new line in indented-text-mode
 	      (when (eq major-mode 'indented-text-mode)
-		(set-indent-pos (next-line 1 (indent-pos
-					      (prev-line
-					       1 (copy-pos start)))))))
+		(set-indent-pos (forward-line 1 (indent-pos
+						 (forward-line -1 start))))))
 	  ;; Everything's ok, advance START
 	  (setq start word-end))))))

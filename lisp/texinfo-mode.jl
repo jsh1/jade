@@ -88,10 +88,10 @@ Special commands available are,\n
 (defun texinfo-insert-@end ()
   (interactive)
   (let
-      ((pos (line-end (prev-line)))
+      ((pos (end-of-line (forward-line -1)))
        (depth 0))
     (if (catch 'foo
-	  (while (find-prev-regexp "^@(end |)(cartouche|deffn|defun|defmac\
+	  (while (re-search-backward "^@(end |)(cartouche|deffn|defun|defmac\
 |defspec|defvr|defvar|defopt|deftypefn|deftypefun|deftypevr|deftypevar|defcv\
 |defivar|defop|defmethod|deftp|display|enumerate|example|flushleft|flushright\
 |format|ftable|group|ifclear|ifinfo|ifset|iftex|ignore|itemize|lisp|menu\
@@ -102,7 +102,7 @@ Special commands available are,\n
 		    (throw 'foo t)
 		  (setq depth (1- depth)))
 	      (setq depth (1+ depth)))
-	    (setq pos (prev-char 1 (match-start)))))
+	    (setq pos (forward-char -1 (match-start)))))
 	(format (current-buffer) "@end %s\n" (copy-area (match-start 2)
 							(match-end 2)))
       (insert "@end ")
@@ -139,11 +139,11 @@ Special commands available are,\n
 	(forward-word (prefix-numeric-argument current-prefix-arg) nil t)
 	(insert "}"))
     (insert "{}")
-    (goto-prev-char)))
+    (goto (forward-char -1))))
 
 (defun texinfo-move-over-braces ()
   (interactive)
-  (goto-char (next-char 1 (find-next-char ?}))))
+  (goto (forward-char 1 (char-search-forward ?}))))
 
 (defun texinfo-insert-menu-item ()
   (interactive)

@@ -139,17 +139,17 @@ else in the buffer. Everything will be set up as required."
   (let
       ((pos (pos 0 (- (buffer-length) local-variable-lines))))
     (when (< (pos-line pos) 0)
-      (set-pos-line pos 0))
-    (when (find-next-regexp "^(.*)Local Variables:(.*)$" pos nil t)
+      (setq pos (start-of-buffer)))
+    (when (re-search-forward "^(.*)Local Variables:(.*)$" pos nil t)
       (let
 	  ((re (concat ?^
-		       (regexp-quote (copy-area (match-start 1) (match-end 1)))
+		       (quote-regexp (copy-area (match-start 1) (match-end 1)))
 		       "([^:\n]+):[\t ]*(.*)"
-		       (regexp-quote (copy-area (match-start 2) (match-end 2)))
+		       (quote-regexp (copy-area (match-start 2) (match-end 2)))
 		       ?$))
 	   name value)
 	(setq pos (match-end))
-	(while (find-next-regexp re pos)
+	(while (re-search-forward re pos)
 	  (setq pos (match-end)
 		name (copy-area (match-start 1) (match-end 1))
 		value (copy-area (match-start 2) (match-end 2)))
@@ -389,7 +389,7 @@ attempt to load it with `open-file'."
 	(setq file (open-file file)))
       (set-auto-mark)
       (goto-buffer file)
-      (goto-char pos))))
+      (goto pos))))
 
 (defun set-auto-mark ()
   "Sets the mark `auto-mark' to the current position (buffer & cursor-pos)."
@@ -403,19 +403,19 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
   (interactive)
   (let
       ((a-m-file (mark-file auto-mark))
-       (a-m-pos (copy-pos (mark-pos auto-mark))))
+       (a-m-pos (mark-pos auto-mark)))
     (set-auto-mark)
     (when (stringp a-m-file)
       (setq a-m-file (open-file a-m-file)))
-    (set-current-buffer a-m-file)
-    (goto-char a-m-pos)))
+    (goto-buffer a-m-file)
+    (goto a-m-pos)))
 
 (defun split-line-indent ()
   "Inserts a newline at the cursor position and then indents the new line
 created to the indentation of the one above it."
   (interactive)
   (let
-      ((old-indent-pos (next-line 1 (indent-pos))))
+      ((old-indent-pos (forward-line 1 (indent-pos))))
     (split-line)
     (if (empty-line-p)
 	(goto-glyph old-indent-pos)
@@ -483,13 +483,14 @@ file it was loaded from."
     (setq buffer (current-buffer)))
   (when (check-changes buffer)
     (with-buffer buffer
-      (read-file-into-buffer (buffer-file-name buffer)))))
+      (read-file-into-buffer (buffer-file-name buffer))
+      (delete-auto-save-file))))
 
 (defun goto-line (line)
   "Goto line number LINE. LINE counts from 1."
   (interactive "NLine: ")
   (set-auto-mark)
-  (goto-char (pos nil (1- line))))
+  (goto (pos nil (1- line))))
 
 (defun file-newer-than-file-p (file1 file2)
   "Returns t of FILE1 was modified more recently than FILE2."

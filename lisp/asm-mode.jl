@@ -74,7 +74,7 @@ it inserts."
 
 (defun asm-ret ()
   (interactive)
-  (when (regexp-match-line "[\t ]+$")
+  (when (re-search-backward "[\t ]+$" (end-of-line))
     (delete-area (match-start) (match-end)))
   (insert (if asm-indent "\n\t" "\n")))
 

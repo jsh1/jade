@@ -90,7 +90,7 @@ being sent."
 	  (insert mail-signature))
 	(when (/= (pos-col (cursor-pos)) 0)
 	  (insert "\n"))
-	(goto-char old)))
+	(goto old)))
     (set-buffer-modified buffer nil)
     (setq buffer-undo-list nil)
     (send-mail-mode)))
@@ -137,22 +137,22 @@ Major mode for composing and sending mail messages."
 (defun send-mail-go-text ()
   "Put the cursor at the start of the message body."
   (interactive)
-  (if (find-next-regexp (concat ?^ (regexp-quote mail-header-separator) ?$)
-			(buffer-start))
-      (goto-char (next-line 1 (match-start)))
+  (if (re-search-forward (concat ?^ (quote-regexp mail-header-separator) ?$)
+			(start-of-buffer))
+      (goto (forward-line 1 (match-start)))
     (error "No mail-header-separator in message")))
 
 (defun send-mail-find-header (header)
-  (if (find-next-regexp (concat ?^ header "[\t ]*:[\t ]*")
-			(buffer-start) nil t)
-      (goto-char (match-end))
-    (unless (find-next-regexp
-	     (concat ?^ (regexp-quote mail-header-separator) ?$)
-	     (buffer-start))
+  (if (re-search-forward (concat ?^ header "[\t ]*:[\t ]*")
+			(start-of-buffer) nil t)
+      (goto (match-end))
+    (unless (re-search-forward
+	     (concat ?^ (quote-regexp mail-header-separator) ?$)
+	     (start-of-buffer))
       (error "Can't find header separator"))
-    (goto-char (match-start))
+    (goto (match-start))
     (insert (concat header ": \n"))
-    (goto-prev-char)))
+    (goto (forward-char -1))))
     
 (defun send-mail-go-to ()
   "Move to the message's To: header."
@@ -185,19 +185,19 @@ Major mode for composing and sending mail messages."
   (if (and mail-signature-file
 	   (file-exists-p (expand-file-name mail-signature-file)))
       (let
-	  ((pos (find-prev-string "\n\n-- \n" (buffer-end)))
+	  ((pos (search-backward "\n\n-- \n" (end-of-buffer)))
 	   (old-pos (cursor-pos)))
 	(if pos
 	    (progn
-	      (goto-char (match-end))
-	      (delete-area (cursor-pos) (buffer-end)))
-	  (goto-buffer-end)
+	      (goto (match-end))
+	      (delete-area (cursor-pos) (end-of-buffer)))
+	  (goto (end-of-buffer))
 	  (insert "\n\n-- \n"))
 	(insert-file (expand-file-name mail-signature-file))
 	(when (/= (pos-col (cursor-pos)) 0)
 	  (insert "\n"))
-	(when (<= old-pos (buffer-end))
-	  (goto-char old-pos)))
+	(when (<= old-pos (end-of-buffer))
+	  (goto old-pos)))
     (error "No signature file to insert")))
 
 (defun send-mail-send ()
@@ -229,21 +229,21 @@ Major mode for composing and sending mail messages."
   (let
       ((resent-addresses '())
        tem)
-    (unless (find-next-regexp (concat ?^
-				      (regexp-quote mail-header-separator ?$)
+    (unless (re-search-forward (concat ?^
+				      (quote-regexp mail-header-separator ?$)
 				      ?$)
-			      (buffer-start))
+			      (start-of-buffer))
       (error "Can't find header-separator string"))
     ;; Delete the header separator and restrict to the headers
     (delete-area (match-start) (match-end))
-    (restrict-buffer (buffer-start) (prev-line 1 (match-start)))
+    (restrict-buffer (start-of-buffer) (forward-line -1 (match-start)))
 
     ;; First, insert From: unless it's already there.
-    (if (find-next-regexp "^From[\t ]*:[\t ]*" (buffer-start) nil t)
-	(goto-char (match-end))
-      (goto-char (buffer-start))
+    (if (re-search-forward "^From[\t ]*:[\t ]*" (start-of-buffer) nil t)
+	(goto (match-end))
+      (goto (start-of-buffer))
       (insert "From: \n")
-      (goto-prev-char))
+      (goto (forward-char -1)))
     (when (looking-at "[\t ]*$")
       ;; Need to handle quoting full name a la RFC-822
       (cond
@@ -255,23 +255,23 @@ Major mode for composing and sending mail messages."
 	(insert user-mail-address))))
 
     ;; Remove blank lines
-    (setq tem (buffer-start))
-    (while (find-next-regexp "^\n" tem)
+    (setq tem (start-of-buffer))
+    (while (re-search-forward "^\n" tem)
       (delete-area (match-start) (match-end))
       (setq tem (match-start)))
 
     ;; Remove blank headers
-    (setq tem (buffer-start))
-    (while (and tem (find-next-regexp (concat mail-header-name
+    (setq tem (start-of-buffer))
+    (while (and tem (re-search-forward (concat mail-header-name
 					      "([\t ]*\n)+[^ \t]")
 				      tem nil t))
       (setq tem (mail-delete-header (match-start))))
 
     ;; Handle any FCC fields
     ;; TODO: make sure that ^From is changed to >From
-    (setq tem (buffer-start))
+    (setq tem (start-of-buffer))
     (while (and tem
-		(find-next-regexp "^FCC[\t ]*:[\t ]*([^\t\n\f ]+)" tem nil t))
+		(re-search-forward "^FCC[\t ]*:[\t ]*([^\t\n\f ]+)" tem nil t))
       (let
 	  ((filename (copy-area (match-start 1) (match-end 1)))
 	   file)
@@ -290,8 +290,8 @@ Major mode for composing and sending mail messages."
     ;; Handle Resent-X headers. Build a list of addresses the message
     ;; should be sent to and specify them on the command line, instead of
     ;; letting sendmail pick them out of the text
-    (setq tem (buffer-start))
-    (while (and tem (find-next-regexp "^Resent-(To|CC|BCC)[\t ]*:[\t ]*"
+    (setq tem (start-of-buffer))
+    (while (and tem (re-search-forward "^Resent-(To|CC|BCC)[\t ]*:[\t ]*"
 				      tem nil t))
       (setq tem (match-start)
 	    resent-addresses (nconc resent-addresses (mail-parse-list tem)))
@@ -306,7 +306,7 @@ Major mode for composing and sending mail messages."
     (let*
 	((temp-buffer (make-buffer "*sendmail-output*"))
 	 (proc (make-process temp-buffer)))
-      (apply 'call-process-area proc (buffer-start) (buffer-end) nil
+      (apply 'call-process-area proc (start-of-buffer) (end-of-buffer) nil
 	     (nconc (list (unless sendmail-program "/usr/lib/sendmail")
 			  ;; Dot doesn't specify end-of-message
 			  "-oi"
@@ -325,12 +325,12 @@ Major mode for composing and sending mail messages."
 	(with-view (other-view)
 	  (goto-buffer temp-buffer)
 	  (set-buffer-special temp-buffer t)
-	  (goto-buffer-start))
+	  (goto (start-of-buffer)))
 	(error "sendmail couldn't send message"))
       ;; No errors
       (if (boundp 'sendmail-debug)
 	  (with-view (other-view)
 	    (goto-buffer temp-buffer)
 	    (set-buffer-special temp-buffer t)
-	    (goto-buffer-start))
+	    (goto (start-of-buffer)))
 	(destroy-buffer temp-buffer)))))

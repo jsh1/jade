@@ -62,24 +62,22 @@
   "Meta-8"	'(numeric-arg 8)
   "Meta-9"	'(numeric-arg 9)
   "Meta--"	'negative-arg
-  "Up"		'goto-prev-line
-  "Down"	'goto-next-line
-  "Left"	'goto-left-char
-  "Right"	'goto-right-char
-  "Shift-Up"	'(progn (set-auto-mark) (goto-char (pos nil 0)))
-  "Shift-Down"	'(progn (set-auto-mark) (goto-char (pos nil (1- (buffer-length)))))
-  "Shift-Left"	'goto-line-start
-  "Shift-Right"	'goto-line-end
+  "Up"		'backward-line
+  "Down"	'forward-line
+  "Left"	'backward-char
+  "Right"	'forward-char
+  "Shift-Up"	'top-of-buffer
+  "Shift-Down"	'bottom-of-buffer
+  "Shift-Left"	'start-of-line
+  "Shift-Right"	'end-of-line
   "Ctrl-Up"	'prev-screen
   "Ctrl-Down"	'next-screen
-  "Ctrl-Left"	'(goto-char (left-char 40))
-  "Ctrl-Right"	'(goto-char (right-char 40))
   "Meta-Left"	'backward-word
   "Meta-Right"	'forward-word
   "Meta-Up"	'backward-paragraph
   "Meta-Down"	'forward-paragraph
-  "Ctrl-TAB"	'goto-next-tab
-  "Shift-TAB"	'goto-prev-tab
+  "Ctrl-TAB"	'forward-tab
+  "Meta-TAB"	'backward-tab
   "RET"		'split-line
   "Backspace"	'backspace-char
   "DEL"		'delete-char
@@ -88,14 +86,13 @@
   "Ctrl-DEL"	'kill-whole-line
   "Meta-DEL"	'kill-word
   "Meta-ESC"	'eval-and-print
-  "Meta-TAB"	'goto-next-tab
   "Meta-Backspace" 'backward-kill-word
   "Ctrl-Meta-Backspace" 'backward-kill-exp
   "Help"	'help
   "Meta-Help"	'toggle-iconic
   "Insert"	'overwrite-mode
-  "Home"	'goto-buffer-start
-  "End"		'goto-buffer-end
+  "Home"	'goto-start-of-buffer
+  "End"		'goto-end-of-buffer
   "Prior"	'prev-screen
   "Next"	'next-screen
   "Ctrl-@"	'set-auto-mark
@@ -103,8 +100,8 @@
   "Meta-%"	'query-replace
   "Meta-!"	'shell-command
   "Meta-|"	'shell-command-on-area
-  "Ctrl-a"	'goto-line-start
-  "Ctrl-b"	'goto-prev-char
+  "Ctrl-a"	'start-of-line
+  "Ctrl-b"	'backward-char
   "Meta-b"	'backward-word
   "Ctrl-Meta-b"	'backward-exp
   "Ctrl-c"	'(setq next-keymap-path '(ctrl-c-keymap user-keymap))
@@ -112,8 +109,8 @@
   "Ctrl-Meta-c"	'abort-recursive-edit
   "Ctrl-d"	'delete-char
   "Meta-d"	'kill-word
-  "Ctrl-e"	'goto-line-end
-  "Ctrl-f"	'goto-next-char
+  "Ctrl-e"	'end-of-line
+  "Ctrl-f"	'forward-char
   "Meta-f"	'forward-word
   "Ctrl-Meta-f"	'forward-exp
   "Ctrl-h"	'help
@@ -128,10 +125,10 @@
   "Ctrl-m"	'block-toggle
   "Ctrl-M"	'toggle-rect-blocks
   "Meta-m"	'(goto-glyph (indent-pos))
-  "Ctrl-n"	'goto-next-line
-  "Meta-n"	'(progn (set-auto-mark) (goto-char (match-brackets)))
+  "Ctrl-n"	'forward-line
+  "Meta-n"	'(progn (set-auto-mark) (goto (find-matching-bracket)))
   "Ctrl-o"	'open-line
-  "Ctrl-p"	'goto-prev-line
+  "Ctrl-p"	'backward-line
   "Ctrl-q"	'(setq next-keymap-path t)
   "Meta-q"	'fill-paragraph
   "Ctrl-r"	'isearch-backward
@@ -160,8 +157,8 @@
   "Meta-["	'backward-paragraph
   "Meta-]"	'forward-paragraph
   "Ctrl-_"	'undo
-  "Meta-<"	'(progn (set-auto-mark) (goto-buffer-start))
-  "Meta->"	'(progn (set-auto-mark) (goto-buffer-end))
+  "Meta-<"	'goto-start-of-buffer
+  "Meta->"	'goto-end-of-buffer
   "Meta-;"	'insert-comment
   "Meta-~"	'(set-buffer-modified nil nil)
   "Meta-\\"	'no-spaces

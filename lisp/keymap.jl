@@ -136,7 +136,7 @@ would invoke."
 	      (format (current-buffer)
 		      "\n%s\n"
 		      (or (documentation command) "")))
-	    (goto-buffer-start)
+	    (goto (start-of-buffer))
 	    (setq done t))
 	(message (concat names " is unbound. "))
 	(setq done t

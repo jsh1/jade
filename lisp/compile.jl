@@ -80,7 +80,7 @@ nil or unbound use `compile-default-command'.")
     (setq compile-errors nil
 	  compile-parsed-errors-p nil
 	  compile-errors-exists-p nil
-	  compile-error-pos (buffer-start))
+	  compile-error-pos (start-of-buffer))
     t))
 
 (defun compile-callback ()
@@ -163,19 +163,15 @@ given you will be prompted for a command."
 	   last-e-line
 	   last-e-file
 	   new-errors)
-	(while (setq compile-error-pos (find-next-regexp compile-error-regexp
+	(while (setq compile-error-pos (re-search-forward compile-error-regexp
 							 compile-error-pos))
-	  (setq error-line (1- (read-from-string (regexp-expand-line
-						  compile-error-regexp
-						  compile-line-expand
-						  compile-error-pos))))
+	  (setq error-line (1- (read-from-string
+				(expand-last-match compile-line-expand))))
 	  (when (or (not last-e-line) (/= error-line last-e-line))
 	    (setq last-e-line error-line
-		  error-file (file-name-concat (buffer-file-name)
-					       (regexp-expand-line
-						compile-error-regexp
-						compile-file-expand
-						compile-error-pos)))
+		  error-file (file-name-concat
+			      (buffer-file-name)
+			      (expand-last-match compile-file-expand)))
 	    (if (equal last-e-file error-file)
 		(setq error-file last-e-file)
 	      (setq last-e-file error-file))
@@ -209,8 +205,8 @@ given you will be prompted for a command."
      (t
       (goto-mark (car err))
       (when (cdr err)
-	(message (regexp-expand-line compile-error-regexp compile-error-expand
-				     (pos 0 (cdr err)) compile-buffer)))
+	(and (looking-at compile-error-regexp (pos 0 (cdr err)) compile-buffer)
+	     (message (expand-last-match compile-error-expand))))
       t))))
 
 ;;;###autoload
@@ -239,15 +235,15 @@ buffer in a form that `goto-next-error' understands."
     (setq grep-buffer-regexp regexp))
   (when (and grep-buffer-regexp (compile-init))
     (let*
-	((scanpos (buffer-start))
+	((scanpos (start-of-buffer))
 	 (number 0)
 	 (stream (cons compile-buffer t)))
       (write stream ?\n)
-      (while (setq scanpos (find-next-regexp grep-buffer-regexp scanpos))
+      (while (setq scanpos (re-search-forward grep-buffer-regexp scanpos))
 	(format stream "%s:%d:%s\n" (buffer-file-name) (pos-line scanpos)
-		(copy-area (line-start scanpos) (line-end scanpos)))
+		(copy-area (start-of-line scanpos) (end-of-line scanpos)))
 	(setq number (+ number 1)
-	      scanpos (line-end scanpos)))
+	      scanpos (end-of-line scanpos)))
       (goto-buffer compile-buffer)
-      (goto-buffer-start)
+      (goto (start-of-buffer))
       number)))
