@@ -797,6 +797,7 @@ any restriction on the buffer.
     start = make_pos(0, 0);
     end = cmd_end_of_buffer(VAL(tx), sym_t);
     undo_record_deletion(VTX(tx), start, end);
+    reset_global_extent(VTX(tx));
     if(clear_line_list(VTX(tx)))
     {
 	reset_all_views(VTX(tx));
