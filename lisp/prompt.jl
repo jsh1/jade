@@ -143,7 +143,8 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	(with-view (minibuffer-view)
 	  (with-buffer prompt-buffer
 	    (when prompt-glyph-table
-	      (set-buffer-glyph-table prompt-buffer prompt-glyph-table))
+	      (with-buffer prompt-buffer
+		(setq glyph-table prompt-glyph-table)))
 	    (when (stringp start)
 	      (insert start))
 	    (make-local-variable 'pre-command-hook)
