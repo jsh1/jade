@@ -59,6 +59,11 @@ cause the new revision _not_ to be locked, only checked out. A successive
 (defvar rcs-descr-ring (make-ring 16)
   "Ring buffer containing RCS history entries.")
 
+;;;###autoload
+(defvar rcs-keymap (make-keylist)
+  "Keymap containing RCS commands.")
+;;;###autoload (bind-keys ctrl-x-keymap "v" '(setq next-keymap-path '(rcs-keymap)))
+
 (defvar rcs-callback-ctrl-c-keymap (make-keylist)
   "Keymap for Ctrl-C when entering text for a callback.")
 (defvar rcs-callback-keymap (make-keylist)
@@ -75,6 +80,14 @@ cause the new revision _not_ to be locked, only checked out. A successive
   "Local variable storing the revision number of buffer's controlled by RCS,
 as a string. May be nil if revision is unknown.")
 (make-variable-buffer-local 'rcs-revision)
+
+(bind-keys rcs-keymap
+  "i" 'rcs-register-buffer
+  "l" 'rcs-display-log
+  "u" 'rcs-revert-buffer
+  "=" 'rcs-compare-revisions
+  "~" 'rcs-view-revision
+  "b" 'rcs-set-default-branch)
 
 (bind-keys rcs-callback-ctrl-c-keymap
   "Ctrl-c" 'rcs-call-callback)

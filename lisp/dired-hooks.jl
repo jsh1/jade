@@ -27,3 +27,5 @@
       (current-buffer))))
 
 (add-hook 'find-file-hook 'dired-find-file-hook)
+
+;;;###autoload (load "dired-hooks")

@@ -20,22 +20,6 @@
 
 (provide 'rcs-hooks)
 
-(defvar rcs-keymap (make-keylist)
-  "Keymap containing RCS commands.")
-
-(unless (boundp 'rcs-hooks-initialised)
-  (bind-keys rcs-keymap
-    "i" 'rcs-register-buffer
-    "l" 'rcs-display-log
-    "u" 'rcs-revert-buffer
-    "=" 'rcs-compare-revisions
-    "~" 'rcs-view-revision
-    "b" 'rcs-set-default-branch)
-  (bind-keys ctrl-x-keymap
-    "v" '(setq next-keymap-path '(rcs-keymap)))
-  (setq rcs-hooks-initialised t)
-  (add-hook 'after-read-file-hook 'rcs-read-file-function))
-
 ;; Returns t if FILE-NAME is under RCS control
 (defun rcs-file-p (file-name)
   (or (file-exists-p (concat file-name ",v"))
@@ -47,3 +31,7 @@
 (defun rcs-read-file-function (buffer)
   (when (rcs-file-p (buffer-file-name buffer))
     (rcs-init-file buffer)))
+
+(add-hook 'after-read-file-hook 'rcs-read-file-function)
+
+;;;###autoload (load "rcs-hooks")
