@@ -17,9 +17,9 @@ of date. For more details see the url
 	http://www.dcs.warwick.ac.uk/~john/jade/
 
 To compile this snapshot you'll need GNU Autoconf, GNU make, and
-(currently) GCC, run autoconf in the root of the distribution to create
-a configure script, then compile as normal (generic instructions in the
-INSTALL file).
+(currently) GCC, run aclocal and autoconf in the root of the
+distribution to create a configure script, then compile as normal
+(generic instructions in the INSTALL file).
 
 You'll also need an installed copy of my librep LISP interpreter,
 this should be able to be found in the same place as this snapshot.
