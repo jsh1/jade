@@ -44,10 +44,10 @@ WIN *win_chain;
    must be set to a view in the same window. */
 WIN *curr_win;
 
-/* The number of opened windows */
-int window_count;
-
+/* The default window position and dimensions. */
 short def_dims[4] = { 0, 0, 80, 24 };
+
+repv def_font_str;
 
 DEFSYM(save_and_quit, "save-and-quit");
 
@@ -84,7 +84,6 @@ the originally selected window.
 	    w->w_Window = sys_new_window(curr_win, w, TRUE);
 	    if(w->w_Window)
 	    {
-		window_count++;
 		sys_update_dimensions(w);
 		update_window_dimensions(w);
 		/* First the main view.. */
@@ -138,7 +137,6 @@ delete_window(WIN *w)
     free_glyph_buf(w->w_NewContent);
     free_glyph_buf(w->w_Content);
     w->w_NewContent = w->w_Content = NULL;
-    window_count--;
     /* This flags that this window is dead.  */
     w->w_Window = WINDOW_NIL;
     if(curr_win == w)
@@ -179,16 +177,16 @@ delete-window [WINDOW]
 Close WINDOW (or the current window). If there is only one window currently
 open, then the function `save-and-quit' is called instead; this will take
 care of any unsaved files, hooks to run, etc.
+
+This function always returns nil.
 ::end:: */
 {
     WIN *w = WINDOWP(win) ? VWIN(win) : curr_win;
-    if(window_count > 1)
-    {
-	delete_window(w);
-	return Qt;
-    }
+    if(sys_deleting_window_would_exit (w))
+	rep_call_lisp0(Qsave_and_quit);
     else
-	return rep_call_lisp0(Qsave_and_quit);
+	delete_window(w);
+    return Qnil;
 }
 
 void
@@ -459,16 +457,6 @@ Returns t if window is currently iconified.
     return(Qnil);
 }
 
-DEFUN("window-count", Fwindow_count, Swindow_count, (void), rep_Subr0) /*
-::doc:Swindow-count::
-window-count
-
-Number of opened windows.
-::end:: */
-{
-    return(rep_MAKE_INT(window_count));
-}
-
 DEFUN("position-window", Fposition_window, Sposition_window, (repv left, repv top, repv width, repv height), rep_Subr4) /*
 ::doc:Sposition-window::
 position-window LEFT TOP WIDTH HEIGHT
@@ -637,6 +625,34 @@ Returns t if ARG is a window object.
     return WINDOWP(arg) ? Qt : Qnil;
 }
 
+DEFSTRING(no_font, "Can't open font");
+
+DEFUN_INT("set-font", Fset_font, Sset_font, (repv fontname, repv win), rep_Subr2, "sFont name: ") /*
+::doc:Sset-font::
+set-font FONT-NAME [WINDOW]
+
+FONT-NAME specifies the font to use in WINDOW (or the active one), using
+the standard window system conventions.
+::end:: */
+{
+    repv oldfont;
+    rep_DECLARE1(fontname, rep_STRINGP);
+    if(!WINDOWP(win))
+	win = rep_VAL(curr_win);
+    oldfont = VWIN(win)->w_FontName;
+    VWIN(win)->w_FontName = fontname;
+    if(sys_set_font(VWIN(win)))
+    {
+	VWIN(win)->w_Flags |= WINFF_FORCE_REFRESH;
+	return Qt;
+    }
+    else
+    {
+	VWIN(win)->w_FontName = oldfont;
+	return Fsignal(Qerror, rep_list_2(rep_VAL(&no_font), fontname));
+    }
+}
+
 static void
 window_sweep(void)
 {
@@ -672,7 +688,11 @@ window_mark_active (void)
     WIN *win = win_chain;
     while(win != 0)
     {
-	if(win->w_Window)
+#ifdef WINDOW_NON_COLLECTABLE
+	if (WINDOW_NON_COLLECTABLE (win))
+#else
+	if (win->w_Window)
+#endif
 	{
 	    rep_MARKVAL(rep_VAL(win));
 	    mark_merged_faces(win);
@@ -692,10 +712,10 @@ window_prin(repv strm, repv win)
 #else
 	sprintf(buf,
 #endif
-#ifdef HAVE_X11
-		"#<window %ld", VWIN(win)->w_Window);
-#else
+#if defined (HAVE_GTK) || !defined (HAVE_X11)
 		"#<window 0x%x", VWIN(win)->w_Window);
+#else
+		"#<window %ld", VWIN(win)->w_Window);
 #endif
 	rep_stream_puts(strm, buf, -1, FALSE);
 	rep_stream_putc(strm, '>');
@@ -747,7 +767,6 @@ windows_init(void)
     rep_ADD_SUBR(Smessage);
     rep_ADD_SUBR(Sfont_name);
     rep_ADD_SUBR(Swindow_asleep_p);
-    rep_ADD_SUBR(Swindow_count);
     rep_ADD_SUBR(Sposition_window);
     rep_ADD_SUBR(Scurrent_window);
     rep_ADD_SUBR(Sset_current_window);
@@ -759,6 +778,7 @@ windows_init(void)
     rep_ADD_SUBR(Swindow_view_count);
     rep_ADD_SUBR(Swindow_first_view);
     rep_ADD_SUBR(Swindowp);
+    rep_ADD_SUBR_INT(Sset_font);
     rep_INTERN(make_window_hook);
     rep_INTERN(delete_window_hook);
     rep_INTERN(save_and_quit);
