@@ -815,8 +815,6 @@ the summary buffer.")
 	((mail-buf (current-buffer)))
       (with-buffer rm-summary-buffer
 	(setq rm-summary-mail-buffer mail-buf
-	      summary-move-after-marking rm-move-after-deleting
-	      summary-activate-after-marking t
 	      truncate-lines t)
 	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
 	(setq major-mode 'rm-summary-mode)))))
