@@ -28,6 +28,14 @@
 (defvar km-keymap-list nil)
 
 (defun map-keymap (function &optional keymap buffer)
+  "Map FUNCTION over all key bindings under the list of keymaps KEYMAP (by
+default, the contents of the keymap-path variable). If BUFFER is defined
+it gives the buffer to dereference all variables in.
+
+FUNCTION is called as (FUNCTION KEY-VECTOR PREFIX), where KEY-VECTOR is
+a vector [CODE MODIFIERS COMMAND], (CODE . MODIFIERS) being the internal
+representation of the bound event, and PREFIX a string describing the
+prefix keys of this binding, or nil if there is no prefix."
   (unless buffer
     (setq buffer (current-buffer)))
   (let
@@ -73,7 +81,7 @@
 					       (cons km new-str)) this-list)))
 		      (setq km-keymap-list (append km-keymap-list new-list)))))
 	      ;; A normal binding
-	      (funcall function k km-prefix-string (aref k 2))))
+	      (funcall function k km-prefix-string)))
 	keylist))
 
 
@@ -87,13 +95,13 @@
   (insert "Binding\n---------")
   (indent-to 24)
   (insert "-------\n\n")
-  (map-keymap #'(lambda (k prefix command)
+  (map-keymap #'(lambda (k prefix)
 		  (format (current-buffer) "%s%s%s "
 			  (or prefix "")
 			  (if prefix " " "")
 			  (event-name (cons (aref k 0) (aref k 1))))
 		  (indent-to 24)
-		  (format (current-buffer) "%S\n" command))
+		  (format (current-buffer) "%S\n" (aref k 2)))
 	      keymap buffer))
 
 
@@ -106,8 +114,8 @@
   (interactive "CWhere is command:\n\n\nt")
   (let
       ((km-where-is-results nil))
-    (map-keymap #'(lambda (k pfx c)
-		    (when (eq c command)
+    (map-keymap #'(lambda (k pfx)
+		    (when (eq (aref k 2) command)
 		      (setq km-where-is-results
 			    (cons (concat pfx (and pfx " ")
 					  (event-name (cons (aref k 0)
