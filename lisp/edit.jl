@@ -25,11 +25,12 @@
 (defvar word-not-regexp "[^a-zA-Z0-9]"
   "Regular expression which defines anything that is not in a word.")
 
-(defvar paragraph-separate "^[\t\f\n ]*\n"
-  "Regular expression matching a paragraph-separating string, but not matching
-the start of a paragraph itself.")
+(defvar paragraph-separate "^[\t\f ]*\n"
+  "Regular expression matching a line separating paragraphs, but not matching
+the start of a paragraph itself. The start of the paragraph is taken as the
+character following the end of the match.")
 
-(defvar paragraph-start "^[\t\f\n ]*$"
+(defvar paragraph-start "^[\t\f ]*$"
   "Regular expression matching the start of a paragraph. See also the variable
 `paragraph-separate'.")
 
@@ -324,22 +325,19 @@ interactively, the cursor is set to this position."
     ;; Negative arguments
     (while (and (< count 0)
 		(> pos (start-of-buffer)))
-      ;; Skip any lines at POS matching the separator
+      ;; Skip any lines before POS matching the separator
       (while (and (< (pos-line pos) (buffer-length))
-		  (looking-at paragraph-separate pos))
+		  (looking-at paragraph-separate (forward-line -1 pos)))
 	(setq pos (forward-line -1 pos)))
       ;; Search for the previous paragraph
       (if (re-search-backward sep-or-start (backward-char 1 pos))
 	  (let*
 	      ((start (match-start))
 	       (end (match-end))
+	       (orig pos)
 	       (separator-match (looking-at paragraph-separate start)))
-	    ;; Check if we actually moved
-	    (unless (>= (match-end) pos)
-	      (setq count (1+ count)))
-	    (setq pos (if (and (zerop count) separator-match)
-			  (match-end)
-			(match-start))))
+	    (setq count (1+ count))
+	    (setq pos (if separator-match end start)))
 	(setq pos (start-of-buffer)
 	      count 0))))
   pos)
@@ -465,16 +463,6 @@ the buffer."
   (when (blockp)
     (funcall (if (rect-blocks-p) 'delete-rectangle 'delete-area)
 	     (block-start) (block-end))
-    (block-kill)))
-
-(defun insert-block (&optional pos)
-  "If a block is marked in the current window, copy it to position POS, then
-unmark the block."
-  (interactive)
-  (when (blockp)
-    (if (rect-blocks-p)
-	(insert-rectangle (copy-rectangle (block-start) (block-end)) pos)
-      (insert (copy-area (block-start) (block-end)) pos))
     (block-kill)))
 
 (defun toggle-rect-blocks ()
@@ -614,35 +602,50 @@ kill storage."
 (defvar yank-last-start nil)
 (defvar yank-last-end nil)
 
-(defun yank-get-string (not-block)
-  (if (and (null not-block)
-	   ;; If a block is marked use that, otherwise (in X11) look for a
-	   ;; selection
-	   (or (blockp) (and (eq window-system 'x11)
-			     (x11-selection-active-p 'xa-primary))))
-      (progn
-	(setq yank-last-item nil)
-	(if (blockp) (copy-block) (x11-get-selection 'xa-primary)))
-    (when (zerop (ring-size kill-ring))
-      (error "Nothing to yank"))
+(defun yank-get-string ()
+  ;; Handle window-system specific stuff first, otherwise fall into
+  ;; yanking from the kill-ring
+  (cond
+   ;; When using X, only paste a selection if it's not owned by Jade
+   ((and (eq window-system 'x11)
+	 (x11-selection-active-p 'xa-primary)
+	 (not (x11-own-selection-p 'xa-primary)))
+    (setq yank-last-item nil)
+    (x11-get-selection 'xa-primary))
+   ((zerop (ring-size kill-ring))
+    (error "Nothing to yank"))
+   (t
     (setq yank-last-item 0)
-    (killed-string)))
+    (killed-string))))
 
-(defun yank (&optional dont-yank-block)
-  "Inserts text before the cursor. If a block is marked in the current buffer
-and DONT-YANK-BLOCK is nil insert the text in the block. Else yank the last
-killed text."
+(defun yank ()
+  "Inserts text before the cursor. If running under X11, and a selection is
+active that is not owned by Jade, paste that; else yank the most recent entry
+in the kill-ring."
   (interactive "P")
-  (setq yank-last-start (cursor-pos)
-	this-command 'yank)
-  (insert (yank-get-string dont-yank-block)))
+  (setq yank-last-start (cursor-pos))
+  (insert (yank-get-string))
+  (setq this-command 'yank))
 
-(defun yank-rectangle (&optional dont-yank-block)
+(defun yank-block ()
+  "If a block is marked in the current window, insert it before the current
+cursor position, then unmark the block."
+  (interactive)
+  (when (blockp)
+    (setq yank-last-start (cursor-pos))
+    (if (rect-blocks-p)
+	(insert-rectangle (copy-rectangle (block-start) (block-end)))
+      (insert (copy-area (block-start) (block-end))))
+    (setq yank-last-item nil
+	  this-command (if (rect-blocks-p) 'yank-rectangle 'yank))
+    (block-kill)))
+
+(defun yank-rectangle ()
   "Similar to `yank' except that the inserted text is treated as a rectangle."
   (interactive "P")
-  (setq yank-last-start (cursor-pos)
-	this-command 'yank-rectangle)
-  (insert-rectangle (yank-get-string dont-yank-block)))
+  (setq yank-last-start (cursor-pos))
+  (insert-rectangle (yank-get-string))
+  (setq this-command 'yank-rectangle))
 
 (defun yank-next (count)
   "If the last command was a yank, replace the yanked text with the COUNT'th
@@ -653,7 +656,7 @@ next string in the kill ring."
       (progn
 	(setq yank-last-item (if yank-last-item
 				 (+ yank-last-item count)
-			       count))
+			       (1- count)))
 	(when (>= yank-last-item (ring-size kill-ring))
 	  (error "Nothing more to yank"))
 	;; Using undo should allow rectangles to be replaced properly
