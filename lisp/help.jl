@@ -194,10 +194,71 @@ it leads to)."
   (interactive)
   (let*
       ((mode major-mode)
-       (doc (documentation mode)))
+       (doc (substitute-command-keys (documentation mode))))
     (help-wrapper
      (when (stringp doc)
        (format help-buffer "\n%s\n" doc)))))
+
+;;;###autoload
+(defun substitute-command-keys (string)
+  "Replace special marker expressions in STRING with expansions describing
+the current key binding environment. The following markers are supported:
+
+\\[COMMAND]		Replaced by the name of a key that is bound to
+			 the command named COMMAND
+\\{KEYMAP}		Replaced by a list describing all key bindings
+			 defined by KEYMAP
+\\{KEYMAP,PREFIX}	Similar to \\{KEYMAP}, except that all binding
+			 descriptions are prefixed by PREFIX, a string
+			 naming a key bound to KEYMAP
+\\<KEYMAP>		Replaced by a null string; this notes that all
+			 following \\[..] expansions should search KEYMAP
+			 for their bindings.
+
+This function is used by the describe-mode command, hence the documentation
+strings of modes may contain any of these expansions."
+  (let
+      ((out nil)
+       (point 0)
+       (whereis-rel nil)
+       (print-escape t))
+    (while (string-match "\\\\[[{<]([^]}>,]+)(,([^]}>]+))?[]}>]" string point)
+      (setq out (cons (substring string point (match-start)) out)
+	    point (match-end))
+      (let
+	  ((symbol (intern (expand-last-match "\\1")))
+	   (arg (expand-last-match "\\3"))
+	   (type (aref string (1- point))))
+	(cond
+	 ((= type ?\])
+	  ;; where-is SYMBOL
+	  (let
+	      ((result (where-is symbol whereis-rel)))
+	    (setq out (cons (or (car result)
+				(concat "Meta-x " (symbol-name symbol)))
+			    out))))
+	 ((= type ?\})
+	  ;; print-keymap SYMBOL
+	  (map-keymap #'(lambda (k prefix)
+			  (setq out (cons (format nil "%-24s %S\n"
+						  (concat "  "
+							  arg
+							  (if (string= arg "")
+							      "" " ")
+							  (or prefix "")
+							  (if prefix " " "")
+							  (event-name (cdr k)))
+						  (car k))
+					  out)))
+		      (symbol-value symbol)))
+	 ((= type ?\>)
+	  ;; next where-is is relative to keymap SYMBOL
+	  (setq whereis-rel (symbol-value symbol))))))
+    (setq out (cons (substring string point) out))
+    (apply 'concat (nreverse out))))
+
+
+;; Accessing doc strings
 
 ;;;###autoload
 (defun documentation (symbol &optional is-variable)
