@@ -447,10 +447,13 @@ local bindings are:\n
 (defun info-list-menu-items ()
   (let
       ((list ())
-       (opos (restriction-start)))
+       (opos (restriction-start))
+       name)
     (while (re-search-forward "^\\* ([a-zA-Z0-9]+[^:.]*)" opos)
-      (setq list (cons (expand-last-match "\\1") list))
-      (setq opos (match-end)))
+      (setq name (expand-last-match "\\1"))
+      (setq opos (match-end))
+      (unless (string-match "^menu$" name nil t)
+	(setq list (cons name list))))
     list))
 
 ;; Position the cursor at the start of the menu.
