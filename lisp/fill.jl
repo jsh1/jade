@@ -225,10 +225,11 @@ and POS. When called interactively, POS is bound to the cursor position."
   "Non-nil when fill-mode is enabled.")
 (make-variable-buffer-local 'fill-mode-active)
 
-(setq minor-mode-alist (cons '(fill-mode-active " Fill")
-			     minor-mode-alist))
-(setq minor-mode-keymap-alist (cons '(fill-mode-active . fill-mode-keymap)
-				    minor-mode-keymap-alist))
+(unless (assq 'fill-mode-active minor-mode-alist)
+  (setq minor-mode-alist (cons '(fill-mode-active " Fill")
+			       minor-mode-alist))
+  (setq minor-mode-keymap-alist (cons '(fill-mode-active . fill-mode-keymap)
+				      minor-mode-keymap-alist)))
 
 (defvar fill-mode-keymap
   (bind-keys (make-sparse-keymap)
