@@ -1,3 +1,14 @@
+2000-02-03  John Harper  <john@dcs.warwick.ac.uk>
+
+	* x11_windows.c, x11_misc.c, x11_main.c, windows.c, views.c,
+	undo.c, redisplay.c, movement.c, misc.c, main.c, keys.c,
+	jade_subrs.h, gtk_main.c, gtk_jade.c, glyphs.c, faces.c,
+	extent.c, editcommands.c, edit.h, commands.c, buffers.c: use
+	Fset and Fsymbol_value instead of ->value, changed all rep_Var
+	implemented variables to single-arg functions (except for
+	buffer-list which becomes (buffer-list) and (set-buffer-list
+	NEW), and (buffer-undo-list) and (set-buffer-undo-list NEW))
+
 2000-01-31  John Harper  <john@dcs.warwick.ac.uk>
 
 	* x11_windows.c, x11_main.c, windows.c, gtk_main.c, gtk_jade.c:
