@@ -74,6 +74,9 @@
 ;;	Called after moving the cursor to the item at position INDEX
 ;;	in the most recently given list of items
 ;;
+;;   after-update
+;;	Called after updating the buffer display
+;;
 ;;   on-quit
 ;;	Called before quitting the summary
 ;;
@@ -192,6 +195,13 @@ items to be displayed and manipulated."
   "Set ITEM to be the current one."
   (summary-goto-item (summary-get-index item)))
 
+(defun summary-highlight-index (index)
+  "Highlight the item at position INDEX."
+  (let*
+      ((start (pos 0 (+ (pos-line summary-first-line) index)))
+       (end (pos (car (view-dimensions)) (pos-line start))))
+    (mark-block start end)))
+
 (defmacro summary-get-pending-ops (item)
   "Return the list of operations pending on ITEM."
   (list 'assq item 'summary-pending-ops))
@@ -225,11 +235,13 @@ items to be displayed and manipulated."
     (summary-maybe-dispatch 'after-marking item)))
 
 (defun summary-update ()
-  "Redraw the menu, after rebuilding the list of items."
+  "Redraw the menu, after rebuilding the list of items. Loses the current
+highlight."
   (interactive)
   (let
       ((inhibit-read-only t)
        (old-item (summary-current-item)))
+    (block-kill)
     (delete-area summary-first-line (buffer-end))
     (setq summary-items (summary-dispatch 'list))
     (goto-char summary-first-line)
@@ -242,7 +254,8 @@ items to be displayed and manipulated."
 	  (insert "\n")))
       (summary-goto-item (if (and old-item (memq old-item summary-items))
 			     (summary-get-index old-item)
-			   0)))))
+			   0))
+      (summary-maybe-dispatch 'after-update))))
 
 (defun summary-update-item (item)
   "Redraw the menu entry for ITEM."
