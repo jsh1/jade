@@ -65,8 +65,16 @@
 (defun mail-parse-date (string &optional point)
   (unless point (setq point 0))
   (let
-      (day-abbrev day month-abbrev month year
-       hour minute second timezone time_t tem)
+      ((day-abbrev "")
+       (day 0)
+       (month-abbrev "")
+       (month 0)
+       (year 0)
+       (hour 0)
+       (minute 0)
+       (second 0)
+       (timezone 0)
+       time_t tem)
     (when (string-looking-at "[\t ]*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[\t ]*,[\t ]*"
 			     string point t)
       (setq day-abbrev (substring string (match-start 1) (match-end 1)))
