@@ -87,8 +87,8 @@
   "Help"	'help
   "Meta-Help"	'toggle-iconic
   "Insert"	'overwrite-mode
-  "Home"	'goto-start-of-buffer
-  "End"		'goto-end-of-buffer
+  "Home"	'start-of-buffer
+  "End"		'end-of-buffer
   "Prior"	'prev-screen
   "Next"	'next-screen
   "Ctrl-@"	'set-auto-mark
@@ -154,8 +154,8 @@
   "Meta-["	'backward-paragraph
   "Meta-]"	'forward-paragraph
   "Ctrl-_"	'undo
-  "Meta-<"	'goto-start-of-buffer
-  "Meta->"	'goto-end-of-buffer
+  "Meta-<"	'start-of-buffer
+  "Meta->"	'end-of-buffer
   "Meta-;"	'insert-comment
   "Meta-~"	'(set-buffer-modified nil nil)
   "Meta-\\"	'no-spaces
