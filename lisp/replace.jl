@@ -30,8 +30,10 @@
   "Replace the whole of the most recently matched regular expression with
 the result of `(expand-last-match TEMPLATE)'. Returns the position of the
 character following the insertion."
-  (delete-area (match-start) (match-end))
-  (insert (expand-last-match template) (match-start)))
+  (let
+      ((new (expand-last-match template)))
+    (delete-area (match-start) (match-end))
+    (insert new (match-start))))
 
 ;;;###autoload
 (defun replace-string (old new pos)
