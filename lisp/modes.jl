@@ -81,6 +81,7 @@
   ("\\.[S]$|^asm-cpp(|-mode)$" . asm-cpp-mode)
   ("\\.texi(|nfo)|^texinfo(|-mode)$" . texinfo-mode)
   ("\\.tex$|^(La)?TeX$" . tex-mode)
+  ("ChangeLog$" . changelog-mode)
 ;;; ::mode-alist-end::
   ) "List of all major modes which can be enabled by loading a file into
 a buffer. List is made of `(REGEXP . MODE)' cells; the REGEXP is matched
