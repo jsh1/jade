@@ -80,7 +80,7 @@ being sent."
     (when mail-signature
       (let
 	  ((old (cursor-pos)))
-	(insert "\n\n--\n")
+	(insert "\n\n-- \n")
 	(if (eq mail-signature t)
 	    (when (and mail-signature-file
 		       (file-exists-p (expand-file-name mail-signature-file)))
@@ -183,14 +183,14 @@ Major mode for composing and sending mail messages."
   (if (and mail-signature-file
 	   (file-exists-p (expand-file-name mail-signature-file)))
       (let
-	  ((pos (find-prev-string "\n\n--\n" (buffer-end)))
+	  ((pos (find-prev-string "\n\n-- \n" (buffer-end)))
 	   (old-pos (cursor-pos)))
 	(if pos
 	    (progn
 	      (goto-char (match-end))
 	      (delete-area (cursor-pos) (buffer-end)))
 	  (goto-buffer-end)
-	  (insert "\n\n--\n"))
+	  (insert "\n\n-- \n"))
 	(insert-file (expand-file-name mail-signature-file))
 	(when (/= (pos-col (cursor-pos)) 0)
 	  (insert "\n"))
