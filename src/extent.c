@@ -613,6 +613,20 @@ position of the current buffer).
     return (e != 0) ? rep_VAL(e) : Qnil;
 }
 
+struct map_extents_data {
+    repv fun;
+    jmp_buf exit;
+};
+
+static void
+map_extents_callback (Lisp_Extent *e, void *data)
+{
+    struct map_extents_data *d = data;
+    /* The call to rep_funcall will protect FUN and E thoughout. */
+    if(!rep_call_lisp1(d->fun, rep_VAL(e)))
+	longjmp(d->exit, 1);
+}
+
 DEFUN("map-extents", Fmap_extents, Smap_extents,
       (repv fun, repv start, repv end), rep_Subr3) /*
 ::doc:Smap-extents::
@@ -626,7 +640,7 @@ deleted from within the callback function.
 ::end:: */
 {
     Pos s_copy, e_copy;
-    jmp_buf exit;
+    struct map_extents_data data;
 
     rep_DECLARE2(start, POSP);
     rep_DECLARE3(end, POSP);
@@ -634,18 +648,13 @@ deleted from within the callback function.
     COPY_VPOS(&s_copy, start);
     COPY_VPOS(&e_copy, end);
 
-    switch(setjmp(exit))
+    data.fun = fun;
+    switch(setjmp(data.exit))
     {
-	/* FIXME: remove this GNU CC thing */
-	void map_func(Lisp_Extent *e, void *data) {
-	    /* The call to rep_funcall will protect FUN and E thoughout. */
-	    if(!rep_call_lisp1(fun, rep_VAL(e)))
-		longjmp(exit, 1);
-	}
-
     case 0:
-	map_section_extents(map_func, curr_vw->vw_Tx->tx_GlobalExtent,
-			    &s_copy, &e_copy, NULL);
+	map_section_extents(map_extents_callback,
+			    curr_vw->vw_Tx->tx_GlobalExtent,
+			    &s_copy, &e_copy, &data);
 	break;
 
     case 1:

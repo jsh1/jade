@@ -734,23 +734,25 @@ read_only_pos(TX *tx, repv pos)
     return FALSE;
 }
 
+static void
+read_only_callback (Lisp_Extent *e, void *data)
+{
+    bool *read_onlyp = data;
+    repv val = Fbuffer_symbol_value(Qread_only, rep_VAL(e), Qnil, Qt);
+    if(!rep_VOIDP(val) && !rep_NILP(val))
+	*read_onlyp = TRUE;
+}
+
 bool
 read_only_section(TX *tx, repv start, repv end)
 {
     bool read_only = FALSE;
     Pos p_start, p_end;
 
-    /* FIXME: remove this GCC'ism! */
-    void map_func (Lisp_Extent *e, void *data) {
-	repv val = Fbuffer_symbol_value(Qread_only, rep_VAL(e),
-					    Qnil, Qt);
-	if(!rep_VOIDP(val) && !rep_NILP(val))
-	    read_only = TRUE;
-    }
-
     COPY_VPOS(&p_start, start);
     COPY_VPOS(&p_end, end);
-    map_section_extents(map_func, tx->tx_GlobalExtent, &p_start, &p_end, 0);
+    map_section_extents(read_only_callback,
+			tx->tx_GlobalExtent, &p_start, &p_end, &read_only);
     if(read_only)
     {
 	repv tmp = Fsymbol_value(Qinhibit_read_only, Qt);
