@@ -128,15 +128,15 @@ last change."
 
 (defun query-replace-edit ()
   (interactive)
-  (setq global-keymap query-replace-old-kp)
   (remove-hook 'unbound-key-hook 'query-replace-unbound-key-fun)
   (let
       ((buf (current-buffer))
-       (esc-means-meta t))
+       (esc-means-meta t)
+       (overriding-local-keymap nil)
+       (global-keymap query-replace-old-kp))
     (unwind-protect
 	(recursive-edit)
       (with-buffer buf
-	(setq global-keymap 'query-replace-keymap)
 	(add-hook 'unbound-key-hook 'query-replace-unbound-key-fun))))
   (throw 'query-replace))
 
@@ -179,14 +179,15 @@ type one of the following special commands,\n
   (let
       ((query-replace-trace nil)
        (query-replace-alive t)
-       (query-replace-old-kp global-keymap)
        (query-replace-title (concat "Query replacing " query-replace-from
 				    " with " query-replace-to ": "))
+       (query-replace-old-kp global-keymap)
+       (global-keymap nil)
        (buf (current-buffer))
+       (overriding-local-keymap 'query-replace-keymap)
        (esc-means-meta nil)		; want to bind to ESC
        match)
     (add-hook 'unbound-key-hook 'query-replace-unbound-key-fun)
-    (setq global-keymap 'query-replace-keymap)
     (unwind-protect
 	(while (and query-replace-alive
 		    (setq match
@@ -198,6 +199,5 @@ type one of the following special commands,\n
 	    (message query-replace-title)
 	    (recursive-edit)))
       (with-buffer buf
-	(setq global-keymap query-replace-old-kp)
 	(remove-hook 'unbound-key-hook 'query-replace-unbound-key-fun)))
     (message "Done.")))
