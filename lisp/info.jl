@@ -30,6 +30,12 @@
 (defvar info-directory-list '("/usr/info" "/usr/local/info/" "~/info")
   "List of directories to search for info files if they can't be found as-is.")
 
+(defvar info-menu-face bold-face
+  "Face used to highlight menu items in Info mode.")
+
+(defvar info-xref-face underline-face
+  "Face used to highlight cross references in Info mode.")
+
 (defvar info-suffixes '(("" . nil)
 			(".gz" . (auto-compression-mode t))
 			(".Z" . (auto-compression-mode t)))
@@ -308,14 +314,14 @@ is split.")
   (delete-all-extents)
   (let
       ((tem (start-of-buffer)))
-    (while (re-search-forward "\\*[\t\n ]*note ([^:]+)" tem nil t)
+    (while (re-search-forward "\\*[\t\n ]*note[\t\n ]+([^:]+)" tem nil t)
       (setq tem (match-end 1))
-      (make-extent (match-start 1) tem (list 'face underline-face)))
+      (make-extent (match-start 1) tem (list 'face info-xref-face)))
     (when (re-search-forward "^\\* menu:" (start-of-buffer) nil t)
       (setq tem (match-end))
       (while (re-search-forward "^\\*[\t ]+([^:.\n]+)" tem)
 	(setq tem (match-end 1))
-	(make-extent (match-start 1) tem (list 'face underline-face))))))
+	(make-extent (match-start 1) tem (list 'face info-menu-face))))))
 
 ;; Return a list of all node names matching START in the current tag table
 (defun info-list-nodes (start)
