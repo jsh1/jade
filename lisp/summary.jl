@@ -202,8 +202,7 @@ items to be displayed and manipulated."
   "Highlight the item at position INDEX."
   (let*
       ((start (pos 0 (+ (pos-line summary-first-line) index)))
-       (end (pos (max (car (view-dimensions))
-		      (pos-col (char-to-glyph-pos (end-of-line start))))
+       (end (pos (max (car (view-dimensions)) (line-length start))
 		 (pos-line start))))
     (mark-block start end)))
 
