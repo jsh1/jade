@@ -259,6 +259,8 @@ top:
 	    frag->car |= EXTFF_OPEN_END;
 
 	    frag->frag_pred = e->frag_pred;
+	    if(e->frag_pred != 0)
+		e->frag_pred->frag_next = frag;
 	    frag->frag_next = e;
 	    e->frag_pred = frag;
 
@@ -287,6 +289,8 @@ top:
 		frag->car |= EXTFF_OPEN_START;
 
 		frag->frag_next = e->frag_next;
+		if(e->frag_next != 0)
+		    e->frag_next->frag_pred = frag;
 		frag->frag_pred = e;
 		e->frag_next = frag;
 
