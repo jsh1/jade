@@ -185,13 +185,15 @@ argument."
 it so that the buffer just fits the view."
   (interactive)
   (if (<= (window-view-count) 2)
-      (error "Can't resize of a single view")
-    (let
-	((view-rows (cdr (view-dimensions)))
-	 (buffer-rows (buffer-length)))
-      (when (> view-rows buffer-rows)
-	(goto (start-of-buffer))
-	(enlarge-view (- buffer-rows view-rows))))))
+      (error "Can't resize a single view")
+    (when (equal (view-origin) (start-of-buffer))
+      (let
+	  ((view-rows (cdr (view-dimensions)))
+	   (end (char-to-display-pos (end-of-buffer))))
+	(when (and end (>= view-rows (pos-line end)))
+	  (goto (start-of-buffer))
+	  ;; add one since positions count from zero
+	  (enlarge-view (- (pos-line end) view-rows -1)))))))
 
 
 ;; Misc
