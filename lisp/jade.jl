@@ -25,6 +25,12 @@
 (setq *user-structure* 'jade)
 (setq *root-structure* 'jade)
 
+(require 'rep.regexp)
+(require 'rep.system)
+(require 'rep.io.streams)
+(require 'rep.io.files)
+(require 'rep.io.processes)
+
 ;; Load standard libraries
 (load "loadkeys")
 (load "popup-menus")
