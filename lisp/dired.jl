@@ -196,7 +196,8 @@ the location is the name of a file to copy to."
   (let
       ((files (summary-command-items)))
     (if (= (length files) 1)
-	(copy-file (car files) (prompt-for-file "Destination file:" nil))
+	(copy-file (car files) (prompt-for-file "Destination file:"
+						nil (car files) (car files)))
       (let
 	  ((dest (prompt-for-directory "Destination directory:" t)))
 	(mapc #'(lambda (f)
@@ -211,9 +212,10 @@ the new name for the file."
   (let
       ((files (summary-command-items)))
     (if (= (length files) 1)
-	(rename-file (car files) (prompt-for-file "New name of file:" nil))
+	(rename-file (car files) (prompt-for-file "New name of file:"
+						  nil nil (car files)))
       (let
-	  ((dest (prompt-for-directory "Destination directory:" nil)))
+	  ((dest (prompt-for-directory "Destination directory:" t)))
 	(mapc #'(lambda (f)
 		  (rename-file f (expand-file-name f dest))) files)))
     (summary-update)))
