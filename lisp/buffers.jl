@@ -50,6 +50,7 @@ effect.")
 (defvar buffer-file-modtime (cons 0 0)
   "Holds the modification time of the file this buffer was loaded from")
 (make-variable-buffer-local 'buffer-file-modtime)
+(put 'buffer-file-modtime 'permanent-local t)
 
 (defvar kill-buffer-hook nil
   "Buffer-local hook called when the current buffer is killed.")
