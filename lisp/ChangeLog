@@ -1,3 +1,13 @@
+1999-12-05  John Harper  <john@dcs.warwick.ac.uk>
+
+	* mail-headers.jl (mail-insert-list): fix over-zealous filling
+	when the word wouldn't fit on _any_ line without overflowing
+
+1999-12-04  John Harper  <john@dcs.warwick.ac.uk>
+
+	* mail-headers.jl (mail-parse-atom): don't signal an error if
+	it's something unrecognisable, just return nil
+
 1999-11-29  John Harper  <john@dcs.warwick.ac.uk>
 
 	* help.jl: updated for unified namespace doc functions
