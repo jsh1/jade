@@ -49,7 +49,11 @@ u_long gtk_meta_mod;
 /* Default font name. */
 DEFSTRING(def_font_str_data, DEFAULT_FONT);
 
-DEFSYM (gtk, "gtk");
+#if rep_INTERFACE >= 10
+DEFSYM (gtk_feature, "gui.gtk.gtk");
+#else
+DEFSYM (gtk_feature, "gtk");
+#endif
 
 /* Dynamically-bound interface to rep-gtk.c */
 repv (*gtk_jade_wrap_gtkobj)(GtkObject *object);
@@ -214,18 +218,18 @@ sys_init(char *program_name)
 
     /* Loading the gtk rep library will replace the usual
        event loop with one that works with GTK. */
-    rep_INTERN(gtk);
+    rep_INTERN(gtk_feature);
 #if rep_INTERFACE >= 9
-    Frequire (Qgtk);
+    Frequire (Qgtk_feature);
 #else
     Fload (rep_string_dup ("gtk"), Qnil, Qnil, Qnil, Qnil);
 #endif
     if (rep_throw_value == 0)
     {
 	/* Find the gtkobj<->lispobj converters */
-	gtk_jade_wrap_gtkobj = rep_find_dl_symbol (Qgtk, "sgtk_wrap_gtkobj");
-	gtk_jade_get_gtkobj = rep_find_dl_symbol (Qgtk, "sgtk_get_gtkobj");
-	gtk_jade_callback_postfix = rep_find_dl_symbol (Qgtk, "sgtk_callback_postfix");
+	gtk_jade_wrap_gtkobj = rep_find_dl_symbol (Qgtk_feature, "sgtk_wrap_gtkobj");
+	gtk_jade_get_gtkobj = rep_find_dl_symbol (Qgtk_feature, "sgtk_get_gtkobj");
+	gtk_jade_callback_postfix = rep_find_dl_symbol (Qgtk_feature, "sgtk_callback_postfix");
 	assert (gtk_jade_wrap_gtkobj != 0
 		&& gtk_jade_get_gtkobj != 0
 		&& gtk_jade_callback_postfix != 0);
