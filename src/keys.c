@@ -244,7 +244,8 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 				else if(VINT(arg) == 1)
 				    insert_string(vw->vw_Tx, buff,
 						  len, vw->vw_CursorPos);
-				else if(len == 1 && len < sizeof(buff) - 1)
+				else if(len == 1
+					&& VINT(arg) < sizeof(buff) - 1)
 				{
 				    /* Inserting a single char, more than
 				       once, build a string of them. */
