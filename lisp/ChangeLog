@@ -1,3 +1,14 @@
+1999-12-22  John Harper  <john@dcs.warwick.ac.uk>
+
+	* mail-dir-summary.jl (list-mail-dir): fixed for reusing an
+	existing buffer
+
+	* mail-dir-summary.jl (mds-sort-predicate): try to sort
+	ignoring case when possible
+
+	* mime-encode.jl (mime-encode-insert): ensure that
+	mime-encode-message is only added to mail-send-hook once
+
 1999-12-15  John Harper  <john@dcs.warwick.ac.uk>
 
 	* html-decode.jl (html-decode-tag): recognize SGML declarations
