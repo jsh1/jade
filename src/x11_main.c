@@ -31,7 +31,6 @@
 _PR void sys_usage(void);
 _PR int sys_init(int, char **);
 static void x11_handle_input(int fd);
-_PR void sys_flush_output(void);
 
 /* The window in which the current event occurred. */
 _PR WIN *x11_current_event_win;
@@ -309,38 +308,34 @@ x11_handle_input(int fd)
 		break;
 
 	    case Expose:
+	    case GraphicsExpose:
 		if(ev_win->w_Flags & WINFF_SLEEPING)
 		{
 		    /* Guess that the wm uniconified us? */
 		    ev_win->w_Flags &= ~WINFF_SLEEPING;
 		}
-		if(ev_win->w_Flags & WINFF_FORCE_REFRESH)
+		if(!(ev_win->w_Flags & WINFF_FORCE_REFRESH))
 		{
-		    /* Wait until the last Expose then do a total redraw.  */
-		    if(xev.xexpose.count == 0)
-			refresh_window(ev_win);
+		    int x = (xev.xexpose.x - ev_win->w_LeftPix) / ev_win->w_FontX;
+		    int y = (xev.xexpose.y - ev_win->w_TopPix) / ev_win->w_FontY;
+		    /* Why +2? It seems to be necessary.. */
+		    int width = (xev.xexpose.width / ev_win->w_FontX) + 2;
+		    int height = (xev.xexpose.height / ev_win->w_FontY) + 2;
+		    garbage_glyphs(ev_win, x, y, width, height);
 		}
-		else
-		    x11_handle_expose(ev_win, &xev.xexpose);
-		if(ev_win == oldwin)
-		    cursor(ev_win->w_CurrVW, CURS_ON);
 		break;
 
 	    case ConfigureNotify:
 		if((ev_win->w_WindowSys.ws_Width != xev.xconfigure.width)
 		   || (ev_win->w_WindowSys.ws_Height != xev.xconfigure.height))
 		{
-		    if(ev_win == oldwin)
-			cursor(ev_win->w_CurrVW, CURS_OFF);
 		    if((ev_win->w_WindowSys.ws_Height != 0)
 		       && (ev_win->w_WindowSys.ws_Height < xev.xconfigure.height))
 			ev_win->w_WindowSys.ws_Width = xev.xconfigure.width;
 		    ev_win->w_WindowSys.ws_Height = xev.xconfigure.height;
 		    x11_update_dimensions(ev_win, xev.xconfigure.width,
 					  xev.xconfigure.height);
-		    update_views_dimensions(ev_win);
-		    if(ev_win == oldwin)
-			cursor(ev_win->w_CurrVW, CURS_ON);
+		    update_window_dimensions(ev_win);
 		}
 		break;
 
@@ -350,27 +345,14 @@ x11_handle_input(int fd)
 		{
 		    curr_win = ev_win;
 		    if(ev_win != oldwin)
-		    {
 			curr_vw = curr_win->w_CurrVW;
-			/* Window switch */
-			cursor(oldwin->w_CurrVW, CURS_OFF);
-		    }
-		    else
-			cursor(ev_win->w_CurrVW, CURS_OFF);
 		    cmd_call_hook(sym_window_closed_hook, sym_nil, sym_nil);
-		    if(curr_win)
-		    {
-			refresh_world();
-			cursor(curr_vw, CURS_ON);
-		    }
 		}
 		break;
 
 	    case FocusIn:
 		if(ev_win != oldwin)
 		{
-		    cursor(oldwin->w_CurrVW, CURS_OFF);
-		    cursor(ev_win->w_CurrVW, CURS_ON);
 		    curr_win = ev_win;
 		    curr_vw = curr_win->w_CurrVW;
 		}
@@ -427,12 +409,9 @@ x11_handle_input(int fd)
 		{
 		    curr_win = ev_win;
 		    if(oldwin != ev_win)
-		    {
 			curr_vw = curr_win->w_CurrVW;
-			cursor(oldwin->w_CurrVW, CURS_OFF);
-		    }
 		    reset_message(ev_win);
-		    usekey(&xev, code, mods, (ev_win == oldwin));
+		    eval_input_event(&xev, code, mods);
 		}
 		x11_current_event_win = NULL;
 		break;
@@ -450,10 +429,4 @@ x11_handle_input(int fd)
 	    undo_end_of_command();
 	}
     }
-}
-
-void
-sys_flush_output(void)
-{
-    XFlush(x11_display);
 }
