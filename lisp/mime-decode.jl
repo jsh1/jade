@@ -68,7 +68,7 @@ functions that operate as filters on their argument streams.")
   (set-face-attribute mime-highlight-face 'bold t)
   (set-face-attribute mime-highlight-face 'foreground "darkblue"))
 
-(defvar mmencode-program "mmencode"
+(defvar mmencode-program "mimencode"
   "AT&T mmencode program for MIME content encodings. Set to nil to handle
 in software always.")
 
