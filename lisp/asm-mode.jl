@@ -43,7 +43,7 @@ Major mode for editing generic assembler source. Special commands are:\n
   (setq mode-name "Assembler"
 	major-mode 'asm-mode
 	major-mode-kill 'asm-mode-kill
-	mode-comment-fun 'asm-insert-comment
+	mode-comment-header asm-comment
 	keymap-path (cons 'asm-keymap keymap-path))
   (call-hook 'asm-mode-hook))
 
@@ -56,6 +56,7 @@ it inserts."
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
+  (require 'c-mode)
   (setq mode-name "Assembler-CPP"
 	major-mode 'asm-cpp-mode
 	major-mode-kill 'asm-mode-kill
@@ -81,8 +82,3 @@ it inserts."
   (interactive)
   (set-indent-pos (pos 0 nil))
   (insert (if asm-indent ":\t" ":")))
-
-(defun asm-insert-comment ()
-  (interactive)
-  (find-comment-pos)
-  (insert asm-comment))

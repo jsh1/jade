@@ -39,7 +39,7 @@ Major mode for editing Lisp source. Local bindings in this mode are:\n
   (setq mode-name "Lisp"
 	major-mode 'lisp-mode
 	major-mode-kill 'kill-all-local-variables
-	mode-comment-fun 'lisp-insert-comment
+	mode-comment-header ";"
 	mode-indent-line 'lisp-indent-line
 	mode-forward-exp 'lisp-forward-sexp
 	mode-backward-exp 'lisp-backward-sexp
@@ -79,11 +79,6 @@ in the status line."
   (unless pos
     (setq pos (cursor-pos)))
   (set-indent-pos (lisp-indent-pos pos)))
-
-(defun lisp-insert-comment ()
-  (interactive)
-  (find-comment-pos)
-  (insert ";"))
 
 
 ;; Expressions
