@@ -54,8 +54,7 @@ the debugger are:\n
 ;; Form stopped on
 (defvar debug-obj nil)
 
-;;;###autoload
-(defun debug-entry (debug-obj debug-depth)
+(defun debug-entry-fun (debug-obj debug-depth)
   (with-buffer debug-buffer
     (goto (start-of-line (end-of-buffer)))
     (let
@@ -65,13 +64,12 @@ the debugger are:\n
     (catch 'debug
       (recursive-edit))))
 
-(defun debug-exit (debug-val debug-depth)
+(defun debug-exit-fun (debug-val debug-depth)
   (with-buffer debug-buffer
     (goto (start-of-line (end-of-buffer)))
     (format debug-buffer "%s=> %S\n" (make-string (* 2 debug-depth)) debug-val)))
 
-;;;###autoload
-(defun debug-error-entry (error-list)
+(defun debug-error-entry-fun (error-list)
   (with-buffer debug-buffer
     (goto (start-of-line (end-of-buffer)))
     (format debug-buffer "*** Error: %s: %S\n"
@@ -119,3 +117,12 @@ the debugger are:\n
     (backtrace debug-buffer)
     (delete-area old-pos (forward-line (1+ depth) old-pos))
     (split-line)))
+
+;; initialization
+
+(setq debug-entry debug-entry-fun)
+(setq debug-exit debug-exit-fun)
+(setq debug-error-entry debug-error-entry-fun)
+
+;;;###autoload (setq debug-entry (make-autoload 'debug-entry "debug"))
+;;;###autoload (setq debug-error-entry (make-autoload 'debug-error-entry "debug"))
