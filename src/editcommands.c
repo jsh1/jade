@@ -176,19 +176,16 @@ block-toggle
     {
 	case 0:
 	    vw->vw_BlockStatus = -1;
-	    set_block_refresh(vw);
 	    break;
 	case 1:
 	    vw->vw_BlockE = vw->vw_CursorPos;
 	    vw->vw_BlockStatus = 0;
 	    order_block(vw);
-	    set_block_refresh(vw);
 	    break;
 	case 2:
 	    vw->vw_BlockS = vw->vw_CursorPos;
 	    vw->vw_BlockStatus = 0;
 	    order_block(vw);
-	    set_block_refresh(vw);
 	    break;
 	case -1:
 	    vw->vw_BlockS = vw->vw_CursorPos;
@@ -220,16 +217,13 @@ it is used as the new position of the start of the block.
 	{
 	    GC_root gc_res;
 	    case 0:
-		set_block_refresh(vw);
 		vw->vw_BlockS = pos;
 		order_block(vw);
-		set_block_refresh(vw);
 		break;
 	    case 2:
 		vw->vw_BlockS = pos;
 		vw->vw_BlockStatus = 0;
 		order_block(vw);
-		set_block_refresh(vw);
 		PUSHGC(gc_res, res);
 		cmd_call_hook(sym_block_status_hook, sym_nil, sym_nil);
 		POPGC;
@@ -266,16 +260,13 @@ it is used as the new position of the end of the block.
 	{
 	    GC_root gc_res;
 	    case 0:
-		set_block_refresh(vw);
 		vw->vw_BlockE = pos;
 		order_block(vw);
-		set_block_refresh(vw);
 		break;
 	    case 1:
 		vw->vw_BlockE = pos;
 		vw->vw_BlockStatus = 0;
 		order_block(vw);
-		set_block_refresh(vw);
 		PUSHGC(gc_res, res);
 		cmd_call_hook(sym_block_status_hook, sym_nil, sym_nil);
 		POPGC;
@@ -302,7 +293,6 @@ Unmarks the block.
     VW *vw = curr_vw;
     if(vw->vw_BlockStatus == 0)
     {
-	set_block_refresh(vw);
 	vw->vw_BlockStatus = -1;
 	cmd_call_hook(sym_block_status_hook, sym_nil, sym_nil);
     }
