@@ -920,7 +920,7 @@ current view."
   (unless mouse-dragging
     (setq mouse-dragging 'words)))
 
-(defun mouse-select-drag ()
+(defun mouse-select-drag (drag-rectangle)
   (if (eq mouse-dragging 'view)
       ;; Resize the current view
       (let
@@ -938,6 +938,7 @@ current view."
 	    (block-kill)
 	  (setq mouse-dragging (or mouse-dragging t))
 	  (block-kill)
+	  (set-rect-blocks nil drag-rectangle)
 	  (block-start (if (eq mouse-dragging 'words)
 			   (if (>= pos mouse-select-pos)
 			       (or (word-start mouse-select-pos)
@@ -950,13 +951,11 @@ current view."
 
 (defun mouse-select-drag-block ()
   (interactive)
-  (set-rect-blocks nil nil)
-  (mouse-select-drag))
+  (mouse-select-drag nil))
 
 (defun mouse-select-drag-rect ()
   (interactive)
-  (set-rect-blocks nil t)
-  (mouse-select-drag))
+  (mouse-select-drag t))
 
 (defun yank-to-mouse ()
   "Yanks to the position under the mouse cursor. The cursor is left at the
