@@ -42,6 +42,7 @@ DEFSYM(block_face, "block-face");
 DEFSYM(modeline_face, "modeline-face");
 DEFSYM(highlight_face, "highlight-face");
 DEFSYM(face, "face");
+DEFSYM(mouse_face, "mouse-face");
 
 repv mouse_cursor_face;
 
@@ -321,6 +322,12 @@ merge_faces(WIN *w, Lisp_Extent *e, int in_block, int on_cursor)
 	repv face = Fextent_get(rep_VAL(x), Qface);
 	if(face != rep_NULL && FACEP(face))
 	    union_face(VFACE(face));
+	if (x == w->w_MouseExtent)
+	{
+	    face = Fextent_get (rep_VAL(x), Qmouse_face);
+	    if (face && FACEP (face))
+		union_face (VFACE (face));
+	}
     }
 
     /* Merge in the default-face properties */
@@ -492,6 +499,7 @@ faces_init(void)
     rep_INTERN(modeline_face);
     rep_INTERN(highlight_face);
     rep_INTERN(face);
+    rep_INTERN(mouse_face);
 
     fg = Fget_color(rep_string_dup(default_fg_color));
     bg = Fget_color(rep_string_dup(default_bg_color));
