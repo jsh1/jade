@@ -891,6 +891,17 @@ key, the car the order to sort in, a positive or negative integer.")
 		     (list (rm-get-folder-field folder rm-folder-current-msg)))
 		(rm-get-folder-field folder rm-folder-after-list))))
 
+;; For the (ADDRESS . NAME-OR-NIL] representation, return the NAME. If
+;; no NAME, look in the mail-directory if available
+(defun rm-get-address-name (addr)
+  (or (cdr addr)
+      (and (featurep 'mail-dir)
+	   ;; get-mail-name-.. signals an error if it can't find the address
+	   (condition-case nil
+	       (get-mail-name-from-address (car addr))
+	     (error)))
+      (car addr)))
+
 
 ;; Displaying messages
 
@@ -1310,9 +1321,7 @@ key, the car the order to sort in, a positive or negative integer.")
 	  (cons ?f #'(lambda (m)
 		       (car (car (rm-get-senders m)))))
 	  (cons ?F #'(lambda (m)
-		       (let
-			   ((from (car (rm-get-senders m))))
-			 (or (cdr from) (car from)))))
+		       (rm-get-address-name (car (rm-get-senders m)))))
 	  (cons ?M #'(lambda (m)
 		       (let
 			   ((date (rm-get-date-vector m)))
@@ -1355,9 +1364,7 @@ key, the car the order to sort in, a positive or negative integer.")
 				   (aref date mail-date-minute)
 				   (aref date mail-date-second))))))
 	  (cons ?r #'(lambda (m)
-		       (let
-			   ((to (car (rm-get-recipients m))))
-			 (or (cdr to) (car to)))))
+		       (rm-get-address-name (car (rm-get-recipients m)))))
 	  (cons ?Y #'(lambda (m)
 		       (let
 			   ((date (rm-get-date-vector m)))
