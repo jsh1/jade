@@ -118,17 +118,32 @@ w   `where-is'
 	that invoke may be used to invoke it.")
    (help)))
 
-(defun apropos-function (regexp)
-  (interactive "sRegular expression:")
+(defun apropos-output (symbols use-function)
+  (let
+      ((separator (make-string 72 ?-)))
+    (mapc #'(lambda (sym)
+	      (write standard-output separator)
+	      (if use-function
+		  (describe-function-1 sym)
+		(describe-variable-1 sym))
+	      (format standard-output "%s\n\n"
+		      (or (documentation sym (not use-function))
+			  "Undocumented"))) symbols)))
+
+(defun apropos-function (regexp &optional all-functions)
+  (interactive "sRegular expression:\nP")
   (help-wrapper
-   (format standard-output "Apropos for expression %S:\n" regexp)
-   (print (apropos regexp 'fboundp))))
+   (format standard-output "Apropos %s `%s':\n\n"
+	   (if all-functions "function" "command") regexp)
+   (apropos-output (apropos regexp (if all-functions
+				       'fboundp
+				     'commandp)) t)))
 
 (defun apropos-variable (regexp)
   (interactive "sRegular expression:")
   (help-wrapper
-   (format standard-output "Apropos for expression %S:\n" regexp)
-   (print (apropos regexp 'boundp))))
+   (format standard-output "Apropos variable %s:\n" regexp)
+   (apropos-output (apropos regexp 'boundp) nil)))
 
 (defun describe-keymap ()
   "Print the full contents of the current keymap (and the keymaps that
@@ -139,49 +154,62 @@ it leads to)."
     (help-wrapper
      (print-keymap nil buffer-in-scope))))
 
-(defun describe-function (fun &aux doc)
+(defun describe-function-1 (fun)
+  (let*
+      ((fval (symbol-function fun))
+       (type (cond
+	      ((special-form-p fval)
+	       "Special Form")
+	      ((macrop fval)
+	       "Macro")
+	      ((subrp fval)
+	       "Built-in Function")
+	      (t
+	       "Function"))))
+    ;; Check if it's been compiled.
+    (when (or (bytecodep fval)
+	      (and (consp fval) (assq 'jade-byte-code fval)))
+      (setq type (concat "Compiled " type)))
+    (format standard-output "\n%s: %s\n\n" type fun)
+    (when (fboundp fun)
+      (when (or (consp fval) (bytecodep fval))
+	;; A Lisp function or macro, print its argument spec.
+	(let
+	    ((lambda-list (if (consp fval)
+			      (nth (if (eq (car fval) 'macro) 2 1) fval)
+			    (aref fval 0))))
+	  (prin1 fun)
+	  ;; Print the arg list (one at a time)
+	  (while lambda-list
+	    (let
+		((arg-name (symbol-name (car lambda-list))))
+	      ;; Unless the argument starts with a `&' print it in capitals
+	      (unless (= (aref arg-name 0) ?&)
+		(setq arg-name (translate-string (copy-sequence arg-name)
+						 upcase-table)))
+	      (format standard-output " %s" arg-name))
+	    (setq lambda-list (cdr lambda-list)))
+	  (format standard-output "\n\n"))))))
+  
+(defun describe-function (fun)
   "Display the documentation of a function, macro or special-form."
   (interactive
    (list (prompt-for-function "Describe function:" (symbol-at-point))))
-  (setq doc (documentation fun))
-  (help-wrapper
-   (let*
-       ((fval (symbol-function fun))
-	(type (cond
-	       ((special-form-p fval)
-		"Special Form")
-	       ((macrop fval)
-		"Macro")
-	       ((subrp fval)
-		"Built-in Function")
-	       (t
-		"Function"))))
-     ;; Check if it's been compiled.
-     (when (or (bytecodep fval)
-	       (and (consp fval) (assq 'jade-byte-code fval)))
-       (setq type (concat "Compiled " type)))
-     (format standard-output "\n%s: %s\n\n" type fun)
-     (when (fboundp fun)
-       (when (or (consp fval) (bytecodep fval))
-	 ;; A Lisp function or macro, print its argument spec.
-	 (let
-	     ((lambda-list (if (consp fval)
-			       (nth (if (eq (car fval) 'macro) 2 1) fval)
-			     (aref fval 0))))
-	   (prin1 fun)
-	   ;; Print the arg list (one at a time)
-	   (while lambda-list
-	     (let
-		 ((arg-name (symbol-name (car lambda-list))))
-	       ;; Unless the argument starts with a `&' print it in capitals
-	       (unless (= (aref arg-name 0) ?&)
-		 (setq arg-name (translate-string (copy-sequence arg-name)
-						  upcase-table)))
-	       (format standard-output " %s" arg-name))
-	     (setq lambda-list (cdr lambda-list)))
-	   (insert "\n\n")))))
-   (insert (or doc "Undocumented."))
-   (insert "\n")))
+  (let
+      ((doc (documentation fun)))
+    (help-wrapper
+     (describe-function-1 fun)
+     (insert (or doc "Undocumented."))
+     (insert "\n"))))
+
+(defun describe-variable-1 (var &optional in-buffer)
+  (format standard-output
+	  "\n%s: %s\nCurrent value: %S\n\n"
+	  (if (const-variable-p var)
+	      "Constant"
+	    "Variable")
+	  (symbol-name var)
+	  (with-buffer (or in-buffer (current-buffer)) (symbol-value var t))))
 
 (defun describe-variable (var)
   (interactive
@@ -190,14 +218,8 @@ it leads to)."
       ((doc (documentation var t))
        (old-buf (current-buffer)))
     (help-wrapper
-     (format standard-output
-	     "\n%s: %s\nCurrent value: %S\n\n%s\n"
-	     (if (const-variable-p var)
-		 "Constant"
-	       "Variable")
-	     (symbol-name var)
-	     (with-buffer old-buf (symbol-value var t))
-	     (or doc "Undocumented.")))))
+     (describe-variable-1 var old-buf)
+     (format standard-output "%s\n" (or doc "Undocumented.")))))
 
 ;;;###autoload
 (defun describe-mode ()
