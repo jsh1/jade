@@ -298,6 +298,7 @@ normal-mode, the hook after-read-file-hook is dispatched."
 			(when (or (eq enable-local-variables t)
 				  (y-or-n-p (format nil "Set %s to %s?"
 						    var value)))
+			  (make-local-variable var)
 			  (set var (read-from-string value))))))
 		  pieces)))))
     (let

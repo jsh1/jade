@@ -82,10 +82,9 @@ contain.")
 		    (c-case-indent . -5) (c-label-indent . -5)))
   "Alist of C styles.")
 
-(defvar c-style nil
+(defvar c-style 'bsd
   "C style of current buffer.")
 (make-variable-buffer-local 'c-style)
-	    
 
 
 ;; Variables
@@ -103,6 +102,13 @@ contain.")
 
 
 ;; Code
+
+(defun c-set-style (name)
+  (interactive "SStyle:")
+  (setq c-style name)
+  (let ((style (cdr (assoc c-style c-styles))))
+    (when style
+      (mapc (lambda (x) (set (car x) (cdr x))) style))))
 
 ;;;###autoload
 (defun c-mode ()
@@ -230,7 +236,7 @@ Commands defined by this mode are:\n
 	(setq exp-ind (right-char c-body-indent (indent-pos exp-pos))))
 
        ((and (/= (pos-col exp-pos) 0)
-	     (or (looking-at "(struct|union|enum)\\s" exp-pos)
+	     (or #| (looking-at "(struct|union|enum)\\s" exp-pos) |#
 		 (looking-at "(static|const)\\s.*\\s=\\s*$" exp-pos)))
 	;; Something else that causes the next statement to be
 	;; indented one level

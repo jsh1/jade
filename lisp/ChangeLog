@@ -1,3 +1,10 @@
+2004-02-21  John Harper  <jsh@unfactored.org>
+
+	* c-mode.jl (c-set-style): new function
+
+	* buffers.jl (hack-local-variables): remember to create a
+	buffer-local binding when setting -*- ... -*- variables
+
 2003-12-04  John Harper  <jsh@unfactored.org>
 
 	* completion.jl (complete-from-buffer): only allow completions
