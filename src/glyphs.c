@@ -233,11 +233,17 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		    else
 		    {
 			rect_block = TRUE;
-			block_start = MIN(VCOL(vw->vw_BlockS),
-					  VCOL(vw->vw_BlockE));
+			block_start = glyph_col(vw->vw_Tx, VCOL(vw->vw_BlockS),
+						VROW(vw->vw_BlockS));
+			block_end = glyph_col(vw->vw_Tx, VCOL(vw->vw_BlockE),
+					      VROW(vw->vw_BlockE));
+			if(block_start > block_end)
+			{
+			    long tem = block_start;
+			    block_start = block_end;
+			    block_end = tem;
+			}
 			block_start = MAX(block_start, first_col);
-			block_end = MAX(VCOL(vw->vw_BlockS),
-					VCOL(vw->vw_BlockE));
 			block_end = MIN(block_end, first_col + vw->vw_MaxX);
 		    }
 		}
