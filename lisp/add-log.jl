@@ -27,20 +27,17 @@
   (setq log-file (expand-file-name (unless log-file "")))
   (when (or (file-directory-p log-file) (equal log-file ""))
     (setq log-file (file-name-concat log-file change-log-file)))
-  (let
-      ((log-buffer (open-file log-file)))
-    (when log-buffer
-      (goto-buffer log-buffer)
-      (goto (start-of-buffer))
-      (unless (log-in-same-day-p (copy-area (start-of-buffer)
-					    (end-of-line (start-of-buffer))))
-	(insert (concat (current-time-string) "  "
-			(user-full-name) "  <" user-mail-address ">\n\n")))
-      (goto (pos 0 1))
-      (insert "\n\t* \n")
-      (goto (end-of-line (pos 0 2)))
-      (unless major-mode
-	(indented-text-mode)))))
+  (when (find-file log-file)
+    (goto (start-of-buffer))
+    (unless (log-in-same-day-p (copy-area (start-of-buffer)
+					  (end-of-line (start-of-buffer))))
+      (insert (concat (current-time-string) "  "
+		      (user-full-name) "  <" user-mail-address ">\n\n")))
+    (goto (pos 0 1))
+    (insert "\n\t* \n")
+    (goto (end-of-line (pos 0 2)))
+    (unless major-mode
+      (indented-text-mode))))
 
 (defun log-in-same-day-p (old-header)
   (string-match (concat (quote-regexp (substring (current-time-string) 0 11))
