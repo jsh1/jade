@@ -1050,7 +1050,9 @@ Set the local value of the variable named SYMBOL in EXTENT to repv.
     }
     vars = Fcons(Fcons(symbol, val), vars);
     set_extent_locals(VEXTENT(extent), vars);
-    rep_SYM(symbol)->car |= rep_SF_LOCAL | rep_SF_SPECIAL;
+    if (!(rep_SYM(symbol)->car & rep_SF_SPECIAL))
+	Fmake_variable_special (symbol);
+    rep_SYM(symbol)->car |= rep_SF_LOCAL;
     return val;
 }
 
@@ -1117,7 +1119,9 @@ Returns SYMBOL.
     repv slot;
     TX *tx = curr_vw->vw_Tx;
     rep_DECLARE1(sym, rep_SYMBOLP);
-    rep_SYM(sym)->car |= rep_SF_LOCAL | rep_SF_SPECIAL;
+    if (!(rep_SYM(sym)->car & rep_SF_SPECIAL))
+	Fmake_variable_special (sym);
+    rep_SYM(sym)->car |= rep_SF_LOCAL;
     slot = Fassq(sym, tx->tx_GlobalExtent->locals);
     if(!slot || !rep_CONSP(slot))
     {
@@ -1140,7 +1144,9 @@ Returns SYMBOL.
 ::end:: */
 {
     rep_DECLARE1(sym, rep_SYMBOLP);
-    rep_SYM(sym)->car |= (rep_SF_LOCAL | rep_SF_SET_LOCAL | rep_SF_SPECIAL);
+    if (!(rep_SYM(sym)->car & rep_SF_SPECIAL))
+	Fmake_variable_special (sym);
+    rep_SYM(sym)->car |= (rep_SF_LOCAL | rep_SF_SET_LOCAL);
     return sym;
 }
 
