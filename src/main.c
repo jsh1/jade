@@ -168,6 +168,18 @@ usage (void)
           , stderr);
 }
 
+static repv
+inner_main (repv arg)
+{
+    repv res = rep_load_environment (rep_string_dup ("jade"));
+    if (res != rep_NULL)
+    {
+	if(Fsymbol_value (Qbatch_mode, Qt) == Qnil)
+	    res = Frecursive_edit ();
+    }
+    return res;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -184,17 +196,9 @@ main(int argc, char **argv)
 
     if (sys_init(prog_name))
     {
-	repv res;
-
 	jade_symbols();
 
-	res = rep_load_environment (rep_string_dup ("jade"));
-	if (res != rep_NULL)
-	{
-	    rc = 0;
-	    if(Fsymbol_value (Qbatch_mode, Qt) == Qnil)
-		res = Frecursive_edit ();
-	}
+	rep_call_with_barrier (inner_main, Qnil, rep_TRUE, 0, 0, 0);
 
 	rc = rep_top_level_exit ();
 
