@@ -25,12 +25,13 @@
 ;; Called from the rm-display-message-hook
 (defun rm-mime-display-msg-function (msg folder)
   (when (rm-get-msg-header msg "MIME-Version")
-    ;; A MIME message, look for content-type and content-transfer-encoding
-    ;; headers
+    ;; A MIME message, look for content-type, content-transfer-encoding,
+    ;; and content-disposition headers
     (let
 	((content-type (rm-get-msg-header msg "Content-Type"))
 	 (content-xfer-enc (rm-get-msg-header
-			    msg "Content-Transfer-Encoding")))
+			    msg "Content-Transfer-Encoding"))
+	 (content-disp (rm-get-msg-header msg "Content-Disposition")))
       (require 'mime-decode)
       (setq content-type (if content-type
 			     (mime-decode-content-type content-type)
@@ -38,6 +39,8 @@
       (setq content-xfer-enc (and content-xfer-enc
 				  (mime-decode-content-xfer-enc
 				   content-xfer-enc)))
+      (setq content-disp (and content-disp
+			      (mime-decode-content-disp content-disp)))
       (unless (and (null (assq content-xfer-enc mime-xfer-encodings-alist))
 		   (eq (car content-type) 'text)
 		   (eq (nth 1 content-type) 'plain))
@@ -67,7 +70,7 @@
 						   (end-of-buffer))))
 		    (make-extent end tem (list 'face mail-highlight-face)))))
 	      (mime-decode (mark-file (rm-get-msg-field msg rm-msg-mark))
-			   content-type content-xfer-enc)
+			   content-type content-xfer-enc content-disp)
 	      (goto top)
 	      (center-display nil -1))))))))
 
