@@ -82,29 +82,32 @@ the directory named as its single argument.")
     (error "%S is not a directory" directory))
   (let
       ((buffer (or (get-file-buffer directory)
-		   (open-buffer (file-name-nondirectory directory) t)))
-       (inhibit-read-only t))
+		   (open-buffer (file-name-nondirectory directory) t))))
     (goto-buffer buffer)
     (when directory-function
       (setq dired-directory-files directory-function))
-    (if (eq major-mode 'dired-mode)
-	(summary-update)
-      (format buffer "[Dired] %s:\n\n" directory)
-      (set-buffer-file-name buffer directory)
-      (setq default-directory (file-name-as-directory directory))
-      (summary-mode "Dired" dired-functions dired-keymap)
-      (setq summary-assoc-item-function 'assoc
-	    major-mode 'dired-mode))))
+    (set-buffer-file-name buffer directory)
+    (setq default-directory (file-name-as-directory directory))
+    (dired-mode)))
 
+;; Put the current buffer into Dired mode, its buffer-file-name should
+;; point to the directory to read
+;;;###autoload
 (defun dired-mode ()
-  "Dired mode:
-
+  "Dired mode:\n
 Major mode for viewing and manipulating directories in the local filing
 system. The standard summary interface (see the function `summary-mode')
 is used with commands specific to Dired added. The full list of local
-bindings is:
-
-\\{dired-keymap}")
+bindings is:\n
+\\{dired-keymap}"
+  (let
+      ((inhibit-read-only t))
+    (if (eq major-mode 'dired-mode)
+	(summary-update)
+      (format buffer "[Dired] %s:\n\n" (buffer-file-name))
+      (summary-mode "Dired" dired-functions dired-keymap)
+      (setq summary-assoc-item-function 'assoc)
+      (setq major-mode 'dired-mode))))
 
 (defun dired-list ()
   (sort (funcall dired-directory-files default-directory)))
