@@ -33,7 +33,7 @@
 # define XK_BACKSPACE XK_BackSpace
 #endif
 
-_PR void translate_event(u_long *, u_long *, XEvent *);
+_PR void translate_event(u_long *, u_long *, XEvent *, struct x11_display *);
 _PR int cook_key(void *, u_char *, int);
 _PR bool lookup_event(u_long *, u_long *, u_char *);
 _PR bool lookup_event_name(u_char *, u_long, u_long);
@@ -79,9 +79,9 @@ translate_mods(u_long mods, unsigned int state, bool subst_meta)
 }
 
 void
-translate_event(u_long *code, u_long *mods, XEvent *xev)
+translate_event(u_long *code, u_long *mods,
+		XEvent *xev, struct x11_display *dpy)
 {
-    static Time LastClick;
     switch(xev->type)
     {
     case KeyPress:
@@ -104,13 +104,16 @@ translate_event(u_long *code, u_long *mods, XEvent *xev)
 	break;
 
     case ButtonPress:
-	if(xev->xbutton.time < (LastClick + DOUBLE_CLICK_TIME))
+	if(xev->xbutton.button == dpy->last_click_button
+	   && xev->xbutton.time < (dpy->last_click + DOUBLE_CLICK_TIME))
+	{
 	    *code = EV_CODE_MOUSE_CLICK2;
+	}
 	else
 	    *code = EV_CODE_MOUSE_CLICK1;
-	LastClick = xev->xbutton.time;
+	dpy->last_click = xev->xbutton.time;
+	dpy->last_click_button = xev->xbutton.button;
 	goto button;
-	break;
 
     case ButtonRelease:
 	*code = EV_CODE_MOUSE_UP;
