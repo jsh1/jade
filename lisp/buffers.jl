@@ -99,7 +99,7 @@ or a string naming an existing buffer. The selected buffer is moved to
 the head of the buffer list. If BUFFER is a string and it doesn't name
 an existing buffer a new one will be created with that name. When VIEW
 is non-nil it defines the view to display the buffer in."
-  (interactive "BSwitch to buffer")
+  (interactive "BSwitch to buffer:")
   (unless view
     (setq view (current-view)))
   (with-view view
@@ -492,44 +492,6 @@ will have to agree to this)."
 	(message (concat "Using " recover-name " as "
 			 (buffer-file-name buffer)))))
     buffer))
-
-
-;; Marks
-
-(defun goto-mark (mark)
-  "Switches (if necessary) to the buffer containing MARK at the position
-of the mark. If the file containing MARK is not in memory then we
-attempt to load it by calling find-file."
-  (when (markp mark)
-    (let
-	((file (mark-file mark))
-	 (pos (mark-pos mark)))
-      (set-auto-mark)
-      (if (stringp file)
-	  (unless (find-file file)
-	     (error "Can't load file for mark: %S" mark))
-	(goto-buffer file))
-      (goto pos))))
-
-(defun set-auto-mark ()
-  "Sets the mark `auto-mark' to the current position (buffer & cursor-pos)."
-  (interactive)
-  (set-mark auto-mark (cursor-pos) (current-buffer))
-  (message "Set auto-mark."))
-
-(defun swap-cursor-and-auto-mark ()
-  "Sets the `auto-mark' to the current position and then sets the current
-position (buffer and cursor-pos) to the old value of `auto-mark'."
-  (interactive)
-  (let
-      ((a-m-file (mark-file auto-mark))
-       (a-m-pos (mark-pos auto-mark)))
-    (set-auto-mark)
-    (if (stringp a-m-file)
-	(unless (find-file a-m-file)
-	  (error "Can't load file for mark: %S" mark))
-      (goto-buffer a-m-file))
-    (goto a-m-pos)))
 
 
 ;; Misc
