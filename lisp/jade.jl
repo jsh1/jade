@@ -83,9 +83,7 @@
       ((equal "-l" arg)
        (setq arg (car command-line-args))
        (setq command-line-args (cdr command-line-args))
-       (if (file-exists-p arg)
-	   (load arg nil t t)
-	 (load arg)))
+       (load arg))
       ((equal "-q" arg)
        (throw 'quit 0))
       (t
