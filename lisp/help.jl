@@ -24,13 +24,11 @@
   "The name of the file of documentation strings from the pre-compiled Lisp
 libraries.")
 
-(defvar help-buffer (open-buffer "*Help*"))
-
 (defvar help-keymap
   (bind-keys (make-sparse-keymap)
     "SPC" 'next-screen
     "BS" 'prev-screen
-    "q" 'bury-buffer))
+    "q" 'kill-current-buffer))
 
 (defvar help-prompt-keymap
   (bind-keys (make-sparse-keymap)
@@ -49,11 +47,6 @@ libraries.")
     "SPC" '(progn (next-screen) (help))
     "BS" '(progn (prev-screen) (help))))
 
-(with-buffer help-buffer
-  (setq keymap-path '(help-keymap global-keymap)
-	mode-name "Help"
-	buffer-record-undo nil))
-
 ;;;###autoload
 (defun help ()
   "Entrance to the online-help system."
@@ -61,11 +54,39 @@ libraries.")
   (message "Type: a b f h i k m v -- h for more help")
   (next-keymap-path '(help-prompt-keymap)))
 
+(defun help-setup ()
+  "Help mode:\n
+Major mode for displaying online help. Local bindings are:\n
+\{help-keymap}"
+  (let
+      ((buffer (open-buffer "*Help*")))
+    (with-buffer buffer
+      (unless (eq major-mode 'help-setup)
+	(setq keymap-path '(help-keymap global-keymap)
+	      mode-name "Help"
+	      major-mode 'help-setup
+	      buffer-record-undo nil)
+	(set-buffer-read-only nil t)))
+    buffer))
+
+;; Setup the help-buffer for insertion of the help text
+;; standard-output is bound to the correct output stream
+(defmacro help-wrapper (&rest forms)
+  `(with-view (other-view)
+     (goto-buffer (help-setup))
+     (clear-buffer)
+     (let
+	 ((standard-output (current-buffer))
+	  (inhibit-read-only t))
+       (progn ,@forms)
+       (goto (start-of-buffer))
+       (shrink-view-if-larger-than-buffer))))
+  
 (defun help-help ()
   "Displays some text describing the options in the help system."
   (interactive)
-  (clear-buffer help-buffer)
-  (insert
+  (help-wrapper
+   (insert
     "\nHelp mode -- Type one of the following:\n
 a   `apropos-function'
 	Search for functions which match a regular expression.
@@ -94,41 +115,29 @@ v   `describe-variable'
 
 w   `where-is'
 	Prompt for the name of a command, then display all key bindings
-	that invoke may be used to invoke it."
-    (start-of-buffer) help-buffer)
-    (goto-buffer help-buffer)
-    (goto (start-of-buffer))
-    (help))
-
-;; Setup the help-buffer for insertion of the help text
-(defmacro help-wrapper (&rest forms)
-  (list 'with-view '(other-view)
-	'(goto-buffer help-buffer)
-	'(clear-buffer)
-	(cons 'progn forms)
-	'(goto (start-of-buffer))
-	'(shrink-view-if-larger-than-buffer)))
+	that invoke may be used to invoke it.")
+   (help)))
 
 (defun apropos-function (regexp)
   (interactive "sRegular expression:")
   (help-wrapper
-   (format help-buffer "Apropos for expression %S:\n" regexp)
-   (print (apropos regexp 'fboundp) help-buffer)))
+   (format standard-output "Apropos for expression %S:\n" regexp)
+   (print (apropos regexp 'fboundp))))
 
 (defun apropos-variable (regexp)
   (interactive "sRegular expression:")
   (help-wrapper
-   (format help-buffer "Apropos for expression %S:\n" regexp)
-   (print (apropos regexp 'boundp) help-buffer)))
+   (format standard-output "Apropos for expression %S:\n" regexp)
+   (print (apropos regexp 'boundp))))
 
 (defun describe-keymap ()
   "Print the full contents of the current keymap (and the keymaps that
 it leads to)."
   (interactive)
   (let
-      ((old-buf (current-buffer)))
+      ((buffer-in-scope (current-buffer)))
     (help-wrapper
-     (print-keymap nil old-buf))))
+     (print-keymap nil buffer-in-scope))))
 
 (defun describe-function (fun &aux doc)
   "Display the documentation of a function, macro or special-form."
@@ -151,7 +160,7 @@ it leads to)."
      (when (or (bytecodep fval)
 	       (and (consp fval) (assq 'jade-byte-code fval)))
        (setq type (concat "Compiled " type)))
-     (format help-buffer "\n%s: %s\n\n" type fun)
+     (format standard-output "\n%s: %s\n\n" type fun)
      (when (fboundp fun)
        (when (or (consp fval) (bytecodep fval))
 	 ;; A Lisp function or macro, print its argument spec.
@@ -159,7 +168,7 @@ it leads to)."
 	     ((lambda-list (if (consp fval)
 			       (nth (if (eq (car fval) 'macro) 2 1) fval)
 			     (aref fval 0))))
-	   (prin1 fun help-buffer)
+	   (prin1 fun)
 	   ;; Print the arg list (one at a time)
 	   (while lambda-list
 	     (let
@@ -168,7 +177,7 @@ it leads to)."
 	       (unless (= (aref arg-name 0) ?&)
 		 (setq arg-name (translate-string (copy-sequence arg-name)
 						  upcase-table)))
-	       (format help-buffer " %s" arg-name))
+	       (format standard-output " %s" arg-name))
 	     (setq lambda-list (cdr lambda-list)))
 	   (insert "\n\n")))))
    (insert (or doc "Undocumented."))
@@ -181,7 +190,7 @@ it leads to)."
       ((doc (documentation var t))
        (old-buf (current-buffer)))
     (help-wrapper
-     (format help-buffer
+     (format standard-output
 	     "\n%s: %s\nCurrent value: %S\n\n%s\n"
 	     (if (const-variable-p var)
 		 "Constant"
@@ -199,7 +208,7 @@ it leads to)."
        (doc (substitute-command-keys (documentation mode))))
     (help-wrapper
      (when (stringp doc)
-       (format help-buffer "\n%s\n" doc)))))
+       (format standard-output "\n%s\n" doc)))))
 
 ;;;###autoload
 (defun substitute-command-keys (string)
