@@ -212,7 +212,9 @@
   "#"		'server-close-file
   "["		'backward-page
   "]"		'forward-page
-  "|"		'shell-command-on-buffer)
+  "|"		'shell-command-on-buffer
+  "^"		'enlarge-view
+  "-"		'shrink-view-if-larger-than-buffer)
 
 (bind-keys ctrl-x-n-keymap
   "p"		'restrict-to-page
