@@ -77,10 +77,10 @@ when set to the symbol `invalid'.")
 (defvar rm-keymap (make-keylist)
   "Keymap for reading mail")
 (bind-keys rm-keymap
-  "n" 'rm-next-message
-  "p" 'rm-previous-message
-  "N" '(rm-next-message (prefix-numeric-argument current-prefix-arg) t)
-  "P" '(rm-previous-message (prefix-numeric-argument current-prefix-arg) t)
+  "n" 'rm-next-undeleted-message
+  "p" 'rm-previous-undeleted-message
+  "N" 'rm-next-message
+  "P" 'rm-previous-message
   "t" 'rm-toggle-all-headers
   "SPC" 'rm-next-page
   "BS" 'rm-previous-page
@@ -100,7 +100,8 @@ when set to the symbol `invalid'.")
   "f" 'rm-followup
   "F" '(rm-followup t)
   "z" 'rm-forward
-  "*" 'rm-burst-message)
+  "*" 'rm-burst-message
+  "s" 'rm-output)
   
 (defvar rm-last-folder mail-folder-dir
   "File name of the most recently opened folder. Used as a default value for
@@ -118,10 +119,8 @@ the next prompt.")
 ;;;###autoload
 (defun read-mail-folder (folder)
   "Read mail stored in the file FOLDER."
-  (interactive (list (prompt-for-file "Mail folder to open:"
-				      nil
-				      (file-name-directory rm-last-folder)
-				      rm-last-folder)))
+  (interactive (list (prompt-for-folder "Mail folder to open:"
+					rm-last-folder)))
   (when (and (boundp 'rm-summary-mail-buffer) rm-summary-mail-buffer)
     ;; In summary
     (let
@@ -711,28 +710,33 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Summary interface
 
+(defmacro rm-command-with-folder (command)
+  (list 'rm-with-folder
+	(list 'call-command command 'current-prefix-arg)))
+
+(defmacro rm-command-in-folder (command)
+  (list 'rm-in-folder
+	(list 'call-command command 'current-prefix-arg)))
+
 (defvar rm-summary-keymap (copy-sequence summary-keymap))
 (bind-keys rm-summary-keymap
-  "n" '(rm-with-folder (rm-next-message
-			(prefix-numeric-argument current-prefix-arg) nil))
-  "p" '(rm-with-folder (rm-previous-message
-			(prefix-numeric-argument current-prefix-arg) nil))
-  "N" '(rm-with-folder (rm-next-message
-			(prefix-numeric-argument current-prefix-arg) t))
-  "P" '(rm-with-folder (rm-previous-message
-			(prefix-numeric-argument current-prefix-arg) t))
-  "SPC" '(rm-with-folder (rm-next-page))
-  "BS" '(rm-with-folder (rm-previous-page))
-  "t" '(rm-with-folder (rm-toggle-all-headers))
-  "g" '(rm-with-folder (rm-get-mail))
-  "q" '(rm-with-folder (rm-save-and-quit))
-  "v" '(rm-with-folder (call-command 'read-mail-folder))
-  "r" '(rm-in-folder (rm-reply))
-  "R" '(rm-in-folder (rm-reply t))
-  "f" '(rm-in-folder (rm-followup))
-  "F" '(rm-in-folder (rm-followup t))
-  "z" '(rm-in-folder (rm-forward nil current-prefix-arg))
-  "*" '(rm-with-folder (rm-burst-message)))
+  "n" '(rm-command-with-folder 'rm-next-undeleted-message)
+  "p" '(rm-command-with-folder 'rm-previous-undeleted-message)
+  "N" '(rm-command-with-folder 'rm-next-message)
+  "P" '(rm-command-with-folder 'rm-previous-message)
+  "SPC" '(rm-command-with-folder 'rm-next-page)
+  "BS" '(rm-command-with-folder 'rm-previous-page)
+  "t" '(rm-command-with-folder 'rm-toggle-all-headers)
+  "g" '(rm-command-with-folder 'rm-get-mail)
+  "q" '(rm-command-with-folder 'rm-save-and-quit)
+  "v" '(rm-command-with-folder 'read-mail-folder)
+  "r" '(rm-command-in-folder 'rm-reply)
+  "R" '(rm-command-in-folder '(rm-reply t))
+  "f" '(rm-command-in-folder rm-followup)
+  "F" '(rm-command-in-folder '(rm-followup t))
+  "z" '(rm-command-in-folder 'rm-forward)
+  "*" '(rm-command-with-folder 'rm-burst-message)
+  "s" '(rm-command-with-folder 'rm-output))
 
 (defvar rm-summary-functions '((select . rm-summary-select-item)
 			       (list . rm-summary-list)
@@ -897,7 +901,7 @@ documentation for command list.")
 	   rm-move-after-deleting)
       (if (with-buffer rm-summary-mail-buffer rm-after-msg-list)
 	  (rm-with-folder
-	   (rm-next-message 1 t))
+	   (rm-next-undeleted-message 1))
 	(rm-summary-after-update))
     (when (/= (summary-current-index)
 	      (with-buffer rm-summary-mail-buffer rm-message-count))
@@ -916,44 +920,60 @@ documentation for command list.")
 ;; Commands, these must only be called from the folder buffer, *not*
 ;; from the summary.
 
-(defun rm-next-message (&optional count dont-skip-deleted)
+(defun rm-next-message (&optional count skip-deleted)
   "Display the next message in the current mail folder."
   (interactive "p")
   (unless count
     (setq count 1))
-  (while (> count 0)
-    (unless rm-after-msg-list
-      (error "No more messages"))
-    (rm-move-forwards)
-    (when (or dont-skip-deleted
-	      (not (memq 'delete (with-buffer rm-summary-buffer
-				   (summary-get-pending-ops
-				    (with-buffer rm-summary-mail-buffer
-				      rm-current-msg))))))
-      (setq count (1- count))))
-  (while (< count 0)
-    (unless rm-before-msg-list
-      (error "No previous message"))
-    (rm-move-backwards)
-    (when (or dont-skip-deleted
-	      (not (memq 'delete (with-buffer rm-summary-buffer
-				   (summary-get-pending-ops
-				    (with-buffer rm-summary-mail-buffer
-				      rm-current-msg))))))
-      (setq count (1+ count))))
+  (let
+      ((original-message rm-current-msg))
+    (while (> count 0)
+      (unless rm-after-msg-list
+	(when original-message
+	  (rm-make-message-current original-message))
+	(error "No more messages"))
+      (rm-move-forwards)
+      (when (or (not skip-deleted)
+		(not (memq 'delete (with-buffer rm-summary-buffer
+				     (summary-get-pending-ops
+				      (with-buffer rm-summary-mail-buffer
+					rm-current-msg))))))
+	(setq count (1- count))))
+    (while (< count 0)
+      (unless rm-before-msg-list
+	(when original-message
+	  (rm-make-message-current original-message))
+	(error "No previous message"))
+      (rm-move-backwards)
+      (when (or (not skip-deleted)
+		(not (memq 'delete (with-buffer rm-summary-buffer
+				     (summary-get-pending-ops
+				      (with-buffer rm-summary-mail-buffer
+					rm-current-msg))))))
+	(setq count (1+ count)))))
   (rm-display-current-message))
 
-(defun rm-previous-message (&optional count dont-skip-deleted)
+(defun rm-previous-message (&optional count skip-deleted)
   "Display the previous message in the current mail folder."
   (interactive "p")
-  (rm-next-message (- (or count 1)) dont-skip-deleted))
+  (rm-next-message (- (or count 1)) skip-deleted))
+
+(defun rm-next-undeleted-message (&optional count)
+  "Display the next undeleted message."
+  (interactive "p")
+  (rm-next-message count t))
+
+(defun rm-previous-undeleted-message (&optional count)
+  "Display the previous undeleted message."
+  (interactive "p")
+  (rm-previous-message count t))
 
 (defun rm-next-page ()
   "Display the next page in the current message."
   (interactive)
   (if (>= (cursor-pos) (buffer-end))
       (when rm-auto-next-message
-	(rm-next-message))
+	(rm-next-undeleted-message))
     (next-screen)))
 
 (defun rm-previous-page ()
