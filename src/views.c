@@ -488,9 +488,9 @@ update_status_buffer(VW *vw, char *status_buf, u_long buflen)
 	int len = STRING_LEN(tx->tx_StatusId);
 	memcpy(ptr, VSTR(tx->tx_StatusId), MIN(len, 24));
 	if(len < 24)
-	    memset(ptr + len, ' ', 24 - len);
+	    memset(ptr + len, '-', 24 - len);
 	ptr += 24;
-	*ptr++ = ' ';
+	*ptr++ = '-';
     }
 
     *ptr++ = (recurse_depth > 0) ? '[' : '(';
