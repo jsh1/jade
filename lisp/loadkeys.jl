@@ -177,6 +177,7 @@
   "Ctrl-c"	'save-and-quit
   "Ctrl-f"	'find-file
   "Ctrl-l"	'downcase-area
+  "Ctrl-p"	'mark-page
   "Ctrl-q"	'toggle-buffer-read-only
   "Ctrl-r"	'find-file-read-only
   "Ctrl-s"	'save-file
@@ -199,7 +200,9 @@
   "s"		'save-some-buffers
   "u"		'undo
   "`"		'next-error
-  "#"		'server-close-file)
+  "#"		'server-close-file
+  "["		'backward-page
+  "]"		'forward-page)
 
 (bind-keys ctrl-x-n-keymap
   "p"		'restrict-to-page
