@@ -407,6 +407,9 @@ any entered arg is given to the invoked COMMAND.
 	    args = cmd_eval(int_spec);
 	if(clear_block)
 	    cmd_block_kill();
+	/* Reinitialise current-prefix-arg, in case any functions called
+	   to build the list of arguments overwrote it. */
+	current_prefix_arg = cmd_arg;
 	if(args)
 	    res = funcall(cmd, args, FALSE);
 	POPGC;
