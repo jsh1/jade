@@ -85,7 +85,7 @@ being sent."
     (when mail-default-reply-to
       (format buffer "Reply-to: %s\n" mail-default-reply-to))
     (when mail-self-blind
-      (format buffer "BCC: %s\n" (user-login-name)))
+      (format buffer "BCC: %s\n" user-mail-address))
     (when mail-archive-file-name
       (format buffer "FCC: %s\n" mail-archive-file-name))
     (insert mail-header-separator)
