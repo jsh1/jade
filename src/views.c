@@ -223,9 +223,6 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 		vw->vw_BufferList = Qnil;
 	    }
 	    Fcall_hook(Qsplit_view_hook, rep_LIST_1(rep_VAL(vw)), Qnil);
-#ifndef NOSCRLBAR
-	    sys_update_scroller(vw);
-#endif
 	}
 	if(curr_vw == 0)
 	    curr_vw = vw;
@@ -263,7 +260,6 @@ static void
 kill_view(VW *vw)
 {
     WIN *w = vw->vw_Win;
-    sys_kill_vw(vw);
     vw->vw_NextView = NULL;
     vw->vw_Tx = NULL;
     vw->vw_Win = NULL;
