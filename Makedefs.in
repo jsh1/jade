@@ -21,7 +21,7 @@
 version=@version@
 version_major=@version_major@
 version_minor=@version_minor@
-rep_version=@rep_version@
+rep_version=@REP_VERSION@
 SHELL=/bin/sh
 
 prefix=@prefix@
@@ -45,7 +45,6 @@ host_type=@host@
 windowsys=@windowsys@
 
 CC=@CC@
-LIBTOOL=@LIBTOOL@
 CPPFLAGS=-DHAVE_CONFIG_H -DJADE -I. -I.. @CPPFLAGS@
 CFLAGS=@CFLAGS@
 DL_CFLAGS=@DL_CFLAGS@
@@ -59,6 +58,10 @@ GTK_CFLAGS=@GTK_CFLAGS@
 GTK_LIBS=@GTK_LIBS@
 dynsuffix=@dynamic_file_suffix@
 
+rep_execdir=@REP_EXECDIR@
+REP_CFLAGS=@REP_CFLAGS@
+REP_LIBS=@REP_LIBS@
+
 INSTALL=@INSTALL@
 INSTALL_DATA=@INSTALL_DATA@
 INSTALL_PROGRAM=@INSTALL_PROGRAM@
@@ -68,20 +71,13 @@ HAVE_UNIX=@HAVE_UNIX@
 
 .PHONY: clean realclean install
 
+include $(rep_execdir)/rules.mk
+
 %.o : %.c
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) -o $@ $<
 
 % : %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
-
-# Rule for libtool controlled C objects
-%.lo : %.c
-	$(LIBTOOL) $(CC) -c $(CPPFLAGS) $(CFLAGS) $<
-
-# Rule for rep dynamic objects
-lib%.la : %.lo
-	$(LIBTOOL) gcc -export-dynamic $(CPPFLAGS) $(CFLAGS) -o $@ $*.lo \
-	  -rpath $(jadeexecdir)
 
 # This rule builds dependancy files from C source files.
 .%.d : %.c
