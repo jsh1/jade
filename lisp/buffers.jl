@@ -344,8 +344,9 @@ may not exist after this function returns."
 (defun write-file (buffer &optional name)
   "Writes the contents of BUFFER to the file NAME, or to the one
 that it is associated with."
-  (unless (stringp name)
-    (setq name (buffer-file-name buffer)))
+  (or (stringp name)
+      (setq name (buffer-file-name buffer))
+      (error "No file is associated with buffer: %s" buffer))
   (unless (call-hook 'write-file-hook (list name buffer) 'or)
     (let
 	((modes (when (file-exists-p name) (file-modes name))))
@@ -364,14 +365,12 @@ to zero. If no changes have been made to the buffer, it won't be saved."
   (unless (bufferp buffer)
     (setq buffer (current-buffer)))
   (with-buffer buffer
-    (cond
-     ((string= (buffer-file-name) "")
-      (error "Buffer has no file associated with it"))
-     ((not (buffer-modified-p))
-      (message "No changes need to be saved!"))
-     (t
+    (if (not (buffer-modified-p))
+	(message "No changes need to be saved!")
       (let
 	  ((name (buffer-file-name)))
+	(unless name
+	  (error "Buffer has no file associated with it: %s" buffer))
 	(when (and (file-exists-p name)
 		   (time-later-p (file-modtime name) buffer-file-modtime)
 		   (not (yes-or-no-p "File on disk has changed since it was loaded, save anyway")))
@@ -383,7 +382,7 @@ to zero. If no changes have been made to the buffer, it won't be saved."
 		last-user-save-changes (buffer-changes)
 		buffer-file-modtime (file-modtime name))
 	  (delete-auto-save-file)
-	  (message (concat "Wrote file `" name ?\') t)))))))
+	  (message (concat "Wrote file `" name ?\') t))))))
 
 (defun save-file-as (name &optional buffer)
   "Saves the buffer BUFFER, or the current one, to the file NAME,
@@ -420,7 +419,7 @@ the cursor position."
 current buffer. If unsaved changes have been made to it the user is asked
 whether they mind losing them."
   (or (not (buffer-modified-p buffer))
-      (string= (buffer-file-name buffer) "")
+      (null (buffer-file-name buffer))
       (yes-or-no-p (format nil "OK to lose change(s) to buffer `%s'"
 			   (file-name-nondirectory (buffer-name buffer))))))
 
@@ -431,6 +430,8 @@ be lost after confirmation from the user."
   (interactive)
   (unless buffer
     (setq buffer (current-buffer)))
+  (unless (buffer-file-name buffer)
+    (error "No file is associated with buffer: %s" buffer))
   (when (or force (check-changes buffer))
     (with-buffer buffer
       (delete-auto-save-file)
@@ -467,8 +468,7 @@ buffers exist on exit."
   (let
       ((unsaved-buffers (filter #'(lambda (b)
 				    (and (buffer-modified-p b)
-					 (not (string= (buffer-file-name b)
-						       ""))))
+					 (buffer-file-name b)))
 				buffer-list)))
     (if unsaved-buffers
 	(map-y-or-n-p #'(lambda (x)
@@ -481,7 +481,7 @@ buffers exist on exit."
   "If BUFFER has been modified, ask whether or not to save it. Returns t if
 the buffer is (now) in sync with the copy on disk."
   (or (not (buffer-modified-p buffer))
-      (and (not (string= (buffer-file-name buffer) ""))
+      (and (buffer-file-name buffer)
 	   (y-or-n-p (concat "Save buffer " (buffer-name buffer)))
 	   (save-file buffer))))
 

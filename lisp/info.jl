@@ -169,7 +169,7 @@ is split.")
     (unless read-dir
       (signal 'info-error '("Can't find `dir' file")))
     ;; Don't associate a file name with DIR since it's probably an amalgam
-    (set-buffer-file-name nil "")
+    (set-buffer-file-name nil nil)
     (set-buffer-modified nil nil)
     (setq buffer-file-modtime (cons 0 0)
 	  info-file-name "dir"

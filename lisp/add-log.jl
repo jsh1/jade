@@ -38,7 +38,8 @@ considered as referring to the same day.")
    (let
        ((arg current-prefix-arg))
      (list (prompt-for-file "Log file:")
-	   (list (file-name-nondirectory (buffer-file-name)))
+	   (list (file-name-nondirectory (or (buffer-file-name)
+					     default-directory)))
 	   (when (not arg)
 	     (let
 		 ((defun (defun-at-point)))

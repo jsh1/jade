@@ -85,7 +85,7 @@ Local bindings for this mode are,\n
 	(setq minor-names (cdr minor-names))))
     (insert " ")
     (indent-to 40)
-    (format (current-buffer) "%s" (buffer-file-name item))))
+    (format (current-buffer) "%s" (or (buffer-file-name item) ""))))
 
 (defun bs-select-item (item)
   (bs-quit)
