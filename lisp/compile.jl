@@ -47,19 +47,24 @@
     "Ctrl-c" 'kill-compilation
     "Ctrl-z" 'stop-compilation
     "Ctrl-f" 'continue-compilation
-    "r" '(start-compile-command compile-default-cmd compile-type-str)
+    "r" 'restart-compile-command
     "Ctrl-r" 'compile))
 
 (defvar compile-buffer nil)
 (defvar compile-proc nil)
 (defvar compile-errors nil "List of (ERROR-POS-MARK . ERROR-DESC-LINE)")
 (defvar compile-error-pos nil)
-(defvar compile-type-str nil)
 (defvar compile-error-parsed-errors-p nil)
 (defvar compile-errors-exist-p nil)
 
 (defvar compile-command "make"
   "The command to run from `M-x compile'.")
+
+(defvar compile-last-command nil
+  "The previous command run in the *compilation* buffer.")
+
+(defvar compile-last-type nil
+  "The type of the last command.")
 
 (defvar compile-shell (unless (getenv "SHELL") "/bin/sh")
   "The filename of the shell to use to run the compilation in.")
@@ -123,8 +128,14 @@ the command may output (i.e. `errors' for a compilation)."
 	((shell-cmd (concat command ?\n)))
       (write compile-buffer shell-cmd)
       (when (start-process compile-proc compile-shell "-c" shell-cmd)
-	(setq compile-type-str type-str)
+	(setq compile-last-type type-str
+	      compile-last-command command)
 	compile-proc))))
+
+(defun restart-compile-command ()
+  "Rerun the previous command started in the *compilation* buffer."
+  (interactive)
+  (start-compile-command compile-command compile-last-type))
 
 (defun kill-compilation ()
   (interactive)
@@ -241,7 +252,7 @@ buffer in a form that `goto-next-error' understands."
     (cond
      ((not err)
       (message (concat "No " (if compile-errors-exist-p "more ")
-		       compile-type-str (if compile-proc " yet")))
+		       compile-last-type (if compile-proc " yet")))
       (beep)
       nil)
      (t
