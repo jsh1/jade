@@ -686,16 +686,13 @@ Major mode for viewing mail folders. Commands include:\n
 			       (print . rm-summary-print-item)
 			       (delete . rm-summary-delete-item)
 			       (execute-end . rm-summary-execute-end)
-			       (after-marking . rm-summary-after-marking))
+			       (after-marking . rm-summary-after-marking)
+			       (after-update . rm-summary-after-update))
   "Function vector for summary-mode.")
 
 (defvar rm-summary-mail-buffer nil
   "The buffer whose folder is being summarised.")
 (make-variable-buffer-local 'rm-summary-mail-buffer)
-
-(defvar rm-summary-current-marked nil
-  "The message with a `->' mark next to it.")
-(make-variable-buffer-local 'rm-summary-current-marked)
 
 (defvar rm-summary-msgs-to-delete nil
   "List of messages to be deleted. Built up during the execute phase of
@@ -792,12 +789,7 @@ Major mode for displaying a summary of a mail folder.")
 (defun rm-summary-print-item (item)
   (let
       ((pending-ops (summary-get-pending-ops item)))
-    (format (current-buffer) "%s %c%c%c%c%c  %s %s %s "
-	    (if (eq item (rm-with-folder rm-current-msg))
-		(progn
-		  (setq rm-summary-current-marked item)
-		  "->")
-	      "  ")
+    (format (current-buffer) "%c%c%c%c%c  %s %s %s "
 	    (if (rm-test-flag item 'unread) ?N ?\ )
 	    (if (memq 'delete pending-ops) ?D ?\ )
 	    (if (rm-test-flag item 'replied) ?R ?\ )
@@ -834,13 +826,18 @@ Major mode for displaying a summary of a mail folder.")
       (rm-delete-messages del-msgs))))
     
 (defun rm-summary-update-current ()
-  (if (with-buffer rm-summary-mail-buffer rm-current-msg)
-      (progn
-	(summary-update-item rm-summary-current-marked)
-	(summary-update-item (rm-with-folder rm-current-msg))
-	(summary-goto-item (rm-with-folder rm-current-msg-index)))
-    ;; No messages, call update to clear everything
-    (summary-update)))
+  (let
+      (msg index)
+    (with-buffer rm-summary-mail-buffer
+      (setq index rm-current-msg-index
+	    msg rm-current-msg))
+    (if msg
+	(progn
+	  (summary-update-item msg)
+	  (summary-highlight-index index)
+	  (summary-goto-item index))
+      ;; No messages, call update to clear everything
+      (summary-update))))
 
 (defun rm-summary-after-marking (msg)
   (if (and (eq (with-buffer rm-summary-mail-buffer rm-current-msg) msg)
@@ -848,6 +845,15 @@ Major mode for displaying a summary of a mail folder.")
       (rm-with-folder
        (rm-next-message 1 t))
     (summary-next-item 1)))
+
+(defun rm-summary-after-update ()
+  (let
+      (msg index)
+    (with-buffer rm-summary-mail-buffer
+      (setq msg rm-current-msg
+	    index rm-current-msg-index))
+    (when msg
+      (summary-highlight-index rm-current-msg-index))))
 
 
 ;; Commands, these must only be called from the folder buffer, *not*
