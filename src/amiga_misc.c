@@ -37,6 +37,7 @@ _PR void NewList(struct List *);
 _PR VALUE lookup_errno(void);
 _PR void doconmsg(u_char *);
 _PR VALUE read_file(u_char *);
+_PR long sys_file_length(u_char *file);
 
 _PR bool file_exists(u_char *);
 _PR long file_mod_time(u_char *);
@@ -227,6 +228,19 @@ read_file(u_char *fileName)
 	Close(fh);
     }
     return(cmd_signal(sym_file_error, list_2(lookup_errno(), string_dup(fileName))));
+}
+
+long
+sys_file_length(u_char *file)
+{
+    long length = -1;
+    BPTR fh = Open(file, MODE_OLDFILE);
+    if(fh)
+    {
+	Seek(fh, 0, OFFSET_END);
+	length = Seek(fh, 0, OFFSET_BEGINNING);
+    }
+    return length;
 }
 
 int
