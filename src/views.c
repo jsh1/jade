@@ -885,6 +885,7 @@ invalid.
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
     res = make_lpos(&VPOS(pos));
+    VPOS(res).pos_Col += VVIEW(vw)->vw_StartCol;
     VPOS(res).pos_Line
 	= (VVIEW(vw)->vw_StartLine
 	   + (VPOS(pos).pos_Line
