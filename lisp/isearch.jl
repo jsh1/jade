@@ -67,6 +67,10 @@ searching.")
 (defvar isearch-original-buffer nil)
 (make-variable-buffer-local 'isearch-original-buffer)
 
+;; The extent used to highlight the current selection
+(defvar isearch-extent nil)
+(make-variable-buffer-local 'isearch-extent)
+
 (defvar isearch-keymap
   (bind-keys (make-sparse-keymap)
     "Ctrl-s"	'isearch-next-forward
@@ -196,9 +200,15 @@ direction."
     (goto pos))
   (isearch-looking-at)
   (when (match-start)
-    (with-view isearch-view
-      (goto (match-start))
-      (mark-block (match-start) (match-end)))))
+    (let
+	((extent isearch-extent))
+      (with-view isearch-view
+	(goto (match-start))
+	(if extent
+	    (move-extent extent (match-start) (match-end))
+	  (setq extent (make-extent (match-start) (match-end)
+				    (list 'face highlight-face)))))
+      (setq isearch-extent extent))))
 
 
 ;; Misc functions
@@ -287,7 +297,6 @@ direction."
        (old-buffer (current-buffer))
        ;; FIXME
        (esc-means-meta nil))
-    (block-kill)
     (with-buffer prompt-buffer
       (setq isearch-trace (cons (cons "" nil) nil)
 	    isearch-initial-pos (with-buffer old-buffer (cursor-pos))
@@ -309,11 +318,12 @@ direction."
     (let
 	((old isearch-initial-pos))
       (with-view isearch-view
-	(block-kill)
 	(goto old))))
   (let
       ((old-view isearch-view)
        (old-buffer isearch-original-buffer))
+    (when isearch-extent
+      (delete-extent isearch-extent))
     (kill-all-local-variables)
     (kill-current-buffer)
     (set-current-buffer old-buffer)
