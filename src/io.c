@@ -217,7 +217,7 @@ FILE is either a string naming the file to be opened or a Lisp file object
     FILE *fh;
     bool closefh;
     long file_length = -1;
-    POS start, end;
+    VALUE start, end;
     if(FILEP(file) && VFILE(file)->lf_Name)
     {
 	fh = VFILE(file)->lf_File;
@@ -235,17 +235,14 @@ FILE is either a string naming the file to be opened or a Lisp file object
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     cmd_unrestrict_buffer(tx);
-    start.pos_Col = start.pos_Line = 0;
-    end.pos_Line = VTX(tx)->tx_NumLines - 1;
-    end.pos_Col = VTX(tx)->tx_Lines[end.pos_Line].ln_Strlen - 1;
-    if(!(end.pos_Line == 0 && end.pos_Line == 0))
-	undo_record_deletion(VTX(tx), &start, &end);
+    start = make_pos(0, 0);
+    end = cmd_end_of_buffer(tx, sym_t);
+    undo_record_deletion(VTX(tx), start, end);
     kill_line_list(VTX(tx));
     if(read_tx(VTX(tx), fh, file_length))
     {
-	end.pos_Line = VTX(tx)->tx_NumLines - 1;
-	end.pos_Col = VTX(tx)->tx_Lines[end.pos_Line].ln_Strlen - 1;
-	undo_record_insertion(VTX(tx), &start, &end);
+	end = cmd_end_of_buffer(tx, sym_t);
+	undo_record_insertion(VTX(tx), start, end);
 	res = tx;
     }
     else
@@ -328,8 +325,8 @@ area is written.
     }
 }
 
-_PR VALUE cmd_write_buffer_area(VALUE vstart, VALUE vend, VALUE file, VALUE tx);
-DEFUN_INT("write-buffer-area", cmd_write_buffer_area, subr_write_buffer_area, (VALUE vstart, VALUE vend, VALUE file, VALUE tx), V_Subr4, DOC_write_buffer_area, "m\nM\nFWrite block to file:") /*
+_PR VALUE cmd_write_buffer_area(VALUE start, VALUE end, VALUE file, VALUE tx);
+DEFUN_INT("write-buffer-area", cmd_write_buffer_area, subr_write_buffer_area, (VALUE start, VALUE end, VALUE file, VALUE tx), V_Subr4, DOC_write_buffer_area, "m\nM\nFWrite block to file:") /*
 ::doc:write_buffer_area::
 write-buffer-area START-POS END-POS [FILE] [BUFFER]
 
@@ -337,15 +334,12 @@ Writes the text between START-POS and END-POS in BUFFER to FILE, which may
 be either a string naming a file to overwrite, or a standard stream object.
 ::end:: */
 {
-    POS start, end;
-    DECLARE1(vstart, POSP);
-    DECLARE2(vend, POSP);
+    DECLARE1(start, POSP);
+    DECLARE2(end, POSP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    start = VPOS(vstart);
-    end = VPOS(vend);
     if(!check_section(VTX(tx), &start, &end))
-	return(cmd_signal(sym_invalid_area, list_3(tx, vstart, vend)));
+	return(cmd_signal(sym_invalid_area, list_3(tx, start, end)));
     if(file == sym_nil || STRINGP(file)
        || cmd_streamp(file) == sym_nil)
     {
@@ -355,22 +349,21 @@ be either a string naming a file to overwrite, or a standard stream object.
 	fh = fopen(VSTR(file), "w");
 	if(fh)
 	{
-	    LINE *line = VTX(tx)->tx_Lines + start.pos_Line;
-	    while(start.pos_Line <= end.pos_Line)
+	    long lineno = VROW(start), col = VCOL(start);
+	    LINE *line = VTX(tx)->tx_Lines + lineno;
+	    while(lineno <= VROW(end))
 	    {
-		int len = (((start.pos_Line == end.pos_Line)
-			    ? end.pos_Col : line->ln_Strlen - 1)
-			   - start.pos_Col);
-		if(fwrite(line->ln_Line + start.pos_Col,
-			  1, len, fh) != len) 
+		int len = (((lineno == VROW(end))
+			    ? VCOL(end) : line->ln_Strlen - 1) - col);
+		if(fwrite(line->ln_Line + col, 1, len, fh) != len) 
 		{
 		    fclose(fh);
 		    goto file_error;
 		}
-		if(start.pos_Line != end.pos_Line)
+		if(lineno != VROW(end))
 		    fputc('\n', fh);
-		start.pos_Line++;
-		start.pos_Col = 0;
+		lineno++;
+		col = 0;
 		line++;
 	    }
 	    fclose(fh);
@@ -385,19 +378,18 @@ be either a string naming a file to overwrite, or a standard stream object.
     else
     {
 	/* file is a stream */
-	LINE *line = VTX(tx)->tx_Lines + start.pos_Line;
-	while(start.pos_Line <= end.pos_Line)
+	long lineno = VROW(start), col = VCOL(start);
+	LINE *line = VTX(tx)->tx_Lines + lineno;
+	while(lineno <= VROW(end))
 	{
-	    int len = (((start.pos_Line == end.pos_Line)
-			? end.pos_Col : line->ln_Strlen - 1)
-		       - start.pos_Col);
-	    if(stream_puts(file, line->ln_Line + start.pos_Col, len, FALSE)
-	       != len) 
+	    int len = (((lineno == VROW(end))
+			? VCOL(end) : line->ln_Strlen - 1) - col);
+	    if(stream_puts(file, line->ln_Line + col, len, FALSE) != len) 
 		goto stream_error;
-	    if(start.pos_Line != end.pos_Line)
+	    if(lineno != VROW(end))
 		stream_putc(file, '\n');
-	    start.pos_Line++;
-	    start.pos_Col = 0;
+	    lineno++;
+	    col = 0;
 	    line++;
 	}
 	return file;

@@ -40,11 +40,11 @@ _PR void pen_to_glyph_pos(VW *, long, long);
 _PR void draw_bit(VW *, int, u_char *, int, long, long);
 _PR void draw_line(VW *, LINE *, long);
 _PR void redraw_all(VW *);
-_PR void redraw_region(VW *, POS *, POS *);
+_PR void redraw_region(VW *, VALUE, VALUE);
 _PR void redraw_lines(VW *, long, long);
 _PR void redraw_lines_clr(VW *, long, long);
 _PR void redraw_line_from(VW *, long, long);
-_PR void redraw_rect(VW *, POS *, POS *, bool);
+_PR void redraw_rect(VW *, VALUE, VALUE, bool);
 _PR void clear_lines(VW *, long, long);
 _PR void cut_paste_lines(VW *, long, long);
 _PR void scroll_vw(VW *vw, long lines);
@@ -59,19 +59,19 @@ pen_to_cursor(VW *vw)
 {
     register int x, y;
     calc_cursor_offset(vw);
-    y = (vw->vw_CursorPos.pos_Line - vw->vw_StartLine) * vw->vw_Win->w_FontY
-	+ FONT_ASCENT(vw);
-    x = ((vw->vw_LastCursorOffset - vw->vw_StartCol) * vw->vw_Win->w_FontX);
-    if(x < 0)
-	x = 0;
+    y = ((VROW(vw->vw_CursorPos) - VROW(vw->vw_DisplayOrigin))
+	 * vw->vw_Win->w_FontY)	+ FONT_ASCENT(vw);
+    x = ((vw->vw_LastCursorOffset - VCOL(vw->vw_DisplayOrigin))
+	 * vw->vw_Win->w_FontX);
+    x = POS(x);
     MOVE(vw, x, y);
 }
 
 void
 pen_to_line(VW *vw, long line)
 {
-    MOVE(vw, 0,
-	 (line - vw->vw_StartLine) * vw->vw_Win->w_FontY + FONT_ASCENT(vw));
+    MOVE(vw, 0, (line - VROW(vw->vw_DisplayOrigin))
+	 * vw->vw_Win->w_FontY + FONT_ASCENT(vw));
 }
 
 void
@@ -79,11 +79,12 @@ pen_to_pos(VW *vw, long col, long line)
 {
     TX *tx = vw->vw_Tx;
     int x, y;
-    y = (line - vw->vw_StartLine) * vw->vw_Win->w_FontY + FONT_ASCENT(vw);
+    y = ((line - VROW(vw->vw_DisplayOrigin))
+	 * vw->vw_Win->w_FontY) + FONT_ASCENT(vw);
     assert(line < tx->tx_NumLines);
-    x = (glyph_col(tx, col, line) - vw->vw_StartCol) * vw->vw_Win->w_FontX;
-    if(x < 0)
-	x = 0;
+    x = ((glyph_col(tx, col, line) - VCOL(vw->vw_DisplayOrigin))
+	 * vw->vw_Win->w_FontX);
+    x = POS(x);
     MOVE(vw, x, y);
 }
 
@@ -91,10 +92,10 @@ void
 pen_to_glyph_pos(VW *vw, long gcol, long line)
 {
     int x, y;
-    y = (line - vw->vw_StartLine) * vw->vw_Win->w_FontY + FONT_ASCENT(vw);
-    x = (gcol - vw->vw_StartCol) * vw->vw_Win->w_FontX;
-    if(x < 0)
-	x = 0;
+    y = ((line - VROW(vw->vw_DisplayOrigin))
+	 * vw->vw_Win->w_FontY) + FONT_ASCENT(vw);
+    x = (gcol - VCOL(vw->vw_DisplayOrigin)) * vw->vw_Win->w_FontX;
+    x = POS(x);
     MOVE(vw, x, y);
 }
 
@@ -105,11 +106,11 @@ cursor(VW *vw, bool status)
        && (!(vw->vw_Flags & VWFF_MINIBUF)
 	   || !(vw->vw_Win->w_Flags & WINFF_MESSAGE)))
     {
-	if(vw->vw_CursorPos.pos_Line < vw->vw_StartLine + vw->vw_MaxY)
+	if(VROW(vw->vw_CursorPos) < VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY)
 	{
 	    int pencol;
-	    LINE *line = vw->vw_Tx->tx_Lines + vw->vw_CursorPos.pos_Line;
-	    long cursoff = vw->vw_CursorPos.pos_Col;
+	    LINE *line = vw->vw_Tx->tx_Lines + VROW(vw->vw_CursorPos);
+	    long cursoff = VCOL(vw->vw_CursorPos);
 	    if(!cursor_in_block(vw))
 		pencol = (status == CURS_ON) ? P_TEXT_RV : P_TEXT;
 	    else
@@ -124,22 +125,20 @@ cursor(VW *vw, bool status)
     }
 }
 
-/*
- * draws a section of a line of bytes, beg and end are x ordinates
- */
+/* draws a section of a line of bytes, beg and end are x ordinates */
 void
 draw_bit(VW *vw, int colour, u_char *str, int slen, long beg, long end)
 {
     long length;
-    if(beg < vw->vw_StartCol)
-	beg = vw->vw_StartCol;
-    if(end > vw->vw_StartCol + vw->vw_MaxX + 1)
-	end = vw->vw_StartCol + vw->vw_MaxX + 1;
+    if(beg < VCOL(vw->vw_DisplayOrigin))
+	beg = VCOL(vw->vw_DisplayOrigin);
+    if(end > VCOL(vw->vw_DisplayOrigin) + vw->vw_MaxX + 1)
+	end = VCOL(vw->vw_DisplayOrigin) + vw->vw_MaxX + 1;
     length = end - beg;
     slen -= beg;
     if(slen > length)
 	slen = length;
-    if(end >= vw->vw_StartCol && slen > 0)
+    if(end >= VCOL(vw->vw_DisplayOrigin) && slen > 0)
 	TEXT(vw, colour, str + beg, slen);
 }
 
@@ -147,13 +146,13 @@ static void
 draw_block_line(VW *vw, long blockStartCol, long blockEndCol,
 		long drawEndCol, bool useBEC, bool useBSC)
 {
-    int xend = (drawEndCol - vw->vw_StartCol) * vw->vw_Win->w_FontX;
+    int xend = (drawEndCol - VCOL(vw->vw_DisplayOrigin)) * vw->vw_Win->w_FontX;
     if(PEN_X(vw) < vw->vw_WidthPix)
     {
 	int rectblocks = vw->vw_Flags & VWFF_RECTBLOCKS;
 	if(!rectblocks && useBSC)
 	{
-	    int xblkstart = ((blockStartCol - vw->vw_StartCol)
+	    int xblkstart = ((blockStartCol - VCOL(vw->vw_DisplayOrigin))
 			     * vw->vw_Win->w_FontX);
 	    if(xblkstart < 0)
 		xblkstart = 0;
@@ -164,14 +163,14 @@ draw_block_line(VW *vw, long blockStartCol, long blockEndCol,
 	}
 	if(useBEC || rectblocks)
 	{
-	    int xblkend = (blockEndCol - vw->vw_StartCol)
+	    int xblkend = (blockEndCol - VCOL(vw->vw_DisplayOrigin))
 			  * vw->vw_Win->w_FontX;
 	    if(rectblocks)
 	    {
 		if(((PEN_X(vw) / vw->vw_Win->w_FontX)
-		    + vw->vw_StartCol) < blockStartCol)
+		    + VCOL(vw->vw_DisplayOrigin)) < blockStartCol)
 		{
-		    MOVE(vw, (blockStartCol - vw->vw_StartCol)
+		    MOVE(vw, (blockStartCol - VCOL(vw->vw_DisplayOrigin))
 			 * vw->vw_Win->w_FontX,
 			 PEN_Y(vw));
 		}
@@ -193,27 +192,25 @@ draw_block_line(VW *vw, long blockStartCol, long blockEndCol,
     }
 }
 
-/*
- * pen should be at start of line to draw (line should be cleared first)
- */
+/* pen should be at start of line to draw (line should be cleared first) */
 void
 draw_line(VW *vw, LINE *line, long lineNum)
 {
     long glyphs = make_glyph_array(vw->vw_Tx, line->ln_Line, 0,
 				   line->ln_Strlen-1, glyph_buf,
-				   vw->vw_StartCol, vw->vw_MaxX);
+				   VCOL(vw->vw_DisplayOrigin), vw->vw_MaxX);
     if(vw->vw_BlockStatus != 0
-       || (vw->vw_CursorPos.pos_Line < vw->vw_BlockS.pos_Line
-           && vw->vw_CursorPos.pos_Line > vw->vw_BlockE.pos_Line))
+       || (VROW(vw->vw_CursorPos) < VROW(vw->vw_BlockS)
+           && VROW(vw->vw_CursorPos) > VROW(vw->vw_BlockE)))
 	TEXT(vw, P_TEXT, glyph_buf, glyphs);
     else
     {
-	long block0col = glyph_col(vw->vw_Tx, vw->vw_BlockS.pos_Col,
-				   vw->vw_BlockS.pos_Line);
-	long block1col = glyph_col(vw->vw_Tx, vw->vw_BlockE.pos_Col,
-				   vw->vw_BlockE.pos_Line);
-	u_char *glyph_line = glyph_buf - vw->vw_StartCol;
-	long abs_glyphs = glyphs + vw->vw_StartCol;
+	long block0col = glyph_col(vw->vw_Tx,
+				   VCOL(vw->vw_BlockS), VROW(vw->vw_BlockS));
+	long block1col = glyph_col(vw->vw_Tx,
+				   VCOL(vw->vw_BlockE), VROW(vw->vw_BlockE));
+	u_char *glyph_line = glyph_buf - VCOL(vw->vw_DisplayOrigin);
+	long abs_glyphs = glyphs + VCOL(vw->vw_DisplayOrigin);
 	if(vw->vw_Flags & VWFF_RECTBLOCKS)
 	{
 	    if(block0col > block1col)
@@ -232,21 +229,24 @@ draw_line(VW *vw, LINE *line, long lineNum)
 	case 1: /* whole of line in block */
 	    TEXT(vw, P_BLOCK, glyph_buf, glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_StartCol + vw->vw_MaxX, FALSE, FALSE);
+			    VCOL(vw->vw_DisplayOrigin) + vw->vw_MaxX,
+			    FALSE, FALSE);
 	    break;
 	case 2: /* start of line in block */
 	    draw_bit(vw, P_BLOCK, glyph_line, abs_glyphs, 0, block1col);
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, block1col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_StartCol + vw->vw_MaxX, TRUE, FALSE);
+			    VCOL(vw->vw_DisplayOrigin) + vw->vw_MaxX,
+			    TRUE, FALSE);
 	    break;
 	case 3: /* end of line in block */
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, 0, block0col);
 	    draw_bit(vw, P_BLOCK, glyph_line, abs_glyphs, block0col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_StartCol + vw->vw_MaxX, FALSE, TRUE);
+			    VCOL(vw->vw_DisplayOrigin) + vw->vw_MaxX,
+			    FALSE, TRUE);
 	    break;
 	case 4: /* middle of line in block */
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, 0, block0col);
@@ -255,16 +255,15 @@ draw_line(VW *vw, LINE *line, long lineNum)
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, block1col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_StartCol + vw->vw_MaxX, TRUE, TRUE);
+			    VCOL(vw->vw_DisplayOrigin) + vw->vw_MaxX,
+			    TRUE, TRUE);
 	    break;
 	}
     }
 }
 
-/*
- * pen should be at first draw position, draws from character XSTART to the
- * end of the line.
- */
+/* pen should be at first draw position, draws from character XSTART to the
+   end of the line. */
 static void
 draw_line_part(VW *vw, LINE *line, long lineNum, long xStart,
 	       long glyph_xStart)
@@ -272,18 +271,18 @@ draw_line_part(VW *vw, LINE *line, long lineNum, long xStart,
     u_char *src = line->ln_Line + xStart;
     u_long srclen = (line->ln_Strlen - 1) - xStart;
     long glyphs = make_glyph_array(vw->vw_Tx, src, glyph_xStart, srclen,
-				   glyph_buf, 0,
-				   (vw->vw_StartCol+vw->vw_MaxX)-glyph_xStart);
+				   glyph_buf, 0, VCOL(vw->vw_DisplayOrigin)
+				   + vw->vw_MaxX - glyph_xStart);
     if(vw->vw_BlockStatus != 0
-       || (vw->vw_CursorPos.pos_Line < vw->vw_BlockS.pos_Line
-           && vw->vw_CursorPos.pos_Line > vw->vw_BlockE.pos_Line))
+       || (VROW(vw->vw_CursorPos) < VROW(vw->vw_BlockS)
+           && VROW(vw->vw_CursorPos) > VROW(vw->vw_BlockE)))
 	TEXT(vw, P_TEXT, glyph_buf, glyphs);
     else
     {
-	long block0col = glyph_col(vw->vw_Tx, vw->vw_BlockS.pos_Col,
-				   vw->vw_BlockS.pos_Line);
-	long block1col = glyph_col(vw->vw_Tx, vw->vw_BlockE.pos_Col,
-				   vw->vw_BlockE.pos_Line);
+	long block0col = glyph_col(vw->vw_Tx,
+				   VCOL(vw->vw_BlockS), VROW(vw->vw_BlockS));
+	long block1col = glyph_col(vw->vw_Tx,
+				   VCOL(vw->vw_BlockE), VROW(vw->vw_BlockE));
 	u_char *glyph_line = glyph_buf - glyph_xStart;
 	long abs_glyphs = glyphs + glyph_xStart;
 	if(vw->vw_Flags & VWFF_RECTBLOCKS)
@@ -304,7 +303,8 @@ draw_line_part(VW *vw, LINE *line, long lineNum, long xStart,
 	case 1: /* whole of line in block */
 	    TEXT(vw, P_BLOCK, glyph_buf, glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_MaxX + vw->vw_StartCol, FALSE, FALSE);
+			    vw->vw_MaxX + VCOL(vw->vw_DisplayOrigin),
+			    FALSE, FALSE);
 	    break;
 	case 2: /* start of line in block */
 	    if(glyph_xStart < block1col)
@@ -315,7 +315,8 @@ draw_line_part(VW *vw, LINE *line, long lineNum, long xStart,
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, block1col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_MaxX + vw->vw_StartCol, TRUE, FALSE);
+			    vw->vw_MaxX + VCOL(vw->vw_DisplayOrigin),
+			    TRUE, FALSE);
 	    break;
 	case 3: /* end of line in block */
 	    if(glyph_xStart < block0col)
@@ -326,7 +327,8 @@ draw_line_part(VW *vw, LINE *line, long lineNum, long xStart,
 	    draw_bit(vw, P_BLOCK, glyph_line, abs_glyphs, block0col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_MaxX + vw->vw_StartCol, FALSE, TRUE);
+			    vw->vw_MaxX + VCOL(vw->vw_DisplayOrigin),
+			    FALSE, TRUE);
 	    break;
 	case 4: /* middle of line in block */
 	    if(glyph_xStart < block0col)
@@ -342,38 +344,38 @@ draw_line_part(VW *vw, LINE *line, long lineNum, long xStart,
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, block1col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_MaxX + vw->vw_StartCol, TRUE, TRUE);
+			    vw->vw_MaxX + VCOL(vw->vw_DisplayOrigin),
+			    TRUE, TRUE);
 	    break;
 	}
     }
 }
 
 #ifdef HAVE_X11
-/*
- * pen should be at first draw position
- * The XSTART and XEND are *glyph* indexes -- the physical position on the
- * screen.
- */
+/* pen should be at first draw position
+   The XSTART and XEND are *glyph* indexes -- the physical position on the
+   screen. */
 static void
-draw_line_glyph_length(VW *vw, LINE *line, long lineNum, long xStart, long xEnd)
+draw_line_glyph_length(VW *vw, LINE *line, long lineNum,
+		       long xStart, long xEnd)
 {
     long glyphs;
-    if(xStart < vw->vw_StartCol)
-	xStart = vw->vw_StartCol;
-    if(xEnd > (vw->vw_StartCol + vw->vw_MaxX))
-	xEnd = (vw->vw_StartCol + vw->vw_MaxX);
+    if(xStart < VCOL(vw->vw_DisplayOrigin))
+	xStart = VCOL(vw->vw_DisplayOrigin);
+    if(xEnd > (VCOL(vw->vw_DisplayOrigin) + vw->vw_MaxX))
+	xEnd = (VCOL(vw->vw_DisplayOrigin) + vw->vw_MaxX);
     glyphs = make_glyph_array(vw->vw_Tx, line->ln_Line, 0, line->ln_Strlen-1,
 			      glyph_buf, xStart, xEnd - xStart);
     if(vw->vw_BlockStatus != 0
-       || (vw->vw_CursorPos.pos_Line < vw->vw_BlockS.pos_Line
-           && vw->vw_CursorPos.pos_Line > vw->vw_BlockE.pos_Line))
+       || (VROW(vw->vw_CursorPos) < VROW(vw->vw_BlockS)
+           && VROW(vw->vw_CursorPos) > VROW(vw->vw_BlockE)))
 	TEXT(vw, P_TEXT, glyph_buf, glyphs);
     else
     {
-	long block0col = glyph_col(vw->vw_Tx, vw->vw_BlockS.pos_Col,
-				   vw->vw_BlockS.pos_Line);
-	long block1col = glyph_col(vw->vw_Tx, vw->vw_BlockE.pos_Col,
-				   vw->vw_BlockE.pos_Line);
+	long block0col = glyph_col(vw->vw_Tx,
+				   VCOL(vw->vw_BlockS), VROW(vw->vw_BlockS));
+	long block1col = glyph_col(vw->vw_Tx,
+				   VCOL(vw->vw_BlockE), VROW(vw->vw_BlockE));
 	u_char *glyph_line = glyph_buf - xStart;
 	long abs_glyphs = glyphs + xStart;
 	if(vw->vw_Flags & VWFF_RECTBLOCKS)
@@ -438,7 +440,7 @@ draw_line_glyph_length(VW *vw, LINE *line, long lineNum, long xStart, long xEnd)
 void
 redraw_all(VW *vw)
 {
-    long linenum = vw->vw_StartLine;
+    long linenum = VROW(vw->vw_DisplayOrigin);
     LINE *line = vw->vw_Tx->tx_Lines + linenum;
     short y = 0;
     CLR_AREA(vw, 0, 0, vw->vw_WidthPix, vw->vw_HeightPix);
@@ -453,36 +455,35 @@ redraw_all(VW *vw)
 }
 
 void
-redraw_region(VW *vw, POS *start, POS *end)
+redraw_region(VW *vw, VALUE start, VALUE end)
 {
-    long linenum = start->pos_Line;
+    long linenum = VROW(start);
     LINE *line;
     long y, yend, yord;
     if(POS_EQUAL_P(start, end)
-       || (end->pos_Line < vw->vw_StartLine)
-       || (end->pos_Line < vw->vw_Tx->tx_LogicalStart)
-       || (start->pos_Line > (vw->vw_StartLine + vw->vw_MaxY))
-       || (start->pos_Line > (vw->vw_Tx->tx_LogicalEnd)))
+       || (VROW(end) < VROW(vw->vw_DisplayOrigin))
+       || (VROW(end) < vw->vw_Tx->tx_LogicalStart)
+       || (VROW(start) > (VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY))
+       || (VROW(start) > (vw->vw_Tx->tx_LogicalEnd)))
 	return;
-    if(linenum < vw->vw_StartLine)
-	linenum = vw->vw_StartLine;
+    if(linenum < VROW(vw->vw_DisplayOrigin))
+	linenum = VROW(vw->vw_DisplayOrigin);
     line = vw->vw_Tx->tx_Lines + linenum;
-    y = linenum - vw->vw_StartLine;
-    yend = end->pos_Line - vw->vw_StartLine + 1;
+    y = linenum - VROW(vw->vw_DisplayOrigin);
+    yend = VROW(end) - VROW(vw->vw_DisplayOrigin) + 1;
     if(yend > vw->vw_MaxY)
 	yend = vw->vw_MaxY;
     yord = y * vw->vw_Win->w_FontY;
     if((y >= 0) && (y < yend))
     {
-	long start_col = (linenum == start->pos_Line
-			  ? start->pos_Col
-			  : vw->vw_StartCol);
-	long gcol = glyph_col(vw->vw_Tx, start_col, start->pos_Line);
-	long tmp = gcol - vw->vw_StartCol;
+	long start_col = (linenum == VROW(start)
+			  ? VCOL(start) : VCOL(vw->vw_DisplayOrigin));
+	long gcol = glyph_col(vw->vw_Tx, start_col, VROW(start));
+	long tmp = gcol - VCOL(vw->vw_DisplayOrigin);
 	if(tmp < 0)
 	{
-	    gcol = vw->vw_StartCol;
-	    start_col = char_col(vw->vw_Tx, gcol, start->pos_Line);
+	    gcol = VCOL(vw->vw_DisplayOrigin);
+	    start_col = char_col(vw->vw_Tx, gcol, VROW(start));
 	    tmp = 0;
 	}
 	CLR_AREA(vw, tmp * vw->vw_Win->w_FontX, yord,
@@ -502,7 +503,7 @@ redraw_region(VW *vw, POS *start, POS *end)
     {
 	y = 0;
 	yord = 0;
-	linenum = vw->vw_StartLine;
+	linenum = VROW(vw->vw_DisplayOrigin);
 	line = vw->vw_Tx->tx_Lines + linenum;
     }
     if(y < yend)
@@ -528,13 +529,13 @@ redraw_lines(VW *vw, long startLine, long endLine)
 {
     LINE *line = vw->vw_Tx->tx_Lines;
     short y;
-    if(startLine < vw->vw_StartLine)
-	startLine = vw->vw_StartLine;
-    y = startLine - vw->vw_StartLine;
+    if(startLine < VROW(vw->vw_DisplayOrigin))
+	startLine = VROW(vw->vw_DisplayOrigin);
+    y = startLine - VROW(vw->vw_DisplayOrigin);
     line += startLine;
     if(endLine > vw->vw_Tx->tx_LogicalEnd)
 	endLine = vw->vw_Tx->tx_LogicalEnd;
-    endLine -= vw->vw_StartLine;
+    endLine -= VROW(vw->vw_DisplayOrigin);
     if(endLine > vw->vw_MaxY)
 	endLine = vw->vw_MaxY;
     while(y < endLine)
@@ -553,20 +554,20 @@ redraw_lines_clr(VW *vw, long startLine, long endLine)
     LINE *line = vw->vw_Tx->tx_Lines;
     short y;
     endLine++;
-    if((endLine <= vw->vw_StartLine)
+    if((endLine <= VROW(vw->vw_DisplayOrigin))
        || (endLine < vw->vw_Tx->tx_LogicalStart)
-       || (startLine > (vw->vw_StartLine + vw->vw_MaxY))
+       || (startLine > (VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY))
        || (startLine > (vw->vw_Tx->tx_LogicalEnd)))
     {
 	return;
     }
-    if(startLine < vw->vw_StartLine)
-	startLine = vw->vw_StartLine;
-    y = startLine - vw->vw_StartLine;
+    if(startLine < VROW(vw->vw_DisplayOrigin))
+	startLine = VROW(vw->vw_DisplayOrigin);
+    y = startLine - VROW(vw->vw_DisplayOrigin);
     line += startLine;
     if(endLine > vw->vw_Tx->tx_LogicalEnd)
 	endLine = vw->vw_Tx->tx_LogicalEnd;
-    endLine -= vw->vw_StartLine;
+    endLine -= VROW(vw->vw_DisplayOrigin);
     if(endLine > vw->vw_MaxY)
 	endLine = vw->vw_MaxY;
     CLR_AREA(vw, 0, y * vw->vw_Win->w_FontY, vw->vw_WidthPix,
@@ -584,15 +585,16 @@ redraw_lines_clr(VW *vw, long startLine, long endLine)
 void
 redraw_line_from(VW *vw, long col, long lineNum)
 {
-    if((lineNum >= vw->vw_StartLine)
-       && (lineNum < vw->vw_StartLine + vw->vw_MaxY))
+    if((lineNum >= VROW(vw->vw_DisplayOrigin))
+       && (lineNum < VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY))
     {
 	long gcol = glyph_col(vw->vw_Tx, col, lineNum);
-	int yord = (lineNum - vw->vw_StartLine) * vw->vw_Win->w_FontY;
-	long tmp = gcol - vw->vw_StartCol;
+	int yord = ((lineNum - VROW(vw->vw_DisplayOrigin))
+		    * vw->vw_Win->w_FontY);
+	long tmp = gcol - VCOL(vw->vw_DisplayOrigin);
 	if(tmp < 0)
 	{
-	    gcol = vw->vw_StartCol;
+	    gcol = VCOL(vw->vw_DisplayOrigin);
 	    col = char_col(vw->vw_Tx, gcol, lineNum);
 	    tmp = 0;
 	}
@@ -605,37 +607,35 @@ redraw_line_from(VW *vw, long col, long lineNum)
 }
 
 #ifdef HAVE_X11
-/*
- * Assumes (start, end) is valid AND totally viewable (ie, no checks, no
- * clipping). Should be ok since this is meant for Expose type events
- * start is probably trashed
- * `gapBlank' says whether or not I need to clear the space I'm drawing into.
- * These coordinates are *GLYPH* coordinates.
- */
+/* Assumes (start, end) is valid AND totally viewable (ie, no checks, no
+   clipping). Should be ok since this is meant for Expose type events.
+   `gapBlank' says whether or not I need to clear the space I'm drawing into.
+   These coordinates are *GLYPH* coordinates. */
 void
-redraw_rect(VW *vw, POS *start, POS *end, bool gapBlank)
+redraw_rect(VW *vw, VALUE start, VALUE end, bool gapBlank)
 {
     TX *tx = vw->vw_Tx;
-    LINE *line = tx->tx_Lines + start->pos_Line;
-    int yord = (start->pos_Line - vw->vw_StartLine) * vw->vw_Win->w_FontY;
-    end->pos_Col++;
-    end->pos_Line++;
+    LINE *line = tx->tx_Lines + VROW(start);
+    int yord = ((VROW(start) - VROW(vw->vw_DisplayOrigin))
+		* vw->vw_Win->w_FontY);
+    long row;
     if(!gapBlank)
     {
-	CLR_RECT(vw, (start->pos_Col - vw->vw_StartCol) * vw->vw_Win->w_FontX,
-		 yord,
-		 ((end->pos_Col - vw->vw_StartCol) * vw->vw_Win->w_FontX),
-		 ((end->pos_Line - vw->vw_StartLine) * vw->vw_Win->w_FontY));
+	CLR_RECT(vw, (VCOL(start) - VCOL(vw->vw_DisplayOrigin))
+		 * vw->vw_Win->w_FontX, yord,
+		 (VCOL(end) - VCOL(vw->vw_DisplayOrigin) + 1)
+		  * vw->vw_Win->w_FontX,
+		 (VROW(end) - VROW(vw->vw_DisplayOrigin) + 1)
+		  * vw->vw_Win->w_FontY);
     }
-    if(end->pos_Line > tx->tx_LogicalEnd)
-	end->pos_Line = tx->tx_LogicalEnd;
-    while(end->pos_Line > start->pos_Line)
+    row = VROW(start);
+    while(VROW(end) >= row && row < tx->tx_LogicalEnd)
     {
-	pen_to_glyph_pos(vw, start->pos_Col, start->pos_Line);
-	draw_line_glyph_length(vw, line, start->pos_Line, start->pos_Col,
-			       end->pos_Col /* + 1 */);
+	pen_to_glyph_pos(vw, VCOL(start), row);
+	draw_line_glyph_length(vw, line, row, VCOL(start),
+			       VCOL(end) + 1);
 	line++;
-	start->pos_Line++;
+	row++;
     }
 }
 #endif /* HAVE_X11 */
@@ -645,38 +645,36 @@ redraw_rect(VW *vw, POS *start, POS *end, bool gapBlank)
 void
 clear_lines(VW *vw, long first_line, long last_line)
 {
-    if((first_line >= (vw->vw_StartLine + vw->vw_MaxY))
-       || (last_line < vw->vw_StartLine)
+    if((first_line >= (VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY))
+       || (last_line < VROW(vw->vw_DisplayOrigin))
        || (first_line >= last_line))
 	return;
-    if(first_line < vw->vw_StartLine)
+    if(first_line < VROW(vw->vw_DisplayOrigin))
 	first_line = 0;
     else
-	first_line -= vw->vw_StartLine;
-    if(last_line > (vw->vw_StartLine + vw->vw_MaxY))
+	first_line -= VROW(vw->vw_DisplayOrigin);
+    if(last_line > (VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY))
 	last_line = vw->vw_MaxY;
     else
-	last_line -= vw->vw_StartLine;
+	last_line -= VROW(vw->vw_DisplayOrigin);
     CLR_RECT(vw, 0, first_line * vw->vw_Win->w_FontY,
 	     vw->vw_WidthPix, last_line * vw->vw_Win->w_FontY);
 }
 
-/*
- * Copies from srcLine to bottom of screen to dstLine
- */
+/* Copies from srcLine to bottom of screen to dstLine */
 void
 cut_paste_lines(VW *vw, long srcLine, long dstLine)
 {
     int yht, ysrc, ydst;
     int ybottom = vw->vw_MaxY * vw->vw_Win->w_FontY;
-    long lastline = vw->vw_StartLine + vw->vw_MaxY;
+    long lastline = VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY;
     /* number of lines which are not blank. */
     int lastdisp = (vw->vw_Tx->tx_LogicalEnd - vw->vw_Tx->tx_ModDelta)
-		   - vw->vw_LastDisplayOrigin.pos_Line;
-    if(srcLine < vw->vw_StartLine)
-	srcLine = vw->vw_StartLine;
-    if(dstLine < vw->vw_StartLine)
-	dstLine = vw->vw_StartLine;
+		   - VROW(vw->vw_LastDisplayOrigin);
+    if(srcLine < VROW(vw->vw_DisplayOrigin))
+	srcLine = VROW(vw->vw_DisplayOrigin);
+    if(dstLine < VROW(vw->vw_DisplayOrigin))
+	dstLine = VROW(vw->vw_DisplayOrigin);
 #if 0
     if(srcLine >= lastline)
 	srcLine = lastline - 1;
@@ -685,8 +683,8 @@ cut_paste_lines(VW *vw, long srcLine, long dstLine)
 	return;
     if(srcLine == dstLine)
 	return;
-    ysrc = (srcLine - vw->vw_StartLine) * vw->vw_Win->w_FontY;
-    ydst = (dstLine - vw->vw_StartLine) * vw->vw_Win->w_FontY;
+    ysrc = (srcLine - VROW(vw->vw_DisplayOrigin)) * vw->vw_Win->w_FontY;
+    ydst = (dstLine - VROW(vw->vw_DisplayOrigin)) * vw->vw_Win->w_FontY;
     if(ysrc > ydst)
     {
 	if(lastdisp >= vw->vw_MaxY)
@@ -721,15 +719,16 @@ cut_paste_lines(VW *vw, long srcLine, long dstLine)
 	    redraw_lines_clr(vw, firstline, lastline);
 	    if(lastline > vw->vw_Tx->tx_LogicalEnd)
 	    {
-		CLR_RECT(vw, 0, (vw->vw_Win->w_FontY * (vw->vw_Tx->tx_NumLines
-							- vw->vw_StartLine)),
+		CLR_RECT(vw, 0, (vw->vw_Win->w_FontY
+				 * (vw->vw_Tx->tx_NumLines
+				    - VROW(vw->vw_DisplayOrigin))),
 			 vw->vw_WidthPix, ybottom);
 	    }
 	}
 	else
 	{
-	    CLR_RECT(vw, 0, (vw->vw_Win->w_FontY * (firstline
-						    - vw->vw_StartLine)),
+	    CLR_RECT(vw, 0, (vw->vw_Win->w_FontY
+			     * (firstline - VROW(vw->vw_DisplayOrigin))),
 		     vw->vw_WidthPix, ybottom);
 	}
     }

@@ -20,12 +20,13 @@
 
 #include "jade.h"
 #include "jade_protos.h"
+#include <assert.h>
 
 _PR void refresh_init(void);
 _PR void refresh_view(VW *);
-_PR void flag_insertion(TX *, POS *, POS *);
-_PR void flag_deletion(TX *, POS *, POS *);
-_PR void flag_modification(TX *, POS *, POS *);
+_PR void flag_insertion(TX *, VALUE, VALUE);
+_PR void flag_deletion(TX *, VALUE, VALUE);
+_PR void flag_modification(TX *, VALUE, VALUE);
 _PR void refresh_window(WIN *w);
 _PR void refresh_world(void);
 _PR void refresh_world_curs(void);
@@ -71,7 +72,7 @@ refresh_init(void)
 static int
 vert_scroll(VW *vw)
 {
-    long y = vw->vw_StartLine - vw->vw_LastDisplayOrigin.pos_Line;
+    long y = VROW(vw->vw_DisplayOrigin) - VROW(vw->vw_LastDisplayOrigin);
     if(y < 0)
     {
 	if(-y >= vw->vw_MaxY || -y > vw->vw_MaxScroll)
@@ -82,8 +83,8 @@ vert_scroll(VW *vw)
 	else
 	{
 	    scroll_vw(vw, y);
-	    redraw_lines(vw, vw->vw_StartLine,
-			 vw->vw_LastDisplayOrigin.pos_Line);
+	    redraw_lines(vw, VROW(vw->vw_DisplayOrigin),
+			 VROW(vw->vw_LastDisplayOrigin));
 	    return(1);
 	}
     }
@@ -97,8 +98,8 @@ vert_scroll(VW *vw)
 	else
 	{
 	    scroll_vw(vw, y);
-	    redraw_lines(vw, vw->vw_StartLine + vw->vw_MaxY - y,
-			 vw->vw_StartLine + vw->vw_MaxY);
+	    redraw_lines(vw, VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY - y,
+			 VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY);
 	    return(1);
 	}
     }
@@ -111,12 +112,12 @@ vert_scroll(VW *vw)
    Returns the number of pairs of coords put into DEST-ARRAY, either
    0, 1, or 2. */
 static int
-sub_intersect_regions(POS *start1, POS *end1, POS *start2, POS *end2,
-		      POS **dest_array)
+sub_intersect_regions(VALUE start1, VALUE end1, VALUE start2, VALUE end2,
+		      VALUE *dest_array)
 {
     if(POS_GREATER_P(start1, start2))
     {
-	POS *tmp;
+	VALUE tmp;
 	tmp = start1; start1 = start2; start2 = tmp;
 	tmp = end1;   end1 = end2;     end2 = tmp;
     }
@@ -179,8 +180,8 @@ sub_intersect_regions(POS *start1, POS *end1, POS *start2, POS *end2,
 
 /* Similar to above but subtracts region (START2,END2) from (START1,END1) */
 static int
-sub_regions(POS *start1, POS *end1, POS *start2, POS *end2,
-	    POS **dest_array)
+sub_regions(VALUE start1, VALUE end1, VALUE start2, VALUE end2,
+	    VALUE *dest_array)
 {
     if(POS_EQUAL_P(start1, start2))
     {
@@ -225,36 +226,48 @@ sub_regions(POS *start1, POS *end1, POS *start2, POS *end2,
    Need to fix rectangular block redrawing (horizontal updates don't
    work properly) */
 static void
-refresh_block(VW *vw, POS *start, POS *end)
+refresh_block(VW *vw, VALUE start, VALUE end)
 {
     /* Make copies so they can be reversed for rect-blocks sometimes */
-    POS block_start = vw->vw_BlockS;
-    POS block_end = vw->vw_BlockE;
-    POS last_block_start = vw->vw_LastBlockS;
-    POS last_block_end = vw->vw_LastBlockE;
+    Pos block_start, block_end;
+    Pos last_block_start, last_block_end;
+
+    if(vw->vw_BlockStatus == 0)
+    {
+	block_start = *VPOS(vw->vw_BlockS);
+	block_end = *VPOS(vw->vw_BlockE);
+    }
+    if(vw->vw_LastBlockStatus == 0)
+    {
+	last_block_start = *VPOS(vw->vw_LastBlockS);
+	last_block_end = *VPOS(vw->vw_LastBlockE);
+    }
+
     if(vw->vw_Flags & VWFF_RECTBLOCKS)
     {
-	if(block_start.pos_Col > block_end.pos_Col)
+	if(vw->vw_BlockStatus == 0
+	   && PCOL(&block_start) > PCOL(&block_end))
 	{
-	    long tmp = block_start.pos_Col;
-	    block_start.pos_Col = block_end.pos_Col;
-	    block_end.pos_Col = tmp;
+	    long tmp = PCOL(&block_start);
+	    PCOL(&block_start) = PCOL(&block_end);
+	    PCOL(&block_end) = tmp;
 	}
-	if(last_block_start.pos_Col > last_block_end.pos_Col)
+	if(vw->vw_LastBlockStatus == 0
+	   && PCOL(&last_block_start) > PCOL(&last_block_end))
 	{
-	    long tmp = last_block_start.pos_Col;
-	    last_block_start.pos_Col = last_block_end.pos_Col;
-	    last_block_end.pos_Col = tmp;
+	    long tmp = PCOL(&last_block_start);
+	    PCOL(&last_block_start) = PCOL(&last_block_end);
+	    PCOL(&last_block_end) = tmp;
 	}
     }
+
     if(vw->vw_BlockStatus == 0 && vw->vw_LastBlockStatus == 0)
     {
 	/* A block was drawn last time as well, try to economise. */
-	POS *regions[4];
-	int count = sub_intersect_regions(&block_start, &block_end,
-					  &last_block_start,
-					  &last_block_end,
-					  regions);
+	VALUE regions[4];
+	int count = sub_intersect_regions(VAL(&block_start), VAL(&block_end),
+					  VAL(&last_block_start),
+					  VAL(&last_block_end), regions);
 	int i;
 	for(i = 0; i < count; i++)
 	{
@@ -262,10 +275,9 @@ refresh_block(VW *vw, POS *start, POS *end)
 		redraw_region(vw, regions[i*2], regions[i*2+1]);
 	    else
 	    {
-		POS *dr_regions[4];
+		VALUE dr_regions[4];
 		int dr_count = sub_regions(regions[i*2], regions[i*2+1],
-					   start, end,
-					   dr_regions);
+					   start, end, dr_regions);
 		int j;
 		for(j = 0; j < dr_count; j++)
 		    redraw_region(vw, dr_regions[j*2], dr_regions[j*2+1]);
@@ -274,24 +286,24 @@ refresh_block(VW *vw, POS *start, POS *end)
     }
     else
     {
-	POS *start_draw, *end_draw;
+	VALUE start_draw, end_draw;
 	if(vw->vw_BlockStatus == 0)
 	{
 	    /* Draw the newly marked block */
-	    start_draw = &block_start;
-	    end_draw = &block_end;
+	    start_draw = VAL(&block_start);
+	    end_draw = VAL(&block_end);
 	}
 	else
 	{
 	    /* Wipeout the old block */
-	    start_draw = &last_block_start;
-	    end_draw = &last_block_end;
+	    start_draw = VAL(&last_block_start);
+	    end_draw = VAL(&last_block_end);
 	}
 	if(!start || !end)
 	    redraw_region(vw, start_draw, end_draw);
 	else
 	{
-	    POS *regions[4];
+	    VALUE regions[4];
 	    int count = sub_regions(start_draw, end_draw,
 				    start, end, regions);
 	    int i;
@@ -302,9 +314,7 @@ refresh_block(VW *vw, POS *start, POS *end)
     vw->vw_Flags &= ~VWFF_REFRESH_BLOCK;
 }
 
-/*
- * Refreshes one view.
- */
+/* Refreshes one view. */
 void
 refresh_view(VW *vw)
 {
@@ -352,11 +362,11 @@ refresh_view(VW *vw)
 	    }
 	    else
 	    {
-		long endline = vw->vw_StartLine + vw->vw_MaxY;
+		long endline = VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY;
 		int vscrl;
 		/* check if modified region hits window */
-		if((vw->vw_StartLine > tx->tx_ModEnd.pos_Line)
-		   || (endline <= tx->tx_ModStart.pos_Line))
+		if((VROW(vw->vw_DisplayOrigin) > VROW(tx->tx_ModEnd))
+		   || (endline <= VROW(tx->tx_ModStart)))
 		{
 		    /* nope. just do any easy scrolling. */
 		    vert_scroll(vw);
@@ -366,62 +376,62 @@ refresh_view(VW *vw)
 		else if((vscrl = vert_scroll(vw)) != 2)
 		{
 		    /* is modified region just one line? */
-		    if((tx->tx_ModStart.pos_Line == tx->tx_ModEnd.pos_Line)
+		    if((VROW(tx->tx_ModStart) == VROW(tx->tx_ModEnd))
 		       && (tx->tx_ModDelta == 0))
 		    {
-			redraw_line_from(vw, tx->tx_ModStart.pos_Col,
-					 tx->tx_ModStart.pos_Line);
+			redraw_line_from(vw, VCOL(tx->tx_ModStart),
+					 VROW(tx->tx_ModStart));
 			if(vw->vw_Flags & VWFF_REFRESH_BLOCK)
 			{
-			    POS end;
-			    end.pos_Line = tx->tx_ModStart.pos_Line;
-			    end.pos_Col = tx->tx_Lines[end.pos_Line].ln_Strlen - 1;
-			    refresh_block(vw, &tx->tx_ModStart, &end);
+			    VALUE end = cmd_end_of_line(tx->tx_ModStart,
+							VAL(tx), sym_nil);
+			    refresh_block(vw, tx->tx_ModStart, end);
 			}
 		    }
 		    else if(tx->tx_ModDelta == 0)
 		    {
 			/* not able to do any pasting */
-			redraw_region(vw, &tx->tx_ModStart, &tx->tx_ModEnd);
+			redraw_region(vw, tx->tx_ModStart, tx->tx_ModEnd);
 			if(vw->vw_Flags & VWFF_REFRESH_BLOCK)
-			    refresh_block(vw, &tx->tx_ModStart,
-					  &tx->tx_ModEnd);
+			    refresh_block(vw, tx->tx_ModStart, tx->tx_ModEnd);
 		    }
 		    else if(tx->tx_ModDelta > 0)
 		    {
 			/* lines have been added: move down the lines they
 			   displaced. */
 			if(vscrl == 0)
-			    cut_paste_lines(vw, tx->tx_ModStart.pos_Line + 1,
-					    tx->tx_ModStart.pos_Line + tx->tx_ModDelta + 1);
-			redraw_region(vw, &tx->tx_ModStart, &tx->tx_ModEnd);
+			    cut_paste_lines(vw, VROW(tx->tx_ModStart) + 1,
+					    VROW(tx->tx_ModStart)
+					    + tx->tx_ModDelta + 1);
+			redraw_region(vw, tx->tx_ModStart, tx->tx_ModEnd);
 			if(vw->vw_Flags & VWFF_REFRESH_BLOCK)
-			    refresh_block(vw, &tx->tx_ModStart,
-					  &tx->tx_ModEnd);
+			    refresh_block(vw, tx->tx_ModStart, tx->tx_ModEnd);
 		    }
 		    else if(tx->tx_ModDelta < 0)
 		    {
 			/* lines deleted. */
-			POS line_end;
-			POS *end;
+			VALUE line_end;
+			VALUE end;
 			if(vscrl == 0)
 			{
-			    if(tx->tx_ModStart.pos_Col == 0)
-				cut_paste_lines(vw, tx->tx_ModEnd.pos_Line - tx->tx_ModDelta,
-						tx->tx_ModEnd.pos_Line);
+			    if(VCOL(tx->tx_ModStart) == 0)
+				cut_paste_lines(vw, VROW(tx->tx_ModEnd)
+						- tx->tx_ModDelta,
+						VROW(tx->tx_ModEnd));
 			    else
-				cut_paste_lines(vw, tx->tx_ModEnd.pos_Line - tx->tx_ModDelta + 1,
-						tx->tx_ModEnd.pos_Line + 1);
+				cut_paste_lines(vw, VROW(tx->tx_ModEnd)
+						- tx->tx_ModDelta + 1,
+						VROW(tx->tx_ModEnd) + 1);
 			}
-			line_end.pos_Line = tx->tx_ModStart.pos_Line;
-			line_end.pos_Col = tx->tx_Lines[line_end.pos_Line].ln_Strlen - 1;
-			if(POS_LESS_P(&tx->tx_ModEnd, &line_end))
-			    end = &line_end;
+			line_end = cmd_end_of_line(tx->tx_ModStart,
+						   VAL(tx), sym_nil);
+			if(POS_LESS_P(tx->tx_ModEnd, line_end))
+			    end = line_end;
 			else
-			    end = &tx->tx_ModEnd;
-			redraw_region(vw, &tx->tx_ModStart, end);
+			    end = tx->tx_ModEnd;
+			redraw_region(vw, tx->tx_ModStart, end);
 			if(vw->vw_Flags & VWFF_REFRESH_BLOCK)
-			    refresh_block(vw, &tx->tx_ModStart, end);
+			    refresh_block(vw, tx->tx_ModStart, end);
 		    }
 		}
 	    }
@@ -441,84 +451,85 @@ refresh_view(VW *vw)
     }
 }
 
-/*
- * Notes that buffer TX has had text added between START and END.
- */
+/* Notes that buffer TX has had text added between START and END. */
 void
-flag_insertion(TX *tx, POS *start, POS *end)
+flag_insertion(TX *tx, VALUE start, VALUE end)
 {
-    if(tx->tx_LastChanges == tx->tx_Changes)
+    if((tx->tx_Flags & TXFF_REFRESH_ALL) == 0)
     {
-	/* first insertion */
-	tx->tx_ModStart = *start;
-	tx->tx_ModEnd = *end;
-	tx->tx_ModDelta = end->pos_Line - start->pos_Line;
-    }
-    else
-    {
-	if(POS_LESS_P(start, &tx->tx_ModStart))
-	    tx->tx_ModStart = *start;
-	if(POS_GREATER_P(end, &tx->tx_ModEnd))
-	    tx->tx_ModEnd = *end;
-	tx->tx_ModDelta += end->pos_Line - start->pos_Line;
+	if(tx->tx_LastChanges == tx->tx_Changes)
+	{
+	    /* first insertion */
+	    tx->tx_ModStart = start;
+	    tx->tx_ModEnd = end;
+	    tx->tx_ModDelta = VROW(end) - VROW(start);
+	}
+	else
+	{
+	    if(POS_LESS_P(start, tx->tx_ModStart))
+		tx->tx_ModStart = start;
+	    if(POS_GREATER_P(end, tx->tx_ModEnd))
+		tx->tx_ModEnd = end;
+	    tx->tx_ModDelta += VROW(end) - VROW(start);
+	}
     }
     tx->tx_Changes++;
     tx->tx_Flags |= TXFF_REFRESH_STATUS;
 }
 
-/*
- * Same for deleted areas.
- */
+/* Same for deleted areas. */
 void
-flag_deletion(TX *tx, POS *start, POS *end)
+flag_deletion(TX *tx, VALUE start, VALUE end)
 {
-    if(tx->tx_LastChanges == tx->tx_Changes)
+    if((tx->tx_Flags & TXFF_REFRESH_ALL) == 0)
     {
-	/* first */
-	tx->tx_ModStart = *start;
-	tx->tx_ModEnd = *end;
-	tx->tx_ModDelta = -(end->pos_Line - start->pos_Line);
-    }
-    else
-    {
-	if(POS_LESS_P(start, &tx->tx_ModStart))
-	    tx->tx_ModStart = *start;
-	if(POS_GREATER_P(end, &tx->tx_ModEnd))
-	    tx->tx_ModEnd = *end;
-	tx->tx_ModDelta -= end->pos_Line - start->pos_Line;
+	if(tx->tx_LastChanges == tx->tx_Changes)
+	{
+	    /* first */
+	    tx->tx_ModStart = start;
+	    tx->tx_ModEnd = end;
+	    tx->tx_ModDelta = -(VROW(end) - VROW(start));
+	}
+	else
+	{
+	    if(POS_LESS_P(start, tx->tx_ModStart))
+		tx->tx_ModStart = start;
+	    if(POS_GREATER_P(end, tx->tx_ModEnd))
+		tx->tx_ModEnd = end;
+	    tx->tx_ModDelta -= VROW(end) - VROW(start);
+	}
     }
     tx->tx_Changes++;
     tx->tx_Flags |= TXFF_REFRESH_STATUS;
 }
 
-/*
- * Means that there is still the same layout of text between START and END,
- * but some of the character values may have been modified.
- */
+/* Means that there is still the same layout of text between START and END,
+   but some of the character values may have been modified. */
 void
-flag_modification(TX *tx, POS *start, POS *end)
+flag_modification(TX *tx, VALUE start, VALUE end)
 {
-    if(tx->tx_LastChanges == tx->tx_Changes)
+    if((tx->tx_Flags & TXFF_REFRESH_ALL) == 0)
     {
-	/* first */
-	tx->tx_ModStart = *start;
-	tx->tx_ModEnd = *end;
-	tx->tx_ModDelta = 0;
-    }
-    else
-    {
-	if(POS_LESS_P(start, &tx->tx_ModStart))
-	    tx->tx_ModStart = *start;
-	if(POS_GREATER_P(end, &tx->tx_ModEnd))
-	    tx->tx_ModEnd = *end;
+	if(tx->tx_LastChanges == tx->tx_Changes)
+	{
+	    /* first */
+	    tx->tx_ModStart = start;
+	    tx->tx_ModEnd = end;
+	    tx->tx_ModDelta = 0;
+	}
+	else
+	{
+	    if(POS_LESS_P(start, tx->tx_ModStart))
+		tx->tx_ModStart = start;
+	    if(POS_GREATER_P(end, tx->tx_ModEnd))
+		tx->tx_ModEnd = end;
+	}
     }
     tx->tx_Changes++;
     tx->tx_Flags |= TXFF_REFRESH_STATUS;
 }
 
-/*
- * Refreshes a whole window
- */
+/* Refreshes a whole window */
 void
 refresh_window(WIN *w)
 {
@@ -535,9 +546,7 @@ refresh_window(WIN *w)
     }
 }
 
-/*
- * Refeshes everything that should be.
- */
+/* Refeshes everything that should be. */
 void
 refresh_world(void)
 {

@@ -23,10 +23,10 @@
 
 #include <string.h>
 
-_PR void  undo_record_deletion(TX *, POS *, POS *);
-_PR VALUE undo_push_deletion(TX *, POS *, POS *);
-_PR void  undo_record_insertion(TX *, POS *, POS *);
-_PR void  undo_record_modification(TX *, POS *, POS *);
+_PR void  undo_record_deletion(TX *, VALUE, VALUE);
+_PR VALUE undo_push_deletion(TX *, VALUE, VALUE);
+_PR void  undo_record_insertion(TX *, VALUE, VALUE);
+_PR void  undo_record_modification(TX *, VALUE, VALUE);
 _PR void  undo_end_of_command(void);
 _PR void  undo_trim(void);
 _PR void  undo_init(void);
@@ -38,7 +38,7 @@ static max_undo_size = 10000;
 /* Lets us use the string which undo_record_deletion() creates for
    other uses.	*/
 static VALUE pending_deletion_string;
-static POS pending_deletion_start, pending_deletion_end;
+static VALUE pending_deletion_start, pending_deletion_end;
 static TX *pending_deletion_tx;
 
 /* While we're in cmd_undo() this is set.  This is also tested by
@@ -87,17 +87,15 @@ check_first_mod(TX *tx)
    the buffer's undo-list.  This has to be done *before* the text is
    actually deleted from the buffer (for obvious reasons).  */
 void
-undo_record_deletion(TX *tx, POS *start, POS *end)
+undo_record_deletion(TX *tx, VALUE start, VALUE end)
 {
-    if((tx->tx_Flags & TXFF_NO_UNDO) == 0
-       && !POS_EQUAL_P(start, end))
+    if((tx->tx_Flags & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
     {
 	VALUE string;
-	VALUE lstart = make_lpos(start);
 	if((pending_deletion_string != NULL)
 	   && (pending_deletion_tx = tx)
-	   && (POS_EQUAL_P(&pending_deletion_start, start))
-	   && (POS_EQUAL_P(&pending_deletion_end, end)))
+	   && (POS_EQUAL_P(pending_deletion_start, start))
+	   && (POS_EQUAL_P(pending_deletion_end, end)))
 	{
 	    /* A saved deletion; use it. */
 	    string = pending_deletion_string;
@@ -108,7 +106,7 @@ undo_record_deletion(TX *tx, POS *start, POS *end)
 	    if(len == 1)
 	    {
 		/* A deletion of 1 character is recorded as a character. */
-		string = cmd_get_char(lstart, VAL(tx));
+		string = cmd_get_char(start, VAL(tx));
 		if(!string || !NUMBERP(string))
 		    return;
 	    }
@@ -121,7 +119,7 @@ undo_record_deletion(TX *tx, POS *start, POS *end)
 	}
 	coalesce_undo(tx);
 	check_first_mod(tx);
-	tx->tx_UndoList = cmd_cons(cmd_cons(lstart, string),
+	tx->tx_UndoList = cmd_cons(cmd_cons(start, string),
 				   tx->tx_UndoList);
     }
     pending_deletion_string = NULL;
@@ -132,7 +130,7 @@ undo_record_deletion(TX *tx, POS *start, POS *end)
    return it. The next call to undo_record_deletion() will use the
    *same* copy (unless the parameters don't match).  */
 VALUE
-undo_push_deletion(TX *tx, POS *start, POS *end)
+undo_push_deletion(TX *tx, VALUE start, VALUE end)
 {
     long len = section_length(tx, start, end);
     if(len > 0)
@@ -141,8 +139,8 @@ undo_push_deletion(TX *tx, POS *start, POS *end)
 	copy_section(tx, start, end, VSTR(string));
 	VSTR(string)[len] = 0;
 	pending_deletion_string = string;
-	pending_deletion_start = *start;
-	pending_deletion_end = *end;
+	pending_deletion_start = start;
+	pending_deletion_end = end;
 	pending_deletion_tx = tx;
 	return(string);
     }
@@ -153,10 +151,9 @@ undo_push_deletion(TX *tx, POS *start, POS *end)
 /* Adds an insertion between START and END to the TX buffer's undo-list.
    Doesn't copy anything, just records START and END.  */
 void
-undo_record_insertion(TX *tx, POS *start, POS *end)
+undo_record_insertion(TX *tx, VALUE start, VALUE end)
 {
-    if((tx->tx_Flags & TXFF_NO_UNDO) == 0
-       && !POS_EQUAL_P(start, end))
+    if((tx->tx_Flags & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
     {
 	VALUE item;
 	coalesce_undo(tx);
@@ -165,27 +162,25 @@ undo_record_insertion(TX *tx, POS *start, POS *end)
 	if(CONSP(item) && CONSP(VCAR(item)))
 	{
 	    item = VCAR(item);
-	    if(POSP(VCDR(item)) && POS_EQUAL_P(start, &VPOS(VCDR(item))))
+	    if(POSP(VCDR(item)) && POS_EQUAL_P(start, VCDR(item)))
 	    {
 		/* This insertion is directly after the end of the
 		   previous insertion; extend the previous one to cover
 		   this one.  */
-		VPOS(VCDR(item)) = *end;
+		VCDR(item) = end;
 		return;
 	    }
 	}
-	tx->tx_UndoList = cmd_cons(cmd_cons(make_lpos(start), make_lpos(end)),
-				   tx->tx_UndoList);
+	tx->tx_UndoList = cmd_cons(cmd_cons(start, end), tx->tx_UndoList);
     }
 }
 
 /* Record that the text between START and END has been modified.  This
    must be done *before* the modification is actually done.  */
 void
-undo_record_modification(TX *tx, POS *start, POS *end)
+undo_record_modification(TX *tx, VALUE start, VALUE end)
 {
-    if((tx->tx_Flags & TXFF_NO_UNDO) == 0
-       && !POS_EQUAL_P(start, end))
+    if((tx->tx_Flags & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
     {
 	undo_record_deletion(tx, start, end);
 	undo_record_insertion(tx, start, end);
@@ -228,7 +223,7 @@ command. Consecutive undo commands work backwards through the BUFFER's
 history.
 
 ARG is the number of commands to undo, when called interactively this is
-taken from the commands prefix argument.
+taken from the prefix argument.
 ::end:: */
 {
     long count = NUMBERP(arg) ? VNUM(arg) : 1;
@@ -265,7 +260,7 @@ taken from the commands prefix argument.
 		/* A deleted string */
 		VALUE new = cmd_insert(VCDR(item), VCAR(item), tx);
 		if(new && POSP(new))
-		    cmd_goto_char(new);
+		    cmd_goto(new);
 	    }
 	    else if(NUMBERP(VCDR(item)))
 	    {
@@ -275,23 +270,19 @@ taken from the commands prefix argument.
 		VSTR(tmp)[1] = 0;
 		tmp = cmd_insert(tmp, VCAR(item), tx);
 		if(tmp && POSP(tmp))
-		    cmd_goto_char(tmp);
+		    cmd_goto(tmp);
 	    }
 	    else if(POSP(VCDR(item)))
 	    {
 		cmd_delete_area(VCAR(item), VCDR(item), tx); /* insert */
-		cmd_goto_char(VCAR(item));
+		cmd_goto(VCAR(item));
 	    }
 	}
 	else if(POSP(item))
-	{
-	    cmd_goto_char(item);
-	}
+	    cmd_goto(item);
 	else if(item == sym_t)
-	{
 	    /* clear modification flag. */
 	    cmd_set_buffer_modified(tx, sym_nil);
-	}
     }
     this_command = sym_undo;
     return(sym_t);
@@ -371,7 +362,7 @@ undo_trim(void)
 	    {
 		size_count += sizeof(Cons);
 		if(POSP(VCDR(item)))
-		    size_count += sizeof(LPos) * 2;
+		    size_count += sizeof(Pos) * 2;
 		else if(STRINGP(VCDR(item)))
 		    size_count += STRING_LEN(VCDR(item));
 		if(size_count > max_undo_size)
@@ -385,7 +376,7 @@ undo_trim(void)
 	    }
 	    else if(POSP(item))
 	    {
-		size_count += sizeof(LPos);
+		size_count += sizeof(Pos);
 	    }
 	    undo_list = &VCDR(*undo_list);
 	}
@@ -397,6 +388,8 @@ void
 undo_init(void)
 {
     mark_static(&pending_deletion_string);
+    mark_static(&pending_deletion_start);
+    mark_static(&pending_deletion_end);
     INTERN(sym_undo, "undo");
     ADD_SUBR(subr_undo);
     ADD_SUBR(subr_max_undo_size);

@@ -267,11 +267,11 @@ calc_cursor_offset(VW *vw)
     TX *tx = vw->vw_Tx;
     if(!((tx == vw->vw_LastCursorTx)
 	 && (tx->tx_Changes == vw->vw_LastCursorChanges)
-	 && POS_EQUAL_P(&vw->vw_CursorPos, &vw->vw_LastCursorPos)))
+	 && POS_EQUAL_P(vw->vw_CursorPos, vw->vw_LastCursorPos)))
     {
 	/* Have to recalculate the number of glyphs before the cursor. */
-	vw->vw_LastCursorOffset = glyph_col(tx, vw->vw_CursorPos.pos_Col,
-					    vw->vw_CursorPos.pos_Line);
+	vw->vw_LastCursorOffset = glyph_col(tx, VCOL(vw->vw_CursorPos),
+					    VROW(vw->vw_CursorPos));
 	vw->vw_LastCursorTx = tx;
 	vw->vw_LastCursorChanges = tx->tx_Changes;
 	vw->vw_LastCursorPos = vw->vw_CursorPos;
@@ -283,8 +283,9 @@ calc_cursor_offset(VW *vw)
 void
 adjust_cursor_to_glyph(VW *vw)
 {
-    vw->vw_CursorPos.pos_Col = char_col(vw->vw_Tx, vw->vw_LastCursorOffset,
-					vw->vw_CursorPos.pos_Line);
+    vw->vw_CursorPos = make_pos(char_col(vw->vw_Tx, vw->vw_LastCursorOffset,
+					 VROW(vw->vw_CursorPos)),
+				VROW(vw->vw_CursorPos));
 }
 
 u_char *
@@ -378,8 +379,8 @@ Returns t if ARG is a glyph-table.
     return(GLYPHTABP(arg) ? sym_t : sym_nil);
 }
 
-_PR VALUE cmd_char_to_glyph_pos(VALUE vpos, VALUE tx);
-DEFUN("char-to-glyph-pos", cmd_char_to_glyph_pos, subr_char_to_glyph_pos, (VALUE vpos, VALUE tx), V_Subr2, DOC_char_to_glyph_pos) /*
+_PR VALUE cmd_char_to_glyph_pos(VALUE pos, VALUE tx);
+DEFUN("char-to-glyph-pos", cmd_char_to_glyph_pos, subr_char_to_glyph_pos, (VALUE pos, VALUE tx), V_Subr2, DOC_char_to_glyph_pos) /*
 ::doc:char_to_glyph_pos::
 char-to-glyph-pos [POS] [BUFFER]
 
@@ -387,19 +388,15 @@ From the character position POS, find its true *physical* position when
 rendered.
 ::end:: */
 {
-    POS pos;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    if(POSP(vpos))
-	pos = VPOS(vpos);
-    else
-	pos = *get_tx_cursor(VTX(tx));
-    pos.pos_Col = glyph_col(VTX(tx), pos.pos_Col, pos.pos_Line);
-    return(make_lpos(&pos));
+    if(!POSP(pos))
+	pos = get_tx_cursor(VTX(tx));
+    return make_pos(glyph_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
 }
 
-_PR VALUE cmd_glyph_to_char_pos(VALUE vpos, VALUE tx);
-DEFUN("glyph-to-char-pos", cmd_glyph_to_char_pos, subr_glyph_to_char_pos, (VALUE vpos, VALUE tx), V_Subr2, DOC_glyph_to_char_pos) /*
+_PR VALUE cmd_glyph_to_char_pos(VALUE pos, VALUE tx);
+DEFUN("glyph-to-char-pos", cmd_glyph_to_char_pos, subr_glyph_to_char_pos, (VALUE pos, VALUE tx), V_Subr2, DOC_glyph_to_char_pos) /*
 ::doc:glyph_to_char_pos::
 glyph-to-char-pos POS [BUFFER]
 
@@ -407,13 +404,10 @@ For the physical position POS, find the closest matching actual character
 position.
 ::end:: */
 {
-    POS pos;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    DECLARE1(vpos, POSP);
-    pos = VPOS(vpos);
-    pos.pos_Col = char_col(VTX(tx), pos.pos_Col, pos.pos_Line);
-    return(make_lpos(&pos));
+    DECLARE1(pos, POSP);
+    return make_pos(char_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
 }
 
 _PR VALUE cmd_default_glyph_table(void);

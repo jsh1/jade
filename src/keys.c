@@ -221,7 +221,6 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 		    {
 			if(!read_only(vw->vw_Tx))
 			{
-			    POS tmp = vw->vw_CursorPos;
 			    VALUE old_undo_head = NULL;
 			    cmd_eval_hook2(sym_pre_command_hook, sym_nil);
 			    if(last_command == sym_t
@@ -236,7 +235,8 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 				    = VCDR(vw->vw_Tx->tx_UndoList);
 			    }
 			    if(pad_cursor(vw))
-				insert_string(vw->vw_Tx, buff, len, &tmp);
+				insert_string(vw->vw_Tx, buff,
+					      len, vw->vw_CursorPos);
 			    if(old_undo_head != NULL)
 			    {
 				VCDR(old_undo_head) = vw->vw_Tx->tx_UndoList;
