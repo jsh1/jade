@@ -606,7 +606,7 @@ string QUESTION, returns t for `y'."
 	    ((old-u-k-h unbound-key-hook)
 	     (old-k-p keymap-path))
 	  (setq unbound-key-hook '(beep)
-		keymap-path (list (or keymap y-or-n-keymap)))
+		keymap-path (cons (or keymap y-or-n-keymap) keymap-path))
 	  (insert (concat question ?  (or help-string "(y or n)") ? )
 		  (start-of-buffer))
 	  (unwind-protect
