@@ -685,13 +685,23 @@ files in the corresponding working directories."
 
 ;;;###autoload
 (defun cvs-add-change-log-entries ()
+  "Add a change log entry for each selected file. Files are grouped by
+directory, the ChangeLog file associated with files in each directory
+will be prompted for."
   (interactive)
   (let
-      ((files (cvs-get-filenames-by-dir (cvs-command-get-files))))
+      ((files (mapcar #'(lambda (cell)
+			  ;; Expand the directory names so they're
+			  ;; valid outside the *cvs* buffer
+			  (cons (expand-file-name (car cell))
+				(cdr cell)))
+		      (cvs-get-filenames-by-dir (cvs-command-get-files)))))
     (goto-other-view)
     (mapc #'(lambda (cell)
 	      (add-change-log-entry
-	       (expand-file-name "ChangeLog" (car cell)) (cdr cell)))
+	       (prompt-for-file
+		(format nil "Log file for directory `%s':" (car cell))
+		nil (expand-file-name "ChangeLog" (car cell))) (cdr cell)))
 	  files)))
 
 ;;;###autoload
