@@ -173,7 +173,9 @@ it leads to)."
   (interactive)
   (let*
       ((mode major-mode)
-       (doc (substitute-command-keys (documentation mode))))
+       (doc (documentation mode)))
+    (when doc
+      (setq doc (substitute-command-keys doc)))
     (help-wrapper
      (when (stringp doc)
        (format standard-output "\n%s\n" doc)))))
