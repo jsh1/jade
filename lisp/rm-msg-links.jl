@@ -22,7 +22,7 @@
 (provide 'rm-msg-links)
 
 (defvar rm-msg-links-alist
-  '(("^(resent-)?(from|to|cc|bcc|reply-to):" . rm-msg-links-addresses)
+  '(("^(resent-)?(from|to|cc|bcc|reply-to|sender):" . rm-msg-links-addresses)
     ("^subject:" . rm-msg-links-subject)
     ("^date:" . rm-msg-links-date)
     ("^(message-id|references|in-reply-to):" . rm-msg-links-message-id))
