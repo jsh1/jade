@@ -22,6 +22,10 @@
 #include <limits.h>
 #include <setjmp.h>
 #include <assert.h>
+#include <string.h>
+#ifdef NEED_MEMORY_H
+# include <memory.h>
+#endif
 
 #define DEBUG
 
