@@ -913,7 +913,7 @@ the summary buffer.")
     (if (= (window-view-count) 2)
 	;; Single view + minibuf
 	(setq summary-view (current-view)
-	      mail-view (open-view))
+	      mail-view (split-view))
       (let
 	  ((orig (window-view-list)))
 	(setq summary-view (car orig)
@@ -921,7 +921,7 @@ the summary buffer.")
 	(when (> (window-view-count) 3)
 	  (mapc #'(lambda (v)
 		    (unless (minibuffer-view-p v)
-		      (close-view v)))
+		      (delete-view v)))
 		(nthcdr 2 orig)))))
     (condition-case nil
 	(if (eq mail-display-summary 'bottom)
@@ -1235,7 +1235,7 @@ buffer will not be deleted, so it may be saved later."
     (unless already-saved
       (rm-update-flags))
     (when summary-view
-      (close-view summary-view))
+      (delete-view summary-view))
     (kill-buffer rm-summary-buffer)
     (destroy-buffer rm-summary-buffer)
     (setq rm-current-msg nil

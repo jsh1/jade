@@ -188,9 +188,9 @@
   "Ctrl-v"	'find-alternate-file
   "Ctrl-w"	'save-file-as
   "Ctrl-x"	'swap-cursor-and-auto-mark
-  "0"		'close-view
-  "1"		'close-other-views
-  "2"		'open-view
+  "0"		'delete-view
+  "1"		'delete-other-views
+  "2"		'split-view
   "4"		'(setq next-keymap-path '(ctrl-x-4-keymap))
   "5"		'(setq next-keymap-path '(ctrl-x-5-keymap))
   "b"		'switch-to-buffer

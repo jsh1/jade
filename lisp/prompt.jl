@@ -219,7 +219,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
     (if (= (window-view-count) 2)
 	(progn
 	  (setq prompt-new-completion-view t
-		prompt-completion-view (open-view))
+		prompt-completion-view (split-view))
 	  (set-status-message prompt-old-title-msg prompt-title-view)
 	  (setq prompt-title-view prompt-completion-view
 		prompt-old-title-msg (set-status-message prompt-title
@@ -236,7 +236,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 (defun prompt-remove-completion-buffer ()
   (when prompt-completion-buffer
     (if prompt-new-completion-view
-	(close-view prompt-completion-view)
+	(delete-view prompt-completion-view)
       (with-view prompt-completion-view
 	(setq buffer-list (delq prompt-completion-buffer buffer-list))
 	(set-current-buffer (car buffer-list))))

@@ -36,9 +36,17 @@ _PR void view_sweep(void);
 _PR void view_prin(VALUE, VALUE);
 _PR VW *make_view(VW *, WIN *, TX *, long, bool);
 
-_PR VALUE sym_make_view_hook, sym_destroy_view_hook;
-DEFSYM(make_view_hook, "make-view-hook");
-DEFSYM(destroy_view_hook, "destroy-view-hook");
+_PR VALUE sym_split_view_hook, sym_delete_view_hook;
+DEFSYM(split_view_hook, "split-view-hook");
+DEFSYM(delete_view_hook, "delete-view-hook"); /*
+::doc:split_view_hook::
+Hook called whenever a new view is created; called with a single argument,
+the view that's just been made.
+::end::
+::doc:delete_view_hook::
+Hook called whenever a view is deleted, called with the view as its sole
+argument.
+::end:: */
 
 static void set_scroll_steps(VW *vw);
 static void recalc_measures(WIN *w);
@@ -138,20 +146,12 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
     /* Check to see if there's space for the new view. */
     if(!minibuf_p)
     {
-	if(sibling)
+	if((sibling && sibling->vw_MaxY + 1 < lines + 3)
+	   || parent->w_MaxY < lines + 2)
 	{
-	    if(sibling->vw_MaxY + 1 < lines + 3)
-		goto size_error;
-	}
-	else
-	{
-	    if(parent->w_MaxY < lines + 2)
-	    {
-	    size_error:
-		cmd_signal(sym_window_error,
-			   list_2(VAL(parent), VAL(&too_few_lines)));
-		return NULL;
-	    }
+	    cmd_signal(sym_window_error,
+		       list_2(VAL(parent), VAL(&too_few_lines)));
+	    return NULL;
 	}
     }
 
@@ -221,13 +221,15 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 		vw->vw_BlockS = sibling->vw_BlockS;
 		vw->vw_BlockE = sibling->vw_BlockE;
 		vw->vw_BlockStatus = sibling->vw_BlockStatus;
+		vw->vw_BufferList = sibling->vw_BufferList;
 	    }
 	    else
 	    {
 		/* this doesn't always work as well as the above. */
 		swap_buffers(vw, tx);
+		vw->vw_BufferList = sym_nil;
 	    }
-	    cmd_call_hook(sym_make_view_hook, LIST_1(VAL(vw)), sym_nil);
+	    cmd_call_hook(sym_split_view_hook, LIST_1(VAL(vw)), sym_nil);
 #ifndef NOSCRLBAR
 	    sys_update_scroller(vw);
 #endif
@@ -242,33 +244,44 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
     return NULL;
 }
 
-_PR VALUE cmd_make_view(VALUE split_vw, VALUE tx, VALUE lines);
-DEFUN("make-view", cmd_make_view, subr_make_view, (VALUE split_vw, VALUE tx, VALUE lines), V_Subr3, DOC_make_view) /*
-::doc:make_view::
-make-view [VIEW-TO-SPLIT] [BUFFER] [LINES]
+_PR VALUE cmd_split_view(VALUE sib, VALUE lines);
+DEFUN_INT("split-view", cmd_split_view, subr_split_view,
+	  (VALUE sib, VALUE lines), V_Subr2, DOC_split_view, "") /*
+::doc:split_view::
+split-view [VIEW] [SIZE]
 
-Make a new view, using the space of the view VIEW-TO-SPLIT. BUFFER is
-used to specify the buffer displayed in the new view. LINES can define
-the number of lines desired in the new view.
+Split VIEW (or the selected view) into two. Returns a new view directly
+below VIEW containing SIZE rows of the window (or half the original size
+of VIEW if undefined), displaying the same buffer as VIEW is.
+The currently selected view doesn't change.
+
+A window-error will be signalled if there is insufficient room in VIEW
+to contain the new view.
 ::end:: */
 {
-    if(!VIEWP(split_vw))
-	split_vw = VAL(curr_vw);
-    return VAL(make_view(VVIEW(split_vw), VVIEW(split_vw)->vw_Win,
-			 BUFFERP(tx) ? VTX(tx) : VVIEW(split_vw)->vw_Tx,
-			 INTP(lines) ? VINT(lines) : 0, FALSE));
+    if(!VIEWP(sib))
+	sib = VAL(curr_vw);
+    return VAL(make_view(VVIEW(sib), VVIEW(sib)->vw_Win,
+			 VVIEW(sib)->vw_Tx, INTP(lines) ? VINT(lines) : 0,
+			 FALSE));
 }
 
 DEFSTRING(sole_view, "Can't kill the sole view in a window");
 DEFSTRING(mini_view, "Can't kill minibuffer view");
 
-_PR VALUE cmd_destroy_view(VALUE view);
-DEFUN("destroy-view", cmd_destroy_view, subr_destroy_view, (VALUE view), V_Subr1, DOC_destroy_view) /*
-::doc:destroy_view::
-destroy-view [VIEW]
+_PR VALUE cmd_delete_view(VALUE view);
+DEFUN_INT("delete-view", cmd_delete_view, subr_delete_view, (VALUE view),
+	  V_Subr1, DOC_delete_view, "") /*
+::doc:delete_view::
+delete-view [VIEW]
 
-Close VIEW (or the current view). It's not allowed to have less than two
-views (minibuffer and one other) in any window.
+Delete VIEW (or the current view) from the window containing it. Its window
+space will be assigned to the view immediately above it (unless VIEW is the
+first in the window, in which case the following view is given the space).
+
+A window-error will be signalled when deleting the view would leave less
+than two views in the window (including the minibuffer view), or when
+VIEW is the minibuffer view.
 ::end:: */
 {
     VW *vw = VIEWP(view) ? VVIEW(view) : curr_vw;
@@ -283,7 +296,7 @@ views (minibuffer and one other) in any window.
 	/* Can't kill the minibuffer */
 	return cmd_signal(sym_window_error, list_2(VAL(&mini_view), VAL(vw)));
     }
-    cmd_call_hook(sym_destroy_view_hook, LIST_1(VAL(vw)), sym_nil);
+    cmd_call_hook(sym_delete_view_hook, LIST_1(VAL(vw)), sym_nil);
     sys_kill_vw(vw);
     vw->vw_Tx = NULL;
     vw->vw_BufferList = sym_nil;
@@ -992,8 +1005,8 @@ views_init(void)
     cmd_set_buffer_special(VAL(mb_unused_buffer), sym_t);
     cmd_set_buffer_read_only(VAL(mb_unused_buffer), sym_t);
 
-    ADD_SUBR(subr_make_view);
-    ADD_SUBR(subr_destroy_view);
+    ADD_SUBR_INT(subr_split_view);
+    ADD_SUBR_INT(subr_delete_view);
     ADD_SUBR(subr_y_scroll_step_ratio);
     ADD_SUBR(subr_x_scroll_step_ratio);
     ADD_SUBR(subr_rect_blocks_p);
@@ -1014,8 +1027,8 @@ views_init(void)
     ADD_SUBR(subr_minibuffer_view);
     ADD_SUBR(subr_minibuffer_active_p);
     ADD_SUBR(subr_set_status_message);
-    INTERN(make_view_hook);
-    INTERN(destroy_view_hook);
+    INTERN(split_view_hook); DOC(split_view_hook);
+    INTERN(delete_view_hook); DOC(delete_view_hook);
 }
 
 void

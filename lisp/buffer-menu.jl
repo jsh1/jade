@@ -227,7 +227,7 @@ Commands available are,\n
 
 (defun bm-select-buffer-whole-window ()
   (interactive)
-  (close-other-views)
+  (delete-other-views)
   (bm-select-buffer))
 
 (defun bm-select-buffer-two-views ()
@@ -238,9 +238,9 @@ Commands available are,\n
        first-view second-view)
     (bury-buffer bm-buffer)
     (if (< (window-view-count) 3)
-	(open-view)
+	(set-current-view (split-view))
       (while (> (window-view-count) 3)
-	(close-view)))
+	(delete-view)))
     (setq first-view (window-first-view)
 	  second-view (next-view first-view))
     (with-view first-view

@@ -111,7 +111,7 @@ Commands for this mode are,\n
 
 (defun bs-select-whole-window ()
   (interactive)
-  (close-other-views)
+  (delete-other-views)
   (bs-select-item (summary-current-item)))
 
 (defun bs-select-two-views ()
@@ -122,9 +122,9 @@ Commands for this mode are,\n
        first-view second-view)
     (bs-quit)
     (if (< (window-view-count) 3)
-	(open-view)
+	(set-current-view (split-view))
       (while (> (window-view-count) 3)
-	(close-view)))
+	(delete-view)))
     (setq first-view (window-first-view)
 	  second-view (next-view first-view))
     (with-view first-view

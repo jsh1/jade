@@ -81,27 +81,7 @@ is also set as the current window."
 
 ;; View handling
 
-(defun open-view (&optional sibling lines)
-  "Create a new view next to view SIBLING. LINES defines the number of
-lines it contains."
-  (interactive)
-  (unless sibling
-    (setq sibling (current-view)))
-  (let
-      ((view (make-view sibling nil lines))
-       (old-buf-list buffer-list))
-    (with-view view
-      (setq buffer-list (copy-sequence old-buf-list)))
-    view))
-
-(defun close-view (&optional view)
-  "Close VIEW."
-  (interactive)
-  (if (minibuffer-view-p view)
-      (error "Can't close minibuffer view")
-    (destroy-view view)))
-
-(defun close-other-views (&optional view)
+(defun delete-other-views (&optional view)
   "Close all views in the current window except for VIEW, or the current one."
   (interactive)
   (unless view
@@ -112,7 +92,7 @@ lines it contains."
     (while (> (window-view-count) 2)
       (setq next (next-view doomed))
       (unless (or (eq doomed view) (minibuffer-view-p doomed))
-	(destroy-view doomed))
+	(delete-view doomed))
       (setq doomed next))))
 
 (defun in-other-view (command)
@@ -132,10 +112,7 @@ defines the number of lines to give the view. If LINES is the symbol t
 then no change is made to the size of the chosen view, otherwise it will be
 set so that it and the current view are roughly the same size."
   (if (= 2 (window-view-count))
-      ;; open-view sets the new view as the current view; I don't
-      ;; want that, so protect the current context.
-      (with-view (current-view)
-	(open-view nil lines))
+      (split-view nil lines)
     (let
 	((view (next-view))
 	 total desired)
