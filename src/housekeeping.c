@@ -33,6 +33,7 @@ _PR void set_start_col(VW *, long);
 _PR void set_start_line(VW *, long);
 _PR void reset_all_views(TX *);
 
+
 /* The next few routines deal with updating the various references to
    coordinates throughout the views after chunks have been deleted and
    inserted.  */
@@ -448,8 +449,10 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
 #undef UPD2
 }
 
+
 /* These routines are called to recalculate the cursor's position on the
    screen...  */
+
 static void
 resync_x(VW *vw)
 {
@@ -476,6 +479,8 @@ resync_y(VW *vw)
     TX *tx = vw->vw_Tx;
     long y;
 
+    /* First check that the cursor is within the current
+       restriction, if not move the cursor until it is. */
     if(vw->vw_CursorPos.pos_Line < tx->tx_LogicalStart)
     {
 	vw->vw_CursorPos.pos_Line = tx->tx_LogicalStart;
@@ -488,43 +493,49 @@ resync_y(VW *vw)
 	    = tx->tx_Lines[vw->vw_CursorPos.pos_Line].ln_Strlen - 1;
     }
 
+    /* Next check that the cursor is within the visible portion
+       of the buffer. If not change the visible region. */
     y = vw->vw_CursorPos.pos_Line - vw->vw_StartLine;
-    if(y < 0 || vw->vw_StartLine < tx->tx_LogicalStart)
+    if(y < 0)
     {
 	if(-y > vw->vw_YStep)
 	    vw->vw_StartLine = vw->vw_CursorPos.pos_Line - (vw->vw_MaxY / 2);
 	else
 	    vw->vw_StartLine -= vw->vw_YStep;
-	if(vw->vw_StartLine < tx->tx_LogicalStart)
-	    vw->vw_StartLine = tx->tx_LogicalStart;
-	else if(vw->vw_StartLine >= tx->tx_LogicalEnd)
-	    vw->vw_StartLine = tx->tx_LogicalEnd - 1;
     }
-    else if(y >= vw->vw_MaxY || vw->vw_StartLine >= tx->tx_LogicalEnd)
+    else if(y >= vw->vw_MaxY)
     {
 	if((vw->vw_MaxY + vw->vw_YStep) <= y)
 	    vw->vw_StartLine = vw->vw_CursorPos.pos_Line - (vw->vw_MaxY / 2);
 	else
 	    vw->vw_StartLine += vw->vw_YStep;
-	if(vw->vw_StartLine < tx->tx_LogicalStart)
-	    vw->vw_StartLine = tx->tx_LogicalStart;
-	else if(vw->vw_StartLine >= tx->tx_LogicalEnd)
-	    vw->vw_StartLine = tx->tx_LogicalEnd - 1;
-	/* Check for a `gap' at the bottom of the display */
-	if((tx->tx_NumLines >= vw->vw_MaxY)
-	   && ((tx->tx_NumLines - vw->vw_StartLine) < vw->vw_MaxY))
-	{
-	    vw->vw_StartLine = tx->tx_NumLines - vw->vw_MaxY;
-	}
+    }
+
+    /* Finally do some sanity checks: ensure that nothing
+       outside the restriction is visible, and that there's
+       no wasted space when displaying the bottom of the
+       restriction. */
+    if(vw->vw_StartLine < tx->tx_LogicalStart)
+    {
+	vw->vw_StartLine = tx->tx_LogicalStart;
+    }
+    else if(vw->vw_StartLine >= tx->tx_LogicalEnd
+	    /* Check for a `gap' at the bottom of the display */
+	    || (vw->vw_StartLine != vw->vw_LastDisplayOrigin.pos_Line
+	        && (tx->tx_LogicalEnd - vw->vw_StartLine) < vw->vw_MaxY))
+    {
+	vw->vw_StartLine = MAX(tx->tx_LogicalEnd - vw->vw_MaxY,
+			       tx->tx_LogicalStart);
     }
 }
 
 void
 resync_xy(VW *vw)
 {
+    /* kludge: remind me, why is this necessary? */
     if(vw->vw_Tx != vw->vw_LastRefTx)
-	/* kludge */
 	vw->vw_LastDisplayOrigin = vw->vw_DisplayOrigin;
+
     resync_x(vw);
     resync_y(vw);
 }
@@ -542,10 +553,9 @@ set_start_col(VW *vw, long col)
 void
 set_start_line(VW *vw, long line)
 {
-    long cline = vw->vw_StartLine;
-    if(line != cline)
+    if(line != vw->vw_StartLine)
     {
-	long yord = vw->vw_CursorPos.pos_Line - cline;
+	long yord = vw->vw_CursorPos.pos_Line - vw->vw_StartLine;
 	vw->vw_StartLine = line;
 	vw->vw_CursorPos.pos_Line = line + yord;
 	if(vw->vw_CursorPos.pos_Line >= vw->vw_Tx->tx_LogicalEnd)
@@ -571,9 +581,6 @@ reset_all_views(TX *tx)
 	    thisvw->vw_StartLine = 0;
 	    thisvw->vw_BlockStatus = -1;
 	    thisvw->vw_Flags |= VWFF_FORCE_REFRESH;
-#if 0
-	    thisvw->vw_Flags &= ~VWFF_MESSAGE;
-#endif
 	}
 	tx->tx_SavedCPos.pos_Col = 0;
 	tx->tx_SavedCPos.pos_Line = 0;
