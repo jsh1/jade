@@ -67,4 +67,4 @@ strategy."
   (message "Querying the DICT server..." t)
   (shell-command (concat dict-program " -s "
 			 (symbol-name (or strategy dict-strategy))
-			 (or dict-options "") " " word)))
+			 (or dict-options "") " '" word "'")))
