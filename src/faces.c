@@ -290,6 +290,7 @@ merge_faces(WIN *w, Lisp_Extent *e, int in_block, int on_cursor)
     Lisp_Color *background = 0, *foreground = 0;
 
     Lisp_Extent *x;
+    bool mouse_extent = FALSE;
 
     void union_face(Lisp_Face *face) {
 	car |= face->car & (FACEFF_MASK & ~FACEFF_INVERT);
@@ -319,15 +320,34 @@ merge_faces(WIN *w, Lisp_Extent *e, int in_block, int on_cursor)
     /* Work up from E to the root. */
     for(x = e; x != 0; x = x->parent)
     {
-	repv face = Fextent_get(rep_VAL(x), Qface);
-	if(face != rep_NULL && FACEP(face))
-	    union_face(VFACE(face));
-	if (x == w->w_MouseExtent)
+	repv face;
+	if (!mouse_extent && w->w_NumMouseExtents > 0)
+	{
+	    Lisp_Extent *first = x;
+	    int i;
+	    while (first->frag_pred != 0)
+		first = first->frag_pred;
+	    for (i = 0; i < w->w_NumMouseExtents; i++)
+	    {
+		if (first == w->w_MouseExtents[i])
+		{
+		    /* If an inner extent contains the mouse,
+		       then all parents of this extent also
+		       contain the mouse pointer. */
+		    mouse_extent = TRUE;
+		    break;
+		}
+	    }
+	}
+	if (mouse_extent)
 	{
 	    face = Fextent_get (rep_VAL(x), Qmouse_face);
 	    if (face && FACEP (face))
 		union_face (VFACE (face));
 	}
+	face = Fextent_get(rep_VAL(x), Qface);
+	if(face && FACEP(face))
+	    union_face(VFACE(face));
     }
 
     /* Merge in the default-face properties */
