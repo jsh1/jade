@@ -216,9 +216,6 @@ static gl_cache_t gl_cache;
 void
 make_window_glyphs(glyph_buf *g, WIN *w)
 {
-    glyph_code *codes = GLYPH_BUF_CODES(w->w_NewContent, 0);
-    glyph_attr *attrs = GLYPH_BUF_ATTRS(w->w_NewContent, 0);
-
     /* Lookup table for changing an attribute to the cursor's equivalent. */
     static const glyph_attr cursor_attrs[GA_MAX] =
 	{ GA_Text_RV, GA_Text, GA_Block_RV, GA_Block };
@@ -303,6 +300,9 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	{
 	    /* Fill in the glyphs for CHAR_ROW */
 
+	    glyph_code *codes = w->w_NewContent->codes[glyph_row];
+	    glyph_attr *attrs = w->w_NewContent->attrs[glyph_row];
+
 	    u_char *src = vw->vw_Tx->tx_Lines[char_row].ln_Line;
 	    long src_len = vw->vw_Tx->tx_Lines[char_row].ln_Strlen - 1;
 
@@ -375,10 +375,12 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 			{
 			    if(real_glyph_col >= vw->vw_MaxX - 1)
 			    {
-				*codes++ = '\\';
-				*attrs++ = attr;
+				*codes = '\\';
+				*attrs = attr;
 				real_glyph_col = 0;
 				++glyph_row;
+				codes = w->w_NewContent->codes[glyph_row];
+				attrs = w->w_NewContent->attrs[glyph_row];
 			    }
 			    if(glyph_row < last_row)
 				OUTPUT(*ptr++);
@@ -456,10 +458,8 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	   end of the view, fill with empty lines. */
 	while(glyph_row < last_row)
 	{
-	    memset(codes, ' ', g->cols);
-	    memset(attrs, GA_Text, g->cols);
-	    codes += g->cols;
-	    attrs += g->cols;
+	    memset(w->w_NewContent->codes[glyph_row], ' ', g->cols);
+	    memset(w->w_NewContent->attrs[glyph_row], GA_Text, g->cols);
 	    glyph_row++;
 	}
 
@@ -467,15 +467,16 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	   line text. TODO: should use glyph tables for this */
 	if((vw->vw_Flags & VWFF_MINIBUF) == 0)
 	{
+	    glyph_code *codes = w->w_NewContent->codes[glyph_row];
+	    glyph_attr *attrs = w->w_NewContent->attrs[glyph_row];
 	    int len;
+
 	    update_status_buffer(vw);
 	    len = strlen(vw->vw_StatusBuf);
 	    memcpy(codes, vw->vw_StatusBuf, MIN(len, g->cols));
 	    if(len < g->cols)
 		memset(codes + len, ' ', g->cols - len);
 	    memset(attrs, GA_Text_RV, g->cols);
-	    codes += g->cols;
-	    attrs += g->cols;
 	    glyph_row++;
 	}
     }
@@ -491,13 +492,15 @@ void
 make_message_glyphs(glyph_buf *g, WIN *w)
 {
     /* TODO: use glyph table to output message */
-    memcpy(GLYPH_BUF_CODES(g, w->w_MaxY - 1),
-	   w->w_Message,
-	   MIN(w->w_MessageLen, g->cols));
+
+    int line = w->w_MaxY - 1;
+
+    memcpy(g->codes[line], w->w_Message, MIN(w->w_MessageLen, g->cols));
     if(w->w_MessageLen < g->cols)
-	memset(GLYPH_BUF_CODES(g, w->w_MaxY - 1) + w->w_MessageLen,
-	       ' ', g->cols - w->w_MessageLen);
-    memset(GLYPH_BUF_ATTRS(g, w->w_MaxY - 1), GA_Text, g->cols);
+	memset(g->codes[line] + w->w_MessageLen, ' ',
+	       (g->cols - w->w_MessageLen));
+
+    memset(g->attrs[line], GA_Text, g->cols);
 }
     
 
