@@ -215,7 +215,7 @@ the function doc is provided."
 	 (t
 	  (setq doc (nth 2 symbol)))))
       (when (numberp doc)
-	(setq doc (get-doc-string doc)))
+	(setq doc (get-documentation doc)))
       (when (stringp doc)
 	doc))))
 
@@ -224,3 +224,37 @@ the function doc is provided."
   "Sets the `variable-documentation' property of SYMBOL to DOC-STRING."
   (put symbol 'variable-documentation doc-string)
   symbol)
+
+;;;###autoload
+(defun get-documentation (offset)
+  "Return the documentation string starting at position OFFSET in the file
+of such strings."
+  (let
+      ((file (open-file documentation-file 'read)))
+    (when file
+      (unwind-protect
+	  (let
+	      ((strings '())
+	       line done)
+	    (seek-file file offset 'start)
+	    (while (and (not done) (setq line (read-line file)))
+	      (if (string-match "\f" line)
+		  (setq strings (cons (substring line 0 (match-start)) strings)
+			done t)
+		(setq strings (cons line strings))))
+	    (apply 'concat (nreverse strings)))
+	(close-file file)))))
+
+;;;###autoload
+(defun add-documentation (string)
+  "Adds a documentation string STRING to the file of such strings, returning
+the integer offset at which the string starts in the file."
+  (let
+      ((file (open-file documentation-file 'append)))
+    (when file
+      (unwind-protect
+	  (prog1
+	      (seek-file file)
+	    (write file string)
+	    (write file ?\f))
+	(close-file file)))))
