@@ -275,9 +275,9 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	  ;; Completions don't match their source at all.
 	  (delete-area (start-of-buffer) (cursor-pos))
 	  (setq word ""))
-	(goto (replace-string word
-				   (make-completion-string word comp-list)
-				   (start-of-buffer)))
+	(goto (replace-string word (complete-string word comp-list
+						    prompt-list-fold-case)
+			      (start-of-buffer)))
 	(prompt-message (format nil "[%d completions]" num-found))))
       num-found)))
 
