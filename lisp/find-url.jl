@@ -144,11 +144,9 @@ a buffer."
 		 (restrict-buffer (match-end) (end-of-buffer))))
 	  (cond
 	   ((string-match "html" content-type nil t)
-	    ;; prevent html-display switching views on us
-	    (with-view (current-view)
-	      (message "Parsing HTML..." t)
-	      (html-display output url view)
-	      (message "Parsing HTML...done" t)))
+	    (message "Parsing HTML..." t)
+	    (html-display output url view)
+	    (message "Parsing HTML...done" t))
 	   (t
 	    ;; XXX needs completing
 	    (with-view view
