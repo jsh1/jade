@@ -1,3 +1,13 @@
+2000-02-07  John Harper  <john@dcs.warwick.ac.uk>
+
+	* html-display.jl (html-display-select): new optional parameter
+	EXTERNALLY
+	(html-display-select-externally): new command
+	(html-display-link-menus): option to display url externally
+
+	* rm-urls.jl (rm-urls-regexp): make '<' and '>' characters
+	terminate urls
+
 2000-02-06  John Harper  <john@dcs.warwick.ac.uk>
 
 	* windows.jl, buffers.jl: don't use with-object, use
