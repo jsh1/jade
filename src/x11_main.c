@@ -28,6 +28,10 @@
 # include <fcntl.h>
 #endif
 
+_PR struct x11_display *x11_open_display(char *display_name);
+_PR void x11_close_display(struct x11_display *xdisplay);
+_PR void x11_close_all_displays(void);
+
 _PR void sys_usage(void);
 _PR int sys_init(int, char **);
 static void x11_handle_input(int fd);
@@ -45,35 +49,16 @@ long x11_current_mouse_x, x11_current_mouse_y;
 _PR Time x11_last_event_time;
 Time x11_last_event_time;
 
-/* Out Display structure. */
-_PR Display *x11_display;
-Display *x11_display;
-
-/* The screen on the display. */
-_PR int x11_screen;
-int x11_screen;
-
-/* The colourmap */
-_PR Colormap x11_colour_map;
-Colormap x11_colour_map;
-
-/* Allocated colours. */
-_PR u_long x11_fore_pixel, x11_back_pixel, x11_high_pixel;
-u_long x11_fore_pixel, x11_back_pixel, x11_high_pixel;
-
-/* Atoms we use. */
-_PR Atom x11_wm_del_win, x11_jade_sel;
-Atom x11_wm_del_win, x11_jade_sel;
+/* List of in-use displays */
+_PR struct x11_display *x11_display_list;
+struct x11_display *x11_display_list;
 
 /* Command line arguments. */
 _PR char **x11_argv;
 _PR int x11_argc;
 char **x11_argv;
 int x11_argc;
-
-/* The `I' type mouse pointer. */
-_PR Cursor x11_text_cursor;
-Cursor x11_text_cursor;
+int x11_opt_sync = 0;
 
 /* Command line options, and their default values. */
 static char *display_name = NULL;
@@ -88,49 +73,91 @@ DEFSTRING(def_font_str_data, DEFAULT_FONT);
 _PR VALUE def_font_str;
 VALUE def_font_str;
 
+
+/* Resource/option management */
+
+static char **out_argv;
+static int out_argc;
+
+/* Called from main(). */
+int
+sys_init(int argc, char **argv)
+{
+    int i;
+    struct x11_display *xdisplay;
+
+    prog_name = file_part(argv[0]);
+    def_font_str = VAL(&def_font_str_data);
+
+    for(i = 1; i < argc; i++)
+    {
+	/* These options have to be found *before* resources are looked
+	   for.	 */
+	if(!strcmp("-display", argv[i]) && (i+1 < argc))
+	    display_name = argv[++i];
+	else if(!strcmp("-name", argv[i]) && (i+1 < argc))
+	    prog_name = argv[++i];
+    }
+    x11_argc = out_argc = argc;
+    x11_argv = out_argv = argv;
+
+    xdisplay = x11_open_display(display_name);
+    if(xdisplay != 0)
+    {
+	/* Call the main editor setup and event loop.  */
+	int rc = inner_main(out_argc, out_argv);
+
+	x11_close_all_displays();
+	return rc;
+    }
+    else
+    {
+	fprintf(stderr, "jade: Can't open display: %s\n",
+		display_name ? display_name : "");
+    }
+    return 5;
+}
+
 /* Scan the resource db for the entries we're interested in. */
-static int
-get_resources(void)
+static void
+get_resources(struct x11_display *xdisplay)
 {
     char *s;
-    if((s = XGetDefault(x11_display, prog_name, "geometry"))
-       || (s = XGetDefault(x11_display, "Jade", "geometry")))
+    if((s = XGetDefault(xdisplay->display, prog_name, "geometry"))
+       || (s = XGetDefault(xdisplay->display, "Jade", "geometry")))
 	geom_str = s;
-    if((s = XGetDefault(x11_display, prog_name, "foreground"))
-       || (s = XGetDefault(x11_display, "Jade", "foreground")))
+    if((s = XGetDefault(xdisplay->display, prog_name, "foreground"))
+       || (s = XGetDefault(xdisplay->display, "Jade", "foreground")))
 	fg_str = s;
-    if((s = XGetDefault(x11_display, prog_name, "background"))
-       || (s = XGetDefault(x11_display, "Jade", "background")))
+    if((s = XGetDefault(xdisplay->display, prog_name, "background"))
+       || (s = XGetDefault(xdisplay->display, "Jade", "background")))
 	bg_str = s;
-    if((s = XGetDefault(x11_display, prog_name, "highlight"))
-       || (s = XGetDefault(x11_display, "Jade", "highlight")))
+    if((s = XGetDefault(xdisplay->display, prog_name, "highlight"))
+       || (s = XGetDefault(xdisplay->display, "Jade", "highlight")))
 	hl_str = s;
-    if((s = XGetDefault(x11_display, prog_name, "font"))
-       || (s = XGetDefault(x11_display, "Jade", "font")))
+    if((s = XGetDefault(xdisplay->display, prog_name, "font"))
+       || (s = XGetDefault(xdisplay->display, "Jade", "font")))
 	def_font_str = string_dup(s);
-    return(TRUE);
 }
 
 /* Print the X11 options. */
 void
 sys_usage(void)
 {
-    fputs(
-	"where SYSTEM-OPTIONS are,\n"
-	"    -display DISPLAY-NAME\n"
-	"    -name NAME\n"
-	"    -geometry WINDOW-GEOMETRY\n"
-	"    -fg FOREGROUND-COLOUR\n"
-	"    -bg BACKGROUND-COLOUR\n"
-	"    -hl HIGHLIGHT-COLOUR\n"
-	"    -font FONT-NAME\n"
-	"    -sync\n"
-	, stderr);
+    fputs("where SYSTEM-OPTIONS are,\n"
+	  "    -display DISPLAY-NAME\n"
+	  "    -name NAME\n"
+	  "    -geometry WINDOW-GEOMETRY\n"
+	  "    -fg FOREGROUND-COLOUR\n"
+	  "    -bg BACKGROUND-COLOUR\n"
+	  "    -hl HIGHLIGHT-COLOUR\n"
+	  "    -font FONT-NAME\n"
+	  "    -sync\n" , stderr);
 }
 
 /* Scan the command line for the X11 options. Updating ARGC-P and ARGV-P to
    point to the following options. */
-static int
+static void
 get_options(int *argc_p, char ***argv_p)
 {
     int argc = *argc_p;
@@ -140,7 +167,7 @@ get_options(int *argc_p, char ***argv_p)
     while((argc >= 1) && (**argv == '-'))
     {
 	if(!strcmp("-sync", *argv))
-	    XSynchronize(x11_display, True);
+	    x11_opt_sync = 1;
 	else if(argc >= 2)
 	{
 	    if(!strcmp("-display", *argv))
@@ -167,17 +194,18 @@ get_options(int *argc_p, char ***argv_p)
     }
     *argc_p = argc;
     *argv_p = argv;
-    return(TRUE);
 }
 
 /* After parsing the command line and the resource database, use the
    information. */
-static int
-use_options(void)
+static bool
+use_options(struct x11_display *xdisplay)
 {
     int x, y, w, h;
     int gflgs = XParseGeometry(geom_str, &x, &y, &w, &h);
+    Colormap cmap = DefaultColormap(xdisplay->display, xdisplay->screen);
     XColor tmpc;
+
     if(gflgs & WidthValue)
 	def_dims[2] = w;
     else
@@ -186,9 +214,7 @@ use_options(void)
 	def_dims[3] = h;
     else
 	def_dims[3] = -1;
-    /*
-     * need to use -ve values properly
-     */
+    /* TODO: need to use -ve values properly */
     if(gflgs & XValue)
 	def_dims[0] = x;
     else
@@ -198,87 +224,124 @@ use_options(void)
     else
 	def_dims[1] = -1;
 
-    if(!XParseColor(x11_display, x11_colour_map, fg_str, &tmpc))
+    if(!XParseColor(xdisplay->display, cmap, fg_str, &tmpc))
 	fprintf(stderr, "error: invalid fg colour\n");
-    else if(!XAllocColor(x11_display, x11_colour_map, &tmpc))
+    else if(!XAllocColor(xdisplay->display, cmap, &tmpc))
 	fprintf(stderr, "error: can't allocate fg colour\n");
     else
-	x11_fore_pixel = tmpc.pixel;
+	xdisplay->fore_pixel = tmpc.pixel;
 
-    if(!XParseColor(x11_display, x11_colour_map, bg_str, &tmpc))
+    if(!XParseColor(xdisplay->display, cmap, bg_str, &tmpc))
 	fprintf(stderr, "error: invalid bg colour\n");
-    else if(!XAllocColor(x11_display, x11_colour_map, &tmpc))
+    else if(!XAllocColor(xdisplay->display, cmap, &tmpc))
 	fprintf(stderr, "error: can't allocate bg colour\n");
     else
-	x11_back_pixel = tmpc.pixel;
+	xdisplay->back_pixel = tmpc.pixel;
 
-    if(!XParseColor(x11_display, x11_colour_map, hl_str, &tmpc))
+    if(!XParseColor(xdisplay->display, cmap, hl_str, &tmpc))
 	fprintf(stderr, "error: invalid hl colour\n");
-    else if(!XAllocColor(x11_display, x11_colour_map, &tmpc))
+    else if(!XAllocColor(xdisplay->display, cmap, &tmpc))
 	fprintf(stderr, "error: can't allocate hl colour\n");
     else
-	x11_high_pixel = tmpc.pixel;
+	xdisplay->high_pixel = tmpc.pixel;
 
-    return(TRUE);
+    return TRUE;
 }
 
-/* Called from main(). */
-int
-sys_init(int argc, char **argv)
+
+/* Display management */
+
+struct x11_display *
+x11_open_display(char *display_name)
 {
-    int i;
-    prog_name = file_part(argv[0]);
-    def_font_str = VAL(&def_font_str_data);
-    for(i = 1; i < argc; i++)
+    bool is_first = (x11_display_list == 0);
+    Display *display = XOpenDisplay(display_name);
+    if(display)
     {
-	/* These options have to be found *before* resources are looked
-	   for.	 */
-	if(!strcmp("-display", argv[i]) && (i+1 < argc))
-	    display_name = argv[++i];
-	else if(!strcmp("-name", argv[i]) && (i+1 < argc))
-	    prog_name = argv[++i];
-    }
-    x11_display = XOpenDisplay(display_name);
-    if(x11_display)
-    {
-	register_input_fd(ConnectionNumber(x11_display), x11_handle_input);
+	struct x11_display *xdisplay = str_alloc(sizeof(struct x11_display));
+	if(xdisplay != 0)
+	{
+	    /* Add at end of list, since some functions grab the
+	       display at the head of the list as the default. */
+	    struct x11_display **ptr = &x11_display_list;
+	    while(*ptr != 0)
+		ptr = &((*ptr)->next);
+	    *ptr = xdisplay;
+	    xdisplay->next = 0;
+
+	    xdisplay->window_count = 0;
+	    xdisplay->display = display;
+	    xdisplay->screen = DefaultScreen(display);
+
+	    register_input_fd(ConnectionNumber(display), x11_handle_input);
 #ifdef HAVE_UNIX
-	/* close-on-exec = TRUE	 */
-	fcntl(ConnectionNumber(x11_display), F_SETFD, 1);
+	    /* close-on-exec = TRUE	 */
+	    fcntl(ConnectionNumber(display), F_SETFD, 1);
 #endif /* HAVE_UNIX */
 
-	x11_screen = DefaultScreen(x11_display);
-	x11_colour_map = DefaultColormap(x11_display, x11_screen);
-	if(get_resources() && get_options(&argc, &argv) && use_options())
-	{
-	    XColor fore, back;
-	    int rc;
-	    x11_wm_del_win = XInternAtom(x11_display, "WM_DELETE_WINDOW",
-					 False);
-	    x11_jade_sel = XInternAtom(x11_display, "JADE_SELECTION", False);
-	    x11_text_cursor = XCreateFontCursor(x11_display, XC_xterm);
-	    fore.pixel = x11_fore_pixel;
-	    back.pixel = x11_back_pixel;
-	    XQueryColor(x11_display, x11_colour_map, &fore);
-	    XQueryColor(x11_display, x11_colour_map, &back);
-	    XRecolorCursor(x11_display, x11_text_cursor, &fore, &back);
+	    if(is_first)
+	    {
+		get_resources(xdisplay);
+		get_options(&out_argc, &out_argv);
+	    }
 
-	    /* Call the main editor setup and event loop.  */
-	    rc = inner_main(argc, argv);
+	    if(use_options(xdisplay))
+	    {
+		XColor fore, back;
+		xdisplay->wm_delete_window
+		    = XInternAtom(display, "WM_DELETE_WINDOW", False);
+		xdisplay->jade_selection
+		    = XInternAtom(display, "JADE_SELECTION", False);
+		xdisplay->text_cursor = XCreateFontCursor(display, XC_xterm);
+		fore.pixel = xdisplay->fore_pixel;
+		back.pixel = xdisplay->back_pixel;
+		XQueryColor(display,
+			    DefaultColormap(display, xdisplay->screen),
+			    &fore);
+		XQueryColor(display,
+			    DefaultColormap(display, xdisplay->screen),
+			    &back);
+		XRecolorCursor(display, xdisplay->text_cursor, &fore, &back);
 
-	    if(x11_text_cursor)
-		XFreeCursor(x11_display, x11_text_cursor);
-	    XCloseDisplay(x11_display);
+		if(x11_opt_sync)
+		    XSynchronize(xdisplay->display, True);
 
-	    return(rc);
+		return xdisplay;
+	    }
 	}
+	XCloseDisplay(display);
     }
+    return 0;
+}
+
+void
+x11_close_display(struct x11_display *xdisplay)
+{
+    if(x11_display_list == xdisplay)
+	x11_display_list = xdisplay->next;
     else
     {
-	fprintf(stderr, "jade: Can't open display: %s\n",
-		display_name ? display_name : "");
+	struct x11_display **ptr = &x11_display_list;
+	while(*ptr != 0)
+	{
+	    if(*ptr == xdisplay)
+	    {
+		*ptr = xdisplay->next;
+		break;
+	    }
+	    ptr = &((*ptr)->next);
+	}
     }
-    return 5;
+    deregister_input_fd(ConnectionNumber(xdisplay->display));
+    XCloseDisplay(xdisplay->display);
+    str_free(xdisplay);
+}
+    
+void
+x11_close_all_displays(void)
+{
+    while(x11_display_list != 0)
+	x11_close_display(x11_display_list);
 }
 
 
@@ -287,14 +350,29 @@ sys_init(int argc, char **argv)
 static void
 x11_handle_input(int fd)
 {
+    struct x11_display *xdisplay = 0;
+
     /* Read all events in the input queue. */
-    while(throw_value == LISP_NULL
-	  && XEventsQueued(x11_display, QueuedAfterReading) > 0)
+    while(throw_value == LISP_NULL)
     {
 	XEvent xev;
 	WIN *oldwin = curr_win, *ev_win;
 
-	XNextEvent(x11_display, &xev);
+	if(xdisplay == 0)
+	{
+	    /* Find the display associated with this file descriptor. We
+	       have to do this here, since it's possible that the
+	       display can be closed while reading events from it. */
+	    xdisplay = x11_display_list;
+	    while(xdisplay != 0 && ConnectionNumber(xdisplay->display) != fd)
+		xdisplay = xdisplay->next;
+	    if(xdisplay == 0)
+		break;
+	}
+	if(XEventsQueued(xdisplay->display, QueuedAfterReading) <= 0)
+	    break;
+
+	XNextEvent(xdisplay->display, &xev);
 
 	ev_win = x11_find_window(xev.xany.window);
 	if(ev_win != NULL)
@@ -341,12 +419,13 @@ x11_handle_input(int fd)
 
 	    case ClientMessage:
 		if((xev.xclient.format == 32)
-		   && (xev.xclient.data.l[0] == x11_wm_del_win))
+		   && (xev.xclient.data.l[0] == xdisplay->wm_delete_window))
 		{
 		    curr_win = ev_win;
 		    if(ev_win != oldwin)
 			curr_vw = curr_win->w_CurrVW;
 		    cmd_call_hook(sym_window_closed_hook, sym_nil, sym_nil);
+		    xdisplay = 0;
 		}
 		break;
 
@@ -365,14 +444,15 @@ x11_handle_input(int fd)
 		int x, y;
 		
 		/* Swallow any pending motion events as well. */
-		while(XCheckMaskEvent(x11_display, ButtonMotionMask, &xev))
+		while(XCheckMaskEvent(xdisplay->display,
+				      ButtonMotionMask, &xev))
 		    ;
 		x11_last_event_time = xev.xmotion.time;
 
 		/* It seems that further MotionNotify events are suspended
 		   until the pointer's position has been queried. I should
 		   check the Xlib manuals about this. */
-		if(XQueryPointer(x11_display, ev_win->w_Window,
+		if(XQueryPointer(xdisplay->display, ev_win->w_Window,
 				 &tmpw, &tmpw, &tmp, &tmp,
 				 &x, &y, &tmp))
 		{
@@ -414,6 +494,7 @@ x11_handle_input(int fd)
 		    eval_input_event(&xev, code, mods);
 		}
 		x11_current_event_win = NULL;
+		xdisplay = 0;
 		break;
 
 	    case SelectionRequest:
