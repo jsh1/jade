@@ -62,10 +62,10 @@ COMMAND in it."
   (set-current-view (other-view)))
 
 (defun other-view (&optional lines)
-  "Return a different view in the current window. If LINES is given it
-defines the number of lines to give the view. If LINES is the symbol t
-then no change is made to the size of the chosen view, otherwise it will be
-set so that it and the current view are roughly the same size."
+  "Return a different view in the current window. LINES defines the lower
+bound on the number of lines in the new view; alternately, if it is the
+symbol nil the other view will be roughly half the size of the current view,
+or if it is the symbol t the size of the other view won't be changed."
   (if (= 2 (window-view-count))
       (split-view nil lines)
     (let
@@ -77,7 +77,10 @@ set so that it and the current view are roughly the same size."
 	(setq total (+ (cdr (view-dimensions))
 		       (cdr (view-dimensions view)))
 	      desired (or lines (/ total 2)))
-	(enlarge-view (- total desired (cdr (view-dimensions)))))
+	;; Only enlarge if the other-view is currently _smaller_
+	;; than it's desired size
+	(unless (> (cdr (view-dimensions view)) desired)
+	  (enlarge-view (- total desired (cdr (view-dimensions))))))
       view)))
 
 (defun goto-next-view (&optional all-windows-p)
