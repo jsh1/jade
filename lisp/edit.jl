@@ -363,14 +363,20 @@ auto-mark"
 (defun kill-string (string)
   "Adds STRING to the kill storage. If the last command also kill'ed something
 the string is appended to."
-  (when (stringp string)
+  (when (and (stringp string) (not (string= string "")))
     (if (eq last-command 'kill)
 	(set-ring-head kill-ring (concat (killed-string) string))
-      (add-to-ring kill-ring string)))
+      (add-to-ring kill-ring string))
+    (eval-hook 'after-kill-hook))
   ;; this command did some killing
   (setq this-command 'kill)
   string)
 
+(when (x11-p)
+  (add-hook 'after-kill-hook
+	    #'(lambda ()
+		(x11-set-selection 'xa-primary (killed-string)))))
+							       
 (defun killed-string (&optional depth)
   "Returns the string in the kill-buffer at position DEPTH. Currently only one
 string is stored so DEPTH must be zero or not specified."
@@ -439,13 +445,17 @@ and DONT-YANK-BLOCK is nil insert the text in the block. Else yank the last
 killed text."
   (interactive "P")
   (if (and (null dont-yank-block)
-	   (or (blockp) (and (x11-p) (x11-selection-active-p 'xa-primary))))
+	   ;; If a block is marked use that, otherwise (in X11) look for a
+	   ;; selection not owned by us.
+	   (or (blockp) (and (x11-p) (x11-selection-active-p 'xa-primary)
+			     (not (x11-own-selection-p 'xa-primary)))))
       (progn
 	(let
 	    ((string (if (blockp)
 			 (copy-block)
 		       (x11-get-selection 'xa-primary))))
-	  (insert string))
+	  (when (not (string= string ""))
+	    (insert string)))
 	(setq yank-last-item nil))
     (setq yank-last-item 0
 	  yank-last-start (cursor-pos)
