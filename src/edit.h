@@ -147,10 +147,7 @@ typedef struct _TX {
        files by comparing their canonical names (or nil). */
     VALUE	    tx_CanonicalFileName;
 
-    /* Data for status line */
-    VALUE	    tx_ModeName;
-    VALUE	    tx_MinorModeNameList;
-    VALUE	    tx_MinorModeNameString;
+    /* Data for status line and window title */
     VALUE	    tx_StatusId;
     
     int		    tx_Changes;
