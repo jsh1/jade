@@ -116,7 +116,7 @@ Major mode for running a subprocess in a buffer. Special commands are,\n
   (call-hook 'shell-mode-hook))
 
 (defun shell-mode-kill ()
-  (when shell-process
+  (when (and shell-process (process-in-use-p shell-process))
     (unless (yes-or-no-p "Subprocess running; kill it?")
       (error "Can't kill shell-mode without killing its subprocess"))
     ;; don't want the callback function to run or to output
@@ -133,7 +133,7 @@ Major mode for running a subprocess in a buffer. Special commands are,\n
 
 ;; If a shell subprocess isn't running create one
 (defun shell-start-process ()
-  (unless shell-process
+  (unless (and shell-process (process-in-use-p shell-process))
     (setq shell-process (make-process
 			 (or shell-output-stream
 			     (cons (current-buffer) t))
