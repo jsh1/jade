@@ -1202,14 +1202,20 @@ key, the car the order to sort in, a positive or negative integer.")
 	 (list
 	  (cons ?a #'(lambda (m)
 		       (concat (cond
-				((rm-test-flag m 'unread) ?U)
 				((rm-test-flag m 'deleted) ?D)
+				((rm-test-flag m 'unread) ?U)
 				(t ? ))
 			       (cond
 				((rm-test-flag m 'replied) ?R)
 				((rm-test-flag m 'forwarded) ?Z)
 				(t ? ))
 			       (if (rm-test-flag m 'filed) ?F ?\ ))))
+	  (cons ?A #'(lambda (m)
+		       (concat (if (rm-test-flag m 'unread) ?U ? )
+			       (if (rm-test-flag m 'deleted) ?D ? )
+			       (if (rm-test-flag m 'replied) ?R ? )
+			       (if (rm-test-flag m 'forwarded) ?Z ? )
+			       (if (rm-test-flag m 'filed) ?F ? ))))
 	  (cons ?b #'(lambda (m)
 		       (buffer-name (mark-file
 				     (rm-get-msg-field m rm-msg-mark)))))
