@@ -212,6 +212,7 @@ main(int argc, char **argv)
 
 #if rep_INTERFACE >= 9
     rep_push_structure ("jade");
+    rep_structure_exports_all (rep_structure, rep_TRUE);
     rep_INTERN (rep);
     Frequire (Qrep);
 #endif
