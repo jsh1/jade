@@ -20,8 +20,8 @@
 
 (provide 'text-mode)
 
-;; Taken from fill-mode.jl
-(defvar fill-column 71)
+
+;; Basic text mode
 
 (defvar text-mode-keymap (make-keylist))
 (bind-keys text-mode-keymap
@@ -35,8 +35,8 @@
 
 (defun text-mode-init ()
   (setq major-mode-kill 'text-mode-kill
-	word-regexp "[a-zA-Z0-9_-]"
-	word-not-regexp "[^a-zA-Z0-9_-]|$"))
+	word-regexp "[a-zA-Z0-9]"
+	word-not-regexp "[^a-zA-Z0-9]|$"))
 
 ;;;###autoload
 (defun text-mode ()
@@ -48,7 +48,7 @@
 	major-mode 'text-mode
 	keymap-path (cons 'text-mode-keymap keymap-path))
   (text-mode-init)
-  (eval-hook 'text-mode-hook))
+  (call-hook 'text-mode-hook))
 
 ;;;###autoload
 (defun indented-text-mode ()
@@ -60,10 +60,11 @@ previous line, then works as normal."
   (setq mode-name "Indented Text"
 	major-mode 'indented-text-mode
 	keymap-path (cons 'text-mode-indent-keymap
-			  (cons 'text-mode-keymap keymap-path)))
+			  (cons 'text-mode-keymap keymap-path))
+	fill-prefix 'text-mode-fill-prefix)
   (text-mode-init)
-  (eval-hook 'text-mode-hook)
-  (eval-hook 'indented-text-mode-hook))
+  (call-hook 'text-mode-hook)
+  (call-hook 'indented-text-mode-hook))
 
 (defun text-mode-kill ()
   (setq mode-name nil
@@ -71,6 +72,8 @@ previous line, then works as normal."
 			  (delq 'text-mode-indent-keymap keymap-path))
 	major-mode nil
 	major-mode-kill nil)
+  (when (functionp fill-prefix)
+    (setq fill-prefix nil))
   t)
 
 (defun text-mode-indent-tab ()
@@ -92,32 +95,23 @@ previous line, then works as normal."
 	      (set-indent-pos pos)
 	    (indent-to (pos-col pos))))))))
 
-;;;###autoload
-(defun center-line (&optional pos)
-  "Centre the line at POS."
-  (interactive)
-  (let*
-      ((spos (indent-pos pos))
-       (epos (char-to-glyph-pos (re-search-forward " *$" (start-of-line pos))))
-       (len (- (pos-col epos) (pos-col spos))))
-    (cond
-      ((<= len 0))
-      ((> len fill-column)
-	(set-indent-pos (start-of-line pos)))
-      (t
-	(setq spos (pos (/ (- fill-column len) 2) (pos-line spos)))
-	(set-indent-pos spos)))))
+(defun text-mode-fill-prefix (op pos)
+  (cond
+   ((eq op 'insert)
+    (unless (zerop (pos-line pos))
+      (save-cursor
+	(goto pos)
+	(indent-to (pos-col (indent-pos (forward-line -1)))))))
+   ((eq op 'delete)
+    (when (looking-at "^[\t ]+" pos)
+      (delete-area (match-start) (match-end))))
+   ((eq op 'width)
+    (if (zerop (pos-line pos))
+	0
+      (pos-col (indent-pos (forward-line -1 pos)))))))
 
-;;;###autoload
-(defun center-paragraph (&optional pos)
-  "Centre the paragraph surrounding POS."
-  (interactive)
-  (let*
-      ((epos (forward-paragraph pos))
-       (spos (backward-paragraph epos)))
-    (while (< spos epos)
-      (center-line spos)
-      (forward-line 1 spos))))
+
+;; Misc
 
 ;;;###autoload
 (defun word-count-area (start end &optional print)
@@ -129,7 +123,7 @@ status line."
       ((tmp start)
        (count 0))
     ;; Catch the end-of-buffer error
-    (error-protect
+    (condition-case nil
 	(while (<= tmp end)
 	  (setq count (1+ count)
 		tmp (forward-word 1 tmp)))
