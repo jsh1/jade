@@ -169,7 +169,7 @@ again:
 		/* An autoload, load it then try again. */
 		GC_root gc_cmd;
 		PUSHGC(gc_cmd, cmd);
-		fun = load_autoload(cmd, fun);
+		fun = load_autoload(cmd, fun, FALSE);
 		POPGC;
 		if(fun != LISP_NULL)
 		    goto again;
