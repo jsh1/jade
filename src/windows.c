@@ -834,7 +834,7 @@ windows_init(void)
 					 window_mark_active, 0, 0, 0, 0,
 					 window_bind, window_unbind);
 
-    if(rep_SYM(Qbatch_mode)->value == Qnil)
+    if(Fsymbol_value (Qbatch_mode, Qt) == Qnil)
 	rep_message_fun = jade_message;
 
     rep_ADD_SUBR_INT(Smake_window);
@@ -861,9 +861,9 @@ windows_init(void)
     rep_INTERN_SPECIAL(delete_window_hook);
     rep_INTERN(save_and_quit);
     rep_INTERN_SPECIAL(visible_bell);
-    rep_SYM(Qvisible_bell)->value = Qnil;
+    Fset (Qvisible_bell, Qnil);
     rep_INTERN_SPECIAL(visible_bell_length);
-    rep_SYM(Qvisible_bell_length)->value = rep_MAKE_INT (250);
+    Fset (Qvisible_bell_length, rep_MAKE_INT (250));
     rep_beep_fun = beep;
 
     rep_INTERN(dimensions);

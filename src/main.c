@@ -99,53 +99,50 @@ jade_symbols (void)
 
     rep_INTERN_SPECIAL(jade_directory);
     if(getenv("JADEDIR") != 0)
-	rep_SYM(Qjade_directory)->value = rep_string_dup(getenv("JADEDIR"));
+	Fset (Qjade_directory, rep_string_dup(getenv("JADEDIR")));
     else
-	rep_SYM(Qjade_directory)->value = rep_string_dup(JADE_DIR);
+	Fset (Qjade_directory, rep_string_dup(JADE_DIR));
 
     rep_INTERN_SPECIAL(jade_lisp_lib_directory);
     if(getenv("JADELISPDIR") != 0)
-	rep_SYM(Qjade_lisp_lib_directory)->value
-	    = rep_string_dup(getenv("JADELISPDIR"));
+	Fset (Qjade_lisp_lib_directory, rep_string_dup(getenv("JADELISPDIR")));
     else
-	rep_SYM(Qjade_lisp_lib_directory)->value
-	    = rep_string_dup(JADE_LISPDIR);
+	Fset (Qjade_lisp_lib_directory, rep_string_dup(JADE_LISPDIR));
 
     rep_INTERN_SPECIAL(jade_site_lisp_directory);
     if(getenv("JADESITELISPDIR") != 0)
-	rep_SYM(Qjade_site_lisp_directory)->value
-	    = rep_string_dup(getenv("JADESITELISPDIR"));
+	Fset (Qjade_site_lisp_directory,
+	      rep_string_dup(getenv("JADESITELISPDIR")));
     else
-	rep_SYM(Qjade_site_lisp_directory)->value
-	    = rep_concat2(rep_STR(rep_SYM(Qjade_directory)->value),
-			  "/site-lisp");
+	Fset (Qjade_site_lisp_directory,
+	      rep_concat2(rep_STR(Fsymbol_value (Qjade_directory, Qt)),
+			  "/site-lisp"));
 
     rep_INTERN_SPECIAL(jade_exec_directory);
     if(getenv("JADEEXECDIR") != 0)
-	rep_SYM(Qjade_exec_directory)->value
-	    = rep_string_dup(getenv("JADEEXECDIR"));
+	Fset (Qjade_exec_directory, rep_string_dup(getenv("JADEEXECDIR")));
     else
-	rep_SYM(Qjade_exec_directory)->value = rep_string_dup(JADE_EXECDIR);
+	Fset (Qjade_exec_directory, rep_string_dup(JADE_EXECDIR));
 
     if(getenv("JADEDOCFILE") != 0)
-	rep_SYM(Qdocumentation_file)->value
-	    = rep_string_dup(getenv("JADEDOCFILE"));
+	Fset (Qdocumentation_file, rep_string_dup(getenv("JADEDOCFILE")));
     else
-	rep_SYM(Qdocumentation_file)->value
-	    = rep_concat2(rep_STR(rep_SYM(Qjade_directory)->value),
-			  "/" JADE_VERSION "/DOC");
+	Fset (Qdocumentation_file,
+	      rep_concat2(rep_STR(Fsymbol_value(Qjade_directory, Qt)),
+			  "/" JADE_VERSION "/DOC"));
 
-    rep_SYM(Qdocumentation_files)->value
-	= Fcons(rep_SYM(Qdocumentation_file)->value,
-		rep_SYM(Qdocumentation_files)->value);
+    Fset (Qdocumentation_files,
+	  Fcons(Fsymbol_value (Qdocumentation_file, Qt),
+		Fsymbol_value (Qdocumentation_files, Qt)));
 
-    rep_SYM(Qload_path)->value
-	= Fcons(rep_SYM(Qjade_lisp_lib_directory)->value,
-		Fcons(rep_SYM(Qjade_site_lisp_directory)->value,
-		      rep_SYM(Qload_path)->value));
+    Fset(Qload_path,
+	 Fcons(Fsymbol_value (Qjade_lisp_lib_directory, Qt),
+	       Fcons(Fsymbol_value (Qjade_site_lisp_directory, Qt),
+		     Fsymbol_value (Qload_path, Qt))));
 
-    rep_SYM(Qdl_load_path)->value = Fcons(rep_SYM(Qjade_exec_directory)->value,
-					  rep_SYM(Qdl_load_path)->value);
+    Fset (Qdl_load_path,
+	  Fcons(Fsymbol_value (Qjade_exec_directory, Qt),
+		Fsymbol_value (Qdl_load_path, Qt)));
 
     rep_INTERN(invalid_area); rep_ERROR(invalid_area);
     rep_INTERN(window_error); rep_ERROR(window_error);
@@ -195,7 +192,7 @@ main(int argc, char **argv)
 	if (res != rep_NULL)
 	{
 	    rc = 0;
-	    if(rep_SYM(Qbatch_mode)->value == Qnil)
+	    if(Fsymbol_value (Qbatch_mode, Qt) == Qnil)
 		res = Frecursive_edit ();
 	}
 

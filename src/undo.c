@@ -24,7 +24,7 @@
 
 /* Maximum number of bytes that *each buffer* may devote to undo
    information.  */
-static long max_undo_size = 10000;
+static int max_undo_size = 10000;
 
 /* Lets us use the string which undo_record_deletion() creates for
    other uses.	*/
@@ -222,10 +222,9 @@ void
 undo_end_of_command(void)
 {
     TX *tx;
-    if((!last_command || !rep_NILP(last_command))
-       && (last_command != Qundo)
-       && last_undid_tx
-       && last_undid_tx->tx_ToUndoList)
+    repv last = Fsymbol_value (Qlast_command, Qt);
+    if((!rep_NILP(last)) && (last != Qundo)
+       && last_undid_tx && last_undid_tx->tx_ToUndoList)
     {
 	coalesce_undo(last_undid_tx);
     }
@@ -323,54 +322,58 @@ taken from the prefix argument.
 	if(rep_INTERRUPTP)
 	    break;
     }
-    this_command = Qundo;
+    Fset (Qthis_command, Qundo);
     return(Qt);
 }
 
-DEFUN("max-undo-size", var_max_undo_size, Smax_undo_size, (repv val), rep_Var) /*
+DEFUN("max-undo-size", Fmax_undo_size, Smax_undo_size, (repv val), rep_Subr1) /*
 ::doc:max-undo-size::
+max-undo-size [NEW-VALUE]
+
 The maximum amount of storage that a single buffer may devote to recording
 undo information.
 ::end:: */
 {
-    if(val)
-    {
-	if(rep_INTP(val))
-	    max_undo_size = rep_INT(val);
-	return rep_NULL;
-    }
-    else
-	return(rep_MAKE_INT(max_undo_size));
+    return rep_handle_var_int (val, &max_undo_size);
 }
 
-DEFUN("buffer-record-undo", var_buffer_record_undo, Sbuffer_record_undo, (repv val), rep_Var) /*
+DEFUN("buffer-record-undo", Fbuffer_record_undo, Sbuffer_record_undo, (repv val), rep_Subr1) /*
 ::doc:buffer-record-undo::
+buffer-record-undo VALUE
+
 When nil no undo information is kept in this buffer.
 ::end:: */
 {
     TX *tx = curr_vw->vw_Tx;
-    if(val)
-    {
-	if(rep_NILP(val))
-	    tx->tx_Flags |= TXFF_NO_UNDO;
-	else
-	    tx->tx_Flags &= ~TXFF_NO_UNDO;
-	return rep_NULL;
-    }
+    repv ret = (tx->tx_Flags & TXFF_NO_UNDO) ? Qnil : Qt;
+    if(rep_NILP(val))
+	tx->tx_Flags |= TXFF_NO_UNDO;
     else
-	return((tx->tx_Flags & TXFF_NO_UNDO) ? Qnil : Qt);
+	tx->tx_Flags &= ~TXFF_NO_UNDO;
+    return ret;
 }
 
-repv var_buffer_undo_list(repv val);
-DEFUN("buffer-undo-list", var_buffer_undo_list, Sbuffer_undo_list, (repv val), rep_Var) /*
+DEFUN("buffer-undo-list", Fbuffer_undo_list, Sbuffer_undo_list, (void), rep_Subr0) /*
 ::doc:buffer-undo-list::
+buffer-undo-list
+
 This buffer's list of undo information.
 ::end:: */
 {
     TX *tx = curr_vw->vw_Tx;
-    if(val)
-	tx->tx_UndoList = val;
-    return(tx->tx_UndoList);
+    return tx->tx_UndoList;
+}
+
+DEFUN("set-buffer-undo-list", Fset_buffer_undo_list, Sset_buffer_undo_list, (repv val), rep_Subr1) /*
+::doc:set-buffer-undo-list::
+set-buffer-undo-list VALUE
+
+This buffer's list of undo information.
+::end:: */
+{
+    TX *tx = curr_vw->vw_Tx;
+    tx->tx_UndoList = val;
+    return val;
 }
 
 /* Called by gc, this makes each undo-lists use less memory than
@@ -433,4 +436,5 @@ undo_init(void)
     rep_ADD_SUBR(Smax_undo_size);
     rep_ADD_SUBR(Sbuffer_record_undo);
     rep_ADD_SUBR(Sbuffer_undo_list);
+    rep_ADD_SUBR(Sset_buffer_undo_list);
 }

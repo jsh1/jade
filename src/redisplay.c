@@ -757,8 +757,10 @@ redisplay (void)
     Fredisplay (Qnil);
 }
 
-DEFUN("redisplay-max-d", var_redisplay_max_d, Sredisplay_max_d, (repv val), rep_Var) /*
+DEFUN("redisplay-max-d", var_redisplay_max_d, Sredisplay_max_d, (repv val), rep_Subr1) /*
 ::doc:redisplay-max-d::
+redisplay-max-d [NEW-VALUE]
+
 The upper bound on the number of edit operations (insert line, or delete
 line) per window redisplay. Zero means unbounded (i.e. 2*ROWS).
 

@@ -105,18 +105,18 @@ misc_init(void)
     rep_INTERN_SPECIAL(window_system);
 #if defined (HAVE_GTK)
     rep_INTERN(gtk);
-    rep_SYM(Qwindow_system)->value = Qgtk;
+    Fset (Qwindow_system, Qgtk);
 #elif defined (HAVE_X11)
     rep_INTERN(x11);
-    rep_SYM(Qwindow_system)->value = Qx11;
+    Fset (Qwindow_system, Qx11);
 #endif
 
     rep_INTERN_SPECIAL(jade_build_id);
-    rep_SYM(Qjade_build_id)->value = rep_VAL(&jade_build_id_string);
+    Fset (Qjade_build_id, rep_VAL(&jade_build_id_string));
     rep_INTERN_SPECIAL(jade_major_version);
-    rep_SYM(Qjade_major_version)->value = rep_MAKE_INT(JADE_MAJOR);
+    Fset (Qjade_major_version, rep_MAKE_INT(JADE_MAJOR));
     rep_INTERN_SPECIAL(jade_minor_version);
-    rep_SYM(Qjade_major_version)->value = rep_MAKE_INT(JADE_MINOR);
+    Fset (Qjade_major_version, rep_MAKE_INT(JADE_MINOR));
     rep_INTERN_SPECIAL(jade_version);
-    rep_SYM(Qjade_version)->value = rep_VAL(&jade_vers_string);
+    Fset (Qjade_version, rep_VAL(&jade_vers_string));
 }

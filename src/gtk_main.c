@@ -179,12 +179,12 @@ sys_init(char *program_name)
     repv head, *last;
 
 #ifdef HAVE_UNIX
-    if (rep_SYM(Qbatch_mode)->value == Qnil)
+    if (Fsymbol_value (Qbatch_mode, Qt) == Qnil)
 	setpgid (0, 0);
 #endif
 
-    make_argv (Fcons (rep_SYM(Qprogram_name)->value,
-		      rep_SYM(Qcommand_line_args)->value), &argc, &argv);
+    make_argv (Fcons (Fsymbol_value (Qprogram_name, Qt),
+		      Fsymbol_value (Qcommand_line_args, Qt)), &argc, &argv);
 
     /* We need to initialise GTK now. The rep-gtk library will
        not reinitialise it.. */
@@ -200,7 +200,7 @@ sys_init(char *program_name)
 	argc--;
 	argv++;
     }
-    rep_SYM(Qcommand_line_args)->value = head;
+    Fset (Qcommand_line_args, head);
 
     def_font_str = rep_VAL (&def_font_str_data);
 #ifdef HAVE_X11

@@ -814,7 +814,7 @@ edit_init(void)
 
     rep_INTERN_SPECIAL(inhibit_read_only);
     rep_INTERN_SPECIAL(read_only);
-    rep_SYM(Qread_only)->value = Qnil;
+    Fset (Qread_only, Qnil);
     Fmake_variable_buffer_local(Qread_only);
     rep_INTERN_SPECIAL(block_status_hook);
 }

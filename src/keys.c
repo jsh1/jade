@@ -272,7 +272,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
     if(event_index == EVENT_BUFSIZ)
 	event_index = 0;
     printed_this_prefix = FALSE;
-    if(!rep_NILP(rep_SYM(Qesc_means_meta)->value)
+    if(!rep_NILP(Fsymbol_value (Qesc_means_meta, Qt))
        && !pending_meta
        && (code == esc_code) && (mods == esc_mods))
     {
@@ -300,7 +300,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 	else if(next_keymap_path != rep_NULL)
 	{
 	    /* We already handled some prefixes. */
-	    this_command = Qkeymap;
+	    Fset (Qthis_command, Qkeymap);
 	    result = Qnil;
 	}
 	else if(orig_next_keymap_path != rep_NULL
@@ -309,7 +309,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 	{
 	    /* A multi-key binding, but no final step; clear the prefix
 	       argument for the next command and beep. */
-	    var_prefix_arg(Qnil);
+	    Fset (Qprefix_arg, Qnil);
 	    Fbeep();
 	}
 	else
@@ -332,7 +332,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 			    repv old_undo_head = rep_NULL;
 			    Fcall_hook(Qpre_command_hook,
 					  Qnil, Qnil);
-			    if(last_command == Qt
+			    if(Fsymbol_value (Qlast_command, Qt) == Qt
 			       && rep_CONSP(vw->vw_Tx->tx_UndoList)
 			       && rep_NILP(rep_CAR(vw->vw_Tx->tx_UndoList)))
 			    {
@@ -345,7 +345,8 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 			    }
 			    if(pad_cursor(vw))
 			    {
-				repv arg = Fprefix_numeric_argument(var_prefix_arg(rep_NULL));
+				repv arg = (Fprefix_numeric_argument
+					    (Fsymbol_value (Qprefix_arg, Qt)));
 				if(!rep_INTP(arg) || rep_INT(arg) < 1)
 				    Fbeep();
 				else if(rep_INT(arg) == 1)
@@ -376,7 +377,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 			    }
 			    Fcall_hook(Qpost_command_hook,
 					  Qnil, Qnil);
-			    last_command = Qt;
+			    Fset (Qlast_command, Qt);
 			    result = Qt;
 			}
 			else
@@ -389,7 +390,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 				       "error: key translation screwup");
 		}
 		/* Remove prefix arg. */
-		var_prefix_arg(Qnil);
+		Fset (Qprefix_arg, Qnil);
 	    }
 	}
 	last_event[0] = current_event[0];
@@ -739,9 +740,9 @@ active root keymaps.
     {
 	next_keymap_path = path;
 	/* This isn't a true command */
-	this_command = Qnil;
+	Fset (Qthis_command, Qnil);
 	/* Pass the prefix-arg along */
-	var_prefix_arg(var_current_prefix_arg(rep_NULL));
+	Fset (Qprefix_arg, Fsymbol_value (Qcurrent_prefix_arg, Qt));
     }
     return next_keymap_path ? next_keymap_path : Qnil;
 }
@@ -939,7 +940,7 @@ keys_init(void)
     rep_INTERN_SPECIAL(overriding_local_keymap);
     rep_INTERN_SPECIAL(unbound_key_hook);
     rep_INTERN_SPECIAL(esc_means_meta);
-    rep_SYM(Qesc_means_meta)->value = Qt;
+    Fset (Qesc_means_meta, Qt);
     rep_INTERN_SPECIAL(idle_hook);
     rep_INTERN(keymap);
     rep_INTERN_SPECIAL(minor_mode_keymap_alist);

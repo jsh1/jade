@@ -343,7 +343,7 @@ typedef struct _VW
        C code at all; access is via the `buffer-list' variable.  */
     repv	    vw_BufferList;
 
-    short	    vw_XStepRatio, vw_YStepRatio;
+    int 	    vw_XStepRatio, vw_YStepRatio;
     short	    vw_XStep, vw_YStep;
 } VW;
 

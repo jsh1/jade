@@ -400,13 +400,15 @@ by Jade, relinquish ownership.
 
 
 
-DEFUN("x11-cursor-shape", var_x11_cursor_shape, Sx11_cursor_shape, (repv arg), rep_Var) /*
+DEFUN("x11-cursor-shape", Fx11_cursor_shape, Sx11_cursor_shape, (repv arg), rep_Subr1) /*
 ::doc:x11-cursor-shape::
+x11-cursor-shape [VALUE]
+
 An integer identifying the X cursor to use for editor windows. See
 <X11/cursorfont.h> for the list of available cursors.
 ::end:: */
 {
-    if (arg != rep_NULL && rep_INTP(arg) && rep_INT(arg) != x11_cursor_shape)
+    if (rep_INTP(arg) && rep_INT(arg) != x11_cursor_shape)
     {
 	struct x11_display *dpy = x11_display_list;
 	WIN *win = win_chain;

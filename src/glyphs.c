@@ -568,7 +568,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	/* In case the logical end of the buffer is before the
 	   end of the view, fill with empty lines. */
 	{
-	    repv face = rep_SYM(Qdefault_face)->value;
+	    repv face = Fsymbol_value (Qdefault_face, Qt);
 	    if(FACEP(face))
 		attr = get_face_id(w, VFACE(face));
 	}
@@ -587,7 +587,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    glyph_code *codes;
 	    glyph_attr *attrs;
 
-	    face = rep_SYM(Qmodeline_face)->value;
+	    face = Fsymbol_value (Qmodeline_face, Qt);
 	    if(FACEP(face))
 		attr = get_face_id(w, VFACE(face));
 
@@ -625,7 +625,7 @@ make_message_glyphs(glyph_buf *g, WIN *w)
 	msg_len = (g->cols-1) * w->w_MiniBuf->vw_MaxY;
     }
 
-    face = rep_SYM(Qdefault_face)->value;
+    face = Fsymbol_value (Qdefault_face, Qt);
     if(FACEP(face))
 	attr = get_face_id(w, VFACE(face));
     else
@@ -1430,7 +1430,7 @@ glyphs_init(void)
     rep_ADD_SUBR(Sget_glyph);
     rep_INTERN_SPECIAL(glyph_table);
 
-    rep_SYM(Qglyph_table)->value = rep_VAL(&default_glyph_table);
+    Fset (Qglyph_table, rep_VAL(&default_glyph_table));
     Fmake_variable_buffer_local(Qglyph_table);
 }
 

@@ -695,8 +695,10 @@ update_status_buffer(VW *vw, char *buf, long buf_len)
     }
 }
 
-DEFUN("y-scroll-step-ratio", var_y_scroll_step_ratio, Sy_scroll_step_ratio, (repv val), rep_Var) /*
+DEFUN("y-scroll-step-ratio", Fy_scroll_step_ratio, Sy_scroll_step_ratio, (repv val), rep_Subr1) /*
 ::doc:y-scroll-step-ratio::
+y-scroll-step-ratio [VALUE]
+
 Controls the actual number of lines scrolled when the cursor moves out of
 view. The number of lines to move the display origin is calcualted with the
 formula:
@@ -704,21 +706,12 @@ formula:
 If the value is 0 then the window will be scrolled by one line.
 ::end:: */
 {
-    VW *vw = curr_vw;
-    if(val)
-    {
-	if(rep_INTP(val))
-	{
-	    vw->vw_YStepRatio = rep_INT(val);
-	    set_scroll_steps(vw);
-	}
-	return rep_NULL;
-    }
-    return(rep_MAKE_INT(vw->vw_YStepRatio));
+    return rep_handle_var_int (val, &curr_vw->vw_YStepRatio);
 }
 
-DEFUN("x-scroll-step-ratio", var_x_scroll_step_ratio, Sx_scroll_step_ratio, (repv val), rep_Var) /*
+DEFUN("x-scroll-step-ratio", Fx_scroll_step_ratio, Sx_scroll_step_ratio, (repv val), rep_Subr1) /*
 ::doc:x-scroll-step-ratio::
+x-scroll-step-ratio [VALUE]
 Controls the actual number of columns scrolled when the cursor moves out of
 view. The number of lines to move the display origin is calcualted with the
 formula:
@@ -726,17 +719,7 @@ formula:
 If the value is 0 then the window will be scrolled by one column.
 ::end:: */
 {
-    VW *vw = curr_vw;
-    if(val)
-    {
-	if(rep_INTP(val))
-	{
-	    vw->vw_XStepRatio = rep_INT(val);
-	    set_scroll_steps(vw);
-	}
-	return rep_NULL;
-    }
-    return(rep_MAKE_INT(vw->vw_XStepRatio));
+    return rep_handle_var_int (val, &curr_vw->vw_XStepRatio);
 }
 
 DEFUN("rect-blocks-p", Frect_blocks_p, Srect_blocks_p, (repv vw), rep_Subr1) /*
@@ -804,14 +787,21 @@ and activated.
     return(vw);
 }
 
-DEFUN("buffer-list", var_buffer_list, Sbuffer_list, (repv val), rep_Var) /*
+DEFUN("buffer-list", Fbuffer_list, Sbuffer_list, (void), rep_Subr0) /*
 ::doc:buffer-list::
 List of buffers in most-recently-used order. Each view has it's own.
 ::end:: */
 {
-    if(val)
-	curr_vw->vw_BufferList = val;
     return(curr_vw->vw_BufferList);
+}
+
+DEFUN("set-buffer-list", Fset_buffer_list, Sset_buffer_list, (repv val), rep_Subr1) /*
+::doc:set-buffer-list::
+List of buffers in most-recently-used order. Each view has it's own.
+::end:: */
+{
+    curr_vw->vw_BufferList = val;
+    return val;
 }
 
 DEFUN("get-buffer-view", Fget_buffer_view, Sget_buffer_view,
@@ -1241,6 +1231,7 @@ views_init(void)
     rep_ADD_SUBR(Scurrent_view);
     rep_ADD_SUBR(Sset_current_view);
     rep_ADD_SUBR(Sbuffer_list);
+    rep_ADD_SUBR(Sset_buffer_list);
     rep_ADD_SUBR(Sget_buffer_view);
     rep_ADD_SUBR(Snext_view);
     rep_ADD_SUBR(Sprevious_view);

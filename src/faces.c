@@ -233,13 +233,13 @@ See `set-face-attribute' for the list of possible attributes.
 	return rep_signal_arg_error(attr, 2);
 }
 
-DEFUN("mouse-cursor-face", var_mouse_cursor_face, Smouse_cursor_face,
-      (repv arg), rep_Var) /*
+DEFUN("mouse-cursor-face", Fmouse_cursor_face, Smouse_cursor_face,
+      (repv arg), rep_Subr1) /*
 ::doc:mouse-cursor-face::
 The face used to color the mouse cursor.
 ::end:: */
 {
-    if(arg)
+    if(arg != Qnil)
     {
 	mouse_cursor_face = arg;
 	sys_recolor_cursor(arg);
@@ -315,7 +315,7 @@ merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
 
     if(in_block)
     {
-	repv face = rep_SYM(Qblock_face)->value;
+	repv face = Fsymbol_value (Qblock_face, Qt);
 	if(FACEP(face))
 	    union_face(VFACE(face));
     }
@@ -355,7 +355,7 @@ merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
 
     /* Merge in the default-face properties */
     {
-	repv face = rep_SYM(Qdefault_face)->value;
+	repv face = Fsymbol_value (Qdefault_face, Qt);
 	if(face != rep_NULL && FACEP(face))
 	    union_face(VFACE(face));
     }
@@ -538,22 +538,22 @@ faces_init(void)
 	face = Fmake_face(rep_SYM(Qdefault_face)->name);
 	Fset_face_attribute(face, Qforeground, fg);
 	Fset_face_attribute(face, Qbackground, bg);
-	rep_SYM(Qdefault_face)->value = face;
+	Fset (Qdefault_face, face);
 	mouse_cursor_face = face;
 	sys_recolor_cursor(mouse_cursor_face);
 
 	face = Fmake_face(rep_SYM(Qblock_face)->name);
 	Fset_face_attribute(face, Qbackground, bl);
-	rep_SYM(Qblock_face)->value = face;
+	Fset (Qblock_face, face);
 
 	face = Fmake_face(rep_SYM(Qmodeline_face)->name);
 	Fset_face_attribute(face, Qforeground, fg);
 	Fset_face_attribute(face, Qbackground, ml);
-	rep_SYM(Qmodeline_face)->value = face;
+	Fset (Qmodeline_face, face);
 
 	face = Fmake_face(rep_SYM(Qhighlight_face)->name);
 	Fset_face_attribute(face, Qbackground, hl);
-	rep_SYM(Qhighlight_face)->value = face;
+	Fset (Qhighlight_face, face);
 
 	return TRUE;
     }

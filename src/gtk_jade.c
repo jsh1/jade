@@ -742,7 +742,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
     unsigned int x = -1, y = -1, width = 80, height = 24;
     GtkWidget *frame = 0;
 
-    if (rep_SYM (Qbatch_mode)->value != Qnil)
+    if (Fsymbol_value (Qbatch_mode, Qt) != Qnil)
 	new_window_no_show = TRUE;
 
     if(dims[0] >= 0)
@@ -967,13 +967,15 @@ DEFUN ("make-window-on-display", Fmake_window_on_display,
 					    display));
 }
 
-DEFUN("gtk-cursor-shape", var_gtk_cursor_shape, Sgtk_cursor_shape, (repv arg), rep_Var) /*
+DEFUN("gtk-cursor-shape", Fgtk_cursor_shape, Sgtk_cursor_shape, (repv arg), rep_Subr1) /*
 ::doc:gtk-cursor-shape::
+gtk-cursor-shape [NEW-VALUE]
+
 An integer identifying the cursor to use for editor windows. See
 <gdk/gdkcursors.h> for the list of available cursors.
 ::end:: */
 {
-    if (arg != rep_NULL && rep_INTP(arg) && rep_INT(arg) != cursor_shape)
+    if (rep_INTP(arg) && rep_INT(arg) != cursor_shape)
     {
 	WIN *w = win_chain;
 	cursor_shape = rep_INT(arg);

@@ -1122,7 +1122,8 @@ Returns SYMBOL.
     if(!slot || !rep_CONSP(slot))
     {
 	/* Need to create a binding. */
-	tx->tx_GlobalExtent->locals = Fcons(Fcons(sym, rep_SYM(sym)->value),
+	repv value = Fsymbol_value (sym, Qt);
+	tx->tx_GlobalExtent->locals = Fcons(Fcons(sym, value),
 					    tx->tx_GlobalExtent->locals);
     }
     return sym;

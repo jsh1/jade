@@ -819,8 +819,10 @@ less than its full contents.
 	    ? Qt : Qnil);
 }
 
-DEFUN("auto-save-interval", var_auto_save_interval, Sauto_save_interval, (repv val), rep_Var) /*
+DEFUN("auto-save-interval", Fauto_save_interval, Sauto_save_interval, (repv val), rep_Subr1) /*
 ::doc:auto-save-interval::
+auto-save-interval [NEW-VALUE]
+
 This buffer-local variable defines the period (in seconds) between each
 automatic save of the buffer. A value of zero means that this buffer is
 not to be auto-saved.
@@ -829,82 +831,80 @@ not to be auto-saved.
     return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_AutoSaveInterval));
 }
 
-DEFUN("last-save-changes", var_last_save_changes, Slast_save_changes, (repv val), rep_Var) /*
+DEFUN("last-save-changes", Flast_save_changes, Slast_save_changes, (repv val), rep_Subr1) /*
 ::doc:last-save-changes::
+last-save-changes [NEW-VALUE]
+
 Number of changes the last time this buffer was saved (could be auto-save).
 ::end:: */
 {
     return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_LastSaveChanges));
 }
 
-DEFUN("last-user-save-changes", var_last_user_save_changes, Slast_user_save_changes, (repv val), rep_Var) /*
+DEFUN("last-user-save-changes", Flast_user_save_changes, Slast_user_save_changes, (repv val), rep_Subr1) /*
 ::doc:last-user-save-changes::
+last-user-save-changes [NEW-VALUE]
+
 Number of changes the last time this buffer was saved (not from auto-save).
 ::end:: */
 {
     return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_ProperSaveChanges));
 }
 
-DEFUN("last-save-time", var_last_save_time, Slast_save_time, (repv val), rep_Var) /*
+DEFUN("last-save-time", Flast_save_time, Slast_save_time, (repv val), rep_Subr1) /*
 ::doc:last-save-time::
+last-save-time [NEW-VALUE]
+
 System time at last save of this buffer (could be from an auto-save).
 ::end:: */
 {
-    if(val != rep_NULL)
-    {
-	if(rep_TIMEP(val))
-	    curr_vw->vw_Tx->tx_LastSaveTime = rep_GET_TIME(val);
-	return rep_NULL;
-    }
-    else
-	return rep_MAKE_TIME(curr_vw->vw_Tx->tx_LastSaveTime);
+    long old = curr_vw->vw_Tx->tx_LastSaveTime;
+    if(rep_TIMEP(val))
+	curr_vw->vw_Tx->tx_LastSaveTime = rep_GET_TIME(val);
+    return rep_MAKE_TIME(old);
 }
 
-DEFUN("tab-size", var_tab_size, Stab_size, (repv val), rep_Var) /*
+DEFUN("tab-size", Ftab_size, Stab_size, (repv val), rep_Subr1) /*
 ::doc:tab-size::
+tab-size [NEW-VALUE]
+
 Sets the size of tab-stops.
 ::end:: */
 {
     return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_TabSize));
 }
 
-DEFUN("truncate-lines", var_truncate_lines, Struncate_lines, (repv val), rep_Var) /*
+DEFUN("truncate-lines", Ftruncate_lines, Struncate_lines, (repv val), rep_Subr1) /*
 ::doc:truncate-lines::
+truncate-lines VALUE
+
 When t lines that continue past the rightmost column of the screen are
 truncated, not wrapped onto the next row as when this variable is nil.
 The default value for all buffers is nil.
 ::end:: */
 {
     TX *tx = curr_vw->vw_Tx;
-    if(val != rep_NULL)
-    {
-	if(!rep_NILP(val))
-	    tx->tx_Flags |= TXFF_DONT_WRAP_LINES;
-	else
-	    tx->tx_Flags &= ~TXFF_DONT_WRAP_LINES;
-    }
+    repv old = TX_WRAP_LINES_P(tx) ? Qnil : Qt;
+    if(!rep_NILP(val))
+	tx->tx_Flags |= TXFF_DONT_WRAP_LINES;
     else
-	val = TX_WRAP_LINES_P(tx) ? Qnil : Qt;
-    return val;
+	tx->tx_Flags &= ~TXFF_DONT_WRAP_LINES;
+    return old;
 }
 
-DEFUN("buffer-status-id", var_buffer_status_id, Sbuffer_status_id,
-      (repv val), rep_Var) /*
+DEFUN("buffer-status-id", Fbuffer_status_id, Sbuffer_status_id,
+      (repv val), rep_Subr1) /*
 ::doc:buffer-status-id::
+buffer-status-line VALUE
+
 This buffer-local string is displayed in the status line of the buffer. When
 the buffer is created it is set to `Jade: BUFFER-NAME'.
 ::end:: */
 {
     TX *tx = curr_vw->vw_Tx;
-    if(val)
-    {
-	tx->tx_StatusId = rep_STRINGP(val) ? val : rep_NULL;
-	return val;
-    }
-    else if(tx->tx_StatusId)
-	return tx->tx_StatusId;
-    else
-	return Qnil;
+    repv old = tx->tx_StatusId ? tx->tx_StatusId : Qnil;
+    tx->tx_StatusId = rep_STRINGP(val) ? val : rep_NULL;
+    return old;
 }
 
 DEFUN("all-buffers", Fall_buffers, Sall_buffers, (void), rep_Subr0) /*

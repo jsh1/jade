@@ -534,5 +534,5 @@ movement_init(void)
     rep_ADD_SUBR(Sraw_mouse_pos);
 
     rep_INTERN_SPECIAL(next_screen_context_lines);
-    rep_SYM(Qnext_screen_context_lines)->value = rep_MAKE_INT(2);
+    Fset (Qnext_screen_context_lines, rep_MAKE_INT(2));
 }

@@ -73,6 +73,7 @@ extern repv Fmark_resident_p(repv);
 extern repv Fmarkp(repv);
 
 /* from commands.c */
+extern repv Qthis_command, Qlast_command, Qprefix_arg, Qcurrent_prefix_arg;
 extern void commands_init(void);
 extern repv Qprompt_for_function, Qprompt_for_buffer;
 extern repv Qprompt_for_char, Qprompt_for_command;
