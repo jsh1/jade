@@ -71,7 +71,7 @@
 ;;
 ;;   after-marking ITEM
 ;;	Called after marking ITEM in some way (i.e. after adding
-;;	a pending operation)
+;;	a pending operation), but before updating the display
 ;;
 ;;   after-move INDEX
 ;;	Called after moving the cursor to the item at position INDEX
@@ -225,11 +225,12 @@ items to be displayed and manipulated."
 	  (when (memq 'delete (cdr existing))
 	    (setcdr existing (nconc (delq 'delete (cdr existing))
 				    (list 'delete))))
+	  (summary-maybe-dispatch 'after-marking item)
 	  (summary-update-item item))
       (setq summary-pending-ops (cons (cons item (cons op nil))
 				      summary-pending-ops))
-      (summary-update-item item))
-    (summary-maybe-dispatch 'after-marking item)))
+      (summary-maybe-dispatch 'after-marking item)
+      (summary-update-item item))))
 
 (defun summary-unmark-item (item)
   "Discard all operations pending on ITEM."
@@ -238,8 +239,8 @@ items to be displayed and manipulated."
       ((ops (summary-get-pending-ops item)))
     (when ops
       (setq summary-pending-ops (delq ops summary-pending-ops))
-      (summary-update-item item))
-    (summary-maybe-dispatch 'after-marking item)))
+      (summary-maybe-dispatch 'after-marking item)
+      (summary-update-item item))))
 
 (defun summary-update ()
   "Redraw the menu, after rebuilding the list of items. Loses the current
@@ -330,13 +331,11 @@ non-nil it should be a list containing the operations which may be performed."
     (summary-maybe-dispatch 'execute-end))
   (summary-update))
 
-(defun summary-mark-delete ()
-  "Mark that the current item should be deleted."
+(defun summary-mark-delete (&optional item)
+  "Mark that ITEM, or the current item, should be deleted."
   (interactive)
   (if (assq 'delete summary-functions)
-      (let
-	  ((item (summary-current-item)))
-	(summary-add-pending-op item 'delete))
+      (summary-add-pending-op (or item (summary-current-item)) 'delete)
     (error "No delete operation in the menu.")))
 
 (defun summary-quit ()
