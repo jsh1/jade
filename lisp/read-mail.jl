@@ -377,7 +377,7 @@ Major mode for viewing mail folders. Commands include:\n
 	     (inhibit-read-only t))
 	  (setq rm-current-msg-body end-of-hdrs)
 	  ;; Just operate on the headers
-	  (restrict-buffer header-start (prev-line 1 (copy-pos end-of-hdrs)))
+	  (restrict-buffer header-start end-of-hdrs)
 	  ;; First of all, move all visible headers after non-visible ones
 	  (setq rm-current-msg-visible-start (rm-coalesce-visible-headers))
 	  (unrestrict-buffer)
@@ -425,20 +425,19 @@ Major mode for viewing mail folders. Commands include:\n
 					(buffer-start) nil t))
        (current-hdr first-visible)
        (next-hdr first-visible))
-    (while current-hdr
+    (while (and current-hdr (< current-hdr (buffer-end)))
       ;; Move over all visible headers from CURRENT-HDR until
       ;; reaching an invisible one
       (setq next-hdr current-hdr)
-      (while (and next-hdr
-		  (regexp-match-line mail-visible-headers next-hdr nil t))
+      (while (and next-hdr (< next-hdr (buffer-end))
+		  (looking-at mail-visible-headers next-hdr nil t))
 	(setq next-hdr (mail-unfold-header next-hdr)))
       ;; Now we have a block of visible headers from CURRENT-HDR to
       ;; NEXT-HDR (but not including NEXT-HDR). Next find the following
       ;; visible header to delimit the block of invisible ones
       (setq current-hdr next-hdr)
-      (while (and next-hdr
-		  (not (regexp-match-line mail-visible-headers
-					  next-hdr nil t)))
+      (while (and next-hdr (< next-hdr (buffer-end))
+		  (not (looking-at mail-visible-headers next-hdr nil t)))
 	(setq next-hdr (mail-unfold-header next-hdr)))
       ;; Now we have a block of invisible headers, CURRENT-HDR to NEXT-HDR
       ;; Move them to before the FIRST-VISIBLE-HDR, updating this to
