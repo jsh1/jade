@@ -1,3 +1,11 @@
+2000-10-09  John Harper  <john@dcs.warwick.ac.uk>
+
+	* mail-dir.jl: in the before-exit-hook don't bother asking
+	permission to save the mail-directory, just do it
+
+	* mail-headers.jl (mail-encode-header-string): don't modify the
+	passed-in string
+
 2000-09-21  John Harper  <john@dcs.warwick.ac.uk>
 
 	* rm-restrict.jl (rm-filter-by-rule): fixed to deref the symbol

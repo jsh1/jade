@@ -55,7 +55,7 @@
 			       (expand-last-match "\\1")))
 	 (count 0))
       (while (setq p (re-search-forward
-			"^[; \t]*;;###autoload[\t ]*(.*)$" p buf))
+			"^[; \t]*###autoload[\t ]*(.*)$" p buf))
 	(setq form (expand-last-match "\\1"))
 	(when (and form (not (equal "" form)))
 	  (funcall line-fun form)
