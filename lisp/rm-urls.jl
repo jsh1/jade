@@ -28,23 +28,39 @@
 
 (defvar rm-urls-regexp "(http|ftp)://[^ \t\n\f\r]+")
 
+(defvar rm-urls-max-lines 256)
+
+(defvar rm-urls-mouse-map
+  (bind-keys (make-sparse-keymap)
+    "button2-click1" 'goto-mouse
+    "button2-move" 'goto-mouse
+    "button2-off" 'html-display-mouse-select))
+
 ;; Called from the rm-display-message-hook
 (defun rm-highlight-urls (message folder)
   (let
       ((point (start-of-buffer)))
-    (while (re-search-forward rm-urls-regexp point nil t)
-      ;; Require these here so that they're only loaded on demand
-      (require 'html-display)
-      (require 'html-decode)
-      (setq point (match-end))
-      (let
-	  ((extent (make-extent (match-start) point
-				(list 'face (html-decode-elt-face 'link)
-				      'html-anchor-params
-				      (list (cons
-					     'href (copy-area
-						    (match-start) point)))))))
-	(extent-set extent 'popup-extent-menus html-display-link-menus)))))
+    (save-restriction
+      (restrict-buffer (start-of-buffer)
+		       (min (end-of-buffer)
+			    (forward-line rm-urls-max-lines
+					  (start-of-buffer))))
+      (while (re-search-forward rm-urls-regexp point nil t)
+	;; Require these here so that they're only loaded on demand
+	(require 'html-display)
+	(require 'html-decode)
+	(setq point (match-end))
+	(let
+	    ((extent (make-extent (match-start) point
+				  (list 'face (html-decode-elt-face 'link)
+					'mouse-face active-face
+					'mouse-keymap rm-urls-mouse-map
+					'html-anchor-params
+					(list (cons
+					       'href (copy-area
+						      (match-start)
+						      point)))))))
+	  (extent-put extent 'popup-menus html-display-link-menus))))))
 
 ;; Add the function at the end of the hook, to guarantee it's after
 ;; the mime-decoder
