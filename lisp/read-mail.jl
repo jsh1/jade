@@ -33,7 +33,7 @@ page past the limits of the current message.")
 (defvar rm-move-after-deleting t
   "When t move to the next message after deleting the current message.")
 
-(defvar rm-summary-format "%a %d/%m%10i%25F%36i%s"
+(defvar rm-summary-format "%a  %D %m  %-^16F  %l"
   "A string defining the format of lines in mail summary buffers. It is
 copied verbatim except for formatting directives introduced by percent
 signs (%). Each directive consists of a percent character, an optional
@@ -42,27 +42,28 @@ inserted in place of the format directive. These characters include:
 
 	a	A 3-character attribute string, showing the status of
 		the message
-	d	The numeric day of the month when the message was sent
+	D	The numeric day of the month when the message was sent
+	w	The day of the week, as a 3-character string
 	f	The address of the first sender
 	F	The name of address of the first sender
 	i	Indent to column ARG (i.e. %20i => indent to column 20)
-	m	The numeric month of the message's date
-	M	The abbreviated month name of the date
-	s	The subject line
+	m	The abbreviated month name of the date
+	M	The numeric month of the message's date
+	l	The subject line
 	t	The hour and minute at which the message was sent
 	T	The hour, minute, and second of the date
 	%	Insert a percent character
 	r	The name of the first recipient of the message
-	y	The numeric year of the sending date
+	Y	The numeric year of the sending date
+	z	The timezone, as a string
 
 The list of formatting options can be extended by the variable
 `rm-summary-print-functions'.")
 
-(defvar rm-summary-print-functions nil
-  "An alist of (CHARACTER . FUNCTION) defining extra formatting directives
-for the rm-summary-format-string. The function is called as:
-(FUNCTION MESSAGE-STRUCTURE ARG); it should insert whatever is required
-at the current cursor position (no newlines).")
+(defvar rm-summary-format-alist nil
+  "An alist of (CHARACTER . FUNCTION) defining formatting directives for the
+rm-summary-format-string. The function is called as: (FUNCTION MESSAGE-
+STRUCTURE); it should return the string to be inserted (no newlines).")
 
 (defvar rm-saved-cache-tags '(sender-list recipient-list date-vector)
   "List of cache tags whose values should be saved in the headers of each
@@ -957,104 +958,89 @@ the summary buffer.")
 	       '()))
      rm-cached-msg-list)))
 
-(defun rm-summary-format-item (item)
-  (let
-      ((point 0)
-       (date (rm-get-date-vector item))
-       (pending-ops (summary-get-pending-ops item))
-       (len (length rm-summary-format))
-       (field-fun #'(lambda (s)
-		      (if (null arg)
-			  (insert s)
-			(let
-			    ((len (length s)))
-			  (if (> arg len)
-			      (progn
-				(insert s)
-				(insert (make-string (- arg len))))
-			    (insert (substring s 0 (- arg 2)))
-			    (insert ".."))))))
-       char fun arg)
-    (while (and (< point len)
-		(string-match "%([0-9]*)[^0-9]" rm-summary-format point))
-      (insert (substring rm-summary-format point (match-start)))
-      (setq arg (if (/= (match-start 1) (match-end 1))
-		    (read-from-string (substring rm-summary-format
-						 (match-start 1)
-						 (match-end 1)))
-		  nil)
-	    char (aref rm-summary-format (match-end 1))
-	    point (match-end))
-      (if (setq fun (cdr (assq char rm-summary-print-functions)))
-	  (funcall fun item arg pending-ops)
-	(cond
-	 ((= char ?a)
-	  (format (current-buffer) "%c%c%c"
-		  (cond
-		   ((rm-test-flag item 'unread) ?U)
-		   ((memq 'delete pending-ops) ?D)
-		   (t ? ))
-		  (cond
-		   ((rm-test-flag item 'replied) ?R)
-		   ((rm-test-flag item 'forwarded) ?Z)
-		   (t ? ))
-		  (if (rm-test-flag item 'filed) ?F ?\ )))
-	 ((= char ?d)
-	  (when date
-	    (format (current-buffer) "%d" (or (aref date mail-date-day) ""))))
-	 ((= char ?f)
-	  (let
-	      ((from (car (rm-get-senders item))))
-	    (when (car from)
-	      (funcall field-fun (car from)))))
-	 ((= char ?F)
-	  (let*
-	      ((from (car (rm-get-senders item))))
-	    (funcall field-fun (or (cdr from) (car from) ""))))
-	 ((= char ?i)
-	  (indent-to arg))
-	 ((= char ?m)
-	  (when date
-	    (format (current-buffer) "%d"
-		    (or (aref date mail-date-month) ""))))
-	 ((= char ?M)
-	  (when date
-	    (insert (or (aref date mail-date-month-abbrev) ""))))
-	 ((= char ?s)
-	  (funcall field-fun (or (rm-get-subject item) "")))
-	 ((= char ?t)
-	  (funcall field-fun (if date
-				 (format nil "%d:%d"
-					 (aref date mail-date-hour)
-					 (aref date mail-date-minute)) "")))
-	 ((= char ?T)
-	  (funcall field-fun (if date (format nil "%d:%d:%d"
-					      (aref date mail-date-hour)
-					      (aref date mail-date-minute))
-			       "")))
-	 ((= char ?%)
-	  (insert "%"))
-	 ((= char ?r)
-	  (let
-	      ((to (car (rm-get-recipients item))))
-	    (funcall field-fun (or (cdr to) (car to) ""))))
-	 ((= char ?y)
-	  (when date
-	    (format (current-buffer) "%d"
-		    (or (aref date mail-date-year) "")))))))
-    (insert (substring rm-summary-format point))
-    (copy-area (start-of-line) (cursor-pos))))
-
+;; Add standard format conversions; they're appended in case the user
+;; added some of their own
+(setq rm-summary-format-alist
+      (nconc
+       rm-summary-format-alist
+       (list
+	(cons ?a #'(lambda (m)
+		     (concat (cond
+			      ((rm-test-flag m 'unread) ?U)
+			      ((memq 'delete (summary-get-pending-ops m)) ?D)
+			      (t ? ))
+			     (cond
+			      ((rm-test-flag item 'replied) ?R)
+			      ((rm-test-flag item 'forwarded) ?Z)
+			      (t ? ))
+			     (if (rm-test-flag item 'filed) ?F ?\ ))))
+	(cons ?D #'(lambda (m)
+		     (let
+			 ((date (rm-get-date-vector m)))
+		       (when date
+			 (format nil "%02d" (aref date mail-date-day) "")))))
+	(cons ?w #'(lambda (m)
+		     (let
+			 ((date (rm-get-date-vector m)))
+		       (when date
+			 (aref date mail-date-day-abbrev)))))
+	(cons ?f #'(lambda (m)
+		     (car (car (rm-get-senders m)))))
+	(cons ?F #'(lambda (m)
+		     (let
+			 ((from (car (rm-get-senders m))))
+		       (or (cdr from) (car from)))))
+	(cons ?M #'(lambda (m)
+		     (let
+			 ((date (rm-get-date-vector m)))
+		       (when date
+			 (format nil "%02d" (aref date mail-date-month))))))
+	(cons ?m #'(lambda (m)
+		     (let
+			 ((date (rm-get-date-vector m)))
+		       (when date
+			 (aref date mail-date-month-abbrev)))))
+	(cons ?l #'(lambda (m)
+		     (rm-get-subject m)))
+	(cons ?t #'(lambda (m)
+		     (let
+			 ((date (rm-get-date-vector m)))
+		       (when date
+			 (format nil "%02d:%02d"
+				 (aref date mail-date-hour)
+				 (aref date mail-date-minute))))))
+	(cons ?T #'(lambda (m)
+		     (let
+			 ((date (rm-get-date-vector m)))
+		       (when date
+			 (format nil "%02d:%02d:%02d"
+				 (aref date mail-date-hour)
+				 (aref date mail-date-minute)
+				 (aref date mail-date-second))))))
+	(cons ?r #'(lambda (m)
+		     (let
+			 ((to (car (rm-get-recipients m))))
+		       (or (cdr to) (car to)))))
+	(cons ?Y #'(lambda (m)
+		     (let
+			 ((date (rm-get-date-vector m)))
+		       (when date
+			 (format nil "%d" (aref date mail-date-year))))))
+	(cons ?z #'(lambda (m)
+		     (let
+			 ((date (rm-get-date-vector m)))
+		       (when date
+			 (aref date mail-date-timezone))))))))
+			 
 (defun rm-summary-print-item (item)
   ;; Cache the summary line with the summary buffer as the tag
-  (let
-      (value dont-insert)
-    (setq value (rm-cached-form item (current-buffer)
-		  (progn
-		    (setq dont-insert t)
-		    (rm-summary-format-item item))))
-    (unless dont-insert
-      (insert value))))
+  (insert (rm-cached-form item (current-buffer)
+	    (let
+		((arg-list (cons item nil))
+		 (format-hooks-alist rm-summary-format-alist))
+	      ;; An infinite list of ITEMs
+	      (rplacd arg-list arg-list)
+	      (apply 'format nil rm-summary-format arg-list)))))
 
 ;; Delete all cached summary lines for MSG
 (defun rm-invalidate-summary (msg)
