@@ -117,16 +117,24 @@ COMMAND in it."
 
 (defun other-view (&optional lines)
   "Return a different view in the current window. If LINES is given it
-defines the number of lines to give any newly-created view."
+defines the number of lines to give the view. If LINES is the symbol t
+then no change is made to the size of the chosen view, otherwise it will be
+set so that it and the current view are roughly the same size."
   (if (= 2 (window-view-count))
       ;; open-view sets the new view as the current view; I don't
       ;; want that, so protect the current context.
       (with-view (current-view)
 	(open-view nil lines))
     (let
-	((view (next-view)))
+	((view (next-view))
+	 total desired)
       (when (minibuffer-view-p view)
 	(setq view (prev-view)))
+      (unless (eq lines t)
+	(setq total (+ (cdr (view-dimensions))
+		       (cdr (view-dimensions view)))
+	      desired (or lines (/ total 2)))
+	(enlarge-view (- total desired (cdr (view-dimensions)))))
       view)))
 
 (defun goto-next-view (&optional all-windows-p)
@@ -134,6 +142,48 @@ defines the number of lines to give any newly-created view."
 windows other than the current window are used when needed."
   (interactive "P")
   (set-current-view (next-view nil all-windows-p) all-windows-p))
+
+(defun enlarge-view (&optional count)
+  "Enlarge the current view by one line. If COUNT is specified enlarge
+by COUNT lines. When called interactively, COUNT is taken from the prefix
+argument."
+  (interactive "p")
+  (unless count (setq count 1))
+  (let*
+      ((views (window-view-list))
+       (view-count (1- (window-view-count)))	;ignore minibuf
+       (view-index (- view-count (1- (length (memq (current-view) views)))))
+       view)
+    (cond
+     ((= view-count 1)
+      (error "Can't resize a single view"))
+     ((= view-index (1- view-count))
+      ;; Last view in window, expand the previous window negatively
+      (setq view (previous-view)
+	    count (- count)))
+     (t
+      (setq view (current-view))))
+    (set-view-dimensions view nil (+ (cdr (view-dimensions view)) count))))
+
+(defun shrink-view (&optional count)
+  "Shrink the current view by one line. If COUNT is specified shrink by
+COUNT lines. When called interactively, COUNT is taken from the prefix
+argument."
+  (interactive "p")
+  (enlarge-view (- (or count 1))))
+
+(defun shrink-view-if-larger-than-buffer ()
+  "If the current view is larger than the buffer that it is displaying, shrink
+it so that the buffer just fits the view."
+  (interactive)
+  (if (<= (window-view-count) 2)
+      (error "Can't resize of a single view")
+    (let
+	((view-rows (cdr (view-dimensions)))
+	 (buffer-rows (buffer-length)))
+      (when (> view-rows buffer-rows)
+	(goto (start-of-buffer))
+	(enlarge-view (- buffer-rows view-rows))))))
 
 
 ;; Misc
