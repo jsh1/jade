@@ -692,6 +692,7 @@ to that between the lines specified by positions START and END.
     DECLARE2(lend, POSP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
+    cmd_unrestrict_buffer(tx);
     if(check_section(VTX(tx), &VPOS(lstart), &VPOS(lend))
        && VPOS(lstart).pos_Line <= VPOS(lend).pos_Line)
     {
