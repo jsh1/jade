@@ -147,34 +147,6 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
     return LISP_NULL;
 }
 
-_PR VALUE cmd_destroy_buffer(VALUE);
-DEFUN("destroy-buffer", cmd_destroy_buffer, subr_destroy_buffer, (VALUE tx), V_Subr1, DOC_destroy_buffer) /*
-::doc:destroy_buffer::
-destroy-buffer BUFFER
-
-Throw away everything associated with buffer. All resident marks are made
-non-resident.
-::end:: */
-{
-    DECLARE1(tx, BUFFERP);
-    make_marks_non_resident(VTX(tx));
-    clear_line_list(VTX(tx));
-    VTX(tx)->tx_FileName = null_string();
-    VTX(tx)->tx_CanonicalFileName = null_string();
-    VTX(tx)->tx_BufferName = null_string();
-    VTX(tx)->tx_ModeName = LISP_NULL;
-    VTX(tx)->tx_MinorModeNameList = sym_nil;
-    VTX(tx)->tx_MinorModeNameString = null_string();
-    VTX(tx)->tx_Changes = 0;
-    VTX(tx)->tx_LocalVariables = sym_nil;
-    VTX(tx)->tx_GlyphTable = cmd_default_glyph_table();
-    VTX(tx)->tx_Flags |= TXFF_RDONLY | TXFF_NO_UNDO;
-    VTX(tx)->tx_UndoList = sym_nil;
-    VTX(tx)->tx_ToUndoList = LISP_NULL;
-    VTX(tx)->tx_UndoneList = sym_nil;
-    return(sym_t);
-}
-
 void
 buffer_sweep(void)
 {
@@ -437,12 +409,13 @@ DEFUN("buffer-file-name", cmd_buffer_file_name, subr_buffer_file_name, (VALUE tx
 ::doc:buffer_file_name::
 buffer-file-name [BUFFER]
 
-Return the name of the file being edited in BUFFER.
+Return the name of the file being edited in BUFFER. If the contents of BUFFER
+isn't associated with a particular file, returns a null string.
 ::end:: */
 {
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    return(VTX(tx)->tx_FileName);
+    return VTX(tx)->tx_FileName;
 }
 
 _PR VALUE cmd_set_buffer_file_name(VALUE, VALUE);
@@ -450,7 +423,7 @@ DEFUN("set-buffer-file-name", cmd_set_buffer_file_name, subr_set_buffer_file_nam
 ::doc:set_buffer_file_name::
 set-buffer-file-name BUFFER NAME
 
-Set the name of the file being edited in BUFFER to NAME.
+Set the name of the file associated with the contents of BUFFER to NAME.
 ::end:: */
 {
     VALUE canonical;
@@ -483,7 +456,7 @@ Return the name of BUFFER.
 {
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    return(VTX(tx)->tx_BufferName);
+    return VTX(tx)->tx_BufferName;
 }
 
 _PR VALUE cmd_set_buffer_name(VALUE, VALUE);
@@ -499,7 +472,7 @@ Set the name of BUFFER to NAME.
 	tx = VAL(curr_vw->vw_Tx);
     VTX(tx)->tx_BufferName = name;
     sys_reset_sleep_titles(VTX(tx));
-    return(name);
+    return name;
 }
 
 _PR VALUE cmd_buffer_changes(VALUE);
@@ -512,7 +485,7 @@ Return the number of modifications to BUFFER.
 {
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    return(MAKE_INT(VTX(tx)->tx_Changes));
+    return MAKE_INT(VTX(tx)->tx_Changes);
 }
 
 _PR VALUE cmd_buffer_modified_p(VALUE);
@@ -520,17 +493,13 @@ DEFUN("buffer-modified-p", cmd_buffer_modified_p, subr_buffer_modified_p, (VALUE
 ::doc:buffer_modified_p::
 buffer-modified-p [BUFFER]
 
-Returns t if the buffer has changed since it was last saved.
+Returns t if the buffer has changed since it was last saved to disk.
 ::end:: */
 {
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    /* TXFF_SPECIAL means this buffer's modifications aren't important. */
-    if(VTX(tx)->tx_Flags & TXFF_SPECIAL)
-	return(sym_nil);
-    if(VTX(tx)->tx_Changes != VTX(tx)->tx_ProperSaveChanges)
-	return(sym_t);
-    return(sym_nil);
+    return ((VTX(tx)->tx_Changes != VTX(tx)->tx_ProperSaveChanges)
+	    ? sym_t : sym_nil);
 }
 
 _PR VALUE cmd_set_buffer_modified(VALUE, VALUE);
@@ -555,47 +524,6 @@ it look as though it has.
 	tx->tx_LastSaveChanges = tx->tx_Changes - 1;
     }
     return VAL(tx);
-}
-
-_PR VALUE cmd_set_buffer_special(VALUE tx, VALUE specialp);
-DEFUN("set-buffer-special", cmd_set_buffer_special, subr_set_buffer_special, (VALUE tx, VALUE specialp), V_Subr2, DOC_set_buffer_special) /*
-::doc:set_buffer_special::
-set-buffer-special BUFFER SPECIALP
-
-When a buffer is `special' it means that it is controlled by some Lisp code,
-not by the user typing into it (although this can still happen as well). This
-is used for things like the `*jade*' or `*Info*' buffers (in fact most of
-the buffers whose names are surrounded by asterisks are special).
-
-What the `special' attribute actually does is make sure that the buffer is
-never truely killed (`kill-buffer' removes it from each window's `buffer-list'
-but doesn't detroy the actual contents) and modifications don't cause the
-`+' marker to appear in the status line.
-::end:: */
-{
-    if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
-    if(NILP(specialp))
-	VTX(tx)->tx_Flags &= ~TXFF_SPECIAL;
-    else
-	VTX(tx)->tx_Flags |= TXFF_SPECIAL;
-    return(tx);
-}
-
-_PR VALUE cmd_buffer_special_p(VALUE tx);
-DEFUN("buffer-special-p", cmd_buffer_special_p, subr_buffer_special_p, (VALUE tx), V_Subr1, DOC_buffer_special_p) /*
-::doc:buffer_special_p::
-buffer-special-p [BUFFER]
-
-Returns t if BUFFER is ``special''. See `set-buffer-special' for the meaning of
-the ``special'' attribute.
-::end:: */
-{
-    if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
-    if(VTX(tx)->tx_Flags & TXFF_SPECIAL)
-	return(sym_t);
-    return(sym_nil);
 }
 
 _PR VALUE cmd_set_buffer_read_only(VALUE tx, VALUE stat);
@@ -1242,7 +1170,6 @@ buffers_init(void)
     INTERN(auto_save_function);
     ADD_SUBR(subr_make_buffer_name);
     ADD_SUBR(subr_make_buffer);
-    ADD_SUBR(subr_destroy_buffer);
     ADD_SUBR(subr_get_file_buffer);
     ADD_SUBR(subr_get_buffer);
     ADD_SUBR(subr_current_buffer);
@@ -1254,8 +1181,6 @@ buffers_init(void)
     ADD_SUBR(subr_buffer_changes);
     ADD_SUBR(subr_buffer_modified_p);
     ADD_SUBR(subr_set_buffer_modified);
-    ADD_SUBR(subr_set_buffer_special);
-    ADD_SUBR(subr_buffer_special_p);
     ADD_SUBR(subr_set_buffer_read_only);
     ADD_SUBR(subr_buffer_read_only_p);
     ADD_SUBR(subr_buffer_length);
