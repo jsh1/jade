@@ -57,6 +57,7 @@ static void gtk_jade_drag_data_received (GtkWidget *widget,
 
 static GtkWidgetClass *parent_class = 0;
 
+static int cursor_shape = GDK_XTERM;
 static GdkCursor *window_cursor = 0;
 
 /* When true, sys_new_window _won't_ stick the GtkJade widget in a
@@ -913,6 +914,29 @@ DEFUN ("make-window-on-display", Fmake_window_on_display,
 					    display));
 }
 
+DEFUN("gtk-cursor-shape", var_gtk_cursor_shape, Sgtk_cursor_shape, (repv arg), rep_Var) /*
+::doc:Vgtk-cursor-shape::
+An integer identifying the cursor to use for editor windows. See
+<gdk/gdkcursors.h> for the list of available cursors.
+::end:: */
+{
+    if (arg != rep_NULL && rep_INTP(arg) && rep_INT(arg) != cursor_shape)
+    {
+	WIN *w = win_chain;
+	cursor_shape = rep_INT(arg);
+	gdk_cursor_destroy (window_cursor);
+	window_cursor = gdk_cursor_new (cursor_shape);
+	while (w != 0)
+	{
+	    gdk_window_set_cursor (w->w_Window->widget.window, window_cursor);
+	    w = w->w_Next;
+	}
+	return arg;
+    }
+    else
+	return rep_MAKE_INT(cursor_shape);
+}
+
 
 /* Asyncronous event handling. X11 specific. */
 
@@ -1017,13 +1041,14 @@ gtk_jade_handle_async_input (void)
 void
 sys_windows_init(void)
 {
-    window_cursor = gdk_cursor_new (GDK_XTERM);
+    window_cursor = gdk_cursor_new (cursor_shape);
     rep_ADD_SUBR (Sgtk_jade_p);
     rep_ADD_SUBR (Sgtk_jade_new);
     rep_ADD_SUBR (Sgtk_jade_window);
     rep_ADD_SUBR (Sgtk_jade_window_widget);
     rep_ADD_SUBR (Sflush_output);
     rep_ADD_SUBR (Smake_window_on_display);
+    rep_ADD_SUBR (Sgtk_cursor_shape);
     rep_INTERN (gtk_jade_new_hook);
     rep_INTERN (dnd_drop_uri_list);
     rep_test_int_fun = gtk_jade_handle_async_input;
