@@ -191,7 +191,7 @@ main(int argc, char **argv)
 
 	jade_symbols();
 
-	res = Fload(rep_string_dup ("jade"), Qnil, Qnil, Qnil);
+	res = Fload(rep_string_dup ("jade"), Qnil, Qnil, Qnil, Qnil);
 	if (res != rep_NULL)
 	{
 	    rc = 0;
