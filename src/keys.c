@@ -63,10 +63,6 @@ static VALUE next_keymap_path;
 /* TRUE when the Meta qualifier should be added to the next event. */
 static bool pending_meta;
 
-/* Modifier mask for the meta modifier. */
-_PR u_long ev_mod_meta;
-u_long ev_mod_meta;
-
 /* This doesn't belong here but I couldn't find anywhere else :-( */
 _PR VALUE sym_idle_hook;
 DEFSYM(idle_hook, "idle-hook");
@@ -194,7 +190,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 	VALUE cmd, tem, orig_next_keymap_path = next_keymap_path;
 	if(pending_meta)
 	{
-	    mods |= ev_mod_meta;
+	    mods |= EV_MOD_META;
 	    pending_meta = FALSE;
 	}
 	current_event[0] = code;
@@ -655,8 +651,6 @@ print_event_prefix(void)
 void
 keys_init(void)
 {
-    ev_mod_meta = sys_find_meta();
-
     INTERN(keymap_path); DOC(keymap_path);
     INTERN(unbound_key_hook); DOC(unbound_key_hook);
     INTERN(esc_means_meta); DOC(esc_means_meta);
