@@ -21,23 +21,18 @@
 (require 'help)
 (provide 'keymap)
 
+
+;; Map a function over all key bindings in a keymap
+
 (defvar km-prefix-string nil)
 (defvar km-keymap-list nil)
 
-;;;###autoload
-(defun print-keymap (&optional keymap-list buffer)
-  "Prints a description of the installed keymaps in the current buffer."
-  (unless km-keymap-list
-    (setq km-keymap-list keymap-path))
+(defun map-keymap (function &optional keymap buffer)
   (unless buffer
     (setq buffer (current-buffer)))
-  (insert "\nKey/Event")
-  (indent-to 24)
-  (insert "Binding\n---------")
-  (indent-to 24)
-  (insert "-------\n\n")
   (let
-      (done-list)			; keymaps already printed
+      ((km-keymap-list (or keymap (with-buffer buffer keymap-path)))
+       (done-list nil))
     (while km-keymap-list
       (let
 	  ((keymap (car km-keymap-list))
@@ -49,49 +44,81 @@
 	(unless (memq keymap done-list)
 	  (setq done-list (cons keymap done-list))
 	  (when (symbolp keymap)
-	    (format (current-buffer) " -- %s:\n" keymap)
 	    (setq keymap (with-buffer buffer (symbol-value keymap))))
 	  (when (keymapp keymap)
-	    (cond
-	     ((vectorp keymap)
-	      (let
-		  ((i (1- (length keymap))))
-		(while (>= i 0)
-		  (km-print-list (aref keymap i))
-		  (setq i (1- i)))))
-	     (t
-	      (km-print-list (cdr keymap)))))
-	  (insert "\n"))))))
+	    (if (vectorp keymap)
+		(let
+		    ((i (1- (length keymap))))
+		  (while (>= i 0)
+		    (km-map-keylist (aref keymap i) function buffer)
+		    (setq i (1- i))))
+	      (km-map-keylist (cdr keymap) function buffer))))))))
 
-;; Print one keymap. This accesses the free variables `km-keymap-list' and
-;; `km-prefix-string' -- both in describe-keymap.
-(defun km-print-list (keymap)
+;; Map over a single list of keybindings
+(defun km-map-keylist (keylist function buffer)
+  (mapc #'(lambda (k)
+	    (if (eq (car (aref k 2)) 'next-keymap-path)
+		;; A prefix key
+		(let
+		    ((this-list (with-buffer buffer (eval (nth 1 (aref k 2)))))
+		     (event-str (event-name (cons (aref k 0)
+						  (aref k 1)))))
+		  (when (listp this-list)
+		    ;; Another keymap-list, add it to the list of those waiting
+		    (let*
+			((new-str (concat km-prefix-string
+					  (if km-prefix-string ?\ )
+					  event-str))
+			 (new-list (mapcar #'(lambda (km)
+					       (cons km new-str)) this-list)))
+		      (setq km-keymap-list (append km-keymap-list new-list)))))
+	      ;; A normal binding
+	      (funcall function k km-prefix-string (aref k 2))))
+	keylist))
+
+
+;; Printing keymaps
+
+;;;###autoload
+(defun print-keymap (&optional keymap buffer)
+  "Prints a description of the installed keymaps in the current buffer."
+  (insert "\nKey/Event")
+  (indent-to 24)
+  (insert "Binding\n---------")
+  (indent-to 24)
+  (insert "-------\n\n")
+  (map-keymap #'(lambda (k prefix command)
+		  (format (current-buffer) "%s%s%s "
+			  (or prefix "")
+			  (if prefix " " "")
+			  (event-name (cons (aref k 0) (aref k 1))))
+		  (indent-to 24)
+		  (format (current-buffer) "%S\n" command))
+	      keymap buffer))
+
+
+;; Search for a named command in the current keymap configuration
+
+(defvar km-where-is-results nil)
+
+;;;###autoload
+(defun where-is (command &optional keymap buffer output)
+  (interactive "CWhere is command:\n\n\nt")
   (let
-      (key cmd event-str)
-    (while keymap
-      (setq key (car keymap)
-	    cmd (aref key 2)
-	    event-str (event-name (cons (aref key 0) (aref key 1))))
-      (when (and (eq (car cmd) 'setq)
-		 (eq (nth 1 cmd) 'next-keymap-path))
-	(let
-	    ((this-list (eval (nth 2 cmd))))
-	  (when (listp this-list)
-	    ;; Another keymap list; add it to the list of keymaps to
-	    ;; examine later.
-	    (let*
-		((new-str (concat km-prefix-string (if km-prefix-string ?\ )
-				  event-str))
-		 (new-list (mapcar #'(lambda (km)
-				       (cons km new-str))
-				   this-list)))
-	      (setq km-keymap-list (append km-keymap-list new-list))))))
-      (insert (concat km-prefix-string (if km-prefix-string ?\ )  event-str))
-      (indent-to 24)
-      (prin1 cmd (current-buffer))
-      (insert "\n")
-      (setq keymap (cdr keymap)))))
-
+      ((km-where-is-results nil))
+    (map-keymap #'(lambda (k pfx c)
+		    (when (eq c command)
+		      (setq km-where-is-results
+			    (cons (concat pfx (and pfx " ")
+					  (event-name (cons (aref k 0)
+							    (aref k 1))))
+				  km-where-is-results))))
+		keymap buffer)
+    (when output
+      (message (format nil "`%s' is on %s" command
+		       (or km-where-is-results "no keys"))))
+    km-where-is-results))
+      
 
 ;; Get one event
 
@@ -106,8 +133,8 @@ define that event."
       (with-buffer temp-buffer
 	(add-hook 'unbound-key-hook #'(lambda ()
 					(throw 'read-event (current-event))))
-	(setq keymap-path nil
-	      next-keymap-path nil)
+	(setq keymap-path nil)
+	(next-keymap-path nil)
 	(insert (or title "Enter key: "))
 	(setq ev (catch 'read-event
 		   (recursive-edit)))))
@@ -123,16 +150,15 @@ would invoke."
        names event command done)
     (while (not done)
       (setq event (read-event (concat "Enter a key sequence: " names))
-	    names (concat names (if names ?\ ) (event-name event))
-	    next-keymap-path path
-	    command (lookup-event-binding event t))
+	    names (concat names (if names ?\ ) (event-name event)))
+      (next-keymap-path path)
+      (setq command (lookup-event-binding event t))
       (if command
-	  (if (and (eq (car command) 'setq)
-		   (eq (nth 1 command) 'next-keymap-path))
+	  (if (eq (car command) 'next-keymap-path)
 	      ;; A link to another keymap
 	      (progn
 		(call-command command)
-		(setq path next-keymap-path))
+		(setq path (next-keymap-path t)))
 	    ;; End of the chain
 	    (help-wrapper
 	     (format (current-buffer) "\n%s -> %S\n" names command)
@@ -142,5 +168,5 @@ would invoke."
 		       (or (documentation command) ""))))
 	    (setq done t))
 	(message (concat names " is unbound. "))
-	(setq done t
-	      next-keymap-path nil)))))
+	(setq done t)
+	(next-keymap-path nil)))))
