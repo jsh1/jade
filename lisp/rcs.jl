@@ -212,8 +212,7 @@ description entered. COUNT may be negative."
   (with-buffer buffer
     ;; This file uses RCS. If the file doesn't actually exist, try to
     ;; check it out.
-    (when (or (not (file-exists-p (buffer-file-name)))
-	      (zerop (file-size (buffer-file-name))))
+    (when (not (file-exists-p (buffer-file-name)))
       ;; Attempt to check out the current revision read-only,
       ;; ignoring errors
       (rcs-command "co" (buffer-file-name) '("-r") t t))
