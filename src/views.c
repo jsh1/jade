@@ -120,13 +120,14 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	    parent = curr_win;
 	if(!tx)
 	{
-	    if(parent && parent->w_ViewList && parent->w_ViewList->vw_Tx)
-		tx = parent->w_ViewList->vw_Tx;
+	    if(parent && parent->w_CurrVW && parent->w_CurrVW->vw_Tx)
+		tx = parent->w_CurrVW->vw_Tx;
 	    else
 		tx = buffer_chain; /* whatever */
 	}
-	if(parent && parent->w_ViewList)
-	    sibling = parent->w_ViewList;
+	if(parent && parent->w_CurrVW
+	   && (parent->w_CurrVW->vw_Flags & VWFF_MINIBUF) == 0)
+	    sibling = parent->w_CurrVW;
     }
 
     /* Make sure that LINES is initialised to a value greater than
