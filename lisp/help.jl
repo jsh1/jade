@@ -162,8 +162,7 @@ it leads to)."
 
 (defun describe-variable-1 (var #!optional in-buffer)
   (format standard-output
-	  "\n%s: %s\nCurrent value: %S\n\n"
-	  (if (binding-immutable-p var) "Constant" "Variable")
+	  "\nVariable: %s\nCurrent value: %S\n\n"
 	  (symbol-name var)
 	  (with-buffer (or in-buffer (current-buffer)) (symbol-value var t))))
 
