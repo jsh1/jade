@@ -1,3 +1,12 @@
+1999-06-27  John Harper  <john@dcs.warwick.ac.uk>
+
+	* ws-x11.jl, ws-gtk.jl: don't select kills anymore
+
+1999-06-17  John Harper  <john@dcs.warwick.ac.uk>
+
+	* sh-mode.jl (sh-indent-line): when matching shell reserved
+	words, make sure that only whole words are matched
+
 1999-06-23  John Harper  <john@dcs.warwick.ac.uk>
 
 	* mime-base64.jl (mime-decode-base64): don't drop the last
@@ -26,7 +35,7 @@
 	the Sender: header when looking for a reply address (but both
 	after looking for Reply-To:)
 
-1999-06-12    <john@dcs.warwick.ac.uk>
+1999-06-12  John Harper  <john@dcs.warwick.ac.uk>
 
 	* send-mail.jl (send-mail-defer, send-mail-restore): new
 	commands, saving and reloading partially composed messages

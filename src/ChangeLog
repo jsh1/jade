@@ -1,11 +1,37 @@
-1999-06-13    <john@dcs.warwick.ac.uk>
+1999-06-30  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gtk_jade.c (gtk_jade_handle_async_input): don't poll the X
+	connection before checking for events, the pending input stuff
+	doesn't interact well with the GDK event loop
+
+1999-06-28  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gtk_jade.c (var_gtk_cursor_shape): similar to
+	x11_cursor_shape variable
+
+	* gtk_jade.c (gtk_jade_handle_async_input): new function, scans
+	the X11 event queue (that's right, totally X11-dependent) for
+	Expose and C-g events, which are handled asynchronously
+
+1999-06-27  John Harper  <john@dcs.warwick.ac.uk>
+
+	* x11_main.c, gtk_main.c: when initialising, if not in
+	batch-mode create our own process group
+
+	* undo.c (coalesce_undo): when joining the three possible list
+	fragments, ensure that they're separated by end-of-command
+	delimiters (i.e. nils)
+	(undo_trim): don't do anything if immediately after an undo
+	command (i.e. the undo list is in three fragments)
+
+1999-06-13  John Harper  <john@dcs.warwick.ac.uk>
 
 	* x11_main.c (x11_cursor_shape): the cursor definition to use
 	when opening displays
 	* x11_misc.c (var_x11_cursor_shape): Lisp variable mapping to
 	x11_cursor_shape
 
-1999-06-11    <john@dcs.warwick.ac.uk>
+1999-06-11  John Harper  <john@dcs.warwick.ac.uk>
 
 	* windows.c (Qvisible_bell, Qvisible_bell_length, beep): blink
 	the screen instead of beeping when visible-bell is non-nil
