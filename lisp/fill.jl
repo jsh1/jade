@@ -85,3 +85,50 @@ COLUMN or the current column."
 			column 
 		      (pos-col (char-to-glyph-pos (cursor-pos)))))
   (format t "Fill column set to %d." (1+ fill-column)))
+
+;;;###autoload
+(defun fill-paragraph ()
+  "Fills the current paragraph so that no lines are wider than fill-column."
+  (interactive "p")
+  (let
+      ((start (backward-paragraph (forward-paragraph)))
+       word-start word-end)
+    (while (looking-at paragraph-regexp start)
+      (setq start (next-line 1 start)))
+    ;; TODO: the next regexp hardcodes blank-line as paragraph delimiter
+    (while (not (looking-at "[\t ]*\n[\t ]*\n" start))
+      (setq word-end (forward-word 1 start)
+	    word-start (forward-word -1 word-end))
+      (when (looking-at "[][<>\"%^`',.-;:!?(){}]+" word-end)
+	(setq word-end (match-end)))
+      (if (/= (pos-line start) (pos-line word-start))
+	  ;; The next word is on the following line
+	  (if (<= (+ (pos-col (char-to-glyph-pos start))
+		     (- (pos-col word-end) (pos-col word-start)))
+		  fill-column)
+	      ;; We can fit the current word onto the end of the previous line
+	      (if (looking-at "[\t ]*\n[\t ]*" start)
+		  (progn
+		    (delete-area (match-start) (match-end))
+		    (setq start (insert " " (match-start))))
+		(error "Shouldn't happen"))
+	    ;; Can't fit it onto the current line. Leave it where
+	    ;; it is and advance the `current' pointer
+	    (setq start word-end))
+	;; The next word is on the same line.
+	(if (> (pos-col (char-to-glyph-pos word-end)) fill-column)
+	    ;; It doesn't fit, move it to the start of the next line
+	    (progn
+	      (if (and (find-prev-regexp "[\t ]+" word-start)
+		       (equal (match-end) word-start))
+		  (progn
+		    (delete-area (match-start) (match-end))
+		    (setq start (insert "\n" (match-start))))
+		(setq start (insert "\n" word-start)))
+	      ;; Hack to auto-indent new line in indented-text-mode
+	      (when (eq major-mode 'indented-text-mode)
+		(set-indent-pos (next-line 1 (indent-pos
+					      (prev-line
+					       1 (copy-pos start)))))))
+	  ;; Everything's ok, advance START
+	  (setq start word-end))))))
