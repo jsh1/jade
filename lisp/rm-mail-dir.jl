@@ -32,8 +32,14 @@
 ;; Prevent warnings
 (eval-when-compile (require 'rm-summary))
 
+(defvar rm-mail-dir-auto-scan-hook '((lambda () t))
+  "Hook called before a mail message is automatically scanned for addresses
+to add to the address book. If any function in this hook returns nil, the
+message isn't scanned.")
+
 ;; This function is added to read-mail.jl's read-mail-display-message-hook
 (defun rm-mail-dir-scanner (rm-message folder &optional all-addresses force)
+  (call-hook 'rm-mail-dir-auto-scan-hook (list rm-message) 'and)
   (mapc #'(lambda (cell)
 	    (when (and (car cell) (or (cdr cell) force))
 	      (mail-dir-scan-function
