@@ -22,6 +22,15 @@
 (require 'maildefs)
 (provide 'read-mail)
 
+;;;; Configuration
+
+(defvar rm-auto-next-message t
+  "When t the next message will automatically be displayed when trying to
+page past the limits of the current message.")
+
+(defvar rm-move-after-deleting t
+  "When t move to the next message after deleting the current message.")
+
 ;;;; Variables
 
 ;; The message list is kept in three parts. The messages before the
@@ -67,14 +76,14 @@ when set to the symbol `invalid'.")
   "n" 'rm-next-message
   "p" 'rm-previous-message
   "t" 'rm-toggle-all-headers
-  "SPC" 'next-screen
-  "BS" 'prev-screen
+  "SPC" 'rm-next-page
+  "BS" 'rm-previous-page
   "h" 'rm-summary
   "d" '(rm-with-summary (summary-mark-delete))
-  "Ctrl-d" '(rm-with-summary (summary-mark-delete))
+  "Ctrl-d" '(rm-with-summary (summary-mark-delete t))
   "DEL" '(rm-with-summary (summary-mark-delete))
-  "x" '(rm-with-summary (rm-execute))
-  "#" '(rm-with-summary (rm-execute))
+  "x" '(rm-with-summary (summary-execute))
+  "#" '(rm-with-summary (summary-execute))
   "g" 'rm-get-mail
   "q" 'rm-save-and-quit
   "v" 'read-mail-folder
@@ -620,16 +629,20 @@ Major mode for viewing mail folders. Commands include:\n
 (bind-keys rm-summary-keymap
   "n" '(rm-with-folder (rm-next-message))
   "p" '(rm-with-folder (rm-previous-message))
-  "SPC" 'summary-select-item
+  "SPC" '(rm-with-folder (rm-next-page))
+  "BS" '(rm-with-folder (rm-previous-page))
   "t" '(rm-with-folder (rm-toggle-all-headers))
-  "g" '(rm-with-folder (rm-get-mail-command))
+  "g" '(rm-with-folder (rm-get-mail))
   "q" '(rm-with-folder (rm-save-and-quit))
-  "v" '(rm-with-folder (read-mail-folder))
+  "v" '(rm-with-folder (call-command 'read-mail-folder))
   "r" '(rm-in-folder (rm-reply))
   "R" '(rm-in-folder (rm-reply t))
   "f" '(rm-in-folder (rm-followup))
   "F" '(rm-in-folder (rm-followup t))
-  "z" '(rm-in-folder (rm-forward)))
+  "z" '(rm-in-folder (rm-forward))
+  "d" '(rm-with-folder (rm-mark-message-deletion))
+  "DEL" '(rm-with-folder (rm-mark-message-deletion))
+  "Ctrl-d" '(rm-with-folder (rm-mark-message-deletion t)))
 
 (defvar rm-summary-functions '((select . rm-summary-select-item)
 			       (list . rm-summary-list)
@@ -793,21 +806,53 @@ Major mode for displaying a summary of a mail folder.")
 ;; Commands, these must only be called from the folder buffer, *not*
 ;; from the summary.
 
-(defun rm-next-message ()
+(defun rm-next-message (&optional count dont-skip-deleted)
   "Display the next message in the current mail folder."
-  (interactive)
-  (unless rm-after-msg-list
-    (error "No more messages"))
-  (rm-move-forwards)
+  (interactive "p")
+  (unless count
+    (setq count 1))
+  (while (> count 0)
+    (unless rm-after-msg-list
+      (error "No more messages"))
+    (rm-move-forwards)
+    (when (or dont-skip-deleted
+	      (not (memq 'delete (with-buffer rm-summary-buffer
+				   (summary-get-pending-ops
+				    (with-buffer rm-summary-mail-buffer
+				      rm-current-msg))))))
+      (setq count (1- count))))
+  (while (< count 0)
+    (unless rm-before-msg-list
+      (error "No previous message"))
+    (rm-move-backwards)
+    (when (or dont-skip-deleted
+	      (not (memq 'delete (with-buffer rm-summary-buffer
+				   (summary-get-pending-ops
+				    (with-buffer rm-summary-mail-buffer
+				      rm-current-msg))))))
+      (setq count (1+ count))))
   (rm-display-current-message))
 
-(defun rm-previous-message ()
+(defun rm-previous-message (&optional count dont-skip-deleted)
   "Display the previous message in the current mail folder."
+  (interactive "p")
+  (rm-next-message (- (or count 1)) dont-skip-deleted))
+
+(defun rm-next-page ()
+  "Display the next page in the current message."
   (interactive)
-  (unless rm-before-msg-list
-    (error "No previous message"))
-  (rm-move-backwards)
-  (rm-display-current-message))
+  (if (>= (cursor-pos) (buffer-end))
+      (when rm-auto-next-message
+	(rm-next-message))
+    (next-screen)))
+
+(defun rm-previous-page ()
+  "Display the previous page in the current message."
+  (interactive)
+  (if (<= (cursor-pos) (buffer-start))
+      (when rm-auto-next-message
+	(rm-previous-message))
+    (prev-screen)))
 
 (defun rm-toggle-all-headers ()
   "Toggles between showing invisible headers and not showing them for the
@@ -821,11 +866,15 @@ current message."
 	       (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark)))
     (goto-char (buffer-start))))
 
-(defun rm-mark-message-deletion ()
+(defun rm-mark-message-deletion (&optional move-back-p)
   "Marks that the current message should be deleted."
   (interactive)
   (rm-with-summary
-   (summary-mark-delete)))
+   (summary-mark-delete))
+  (when rm-move-after-deleting
+    (if move-back-p
+	(rm-previous-message)
+      (rm-next-message))))
 
 (defun rm-save-and-quit ()
   "Quit from the mail reading subsystem. The current folder will be saved
