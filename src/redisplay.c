@@ -324,8 +324,8 @@ enum Edit_Op {
 struct edit_script {
     struct edit_script *link;		/* previous edit instruction */
     enum Edit_Op op;			/* insertion or deletion? */
-    u_long line1;			/* line number in buffer 1 */
-    u_long line2;			/* line number in buffer 2 */
+    long line1;				/* line number in buffer 1 */
+    long line2;				/* line number in buffer 2 */
 };
 
 #ifdef DEBUG
@@ -342,6 +342,29 @@ dump_script(struct edit_script *start)
 	start = start->link;
     }
     fprintf(stderr, "}\n");
+}
+
+static void
+dump_glyph_line (u_char *data, int length)
+{
+    fputs ("{ ", stderr);
+    fwrite (data, length, 1, stderr);
+    fputs (" }", stderr);
+}
+
+static void
+dump_glyph_buf (glyph_buf *g)
+{
+    int row;
+    fprintf (stderr, "\nGlyph buffer %p (%dx%d):", g, g->cols, g->rows);
+    for (row = 0; row < g->rows; row++)
+    {
+	fprintf (stderr, "\ncodes[%03d] = ", row);
+	dump_glyph_line (g->codes[row], g->cols);
+	fprintf (stderr, "\nattrs[%03d] = ", row);
+	dump_glyph_line (g->attrs[row], g->cols);
+    }
+    fputs ("\n", stderr);
 }
 #endif
 
@@ -374,6 +397,7 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
        refresh is complete. */
     while(point != 0)
     {
+	assert (current1 > 0 && last2 > 0);
 	if(point->op == Edit_Insert)
 	{
 	    while(last2 < point->line2)
@@ -392,7 +416,7 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 	links[last2++] = current1++;
 
 #ifdef DEBUG
-    printf("Drawing: ");
+    fprintf(stderr, "Drawing: ");
 #endif
 
     /* Use the links
@@ -430,7 +454,7 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 
 	redisplay_do_copy(w, old_g, new_g, src, dst, n);
 #ifdef DEBUG
-	printf(" COPY(%d: %d->%d) ", n, src, dst);
+	fprintf(stderr, " COPY(%d: %d->%d) ", n, src, dst);
 #endif
 
 	/* In all lines yet to be updated, make sure that the
@@ -450,7 +474,8 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 		       lines we just moved. Update the link */
 		    links[j] += (dst - src);
 #ifdef DEBUG
-		    printf(" RELOC(%d: %d->%d) ", j, link_j, links[j]);
+		    fprintf(stderr, " RELOC(%d: %d->%d) ",
+			    j, link_j, links[j]);
 #endif
 		}
 		else if(link_j >= src + n && link_j < dst + n)
@@ -459,7 +484,7 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 		    at line J :-( */
 		    links[j] = -1;
 #ifdef DEBUG
-		    printf(" TRASH(%d) ", j);
+		    fprintf(stderr, " TRASH(%d) ", j);
 #endif
 		}
 	    }
@@ -476,7 +501,7 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 		    /* Overwritten */
 		    links[j] = -1;
 #ifdef DEBUG
-		    printf(" TRASH(%d) ", j);
+		    fprintf(stderr, " TRASH(%d) ", j);
 #endif
 		}
 		else if(link_j >= src && link_j <= dst + n)
@@ -484,7 +509,8 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 		    /* Moved */
 		    links[j] -= (src - dst);
 #ifdef DEBUG
-		    printf(" RELOC(%d: %d->%d) ", j, link_j, links[j]);
+		    fprintf(stderr, " RELOC(%d: %d->%d) ",
+			    j, link_j, links[j]);
 #endif
 		}
 	    }
@@ -498,12 +524,12 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 	{
 	    redisplay_do_draw(w, old_g, new_g, i);
 #ifdef DEBUG
-	    printf(" DRAW(%d) ", i);
+	    fprintf(stderr, " DRAW(%d) ", i);
 #endif
 	}
     }
 #ifdef DEBUG
-    printf("\n");
+    fprintf(stderr, "\n");
 #endif
 }
 
@@ -533,8 +559,16 @@ patch_display(WIN *w, glyph_buf *old_g, glyph_buf *new_g)
 
     assert(old_g->rows == new_g->rows && old_g->cols == new_g->cols);
 
+#ifdef DEBUG
+    /* Print the contents of the buffers */
+    fprintf (stderr, "\npatch_display; from\n");
+    dump_glyph_buf (old_g);
+    fprintf (stderr, "\nto:\n");
+    dump_glyph_buf (new_g);
+#endif
+
     last_d = alloca(sizeof(int) * 2 * old_g->rows);
-    script = alloca(sizeof(struct edit_script *) * 2 * old_g->rows);
+    script = alloca(sizeof(struct edit_script *) * (2 * old_g->rows + 1));
 
     if(redisplay_max_d == 0)
 	max_d = 2 * old_g->rows;	/* no limit */
