@@ -694,7 +694,7 @@ to that between the lines specified by positions START and END.
 	tx = VAL(curr_vw->vw_Tx);
     if(check_section(VTX(tx), &VPOS(lstart), &VPOS(lend)))
     {
-	VTX(tx)->tx_LogicalStart = VPOS(lstart).pos_Line;
+	VTX(tx)->tx_LogicalStart = VPOS(lstart).pos_Line + 1;
 	VTX(tx)->tx_LogicalEnd = VPOS(lend).pos_Line;
 	VTX(tx)->tx_Flags |= TXFF_REFRESH_ALL;
 	return sym_t;
@@ -742,7 +742,8 @@ Return the position of the last character that may be displayed in BUFFER
 {
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    return make_lpos2(0, VTX(tx)->tx_LogicalEnd);
+    return make_lpos2(VTX(tx)->tx_Lines[VTX(tx)->tx_LogicalEnd - 1].ln_Strlen
+		      - 1, VTX(tx)->tx_LogicalEnd - 1);
 }
 
 _PR VALUE var_auto_save_interval(VALUE);
