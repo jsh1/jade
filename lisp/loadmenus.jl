@@ -18,7 +18,7 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
-(if (not (amiga-p))
+(if (not (eq operating-system 'amiga))
     (error "Menus only work on an Amiga")
   (set-menu
    '("Project"
