@@ -225,6 +225,9 @@ function is called to initialise the correct editing mode for the file.
 find-file always returns the buffer holding file NAME, or nil if no
 such buffer could be made."
   (interactive "FFind file:")
+  (setq name (expand-file-name name))
+  (when (file-directory-p name)
+    (setq name (directory-file-name name)))
   (let
       ((buf (get-file-buffer name)))
     (if buf
