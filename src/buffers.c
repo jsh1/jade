@@ -25,6 +25,7 @@
 #include <stdlib.h>
 
 _PR void buffer_sweep(void);
+_PR void flush_all_buffers(void);
 _PR void buffer_prin(VALUE, VALUE);
 _PR TX *first_buffer(void);
 _PR void swap_buffers(VW *, TX *);
@@ -107,6 +108,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
     if(tx != NULL)
     {
 	memset(tx, 0, sizeof(TX));
+	sm_init(&tx->tx_StringPool);
 	if(clear_line_list(tx))
 	{
 	    tx->tx_Car = V_Buffer;
@@ -133,8 +135,11 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 		tx->tx_UndoneList = sym_nil;
 		tx->tx_SavedCPos = make_pos(0, 0);
 		tx->tx_SavedWPos = tx->tx_SavedCPos;
+
 		return(VAL(tx));
 	    }
+	    kill_line_list(tx);
+	    sm_kill(&tx->tx_StringPool);
 	}
 	FREE_OBJECT(tx);
     }
@@ -165,9 +170,6 @@ non-resident.
     VTX(tx)->tx_UndoList = sym_nil;
     VTX(tx)->tx_ToUndoList = LISP_NULL;
     VTX(tx)->tx_UndoneList = sym_nil;
-#if 0
-    sm_flush(&main_strmem);
-#endif
     return(sym_t);
 }
 
@@ -183,6 +185,7 @@ buffer_sweep(void)
 	{
 	    make_marks_non_resident(tx);
 	    kill_line_list(tx);
+	    sm_kill(&tx->tx_StringPool);
 	    FREE_OBJECT(tx);
 	}
 	else
@@ -194,6 +197,18 @@ buffer_sweep(void)
 	tx = nxt;
     }
 }
+
+void
+flush_all_buffers(void)
+{
+    TX *tx = buffer_chain;
+    while(tx != NULL)
+    {
+	sm_flush(&tx->tx_StringPool);
+	tx = tx->tx_Next;
+    }
+}
+
 void
 buffer_prin(VALUE strm, VALUE obj)
 {

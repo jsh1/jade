@@ -66,6 +66,8 @@ typedef struct _TX {
     LINE	   *tx_Lines;
     long	    tx_NumLines, tx_TotalLines;	/* text-lines, array-length */
 
+    StrMem	    tx_StringPool;
+
     /* line numbers of `narrowed' region */
     long	    tx_LogicalStart, tx_LogicalEnd;
     long	    tx_LastLogicalStart, tx_LastLogicalEnd;

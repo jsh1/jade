@@ -48,10 +48,10 @@
 
 /* Allocate a chunk of memory to store a string of size X (including
    terminating zero). */
-#define ALLOC_LINE_BUF(x) str_alloc(LINE_BUF_SIZE(x))
+#define ALLOC_LINE_BUF(tx, x) sm_alloc(&tx->tx_StringPool, LINE_BUF_SIZE(x))
 
 /* Free something allocated with the previous macro. */
-#define FREE_LINE_BUF(p)  str_free(p)
+#define FREE_LINE_BUF(tx, p)  sm_free(&tx->tx_StringPool, p)
 
 /* Allocate a buffer to contain N LINE structures. */
 #define ALLOC_LL(n)   mymalloc(sizeof(LINE) * (n))
@@ -62,7 +62,7 @@
 _PR bool clear_line_list(TX *);
 _PR void kill_line_list(TX *);
 _PR LINE *resize_line_list(TX *, long, long);
-_PR u_char *alloc_line_buf(long length);
+_PR u_char *alloc_line_buf(TX *, long length);
 _PR bool insert_gap(TX *, long, long, long);
 _PR VALUE insert_bytes(TX *, const u_char *, long, VALUE);
 _PR VALUE insert_string(TX *, const u_char *, long, VALUE);
@@ -93,7 +93,7 @@ clear_line_list(TX *tx)
     tx->tx_Lines = ALLOC_LL(ALLOC_SPARE_LINES);
     if(tx->tx_Lines)
     {
-	tx->tx_Lines[0].ln_Line = ALLOC_LINE_BUF(1);
+	tx->tx_Lines[0].ln_Line = ALLOC_LINE_BUF(tx, 1);
 	if(tx->tx_Lines[0].ln_Line)
 	{
 	    tx->tx_Lines[0].ln_Line[0] = 0;
@@ -110,9 +110,7 @@ clear_line_list(TX *tx)
     return(FALSE);
 }
 
-/*
- * deallocates all lines and their list
- */
+/* deallocates all lines and their list */
 void
 kill_line_list(TX *tx)
 {
@@ -123,7 +121,7 @@ kill_line_list(TX *tx)
 	for(i = 0, line = tx->tx_Lines; i < tx->tx_NumLines; i++, line++)
 	{
 	    if(line->ln_Strlen)
-		FREE_LINE_BUF(line->ln_Line);
+		FREE_LINE_BUF(tx, line->ln_Line);
 	}
 	FREE_LL(tx->tx_Lines);
 	tx->tx_Lines = NULL;
@@ -132,9 +130,7 @@ kill_line_list(TX *tx)
     }
 }
 
-/*
- * deallocates some lines (but not the list)
- */
+/* deallocates some lines (but not the list) */
 static void
 kill_some_lines(TX *tx, long start, long number)
 {
@@ -144,7 +140,7 @@ kill_some_lines(TX *tx, long start, long number)
     {
 	if(line->ln_Strlen)
 	{
-	    FREE_LINE_BUF(line->ln_Line);
+	    FREE_LINE_BUF(tx, line->ln_Line);
 	    line->ln_Strlen = 0;
 	    line->ln_Line = NULL;
 	}
@@ -216,9 +212,9 @@ resize_line_list(TX *tx, long change, long where)
 }
 
 u_char *
-alloc_line_buf(long length)
+alloc_line_buf(TX *tx, long length)
 {
-    return ALLOC_LINE_BUF(length);
+    return ALLOC_LINE_BUF(tx, length);
 }
 
 /* Inserts LEN characters of `space' at pos. The gap will be filled
@@ -237,7 +233,7 @@ insert_gap(TX *tx, long len, long col, long row)
     else
     {
 	/* Need to allocate a new buffer */
-	u_char *newline = ALLOC_LINE_BUF(new_length);
+	u_char *newline = ALLOC_LINE_BUF(tx, new_length);
 	if(newline != NULL)
 	{
 	    if(line->ln_Strlen != 0)
@@ -245,7 +241,7 @@ insert_gap(TX *tx, long len, long col, long row)
 		memcpy(newline, line->ln_Line, col);
 		memcpy(newline + col + len, line->ln_Line + col,
 		       line->ln_Strlen - col);
-		FREE_LINE_BUF(line->ln_Line);
+		FREE_LINE_BUF(tx, line->ln_Line);
 	    }
 	    else
 		newline[len] = 0;
@@ -309,7 +305,7 @@ insert_string(TX *tx, const u_char *text, long textLen, VALUE pos)
 		LINE *line = tx->tx_Lines + PROW(&tpos);
 
 		/* First do the new line */
-		line[1].ln_Line = ALLOC_LINE_BUF(line[0].ln_Strlen
+		line[1].ln_Line = ALLOC_LINE_BUF(tx, line[0].ln_Strlen
 						 - PCOL(&tpos));
 		if(line[1].ln_Line != NULL)
 		{
@@ -332,12 +328,12 @@ insert_string(TX *tx, const u_char *text, long textLen, VALUE pos)
 		else
 		{
 		    /* Allocate a new buffer */
-		    u_char *new = ALLOC_LINE_BUF(PCOL(&tpos) + 1);
+		    u_char *new = ALLOC_LINE_BUF(tx, PCOL(&tpos) + 1);
 		    if(new != NULL)
 		    {
 			memcpy(new, line[0].ln_Line, PCOL(&tpos));
 			new[PCOL(&tpos)] = 0;
-			FREE_LINE_BUF(line[0].ln_Line);
+			FREE_LINE_BUF(tx, line[0].ln_Line);
 			line[0].ln_Line = new;
 			line[0].ln_Strlen = PCOL(&tpos) + 1;
 		    }
@@ -356,7 +352,7 @@ insert_string(TX *tx, const u_char *text, long textLen, VALUE pos)
 	    u_char *copy;
 	    if(!resize_line_list(tx, +1, PROW(&tpos)))
 		goto abort;
-	    copy = ALLOC_LINE_BUF(len + 1);
+	    copy = ALLOC_LINE_BUF(tx, len + 1);
 	    if(copy == NULL)
 		goto abort;
 	    memcpy(copy, text, len);
@@ -414,7 +410,7 @@ delete_chars(TX *tx, long col, long row, long size)
 	else
 	{
 	    /* Allocate a new line */
-	    u_char *new_line = ALLOC_LINE_BUF(new_length);
+	    u_char *new_line = ALLOC_LINE_BUF(tx, new_length);
 	    if(new_line == NULL)
 	    {
 		mem_error();
@@ -423,7 +419,7 @@ delete_chars(TX *tx, long col, long row, long size)
             memcpy(new_line, line->ln_Line, col);
             memcpy(new_line + col, line->ln_Line + col + size,
                    line->ln_Strlen - col - size);
-	    FREE_LINE_BUF(line->ln_Line);
+	    FREE_LINE_BUF(tx, line->ln_Line);
 	    line->ln_Line = new_line;
 	}
 	line->ln_Strlen -= size;
@@ -499,7 +495,7 @@ delete_section(TX *tx, VALUE start, VALUE end)
 		       TODO: see if the join can be absorbed into one
 		       of the existing lines.. */
 		    int new_length = line1->ln_Strlen + line2->ln_Strlen - 1;
-		    u_char *new_line = ALLOC_LINE_BUF(new_length);
+		    u_char *new_line = ALLOC_LINE_BUF(tx, new_length);
 		    if(new_line == NULL)
 		    {
 			mem_error();
@@ -508,7 +504,7 @@ delete_section(TX *tx, VALUE start, VALUE end)
 		    memcpy(new_line, line1->ln_Line, line1->ln_Strlen - 1);
 		    memcpy(new_line + (line1->ln_Strlen - 1),
 			   line2->ln_Line, line2->ln_Strlen);
-		    FREE_LINE_BUF(line2->ln_Line);
+		    FREE_LINE_BUF(tx, line2->ln_Line);
 		    line2->ln_Line = new_line;
 		    line2->ln_Strlen = new_length;
 		}
