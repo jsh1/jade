@@ -39,7 +39,6 @@ typedef struct {
 } W_WindowSys;
 
 #define w_Window	w_WindowSys.ws_Window
-#define w_Font		w_WindowSys.ws_Font
 #define WINDOW_NIL	(0)
 
 #if 0
@@ -48,75 +47,32 @@ typedef struct {
 } ScrollBar;
 #endif
 
-/*
- * Macros for drawing operations. These are mainly used in render.c for
- * system-independant rendering.
- */
+/* Macros for drawing operations. These are mainly used in render.c for
+   system-independant rendering. */
 
-/* Move to position (X,Y). The next DRAW() will happen at this position. */
-#define MOVE(vw,x,y)							\
+/* Draw LEN bytes of the string STR with pen PEN at glyph position (X,Y). */
+#define DRAW_GLYPHS(win, x, y, pen, str, len)				\
     do {								\
-	(vw)->vw_Win->w_WindowSys.ws_PenX = (vw)->vw_LeftPix + (x);	\
-	(vw)->vw_Win->w_WindowSys.ws_PenY = (vw)->vw_TopPix + (y);	\
+	int xpix = (win)->w_LeftPix + (win)->w_FontX * (x);		\
+	int ypix = ((win)->w_TopPix + (win)->w_FontY * (y)		\
+		    + (win)->w_WindowSys.ws_Font->ascent);		\
+	XDrawImageString(x11_display, (win)->w_Window,			\
+			 (win)->w_WindowSys.ws_GC_array[pen],		\
+			 xpix, ypix, str, len);				\
     } while(0)
 
-#define PEN_X(vw) ((vw)->vw_Win->w_WindowSys.ws_PenX - (vw)->vw_LeftPix)
-#define PEN_Y(vw) ((vw)->vw_Win->w_WindowSys.ws_PenY - (vw)->vw_TopPix)
-
-/* Draw LEN bytes of the string STR with colour PEN (P_TEXT or P_BLOCK)
-   at the position set by the MOVE() macro.  */
-#define TEXT(vw,pen,str,len)						    \
-    do {								    \
-	XDrawImageString(x11_display, (vw)->vw_Win->w_Window,		    \
-			 (vw)->vw_Win->w_WindowSys.ws_GC_array[pen],	    \
-			 (vw)->vw_Win->w_WindowSys.ws_PenX,		    \
-			 (vw)->vw_Win->w_WindowSys.ws_PenY,		    \
-			 (str), (len));					    \
-	(vw)->vw_Win->w_WindowSys.ws_PenX += (len) * (vw)->vw_Win->w_FontX; \
+/* Copy WxH glyphs from (X1,Y1) to (X2,Y2)  */
+#define COPY_GLYPHS(win, x1, y1, w, h, x2, y2)				\
+    do {								\
+	int x1pix = (win)->w_LeftPix + (win)->w_FontX * (x1);		\
+	int y1pix = (win)->w_TopPix + (win)->w_FontY * (y1);		\
+	int x2pix = (win)->w_LeftPix + (win)->w_FontX * (x2);		\
+	int y2pix = (win)->w_TopPix + (win)->w_FontY * (y2);		\
+	int width = (w) * (win)->w_FontX;				\
+	int height = (h) * (win)->w_FontY;				\
+	XCopyArea(x11_display, (win)->w_Window, (win)->w_Window,	\
+		  (win)->w_WindowSys.ws_GC_array[P_TEXT],		\
+		  x1pix, y1pix, width, height, x2pix, y2pix);		\
     } while(0)
-
-/* Clear a rectangle of size WxH with top-left corner (X,Y).  */
-#define CLR_AREA(vw,x,y,w,h)						    \
-    XClearArea(x11_display, (vw)->vw_Win->w_Window, (vw)->vw_LeftPix + (x), \
-	       (vw)->vw_TopPix + (y), (w), (h), False)
-
-/* Clear a rectangle from (X1,Y1) to (X2-1,Y2-1) inclusively. */
-#define CLR_RECT(vw,x1,y1,x2,y2)					     \
-    XClearArea(x11_display, (vw)->vw_Win->w_Window, (vw)->vw_LeftPix + (x1), \
-	       (vw)->vw_TopPix + (y1), (x2) - (x1), (y2) - (y1), False)
-
-/* Fill a rectangle WxH at (X,Y) with colour PEN.  */
-#define SET_AREA(vw,pen,x,y,w,h)						    \
-    XFillRectangle(x11_display, (vw)->vw_Win->w_Window,			    \
-		   (vw)->vw_Win->w_WindowSys.ws_GC_array[pen],		    \
-		   (vw)->vw_LeftPix + (x), (vw)->vw_TopPix + (y), (w), (h))
-
-/* Fill a rectangle from (X1,Y1) to (X2-1,Y2-1) inclusively with PEN. */
-#define SET_RECT(vw,pen,x1,y1,x2,y2)					\
-    XFillRectangle(x11_display, (vw)->vw_Win->w_Window,			\
-		   (vw)->vw_Win->w_WindowSys.ws_GC_array[pen],		\
-		   (vw)->vw_LeftPix + (x1), (vw)->vw_TopPix + (y1),	\
-		   (x2) - (x1), (y2) - (y1))
-
-/* Copy WxH pixels from (X1,Y1) to (X2,Y2)  */
-#define COPY_AREA(vw,x1,y1,w,h,x2,y2)					     \
-    do {								     \
-	XCopyArea(x11_display, (vw)->vw_Win->w_Window,			     \
-		  (vw)->vw_Win->w_Window,				     \
-		  (vw)->vw_Win->w_WindowSys.ws_GC_array[P_TEXT],	     \
-		  (vw)->vw_LeftPix + (x1), (vw)->vw_TopPix + (y1), (w), (h), \
-		  (vw)->vw_LeftPix + (x2), (vw)->vw_TopPix + (y2));	     \
-	x11_handle_gexposures((vw)->vw_Win);				     \
-    } while(0)
-
-/* Number of pixels from top of font to its baseline.  */
-#define FONT_ASCENT(vw) ((vw)->vw_Win->w_Font->ascent)
-
-/* Draw a line from (x1,y1) to (x2,y2)  */
-#define DRAW_LINE(vw,x1,y1,x2,y2)				\
-    XDrawLine(x11_display, vw->vw_Win->w_Window,		\
-	      vw->vw_Win->w_WindowSys.ws_GC_array[P_TEXT],	\
-	      (vw)->vw_LeftPix + (x1), (vw)->vw_TopPix + (y1),	\
-	      (vw)->vw_LeftPix + (x2), (vw)->vw_TopPix + (y2))
 
 #endif /* _X11_WINDOWSYS_H */
