@@ -26,19 +26,17 @@
 ;; letter; instead they try to act pragmatically---accepting most forms
 ;; of input that will be encountered
 
-;; Regexps for parsing mail addresses
-(defvar mail-addr-re (concat "[\t ]*" mail-atom-re "(\\." mail-atom-re ")*@"
-			     mail-atom-re "(\\." mail-atom-re ")*"))
-(defvar mail-angle-addr-re (concat ".*<(" mail-addr-re ")>"))
-(defvar mail-angle-name-re "[\t ]*\"?([^<\t\" \n\f]([\t ]*[^<\t\" \n\f])*)")
-(defvar mail-paren-name-re "[\t ]*\\(\"?([^\n\"]+)\"?\\)")
-
 ;; Return (MAIL-ADDR . REAL-NAME) (both strings, or nil) from the position
 ;; POINT in STRING
 (defun mail-parse-address (string &optional point)
   (unless point (setq point 0))
   (let
-      (mail-addr real-name)
+      ((mail-addr-re (concat "[\t ]*" mail-atom-re "(\\." mail-atom-re ")*@"
+			     mail-atom-re "(\\." mail-atom-re ")*"))
+       (mail-angle-addr-re (concat ".*<(" mail-addr-re ")>"))
+       (mail-angle-name-re "[\t ]*\"?([^<\t\" \n\f]([\t ]*[^<\t\" \n\f])*)")
+       (mail-paren-name-re "[\t ]*\\(\"?([^\n\"]+)\"?\\)")
+       mail-addr real-name)
     (cond
      ((string-looking-at mail-addr-re string point)
       ;; straightforward "foo@bar.baz" format..
