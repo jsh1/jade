@@ -330,12 +330,14 @@ is split.")
       ((tem (start-of-buffer)))
     (while (re-search-forward "\\*[\t\n ]*note[\t\n ]+([^:]+)" tem nil t)
       (setq tem (match-end 1))
-      (make-extent (match-start 1) tem (list 'face info-xref-face)))
+      (make-extent (match-start 1) tem (list 'face info-xref-face
+					     'mouse-face active-face)))
     (when (re-search-forward "^\\* menu:" (start-of-buffer) nil t)
       (setq tem (match-end))
       (while (re-search-forward "^\\*[\t ]+([^:\n]+)" tem)
 	(setq tem (match-end 1))
-	(make-extent (match-start 1) tem (list 'face info-menu-face))))))
+	(make-extent (match-start 1) tem (list 'face info-menu-face
+					       'mouse-face active-face))))))
 
 ;; Return a list of all node names matching START in the current tag table
 (defun info-list-nodes (start)
@@ -546,10 +548,13 @@ local bindings are:\n
   (interactive)
   (let
       (node)
-    (unless (setq node (cdr (info-parse-ref)))
+    (if (re-search-backward "\\*Note" nil nil t)
+	(progn
+	  (goto (match-start))
+	  (setq node (cdr (info-parse-ref))))
       (goto (start-of-line))
-      (unless (setq node (info-parse-menu-line))
-	(signal 'info-error '("Nothing on this line to go to"))))
+      (or (setq node (info-parse-menu-line))
+	  (signal 'info-error '("Nothing on this line to go to"))))
     (info-remember)
     (info-find-node node)))
 
