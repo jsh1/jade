@@ -1,3 +1,8 @@
+1999-04-06  John Harper  <john@dcs.warwick.ac.uk>
+
+	* buffers.jl (save-file): optional arg FORCE, says to always
+	save the buffer, even if we think it's up-to-date
+
 1999-03-30  John Harper  <john@dcs.warwick.ac.uk>
 
 	* sh-mode.jl (sh-indent-line): handle function definitions
