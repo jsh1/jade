@@ -33,7 +33,6 @@ _PR VALUE get_tx_cursor(TX *);
 _PR int auto_save_buffers(bool);
 _PR void tx_kill_local_variables(TX *tx);
 
-_PR void make_marks_non_resident(TX *);
 _PR void mark_sweep(void);
 _PR int mark_cmp(VALUE, VALUE);
 _PR void mark_prin(VALUE, VALUE);
@@ -41,6 +40,7 @@ _PR void buffers_init(void);
 _PR void buffers_kill(void);
 
 static void make_marks_resident(VALUE newtx);
+static void make_marks_non_resident(TX *oldtx);
 
 /* Chain of all allocated TXs. */
 _PR TX *buffer_chain;
@@ -148,14 +148,30 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 void
 buffer_sweep(void)
 {
-    TX *tx = buffer_chain;
+    TX *tx;
+
+    /* First sweep the marks.. */
+    mark_sweep();
+
+    /* ..then the buffers. There is a compelling reason for this, we
+       need to make any live marks in buffers that are dead
+       non-resident.  But the dead marks are not important, and
+       _won't_ have ensured that the buffer's tx_CanonicalFileName is
+       marked (even though the buffer itself isn't. */
+
+    tx = buffer_chain;
     buffer_chain = NULL;
     while(tx)
     {
 	TX *nxt = tx->tx_Next;
 	if(!GC_CELL_MARKEDP(VAL(tx)))
 	{
-	    make_marks_non_resident(tx);
+	    if(tx->tx_MarkChain != NULL)
+	    {
+		/* mark_value has ensured that tx_CanonicalFileName is
+		   kept even if the buffer isn't */
+		make_marks_non_resident(tx);
+	    }
 	    kill_line_list(tx);
 	    FREE_OBJECT(tx);
 	}
@@ -851,7 +867,7 @@ make_marks_resident(VALUE newtx)
 
 /* Put all marks pointing to buffer OLDTX onto the list of non-resident
    marks */
-void
+static void
 make_marks_non_resident(TX *oldtx)
 {
     VALUE file = (STRINGP(oldtx->tx_CanonicalFileName)
@@ -916,19 +932,23 @@ mark_sweep(void)
     }
 }
 
-/* Compare two marks. Note that non-resident marks are never compared
-   since we would have to call file-name= (and possibly invoke some
-   Lisp code, which isn't allowed). */
+/* Compare two marks. */
 int
 mark_cmp(VALUE v1, VALUE v2)
 {
     int rc = 1;
-    if(VTYPE(v1) == VTYPE(v2)
-       && MARK_RESIDENT_P(VMARK(v1)) && MARK_RESIDENT_P(VMARK(v2))
-       && VMARK(v1)->file == VMARK(v2)->file)
+    if(VTYPE(v1) == VTYPE(v2))
     {
-	if(!(rc = VROW(VMARK(v1)->pos) - VROW(VMARK(v2)->pos)))
-	    rc = VCOL(VMARK(v1)->pos) - VROW(VMARK(v2)->pos);
+	if(MARK_RESIDENT_P(VMARK(v1)) && MARK_RESIDENT_P(VMARK(v2))
+	   && VMARK(v1)->file == VMARK(v2)->file)
+	{
+	    
+	    rc = VROW(VMARK(v1)->pos) - VROW(VMARK(v2)->pos);
+	    if(rc == 0)
+		rc = VCOL(VMARK(v1)->pos) - VROW(VMARK(v2)->pos);
+	}
+	else if(!MARK_RESIDENT_P(VMARK(v1)) && !MARK_RESIDENT_P(VMARK(v1)))
+	    rc = value_cmp(VMARK(v1)->file, VMARK(v1)->file);
     }
     return rc;
 }
