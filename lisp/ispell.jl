@@ -464,7 +464,8 @@ whole of the buffer (if no block)."
 			(let
 			    ((e (make-extent
 				 wstart wend
-				 (list 'face ispell-misspelt-face))))
+				 (list 'face ispell-misspelt-face
+				       'mouse-face active-face))))
 			  (extent-set e 'ispell-misspelt t)
 			  (extent-set e 'popup-extent-menus ispell-minor-menus)
 			  wend))))

@@ -162,6 +162,7 @@ external mmencode program, otherwise handle locally.")
    (setq tem (forward-char 2 out-start))
    (make-extent tem (forward-char -2 (end-of-line tem))
 		(list 'face mime-highlight-face
+		      'mouse-face active-face
 		      'content-type content-type
 		      'content-xfer-enc content-xfer-enc
 		      'content-disp content-disp

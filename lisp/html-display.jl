@@ -100,7 +100,8 @@
       (map-extents #'(lambda (e)
 		       (when (html-display-extent-is-link-p e)
 			 (extent-set e 'popup-extent-menus
-				     html-display-link-menus)))
+				     html-display-link-menus)
+			 (extent-put e 'mouse-face active-face)))
 		   (start-of-buffer) (end-of-buffer))
       (call-hook 'html-display-hook))))
 
