@@ -520,7 +520,7 @@ format_mode_string(char *fmt, VW *vw, char *buf, u_long buf_len)
 	    {
 		int percent = (((VROW(vw->vw_DisplayOrigin)
 				 - tx->tx_LogicalStart) * 100)
-			       / tx->tx_LogicalEnd - tx->tx_LogicalStart);
+			       / (tx->tx_LogicalEnd - tx->tx_LogicalStart));
 		position_buf[0] = (percent / 10) + '0';
 		position_buf[1] = (percent % 10) + '0';
 		position_buf[2] = '%';
