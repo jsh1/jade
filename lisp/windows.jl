@@ -182,34 +182,3 @@ it so that the buffer just fits the view."
 	  (goto (start-of-buffer))
 	  ;; add one since positions count from zero
 	  (enlarge-view (- (pos-line end) view-rows -1)))))))
-
-
-;; Misc
-
-(defun add-buffer (buffer)
-  "Make sure that BUFFER is in the `buffer-list' of all open windows. It gets
-put at the end of the list if it's not already in a member."
-  (mapc #'(lambda (w)
-	    (mapc #'(lambda (v)
-		      (unless (minibuffer-view-p v)
-			(with-view v
-			  (unless (memq buffer buffer-list)
-			    (setq buffer-list (append buffer-list
-						      (cons buffer nil)))))))
-		  (window-view-list w)))
-	window-list))
-
-(defun remove-buffer (buffer)
-  "Delete all references to BUFFER in any of the views `buffer-list' variable.
-If any view is currently displaying BUFFER, it will be made to display the
-next buffer in its list."
-  (mapc #'(lambda (w)
-	    (mapc #'(lambda (v)
-		      (unless (minibuffer-view-p v)
-			(with-view v
-			  (setq buffer-list (delq buffer buffer-list)))
-			(when (eq (current-buffer v) buffer)
-			  (set-current-buffer (or (car buffer-list)
-						  default-buffer) v))))
-		  (window-view-list w)))
-	window-list))
