@@ -67,7 +67,11 @@ Construct a unique buffer-name from NAME.
 	TX *tx = buffer_chain;
 	if(suffix != 1)
 	{
+#ifdef HAVE_SNPRINTF
+	    snprintf(buf, sizeof(buf), "%s<%d>", VSTR(rawName), suffix);
+#else
 	    sprintf(buf, "%s<%d>", VSTR(rawName), suffix);
+#endif
 	    thistry = buf;
 	}
 	else
@@ -1052,7 +1056,12 @@ mark_prin(VALUE strm, VALUE obj)
 	stream_puts(strm, VPTR(VMARK(obj)->file), -1, TRUE);
 	stream_putc(strm, '"');
     }
-    sprintf(tbuf, " #<pos %ld %ld>>",
+#ifdef HAVE_SNPRINTF
+    snprintf(tbuf, sizeof(tbuf),
+#else
+    sprintf(tbuf,
+#endif
+	    " #<pos %ld %ld>>",
 	    VCOL(VMARK(obj)->pos),
 	    VROW(VMARK(obj)->pos));
     stream_puts(strm, tbuf, -1, FALSE);

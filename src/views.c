@@ -562,8 +562,12 @@ update_status_buffer(VW *vw, char *status_buf, u_long buflen)
 	    position_buf[3] = 0;
 	    position = position_buf;
 	}
-
-	sprintf(tem, "-%c%ld,%ld%c--%s-", restriction ? '[' : '(',
+#ifdef HAVE_SNPRINTF
+	snprintf(tem, sizeof(tem),
+#else
+	sprintf(tem,
+#endif
+		"-%c%ld,%ld%c--%s-", restriction ? '[' : '(',
 		glyph_col + 1, VROW(vw->vw_CursorPos)
 		- tx->tx_LogicalStart + 1, restriction ? ']' : ')', position);
 	len = strlen(tem);
@@ -1172,7 +1176,12 @@ view_prin(VALUE stream, VALUE vw)
 	stream_puts(stream, "#<dead-view>", -1, FALSE);
     else
     {
+#ifdef HAVE_SNPRINTF
+	snprintf(buf, sizeof(buf),
+		 "#<view %d,%d", VVIEW(vw)->vw_MaxX, VVIEW(vw)->vw_MaxY);
+#else
 	sprintf(buf, "#<view %d,%d", VVIEW(vw)->vw_MaxX, VVIEW(vw)->vw_MaxY);
+#endif
 	stream_puts(stream, buf, -1, FALSE);
 	if(VVIEW(vw)->vw_Tx)
 	{

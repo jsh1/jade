@@ -330,7 +330,11 @@ messagef(u_char *fmt, ...)
 	u_char fmtbuff[256];
 	u_long len;
 	va_start(args, fmt);
+#ifdef HAVE_SNPRINTF
+	vsnprintf(fmtbuff, sizeof(fmtbuff), fmt, args);
+#else
 	vsprintf(fmtbuff, fmt, args);
+#endif
 	va_end(args);
 	if(log_messages)
 	   fprintf(stderr, "%s\n", fmtbuff);
@@ -764,10 +768,15 @@ window_prin(VALUE strm, VALUE win)
     u_char buf[40];
     if(VWIN(win)->w_Window)
     {
-#ifdef HAVE_X11
-	sprintf(buf, "#<window %ld", VWIN(win)->w_Window);
+#ifdef HAVE_SNPRINTF
+	snprintf(buf, sizeof(buf),
 #else
-	sprintf(buf, "#<window 0x%x", VWIN(win)->w_Window);
+	sprintf(buf,
+#endif
+#ifdef HAVE_X11
+		"#<window %ld", VWIN(win)->w_Window);
+#else
+		"#<window 0x%x", VWIN(win)->w_Window);
 #endif
 	stream_puts(strm, buf, -1, FALSE);
 	stream_putc(strm, '>');
