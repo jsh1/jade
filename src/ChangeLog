@@ -1,3 +1,7 @@
+2000-02-15  John Harper  <john@dcs.warwick.ac.uk>
+
+	* undo.c (Fset_buffer_record_undo): new function
+
 2000-02-06  John Harper  <john@dcs.warwick.ac.uk>
 
 	* main.c (main): run in a dynamic root
