@@ -61,7 +61,7 @@ centred each time it changes.")
   "Ctrl-l" 'gdb-redisplay-frame)
 
 (bind-keys ctrl-x-keymap
-  "Ctrl-a" '(setq next-keymap-path '(gdb-ctrl-c-keymap)))
+  "Ctrl-a" '(next-keymap-path '(gdb-ctrl-c-keymap)))
 
 ;;;###autoload
 (defun gdb (prog)

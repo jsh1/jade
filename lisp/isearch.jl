@@ -123,7 +123,7 @@ searching.")
   "Ctrl-s"	'isearch-next-forward
   "Ctrl-r"	'isearch-next-backward
   "Ctrl-g"	'isearch-cancel
-  "Ctrl-q"	'(progn (setq next-keymap-path nil) (isearch-title))
+  "Ctrl-q"	'(progn (next-keymap-path nil) (isearch-title))
   "Ctrl-w"	'isearch-yank-word
   "Ctrl-y"	'isearch-yank-line
   "RET"		'isearch-accept

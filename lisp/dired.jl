@@ -32,7 +32,7 @@
   "#" 'dired-delete-autosaves
   "~" 'dired-delete-backups
   "&" 'dired-delete-garbage
-  "%" '(setq next-keymap-path '(dired-%-keymap))
+  "%" '(next-keymap-path '(dired-%-keymap))
   "f" 'dired-find-file
   "o" 'dired-find-file-other-view
   "Ctrl-o" 'dired-display-file

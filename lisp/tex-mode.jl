@@ -26,7 +26,7 @@
 
 (defvar tex-ctrl-c-keymap (make-keylist))
 (bind-keys tex-ctrl-c-keymap
-  "Ctrl-c" '(setq next-keymap-path '(tex-ctrl-c-ctrl-c-keymap)))
+  "Ctrl-c" '(next-keymap-path '(tex-ctrl-c-ctrl-c-keymap)))
 
 (defvar tex-ctrl-c-ctrl-c-keymap (make-keylist))
 (bind-keys tex-ctrl-c-ctrl-c-keymap

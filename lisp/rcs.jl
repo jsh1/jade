@@ -62,7 +62,7 @@ cause the new revision _not_ to be locked, only checked out. A successive
 ;;;###autoload
 (defvar rcs-keymap (make-keylist)
   "Keymap containing RCS commands.")
-;;;###autoload (bind-keys ctrl-x-keymap "v" '(setq next-keymap-path '(rcs-keymap)))
+;;;###autoload (bind-keys ctrl-x-keymap "v" '(next-keymap-path '(rcs-keymap)))
 
 (defvar rcs-callback-ctrl-c-keymap (make-keylist)
   "Keymap for Ctrl-C when entering text for a callback.")

@@ -109,7 +109,7 @@ being sent."
 (bind-keys send-mail-c-keymap
   "Ctrl-c" 'send-mail-send-and-exit
   "Ctrl-s" 'send-mail-send
-  "Ctrl-f" '(setq next-keymap-path '(send-mail-c-f-keymap))
+  "Ctrl-f" '(next-keymap-path '(send-mail-c-f-keymap))
   "Ctrl-t" 'send-mail-go-text
   "Ctrl-w" 'send-mail-signature
   "Ctrl-y" 'mail-yank-original

@@ -99,7 +99,7 @@ and hence hasn't been processed yet; or nil.")
   "~" 'cvs-undo-modification
   "`" 'cvs-next-conflict-marker)
 
-;;;###autoload (bind-keys ctrl-x-keymap "c" '(setq next-keymap-path '(cvs-keymap)))
+;;;###autoload (bind-keys ctrl-x-keymap "c" '(next-keymap-path '(cvs-keymap)))
 
 (defvar cvs-callback-ctrl-c-keymap (make-keylist))
 (bind-keys cvs-callback-ctrl-c-keymap

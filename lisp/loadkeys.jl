@@ -100,7 +100,7 @@
   "Ctrl-b"	'backward-char
   "Meta-b"	'backward-word
   "Ctrl-Meta-b"	'backward-exp
-  "Ctrl-c"	'(setq next-keymap-path '(ctrl-c-keymap user-keymap))
+  "Ctrl-c"	'(next-keymap-path '(ctrl-c-keymap user-keymap))
   "Meta-c"	'capitalize-word
   "Ctrl-Meta-c"	'abort-recursive-edit
   "Ctrl-d"	'delete-char
@@ -125,7 +125,7 @@
   "Meta-n"	'(progn (set-auto-mark) (goto (find-matching-bracket)))
   "Ctrl-o"	'open-line
   "Ctrl-p"	'previous-line
-  "Ctrl-q"	'(setq next-keymap-path t)
+  "Ctrl-q"	'(next-keymap-path nil)
   "Meta-q"	'fill-paragraph
   "Ctrl-r"	'isearch-backward
   "Meta-r"	'goto-view-line
@@ -141,7 +141,7 @@
   "Ctrl-w"	'kill-block
   "Ctrl-W"	'delete-block
   "Meta-w"	'copy-block-as-kill
-  "Ctrl-x"	'(setq next-keymap-path '(ctrl-x-keymap))
+  "Ctrl-x"	'(next-keymap-path '(ctrl-x-keymap))
   "Meta-x"	'call-command
   "Ctrl-y"	'yank
   "Ctrl-Y"	'yank-rectangle
@@ -189,8 +189,8 @@
   "0"		'delete-view
   "1"		'delete-other-views
   "2"		'split-view
-  "4"		'(setq next-keymap-path '(ctrl-x-4-keymap))
-  "5"		'(setq next-keymap-path '(ctrl-x-5-keymap))
+  "4"		'(next-keymap-path '(ctrl-x-4-keymap))
+  "5"		'(next-keymap-path '(ctrl-x-5-keymap))
   "b"		'switch-to-buffer
   "f"		'set-fill-column
   "."		'set-fill-prefix
@@ -198,7 +198,7 @@
   "i"		'insert-file
   "k"		'kill-buffer
   "m"		'mail-setup
-  "n"		'(setq next-keymap-path '(ctrl-x-n-keymap))
+  "n"		'(next-keymap-path '(ctrl-x-n-keymap))
   "o"		'goto-next-view
   "s"		'save-some-buffers
   "u"		'undo
@@ -248,8 +248,8 @@ the key."
     ;; Set the `next-keymap-path' to ensure echoing
     ;; continues. `prefix-arg' *must* be set after
     ;; `next-keymap-path' for this all to work!
-    (setq next-keymap-path keymap-path
-	  prefix-arg (cond
+    (next-keymap-path keymap-path)
+    (setq prefix-arg (cond
 		      ((numberp current-prefix-arg)
 		       (+ (* current-prefix-arg 10) digit))
 		      ((eq current-prefix-arg '-)
@@ -260,8 +260,8 @@ the key."
 (defun negative-arg (arg)
   "Negate the prefix-arg. Bound to `Meta--'. "
   (interactive "P")
-  (setq next-keymap-path keymap-path
-	prefix-arg (cond
+  (next-keymap-path keymap-path)
+  (setq prefix-arg (cond
 		    ((numberp arg)
 		     (* arg -1))
 		    ((eq arg '-)
@@ -271,8 +271,8 @@ the key."
 
 (defun universal-arg (arg)
   (interactive "P")
-  (setq next-keymap-path keymap-path
-	prefix-arg (cond
+  (next-keymap-path keymap-path)
+  (setq prefix-arg (cond
 		    ((consp arg)
 		     (rplaca arg (* 4 (car arg)))
 		     arg)
