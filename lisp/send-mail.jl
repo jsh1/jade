@@ -22,7 +22,13 @@
 (require 'mail-headers)
 (provide 'send-mail)
 
-;;;; Code
+;;; Configuration:
+
+(defvar send-mail-show-output nil
+  "When non-nil all output from sendmail is displayed, even if the return
+code states that the message was sent successfully.")
+
+;;; Code:
 
 ;; List of (FUNCTION . ARGS) to call when message is finally sent.
 (defvar send-mail-actions nil)
@@ -320,7 +326,8 @@ Major mode for composing and sending mail messages."
 	  (goto (start-of-buffer)))
 	(error "sendmail couldn't send message"))
       ;; No errors
-      (if (boundp 'sendmail-debug)
-	  (with-view (other-view)
-	    (goto-buffer temp-buffer)
-	    (goto (start-of-buffer)))))))
+      (when send-mail-show-output
+	(with-view (other-view)
+	  (goto-buffer temp-buffer)
+	  (goto (start-of-buffer))
+	  (shrink-view-if-larger-than-buffer))))))
