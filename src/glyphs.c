@@ -29,6 +29,7 @@
 #endif
 
 _PR void make_window_glyphs(glyph_buf *g, WIN *w);
+_PR void make_message_glyphs(glyph_buf *g, WIN *w);
 _PR bool skip_glyph_rows_forwards(VW *, long, long, long, long *, long *);
 _PR bool skip_glyph_rows_backwards(VW *, long, long, long, long *, long *);
 _PR void recenter_cursor(VW *vw);
@@ -477,15 +478,24 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 
     if(vw != 0)
     {
-	/* A minibuffer with a message obscuring it.
-           TODO: use glyph table to output message */
-	memcpy(codes, w->w_Message, MIN(w->w_MessageLen, g->cols));
-	if(w->w_MessageLen < g->cols)
-	    memset(codes + w->w_MessageLen, ' ', g->cols - w->w_MessageLen);
-	memset(attrs, GA_Text, g->cols);
+	/* A minibuffer with a message obscuring it. */
+	make_message_glyphs(g, w);
     }
 }
 
+void
+make_message_glyphs(glyph_buf *g, WIN *w)
+{
+    /* TODO: use glyph table to output message */
+    memcpy(GLYPH_BUF_CODES(g, w->w_MaxY - 1),
+	   w->w_Message,
+	   MIN(w->w_MessageLen, g->cols));
+    if(w->w_MessageLen < g->cols)
+	memset(GLYPH_BUF_CODES(g, w->w_MaxY - 1) + w->w_MessageLen,
+	       ' ', g->cols - w->w_MessageLen);
+    memset(GLYPH_BUF_ATTRS(g, w->w_MaxY - 1), GA_Text, g->cols);
+}
+    
 
 /* Screen utility functions */
 
