@@ -86,7 +86,9 @@ lines it contains."
 (defun close-view (&optional view)
   "Close VIEW."
   (interactive)
-  (destroy-view view))
+  (if (minibuffer-view-p view)
+      (error "Can't close minibuffer view")
+    (destroy-view view)))
 
 (defun close-other-views (&optional view)
   "Close all views in the current window except for VIEW, or the current one."
@@ -98,7 +100,7 @@ lines it contains."
        next)
     (while (> (window-view-count) 2)
       (setq next (next-view doomed))
-      (unless (eq doomed view)
+      (unless (or (eq doomed view) (minibuffer-view-p doomed))
 	(destroy-view doomed))
       (setq doomed next))))
 
