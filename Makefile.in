@@ -25,7 +25,7 @@ top_srcdir=@top_srcdir@
 
 SUBDIRS = src lisp man
 
-all : build.h DOC.dir
+all : build.h DOC
 	set -e; for dir in $(SUBDIRS); do \
 	  [ -d $$dir ] && ( cd $$dir && $(MAKE) $@ ); \
  	done
@@ -39,7 +39,7 @@ install : all installdirs
 	set -e; for dir in $(SUBDIRS); do \
 	  ( cd $$dir && $(MAKE) $@ ); \
 	done
-	$(INSTALL_DATA) ./DOC.* $(jadedir)/$(version)
+	$(INSTALL_DATA) ./DOC $(jadedir)/$(version)
 
 installdirs : $(top_srcdir)/mkinstalldirs
 	$(SHELL) $(top_srcdir)/mkinstalldirs $(jadedir)/$(version) $(bindir)
@@ -50,7 +50,7 @@ uninstall :
 	done
 	rm -rf $(jadedir)/$(version)
 
-DOC.dir :
+DOC :
 	repdoc DOC `find . -name '*.c' -print`
 
 NEWS : man/news.texi
@@ -66,14 +66,14 @@ clean :
 	-set -e; for dir in $(SUBDIRS); do \
 	  [ -d $$dir ] && ( cd $$dir && $(MAKE) $@ ); \
 	done
-	rm -f *~ NEWS DOC.* TAGS build.h
+	rm -f *~ NEWS DOC TAGS build.h
 
 realclean :
 	-set -e; for dir in $(SUBDIRS); do \
 	  [ -d $$dir ] && ( cd $$dir && $(MAKE) $@ ); \
 	done
 	rm -f config.cache config.h config.log config.status Makedefs Makefile
-	rm -f *~ NEWS DOC.* TAGS build.h libtool
+	rm -f *~ NEWS DOC TAGS build.h libtool
 
 TAGS :
 	etags --language=c `find . -name '*.[ch]' -print` \
