@@ -38,7 +38,7 @@
   (or rm-current-msg (error "No current message"))
   (let
       ((message rm-current-msg)
-       (subject (rm-get-msg-field rm-current-msg rm-msg-subject))
+       (subject (rm-get-subject rm-current-msg))
        to cc msg-id references)
     (save-restriction
       ;; Need to look at *all* headers
@@ -53,7 +53,7 @@
 	    msg-id (mail-get-header "Message-Id")
 	    references (append (mail-get-header "References" t t)
 			       (and msg-id (list msg-id)))))
-    (when (and subject (string-match rm-Re-regexp subject t))
+    (when (and subject (string-match rm-Re-regexp subject nil t))
       (setq subject (concat mail-reply-prefix
 			    (substring subject (match-end)))))
     (mail-setup to subject msg-id cc references
@@ -107,10 +107,11 @@ message in that all recipients of the original wil receive the reply."
 	((body-start (and (re-search-forward "^\n" start) (match-end)))
 	 body-end)
       (when body-start
-	(delete-area start body-start)
-	(format (cons (current-buffer) (start-of-buffer))
-		"%s writes:\n" (or (rm-get-msg-field msg rm-msg-from-name)
-				   (rm-get-msg-field msg rm-msg-from-addr)))
+	(let
+	    ((from (car (rm-get-senders msg))))
+	  (delete-area start body-start)
+	  (format (cons (current-buffer) (start-of-buffer))
+		  "%s writes:\n" (or (cdr from) (car from))))
 	(setq start (forward-line 1 (start-of-buffer))))
       (setq body-end (re-search-backward "^.*[^\t\n ].*$" (end-of-buffer)))
       (while (<= start (or body-end (end-of-buffer)))
@@ -135,7 +136,7 @@ headers will be included."
   (unless to
     (setq to ""))
   (let
-      ((subject (rm-get-msg-field rm-current-msg rm-msg-subject))
+      ((subject (rm-get-subject rm-current-msg))
        (message rm-current-msg)
        start tem)
     (mail-setup to subject nil nil nil
