@@ -25,6 +25,12 @@
 
 _PR void movement_init(void);
 
+DEFSYM(next_screen_context_lines, "next-screen-context-lines"); /*
+::doc:next_screen_context_lines::
+This variable controls the number of lines of "overlap" when scrolling
+by screenfuls of text.
+::end:: */
+
 _PR VALUE cmd_goto(VALUE pos);
 DEFUN("goto", cmd_goto, subr_goto, (VALUE pos), V_Subr1, DOC_goto) /*
 ::doc:goto::
@@ -78,8 +84,9 @@ numbers mean that many lines from the top of the view, negative numbers
 go from the bottom of the view.
 ::end:: */
 {
-    long start_line;
-    long xarg;
+    long xarg, offset;
+    long col, row;
+
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
     if(NILP(arg) || CONSP(arg))
@@ -92,66 +99,27 @@ go from the bottom of the view.
 	xarg = 1;
 
     if(xarg == 0)
-	start_line = (VROW(VVIEW(vw)->vw_CursorPos) - (VVIEW(vw)->vw_MaxY / 2));
-    else if(xarg > 0)
-	start_line = VROW(VVIEW(vw)->vw_CursorPos) - (xarg - 1);
+	offset = VVIEW(vw)->vw_MaxY / 2;
+    else if (xarg > 0)
+	offset = xarg - 1;
     else
-	start_line = (VROW(VVIEW(vw)->vw_CursorPos) - VVIEW(vw)->vw_MaxY) - xarg;
+	offset = VVIEW(vw)->vw_MaxY + xarg;
 
-    if(start_line < VVIEW(vw)->vw_Tx->tx_LogicalStart)
-	start_line = VVIEW(vw)->vw_Tx->tx_LogicalStart;
-    if(start_line >= VVIEW(vw)->vw_Tx->tx_LogicalEnd)
-	start_line = VVIEW(vw)->vw_Tx->tx_LogicalEnd - 1;
-    VVIEW(vw)->vw_DisplayOrigin = make_pos(VCOL(VVIEW(vw)->vw_DisplayOrigin),
-					   start_line);
-    return(VVIEW(vw)->vw_DisplayOrigin);
-}
+    if(!skip_glyph_rows_backwards(VVIEW(vw), offset,
+				  VCOL(VVIEW(vw)->vw_CursorPos),
+				  VROW(VVIEW(vw)->vw_CursorPos),
+				  &col, &row))
+    {
+	col = 0;
+	row = 0;
+    }
 
-static long
-move_down_screens(long pages)
-{
-    VW *vw = curr_vw;
-    long newline, rc;
-    newline = VROW(vw->vw_CursorPos) + (pages * vw->vw_MaxY);
-    if(newline >= vw->vw_Tx->tx_LogicalEnd)
-    {
-	newline = vw->vw_Tx->tx_LogicalEnd - 1;
-	rc = FALSE;
-    }
-    else
-    {
-	vw->vw_DisplayOrigin = make_pos(VCOL(vw->vw_DisplayOrigin),
-					VROW(vw->vw_DisplayOrigin)
-					+ (pages * vw->vw_MaxY));
-	rc = TRUE;
-    }
-    vw->vw_CursorPos = make_pos(VCOL(vw->vw_CursorPos), newline);
-    adjust_cursor_to_glyph(vw);
-    return(rc);
-}
-
-static long
-move_up_screens(long pages)
-{
-    VW *vw = curr_vw;
-    long newline, rc;
-    newline = VROW(vw->vw_CursorPos) - (pages * vw->vw_MaxY);
-    if(newline < vw->vw_Tx->tx_LogicalStart)
-    {
-	newline = vw->vw_Tx->tx_LogicalStart;
-	rc = FALSE;
-    }
-    else
-    {
-	long row = VROW(vw->vw_DisplayOrigin) - (pages * vw->vw_MaxY);
-	if(row < vw->vw_Tx->tx_LogicalStart)
-	    row = vw->vw_Tx->tx_LogicalStart;
-	vw->vw_DisplayOrigin = make_pos(VCOL(vw->vw_DisplayOrigin), row);
-	rc = TRUE;
-    }
-    vw->vw_CursorPos = make_pos(VCOL(vw->vw_CursorPos), newline);
-    adjust_cursor_to_glyph(vw);
-    return(rc);
+    if(row < VVIEW(vw)->vw_Tx->tx_LogicalStart)
+	row = VVIEW(vw)->vw_Tx->tx_LogicalStart;
+    if(row >= VVIEW(vw)->vw_Tx->tx_LogicalEnd)
+	row = VVIEW(vw)->vw_Tx->tx_LogicalEnd - 1;
+    VVIEW(vw)->vw_DisplayOrigin = make_pos(col, row);
+    return VVIEW(vw)->vw_DisplayOrigin;
 }
 
 _PR VALUE cmd_next_screen(VALUE number);
@@ -162,9 +130,34 @@ next-screen [NUMBER]
 Move NUMBER (default: 1) screens forwards in the current window.
 ::end:: */
 {
-    if(move_down_screens(INTP(number) ? VINT(number) : 1))
-	return(sym_t);
-    return(sym_nil);
+    long lines = (INTP(number) ? VINT(number) : 1) * curr_vw->vw_MaxY;
+    long col, row;
+    VALUE context;
+    if(lines < 0)
+	return cmd_prev_screen(MAKE_INT(-lines / curr_vw->vw_MaxY));
+    context = cmd_symbol_value(sym_next_screen_context_lines, sym_t);
+    if(INTP(context) && lines > VINT(context) + 1)
+	lines -= VINT(context);
+
+    if(VROW(curr_vw->vw_CursorPos) == curr_vw->vw_Tx->tx_LogicalEnd - 1)
+	return sym_nil;
+    else if(curr_vw->vw_Flags & VWFF_AT_BOTTOM)
+    {
+	set_cursor_vertically(curr_vw, curr_vw->vw_Tx->tx_LogicalEnd - 1);
+	return curr_vw->vw_DisplayOrigin;
+    }
+    else if(skip_glyph_rows_forwards(curr_vw, lines,
+				     VCOL(curr_vw->vw_DisplayOrigin),
+				     VROW(curr_vw->vw_DisplayOrigin),
+				     &col, &row))
+    {
+	curr_vw->vw_DisplayOrigin = make_pos(col, row);
+	if(POS_GREATER_P(curr_vw->vw_DisplayOrigin, curr_vw->vw_CursorPos))
+	    set_cursor_vertically(curr_vw, VROW(curr_vw->vw_DisplayOrigin));
+	return curr_vw->vw_DisplayOrigin;
+    }
+    else
+	return sym_nil;
 }
 
 _PR VALUE cmd_prev_screen(VALUE number);
@@ -175,9 +168,47 @@ prev-screen [NUMBER]
 Move NUMBER (default: 1) screens backwards in the current window.
 ::end:: */
 {
-    if(move_up_screens(INTP(number) ? VINT(number) : 1))
-	return(sym_t);
-    return(sym_nil);
+    long lines = (INTP(number) ? VINT(number) : 1) * curr_vw->vw_MaxY;
+    long col, row;
+    VALUE context, new_origin;
+    if(lines < 0)
+	return cmd_next_screen(MAKE_INT(-lines / curr_vw->vw_MaxY));
+
+    context = cmd_symbol_value(sym_next_screen_context_lines, sym_t);
+    if(INTP(context) && lines > VINT(context) + 1)
+	lines -= VINT(context);
+    if(skip_glyph_rows_backwards(curr_vw, lines,
+				 VCOL(curr_vw->vw_DisplayOrigin),
+				 VROW(curr_vw->vw_DisplayOrigin),
+				 &col, &row))
+	new_origin = make_pos(col, row);
+    else if(VROW(curr_vw->vw_DisplayOrigin) != curr_vw->vw_Tx->tx_LogicalStart)
+	new_origin = make_pos(0, curr_vw->vw_Tx->tx_LogicalStart);
+    else if(VROW(curr_vw->vw_CursorPos) != curr_vw->vw_Tx->tx_LogicalStart)
+    {
+	set_cursor_vertically(curr_vw, curr_vw->vw_Tx->tx_LogicalStart);
+	return curr_vw->vw_DisplayOrigin;
+    }
+    else
+	return sym_nil;
+
+    /* Now fix the cursor position. */
+    if(skip_glyph_rows_forwards(curr_vw, curr_vw->vw_MaxY - 1,
+				VCOL(new_origin), VROW(new_origin),
+				&col, &row))
+    {
+	long curs_offset = get_cursor_column(curr_vw);
+	if(VROW(curr_vw->vw_CursorPos) > row
+	   || (VROW(curr_vw->vw_CursorPos) == row
+	       && curs_offset > col))
+	{
+	    /* TODO: the column isn't correct */
+	    curr_vw->vw_CursorPos = make_pos(col, row);
+	}
+    }
+
+    curr_vw->vw_DisplayOrigin = new_origin;
+    return curr_vw->vw_DisplayOrigin;
 }
 
 _PR VALUE cmd_end_of_buffer(VALUE tx, VALUE irp);
@@ -269,26 +300,28 @@ forward-line [NUMBER] [POS]
 Return the position of the NUMBER'th (by default the next) line below
 that pointed to by POS (or the cursor).
 
-Negative NUMBERs move backwards, if the beginning of the buffer is passed,
-nil is returned.
+Negative NUMBERs move backwards, if the first line is passed (i.e. a negative
+line number is made) nil is returned.
 ::end:: */
 {
     long row;
     if(!POSP(pos))
 	pos = curr_vw->vw_CursorPos;
     row = VROW(pos) + (INTP(lines) ? VINT(lines) : 1);
-    if(row >= 0)
+    if(NILP(move))
     {
-	pos = make_pos(VCOL(pos), row);
-	if(!NILP(move))
-	{
-	    cmd_goto(pos);
-	    adjust_cursor_to_glyph(curr_vw);
-	}
-	return pos;
+	if(row < 0)
+	    return sym_nil;
+	else
+	    return make_pos(VCOL(pos), row);
+    }
+    else if(check_row(curr_vw->vw_Tx, row))
+    {
+	set_cursor_vertically(curr_vw, row);
+	return curr_vw->vw_CursorPos;
     }
     else
-	return(sym_nil);
+	return LISP_NULL;
 }
 
 _PR VALUE cmd_forward_char(VALUE count, VALUE pos, VALUE tx, VALUE move);
@@ -345,8 +378,7 @@ undefined; negative values move towards the left hand side of the screen.
     if(!POSP(pos))
     {
 	pos = curr_vw->vw_CursorPos;
-	calc_cursor_offset(vw);
-	col = vw->vw_LastCursorOffset;
+	col = get_cursor_column(vw);
     }
     else
 	col = VCOL(pos);
@@ -518,38 +550,6 @@ Return the glyph position of the mouse, relative to the current window.
 	return sym_nil;
 }
 
-_PR VALUE cmd_mouse_pos(void);
-DEFUN("mouse-pos", cmd_mouse_pos, subr_mouse_pos, (void), V_Subr0, DOC_mouse_pos) /*
-::doc:mouse_pos::
-mouse-pos
-
-Return the position of the mouse pointer, relative to the display origin of
-the buffer in the current view of the current window. A *character* position
-is returned, not a glyph position.
-::end:: */
-{
-    VALUE pos = cmd_raw_mouse_pos();
-    if(!NILP(pos))
-    {
-	/* POS is relative to the window frame, not the buffer in the
-	   current view. Translate it.
-
-	   NOTE: we do actually modify the result of cmd_raw_mouse_pos()! */
-	long row, col;
-	row = VROW(pos) - curr_vw->vw_FirstY + VROW(curr_vw->vw_DisplayOrigin);
-	if(row < curr_vw->vw_Tx->tx_LogicalStart
-	   || row >= curr_vw->vw_Tx->tx_LogicalEnd)
-	    return sym_nil;
-	col = char_col(curr_vw->vw_Tx,
-		       VCOL(pos) + VCOL(curr_vw->vw_DisplayOrigin), row);
-	VSETCOL(pos, col);
-	VSETROW(pos, row);
-	return pos;
-    }
-    else
-	return(sym_nil);
-}
-
 void
 movement_init(void)
 {
@@ -566,6 +566,9 @@ movement_init(void)
     ADD_SUBR_INT(subr_forward_char);
     ADD_SUBR_INT(subr_forward_tab);
     ADD_SUBR(subr_find_matching_bracket);
-    ADD_SUBR(subr_mouse_pos);
     ADD_SUBR(subr_raw_mouse_pos);
+
+    INTERN(next_screen_context_lines);
+    DOC(next_screen_context_lines);
+    VSYM(sym_next_screen_context_lines)->value = MAKE_INT(2);
 }
