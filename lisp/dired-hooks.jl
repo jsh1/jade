@@ -21,9 +21,11 @@
 (defun dired-read-file-hook (filename buffer)
   (when (file-directory-p filename)
     (with-buffer buffer
-      (set-buffer-file-name buffer filename)
+      (setq default-directory (file-name-as-directory filename))
+      (set-buffer-file-name buffer (directory-file-name filename))
       (setq buffer-file-modtime (file-modtime filename))
-      (dired-mode))))
+      (dired-mode)
+      t)))
 
 (defun dired-write-file-hook (filename buffer)
   (and (file-directory-p filename)

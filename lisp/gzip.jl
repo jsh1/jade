@@ -84,7 +84,8 @@ match well-known suffixes."
 	  (gzip-uncompress file-name rule)
 	  (goto old-pos)
 	  (setq buffer-file-modtime (file-modtime file-name))
-	  (set-buffer-file-name buffer file-name))
+	  (set-buffer-file-name buffer file-name)
+	  (setq default-directory (file-name-directory file-name)))
 	t))))
 
 ;; In insert-file-hook
