@@ -18,12 +18,6 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
-(defvar change-log-address (concat (user-login-name) ?@ (system-name))
-  "Email address for use in change logs")
-
-(defvar change-log-name (user-full-name)
-  "User's proper name, for change logs")
-
 (defvar change-log-file "ChangeLog"
   "File name of change logs")
 
@@ -41,7 +35,7 @@
       (unless (log-in-same-day-p (copy-area (buffer-start)
 					    (line-end (buffer-start))))
 	(insert (concat (current-time-string) "  "
-			change-log-name "  (" change-log-address ")\n\n")))
+			(user-full-name) "  (" user-mail-address ")\n\n")))
       (goto-char (pos 0 1))
       (insert "\n\t* \n")
       (goto-char (line-end (pos 0 2)))
@@ -51,8 +45,8 @@
 (defun log-in-same-day-p (old-header)
   (regexp-match (concat (regexp-quote (substring (current-time-string) 0 11))
 			".*  "
-			(regexp-quote change-log-name)
+			(regexp-quote (user-full-name))
 			"  \\("
-			(regexp-quote change-log-address)
+			(regexp-quote user-mail-address)
 			"\\)")
 		old-header))
