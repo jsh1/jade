@@ -235,6 +235,7 @@ that each of the FILENAMES contains no directory specifiers."
 
 (defun cvs-error-if-updating ()
   (and cvs-update-in-progress
+       (process-in-use-p cvs-update-in-progress)
        (error "CVS update in progress")))
 
 (defun cvs-update-file-list ()
