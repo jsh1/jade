@@ -208,7 +208,7 @@ Major mode for composing and sending mail messages."
     (unless (y-or-n-p "Really send this buffer as a mail message?")
       (error "Quit")))
   (message "Sending..." t)
-  (eval-hook mail-send-hook)
+  (eval-hook 'mail-send-hook)
   (funcall mail-send-function)
   (format t "done")
   (set-buffer-read-only (current-buffer) t)
@@ -245,14 +245,7 @@ Major mode for composing and sending mail messages."
       (insert "From: \n")
       (goto (forward-char -1)))
     (when (looking-at "[\t ]*$")
-      ;; Need to handle quoting full name a la RFC-822
-      (cond
-       ((eq mail-address-style 'angles)
-	(insert (concat (user-full-name) " <" user-mail-address ?\>)))
-       ((eq mail-address-style 'parens)
-	(insert (concat user-mail-address " \(" (user-full-name) ?\))))
-       (t
-	(insert user-mail-address))))
+      (insert (mail-format-address user-mail-address (user-full-name))))
 
     ;; Remove blank lines
     (setq tem (start-of-buffer))
