@@ -1,3 +1,12 @@
+2000-11-14  John Harper  <jsh@eazel.com>
+
+	* tags.jl (find-tag): fixed positive-arg (push) variant
+	(pop-tag-mark): new command, as in emacs
+	(tags-trim-history, tags-history-length): prevent tags history
+	growing unboundedly
+
+	* loadkeys.jl: bind `M-*' to pop-tag-mark
+
 2000-11-12  John Harper  <jsh@eazel.com>
 
 	* Makefile.in: use JADEEXECDIR instead of REP_DL_PATH (which
