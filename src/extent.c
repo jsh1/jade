@@ -42,7 +42,8 @@ _PR void extent_init(void);
 
 DEFSYM(front_sticky, "front-sticky");
 DEFSYM(rear_sticky, "rear-sticky");
-_PR VALUE sym_front_sticky, sym_rear_sticky;
+DEFSYM(local_variables, "local-variables");
+_PR VALUE sym_front_sticky, sym_rear_sticky, sym_local_variables;
 
 static Lisp_Extent *allocated_extents;
 
@@ -521,28 +522,23 @@ variables.
     return VAL(extent);
 }
 
-DEFSTRING(no_delete_global, "Can't delete global extent");
-_PR VALUE cmd_delete_extent(VALUE, VALUE);
+DEFSTRING(no_delete_root, "Deleting root extent");
+_PR VALUE cmd_delete_extent(VALUE);
 DEFUN("delete-extent", cmd_delete_extent, subr_delete_extent,
-      (VALUE extent, VALUE no_frags), V_Subr2, DOC_delete_extent) /*
+      (VALUE extent), V_Subr1, DOC_delete_extent) /*
 ::doc:delete_extent::
-delete-extent EXTENT [THIS-FRAGMENT-ONLY]
+delete-extent EXTENT
 
-Delete EXTENT. If THIS-FRAGMENT-ONLY is non-nil the only fragment to be
-removed will be EXTENT itself. Otherwise all fragments making up the
-extent as it was created are removed.
+Delete EXTENT from the buffer containing it. An error is signalled if
+EXTENT is the root extent covering the entire buffer.
 ::end:: */
 {
     DECLARE1(extent, EXTENTP);
 
-    if(VEXTENT(extent) == VEXTENT(extent)->tx->tx_GlobalExtent)
-	return cmd_signal(sym_error, list_2(VAL(&no_delete_global), extent));
+    if(VEXTENT(extent)->parent == 0)
+	return cmd_signal(sym_error, list_2(VAL(&no_delete_root), extent));
 
-    if(NILP(no_frags))
-	unlink_extent(VEXTENT(extent));
-    else
-	unlink_extent_fragment(VEXTENT(extent));
-
+    unlink_extent(VEXTENT(extent));
     invalidate_extent_cache(VEXTENT(extent)->tx);
     return extent;
 }
@@ -619,6 +615,36 @@ position of the current buffer).
     return (e != 0) ? VAL(e) : sym_nil;
 }
 
+_PR VALUE cmd_extent_start(VALUE);
+DEFUN("extent-start", cmd_extent_start, subr_extent_start, (VALUE extent),
+      V_Subr1, DOC_extent_start) /*
+::doc:extent_start::
+extent-start EXTENT
+
+Return the position of the first character in EXTENT.
+::end:: */
+{
+    DECLARE1(extent, EXTENTP);
+    extent = VAL(find_first_frag(VEXTENT(extent)));
+    return make_pos(VEXTENT(extent)->start.col,
+		    VEXTENT(extent)->start.row + row_delta(VEXTENT(extent)));
+}
+
+_PR VALUE cmd_extent_end(VALUE);
+DEFUN("extent-end", cmd_extent_end, subr_extent_end, (VALUE extent),
+      V_Subr1, DOC_extent_end) /*
+::doc:extent_end::
+extent-end EXTENT
+
+Return the position of the character following EXTENT.
+::end:: */
+{
+    DECLARE1(extent, EXTENTP);
+    extent = VAL(find_last_frag(VEXTENT(extent)));
+    return make_pos(VEXTENT(extent)->end.col,
+		    VEXTENT(extent)->end.row + row_delta(VEXTENT(extent)));
+}
+
 _PR VALUE cmd_extent_parent(VALUE);
 DEFUN("extent-parent", cmd_extent_parent, subr_extent_parent, (VALUE extent),
       V_Subr1, DOC_extent_parent) /*
@@ -686,6 +712,17 @@ this extent) to PLIST.
     return plist;
 }
 
+static void
+set_extent_locals(Lisp_Extent *e, VALUE value)
+{
+    e = find_first_frag(e);
+    while(e != 0)
+    {
+	e->locals = value;
+	e = e->frag_next;
+    }
+}
+
 _PR VALUE cmd_extent_get(VALUE, VALUE);
 DEFUN("extent-get", cmd_extent_get, subr_extent_get,
       (VALUE prop, VALUE extent), V_Subr2, DOC_extent_get) /*
@@ -695,8 +732,8 @@ extent-get PROPERTY EXTENT
 Return the value of PROPERTY (a symbol) in EXTENT, or any of its parents.
 Returns nil if there is no value in this extent.
 
-The special properties `front-sticky' and `rear-sticky' are always set
-in each extent.
+The special properties `front-sticky', `rear-sticky' and `local-variables'
+have values in every extent.
 ::end:: */
 {
     Lisp_Extent *inner;
@@ -712,6 +749,8 @@ in each extent.
 					? EXTFF_OPEN_START
 					: EXTFF_OPEN_END)) ? sym_t : sym_nil;
     }
+    else if(prop == sym_local_variables)
+	return VEXTENT(extent)->locals;
 
     while(inner != 0)
     {
@@ -739,6 +778,10 @@ The special properties `front-sticky' and `rear-sticky' control whether
 characters inserted adjacent to the start or end of the extent are
 absorbed into the extent or not (if the related sticky property is non-
 nil).
+
+The special property `local-variables' is an alist of (SYMBOL . VALUE) pairs,
+each defining the value of the variable named SYMBOL in the extent. See
+the `extent-set' and `buffer-symbol-value' functions.
 ::end:: */
 {
     VALUE plist;
@@ -754,22 +797,29 @@ nil).
 	VEXTENT(extent)->car &= ~bit;
 	if(!NILP(val))
 	    VEXTENT(extent)->car |= bit;
-	return val;
     }
-
-    plist = VEXTENT(extent)->plist;
-    while(CONSP(plist) && CONSP(VCDR(plist)))
+    else if(prop == sym_local_variables)
     {
-	if(VCAR(plist) == prop)
-	{
-	    VCAR(VCDR(plist)) = val;
-	    return val;
-	}
-	plist = VCDR(VCDR(plist));
+	if(!LISTP(val))
+	    return signal_arg_error(val, 2);
+	set_extent_locals(VEXTENT(extent), val);
     }
-    cmd_set_extent_plist(extent,
-			 cmd_cons(prop,
-				  cmd_cons(val, VEXTENT(extent)->plist)));
+    else
+    {
+	plist = VEXTENT(extent)->plist;
+	while(CONSP(plist) && CONSP(VCDR(plist)))
+	{
+	    if(VCAR(plist) == prop)
+	    {
+		VCAR(VCDR(plist)) = val;
+		return val;
+	    }
+	    plist = VCDR(VCDR(plist));
+	}
+	cmd_set_extent_plist(extent,
+			     cmd_cons(prop,
+				      cmd_cons(val, VEXTENT(extent)->plist)));
+    }
     return val;
 }
 
@@ -856,7 +906,6 @@ Set the local value of the variable named SYMBOL in EXTENT to VALUE.
 ::end:: */
 {
     VALUE vars;
-    Lisp_Extent *e;
     DECLARE1(symbol, SYMBOLP);
     DECLARE3(extent, EXTENTP);
     vars = VEXTENT(extent)->locals;
@@ -870,16 +919,7 @@ Set the local value of the variable named SYMBOL in EXTENT to VALUE.
 	}
     }
     vars = cmd_cons(cmd_cons(symbol, val), vars);
-
-    /* Update all fragments of the extent. TODO: don't need to
-       call fff, just go backwards then forwards. */
-    e = find_first_frag(VEXTENT(extent));
-    while(e != 0)
-    {
-	e->locals = vars;
-	e = e->frag_next;
-    }
-
+    set_extent_locals(VEXTENT(extent), vars);
     return val;
 }
 
@@ -1097,6 +1137,8 @@ extent_init(void)
     ADD_SUBR(subr_delete_all_extents);
     ADD_SUBR(subr_move_extent);
     ADD_SUBR(subr_get_extent);
+    ADD_SUBR(subr_extent_start);
+    ADD_SUBR(subr_extent_end);
     ADD_SUBR(subr_extent_parent);
     ADD_SUBR(subr_extent_root);
     ADD_SUBR(subr_extent_plist);
@@ -1109,4 +1151,5 @@ extent_init(void)
     ADD_SUBR(subr_extent_set);
     INTERN(front_sticky);
     INTERN(rear_sticky);
+    INTERN(local_variables);
 }
