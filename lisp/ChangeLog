@@ -1,3 +1,11 @@
+1999-11-10  John Harper  <john@dcs.warwick.ac.uk>
+
+	* shell.jl, rm-summary.jl, rm-restrict.jl, rm-msg-links.jl,
+	rm-mail-dir.jl, read-mail.jl, popup-menus.jl, mime-decode.jl,
+	mail-dir-summary.jl, info.jl, gtk-prompt.jl, gtk-menu.jl,
+	find-url.jl, dired.jl, cvs.jl, buffers.jl, buffer-summary.jl,
+	bookmarks.jl: updated for lexically scoped rep
+
 1999-10-04  John Harper  <john@dcs.warwick.ac.uk>
 
 	* read-mail.jl (rm-append-inbox): save the restriction before
