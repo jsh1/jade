@@ -683,17 +683,7 @@ format_mode_value(VALUE format, VW *vw, char *buf, u_long buf_len)
 void
 update_status_buffer(VW *vw, char *buf, u_long buf_len)
 {
-    if(vw->vw_Flags & VWFF_MINIBUF)
-	return;
-    if(vw->vw_StatusOverride != LISP_NULL)
-    {
-	int len = STRING_LEN(vw->vw_StatusOverride);
-	memcpy(buf, VSTR(vw->vw_StatusOverride), MIN(len, buf_len));
-	if(len < buf_len)
-	    memset(buf + len, ' ', buf_len - len);
-	return;
-    }
-    else
+    if(!(vw->vw_Flags & VWFF_MINIBUF))
     {
 	u_long done;
 	TX *tx = vw->vw_Tx;
@@ -1203,29 +1193,6 @@ Returns t if the minibuffer of WINDOW is being used.
 	? sym_t : sym_nil;
 }
 
-_PR VALUE cmd_set_status_message(VALUE text, VALUE vw);
-DEFUN("set-status-message", cmd_set_status_message, subr_set_status_message, (VALUE text, VALUE vw), V_Subr2, DOC_set_status_message) /*
-::doc:set_status_message:
-set-status-message TEXT [VIEW]
-
-Overrides the normal behaviour of the status line in VIEW (or the current
-view), displaying the string TEXT instead of the normal status information.
-If TEXT is the symbol nil, the normal behaviour is reinstated.
-::end:: */
-{
-    VALUE res;
-    if(!VIEWP(vw))
-	vw = VAL(curr_vw);
-
-    res = (VVIEW(vw)->vw_StatusOverride
-	   ? VVIEW(vw)->vw_StatusOverride : sym_nil);
-    if(STRINGP(text))
-	VVIEW(vw)->vw_StatusOverride = text;
-    else
-	VVIEW(vw)->vw_StatusOverride = LISP_NULL;
-    return res;
-}
-	
 _PR VALUE cmd_viewp(VALUE);
 DEFUN("viewp", cmd_viewp, subr_viewp, (VALUE arg), V_Subr1, DOC_viewp) /*
 ::doc:viewp::
@@ -1264,7 +1231,6 @@ views_init(void)
     ADD_SUBR(subr_minibuffer_view_p);
     ADD_SUBR(subr_minibuffer_view);
     ADD_SUBR(subr_minibuffer_active_p);
-    ADD_SUBR(subr_set_status_message);
     ADD_SUBR(subr_viewp);
     INTERN(split_view_hook); DOC(split_view_hook);
     INTERN(delete_view_hook); DOC(delete_view_hook);
