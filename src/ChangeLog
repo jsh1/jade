@@ -1,5 +1,7 @@
 1999-11-10  John Harper  <john@dcs.warwick.ac.uk>
 
+	* main.c (main): Fload () has five arguments now
+
 	* windows.c, views.c, movement.c, misc.c, main.c, keys.c,
 	gtk_main.c, gtk_jade.c, glyphs.c, faces.c, editcommands.c,
 	commands.c: updated for lexically scoped rep
