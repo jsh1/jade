@@ -1005,6 +1005,7 @@ nonrecoverable."
 			 (when (rm-test-flag m 'deleted)
 			   (setq deletions (cons m deletions)))))
     (rm-delete-messages deletions)
+    (rm-display-current-message)
     (when rm-summary-buffer
       (rm-with-summary
        (summary-update)))))
