@@ -32,7 +32,8 @@
   "a" 'mds-add-item
   "e" 'mds-edit-name
   "b" 'mds-edit-body
-  "m" 'mds-compose-mail-to-item)
+  "m" 'mds-compose-mail-to-item
+  "s" 'mds-sort-list)
 
 (defvar mds-alias-functions
   '((select . nop)
@@ -142,3 +143,15 @@ CC: field if IN-CC is t)."
       (insert-mail-alias (car item)))
     (set-buffer-modified nil nil)
     (send-mail-go-subject)))
+
+(defun mds-sort-predicate (x y)
+  (< (cdr x) (cdr y)))
+
+(defun mds-sort-list ()
+  "Sort the list of mail addresses or aliases."
+  (interactive)
+  (if (eq (current-buffer) mds-address-buffer)
+      (setq mail-address-alist (sort mail-address-alist 'mds-sort-predicate))
+    (setq mail-alias-alist (sort mail-address-alist 'mds-sort-predicate)))
+  (setq mail-directory-modified t)
+  (summary-update))
