@@ -695,8 +695,8 @@ to that between the lines specified by positions START and END.
     if(check_section(VTX(tx), &VPOS(lstart), &VPOS(lend))
        && VPOS(lstart).pos_Line <= VPOS(lend).pos_Line)
     {
-	VTX(tx)->tx_LogicalStart = VPOS(lstart).pos_Line + 1;
-	VTX(tx)->tx_LogicalEnd = VPOS(lend).pos_Line;
+	VTX(tx)->tx_LogicalStart = VPOS(lstart).pos_Line;
+	VTX(tx)->tx_LogicalEnd = VPOS(lend).pos_Line + 1;
 	VTX(tx)->tx_Flags |= TXFF_REFRESH_ALL;
 	return sym_t;
     }
@@ -745,6 +745,26 @@ Return the position of the last character that may be displayed in BUFFER
 	tx = VAL(curr_vw->vw_Tx);
     return make_lpos2(VTX(tx)->tx_Lines[VTX(tx)->tx_LogicalEnd - 1].ln_Strlen
 		      - 1, VTX(tx)->tx_LogicalEnd - 1);
+}
+
+_PR VALUE cmd_in_restriction_p(VALUE lpos, VALUE tx);
+DEFUN("in-restriction-p", cmd_in_restriction_p, subr_in_restriction_p, (VALUE lpos, VALUE tx), V_Subr2, DOC_in_restriction_p) /*
+::doc:in_restriction_p::
+in-restriction-p [POS] [BUFFER]
+
+Returns t when POS (or the cursor) is inside the current display restriction
+of BUFFER (or the current buffer).
+::end:: */
+{
+    POS *pos;
+    if(POSP(lpos))
+	pos = &VPOS(lpos);
+    else
+	pos = &curr_vw->vw_CursorPos;
+    if(!BUFFERP(tx))
+	tx = VAL(curr_vw->vw_Tx);
+    return (pos->pos_Line >= VTX(tx)->tx_LogicalStart
+	    && pos->pos_Line < VTX(tx)->tx_LogicalEnd) ? sym_t : sym_nil;
 }
 
 _PR VALUE var_auto_save_interval(VALUE);
@@ -1196,6 +1216,7 @@ buffers_init(void)
     ADD_SUBR(subr_unrestrict_buffer);
     ADD_SUBR(subr_restriction_start);
     ADD_SUBR(subr_restriction_end);
+    ADD_SUBR(subr_in_restriction_p);
     ADD_SUBR(subr_auto_save_interval);
     ADD_SUBR(subr_last_save_changes);
     ADD_SUBR(subr_last_user_save_changes);
