@@ -54,6 +54,10 @@ DEFSTRING(err_buffer_read_only, "Buffer is read-only");
 DEFSYM(bad_event_desc, "bad-event-desc");
 DEFSTRING(err_bad_event_desc, "Invalid event description");
 
+#if rep_INTERFACE >= 9
+DEFSYM(rep, "rep");
+#endif
+
 static rep_bool
 on_idle (int since_last)
 {
@@ -168,13 +172,25 @@ usage (void)
           , stderr);
 }
 
+bool
+batch_mode_p (void)
+{
+    static bool mode, cached;
+    if (!cached)
+    {
+	mode = Fsymbol_value (Qbatch_mode, Qt) != Qnil;
+	cached = TRUE;
+    }
+    return mode;
+}
+
 static repv
 inner_main (repv arg)
 {
     repv res = rep_load_environment (rep_string_dup ("jade"));
     if (res != rep_NULL)
     {
-	if(Fsymbol_value (Qbatch_mode, Qt) == Qnil)
+	if(!batch_mode_p ())
 	    res = Frecursive_edit ();
     }
     return res;
@@ -193,6 +209,12 @@ main(int argc, char **argv)
        printf ("jade version %s\n", JADE_VERSION);
        return 0;
     }
+
+#if rep_INTERFACE >= 9
+    rep_push_structure ("jade");
+    rep_INTERN (rep);
+    Frequire (Qrep);
+#endif
 
     if (sys_init(prog_name))
     {
