@@ -32,10 +32,9 @@
 default, the contents of the keymap-path variable). If BUFFER is defined
 it gives the buffer to dereference all variables in.
 
-FUNCTION is called as (FUNCTION KEY-VECTOR PREFIX), where KEY-VECTOR is
-a vector [CODE MODIFIERS COMMAND], (CODE . MODIFIERS) being the internal
-representation of the bound event, and PREFIX a string describing the
-prefix keys of this binding, or nil if there is no prefix."
+FUNCTION is called as (FUNCTION KEY PREFIX), where KEY is a cons cell
+(COMMAND . EVENT), and PREFIX a string describing the prefix keys of this
+binding, or nil if there was no prefix."
   (unless buffer
     (setq buffer (current-buffer)))
   (let
