@@ -60,7 +60,9 @@
     (set-buffer-modified output nil)
     (set-buffer-read-only output t)
     (when other-view
-      (goto-other-view))
+      (if (viewp other-view)
+	  (set-current-view other-view)
+	(goto-other-view)))
     (goto-buffer output)
     (goto (start-of-buffer))
     (setq html-display-details details)
