@@ -222,7 +222,7 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 		vw->vw_BlockS = sibling->vw_BlockS;
 		vw->vw_BlockE = sibling->vw_BlockE;
 		vw->vw_BlockStatus = sibling->vw_BlockStatus;
-		vw->vw_BufferList = sibling->vw_BufferList;
+		vw->vw_BufferList = cmd_copy_sequence(sibling->vw_BufferList);
 	    }
 	    else
 	    {
