@@ -135,7 +135,7 @@ the command may output (i.e. `errors' for a compilation)."
 (defun restart-compile-command ()
   "Rerun the previous command started in the *compilation* buffer."
   (interactive)
-  (start-compile-command compile-command compile-last-type))
+  (start-compile-command compile-last-command compile-last-type))
 
 (defun kill-compilation ()
   (interactive)
