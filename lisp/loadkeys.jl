@@ -58,8 +58,8 @@
   "Meta-8"	'(numeric-arg 8)
   "Meta-9"	'(numeric-arg 9)
   "Meta--"	'negative-arg
-  "Up"		'backward-line
-  "Down"	'forward-line
+  "Up"		'previous-line
+  "Down"	'next-line
   "Left"	'backward-char
   "Right"	'forward-char
   "Shift-Up"	'top-of-buffer
@@ -121,10 +121,10 @@
   "Ctrl-m"	'block-toggle
   "Ctrl-M"	'toggle-rect-blocks
   "Meta-m"	'(goto-glyph (indent-pos))
-  "Ctrl-n"	'forward-line
+  "Ctrl-n"	'next-line
   "Meta-n"	'(progn (set-auto-mark) (goto (find-matching-bracket)))
   "Ctrl-o"	'open-line
-  "Ctrl-p"	'backward-line
+  "Ctrl-p"	'previous-line
   "Ctrl-q"	'(setq next-keymap-path t)
   "Meta-q"	'fill-paragraph
   "Ctrl-r"	'isearch-backward
