@@ -28,8 +28,7 @@ _PR void buffer_sweep(void);
 _PR void flush_all_buffers(void);
 _PR void buffer_prin(VALUE, VALUE);
 _PR TX *first_buffer(void);
-_PR void swap_buffers(VW *, TX *);
-_PR TX *swap_buffers_tmp(VW *, TX *);
+_PR TX *swap_buffers(VW *, TX *);
 _PR VALUE *get_tx_cursor_ptr(TX *tx);
 _PR VALUE get_tx_cursor(TX *);
 _PR int auto_save_buffers(bool);
@@ -240,60 +239,39 @@ first_buffer(void)
     return(NULL);
 }
 
-/*
- * Makes `new' the file being shown in window `vw'
- */
-void
+/* Installs buffer NEW as the current buffer of VW. Returns the originally
+   current buffer (may be a null pointer) */
+TX *
 swap_buffers(VW *vw, TX *new)
 {
     TX *old = vw->vw_Tx;
     if(old != new)
     {
-	if(old)
+	if(old != NULL)
 	{
+	    /* Save buffer context */
 	    old->tx_SavedCPos = vw->vw_CursorPos;
 	    old->tx_SavedWPos = vw->vw_DisplayOrigin;
 	    old->tx_SavedBlockPos[0] = vw->vw_BlockS;
 	    old->tx_SavedBlockPos[1] = vw->vw_BlockE;
 	    old->tx_SavedBlockStatus = vw->vw_BlockStatus;
 	}
+	/* Restore old context */
 	vw->vw_Tx = new;
 	vw->vw_CursorPos = new->tx_SavedCPos;
 	vw->vw_DisplayOrigin = new->tx_SavedWPos;
 	vw->vw_BlockS = new->tx_SavedBlockPos[0];
 	vw->vw_BlockE = new->tx_SavedBlockPos[1];
 	vw->vw_BlockStatus = new->tx_SavedBlockStatus;
+
+	/* If we're switching buffers in the minibuffer, and there's
+	   a message obscuring the minibuffer contents, remove it. */
+	if((vw->vw_Flags & VWFF_MINIBUF)
+	   && MINIBUFFER_ACTIVE_P(vw->vw_Win)
+	   && (vw->vw_Win->w_Flags & WINFF_MESSAGE))
+	    reset_message(vw->vw_Win);
     }
-}
-/*
- * "nd" means non-destructive. refcount's of buffers are not changed and
- * previous buffer shown is returned.
- * This is intended to allow *temporary* switching of buffers before
- * reinstalling the original.
- * ** this is kind of obsolete but never mind **
- */
-TX *
-swap_buffers_tmp(VW *vw, TX *new)
-{
-    TX *old = vw->vw_Tx;
-    if(old != new)
-    {
-	if(old)
-	{
-	    old->tx_SavedCPos = vw->vw_CursorPos;
-	    old->tx_SavedWPos = vw->vw_DisplayOrigin;
-	    old->tx_SavedBlockPos[0] = vw->vw_BlockS;
-	    old->tx_SavedBlockPos[1] = vw->vw_BlockE;
-	    old->tx_SavedBlockStatus = vw->vw_BlockStatus;
-	}
-	vw->vw_Tx = new;
-	vw->vw_CursorPos = new->tx_SavedCPos;
-	vw->vw_DisplayOrigin = new->tx_SavedWPos;
-	vw->vw_BlockS = new->tx_SavedBlockPos[0];
-	vw->vw_BlockE = new->tx_SavedBlockPos[1];
-	vw->vw_BlockStatus = new->tx_SavedBlockStatus;
-    }
-    return(old);
+    return old;
 }
 
 _PR VALUE cmd_get_file_buffer(VALUE);
@@ -434,13 +412,10 @@ Set the buffer that VIEW (or the current view) is displaying. Returns
 the buffer which was being displayed before.
 ::end:: */
 {
-    VALUE old;
     DECLARE1(tx, BUFFERP);
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
-    old = VAL(VVIEW(vw)->vw_Tx);
-    swap_buffers(VVIEW(vw), VTX(tx));
-    return(old);
+    return VAL(swap_buffers(VVIEW(vw), VTX(tx)));
 }
 
 _PR VALUE cmd_buffer_file_name(VALUE);
@@ -680,7 +655,7 @@ returning to the original buffer.
 	PUSHGC(gc_args, args);
 	if((res = cmd_eval(VCAR(args))) && BUFFERP(res))
 	{
-	    VALUE oldtx = VAL(swap_buffers_tmp(curr_vw, VTX(res)));
+	    VALUE oldtx = VAL(swap_buffers(curr_vw, VTX(res)));
 	    if(oldtx)
 	    {
 		VALUE oldcurrvw = VAL(curr_vw);
@@ -690,7 +665,7 @@ returning to the original buffer.
 		res = cmd_progn(VCDR(args));
 		POPGC; POPGC;
 		if(VVIEW(oldcurrvw)->vw_Win)
-		    swap_buffers_tmp(VVIEW(oldcurrvw), VTX(oldtx));
+		    swap_buffers(VVIEW(oldcurrvw), VTX(oldtx));
 	    }
 	}
 	else
