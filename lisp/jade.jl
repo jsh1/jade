@@ -22,6 +22,9 @@
 
 (message "Initialising; wait..." t)
 
+(setq *user-structure* 'jade)
+(setq *root-structure* 'jade)
+
 ;; Load standard libraries
 (load "loadkeys")
 (load "popup-menus")
@@ -30,14 +33,17 @@
 (load "modes")
 (load "edit")
 
+(defun jade-load-all (file)
+  (load-all file (lambda (f) (load f nil t))))
+
 ;; Install all autoload hooks. This is done last so that it works
 ;; when dumped. We load autoload.jl to ensure that we don't get a
 ;; compiled (and possibly out of date) version
-(load-all "autoload.jl" t)
+(jade-load-all "autoload.jl" t)
 
 ;; Do and operating- and window-system initialisation
-(load-all (concat "os-" (symbol-name operating-system)) t)
-(load-all (concat "ws-" (symbol-name window-system)) t)
+(jade-load-all (concat "os-" (symbol-name operating-system)) t)
+(jade-load-all (concat "ws-" (symbol-name window-system)) t)
 
 ;; Load site specific initialisation. Errors here are trapped since
 ;; they're probably not going to leave the editor in an unusable state
@@ -45,7 +51,7 @@
   (condition-case error-data
       (progn
 	;; First the site-wide stuff
-	(load-all "site-init")
+	(jade-load-all "site-init")
 
 	;; then the users rep configuration, or site-wide defaults
 	(or (load (concat (user-home-directory) ".reprc") t t)
@@ -83,7 +89,11 @@
       ((equal "-l" arg)
        (setq arg (car command-line-args))
        (setq command-line-args (cdr command-line-args))
-       (load arg))
+       (cond ((file-exists-p arg)
+	      (load arg nil t t))
+	     ((string-match "\\.jlc?$" arg)
+	      (load arg))
+	     (t (require (intern arg)))))
       ((equal "-q" arg)
        (throw 'quit 0))
       (t
