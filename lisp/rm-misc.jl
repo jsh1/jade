@@ -45,29 +45,19 @@ message formatting characters are available.")
        (message (or (rm-get-folder-field folder rm-folder-current-msg)
 		    (error "No current message")))
        (subject (rm-get-subject message))
-       to cc msg-id references)
-    (save-restriction
-      ;; Need to look at *all* headers
-      (restrict-buffer (mark-pos (rm-get-msg-field message rm-msg-mark))
-		       (rm-message-body message))
-      (setq to (or (mapcar 'mail-parse-address
-			   (mail-get-header "Reply-To" t))
-		   (rm-get-senders message))
-	    cc (and followup-p
-		    (rm-get-recipients message))
-	    msg-id (mail-get-header "Message-Id")
-	    references (append (mail-get-header "References" t t)
-			       (and msg-id (list msg-id)))))
+       (to (or (mapcar 'mail-parse-address
+		       (rm-get-msg-header message "Reply-To" t))
+	       (rm-get-senders message)))
+       (cc (and followup-p (rm-get-recipients message)))
+       (msg-id (rm-get-msg-header message "Message-Id"))
+       (references (append (rm-get-msg-header message "References" t t)
+			   (and msg-id (list msg-id)))))
     (when subject
       (setq subject (concat mail-reply-prefix
 			    (mail-get-actual-subject subject))))
     (mail-setup nil subject msg-id nil references
 		(list (cons #'(lambda (folder message)
-				(rm-message-put message 'replied t)
-				(when (rm-get-folder-field
-				       folder rm-folder-summary)
-				  (rm-with-summary folder
-				    (summary-update-item message))))
+				(rm-message-put message 'replied t))
 			    (list folder message))))
     (when to
       (send-mail-go-to)
@@ -96,22 +86,17 @@ message in that all recipients of the original wil receive the reply."
   (interactive)
   (let
       ((msg rm-reply-message)
-       (yank-begin (cursor-pos))
-       start end)
+       (yank-begin (cursor-pos)))
+    ;; XXX: when yanking MIME encoded messages should we yank the
+    ;; XXX: decoded version or the encoded version? Perhaps have
+    ;; XXX: it as an option...
     (insert (with-buffer (mark-file (rm-get-msg-field msg rm-msg-mark))
 	      (save-restriction
 		(unrestrict-buffer)
 		;; Insert everything but the initial ^From_ line
-		(setq start (forward-line 1 (copy-pos
-					  (mark-pos
-					   (rm-get-msg-field msg
-							     rm-msg-mark))))
-		      end start)
-		(while (and end (setq end (re-search-forward mail-message-start
-							    end))
-			    (not (rm-message-start-p end)))
-		  (setq end (forward-line 1 end)))
-		(copy-area start (or end (end-of-buffer))))))
+		(copy-area (forward-line 1 (mark-pos (rm-get-msg-field
+						      msg rm-msg-mark)))
+			   (rm-message-end msg)))))
     (call-hook 'mail-yank-hooks
 	       (list yank-begin (cursor-pos) rm-reply-message) 'or)))
 
