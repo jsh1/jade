@@ -158,9 +158,7 @@
     (if (null cell)
 	;; No encoding method, copy verbatim
 	(copy-stream input (current-buffer))
-      (when (nth 1 cell)
-	(require (nth 1 cell)))
-      (funcall (nth 2 cell) input (current-buffer)))))
+      (funcall (nth 1 cell) input (current-buffer)))))
 
 (defun mime-encode-make-boundary ()
   (let
