@@ -409,7 +409,7 @@ window is next refreshed unless DISPLAY-NOW is non-nil.
     DECLARE1(string, STRINGP);
     message(VSTR(string));
     if(!NILP(now))
-	cmd_redisplay(sym_nil);
+	redisplay_message(curr_win);
     return(string);
 }
 
