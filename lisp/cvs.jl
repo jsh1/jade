@@ -640,7 +640,7 @@ If a prefix argument is given, the directory to commit in is prompted for."
       ((cvs-command-async `(lambda ()
 			     ;; Need backquote since FILENAMES won't
 			     ;; still be bound when this evaluates
-			     (cvs-revert-filenames ,filenames)
+			     (cvs-revert-filenames ',filenames)
 			     (cvs-show-output-buffer)
 			     (cvs-update-if-summary))))
     (cvs-command nil "commit" (list* "-m" message filenames))))
