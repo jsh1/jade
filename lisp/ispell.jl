@@ -211,8 +211,8 @@ results have been received.")
 	  (format ispell-process "%s\n" word)
 	  (setq response (ispell-read-line))
 	  (if (eq (aref response 0) ?\n)
-	      ;; This shouldn't happen
-	      (error "Null output from Ispell")
+	      ;; This can happen when multi-language text is checked
+	      (setq response "*\n\n")
 	    ;; Gobble following blank line
 	    (setq tem (ispell-read-line))
 	    (unless (eq (aref tem 0) ?\n)
