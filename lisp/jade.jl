@@ -24,6 +24,7 @@
 
 ;; Load standard libraries
 (load "loadkeys")
+(load "popup-menus")
 (load "windows")
 (load "buffers")
 (load "modes")
