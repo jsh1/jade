@@ -1,3 +1,29 @@
+1999-12-31  John Harper  <john@dcs.warwick.ac.uk>
+
+	* buffer-summary.jl (bs-select-other-view): fixed for lexical
+	scope
+
+1999-12-27  John Harper  <john@dcs.warwick.ac.uk>
+
+	* lisp-mode.jl: add indentation hint for letrec
+
+	* rm-misc.jl (rm-reply, rm-followup): new optional arg
+	ignore-replyto, taken from the prefix arg
+	* read-mail.jl, rm-summary.jl: handle ignore-replyto arg of R
+	and F commands
+
+1999-12-24  John Harper  <john@dcs.warwick.ac.uk>
+
+	* rm-misc.jl (rm-reply): always remove the user's address from
+	the CC header
+
+	* send-mail.jl (mail-setup): mail-self-blind may now be a
+	regexp. Only if this regexp doesn't match any recipients is a
+	BCC: header inserted
+
+	* rm-misc.jl (rm-reply): don't insert TO and CC headers
+	manually, instead format the addresses and pass to mail-setup
+
 1999-12-22  John Harper  <john@dcs.warwick.ac.uk>
 
 	* mail-dir-summary.jl (list-mail-dir): fixed for reusing an

@@ -1,3 +1,14 @@
+1999-12-31  John Harper  <john@dcs.warwick.ac.uk>
+
+	* commands.c (Fcall_command): accept closures as possible
+	commands
+
+	* redisplay.c: added some more debugging code
+	(patch_display): fix off-by-one alloca () error
+
+	* main.c (main): use rep_load_environment () and
+	rep_top_level_exit ()
+
 1999-12-21  John Harper  <john@dcs.warwick.ac.uk>
 
 	* regjade.c (regmatch): fix typo in non-greedy matching
