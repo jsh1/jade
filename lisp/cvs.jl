@@ -40,6 +40,10 @@ give to CVS commands. The ~/.cvsrc file can be used to similar effect.")
 (defvar cvs-cvsroot nil
   "When non-nil the directory to use as the root of the CVS repository.")
 
+(defvar cvs-print-long-status t
+  "When non-nil, print whole-word status descriptions in CVS summary buffers,
+instead of the standard `cvs update' single characters.")
+
 
 ;; Variables
 
@@ -60,6 +64,7 @@ give to CVS commands. The ~/.cvsrc file can be used to similar effect.")
 (defvar cvs-update-pending nil
   "Previous output from `cvs update' that didn't end in a newline character
 and hence hasn't been processed yet; or nil.")
+(defvar cvs-update-pending-stderr nil)
 
 (defvar cvs-update-in-progress nil
   "Non-nil when a `cvs update' process is running asynchronously.")
@@ -129,6 +134,7 @@ been completed.")
 ;; Extra cvs-command parameters
 (defvar cvs-command-ignore-errors nil)
 (defvar cvs-command-output-stream nil)
+(defvar cvs-command-error-stream nil)
 (defvar cvs-command-directory nil)
 (defvar cvs-command-dont-clear-output nil)
 (defvar cvs-command-async nil)
@@ -210,6 +216,16 @@ that each of the FILENAMES contains no directory specifiers."
 	(unless (= point (length out))
 	  (setq cvs-update-pending (substring out point))))))))
 
+(defun cvs-update-stderr-filter (o)
+  (let
+      ((out (concat cvs-update-pending-stderr o))
+       (point 0))
+    (setq cvs-update-pending-stderr nil)
+    (while (string-looking-at "([^\n]+)\n" out point)
+      (message (expand-last-match "\\1") t)
+      (setq point (match-end)))
+    (setq cvs-update-pending-stderr (substring out point))))
+
 ;; Function called after `cvs update' has completed
 (defun cvs-update-finished (hook)
   (let
@@ -249,6 +265,7 @@ that each of the FILENAMES contains no directory specifiers."
   (let
       ((cvs-command-ignore-errors t)
        (cvs-command-output-stream 'cvs-update-filter)
+       (cvs-command-error-stream 'cvs-update-stderr-filter)
        (cvs-command-dont-clear-output t)
        (cvs-command-async
 	;; Need to construct a call using the _current_ value of
@@ -295,6 +312,8 @@ Finally, unless the cvs-command-dont-clear-output parameter is non-nil, the
 				     cvs-command-async)
 				(or cvs-command-directory
 				    cvs-default-directory))))
+      (when cvs-command-error-stream
+	(set-process-error-stream process cvs-command-error-stream))
       (message (format nil "%sing CVS: %s..."
 		       (if cvs-command-async "Start" "Call") arg-list) t)
       (unless (or (if cvs-command-async
@@ -461,7 +480,10 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
     (format (current-buffer) "%c%c %12s -- %s"
 	    (if (get-file-buffer (cvs-file-get-fullname item)) ?B ? )
 	    (if (memq 'mark pending) ?* ? )
-	    (symbol-name (cvs-file-get-status item))
+	    (if cvs-print-long-status
+		(symbol-name (cvs-file-get-status item))
+	      (make-string 1 (car (rassq (cvs-file-get-status item)
+					 cvs-update-char-map))))
 	    (cvs-file-get-fullname item))))
 
 (defun cvs-summary-select (item)
