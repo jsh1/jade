@@ -706,16 +706,29 @@ will be prompted for."
 	  files)))
 
 ;;;###autoload
-(defun cvs-diff-cvs ()
-  "Display all differences between the currently selected CVS files and their
-corresponding revisions in the central repository."
-  (interactive)
+(defun cvs-diff-cvs (&optional rev1 rev2)
+  "Compare revisions REV1 and REV2 (or the working copy) of all selected CVS
+files. When called interactively, compares the working copy against the
+head revision, unless a prefix arg is given, when REV1 and REV2 must then
+be entered."
+  (interactive
+   (if current-prefix-arg
+       (let*
+	   ((first (prompt-for-string "Older revision:"))
+	    (second (prompt-for-string
+		     (concat "Newer revision: (older: " first ")"))))
+	 (list first second))
+     (list nil nil)))
   (save-some-buffers)
   (let
       ((cvs-command-ignore-errors t)
        (cvs-command-async #'(lambda ()
 			      (cvs-show-output-buffer))))
-    (cvs-command nil "diff" (cvs-command-get-filenames))))
+    (cvs-command nil "diff" (nconc (and rev1 (not (string= "" rev1))
+					(list (concat "-r" rev1)))
+				   (and rev2 (not (string= "" rev2))
+					(list (concat "-r" rev2)))
+				   (cvs-command-get-filenames)))))
 
 ;;;###autoload
 (defun cvs-diff-backup ()
