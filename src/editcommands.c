@@ -746,8 +746,7 @@ COLUMN counts from zero.
     {
 	int spaces, tabs;
 	long curr_col, dest_col;
-        calc_cursor_offset(vw);
-        curr_col = vw->vw_LastCursorOffset;
+        curr_col = get_cursor_column(vw);
         dest_col = VINT(col);
         if(dest_col <= curr_col)
             return(sym_t);
