@@ -357,6 +357,5 @@ mail directory. Also see the variables `mail-dir-scan-messages' and
 
 (add-hook 'before-exit-hook
 	  #'(lambda ()
-	      (when (and mail-directory-modified
-			 (y-or-n-p "Mail directory modified; save it?"))
+	      (when mail-directory-modified
 		(save-mail-directory mail-directory-file))))
