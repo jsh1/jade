@@ -87,7 +87,7 @@ Commands for this mode are,\n
 (defun bs-print-item (item)
   (let
       ((pending-ops (summary-get-pending-ops item)))
-    (format (current-buffer) "%c%c %c%c\t%s\t"
+    (format (current-buffer) "%c%c %c%c\t%s "
 	    (if (memq 'delete pending-ops) ?D ?\ )
 	    (if (memq 'save pending-ops) ?S ?\ )
 	    (if (buffer-modified-p item) ?+ ?\ )
@@ -101,7 +101,7 @@ Commands for this mode are,\n
       (while minor-names
 	(format (current-buffer) " %s" (car minor-names))
 	(setq minor-names (cdr minor-names))))
-    (insert "\t")
+    (insert " ")
     (indent-to 40)
     (format (current-buffer) "%s" (buffer-file-name item))))
 
