@@ -85,12 +85,11 @@ static void
 face_prin(repv strm, repv obj)
 {
     char buf[128];
-#ifdef HAVE_SNPRINT
-    snprintf
+#ifdef HAVE_SNPRINTF
+    snprintf(buf, sizeof(buf), "#<face %s>", rep_STR(VFACE(obj)->name));
 #else
-    sprintf
+    sprintf(buf, "#<face %s>", rep_STR(VFACE(obj)->name));
 #endif
-    (buf, "#<face %s>", rep_STR(VFACE(obj)->name));
     rep_stream_puts(strm, buf, -1, FALSE);
 }
 
