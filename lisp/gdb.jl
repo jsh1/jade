@@ -143,11 +143,9 @@ There is no limit to the number of gdb processes you may run at once."
 	  shell-program-args (list "-c" (concat gdb-program
 						" -fullname " args))
 	  shell-prompt-regexp "^(\\(gdb\\) *|.*\\(.+\\) *|.+---)"
-	  shell-output-stream (make-closure
-			       (list 'lambda '(x)
-				     (list 'gdb-output-filter
-					   (current-buffer)
-					   'x)))
+	  shell-output-stream (let ((buffer (current-buffer)))
+				(lambda (x)
+				  (gdb-output-filter buffer x)))
 	  shell-callback-function (lambda () (gdb-callback)))
     (shell-mode)
     (buffer-status-id (concat "GDB: " args))
@@ -226,10 +224,9 @@ commands. There is no limit to the number of processes you may run at once."
 	  shell-program-args (list "-c" (concat perl-program " -d "
 						args " -emacs"))
 	  shell-prompt-regexp "^ *DB<+[0-9]+>+ *"
-	  shell-output-stream (make-closure
-			       (list 'lambda '(x)
-				     (list 'gdb-output-filter
-					   (current-buffer) 'x)))
+	  shell-output-stream (let ((buffer (current-buffer)))
+				(lambda (x)
+				  (gdb-output-filter buffer x)))
 	  shell-callback-function (lambda () (gdb-callback)))
     (shell-mode)
     (buffer-status-id (concat "PerlDB: " args))

@@ -257,8 +257,8 @@ that each of the FILENAMES contains no directory specifiers."
        (cvs-command-async
 	;; Need to construct a call using the _current_ value of
 	;; cvs-after-update-hook (in case it's bound dynamically)
-	(make-closure
-	 `(lambda () (cvs-update-finished ,cvs-after-update-hook)))))
+	(let ((hook cvs-after-update-hook))
+	  (lambda () (cvs-update-finished hook)))))
     (setq cvs-update-in-progress (cvs-command '() "update" '()))))
 
 ;; Return the buffer used for output from CVS commands. If CLEAR is
@@ -578,9 +578,9 @@ argument)."
       (cvs-add-callback (cvs-command-get-files) "")
     (cvs-callback-with-message
      "Adding files"
-     (make-closure
-      `(lambda (m)
-	 (cvs-add-callback ',(cvs-command-get-files) m))))))
+     (let ((files (cvs-command-get-files)))
+       (lambda (m)
+	 (cvs-add-callback files m))))))
 
 (defun cvs-add-callback (files msg)
   ;; Not possible to just call add. Instead it's necessary to iterate
@@ -620,9 +620,9 @@ commit them under."
   (interactive)
   (cvs-callback-with-message
    "Committing files"
-   (make-closure
-    `(lambda (m)
-       (cvs-commit-callback ',(cvs-command-get-filenames) m)))))
+   (let ((files (cvs-command-get-filenames)))
+     (lambda (m)
+       (cvs-commit-callback files m)))))
 
 ;;;###autoload
 (defun cvs-commit-directory (directory)

@@ -228,14 +228,17 @@ contain its definition as a function."
 (defun rm-combine-rules (rule1 rule2 &optional op)
   (unless op (setq op 'and))
   (or (memq op '(and or progn)) (error "Unknown combinator: %s" op))
-  (make-closure
-   `(lambda ()
-      (,op (funcall ,(if (functionp rule1)
-			 rule1
-		       (symbol-value (get rule1 'rm-rule-function))))
-      (funcall ,(if (functionp rule2)
-		    rule2
-		  (symbol-value (get rule2 'rm-rule-function))))))))
+  (let ((rule-1-fun (if (functionp rule1)
+			rule1
+		      (symbol-value (get rule1 'rm-rule-function))))
+	(rule-2-fun (if (functionp rule2)
+			rule2
+		      (symbol-value (get rule2 'rm-rule-function)))))
+    (lambda ()
+      (case op
+	((and) (and (rule-1-fun) (rule-2-fun)))
+	((or) (or (rule-1-fun) (rule-2-fun)))
+	(t (progn (rule-1-fun) (rule-2-fun)))))))
 
 
 ;; Standard rules

@@ -361,7 +361,7 @@ is split.")
 
 ;; "prompt" variant. LIST-FUN is a function to call the first time a list
 ;; of possible completions is required.
-(defun info-prompt (info-list-fun &optional title default start)
+(defun info-prompt (list-fun &optional title default start)
   (unless title
     (setq title "Select node"))
   (when default
@@ -369,20 +369,20 @@ is split.")
   (unless start
     (setq start ""))
   (let*
-      ((prompt-completion-function (make-closure
-				    `(lambda (w)
-				       (or prompt-list
-					   (with-buffer ,(current-buffer)
-					     (setq prompt-list
-						   (funcall info-list-fun))))
-				       (prompt-complete-from-list w))))
-       (prompt-validate-function (make-closure
-				  `(lambda (w)
-				     (or prompt-list
-					 (with-buffer ,(current-buffer)
-					   (setq prompt-list
-						 (funcall info-list-fun))))
-				     (prompt-validate-from-list w))))
+      ((prompt-completion-function
+	(let ((buffer (current-buffer)))
+	  (lambda (w)
+	    (or prompt-list
+		(with-buffer buffer
+		  (setq prompt-list (list-fun))))
+	    (prompt-complete-from-list w))))
+       (prompt-validate-function
+	(let ((buffer (current-buffer)))
+	  (lambda (w)
+	    (or prompt-list
+		(with-buffer buffer
+		  (setq prompt-list (list-fun))))
+	    (prompt-validate-from-list w))))
        (prompt-list-fold-case t)
        (completion-fold-case t)
        ;;(prompt-word-regexps prompt-def-regexps)

@@ -211,12 +211,12 @@ a buffer."
 	(message (format nil "wget %s..." url) t)
 	(if find-url-asynchronously
 	    (progn
-	      (set-process-function process (make-closure
-					     `(lambda (p)
-						(find-url-http-loaded
-						 p ,load-url ,anchor
-						 ,(current-view)
-						 ,buffer ,errors))))
+	      (set-process-function
+	       process
+	       (let ((view (current-view)))
+		 (lambda (p)
+		   (find-url-http-loaded p load-url anchor
+					 view buffer errors))))
 	      (or (apply start-process process args)
 		  (error "Can't start wget"))
 	      (setq find-url-processes (cons (cons url process)

@@ -144,22 +144,21 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 ;; If a shell subprocess isn't running create one
 (defun shell-start-process ()
   (unless (and shell-process (process-in-use-p shell-process))
-    (setq shell-process (make-process
-			 (or shell-output-stream
-			     (make-closure
-			      `(lambda (o) (with-buffer ,(current-buffer)
-					     (funcall shell-filter o)))))
-			 ;; Create a function which switches to the
-			 ;; process' buffer then calls the callback
-			 ;; function (through its variable)
-			 (make-closure
-			  (list 'lambda '()
-				(list 'with-buffer (current-buffer)
-				      (list 'funcall
-					    'shell-callback-function))))
-			 nil shell-program shell-program-args))
-    (set-process-connection-type shell-process 'pty)
-    (start-process shell-process)))
+    (let ((buffer (current-buffer)))
+      (setq shell-process (make-process
+			   (or shell-output-stream
+			       (lambda (o)
+				 (with-buffer buffer
+				   (shell-filter o))))
+			   ;; Create a function which switches to the
+			   ;; process' buffer then calls the callback
+			   ;; function (through its variable)
+			   (lambda ()
+			     (with-buffer buffer
+			       (shell-callback-function)))
+			   nil shell-program shell-program-args))
+      (set-process-connection-type shell-process 'pty)
+      (start-process shell-process))))
 
 ;; The default value of shell-callback-function
 (defun shell-default-callback ()

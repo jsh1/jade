@@ -79,7 +79,8 @@ external mmencode program, otherwise handle locally.")
 (defvar mime-decode-link-menus
   '(("Decode MIME part" mime-decode-part)
     ("Display MIME part" mime-display-part)
-    ("Save MIME part" mime-save-part)))
+    ("Save MIME part" mime-save-part)
+    ("Delete MIME part" mime-delete-part)))
 
 (defvar mime-decode-link-map
   (bind-keys (make-sparse-keymap)
@@ -505,7 +506,8 @@ interactively the MIME part under the cursor is used."
   (let
       ((start (extent-get extent 'start))
        (end (extent-get extent 'end))
-       (buffer (extent-get extent 'buffer)))
+       (buffer (extent-get extent 'buffer))
+       (inhibit-read-only t))
     (when (re-search-backward "^--" start buffer)
       (setq start (match-start)))
     (when (re-search-forward "^--" end buffer)
