@@ -247,12 +247,13 @@ such buffer could be made."
 (defun read-file-into-buffer (file-name)
   "Reads the file FILE-NAME into the current buffer, overwriting anything
 else in the buffer. Everything will be set up as required. Before calling
-init-mode, the hook after-find-file-hook is dispatched."
+normal-mode, the hook after-read-file-hook is dispatched."
   (interactive "fFile to read into buffer:")
   (let ((buf (current-buffer)))
     (clear-buffer)
     (setq file-name (expand-file-name file-name))
     (unless (call-hook 'read-file-hook (list file-name buf) 'or)
+      (setq default-directory (file-name-directory file-name))
       (set-buffer-file-name buf file-name)
       (if (file-exists-p file-name)
 	  (progn
@@ -264,8 +265,7 @@ init-mode, the hook after-find-file-hook is dispatched."
     (when auto-save-p
       (setq auto-save-interval default-auto-save-interval))
     (setq last-save-time (current-time)
-	  buffer-undo-list nil
-	  default-directory (file-name-directory file-name))
+	  buffer-undo-list nil)
     (when (auto-save-file-newer-p file-name)
       (message "Warning: Auto-saved file is newer")
       (beep))
