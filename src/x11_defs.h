@@ -47,4 +47,7 @@ typedef char *XPointer;
 /* max number of milliseconds between double-clicks */
 #define DOUBLE_CLICK_TIME 250
 
+/* how we test for interrupt */
+#define TEST_INT_GUTS x11_handle_async_input()
+
 #endif /* _X11_DEFS_H */
