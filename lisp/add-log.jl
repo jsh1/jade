@@ -35,7 +35,7 @@
       (unless (log-in-same-day-p (copy-area (buffer-start)
 					    (line-end (buffer-start))))
 	(insert (concat (current-time-string) "  "
-			(user-full-name) "  (" user-mail-address ")\n\n")))
+			(user-full-name) "  <" user-mail-address ">\n\n")))
       (goto-char (pos 0 1))
       (insert "\n\t* \n")
       (goto-char (line-end (pos 0 2)))
