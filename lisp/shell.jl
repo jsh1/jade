@@ -152,10 +152,11 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 			 ;; Create a function which switches to the
 			 ;; process' buffer then calls the callback
 			 ;; function (through its variable)
-			 (list 'lambda '()
-			       (list 'with-buffer (current-buffer)
-				     (list 'funcall
-					   'shell-callback-function)))
+			 (make-closure
+			  (list 'lambda '()
+				(list 'with-buffer (current-buffer)
+				      (list 'funcall
+					    'shell-callback-function))))
 			 nil shell-program shell-program-args))
     (set-process-connection-type shell-process 'pty)
     (start-process shell-process)))
