@@ -1,3 +1,14 @@
+2000-11-14  John Harper  <jsh@eazel.com>
+
+	Integrated some i18n patches from Andrew Rodionoff
+	<arnost@mail.ru>:
+
+	* x11_main.c (sys_init): call setlocale and XSupportsLocale
+	* gtk_main.c (sys_init): call gtk_set_locale
+
+	* regsub.c, regjade.c: eight-bit fixes (when using case
+	swapping functions)
+
 2000-11-12  John Harper  <jsh@eazel.com>
 
 	* server-dl.c: be sure that the functions are added to the

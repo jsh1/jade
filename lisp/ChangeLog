@@ -1,5 +1,9 @@
 2000-11-14  John Harper  <jsh@eazel.com>
 
+	* ispell.jl (ispell-check-word): handle null responses for sake
+	of multi-language support (patch from Andrew Rodionoff
+	<arnost@mail.ru>)
+
 	* tags.jl (find-tag): fixed positive-arg (push) variant
 	(pop-tag-mark): new command, as in emacs
 	(tags-trim-history, tags-history-length): prevent tags history
