@@ -70,11 +70,20 @@
     (while (< point (length string))
       (cond
        ((string-looking-at "[\t ]*([0-9]+)([\t ]+|$)" string point)
-	;; Could be year or day of month
-	(set (if (< day 0) 'day 'year)
-	     (read-from-string
-	      (substring string (match-start 1) (match-end 1))))
-	(setq point (match-end)))
+	(let*
+	    ((start (match-start 1))
+	     (end (match-end 1))
+	     (value (read-from-string (substring string start end))))
+	  ;; Could be year or day of month
+	  (if (or (>= day 0) (> (- end start) 2))
+	      ;; Assume year
+	      (if (= (- end start) 2)
+		  ;; two-digit year
+		  (setq year (+ (* 100 (read-from-string
+					mail-two-digit-year-prefix)) value))
+		(setq year value))
+	    (setq day value))
+	  (setq point end)))
 
        ((string-looking-at
 	 "[\t ]*([0-9]+):([0-9]+)(:[0-9]+)?[\t ]*([A-Z]+|[+-][0-9]+)?[\t ]*"
