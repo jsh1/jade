@@ -25,13 +25,14 @@
 
 _PR void commands_init(void);
 
-/* Symbols of the Lisp functions called to get input. */
+/* Symbols of the Lisp functions called. */
 _PR VALUE sym_prompt_for_function, sym_prompt_for_buffer;
 _PR VALUE sym_prompt_for_char, sym_prompt_for_command;
 _PR VALUE sym_prompt_for_directory, sym_prompt_for_file;
 _PR VALUE sym_prompt_for_number, sym_prompt_for_string;
 _PR VALUE sym_prompt_for_symbol, sym_prompt_for_variable;
 _PR VALUE sym_prompt_for_lisp, sym_read_event;
+_PR VALUE sym_set_auto_mark;
 
 DEFSYM(prompt_for_function, "prompt-for-function");
 DEFSYM(prompt_for_buffer, "prompt-for-buffer");
@@ -45,6 +46,7 @@ DEFSYM(prompt_for_symbol, "prompt-for-symbol");
 DEFSYM(prompt_for_variable, "prompt-for-variable");
 DEFSYM(prompt_for_lisp, "prompt-for-lisp");
 DEFSYM(read_event, "read-event");
+DEFSYM(set_auto_mark, "set-auto-mark");
 
 _PR VALUE sym_interactive;
 DEFSYM(interactive, "interactive");
@@ -216,40 +218,49 @@ any entered arg is given to the invoked COMMAND.
 	VALUE args = sym_nil;
 	VALUE *argsp = &args;
 	GC_root gc_cmd;
-	bool clear_block = FALSE;
+	bool clear_block = FALSE, goto_result = FALSE, set_before_goto = FALSE;
+
 	if(int_spec == LISP_NULL)
 	{
 	    cmd_signal(sym_error, list_2(VAL(&not_command), cmd));
 	    goto exit;
 	}
+
 	PUSHGC(gc_cmd, cmd);
 	if(STRINGP(int_spec))
 	{
 	    u_char *spec_str = VSTR(int_spec);
 	    u_char c;
 	    GC_root gc_args;
+
+	    /* Handle leading flags */
 	    while(1)
 	    {
-		/* check for read-only flag */
-		if(*spec_str == '*')
+		c = *spec_str;
+		if(c == '*')
 		{
+		    /* Abort if buffer is read-only */
 		    if(read_only(curr_vw->vw_Tx))
 		    {
 			POPGC;
 			goto exit;
 		    }
-		    else
-			spec_str++;
 		}
-		else if(*spec_str == '-')
-		{
-		    /* clear block after building args. */
+		else if(c == '-')
+		    /* Clear block after building argument list */
 		    clear_block = TRUE;
-		    spec_str++;
-		}
+		else if(c == '@')
+		    /* If result of command is a position, move the
+		       cursor to it. */
+		    goto_result = TRUE;
+		else if(c == '!')
+		    /* Set auto mark */
+		    set_before_goto = TRUE;
 		else
 		    break;
+		spec_str++;
 	    }
+
 	    PUSHGC(gc_args, args);
 	    while((c = *spec_str++) != 0)
 	    {
@@ -399,10 +410,25 @@ any entered arg is given to the invoked COMMAND.
 	if(args)
 	    res = funcall(cmd, args, FALSE);
 	POPGC;
+
+	if(goto_result && res != LISP_NULL && POSP(res))
+	{
+	    if(set_before_goto)
+	    {
+		GC_root gc_res;
+		PUSHGC(gc_res, res);
+		call_lisp0(sym_set_auto_mark);
+		POPGC;
+	    }
+	    cmd_goto(res);
+	}
     }
     else
+    {
+	/* Assume it's just an arbitrary Lisp form. */
 	res = cmd_eval(cmd);
- exit:
+    }
+exit:
     cmd_call_hook(sym_post_command_hook, sym_nil, sym_nil);
 
     last_command = this_command;
@@ -500,6 +526,11 @@ can be either,
 	*	If the active buffer is read-only an error will be signalled
 	-	After building the argument list the block marked in the
 		current window will be unmarked.
+	@	If the result of the command-function is a position object,
+		move the cursor to that position.
+	!	Used in conjunction with the @ flag. When set, call the
+		Lisp function `set-auto-mark' before moving to the new
+		position.
 
 Example usage,
 
@@ -581,6 +612,7 @@ commands_init(void)
     INTERN(prompt_for_variable);
     INTERN(prompt_for_lisp);
     INTERN(read_event);
+    INTERN(set_auto_mark);
 
     INTERN(interactive); ERROR(interactive);
 
