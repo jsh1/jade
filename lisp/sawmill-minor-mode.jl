@@ -45,7 +45,7 @@
   (if (or (re-search-backward
 	   "\\(define-structure[ \t\n]+(.+?)[ \t\n]" point buf)
 	  (re-search-backward
-	   "\\(declare \\(in-module[ \t\n]+(.+?)[ \t\n]" point buf)
+	   "\\(declare \\(in-module[ \t\n]+(.+?)[ \t\n]*\\)" point buf)
 	  (re-search-forward
 	   "\\(define-structure[ \t\n]+(.+?)[ \t\n]" point buf)
 	  (re-search-forward
