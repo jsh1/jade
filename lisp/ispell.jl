@@ -120,12 +120,11 @@ if the hook (`or' style) returns t the word is assumed to be correct.")
       (setq ispell-process process)
       (setq ispell-id-string (ispell-read-line)))))
 
-;; Kill the ispell process
 (defun ispell-kill-process ()
+  "Kill any subprocesses being used internally to run Ispell."
   (interactive)
   (when ispell-process
-    ;; Save the dictionary
-    (write ispell-process "#\n")
+    (ispell-save-dictionary)
     (if (eq (process-connection-type ispell-process) 'pty)
 	(write ispell-process ?\^D)
       ;; Not so successful..
@@ -326,7 +325,7 @@ for. When called interactively, spell-check the current block."
     end))
 
 
-;; Support for interactive spell checking
+;; Support functions for interactive spell checking
 
 ;; Given a derivation WORD, produce the resulting replacement
 (defun ispell-strip-word (word)
@@ -389,11 +388,14 @@ for. When called interactively, spell-check the current block."
 
 ;; Non-interactive spell-checking
 
-(defvar ispell-misspelt nil)
+(defvar ispell-misspelt nil
+  "Set to t in extents marking misspelt words.")
 
+;; Add the minor mode name..
 (setq minor-mode-alist (cons (list 'ispell-minor-mode-last-scan " Ispell")
 			     minor-mode-alist))
 
+;; ..and keymap.
 (setq minor-mode-keymap-alist (cons '(ispell-misspelt . ispell-minor-keymap)
 				    minor-mode-keymap-alist))
 
@@ -402,7 +404,8 @@ for. When called interactively, spell-check the current block."
 			      "C-c" 'ispell-minor-c-c-keymap))
 (defvar ispell-minor-c-c-keymap (bind-keys (make-sparse-keymap)
 				  "RET" 'ispell-misspelt-word
-				  "C-a" 'ispell-add-misspelt-word))
+				  "C-a" 'ispell-add-word-to-dictionary
+				  "C-s" 'ispell-add-word-for-session))
 (fset 'ispell-minor-c-c-keymap 'keymap)
 
 (defun ispell-delete-highlights (start end)
@@ -419,6 +422,12 @@ for. When called interactively, spell-check the current block."
 ;; Returns the end of the checked region
 ;;;###autoload
 (defun ispell-highlight-misspellings (start end &optional abort-on-input)
+  "Highlight misspellings in the region between START and END. If
+ABORT-ON-INPUT is non-nil, any input arriving will preempt the spell checking.
+This function returns the position of the end of the actually checked region.
+
+When called interactively, the region is either the marked block, or the
+whole of the buffer (if no block)."
   (interactive (if (blockp)
 		   (list (block-start) (block-end))
 		 (list (start-of-buffer) (end-of-buffer))))
@@ -450,6 +459,7 @@ for. When called interactively, spell-check the current block."
 	    (throw 'abort start)))
 	end))))
 
+;; Called from the idle-hook
 (defun ispell-idle-function ()
   (when ispell-minor-mode-last-scan
     (let
@@ -486,6 +496,15 @@ for. When called interactively, spell-check the current block."
 
 ;;;###autoload
 (defun ispell-minor-mode ()
+  "Minor mode enabling misspellings in the current buffer to be highlighted
+automatically. When the no input arrives for more than a second, the current
+page is spell-checked, any unknown words are displayed in the
+`ispell-misspelt-face'.
+
+Each misspelling also has a set of extra commands, which are activated when
+the cursor is placed in a misspelt word; they are,
+
+\\{ispell-minor-keymap}"
   (interactive)
   (if ispell-minor-mode-last-scan
       (progn
@@ -503,7 +522,17 @@ for. When called interactively, spell-check the current block."
 		(aset ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
 	buffer-list))
 
+;; Return the string of the misspelt word under point, or nil
+(defun ispell-get-misspelt-word ()
+  (let
+      ((e (get-extent)))
+    (while (and e (not (eq (buffer-symbol-value 'ispell-misspelt e nil t) t)))
+      (setq e (extent-parent e)))
+    (and e (copy-area (extent-start e) (extent-end e)))))
+
 (defun ispell-misspelt-word ()
+  "Interactively run Ispell over the misspelt word that is highlighted under
+the cursor."
   (interactive)
   (let
       ((e (get-extent)))
@@ -528,7 +557,25 @@ for. When called interactively, spell-check the current block."
 ;;;###autoload
 (defun ispell-add-word-to-dictionary (word)
   "Add the string WORD to your personal Ispell dictionary."
-  (interactive (list (prompt-for-string "Word to add:" (symbol-at-point))))
+  (interactive (list (prompt-for-string "Word to add to dictionary:"
+					(or (ispell-get-misspelt-word)
+					    (symbol-at-point)))))
   (ispell-start-process)
   (format ispell-process "*%s\n" word)
   (ispell-invalidate-past-scans))
+
+;;;###autoload
+(defun ispell-add-word-for-session (word)
+  "Add the string WORD to Ispell's per-session dictionary."
+  (interactive (list (prompt-for-string "Word to add for session:"
+					(or (ispell-get-misspelt-word)
+					    (symbol-at-point)))))
+  (ispell-start-process)
+  (format ispell-process "@%s\n" word)
+  (ispell-invalidate-past-scans))
+
+(defun ispell-save-dictionary ()
+  "Make Ispell save the current personal dictionary to its file."
+  (interactive)
+  (when ispell-process
+    (write ispell-process "#\n")))
