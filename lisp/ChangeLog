@@ -1,3 +1,8 @@
+2000-09-08  John Harper  <john@dcs.warwick.ac.uk>
+
+	* jade.jl: Require the necessary modules that aren't included
+	in `rep' structure anymore
+
 2000-08-18  John Harper  <john@dcs.warwick.ac.uk>
 
 	* sawmill-minor-mode.jl (sawmill-autoload-finder): updated for
