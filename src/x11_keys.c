@@ -37,7 +37,7 @@ _PR void translate_event(u_long *, u_long *, XEvent *);
 _PR int cook_key(void *, u_char *, int);
 _PR bool lookup_event(u_long *, u_long *, u_char *);
 _PR bool lookup_event_name(u_char *, u_long, u_long);
-_PR u_long sys_find_meta(void);
+_PR u_long x11_find_meta(struct x11_display *xd);
 
 _PR u_long esc_code, esc_mods;
 u_long esc_code = XK_Escape, esc_mods = EV_TYPE_KEYBD;
@@ -71,6 +71,10 @@ translate_mods(u_long mods, unsigned int state)
 	mods |= EV_MOD_BUTTON4;
     if(state & Button5Mask)
 	mods |= EV_MOD_BUTTON5;
+
+    if(curr_win != 0 && mods & WINDOW_META(curr_win))
+	mods = (mods & ~WINDOW_META(curr_win)) | EV_MOD_META;
+
     return(mods);
 }
 
@@ -166,7 +170,7 @@ static const KeyDesc KeyDescr[] =
     { "Ctrl",     EV_MOD_CTRL, 0 },
     { "Control",  EV_MOD_CTRL, 0 },
     { "CTL",      EV_MOD_CTRL, 0 },
-    { "Meta",     EV_MOD_FAKE_META, 0 },
+    { "Meta",     EV_MOD_META, 0 },
     { "Mod1",     EV_MOD_MOD1, 0 },
     { "Mod2",     EV_MOD_MOD2, 0 },
     { "Amiga",    EV_MOD_MOD2, 0 },
@@ -286,10 +290,7 @@ lookup_event(u_long *code, u_long *mods, u_char *desc)
 	{
 	    if(!strcasecmp(kd->kd_Name, buff))
 	    {
-		if(kd->kd_Mods & EV_MOD_FAKE_META)
-		    *mods |= (kd->kd_Mods & ~EV_MOD_FAKE_META) | ev_mod_meta;
-		else
-		    *mods |= kd->kd_Mods;
+		*mods |= kd->kd_Mods;
 		*code = kd->kd_Code;
 		if(*mods & EV_TYPE_MASK)
 		    goto end;
@@ -327,8 +328,8 @@ lookup_event_name(u_char *buf, u_long code, u_long mods)
     u_long tmp_mods;
     const KeyDesc *kd = KeyDescr;
     u_char *name;
-    if(mods & ev_mod_meta)
-	mods = (mods & ~ev_mod_meta) | EV_MOD_FAKE_META;
+    if(mods & WINDOW_META(curr_win))
+	mods = (mods & ~WINDOW_META(curr_win)) | EV_MOD_META;
     tmp_mods = mods & EV_MOD_MASK;
     while(kd->kd_Name && (tmp_mods != 0))
     {
@@ -369,11 +370,9 @@ lookup_event_name(u_char *buf, u_long code, u_long mods)
 }
 
 /* Return the jade modifier mask used as the meta key. This code
-   shamelessly stolen from Emacs 19. :-)
-
-   TODO: Should really maintain a separate Meta for each open display */
+   shamelessly stolen from Emacs 19. :-) */
 u_long
-sys_find_meta(void)
+x11_find_meta(struct x11_display *xd)
 {
     u_long meta_mod = 0, alt_mod = 0;
 
@@ -383,16 +382,15 @@ sys_find_meta(void)
     XModifierKeymap *mods;
 
 #if XlibSpecificationRelease >= 4
-    XDisplayKeycodes(x11_display_list->display, &min_code, &max_code);
+    XDisplayKeycodes(xd->display, &min_code, &max_code);
 #else
-    min_code = x11_display_list->display->min_keycode;
-    max_code = x11_display_list->display->max_keycode;
+    min_code = xd->display->min_keycode;
+    max_code = xd->display->max_keycode;
 #endif
 
-    syms = XGetKeyboardMapping(x11_display_list->display,
-			       min_code, max_code - min_code + 1,
+    syms = XGetKeyboardMapping(xd->display, min_code, max_code - min_code + 1,
 			       &syms_per_code);
-    mods = XGetModifierMapping(x11_display_list->display);
+    mods = XGetModifierMapping(xd->display);
 
     {
 	int row, col;
