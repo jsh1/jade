@@ -78,11 +78,11 @@ Local bindings for this mode are,\n
     (indent-to 24)
     ;; Print out the mode names
     (insert (or (with-buffer item mode-name) "Fundamental"))
-    (let
-	((minor-names (with-buffer item minor-mode-names)))
-      (while minor-names
-	(format (current-buffer) " %s" (car minor-names))
-	(setq minor-names (cdr minor-names))))
+;    (let
+;	((minor-names (with-buffer item minor-mode-names)))
+;      (while minor-names
+;	(format (current-buffer) " %s" (car minor-names))
+;	(setq minor-names (cdr minor-names))))
     (insert " ")
     (indent-to 40)
     (format (current-buffer) "%s" (or (buffer-file-name item) ""))))
