@@ -19,40 +19,10 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (require 'summary)
+(require 'maildefs)
 (provide 'read-mail)
 
-;; Configurable parameters
-
-(defvar mail-visible-headers
-  "^((Resent-|)(From|Sender|Reply-To|To|Cc|Bcc|Date|Sender)|Subject|Keywords|Comments)[ \t]*:"
-  "Regular expression matching the message headers that should be displayed
-when showing a mail message.")
-
-(defvar mail-folder-dir (expand-file-name "~/Mail")
-  "The directory in which mail folders are stored by default.")
-
-(defvar mail-two-digit-year-prefix (substring (current-time-string) 20 22)
-  "A two-digit string that will be prepended to year specifications that
-only have two, lower order, digits. This is picked up automatically from
-the current year, i.e. 1997 -> \"19\", 2001 -> \"20\".")
-
-(defvar mail-summary-lines 16
-  "The number of lines that the summary view of a mail folder contains.")
-
-(defvar mail-message-start "^From "
-  "The regular expression separating each message. Actually it's interpreted
-as a single blank line or the start of the buffer, followed by this regexp.")
-
-;; This is defined as 1 or more characters followed by a colon. The
-;; characters may not include SPC, any control characters, or ASCII DEL.
-;; Unfortunately the regexp library doesn't allow NUL bytes in regexps so
-;; they slip through..
-;; This is also defined in send-mail.jl
-(defvar mail-header-name "^([^\001- \^?]+)[ \t]*:"
-  "A regexp matching a header field name. The name is left in the match
-buffer as the first substring.")
-
-;; Variables
+;;;; Variables
 
 ;; The message list is kept in three parts. The messages before the
 ;; current message, in reverse order (rm-before-msg-list), the current
@@ -102,7 +72,7 @@ when set to the symbol `invalid'.")
   "h" 'rm-summary)
 
 
-;; User-visible interface
+;;;; User-visible interface
 
 ;;;###autoload
 (defun read-mail (folder)
@@ -158,7 +128,8 @@ Major mode for viewing mail folders. Commands include:\n
 (defconst rm-msg-year 7)
 (defconst rm-msg-time 8)
 (defconst rm-msg-zone 9)
-(defconst rm-msg-struct-size 10)
+(defconst rm-msg-replied 10)
+(defconst rm-msg-struct-size 11)
 
 (defmacro rm-set-msg-field (msg field value)
   (list 'aset msg field value))
@@ -222,8 +193,8 @@ Major mode for viewing mail folders. Commands include:\n
 	      (find-next-regexp "^Sender[ \t]*:[ \t]*" start nil t))
       (setq pos (match-end))
       (let*
-	  ((atom-re "[a-zA-Z0-9_*+!#$~%^&={}'|-]+")
-	   (addr-re (concat atom-re "(\\." atom-re ")*@" atom-re "(\\." atom-re ")*"))
+	  ((addr-re (concat mail-atom-re "(\\." mail-atom-re ")*@"
+			    mail-atom-re "(\\." mail-atom-re ")*"))
 	   (angle-addr-re (concat "<(" addr-re ")>"))
 	   (angle-name-re "[\t ]*\"?([^<\t\" \n\f]([\t ]*[^<\t\" \n\f])*)")
 	   (paren-name-re "[\t ]*\\(\"?([^\n\"]+)\"?\\)"))
@@ -277,6 +248,10 @@ Major mode for viewing mail folders. Commands include:\n
 			  (copy-area (match-start 1) (match-end 1)))
 	(rm-set-msg-field msg rm-msg-zone
 			  (copy-area (match-start 4) (match-end 4)))))
+    (rm-set-msg-field msg rm-msg-replied
+		      (if (find-next-regexp "^Replied[\t ]*:" start nil t)
+			  t
+			nil))
     (unrestrict-buffer)
     msg))
 
@@ -355,7 +330,7 @@ Major mode for viewing mail folders. Commands include:\n
       (setq next-hdr current-hdr)
       (while (and next-hdr
 		  (regexp-match-line mail-visible-headers next-hdr nil t))
-	(setq next-hdr (rm-unfold-header next-hdr)))
+	(setq next-hdr (mail-unfold-header next-hdr)))
       ;; Now we have a block of visible headers from CURRENT-HDR to
       ;; NEXT-HDR (but not including NEXT-HDR). Next find the following
       ;; visible header to delimit the block of invisible ones
@@ -363,7 +338,7 @@ Major mode for viewing mail folders. Commands include:\n
       (while (and next-hdr
 		  (not (regexp-match-line mail-visible-headers
 					  next-hdr nil t)))
-	(setq next-hdr (rm-unfold-header next-hdr)))
+	(setq next-hdr (mail-unfold-header next-hdr)))
       ;; Now we have a block of invisible headers, CURRENT-HDR to NEXT-HDR
       ;; Move them to before the FIRST-VISIBLE-HDR, updating this to
       ;; point to the end of the insertion
@@ -395,22 +370,6 @@ Major mode for viewing mail folders. Commands include:\n
   (and (regexp-match-line mail-message-start pos nil t)
        (or (equal pos (buffer-start))
 	   (regexp-match-line "^$" (prev-line 1 (match-start))))))
-
-;; Return the start of the header following the header starting at POS
-;; This returns nil to show that the header goes to the end of the
-;; buffer or restriction
-(defun rm-unfold-header (pos)
-  ;; Be non-destructive!
-  (setq pos (copy-pos pos))
-  (next-line 1 pos)
-  ;; A header is a single line followed by zero or more lines whose
-  ;; first character is a SPC or TAB character [RFC-822]
-  (while (and (< pos (restriction-end))
-	      (regexp-match-line "^[ \t]+" pos))
-    (next-line 1 pos))
-  (if (and pos (< pos (restriction-end)))
-      pos
-    nil))
 
 ;; Delete the current message. Unless GO-BACKWARDS-P is t the next
 ;; message is displayed (unless there is no next message). NO-REDISPLAY-P
@@ -580,19 +539,21 @@ Major mode for displaying a summary of a mail folder.")
 (defun rm-summary-print-item (item)
   (let
       ((pending-ops (summary-get-pending-ops item)))
-    (format (current-buffer) "%s %c  %s %s %s "
+    (format (current-buffer) "%s %c%c  %s %s %s "
 	    (if (eq item (with-buffer rm-summary-mail-buffer rm-current-msg))
 		(progn
 		  (setq rm-summary-current-marked item)
 		  "->")
 	      "  ")
 	    (if (memq 'delete pending-ops) ?D ?\ )
-	    (rm-get-msg-field item rm-msg-day)
-	    (rm-get-msg-field item rm-msg-month)
-	    (rm-get-msg-field item rm-msg-year))
+	    (if (rm-get-msg-field item rm-msg-replied) ?R ?\ )
+	    (or (rm-get-msg-field item rm-msg-day) "")
+	    (or (rm-get-msg-field item rm-msg-month) "")
+	    (or (rm-get-msg-field item rm-msg-year) ""))
     (indent-to 20)
     (insert (or (rm-get-msg-field item rm-msg-from-name)
-		(rm-get-msg-field item rm-msg-from-addr)))
+		(rm-get-msg-field item rm-msg-from-addr)
+		""))
     (insert " ")
     (indent-to 40)
     (insert (or (rm-get-msg-field item rm-msg-subject) ""))))
