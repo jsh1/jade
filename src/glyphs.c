@@ -487,15 +487,33 @@ make_message_glyphs(glyph_buf *g, WIN *w)
 {
     /* TODO: use glyph table to output message */
 
-    int line = w->w_MaxY - 1;
+    u_long msg_len = w->w_MessageLen;
+    u_char *msg = w->w_Message;
+    int line = w->w_MaxY - (ROUND_UP_INT(msg_len, g->cols-1) / (g->cols-1));
+    if(line < w->w_MiniBuf->vw_FirstY)
+    {
+	line = w->w_MiniBuf->vw_FirstY;
+	msg_len = (g->cols-1) * w->w_MiniBuf->vw_MaxY;
+    }
 
-    /* Output the message on the bottom-most line. */
-    memcpy(g->codes[line], w->w_Message, MIN(w->w_MessageLen, g->cols));
-    if(w->w_MessageLen < g->cols)
-	memset(g->codes[line] + w->w_MessageLen, ' ',
-	       (g->cols - w->w_MessageLen));
-
-    memset(g->attrs[line], GA_Text, g->cols);
+    /* Output the message on the bottom-most lines. */
+    while(line < w->w_MaxY)
+    {
+	if(msg_len >= g->cols - 1)
+	{
+	    memcpy(g->codes[line], msg, g->cols - 1);
+	    g->codes[line][g->cols - 1] = '\\';
+	}
+	else
+	{
+	    memcpy(g->codes[line], msg, msg_len);
+	    memset(g->codes[line] + msg_len, ' ', g->cols - msg_len);
+	}
+	memset(g->attrs[line], GA_Text, g->cols);
+	msg_len -= g->cols - 1;
+	msg += g->cols - 1;
+	line++;
+    }
 }
     
 
