@@ -49,6 +49,11 @@
   "Regular expression matching files under dired that should be marked for
 deletion by the `&' command.")
 
+(defvar dired-directory-files 'directory-files
+  "Function called by Dired that should return the list of files stored in
+the directory named as its single argument.")
+(make-variable-buffer-local 'dired-directory-files)
+
 (defvar dired-cursor-column 45)
 
 (defvar dired-delete-cache nil)
@@ -70,7 +75,7 @@ deletion by the `&' command.")
 ;; Basic interface to summary-mode
 
 ;;;###autoload
-(defun dired (directory)
+(defun dired (directory &optional directory-function)
   (interactive "DDirectory:")
   (setq directory (directory-file-name (expand-file-name directory)))
   (unless (file-directory-p directory)
@@ -80,6 +85,8 @@ deletion by the `&' command.")
 		   (open-buffer (file-name-nondirectory directory) t)))
        (inhibit-read-only t))
     (goto-buffer buffer)
+    (when directory-function
+      (setq dired-directory-files directory-function))
     (if (eq major-mode 'dired-mode)
 	(summary-update)
       (format buffer "[Dired] %s:\n\n" directory)
@@ -100,7 +107,7 @@ bindings is:
 \\{dired-keymap}")
 
 (defun dired-list ()
-  (sort (directory-files default-directory)))
+  (sort (funcall dired-directory-files default-directory)))
 
 (defun dired-print (item)
   (let*
