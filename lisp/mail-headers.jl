@@ -234,7 +234,11 @@
 ;; prefixes, and return the string naming the _actual_ subject
 (defun mail-get-actual-subject (string)
   (if (and string (string-match mail-re-regexp string nil t))
-      (substring string (match-end))
+      (let
+	  ((start (match-end)))
+	(if (string-match "[ \t]+$" string start)
+	    (substring string start (match-start))
+	  (substring string start)))
     string))
 
 ;; Return t if ADDR1 and ADDR2 refer to the same mailbox.
