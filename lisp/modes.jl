@@ -73,16 +73,17 @@
 ;; Configuration
 
 (defvar auto-mode-alist
-  '(("\\.(c|h)$|^c(|-mode)$" . c-mode)
-    ("\\.jl$|^.jaderc$|^lisp(|-mode)$" . lisp-mode)
+  '(("\\.(c|h)$|^c$" . c-mode)
+    ("\\.jl$|^.jaderc$|^lisp$" . lisp-mode)
     ("\\.(te?xt|doc|article|letter)$" . text-mode)
-    ("^(text(|-mode)|(.*/|)draft)$" . text-mode)
-    ("^indented-text(|-mode)$" . indented-text-mode)
-    ("\\.[s]$|^asm(|-mode)$" . asm-mode)
-    ("\\.[S]$|^asm-cpp(|-mode)$" . asm-cpp-mode)
-    ("\\.texi(|nfo)|^texinfo(|-mode)$" . texinfo-mode)
+    ("^(text(-mode)?|(.*/|)draft)$" . text-mode)
+    ("^indented-text$" . indented-text-mode)
+    ("\\.[s]$|^asm$" . asm-mode)
+    ("\\.[S]$|^asm-cpp$" . asm-cpp-mode)
+    ("\\.texi(|nfo)|^Texinfo$" . texinfo-mode)
     ("\\.tex$|^(La)?TeX$" . tex-mode)
-    ("ChangeLog$" . changelog-mode))
+    ("ChangeLog$" . changelog-mode)
+    ("\\.pl$|^perl$" . perl-mode))
   "List of all major modes which can be enabled by loading a file into
 a buffer. List is made of `(REGEXP . MODE)' cells; the REGEXP is matched
 against the mode specification (i.e. the filename), if it matches the
@@ -92,7 +93,8 @@ function MODE is called to install the mode.")
   "Regexp matching a string at the start of a file specifiying that the
 file is interpreted when executed.")
 
-(defvar interpreter-mode-alist '(("/bin/(bash|ksh|sh)" . sh-mode))
+(defvar interpreter-mode-alist '(("/bin/(bash|ksh|sh)" . sh-mode)
+				 ("/bin/perl" . perl-mode))
   "List of (REGEXP . MAJOR-MODE) defining modes to use for interpreted files.")
 
 (defvar comment-column 41
@@ -150,6 +152,13 @@ after a symbol.")
   "The function which should be called to remove the buffer's major mode.")
 (make-variable-buffer-local 'major-mode-kill)
 
+(defvar mode-comment-header nil
+  "The string that introduces a single-line comment in the current mode.")
+(make-variable-buffer-local 'mode-comment-header)
+
+(defvar mode-comment-fun nil
+  "Function called to insert a comment in this mode, if mode-comment-header
+is nil.")
 (make-variable-buffer-local 'mode-comment-fun)
 
 (defvar mode-indent-line nil
@@ -259,9 +268,17 @@ from the current buffer."
   "Insert comment delimeters on the current line, place the cursor where the
 comment should be written. This may or not be defined by each major mode."
   (interactive)
-  (if (and (boundp 'mode-comment-fun) mode-comment-fun)
-      (funcall mode-comment-fun)
-    (error "No defined method for inserting comments in this buffer")))
+  (cond
+   (mode-comment-header
+    (if (looking-at (concat ".*(" (quote-regexp mode-comment-header) ")")
+		    (start-of-line))
+	(goto (match-end 1))
+      (find-comment-pos)
+      (insert mode-comment-header)))
+   (mode-comment-fun
+    (funcall mode-comment-fun))
+   (t
+    (error "No defined method for inserting comments in this buffer"))))
 
 (defun find-comment-pos ()
   (let
