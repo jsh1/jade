@@ -47,5 +47,8 @@ contents of the prompt will be masked out whilst being entered."
     ;; get-prompt-buffer will be the prompt function itself
     (return-prompt-buffer buffer)
     (unwind-protect
-	(prompt prompt)
+	(let
+	    ;; Don't want this item in the history ring
+	    ((prompt-history nil))
+	  (prompt prompt))
       (set-buffer-glyph-table buffer orig))))
