@@ -196,6 +196,7 @@ extern void mark_visible_extents (WIN *w);
 extern bool update_mouse_extent (WIN *w, long mouse_col, long mouse_row);
 
 /* from faces.c */
+extern int invert_all_faces;
 extern int merge_faces(VW *vw, Lisp_Extent *e, int in_active, int on_cursor);
 extern int get_face_id(WIN *w, Lisp_Face *f);
 extern void mark_merged_faces(WIN *w);
@@ -448,6 +449,7 @@ extern u_long gtk_find_meta(void);
 extern u_long esc_code, esc_mods;
 
 /* from gtk_main.c */
+extern void sys_beep(WIN *w);
 extern repv (*gtk_jade_wrap_gtkobj)(GtkObject *object);
 extern GtkObject *(*gtk_jade_get_gtkobj)(repv obj);
 extern void (*gtk_jade_callback_postfix)(void);
@@ -514,6 +516,7 @@ extern u_long x11_find_meta(struct x11_display *xd);
 extern u_long esc_code, esc_mods;
 
 /* from x11_main.c */
+extern int x11_cursor_shape;
 extern struct x11_display *x11_get_display(char *display_name);
 extern struct x11_display *x11_open_display(char *display_name);
 extern void x11_close_display(struct x11_display *xdisplay);
@@ -539,7 +542,7 @@ extern int x11_argc;
 extern bool x11_opt_reverse_video;
 
 /* from x11_misc.c */
-extern void x11_beep(void);
+extern void sys_beep(WIN *w);
 extern void x11_convert_selection(XSelectionRequestEvent *ev);
 extern void x11_lose_selection(XSelectionClearEvent *ev);
 extern void x11_window_lose_selections(WIN *w);

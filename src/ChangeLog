@@ -1,3 +1,19 @@
+1999-06-13    <john@dcs.warwick.ac.uk>
+
+	* x11_main.c (x11_cursor_shape): the cursor definition to use
+	when opening displays
+	* x11_misc.c (var_x11_cursor_shape): Lisp variable mapping to
+	x11_cursor_shape
+
+1999-06-11    <john@dcs.warwick.ac.uk>
+
+	* windows.c (Qvisible_bell, Qvisible_bell_length, beep): blink
+	the screen instead of beeping when visible-bell is non-nil
+	* gtk_main.c, x11_misc.c (sys_beep): new function
+
+	* faces.c (invert_all_faces): new variable, when true, all
+	(merged) faces are inverted before being output
+
 1999-06-04  John Harper  <john@dcs.warwick.ac.uk>
 
 	* extent.c, edit.c: don't take the address of nested functions,

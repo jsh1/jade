@@ -1,3 +1,8 @@
+1999-06-12    <john@dcs.warwick.ac.uk>
+
+	* send-mail.jl (send-mail-defer, send-mail-restore): new
+	commands, saving and reloading partially composed messages
+
 1999-06-06  John Harper  <john@dcs.warwick.ac.uk>
 
 	* popup-menus.jl: support keyboard invoked popup menus

@@ -102,6 +102,7 @@
 (autoload 'rm-toggle-threading "rm-thread" t)
 (autoload 'rm-sort-folder "rm-thread" t)
 (autoload 'mail-setup "send-mail" t)
+(autoload 'send-mail-restore "send-mail" t)
 (autoload 'rcs-init-file "rcs")
 (autoload 'rcs-register-buffer "rcs" t)
 (autoload 'rcs-display-log "rcs" t)
