@@ -66,10 +66,29 @@ line.")
 written to. This is only consulted when the process is started.")
 (make-variable-buffer-local 'shell-output-stream)
 
+(defvar shell-output-filter nil
+  "Function called to filter process output strings before they're printed
+to the buffer. Only used when shell-output-stream is nil.")
+(make-variable-buffer-local 'shell-output-filter)
+
+(defvar shell-output-limit 500
+  "When non-nil, the maximum number of lines allowed in a buffer using
+shell-mode. Only used when shell-output-stream is nil.")
+(make-variable-buffer-local 'shell-output-limit)
+
+(defvar shell-echos nil
+  "When non-nil, all commands sent to an interactive shell will be deleted
+from the buffer before being sent (since the shell will echo them anyway)")
+(make-variable-buffer-local 'shell-echos)
+
 
 (defvar shell-process nil
   "The process that the Shell mode created in the current buffer.")
 (make-variable-buffer-local 'shell-process)
+
+(defvar shell-last-output nil
+  "The position in the buffer after the last character output by the process.")
+(make-variable-buffer-local 'shell-last-output)
 
 (defvar shell-keymap
   (bind-keys (make-sparse-keymap)
@@ -122,7 +141,8 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
   (unless (and shell-process (process-in-use-p shell-process))
     (setq shell-process (make-process
 			 (or shell-output-stream
-			     (cons (current-buffer) t))
+			     `(lambda (o) (with-buffer ,(current-buffer)
+					    (funcall 'shell-filter o))))
 			 ;; Create a function which switches to the
 			 ;; process' buffer then calls the callback
 			 ;; function (through its variable)
@@ -145,6 +165,23 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 	     (t
 	      (setq shell-process nil)
 	      "\nProcess terminated\n")))))
+
+;; Default output stream
+(defun shell-filter (output)
+  (goto (end-of-buffer))
+  (unless (stringp output)
+    (setq output (make-string 1 output)))
+  (let
+      ((start (cursor-pos)))
+    (when shell-output-filter
+      (setq output (funcall shell-output-filter output)))
+    (when output
+      (insert output)
+      (when (and shell-output-limit (> (buffer-length) shell-output-limit))
+	(delete-area (start-of-buffer) (forward-line (- (buffer-length)
+							shell-output-limit)
+						     (start-of-buffer))))
+      (setq shell-last-output (end-of-buffer)))))
 
 
 ;; Commands
@@ -170,24 +207,34 @@ last in the buffer the current command is copied to the end of the buffer."
   (interactive)
   (if (null shell-process)
       (insert "\n")
-    (let
-	((start (if (looking-at shell-prompt-regexp (start-of-line))
-		    (match-end)
-		  (start-of-line)))
-	 cmdstr)
-      (if (= (pos-line start) (1- (buffer-length)))
-	  ;; last line in buffer
-	  (progn
-	    (when shell-whole-line
-	      (goto (end-of-line)))
-	    (insert "\n")
-	    (setq cmdstr (copy-area start (cursor-pos))))
-	;; copy the command at this line to the end of the buffer
-	(setq cmdstr (copy-area start (forward-line 1 (start-of-line))))
-	(set-auto-mark)
-	(goto (end-of-buffer))
-	(insert cmdstr))
-      (write shell-process cmdstr))))
+    (if (and shell-last-output (<= shell-last-output (cursor-pos)))
+	;; Send everything after the last output text
+	(progn
+	  (insert "\n")
+	  (write shell-process
+		 (funcall (if shell-echos 'cut-area 'copy-area)
+			  shell-last-output (cursor-pos))))
+      ;; Try to identify a command on the current line
+      (let
+	  ((start (if (looking-at shell-prompt-regexp (start-of-line))
+		      (match-end)
+		    (start-of-line)))
+	   cmdstr)
+	(if (= (pos-line start) (1- (buffer-length)))
+	    ;; last line in buffer
+	    (progn
+	      (when shell-whole-line
+		(goto (end-of-line)))
+	      (insert "\n")
+	      (setq cmdstr (funcall (if shell-echos 'cut-area 'copy-area)
+				    start (cursor-pos))))
+	  ;; copy the command at this line to the end of the buffer
+	  (setq cmdstr (copy-area start (forward-line 1 (start-of-line))))
+	  (set-auto-mark)
+	  (goto (end-of-buffer))
+	  (unless shell-echos
+	    (insert cmdstr)))
+	(write shell-process cmdstr)))))
 
 (defun shell-send-intr ()
   (interactive)
