@@ -63,6 +63,7 @@ _PR bool clear_line_list(TX *);
 _PR void kill_line_list(TX *);
 _PR LINE *resize_line_list(TX *, long, long);
 _PR u_char *alloc_line_buf(TX *, long length);
+_PR void free_line_buf(TX *tx, u_char *line);
 _PR bool insert_gap(TX *, long, long, long);
 _PR VALUE insert_bytes(TX *, const u_char *, long, VALUE);
 _PR VALUE insert_string(TX *, const u_char *, long, VALUE);
@@ -215,6 +216,12 @@ u_char *
 alloc_line_buf(TX *tx, long length)
 {
     return ALLOC_LINE_BUF(tx, length);
+}
+
+void
+free_line_buf(TX *tx, u_char *line)
+{
+    FREE_LINE_BUF(tx, line);
 }
 
 /* Inserts LEN characters of `space' at pos. The gap will be filled
