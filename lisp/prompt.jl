@@ -19,13 +19,11 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (require 'ring)
+(require 'completion)
 (provide 'prompt)
 
 (defvar prompt-buffer-list '()
   "Stack of buffers which can be used for prompts.")
-
-(defvar completion-buffer-list '()
-  "Stack of buffers used to display completion results.")
 
 (defvar prompt-keymap
   (bind-keys (make-sparse-keymap)
@@ -89,15 +87,6 @@ case.")
 (defvar prompt-buffer nil
   "The buffer being used for the prompt.")
 
-(defvar prompt-completion-buffer nil
-  "The buffer being used to display completions.")
-
-(defvar prompt-new-completion-view nil
-  "t if a new view was created to display the completion buffer.")
-
-(defvar prompt-completion-view nil
-  "View used to display completion buffer.")
-
 (defvar prompt-title-view nil
   "View whose status line is co-opted into displaying the prompt's title.")
 
@@ -136,9 +125,6 @@ title to print in the buffer, START the original contents of the buffer.
 The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
   (let*
       ((prompt-buffer (get-prompt-buffer))
-       prompt-completion-buffer
-       prompt-new-completion-view
-       prompt-completion-view
        (prompt-title-view (nth (- (window-view-count) 2) (window-view-list)))
        prompt-old-title-msg
        (prompt-original-buffer (current-buffer))
@@ -168,7 +154,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 				       result))))
 	      (add-to-ring prompt-history result))))
       (return-prompt-buffer prompt-buffer)
-      (prompt-remove-completion-buffer)
+      (completion-remove-view)
       (set-status-message prompt-old-title-msg prompt-title-view))
     result))
 
@@ -206,43 +192,6 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 						       prompt-title-view)
 				   (setq pre-command-hook nil)))))
 
-(defun prompt-select-completion ()
-  (interactive))
-
-(defun prompt-setup-completion-buffer ()
-  (unless prompt-completion-buffer
-    (if completion-buffer-list
-	(setq prompt-completion-buffer (car completion-buffer-list)
-	      completion-buffer-list (cdr completion-buffer-list))
-      (setq prompt-completion-buffer (make-buffer "*completions*")))
-    (if (= (window-view-count) 2)
-	(progn
-	  (setq prompt-new-completion-view t
-		prompt-completion-view (split-view))
-	  (set-status-message prompt-old-title-msg prompt-title-view)
-	  (setq prompt-title-view prompt-completion-view
-		prompt-old-title-msg (set-status-message prompt-title
-							 prompt-title-view)))
-      (setq prompt-new-completion-view nil
-	    prompt-completion-view (nth (- (window-view-count) 2)
-					(window-view-list)))))
-  (with-view prompt-completion-view
-    (setq buffer-list (cons prompt-completion-buffer 
-			    (delq prompt-completion-buffer buffer-list)))
-    (clear-buffer prompt-completion-buffer)
-    (set-current-buffer prompt-completion-buffer)))
-
-(defun prompt-remove-completion-buffer ()
-  (when prompt-completion-buffer
-    (if prompt-new-completion-view
-	(delete-view prompt-completion-view)
-      (with-view prompt-completion-view
-	(setq buffer-list (delq prompt-completion-buffer buffer-list))
-	(set-current-buffer (car buffer-list))))
-    (clear-buffer prompt-completion-buffer)
-    (setq completion-buffer-list (cons prompt-completion-buffer
-				       completion-buffer-list))))
-
 ;; Returns the number of completions found.
 (defun prompt-complete ()
   (interactive)
@@ -261,16 +210,13 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	 (buffer-record-undo nil))
       (cond
        ((= num-found 0)
-	(when prompt-completion-buffer
-	  (clear-buffer prompt-completion-buffer))
+	(completion-remove-view)
 	(prompt-message "[No completions]"))
        ((= num-found 1)
 	(goto (replace-string word (car comp-list) (start-of-buffer)))
-	(when prompt-completion-buffer
-	  (clear-buffer prompt-completion-buffer))
+	(completion-remove-view)
 	(prompt-message "[Unique completion]"))
        (t
-	(prompt-print-completions comp-list)
 	(when (not (string-head-eq (car comp-list) word))
 	  ;; Completions don't match their source at all.
 	  (delete-area (start-of-buffer) (cursor-pos))
@@ -278,6 +224,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	(goto (replace-string word (complete-string word comp-list
 						    prompt-list-fold-case)
 			      (start-of-buffer)))
+	(completion-list comp-list)
 	(prompt-message (format nil "[%d completions]" num-found))))
       num-found)))
 
@@ -294,21 +241,8 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	 (comp-list (with-view prompt-original-view
 		      (with-buffer prompt-original-buffer
 			(funcall prompt-completion-function word)))))
-      (prompt-print-completions comp-list)
+      (completion-list comp-list)
       (prompt-message (format nil "[%d completions]" (length comp-list))))))
-
-(defun prompt-print-completions (comp-list)
-  (let*
-      ((ipos (start-of-buffer))
-       ;; Don't want to record undo information for the completion list
-       (buffer-record-undo nil))
-    (prompt-setup-completion-buffer)
-    (with-view prompt-completion-view
-      (insert "\n" ipos)
-      (while (consp comp-list)
-	(format (cons (current-buffer) ipos) "%s\n" (car comp-list))
-	(setq comp-list (cdr comp-list)))
-      (goto (start-of-buffer)))))
 
 (defun prompt-cancel ()
   (interactive)
