@@ -74,12 +74,27 @@ contain.")
   "Extra indentation for labels.")
 (make-variable-buffer-local 'c-label-indent)
 
-(defvar c-styles '((bsd (c-body-indent . 4) (c-brace-indent . -4)
-		    (c-case-indent . -4) (c-label-indent . -4))
-		   (gnu (c-body-indent . 2) (c-brace-indent . 0)
-		    (c-case-indent . -2) (c-label-indent . -2))
-		   (k&r (c-body-indent . 5) (c-brace-indent . -5)
-		    (c-case-indent . -5) (c-label-indent . -5)))
+(defvar c-styles
+  '((bsd
+     (c-body-indent . 4)
+     (c-brace-indent . -4)
+     (c-case-indent . -4)
+     (c-label-indent . -4))
+    (gnu
+     (c-body-indent . 2)
+     (c-brace-indent . 0)
+     (c-case-indent . -2)
+     (c-label-indent . -2))
+    (k&r
+     (c-body-indent . 5)
+     (c-brace-indent . -5)
+     (c-case-indent . -5)
+     (c-label-indent . -5))
+    (linux
+     (c-body-indent . 8)
+     (c-brace-indent . -8)
+     (c-case-indent . -8)
+     (c-label-indent . -8)))
   "Alist of C styles.")
 
 (defvar c-style 'bsd
