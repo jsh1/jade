@@ -74,7 +74,7 @@ There is no limit to the number of gdb processes you may run at once."
       ((buffer (get-buffer "*gdb*")))
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
-	  (setq buffer (make-buffer "*gdb*"))
+	  (setq buffer (open-buffer "*gdb*" t))
 	  (set-buffer-special buffer t))
       (clear-buffer buffer))
     (goto-buffer buffer)
