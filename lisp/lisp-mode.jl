@@ -100,7 +100,7 @@ completions is simply displayed."
   (let
       ((beg (lisp-backward-sexp))
        (is-function nil)
-       sexp completions count)
+       sexp completions)
     (when (and (> beg (start-of-buffer))
 	       (= (get-char (forward-char -1 beg)) ?\())
       (setq is-function t))
@@ -110,21 +110,7 @@ completions is simply displayed."
 				       (if all-symbols
 					   nil
 					 (if is-function 'fboundp 'boundp)))))
-    (setq count (length completions))
-    (if (zerop count)
-	(progn
-	  (completion-remove-view)
-	  (message "[No completions!]"))
-      (if (and (not only-display) (= count 1))
-	  (progn
-	    (insert (substring (car completions) (length sexp)))
-	    (completion-remove-view)
-	    (message "[Unique completion]"))
-	(unless only-display
-	  (insert (substring (complete-string sexp completions)
-			     (length sexp))))
-	(completion-list completions)
-	(message (format nil "[%d completion(s)]" count))))))
+    (completion-insert completions sexp only-display)))
 
 (defun lisp-show-sexp-completions (&optional all-symbols)
   "Display the list of completions of the Lisp s-expression immediately
