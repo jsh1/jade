@@ -639,7 +639,7 @@ Major mode for viewing mail folders. Commands include:\n
   "R" '(rm-in-folder (rm-reply t))
   "f" '(rm-in-folder (rm-followup))
   "F" '(rm-in-folder (rm-followup t))
-  "z" '(rm-in-folder (rm-forward))
+  "z" '(rm-in-folder (rm-forward nil current-prefix-arg))
   "d" '(rm-with-folder (rm-mark-message-deletion))
   "DEL" '(rm-with-folder (rm-mark-message-deletion))
   "Ctrl-d" '(rm-with-folder (rm-mark-message-deletion t)))
