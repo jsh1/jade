@@ -183,7 +183,9 @@ Set the attribute named ATTRIBUTE-NAME of FACE to VALUE. ATTRIBUTE-NAME
 may be one of these symbols:
 
   `foreground', `background'
-	The colours used for glyphs and blank space respectably.
+	The colours used for glyphs and blank space respectably. Note
+	that VALUE may be either the color object, or the name of the
+	color.
 
   `underline', 'bold', `italic'
 	Boolean attributes.
@@ -192,15 +194,15 @@ may be one of these symbols:
     WIN *w;
     DECLARE1(face, FACEP);
 
-    if(attr == sym_foreground)
+    if(attr == sym_foreground || attr == sym_background)
     {
+	if(STRINGP(value))
+	    value = cmd_get_color(value);
 	DECLARE3(value, COLORP);
-	VFACE(face)->foreground = value;
-    }
-    else if(attr == sym_background)
-    {
-	DECLARE3(value, COLORP);
-	VFACE(face)->background = value;
+	if(attr == sym_foreground)
+	    VFACE(face)->foreground = value;
+	else
+	    VFACE(face)->background = value;
     }
     else if(attr == sym_underline)
     {
