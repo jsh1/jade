@@ -42,11 +42,17 @@
 still given a highlighted header.")
 
 (defvar mime-xfer-encodings-alist
-  '((base64 mime-base64 mime-encode-base64 mime-decode-base64)
-    (quoted-printable mime-quoted-printable
-		      mime-encode-quoted-printable
-		      mime-decode-quoted-printable))
-  "Alist of (ENCODING FEATURE ENCODER DECODER) where ENCODER and DECODER are
+  '((base64
+     (lambda (in out)
+       (mime-decode-mmencode in out 'mime-encode-base64 t t))
+     (lambda (in out)
+       (mime-decode-mmencode in out 'mime-decode-base64 nil t)))
+    (quoted-printable
+     (lambda (in out)
+       (mime-decode-mmencode in out 'mime-encode-quoted-printable t nil))
+     (lambda (in out)
+       (mime-decode-mmencode in out 'mime-decode-quoted-printable nil nil))))
+  "Alist of (ENCODING ENCODER DECODER) where ENCODER and DECODER are
 functions that operate as filters on their argument streams.")
 
 (defvar mime-viewer-alist
@@ -56,6 +62,14 @@ functions that operate as filters on their argument streams.")
 (defface mime-highlight-face "Face to highlight MIME stubs."
   (set-face-attribute mime-highlight-face 'background "turquoise")
   (set-face-attribute mime-highlight-face 'underline t))
+
+(defvar mmencode-program "mmencode"
+  "AT&T mmencode program for MIME content encodings. Set to nil to handle
+in software always.")
+
+(defvar mmencode-threshold 256
+  "Only pass chunks of text with more than this number of lines to the
+external mmencode program, otherwise handle locally.")
 
 (defconst mime-token-re "[^][()<>@,;:\\\"/?=\001-\037 \t\177]+")
 
@@ -152,6 +166,49 @@ functions that operate as filters on their argument streams.")
 		      'start start
 		      'end end))))
 
+;; Handle using mmencode if necessary
+(defun mime-decode-mmencode (input output fallback encode base64)
+  (unless mmencode-program
+    (funcall fallback input output))
+  (let
+      (buffer start end)
+    (cond ((bufferp input)
+	   (setq buffer input)
+	   (setq start (start-of-buffer input))
+	   (setq end (end-of-buffer input)))
+	  ((and (consp input) (bufferp (car input)) (posp (cdr input)))
+	   (setq buffer (car input))
+	   (setq start (cdr input))
+	   (setq end (end-of-buffer buffer))))
+    (catch 'foo
+      (when (and mmencode-program
+		 (or (and buffer
+			  (> (- (pos-line end) (pos-line start))
+			     mmencode-threshold))
+		     (and (filep input)
+			  (local-file-name (file-binding input)))))
+	;; Use mmencode
+	(let
+	    ((process (make-process output))
+	     (args (append (if base64 '("-b") '("-q"))
+			   (if encode nil '("-u")))))
+	  (condition-case data
+	      (when (zerop (if buffer
+			       (with-buffer buffer
+				 (apply 'call-process-area process start end
+					nil mmencode-program args))
+			     ;; must be a local file
+			     (apply 'call-process process
+				    (local-file-name (file-binding file))
+				    mmencode-program args)))
+		;; success
+		(throw 'foo t))
+	    (error
+	     ;; assume that mmencode couldn't be called
+	     (setq mmencode-program nil)))))
+      ;; use the `software' coder
+      (funcall fallback input output))))
+
 ;; Decode all of SRC-BUFFER to the stream OUTPUT, according to the mime
 ;; content-transfer-encoding ENCODING (a symbol)
 (defun mime-decode-buffer (encoding src-buffer output)
@@ -163,9 +220,7 @@ functions that operate as filters on their argument streams.")
 				 (end-of-buffer src-buffer)
 				 src-buffer))
       ;; apply the decoder
-      (when (nth 1 tem)
-	(require (nth 1 tem)))
-      (funcall (nth 3 tem)
+      (funcall (nth 2 tem)
 	       (cons src-buffer (start-of-buffer src-buffer)) output))))
 
 ;; Decode from the start of SRC-BUFFER to the cursor in the current buffer.
@@ -187,7 +242,27 @@ functions that operate as filters on their argument streams.")
 				 content-type content-xfer-enc content-disp))
       (when (or (null content-disp)
 		(eq (car content-disp) 'inline))
-	(mime-decode-buffer content-xfer-enc src-buffer (current-buffer))
+	(cond
+	 ((eq (nth 1 content-type) 'html)
+	  ;; HTML code, have to decode it
+	  (let
+	      ((tem (assq content-xfer-enc mime-xfer-encodings-alist))
+	       actual-src start details)
+	    (if tem
+		;; message is encoded, so decode it to a temporary buffer
+		(progn
+		  (setq actual-src (make-buffer "*mime-decode-temp*"))
+		  (mime-decode-buffer content-xfer-enc src-buffer actual-src))
+	      ;; no decoding required
+	      (setq actual-src src-buffer))
+	    ;; Now act on the HTML
+	    (setq start (cursor-pos))
+	    (setq details (html-decode actual-src (current-buffer)))
+	    (setq tem (make-extent start (cursor-pos)))
+	    (extent-set tem 'html-display-details details)))
+	 (t
+	  ;; Some other type of text, just display in raw form
+	  (mime-decode-buffer content-xfer-enc src-buffer (current-buffer))))
 	(insert "\n")))
      ((eq (car content-type) 'message)
       ;; Mail/news message
@@ -264,12 +339,8 @@ functions that operate as filters on their argument streams.")
 		    (mapc #'(lambda (part)
 			      (let
 				  ((type (nth 3 part)))
-				(when (or (eq (car type) 'multipart)
-					  (eq (car type) 'message)
-					  (and (eq (car type) 'text)
-					       (memq (nth 1 type)
-						     '(plain enriched
-						       richtext))))
+				(when (memq (car type)
+					    '(multipart message text))
 				  (throw 'foo (list part))))) parts)
 		    nil))
 	  (setq parts (nreverse parts)))
