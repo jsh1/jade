@@ -38,60 +38,50 @@ _PR void windows_kill(void);
 _PR void window_sweep(void);
 _PR void window_prin(VALUE, VALUE);
 
-_PR VALUE sym_make_window_hook, sym_destroy_window_hook;
+_PR VALUE sym_make_window_hook, sym_delete_window_hook;
 DEFSYM(make_window_hook, "make-window-hook");
-DEFSYM(destroy_window_hook, "destroy-window-hook");
-
-_PR VALUE sym_window_closed_hook;
-DEFSYM(window_closed_hook, "window-closed-hook");
+DEFSYM(delete_window_hook, "delete-window-hook"); /*
+::doc:make_window_hook::
+Hook called when a new window is created. Called with the new window
+selected.
+::end::
+::doc:delete_window_hook::
+Hook called when a window is deleted. Called with a single argument, the
+window in question.
+::end:: */
 
 /* This can contain `dead' windows, ie w_Window==NULL, they have been
    close'd but must hang around until we're sure all refs are dead.  */
-_PR   WIN	 *win_chain;
+_PR WIN *win_chain;
+WIN *win_chain;
 
 /* curr_win is the active window. When setting it's value curr_vw
    must be set to a view in the same window. */
-_PR   WIN	 *curr_win;
+_PR WIN *curr_win;
+WIN *curr_win;
 
-_PR   int	  window_count;
-_PR   bool  log_messages;
+/* The number of opened windows */
+_PR int window_count;
+int window_count;
 
-WIN   *win_chain, *curr_win;
-int   window_count;
-bool  log_messages;
+/* When true, all messages are logged to stdout as well as to a window. */
+_PR bool log_messages;
+bool log_messages;
 
 _PR short def_dims[4];
 short def_dims[4] = { 0, 0, 80, 24 };
 
-static void
-copy_win_prefs(WIN *dest, WIN *src)
-{
-    if(src)
-    {
-	dest->w_Flags = src->w_Flags;
-	dest->w_FontName = src->w_FontName;
-#ifdef HAVE_AMIGA
-	dest->w_WindowSys.ws_FontSize = src->w_WindowSys.ws_FontSize;
-	dest->w_WindowSys.ws_ScreenName = src->w_WindowSys.ws_ScreenName;
-#endif
-    }
-    else
-    {
-	dest->w_FontName = def_font_str;
-#ifdef HAVE_AMIGA
-	dest->w_WindowSys.ws_FontSize = ami_def_font_size;
-	dest->w_WindowSys.ws_ScreenName = ami_def_pub_screen;
-#endif
-    }
-}
+DEFSYM(save_and_quit, "save-and-quit");
 
 _PR VALUE cmd_make_window(VALUE xv, VALUE yv, VALUE wv, VALUE hv);
-DEFUN("make-window", cmd_make_window, subr_make_window, (VALUE xv, VALUE yv, VALUE wv, VALUE hv), V_Subr4, DOC_make_window) /*
+DEFUN_INT("make-window", cmd_make_window, subr_make_window,
+      (VALUE xv, VALUE yv, VALUE wv, VALUE hv), V_Subr4,
+      DOC_make_window, "") /*
 ::doc:make_window::
 make-window [X] [Y] [WIDTH] [HEIGHT]
 
-Return a new window, it will be displaying the same buffer as the currently
-active window.
+Return and select a new window, it will be displaying the same buffer as
+the originally selected window.
 ::end:: */
 {
     WIN *w;
@@ -109,7 +99,10 @@ active window.
     {
 	memset(w, 0, sizeof(WIN));
 	w->w_Car = V_Window;
-	copy_win_prefs(w, curr_win);
+	if(curr_win == 0)
+	    w->w_FontName = def_font_str;
+	else
+	    w->w_FontName = curr_win->w_FontName;
 	if(sys_set_font(w))
 	{
 	    w->w_Window = sys_new_window(curr_win, w, TRUE);
@@ -133,9 +126,14 @@ active window.
 			    curr_win = w;
 			    curr_vw = w->w_CurrVW;
 			}
-			cmd_call_hook(sym_make_window_hook,
-				      LIST_1(VAL(w)), sym_nil);
-			return(VAL(w));
+			else
+			{
+			    w->w_CurrVW->vw_BufferList
+				= curr_vw->vw_BufferList;
+			}
+			cmd_set_current_window(VAL(w), sym_nil);
+			cmd_call_hook(sym_make_window_hook, sym_nil, sym_nil);
+			return VAL(w);
 		    }
 		    kill_all_views(w);
 		}
@@ -152,17 +150,11 @@ active window.
     return LISP_NULL;
 }
 
-_PR VALUE cmd_destroy_window(VALUE win);
-DEFUN("destroy-window", cmd_destroy_window, subr_destroy_window, (VALUE win), V_Subr1, DOC_destroy_window) /*
-::doc:destroy_window::
-destroy-window [WINDOW]
-
-Close WINDOW (or the current window), if this was the last one all files in
-memory are flushed and jade will exit.
-::end:: */
+/* Close window W. */
+static void
+delete_window(WIN *w)
 {
-    WIN *w = WINDOWP(win) ? VWIN(win) : curr_win;
-    cmd_call_hook(sym_destroy_window_hook, LIST_1(VAL(w)), sym_nil);
+    cmd_call_hook(sym_delete_window_hook, LIST_1(VAL(w)), sym_nil);
     kill_all_views(w);
     sys_unset_font(w);
     sys_kill_window(w);
@@ -180,7 +172,7 @@ memory are flushed and jade will exit.
 	    {
 		curr_win = w;
 		curr_vw = w->w_CurrVW;
-		return(VAL(w));
+		return;
 	    }
 	}
 	w = win_chain;
@@ -190,7 +182,7 @@ memory are flushed and jade will exit.
 	    {
 		curr_win = w;
 		curr_vw = w->w_CurrVW;
-		return(VAL(w));
+		return;
 	    }
 	    w = w->w_Next;
 	}
@@ -199,9 +191,28 @@ memory are flushed and jade will exit.
 	curr_win = NULL;
 	curr_vw = NULL;
 	throw_value = cmd_cons(sym_quit, MAKE_INT(0)); /* experimental. */
-	return LISP_NULL;
     }
-    return(VAL(curr_win));
+}
+
+_PR VALUE cmd_delete_window(VALUE win);
+DEFUN_INT("delete-window", cmd_delete_window, subr_delete_window,
+	  (VALUE win), V_Subr1, DOC_delete_window, "") /*
+::doc:delete_window::
+delete-window [WINDOW]
+
+Close WINDOW (or the current window). If there is only one window currently
+open, then the function `save-and-quit' is called instead; this will take
+care of any unsaved files, hooks to run, etc.
+::end:: */
+{
+    WIN *w = WINDOWP(win) ? VWIN(win) : curr_win;
+    if(window_count > 1)
+    {
+	delete_window(w);
+	return sym_t;
+    }
+    else
+	return call_lisp0(sym_save_and_quit);
 }
 
 void
@@ -595,6 +606,30 @@ the current window).
 		    MAKE_INT(VWIN(win)->w_MaxY));
 }
 
+_PR VALUE cmd_window_list(void);
+DEFUN("window-list", cmd_window_list, subr_window_list, (void),
+      V_Subr0, DOC_window_list) /*
+::doc:window_list::
+window-list
+
+Return a list of all non-deleted windows.
+::end:: */
+{
+    VALUE head = sym_nil;
+    VALUE *ptr = &head;
+    WIN *w = win_chain;
+    while(w != 0)
+    {
+	if(w->w_Window)
+	{
+	    *ptr = cmd_cons(VAL(w), sym_nil);
+	    ptr = &(VCDR(*ptr));
+	}
+	w = w->w_Next;
+    }
+    return head;
+}
+
 _PR VALUE cmd_window_view_list(VALUE win);
 DEFUN("window-view-list", cmd_window_view_list, subr_window_view_list, (VALUE win), V_Subr1, DOC_window_view_list) /*
 ::doc:window_view_list::
@@ -648,8 +683,8 @@ Returns the first view in WINDOW.
 void
 windows_init(void)
 {
-    ADD_SUBR(subr_make_window);
-    ADD_SUBR(subr_destroy_window);
+    ADD_SUBR_INT(subr_make_window);
+    ADD_SUBR_INT(subr_delete_window);
     ADD_SUBR_INT(subr_sleep_window);
     ADD_SUBR_INT(subr_unsleep_window);
     ADD_SUBR_INT(subr_next_window);
@@ -665,12 +700,13 @@ windows_init(void)
     ADD_SUBR(subr_font_x_size);
     ADD_SUBR(subr_font_y_size);
     ADD_SUBR(subr_window_dimensions);
+    ADD_SUBR(subr_window_list);
     ADD_SUBR(subr_window_view_list);
     ADD_SUBR(subr_window_view_count);
     ADD_SUBR(subr_window_first_view);
-    INTERN(make_window_hook);
-    INTERN(destroy_window_hook);
-    INTERN(window_closed_hook);
+    INTERN(make_window_hook); DOC(make_window_hook);
+    INTERN(delete_window_hook); DOC(delete_window_hook);
+    INTERN(save_and_quit);
 }
 
 void
@@ -678,7 +714,7 @@ windows_kill(void)
 {
     WIN *w, *next;
     while(curr_win)
-	cmd_destroy_window(VAL(curr_win));
+	delete_window(curr_win);
     w = win_chain;
     while(w)
     {
@@ -724,5 +760,5 @@ window_prin(VALUE strm, VALUE win)
 	stream_putc(strm, '>');
     }
     else
-	stream_puts(strm, "#<dead-window>", -1, FALSE);
+	stream_puts(strm, "#<deleted window>", -1, FALSE);
 }
