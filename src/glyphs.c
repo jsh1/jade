@@ -26,10 +26,7 @@
 # include <memory.h>
 #endif
 
-
 static long line_glyph_length(TX *tx, long line);
-
-
 
 DEFSYM(glyph_table, "glyph-table");
 
@@ -164,6 +161,8 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 "                                                                            ";
 
     VW *vw;
+
+    free_visible_extents (w);
     for(vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
     {
 	glyph_widths_t *width_table;
@@ -212,12 +211,14 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    tem.col = 0;
 	    tem.row = char_row;
 	    extent = find_extent(vw->vw_Tx->tx_GlobalExtent, &tem);
+	    start_visible_extent (w, extent, 0, glyph_row);
 
 	    extent_delta = 0;
 	    for(xc = extent, x = xc->parent; x != 0; xc = x, x = x->parent)
 	    {
 		x->tem = xc->right_sibling;
 		extent_delta += x->start.row;
+		start_visible_extent (w, x, 0, glyph_row);
 	    }
 	    extent->tem = extent->first_child;
 
@@ -356,13 +357,18 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 						+ extent_delta)
 				   && char_col >= extent->tem->start.col)))
 			{
+			    /* Entering a new extent */
 			    extent_delta += extent->start.row;
 			    extent = extent->tem;
 			    extent->tem = extent->first_child;
+			    start_visible_extent (w, extent,
+						  real_glyph_col, glyph_row);
 			}
 			else if(extent->parent != 0)
 			{
 			    /* Move back up one level. */
+			    end_visible_extent (w, extent,
+						real_glyph_col, glyph_row);
 			    extent->parent->tem = extent->right_sibling;
 			    extent = extent->parent;
 			    extent_delta -= extent->start.row;
@@ -549,6 +555,14 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		glyph_row++;
 	    }
 	    char_row++;
+	}
+
+	/* XXX this is wrong. the extent could stop at the
+	   XXX end of the previous line. */
+	while (extent != 0)
+	{
+	    end_visible_extent (w, extent, 0, glyph_row);
+	    extent = extent->parent;
 	}
 
 	/* In case the logical end of the buffer is before the
