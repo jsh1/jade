@@ -27,6 +27,7 @@
 # include <memory.h>
 #endif
 
+static void kill_view(VW *vw);
 _PR void kill_all_views(WIN *w);
 _PR void update_views_dimensions(WIN *w);
 _PR void update_status_buffer(VW *vw, char *status_buf, u_long buflen);
@@ -266,6 +267,25 @@ to contain the new view.
 			 FALSE));
 }
 
+/* Destroy one view. It should have been removed from the w_ViewList */
+static void
+kill_view(VW *vw)
+{
+    WIN *w = vw->vw_Win;
+    sys_kill_vw(vw);
+    vw->vw_NextView = NULL;
+    vw->vw_Tx = NULL;
+    vw->vw_Win = NULL;
+    vw->vw_BufferList = sym_nil;
+    w->w_ViewCount--;
+    if(w->w_CurrVW == vw)
+    {
+	w->w_CurrVW = w->w_ViewList;
+	if(curr_win == w)
+	    curr_vw = w->w_CurrVW;
+    }
+}
+
 DEFSTRING(sole_view, "Can't kill the sole view in a window");
 DEFSTRING(mini_view, "Can't kill minibuffer view");
 
@@ -297,9 +317,6 @@ VIEW is the minibuffer view.
 	return cmd_signal(sym_window_error, list_2(VAL(&mini_view), VAL(vw)));
     }
     cmd_call_hook(sym_delete_view_hook, LIST_1(VAL(vw)), sym_nil);
-    sys_kill_vw(vw);
-    vw->vw_Tx = NULL;
-    vw->vw_BufferList = sym_nil;
 
     if(vw->vw_Win->w_ViewList == vw)
     {
@@ -329,17 +346,11 @@ VIEW is the minibuffer view.
 	}
 	pred->vw_NextView = vw->vw_NextView;
     }
-    if(vw->vw_Win->w_CurrVW == vw)
-	vw->vw_Win->w_CurrVW = pred;
-    if(curr_vw == vw)
-	curr_vw = pred;
+    kill_view(vw);
     /* VW is now unlinked; now gives its window-space to PRED. */
     pred->vw_MaxY += vw->vw_MaxY + 1;
     recalc_measures(pred->vw_Win);
     set_scroll_steps(pred);
-    vw->vw_Win->w_ViewCount--;
-    vw->vw_Win = NULL;
-    vw->vw_NextView = NULL;
     return(VAL(vw));
 }
 
@@ -351,13 +362,9 @@ kill_all_views(WIN *w)
     while(vw != 0)
     {
 	VW *next = vw->vw_NextView;
-	vw->vw_NextView = NULL;
-	vw->vw_Tx = NULL;
-	vw->vw_Win = NULL;
-	vw->vw_BufferList = sym_nil;
+	kill_view(vw);
 	vw = next;
     }
-    w->w_ViewCount = 0;
 }
 
 /* Initialise the scroll steps in VW, from the size of the view and 
@@ -401,11 +408,24 @@ update_views_dimensions(WIN *w)
     int lines_given = 0;
     int old_total_lines = 0;
     VW *vw;
+
     for(vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
 	old_total_lines += vw->vw_MaxY + 1;
     old_total_lines--;		/* minibuf has no status line */
+
     if(old_total_lines == w->w_MaxY && w->w_MaxX == w->w_ViewList->vw_MaxX)
+	/* No changes */
 	return;
+
+    while(w->w_MaxY < (w->w_ViewCount * 2) - 1)
+    {
+	/* Not enough lines for the number of existing views. Delete
+	   views until there is */
+	VW *dead = w->w_ViewList;
+	w->w_ViewList = w->w_ViewList->vw_NextView;
+	kill_view(dead);
+    }
+
     for(vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
     {
 	vw->vw_FirstX = 0;
@@ -419,9 +439,12 @@ update_views_dimensions(WIN *w)
 		   the minibuf's line). */
 		vw->vw_MaxY = w->w_MaxY - lines_given - 2;
 	    else
+	    {
 		/* Otherwise try to keep the old weighting. */
 		vw->vw_MaxY = (((vw->vw_MaxY + 1) * w->w_MaxY)
 			       / old_total_lines) - 1;
+		vw->vw_MaxY = MAX(vw->vw_MaxY, 1);
+	    }
 	}
 	vw->vw_FirstY = lines_given;
 	lines_given += vw->vw_MaxY + 1;
@@ -717,6 +740,7 @@ next-view [WINDOW] [ALL-WINDOWS-P]
 Return the next view in WINDOW. If ALL-WINDOWS-P is t then views in
 other windows will be returned after the last in WINDOW (or the current
 window) is encountered.
+
 If WINDOW is actually a view, the following view will be returned,
 according to the same rules.
 ::end:: */
@@ -734,11 +758,8 @@ according to the same rules.
 	curr = curr_vw;
 	win = VAL(curr_win);
     }
-    /* If possible just return the next view in the original
-       window. Minibuffer views are only allowed if they're used. */
-    if(curr->vw_NextView != 0
-       && (!(curr->vw_NextView->vw_Flags & VWFF_MINIBUF)
-	   || MINIBUFFER_ACTIVE_P(curr_vw->vw_NextView->vw_Win)))
+    /* If possible just return the next view in the original window */
+    if(curr->vw_NextView != 0)
 	return VAL(curr->vw_NextView);
     else
     {
@@ -763,6 +784,7 @@ previous-view [WINDOW] [ALL-WINDOWS-P]
 Return the previous view in WINDOW. ALL-WINDOWS-P controls whether or
 not to cycle through the views in other windows after reaching the last
 view of WINDOW (or the current window).
+
 If WINDOW is actually a view, the following view will be returned,
 according to the same rules.
 ::end:: */
@@ -808,16 +830,8 @@ according to the same rules.
 	/* now simply find the last view in W, handling minibuffer
 	   views appropriately. */
 	vw = w->w_ViewList;
-	if(MINIBUFFER_ACTIVE_P(w))
-	{
-	    while(vw->vw_NextView != 0)
-		vw = vw->vw_NextView;
-	}
-	else
-	{
-	    while(!(vw->vw_NextView->vw_Flags & VWFF_MINIBUF))
-		vw = vw->vw_NextView;
-	}
+	while(vw->vw_NextView != 0)
+	    vw = vw->vw_NextView;
     }
     else
     {
@@ -943,7 +957,7 @@ the COLUMNS parameter is always ignored (for the moment).
     if(!INTP(rows))
 	return vw;
     sibling = VVIEW(vw)->vw_NextView;
-    if(sibling == 0 || sibling->vw_Flags & VWFF_MINIBUF)
+    if(sibling == 0)
     {
 	return cmd_signal(sym_window_error, list_2(VAL(&no_view), vw));
     }
