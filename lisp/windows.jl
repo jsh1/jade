@@ -24,9 +24,9 @@
 (defmacro defface (name &optional doc &rest forms)
   "Create a face called NAME, the Lisp FORMS are evaluated to initialise it.
 If the symbol NAME is already bound, only the documentation property is set."
-  `(unless (prog1 (boundp ',name)
-	     (defvar ,name (make-face ,(symbol-name name)) ,doc))
-     ,@forms))
+  `(or (prog1 (boundp ',name)
+	 (defvar ,name (make-face ,(symbol-name name)) ,doc))
+       (progn ,@forms)))
 
 (defmacro with-view (view &rest forms)
   "Set the editor's current view to VIEW (and the current window to that

@@ -197,9 +197,9 @@ for the list of formatting options available.")
       ((msg (rm-get-folder-field rm-summary-folder rm-folder-current-msg))
        (buffer (and msg (mark-file
 			     (rm-get-msg-field msg rm-msg-mark)))))
-    (unless (and buffer (get-buffer-view buffer))
-      ;; Couldn't find the view, try to create one
-      (rm-configure-views (current-buffer) rm-summary-folder))))
+    (or (and buffer (get-buffer-view buffer))
+	;; Couldn't find the view, try to create one
+	(rm-configure-views (current-buffer) rm-summary-folder))))
   
 ;; When called from a summary buffer, installs the summary's mail buffer
 ;; and executes FORMS.

@@ -417,9 +417,9 @@ string, if nil the current buffer is returned."
        (buf (prompt title)))
     (if (equal buf "")
 	(or default (current-buffer))
-      (unless (get-buffer buf)
-	(when (not existing)
-	  (open-buffer buf))))))
+      (or (get-buffer buf)
+	  (when (not existing)
+	    (open-buffer buf))))))
 
 ;;;###autoload
 (defun prompt-for-symbol (&optional title prompt-symbol-predicate start)

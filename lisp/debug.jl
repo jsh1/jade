@@ -73,7 +73,10 @@ the debugger are:\n
 (defun debug-error-entry (error-list)
   (with-buffer debug-buffer
     (goto (start-of-line (end-of-buffer)))
-    (format debug-buffer "*** Error: %s: %S\n" (unless (get (car error-list) 'error-message) (car error-list)) (cdr error-list))
+    (format debug-buffer "*** Error: %s: %S\n"
+	    (or (get (car error-list) 'error-message)
+		(car error-list))
+	    (cdr error-list))
     (debug-backtrace 3)
     (catch 'debug
       (recursive-edit)

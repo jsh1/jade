@@ -374,7 +374,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 	((temp-buffer (make-buffer "*sendmail-output*"))
 	 (proc (make-process temp-buffer)))
       (apply call-process-area proc (start-of-buffer) (end-of-buffer) nil
-	     (nconc (list (unless sendmail-program "/usr/lib/sendmail")
+	     (nconc (list (or sendmail-program "/usr/lib/sendmail")
 			  ;; Dot doesn't specify end-of-message
 			  "-oi"
 			  ;; From the user
