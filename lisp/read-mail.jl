@@ -852,7 +852,7 @@ Major mode for displaying a summary of a mail folder.")
       (setq msg rm-current-msg
 	    index rm-current-msg-index))
     (when msg
-      (summary-highlight-index rm-current-msg-index))))
+      (summary-highlight-index index))))
 
 
 ;; Commands, these must only be called from the folder buffer, *not*
