@@ -223,10 +223,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 "                                                                            ";
 
     VW *vw;
-    for(vw = w->w_ViewList;
-	vw != 0 && (!(vw->vw_Flags & VWFF_MINIBUF)
-		    || !(w->w_Flags & WINFF_MESSAGE));
-	vw = vw->vw_NextView)
+    for(vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
     {
 	glyph_widths_t *width_table
 	    = &VGLYPHTAB(vw->vw_Tx->tx_GlyphTable)->gt_Widths;
@@ -478,9 +475,9 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	}
     }
 
-    if(vw != 0)
+    if(w->w_Flags & WINFF_MESSAGE)
     {
-	/* A minibuffer with a message obscuring it. */
+	/* The minibuffer has a message [partially?] obscuring it. */
 	make_message_glyphs(g, w);
     }
 }
@@ -492,6 +489,7 @@ make_message_glyphs(glyph_buf *g, WIN *w)
 
     int line = w->w_MaxY - 1;
 
+    /* Output the message on the bottom-most line. */
     memcpy(g->codes[line], w->w_Message, MIN(w->w_MessageLen, g->cols));
     if(w->w_MessageLen < g->cols)
 	memset(g->codes[line] + w->w_MessageLen, ' ',
