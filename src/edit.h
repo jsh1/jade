@@ -321,10 +321,6 @@ typedef struct _VW
     int		    vw_FirstX, vw_FirstY;
     int		    vw_MaxX, vw_MaxY;
 
-#ifndef NOSCRLBAR
-    ScrollBar	    vw_SBar;
-#endif
-
     /* List of buffers accessible in this window.  This is not used by the
        C code at all; access is via the `buffer-list' variable.  */
     repv	    vw_BufferList;
