@@ -1,3 +1,22 @@
+1999-10-04  John Harper  <john@dcs.warwick.ac.uk>
+
+	* read-mail.jl (rm-append-inbox): save the restriction before
+	unrestricting
+
+1999-10-03  John Harper  <john@dcs.warwick.ac.uk>
+
+	* sawmill-minor-mode.jl: deleted all the doc file stuff
+
+1999-09-29  John Harper  <john@dcs.warwick.ac.uk>
+
+	* read-mail.jl (rm-append-inbox): save the end of the
+	_unrestricted_ buffer as the end of the last original msg
+
+1999-09-22  John Harper  <john@dcs.warwick.ac.uk>
+
+	* send-mail.jl (send-mail-find-mail-buffer): delete all local
+	variables if recycling the buffer
+
 1999-09-09  John Harper  <john@dcs.warwick.ac.uk>
 
 	* mail-headers.jl (mail-union-addresses): don't trash one of
