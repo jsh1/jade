@@ -93,6 +93,11 @@
   "Ctrl-Meta-Backspace" 'backward-kill-exp
   "Help"	'help
   "Meta-Help"	'toggle-iconic
+  "Insert"	'overwrite-mode
+  "Home"	'goto-buffer-start
+  "End"		'goto-buffer-end
+  "Prior"	'prev-screen
+  "Next"	'next-screen
   "Ctrl-@"	'set-auto-mark
   "Meta-@"	'mark-word
   "Meta-%"	'query-replace
