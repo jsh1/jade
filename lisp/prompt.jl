@@ -18,6 +18,7 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(require 'ring)
 (provide 'prompt)
 
 (defvar prompt-keymap (make-keylist))
@@ -29,11 +30,14 @@
   "Stack of buffers used to display completion results.")
 
 (bind-keys prompt-keymap
-  "TAB"		'prompt-complete-string
+  "TAB"		'prompt-complete
   "RET"		'prompt-enter-line
   "LMB-CLICK2"	'prompt-select-completion
-  "RMB-CLICK1"	'prompt-complete-string
-  "Meta-?"	'prompt-print-string-completions
+  "RMB-CLICK1"	'prompt-complete
+  "Meta-?"	'prompt-list-completions
+  "Meta-/"	'prompt-list-completions
+  "Meta-n"	'prompt-next-history
+  "Meta-p"	'prompt-previous-history
   "Ctrl-g"	'prompt-cancel)
 
 
@@ -69,6 +73,18 @@ to supply possible completions.")
 When non-nil the normal ASL file requester is used when file names are
 prompted for.")
 
+(defvar prompt-default-history (make-ring)
+  "Catch-all history list for prompt.")
+
+(defvar prompt-file-history (make-ring)
+  "File history list for prompt.")
+
+(defvar prompt-symbol-history (make-ring)
+  "Symbol history list for prompt.")
+
+(defvar prompt-history prompt-default-history
+  "A ring buffer used to record history information for the minibuffer.")
+
 
 ;; Working variables used by more than one function
 
@@ -102,6 +118,16 @@ prompted for.")
 (defvar prompt-original-view nil
   "The active view when the prompt was called.")
 
+(defvar prompt-history-index nil
+  "The index of the current history item being looked at.")
+
+(defvar prompt-history-top nil
+  "The string at the `top' of the history list; that is the one being
+entered currently.")
+
+(defvar prompt-default-value nil
+  "When non-nil the default value (in the history at position -1).")
+
 
 ;; Main entrypoint
 
@@ -119,6 +145,8 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
        prompt-old-title-msg
        (prompt-original-buffer (current-buffer))
        (prompt-original-view (current-view))
+       (prompt-history-index 0)
+       (prompt-history-top nil)
        result)
     (set-buffer-special prompt-buffer t)
     (unless (stringp prompt-title)
@@ -135,11 +163,17 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	    (make-local-variable 'pre-command-hook)
 	    (setq keymap-path '(prompt-keymap global-keymap)
 		  buffer-undo-list nil
-		  result (catch 'prompt (recursive-edit)))))
+		  result (catch 'prompt (recursive-edit)))
+	    (when (and result prompt-history
+		       (not (string= result ""))
+		       (or (zerop (ring-size prompt-history))
+			   (not (equal (get-from-ring prompt-history)
+				       result))))
+	      (add-to-ring prompt-history result))))
       (return-prompt-buffer prompt-buffer)
       (prompt-remove-completion-buffer)
-      (set-status-message prompt-old-title-msg prompt-title-view)
-      result)))
+      (set-status-message prompt-old-title-msg prompt-title-view))
+    result))
 
 
 ;; Subroutines
@@ -213,7 +247,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 				       completion-buffer-list))))
 
 ;; Returns the number of completions found.
-(defun prompt-complete-string ()
+(defun prompt-complete ()
   (interactive)
   (if (not prompt-completion-function)
       (progn
@@ -250,6 +284,22 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	(prompt-message (format nil "[%d completions]" num-found))))
       num-found)))
 
+(defun prompt-list-completions ()
+  (interactive)
+  (if (not prompt-completion-function)
+      (progn
+	(prompt-message "[No completion function]")
+	0)
+    (let*
+	((word (copy-area (buffer-start) (cursor-pos)))
+	 ;; Before making the list of completions, try to
+	 ;; restore the original context
+	 (comp-list (with-view prompt-original-view
+		      (with-buffer prompt-original-buffer
+			(funcall prompt-completion-function word)))))
+      (prompt-print-completions comp-list)
+      (prompt-message (format nil "[%d completions]" (length comp-list))))))
+
 (defun prompt-print-completions (comp-list)
   (let*
       ((ipos (buffer-start))
@@ -263,15 +313,43 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	(setq comp-list (cdr comp-list)))
       (goto-buffer-start))))
 
-(defun prompt-print-string-completions ()
-  (interactive)
-  (prompt-print-completions
-   (funcall prompt-comp-func (copy-area (buffer-start) (cursor-pos)))))
-
 (defun prompt-cancel ()
   (interactive)
   (message "Quit!")
   (throw 'prompt nil))
+
+(defun prompt-next-history ()
+  (interactive)
+  (cond
+   ((or (= prompt-history-index -1)
+	(and (= prompt-history-index 0) (null prompt-default-value)))
+    (error "No next item"))
+   ((= prompt-history-index 0)
+    (setq prompt-history-top (copy-area (buffer-start) (buffer-end)))
+    (clear-buffer)
+    (insert prompt-default-value))
+   ((>= prompt-history-index 1)
+    (clear-buffer)
+    (insert (if (= prompt-history-index 1)
+		prompt-history-top
+	      (get-from-ring prompt-history (1- prompt-history-index))))))
+  (setq prompt-history-index (1- prompt-history-index)))
+
+(defun prompt-previous-history ()
+  (interactive)
+  (cond
+   ((= prompt-history-index -1)
+    (clear-buffer)
+    (insert prompt-history-top))
+   ((and (>= prompt-history-index 0)
+	 (> (ring-size prompt-history) prompt-history-index))
+    (when (zerop prompt-history-index)
+      (setq prompt-history-top (copy-area (buffer-start) (buffer-end))))
+    (clear-buffer)
+    (insert (get-from-ring prompt-history (1+ prompt-history-index))))
+   (t
+    (error "No previous item")))
+  (setq prompt-history-index (1+ prompt-history-index)))
 
 
 ;; Various completion/validation functions
@@ -359,7 +437,7 @@ is rejected.")
 ;; High-level entrypoints; prompt for a specific type of object
 
 ;;;###autoload
-(defun prompt-for-file (&optional prompt existing start)
+(defun prompt-for-file (&optional prompt existing start default)
   "Prompt for a file, if EXISTING is t only files which exist are
 allowed to be entered."
   (unless (stringp prompt)
@@ -385,12 +463,16 @@ allowed to be entered."
 				       'prompt-validate-filename
 				     nil))
 	 (prompt-word-regexps prompt-def-regexps)
+	 (prompt-history prompt-file-history)
+	 (prompt-default-value default)
 	 (str (prompt prompt start)))
+      (when (and (string= str "") default)
+	(setq str default))
       (when str
 	(expand-file-name str)))))
 
 ;;;###autoload
-(defun prompt-for-directory (&optional prompt existing start)
+(defun prompt-for-directory (&optional prompt existing start default)
   "Prompt for a directory, if EXISTING is t only files which exist are
 allowed to be entered."
   (unless (stringp prompt)
@@ -403,7 +485,10 @@ allowed to be entered."
 				     'prompt-validate-directory
 				   nil))
        (prompt-word-regexps prompt-def-regexps)
+       (prompt-history prompt-file-history)
        (str (prompt prompt start)))
+    (when (and (string= str "") default)
+      (setq str default))
     (when str
       (expand-file-name str))))
 
@@ -421,6 +506,7 @@ string, if nil the current buffer is returned."
 				     'prompt-validate-buffer
 				   nil))
        (prompt-word-regexps prompt-def-regexps)
+       (prompt-default-value (buffer-name (or default (current-buffer))))
        (buf (prompt prompt)))
     (if (equal buf "")
 	(or default (current-buffer))
@@ -440,7 +526,8 @@ symbol must agree with it."
   (let
       ((prompt-completion-function 'prompt-complete-symbol)
        (prompt-validate-function 'prompt-validate-symbol)
-       (prompt-word-regexps symbol-word-regexps))
+       (prompt-word-regexps symbol-word-regexps)
+       (prompt-history prompt-symbol-history))
     (intern (prompt prompt))))
 
 ;;;###autoload
