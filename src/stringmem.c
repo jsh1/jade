@@ -72,7 +72,7 @@ sm_kill(StrMem *sm)
 	mbl = (MemBlock *)sm->sm_MemBuckets[i].mbu_MemBlocks.mlh_Head;
 	while((nxt = (MemBlock *)mbl->mbl_Node.mln_Succ))
 	{
-	    myfree(mbl);
+	    sys_free(mbl);
 	    mbl = nxt;
 	}
 	NewMList(&sm->sm_MemBuckets[i].mbu_MemBlocks);
@@ -93,7 +93,7 @@ sm_kill(StrMem *sm)
 	while(mc)
 	{
 	    MemChunk *nxtmc = mc->mc_Header.next;
-	    myfree(mc);
+	    sys_free(mc);
 	    mc = nxtmc;
 	}
 	sm->sm_MallocChain = NULL;
@@ -112,7 +112,7 @@ new_memblock(StrMem *sm, MemBucket *mbu, int sizeIndex)
     MemBlock *mbl;
     int numchunks = sm->sm_ChunksPerBlock[sizeIndex];
     int chnkbytes = (sizeIndex + 1) * GRAIN;
-    mbl = mymalloc(MBLK_SIZE(chnkbytes, numchunks));
+    mbl = sys_alloc(MBLK_SIZE(chnkbytes, numchunks));
     if(mbl)
     {
 	MemChunk *mc = mbl->mbl_Chunks;
@@ -142,7 +142,7 @@ sm_alloc(StrMem *sm, int size)
     if(size > MAXBUCKETSIZE)
     {
 #if MALLOC_ALIGNMENT >= STRMEM_ALIGNMENT
-	mc = mymalloc(MCHNK_SIZE(size));
+	mc = sys_alloc(MCHNK_SIZE(size));
 #else
   /* Note that if this is ever implemented properly, values.c:string_sweep()
      will probably need to be updated. */
@@ -255,7 +255,7 @@ flush_bucket(StrMem *sm, int bucketIndex)
 		mc = (MemChunk *)((char *)mc + chnksiz);
 	    }
 	    RemoveM(&mbl->mbl_Node);
-	    myfree(mbl);
+	    sys_free(mbl);
 	    mbu->mbu_FreeCount -= numchnks;
 	}
 	mbl = nxt;
@@ -271,7 +271,7 @@ sm_free(StrMem *sm, void *mem)
 	int bucketnum = mc->mc_BlkType;
 	if(bucketnum == MBT_MALLOC)
 	{
-	    myfree(mc);
+	    sys_free(mc);
 #ifdef STRMEM_STATS
 	    sm->sm_FreeCount[NUMBUCKETS]++;
 #endif
