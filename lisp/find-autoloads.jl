@@ -43,6 +43,15 @@
     (delete-area (match-start)
 		 (start-of-line (forward-line 1 (match-start))))))
 
+(defun autoload-identify-module (#!optional buf)
+  "Return the name of the Lisp module that the cursor is in."
+  (if (or (re-search-forward
+	   "\\(define-structure[ \t\n]+(.+?)[ \t\n]" (start-of-buffer) buf)
+	  (re-search-forward
+	   "\\(declare \\(in-module[ \t\n]+(.+?)[ \t\n]" (start-of-buffer) buf))
+      (intern (expand-last-match "\\1"))
+    nil))
+
 (defun autoload-do-magic (output-file buf line-fun)
   (when (find-file output-file)
     (let
@@ -53,6 +62,8 @@
 					     (file-name-nondirectory
 					      (buffer-file-name buf)))
 			       (expand-last-match "\\1")))
+	 (module (or (autoload-identify-module buf)
+		     (buffer-file-name buf)))
 	 (count 0))
       (while (setq p (re-search-forward
 			"^[; \t]*###autoload[\t ]*(.*)$" p buf))
@@ -77,7 +88,11 @@
 					  "-macro" "")
 				      (nth 1 form) short-file-name)))
 		  ((and local-finder
-			(setq form (local-finder p buf short-file-name))))
+			(setq form (local-finder p buf short-file-name module))))
+		  ((looking-at "^[ \t]*\\(define-(\\S+) '(\\S+)" p buf)
+		   (setq form (format nil "(autoload-%s '%s '%s)"
+				      (expand-last-match "\\1")
+				      (expand-last-match "\\2") module)))
 		  (t (throw 'next)))
 	    (when (and form (funcall line-fun form))
 	      (setq count (1+ count))

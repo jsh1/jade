@@ -83,24 +83,18 @@ in the status line."
    (list (prompt-for-string "Sawmill variable:" (symbol-at-point))))
   (sawmill-describe-function fn "Variable Index"))
 
-(defun sawmill-autoload-finder (point buf file)
-  (let ((module (or (smm-identify-module point buf) file)))
-    (cond ((looking-at
-	    "[ \t]*\\(define-command(-to-screen)? '([^ ]+)" point buf)
-	   (let ((form (read (cons buf point))))
-	     (let ((name (cadr form))
-		   (keys (cdddr form)))
-	       ;; remove #:spec keys
+(defun sawmill-autoload-finder (point buf module)
+  (cond ((looking-at
+	  "[ \t]*\\(define-command(-to-screen)? '([^ ]+)" point buf)
+	 (let ((form (read (cons buf point))))
+	   (let ((name (cadr form))
+		 (keys (cdddr form)))
+	     ;; remove #:spec keys
 	       (let ((tem (memq #:spec keys)))
 		 (when tem
 		   (rplacd tem (cddr tem))
 		   (setq keys (delq (car tem) keys))))
-	       (prin1-to-string `(autoload-command ,name ',module ,@keys)))))
-	     
-	  ((looking-at "[ \t]*\\(define-([^ ]+) '([^ ]+)" point buf)
-	   (format nil "(autoload-%s '%s '%s)"
-		   (expand-last-match "\\1")
-		   (expand-last-match "\\2") module)))))
+	     (prin1-to-string `(autoload-command ,name ',module ,@keys)))))))
 
 ;;;###autoload
 (defun sawmill-minor-mode ()

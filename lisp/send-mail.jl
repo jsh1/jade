@@ -32,6 +32,9 @@ code states that the message was sent successfully.")
   "Hook called immediately prior to sending the mail message that has been
 composed in the current buffer.")
 
+(defvar send-mail-send-it-function nil
+  "Function called to do the actual sending.")
+
 (defvar mail-drafts-directory (expand-file-name "drafts" mail-folder-dir)
   "The directory used to store partially composed, but not yet sent, mail
 messages.")
@@ -298,10 +301,23 @@ Major mode for composing and sending mail messages. Local bindings are:\n
   (when (send-mail-send)
     (bury-buffer)))
 
+(defun send-mail-extract-addresses (header-re)
+  ;; Build a list of addresses the message should be sent to and
+  ;; specify them on the command line, instead of letting sendmail
+  ;; pick them out of the text
+  (let ((point (start-of-buffer))
+	(addresses '()))
+    (while (and point (re-search-forward header-re point nil t))
+      (let ((next (match-end)))
+	(setq addresses (nconc addresses (mail-parse-list point)))
+	(setq point next)))
+    addresses))
+
 (defun sendmail-send-message ()
   "Use sendmail to send the message in the current buffer."
   (let
-      ((resent-addresses '())
+      ((normal-addresses '())
+       (resent-addresses '())
        tem)
     ;; delete the separator
     (setq tem (send-mail-delete-separator))
@@ -364,56 +380,69 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 		      (delete-area p (forward-char 1 p))) quoted-froms)
 	    (restrict-buffer (start-of-buffer) header-end)))))
 
+    ;; Build a list of addresses the message should be sent to and
+    ;; specify them on the command line, instead of letting sendmail
+    ;; pick them out of the text
+    (setq normal-addresses (send-mail-extract-addresses
+			    "^(To|CC|BCC)[\t ]*:[\t ]*"))
+
     ;; Handle Resent-X headers. Build a list of addresses the message
     ;; should be sent to and specify them on the command line, instead of
     ;; letting sendmail pick them out of the text
-    (setq tem (start-of-buffer))
-    (while (and tem (re-search-forward "^Resent-(To|CC|BCC)[\t ]*:[\t ]*"
-				      tem nil t))
-      (setq tem (match-start)
-	    resent-addresses (nconc resent-addresses (mail-parse-list tem)))
-      (if (looking-at "^Resent-BCC" tem nil t)
-	  ;; Delete Resent-BCC ourselves
-	  (delete-area tem (mail-unfold-header tem))
-	(setq tem (mail-unfold-header tem))))
+    (setq resent-addresses (send-mail-extract-addresses
+			    "^Resent-(To|CC|BCC)[\t ]*:[\t ]*"))
 
     (unrestrict-buffer)
 
     ;; Now call sendmail to do it's stuff..
-    (let*
-	((temp-buffer (make-buffer "*sendmail-output*"))
-	 (proc (make-process temp-buffer)))
-      (apply call-process-area proc (start-of-buffer) (end-of-buffer) nil
-	     (nconc (list (or sendmail-program "/usr/lib/sendmail")
-			  ;; Dot doesn't specify end-of-message
-			  "-oi"
-			  ;; From the user
-			  "-f" (user-login-name)
-			  ;; report errors by mail and deliver
-			  ;; in the background
-			  "-oem" "-odb")
-		    ;; If we had Resent-X headers specify the addresses
-		    ;; explicitly, otherwise tell sendmail to find the
-		    ;; addresses itself
-		    (or resent-addresses '("-t"))))
-      ;; Reinsert the header-separator
-      (when (re-search-forward "^[\t ]*$" (start-of-buffer))
-	(let
-	    ((inhibit-read-only t))
-	  (insert mail-header-separator (match-start))))
-      (unless (zerop (process-exit-value proc))
-	;; Errors. Display the buffer they were output to and throw
-	;; an exception
-	(with-view (other-view)
-	  (goto-buffer temp-buffer)
-	  (goto (start-of-buffer)))
-	(error "sendmail couldn't send message"))
-      ;; No errors
-      (when send-mail-show-output
-	(with-view (other-view)
-	  (goto-buffer temp-buffer)
-	  (goto (start-of-buffer))
-	  (shrink-view-if-larger-than-buffer))))))
+    (let* ((temp-buffer (make-buffer "*sendmail-output*")))
+      (call-with-exception-handler
+       (lambda ()
+	 (unwind-protect
+	     (send-mail-send-it-function normal-addresses
+					 resent-addresses temp-buffer)
+	   ;; Reinsert the header-separator
+	   (when (re-search-forward "^[\t ]*$" (start-of-buffer))
+	     (let ((inhibit-read-only t))
+	       (insert mail-header-separator (match-start)))))
+	 ;; No errors
+	 (when send-mail-show-output
+	   (with-view (other-view)
+	     (goto-buffer temp-buffer)
+	     (goto (start-of-buffer))
+	     (shrink-view-if-larger-than-buffer))))
+       (lambda (data)
+	 ;; Errors. Display the buffer they were output to and throw
+	 ;; an exception
+	 (with-view (other-view)
+	   (goto-buffer temp-buffer)
+	   (goto (start-of-buffer)))
+	 (raise-exception data))))))
+
+(defun sendmail-send-it (normal-addresses resent-addresses temp-buffer)
+  (declare (unused normal-addresses))
+  (let ((proc (make-process temp-buffer)))
+    (or (zerop (apply call-process-area proc
+		      (start-of-buffer) (end-of-buffer) nil
+		      (nconc (list (or sendmail-program "/usr/lib/sendmail")
+				   ;; Dot doesn't specify end-of-message
+				   "-oi"
+				   ;; From the user
+				   "-f" (user-login-name)
+				   ;; initial submission
+				   "-U"
+				   ;; report errors by mail and deliver
+				   ;; in the background
+				   "-oem" "-odb")
+
+			     ;; If we had Resent-X headers specify the
+			     ;; addresses explicitly, otherwise tell
+			     ;; sendmail to find the addresses itself
+			     (or resent-addresses '("-t")))))
+	(error "Sendmail failed"))))
+
+(unless send-mail-send-it-function
+  (setq send-mail-send-it-function sendmail-send-it))
 
 
 ;; storing/reloading messages

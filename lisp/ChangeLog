@@ -1,3 +1,30 @@
+2001-06-08  John Harper  <jsh@pixelslut.com>
+
+	* mail-headers.jl (make-message-id): new function. Follows
+	jwz's recommendations at <http://www.jwz.org/doc/mid.html>
+
+	* send-mail.jl (send-mail-send-it-function): new variable,
+	another hook for sending mail. This is the actual function to
+	do the sending once the message buffer has been massaged
+
+	(sendmail-send-it): function to do the sendmail specific
+	message transmission. Used by default
+
+	* send-mail-smtp.jl (smtp-send-it): new file. An SMTP message
+	transmission layer (useful, since sendmail is totally hosed on
+	my laptop..)
+
+	* sawmill-minor-mode.jl, find-autoloads.jl: old changes I can't
+	remember making...
+
+	* lisp-mode.jl: some more indentation hints
+
+2001-04-16  John Harper  <jsh@eazel.com>
+
+	* send-mail.jl (sendmail-send-message): pass -U option to
+	sendmail (the man page says it should always be given when
+	called from an MUA)
+
 2001-02-19  John Harper  <jsh@eazel.com>
 
 	* fill.jl: only install our minor-mode if it's not already in

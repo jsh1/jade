@@ -325,3 +325,11 @@
 	      (unless (assoc (car a) x)
 		(setq x (nconc x (list a))))) y))
   x)
+
+(defun make-message-id ()
+  (let ((time (current-utime))
+	(randomness (+ (ash (random) 32) (random))))
+    (format nil "<%s.%s@%s>"
+	    (number->string time 36)
+	    (number->string randomness 36)
+	    (system-name))))
