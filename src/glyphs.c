@@ -392,7 +392,10 @@ rendered.
 	tx = VAL(curr_vw->vw_Tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
-    return make_pos(glyph_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
+    if(check_line(VTX(tx), pos))
+	return make_pos(glyph_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
+    else
+	return NULL;
 }
 
 _PR VALUE cmd_glyph_to_char_pos(VALUE pos, VALUE tx);
@@ -407,7 +410,10 @@ position.
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     DECLARE1(pos, POSP);
-    return make_pos(char_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
+    if(check_line(VTX(tx), pos))
+	return make_pos(char_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
+    else
+	return NULL;
 }
 
 _PR VALUE cmd_default_glyph_table(void);
