@@ -176,6 +176,7 @@ of SYMBOL is non-nil, KEYMAP is used to search for bindings.")
   "M->"		'end-of-buffer
   "M-."		'find-tag
   "M-,"		'tags-loop-continue
+  "M-*"		'pop-tag-mark
   "M-;"		'insert-comment
   "M-~"		'(set-buffer-modified nil nil)
   "M-\\"	'no-spaces
