@@ -37,9 +37,9 @@ static int redisplay_max_d = 0;
 
 /* When COMPARE_FAST_AND_LOOSE is defined as one just compare hash
    codes of lines to see if they match. Obviously, if the hash codes
-   of two lines match, they may not actually be the same, but it must
-   be pretty unlikely. (only 80 columns (160 bytes with attrs) are
-   hashed, and the hash function is pretty good..) */
+   of two lines match, they may not actually be the same, but this
+   is very unlikely. (only 80 columns (160 bytes with attrs) are
+   hashed usually, and the hash function rotates to avoid overflow..) */
 #ifndef COMPARE_FAST_AND_LOOSE
 # define COMPARE_FAST_AND_LOOSE 1
 #endif
@@ -47,6 +47,9 @@ static int redisplay_max_d = 0;
 /* Define DEBUG to get lists of every single screen update (i.e. which
    lines are drawn, which are copied, etc) */
 #undef DEBUG
+
+/* Rotate X, a 32 bit quanitity, by N bits to the left. */
+#define ROTATE(x, n) (((x) << (n)) | ((x) >> ((8 * sizeof(u_long)) - (n))))
 
 _PR glyph_buf *alloc_glyph_buf(int cols, int rows);
 _PR void free_glyph_buf(glyph_buf *gb);
@@ -84,12 +87,11 @@ hash_glyph_row(glyph_buf *g, int row)
     int togo = g->cols;
     glyph_code *codes = GLYPH_BUF_CODES(g, row);
     glyph_attr *attrs = GLYPH_BUF_ATTRS(g, row);
+
     while(togo-- > 0)
-    {
-	/* Is this satisfactory? */
-	value = (value * 33) + *codes++ + (*attrs++ << 8);
-    }
-    return(value);
+	value = ROTATE(value, 3) + *codes++ + (*attrs++ << 8);
+
+    return value;
 }
 
 /* Hash every row in glyph buffer G. */
