@@ -580,22 +580,26 @@ Returns t if the line pointer to by POS (or the cursor) in BUFFER is
 empty, ie, blank or only containing spaces.
 ::end:: */
 {
-    VW *vw = curr_vw;
-    if(!POSP(pos))
-	pos = vw->vw_CursorPos;
     if(!BUFFERP(tx))
-	tx = VAL(vw->vw_Tx);
-    if(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen == 1)
-	return(sym_t);
-    else
+	tx = VAL(curr_vw->vw_Tx);
+    if(!POSP(pos))
+	pos = get_tx_cursor(VTX(tx));
+    if(check_line(VTX(tx), pos))
     {
-	u_char *s = VTX(tx)->tx_Lines[VROW(pos)].ln_Line;
-	while(*s && isspace(*s))
-	    s++;
-	if(!(*s))
+	if(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen == 1)
 	    return(sym_t);
+	else
+	{
+	    u_char *s = VTX(tx)->tx_Lines[VROW(pos)].ln_Line;
+	    while(*s && isspace(*s))
+		s++;
+	    if(!(*s))
+		return(sym_t);
+	}
+	return(sym_nil);
     }
-    return(sym_nil);
+    else
+	return LISP_NULL;
 }
 
 _PR VALUE cmd_indent_pos(VALUE pos, VALUE tx);
