@@ -421,6 +421,7 @@ file with the working copy."
 
 ;; Called by toggle-buffer-read-only for the current buffer
 (defun rcs-toggle-read-only ()
+  (interactive)
   (if (buffer-read-only-p)
       ;; Need to check out and lock the current buffer
       (rcs-check-out-buffer)
