@@ -1,4 +1,4 @@
-/* redisplay.c -- Experimental redisplay algorithm
+/* redisplay.c -- Redisplay algorithms
    Copyright (C) 1998 John Harper <john@dcs.warwick.ac.uk>
    $Id$
 
@@ -35,6 +35,17 @@
 /* The upper bound on edit operations per window. Zero denotes unbounded. */
 static int redisplay_max_d = 0;
 
+/* When COMPARE_FAST_AND_LOOSE is defined as one just compare hash
+   codes of lines to see if they match. Obviously, if the hash codes
+   of two lines match, they may not actually be the same, but it must
+   be pretty unlikely. (only 80 columns (160 bytes with attrs) are
+   hashed, and the hash function is pretty good..) */
+#ifndef COMPARE_FAST_AND_LOOSE
+# define COMPARE_FAST_AND_LOOSE 1
+#endif
+
+/* Define DEBUG to get lists of every single screen update (i.e. which
+   lines are drawn, which are copied, etc) */
 #undef DEBUG
 
 _PR glyph_buf *alloc_glyph_buf(int cols, int rows);
@@ -76,8 +87,7 @@ hash_glyph_row(glyph_buf *g, int row)
     while(togo-- > 0)
     {
 	/* Is this satisfactory? */
-	value = (value * 33) + *codes++;
-	value = (value * 33) + *attrs++;
+	value = (value * 33) + *codes++ + (*attrs++ << 8);
     }
     return(value);
 }
@@ -116,6 +126,9 @@ garbage_glyphs(WIN *w, int x, int y, int width, int height)
 static inline bool
 compare_lines(glyph_buf *g1, glyph_buf *g2, int line1, int line2)
 {
+#if COMPARE_FAST_AND_LOOSE
+    return g1->hashes[line1] == g2->hashes[line2];
+#else
     return (g1->hashes[line1] == g2->hashes[line2]
 	    && memcmp(GLYPH_BUF_CODES(g1, line1),
 		      GLYPH_BUF_CODES(g2, line2),
@@ -123,6 +136,7 @@ compare_lines(glyph_buf *g1, glyph_buf *g2, int line1, int line2)
 	    && memcmp(GLYPH_BUF_ATTRS(g1, line1),
 		      GLYPH_BUF_ATTRS(g2, line2),
 		      g1->cols * sizeof(glyph_attr)) == 0);
+#endif
 }
 
 
@@ -333,7 +347,6 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 
 #ifdef DEBUG
     printf("Drawing: ");
-    fflush(stdout);
 #endif
 
     /* Use the links
@@ -372,7 +385,6 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 	redisplay_do_copy(w, old_g, new_g, src, dst, n);
 #ifdef DEBUG
 	printf(" COPY(%d: %d->%d) ", n, src, dst);
-	fflush(stdout);
 #endif
 
 	/* In all lines yet to be updated, make sure that the
@@ -393,7 +405,6 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 		    links[j] += (dst - src);
 #ifdef DEBUG
 		    printf(" RELOC(%d: %d->%d) ", j, link_j, links[j]);
-		    fflush(stdout);
 #endif
 		}
 		else if(link_j >= src + n && link_j < dst + n)
@@ -403,7 +414,6 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 		    links[j] = -1;
 #ifdef DEBUG
 		    printf(" TRASH(%d) ", j);
-		    fflush(stdout);
 #endif
 		}
 	    }
@@ -421,7 +431,6 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 		    links[j] = -1;
 #ifdef DEBUG
 		    printf(" TRASH(%d) ", j);
-		    fflush(stdout);
 #endif
 		}
 		else if(link_j >= src && link_j <= dst + n)
@@ -430,7 +439,6 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 		    links[j] -= (src - dst);
 #ifdef DEBUG
 		    printf(" RELOC(%d: %d->%d) ", j, link_j, links[j]);
-		    fflush(stdout);
 #endif
 		}
 	    }
@@ -445,7 +453,6 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 	    redisplay_do_draw(w, old_g, new_g, i);
 #ifdef DEBUG
 	    printf(" DRAW(%d) ", i);
-	    fflush(stdout);
 #endif
 	}
     }
@@ -655,8 +662,11 @@ redisplay_message(WIN *w)
     memcpy(GLYPH_BUF_ATTRS(w->w_NewContent, w->w_MaxY - 1),
 	   GLYPH_BUF_ATTRS(w->w_Content, w->w_MaxY - 1),
 	   w->w_MaxX);
+    w->w_NewContent->hashes[w->w_MaxY-1] = w->w_Content->hashes[w->w_MaxY-1];
 
     make_message_glyphs(w->w_Content, w);
+    w->w_Content->hashes[w->w_MaxY-1]
+        = hash_glyph_row(w->w_Content, w->w_MaxY-1);
     redisplay_do_draw(w, w->w_NewContent, w->w_Content, w->w_MaxY);
     cmd_flush_output();
 }
