@@ -31,7 +31,7 @@
 		     "C-M-x" 'smm-eval-print-sexp
 		     "C-j" 'smm-eval-insert-sexp))
 
-(defvar sawmill-client-program "sawmill-client")
+(defvar sawmill-client-program "sawfish-client")
 
 (defun smm-eval (form)
   (let*
