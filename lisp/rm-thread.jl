@@ -95,12 +95,11 @@ be shown before the second.")
 ;; Variables
 
 ;;;###autoload
-(defun rm-thread-folder ()
-  "Display messages in the current folder by thread."
-  (interactive)
+(defun rm-thread-folder (folder &optional no-redisplay)
+  "Display messages in FOLDER by thread."
+  (interactive (list (rm-current-folder)))
   (let*
-      ((folder (rm-current-folder))
-       (threads nil)
+      ((threads nil)
        (message-lists (list (rm-get-folder-field folder rm-folder-before-list)
 			    (list (rm-get-folder-field
 				   folder rm-folder-current-msg))
@@ -180,7 +179,8 @@ be shown before the second.")
     ;; list(s) of messages?
     (rm-set-folder-field folder rm-folder-sort-key 'thread)
     (rm-install-messages folder (apply 'nconc threads))
-    (rm-redisplay-folder folder)
+    (unless no-redisplay
+      (rm-redisplay-folder folder))
     (message "Threading folder...done" t)))
 
 ;;;###autoload
@@ -190,16 +190,16 @@ be shown before the second.")
   (let
       ((folder (rm-current-folder)))
     (if (eq (rm-get-folder-field folder rm-folder-sort-key) 'thread)
-	(rm-sort-folder 'location)
-      (rm-thread-folder))))
+	(rm-sort-folder folder 'location)
+      (rm-thread-folder folder))))
 
 
 ;; Folder sorting
 
 ;;;###autoload
-(defun rm-sort-folder (key &optional reversed)
-  "Select the order in which messages are displayed in the current folder
-as that defined by the symbol KEY. Standard options for KEY include:
+(defun rm-sort-folder (folder key &optional reversed no-redisplay)
+  "Select the order in which messages are displayed in FOLDER as that defined
+by the symbol KEY. Standard options for KEY include:
 
   location		Sort by physical location in the folder
   date			Sort by date of sending
@@ -219,28 +219,38 @@ the raw prefix argument."
   (interactive
    (let
        ((arg current-prefix-arg))
-     (list (intern (prompt-from-list
+     (list (rm-current-folder)
+	   (intern (prompt-from-list
 		    (mapcar #'(lambda (p)
 				(symbol-name (car p))) rm-sort-predicates)
 		    "Sort key:"))
 	   arg)))
-  (let
-      ((folder (rm-current-folder))
-       (rm-sort-pred (cdr (assq key rm-sort-predicates))))
-    (unless rm-sort-pred
-      (error "Unknown sort key: %s" key))
-    (unless (rm-get-folder-field folder rm-folder-current-msg)
-      (error "No messages to sort!"))
-    (rm-set-folder-field folder rm-folder-sort-key key)
-    (rm-install-messages
-     folder (sort (nconc (rm-get-folder-field
-			  folder rm-folder-before-list)
-			 (list (rm-get-folder-field
-				folder rm-folder-current-msg))
-			 (rm-get-folder-field
-			  folder rm-folder-after-list))
-		  (if reversed
-		      #'(lambda (x y)
-			  (not (funcall rm-sort-pred x y)))
-		    rm-sort-pred)))
-    (rm-redisplay-folder folder)))
+  (unless (atom key)
+    (when (< (car key) 0)
+      (setq reversed (not reversed)))
+    (setq key (cdr key)))
+  (if (eq key 'thread)
+      (rm-thread-folder folder no-redisplay)
+    (let
+	((rm-sort-pred (cdr (assq key rm-sort-predicates))))
+      (unless rm-sort-pred
+	(error "Unknown sort key: %s" key))
+      (unless (rm-get-folder-field folder rm-folder-current-msg)
+	(error "No messages to sort!"))
+      ;; Prevent infinite regress
+      (rm-set-folder-field folder rm-folder-sort-key nil)
+      (rm-install-messages
+       folder (sort (nconc (rm-get-folder-field
+			    folder rm-folder-before-list)
+			   (list (rm-get-folder-field
+				  folder rm-folder-current-msg))
+			   (rm-get-folder-field
+			    folder rm-folder-after-list))
+		    (if reversed
+			#'(lambda (x y)
+			    (not (funcall rm-sort-pred x y)))
+		      rm-sort-pred)))
+      (rm-set-folder-field folder rm-folder-sort-key
+			   (if reversed (cons -1 key) key))
+      (unless no-redisplay
+	(rm-redisplay-folder folder)))))
