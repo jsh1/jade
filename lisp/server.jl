@@ -54,11 +54,9 @@ into a new buffer and display it at line LINE-NUMBER."
       buf)))
 
 ;; Hooked into kill-buffer, replies to the client if necessary
-(defun server-file-kill (buf)
-  (when (server-reply buf)
-    (message (format nil "Client file `%s' finished."
-		     (buffer-file-name buf))))
-  t)
+(defun server-file-kill ()
+  (when (server-reply (current-buffer))
+    (message (format nil "Client file `%s' finished." (buffer-file-name)))))
 
 ;;;###autoload
 (defun server-close-file ()

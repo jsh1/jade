@@ -127,19 +127,18 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
   (call-hook 'shell-mode-hook))
 
 (defun shell-mode-kill ()
-  (shell-kill-hook)
+  (shell-kill-buffer-hook)
   (kill-all-local-variables))
 
-(defun shell-kill-buffer-hook (buffer)
-  (with-buffer buffer
-    (when (and shell-process (process-in-use-p shell-process))
-      (unless (yes-or-no-p "Shell subprocess running; kill it?")
-	(error "Can't kill shell without killing its subprocess"))
-      ;; don't want the callback function to run or to output
-      (set-process-function shell-process nil)
-      (set-process-output-stream shell-process nil)
-      (set-process-error-stream shell-process nil)
-      (kill-process shell-process nil))))
+(defun shell-kill-buffer-hook ()
+  (when (and shell-process (process-in-use-p shell-process))
+    (unless (yes-or-no-p "Shell subprocess running; kill it?")
+      (error "Can't kill shell without killing its subprocess"))
+    ;; don't want the callback function to run or to output
+    (set-process-function shell-process nil)
+    (set-process-output-stream shell-process nil)
+    (set-process-error-stream shell-process nil)
+    (kill-process shell-process nil)))
 
 
 ;; If a shell subprocess isn't running create one
