@@ -156,7 +156,7 @@ static void
 disconnect_from_jade(int sock_fd)
 {
     /* Overkill really. */
-    char req = req_end_of_session;
+    u_char req = req_end_of_session;
     write(sock_fd, &req, 1);
     close(sock_fd);
 }
@@ -167,8 +167,8 @@ find_file(int sock_fd, char *arg, u_long linenum)
     char buf[PATH_MAX];
     char *filename;
     u_long filename_len;
-    char req = req_find_file;
-    u_long result;
+    u_char req = !opt_quiet ? req_find_file : req_find_file_async;
+    u_long result = 0;
 
     /* Make sure the filename is absolute; the server could have
        a different working directory to us.  */
@@ -204,9 +204,10 @@ find_file(int sock_fd, char *arg, u_long linenum)
        || write(sock_fd, &filename_len, sizeof(u_long)) != sizeof(u_long)
        || write(sock_fd, filename, filename_len) != filename_len
        || write(sock_fd, &linenum, sizeof(u_long)) != sizeof(u_long)
-       || read(sock_fd, &result, sizeof(u_long)) != sizeof(u_long))
+       || (req != req_find_file_async
+	   && read(sock_fd, &result, sizeof(u_long)) != sizeof(u_long)))
     {
-	perror("find_file_req");
+	perror("find_file");
 	return 10;
     }
     return result;
@@ -217,32 +218,36 @@ eval_lisp_form(int sock_fd, char *form)
 {
     /* Protocol is; >req_eval:1, >FORM-LEN:4, >FORM:?, <RES-LEN:4, <RES:?
        in the local byte-order. */
-    char req = req_eval;
+    u_char req = !opt_quiet ? req_eval : req_eval_async;
     u_long len = strlen(form);
     char *result;
 
     if(write(sock_fd, &req, 1) != 1
        || write(sock_fd, &len, sizeof(u_long)) != sizeof(u_long)
        || write(sock_fd, form, len) != len
-       || read(sock_fd, &len, sizeof(u_long)) != sizeof(u_long))
+       || (req != req_eval_async
+	   && read(sock_fd, &len, sizeof(u_long)) != sizeof(u_long)))
     {
 	perror("eval_req");
 	return 10;
     }
-    if(len > 0)
+    if(req != req_eval_async)
     {
-	result = malloc(len + 1);
-	if(result == 0 || read(sock_fd, result, len) != len)
+	if(len > 0)
 	{
-	    perror("eval_req");
-	    return 10;
+	    result = malloc(len + 1);
+	    if(result == 0 || read(sock_fd, result, len) != len)
+	    {
+		perror("eval_req");
+		return 10;
+	    }
+	    result[len] = 0;
+	    if(!opt_quiet)
+		puts(result);
 	}
-	result[len] = 0;
-	if(!opt_quiet)
-	    puts(result);
+	else
+	    printf("%s\n---> error\n", form);
     }
-    else
-	printf("%s\n---> error\n", form);
     return 0;
 }
 
@@ -257,7 +262,7 @@ where OPTIONS are any of:\n
 			 return with exit code 1
 	[+LINE] FILE	Edit file FILE on the server, with the cursor
 			 at line number LINE optionally.
-	-q		Be quiet
+	-q		Be quiet (perform commands asynchronously)
 	-f FUNCTION	Call Lisp function FUNCTION on the server
 	-e FORM		Evaluate Lisp form FORM on the server
 	-x DISPLAY	Connect the server to X11 display DISPLAY

@@ -29,8 +29,10 @@
    initiate a command. */
 enum server_request {
     req_find_file = 0,
+    req_find_file_async,
     req_eval,
-    req_end_of_session
+    req_eval_async,
+    req_end_of_session = 255
 };
 
 #endif /* JADE_SERVER_H */

@@ -56,7 +56,7 @@ DEFSTRING(val_fmt, "%S");
 static void
 server_handle_request(int fd)
 {
-    char req;
+    u_char req;
     if(read(fd, &req, 1) != 1)
 	goto disconnect;
     switch(req)
@@ -65,10 +65,11 @@ server_handle_request(int fd)
 	repv val;
 
     case req_find_file:
+    case req_find_file_async:
 	/* 1. read length field
 	   2. read LENGTH bytes for the filename
 	   3. read the line number
-	   4. add (FILE . SOCK-FD) to list of client files
+	   4. if !async add (FILE . SOCK-FD) to list of client files
 	   5. call server-find-file with FILE and LINE */
 	if(read(fd, &len, sizeof(u_long)) != sizeof(u_long)
 	   || (val = rep_make_string(len + 1)) == rep_NULL
@@ -76,14 +77,19 @@ server_handle_request(int fd)
 	   || read(fd, &tem, sizeof(u_long)) != sizeof(u_long))
 	    goto io_error;
 	rep_STR(val)[len] = 0;
-	client_list = Fcons(Fcons(val, rep_MAKE_INT(fd)), client_list);
+	if (req != req_find_file_async)
+	    client_list = Fcons(Fcons(val, rep_MAKE_INT(fd)), client_list);
 	rep_call_lisp2(Qserver_find_file, val, rep_MAKE_INT(tem));
-	/* Block any more input on this fd until we've replied to
-	   the original message. */
-	rep_deregister_input_fd(fd);
+	if (req != req_find_file_async)
+	{
+	    /* Block any more input on this fd until we've replied to
+	       the original message. */
+	    rep_deregister_input_fd(fd);
+	}
 	break;
 
     case req_eval:
+    case req_eval_async:
 	/* 1. read length field
 	   2. read LENGTH bytes of FORM
 	   3. eval and print FORM
@@ -97,20 +103,23 @@ server_handle_request(int fd)
 	val = Fread(Fcons(rep_MAKE_INT(0), val));
 	if(val != rep_NULL)
 	    val = Feval(val);
-	if(val != rep_NULL)
-	    val = Fformat(rep_LIST_3(Qnil, rep_VAL(&val_fmt), val));
-	if(val != rep_NULL && rep_STRINGP(val))
+	if (req != req_eval_async)
 	{
-	    len = rep_STRING_LEN(val);
-	    if(write(fd, &len, sizeof(u_long)) != sizeof(u_long)
-	       || write(fd, rep_STR(val), len) != len)
-		goto io_error;
-	}
-	else
-	{
-	    len = 0;
-	    if(write(fd, &len, sizeof(u_long)) != sizeof(u_long))
-		goto io_error;
+	    if(val != rep_NULL)
+		val = Fformat(rep_LIST_3(Qnil, rep_VAL(&val_fmt), val));
+	    if(val != rep_NULL && rep_STRINGP(val))
+	    {
+		len = rep_STRING_LEN(val);
+		if(write(fd, &len, sizeof(u_long)) != sizeof(u_long)
+		   || write(fd, rep_STR(val), len) != len)
+		    goto io_error;
+	    }
+	    else
+	    {
+		len = 0;
+		if(write(fd, &len, sizeof(u_long)) != sizeof(u_long))
+		    goto io_error;
+	    }
 	}
 	break;
 
