@@ -98,91 +98,92 @@ be shown before the second.")
 (defun rm-thread-folder (folder &optional no-redisplay)
   "Display messages in FOLDER by thread."
   (interactive (list (rm-current-folder)))
-  (let*
-      ((threads nil)
-       (message-lists (list (rm-get-folder-field folder rm-folder-before-list)
-			    (list (rm-get-folder-field
-				   folder rm-folder-current-msg))
-			    (rm-get-folder-field
-			     folder rm-folder-after-list))))
-   (unless (rm-get-folder-field folder rm-folder-current-msg)
-    (error "No messages to thread!"))
-   (message "Threading folder..." t)
-    (mapc
-     ;; Called for a list of messages
-     #'(lambda (message-list)
-	 (mapc
-	  ;; Called for a single message
-	  #'(lambda (message)
-	      ;; Called for each message. Basic strategy is to
-	      ;; keep creating new threads, trying to join them up
-	      ;; as we go (to cope with disordered messages)
-	      (let
-		  ((message-id (rm-get-message-id message))
-		   (references (cons (rm-get-in-reply-to message)
-				     (rm-get-references message)))
-		   (tied-threads nil))
-		(mapc
-		 ;; Called for a single thread of messages
-		 #'(lambda (thread)
-		     (catch 'thread
-		       (mapc
-			;; Called for a single message in the thread
-			#'(lambda (thread-message)
-			    ;; Should really look for an intersection in
-			    ;; the References headers?
-			    (when (or (and rm-thread-using-subject
-					   (string= (rm-get-actual-subject
-						     message)
-						    (rm-get-actual-subject
-						     thread-message)))
-				      (memq (rm-get-message-id
-					     thread-message) references)
-				      (eq message-id (rm-get-in-reply-to
-						      thread-message))
-				      (memq message-id (rm-get-references
-							thread-message)))
-			      ;; Note where we should thread the MESSAGE
-			      (setq tied-threads (cons thread tied-threads))
-			      ;; Don't need to scan this THREAD anymore
-			      (throw 'thread nil)))
-			thread)))
-		     threads)
-		(if tied-threads
-		    ;; Link all of TIED-THREADS into one, and add MESSAGE
-		    (progn
-		      ;; Delete the threads being tied..
-		      (setq threads (delete-if #'(lambda (x)
-						   (memq x tied-threads))
-					       threads))
-		      ;; ..then cons them onto the head as one
-		      (setq threads (cons (apply 'nconc (list message)
-						 tied-threads)
-					  threads)))
-		  ;; No thread for MESSAGE, start a new one
-		  (setq threads (cons (list message) threads)))))
-	  message-list))
-     message-lists)
-    ;; First sort the messages in each thread
-    (let
-	((rm-pred (cdr (assq rm-intra-thread-sort-key rm-sort-predicates))))
-      (setq threads (mapcar
-		     #'(lambda (thread)
-			 (sort thread rm-pred))
-		     threads)))
-    ;; Then sort the threads themselves
-    (let
-	((rm-pred (cdr (assq rm-inter-thread-sort-key rm-sort-predicates))))
-      (setq threads (sort threads #'(lambda (x y)
-				      (funcall rm-pred (car x) (car y))))))
-    ;; Ok, so we now have a list of THREADS, spit them out as the
-    ;; list(s) of messages?
-    (rm-set-folder-field folder rm-folder-sort-key nil)	;no infinite regress
-    (rm-install-messages folder (apply 'nconc threads))
-    (rm-set-folder-field folder rm-folder-sort-key 'thread)
-    (unless no-redisplay
-      (rm-redisplay-folder folder))
-    (message "Threading folder...done" t)))
+  (message "Threading folder..." t)
+  (when (rm-get-folder-field folder rm-folder-current-msg)
+    (let*
+	((threads nil)
+	 (message-lists (list (rm-get-folder-field
+			       folder rm-folder-before-list)
+			      (list (rm-get-folder-field
+				     folder rm-folder-current-msg))
+			      (rm-get-folder-field
+			       folder rm-folder-after-list))))
+      (mapc
+       ;; Called for a list of messages
+       #'(lambda (message-list)
+	   (mapc
+	    ;; Called for a single message
+	    #'(lambda (message)
+		;; Called for each message. Basic strategy is to
+		;; keep creating new threads, trying to join them up
+		;; as we go (to cope with disordered messages)
+		(let
+		    ((message-id (rm-get-message-id message))
+		     (references (cons (rm-get-in-reply-to message)
+				       (rm-get-references message)))
+		     (tied-threads nil))
+		  (mapc
+		   ;; Called for a single thread of messages
+		   #'(lambda (thread)
+		       (catch 'thread
+			 (mapc
+			  ;; Called for a single message in the thread
+			  #'(lambda (thread-message)
+			      ;; Should really look for an intersection in
+			      ;; the References headers?
+			      (when (or (and rm-thread-using-subject
+					     (string= (rm-get-actual-subject
+						       message)
+						      (rm-get-actual-subject
+						       thread-message)))
+					(memq (rm-get-message-id
+					       thread-message) references)
+					(eq message-id (rm-get-in-reply-to
+							thread-message))
+					(memq message-id (rm-get-references
+							  thread-message)))
+				;; Note where we should thread the MESSAGE
+				(setq tied-threads (cons thread tied-threads))
+				;; Don't need to scan this THREAD anymore
+				(throw 'thread nil)))
+			  thread)))
+		   threads)
+		  (if tied-threads
+		      ;; Link all of TIED-THREADS into one, and add MESSAGE
+		      (progn
+			;; Delete the threads being tied..
+			(setq threads (delete-if #'(lambda (x)
+						     (memq x tied-threads))
+						 threads))
+			;; ..then cons them onto the head as one
+			(setq threads (cons (apply 'nconc (list message)
+						   tied-threads)
+					    threads)))
+		    ;; No thread for MESSAGE, start a new one
+		    (setq threads (cons (list message) threads)))))
+	    message-list))
+       message-lists)
+      ;; First sort the messages in each thread
+      (let
+	  ((rm-pred (cdr (assq rm-intra-thread-sort-key rm-sort-predicates))))
+	(setq threads (mapcar
+		       #'(lambda (thread)
+			   (sort thread rm-pred))
+		       threads)))
+      ;; Then sort the threads themselves
+      (let
+	  ((rm-pred (cdr (assq rm-inter-thread-sort-key rm-sort-predicates))))
+	(setq threads (sort threads #'(lambda (x y)
+					(funcall rm-pred (car x) (car y))))))
+      ;; Ok, so we now have a list of THREADS, spit them out as the
+      ;; list(s) of messages?
+      ;; [no infinite regress]
+      (rm-set-folder-field folder rm-folder-sort-key nil)
+      (rm-install-messages folder (apply 'nconc threads))))
+  (rm-set-folder-field folder rm-folder-sort-key 'thread)
+  (unless no-redisplay
+    (rm-redisplay-folder folder))
+  (message "Threading folder...done" t))
 
 ;;;###autoload
 (defun rm-toggle-threading ()
@@ -202,12 +203,12 @@ be shown before the second.")
   "Select the order in which messages are displayed in FOLDER as that defined
 by the symbol KEY. Standard options for KEY include:
 
-  location		Sort by physical location in the folder
-  date			Sort by date of sending
-  subject		Sort by subject line
-  sender		Sort by name of sender
-  recipients		Sort by names of recipients
-  lines			Sort by the number of lines in the message
+location		Sort by physical location in the folder
+date			Sort by date of sending
+subject		Sort by subject line
+sender		Sort by name of sender
+recipients		Sort by names of recipients
+lines			Sort by the number of lines in the message
 
 Extra sort options can be added by changing the `rm-sort-predicates'
 variable.
@@ -232,26 +233,25 @@ the raw prefix argument."
     (setq key (cdr key)))
   (if (eq key 'thread)
       (rm-thread-folder folder no-redisplay)
-    (let
-	((rm-sort-pred (cdr (assq key rm-sort-predicates))))
-      (unless rm-sort-pred
-	(error "Unknown sort key: %s" key))
-      (unless (rm-get-folder-field folder rm-folder-current-msg)
-	(error "No messages to sort!"))
-      ;; Prevent infinite regress
-      (rm-set-folder-field folder rm-folder-sort-key nil)
-      (rm-install-messages
-       folder (sort (nconc (rm-get-folder-field
-			    folder rm-folder-before-list)
-			   (list (rm-get-folder-field
-				  folder rm-folder-current-msg))
-			   (rm-get-folder-field
-			    folder rm-folder-after-list))
-		    (if reversed
-			#'(lambda (x y)
-			    (not (funcall rm-sort-pred x y)))
-		      rm-sort-pred)))
-      (rm-set-folder-field folder rm-folder-sort-key
-			   (if reversed (cons -1 key) key))
-      (unless no-redisplay
-	(rm-redisplay-folder folder)))))
+    (when (rm-get-folder-field folder rm-folder-current-msg)
+      (let
+	  ((rm-sort-pred (cdr (assq key rm-sort-predicates))))
+	(unless rm-sort-pred
+	  (error "Unknown sort key: %s" key))
+	;; Prevent infinite regress
+	(rm-set-folder-field folder rm-folder-sort-key nil)
+	(rm-install-messages
+	 folder (sort (nconc (rm-get-folder-field
+			      folder rm-folder-before-list)
+			     (list (rm-get-folder-field
+				    folder rm-folder-current-msg))
+			     (rm-get-folder-field
+			      folder rm-folder-after-list))
+		      (if reversed
+			  #'(lambda (x y)
+			      (not (funcall rm-sort-pred x y)))
+			rm-sort-pred)))))
+    (rm-set-folder-field folder rm-folder-sort-key
+			 (if reversed (cons -1 key) key))
+    (unless no-redisplay
+      (rm-redisplay-folder folder))))
