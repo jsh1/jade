@@ -24,6 +24,10 @@
 (defvar case-fold-search t)
 (make-variable-buffer-local 'case-fold-search)
 
+(defvar replace-preserve-case t
+  "When non-nil, replace-last-match will attempt to preserve the original case
+of replaced strings.")
+
 
 
 ;;;###autoload
@@ -32,7 +36,13 @@
 the result of `(expand-last-match TEMPLATE)'. Returns the position of the
 character following the insertion."
   (let
-      ((new (expand-last-match template)))
+      ((old (copy-area (match-start) (match-end)))
+       (new (expand-last-match template)))
+    (when replace-preserve-case
+      (cond ((string-upper-case-p old)
+	     (setq new (string-upcase new)))
+	    ((string-capitalized-p old)
+	     (setq new (capitalize-string new)))))
     (delete-area (match-start) (match-end))
     (insert new (match-start))))
 
