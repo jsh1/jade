@@ -1223,7 +1223,7 @@ key, the car the order to sort in, a positive or negative integer.")
 		       (let
 			   ((date (rm-get-date-vector m)))
 			 (when date
-			   (format nil "%02d" (aref date mail-date-day) "")))))
+			   (format nil "%d" (aref date mail-date-day) "")))))
 	  (cons ?w #'(lambda (m)
 		       (let
 			   ((date (rm-get-date-vector m)))
@@ -1239,7 +1239,7 @@ key, the car the order to sort in, a positive or negative integer.")
 		       (let
 			   ((date (rm-get-date-vector m)))
 			 (when date
-			   (format nil "%02d" (aref date mail-date-month))))))
+			   (format nil "%d" (aref date mail-date-month))))))
 	  (cons ?m #'(lambda (m)
 		       (let
 			   ((date (rm-get-date-vector m)))
