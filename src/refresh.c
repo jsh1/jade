@@ -116,6 +116,7 @@ refresh_view(VW *vw)
     {
 	if((vw->vw_Win->w_Flags & WINFF_SLEEPING) == 0)
 	{
+	    resync_xy(vw);
 	    if(((vw->vw_Flags & VWFF_MINIBUF) == 0)
 	       && ((vw->vw_Flags & VWFF_REFRESH_STATUS)
 	           || (vw->vw_Flags & VWFF_FORCE_REFRESH)
@@ -126,7 +127,6 @@ refresh_view(VW *vw)
 		redraw_status_buffer(vw);
 		vw->vw_Flags &= ~VWFF_REFRESH_STATUS;
 	    }
-	    resync_xy(vw);
 	    if((vw->vw_LastRefTx != vw->vw_Tx)
 	       || (vw->vw_Flags & VWFF_FORCE_REFRESH)
 	       || (tx->tx_Flags & TXFF_REFRESH_ALL))
