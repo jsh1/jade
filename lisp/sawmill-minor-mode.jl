@@ -21,8 +21,6 @@
 (defvar smm-active nil)
 (make-variable-buffer-local 'smm-active)
 
-(defvar smm-documentation-file nil)
-
 (setq minor-mode-alist (cons '(smm-active " Sawmill") minor-mode-alist))
 (setq minor-mode-keymap-alist (cons '(smm-active . smm-keymap)
 				    minor-mode-keymap-alist))
@@ -39,7 +37,7 @@
        (process (make-process output))
        (print-escape t))
     (if (zerop (call-process process nil sawmill-client-program
-			     "-e" (format nil "%S" form)))
+			     "-w" "-e" (format nil "%S" form)))
 	;; success
 	(get-output-stream-string output)
       (error "can't call sawmill-client"))))
@@ -65,16 +63,9 @@ in the status line."
 ;;;###autoload
 (defun sawmill-minor-mode ()
   (interactive)
-  (unless smm-documentation-file
-    (setq smm-documentation-file
-	  (read-from-string (smm-eval 'documentation-file))))
-  (setq documentation-files (delete smm-documentation-file
-				    documentation-files))
   (if smm-active
       (setq smm-active nil)
-    (setq smm-active t)
-    (setq documentation-files
-	  (cons smm-documentation-file documentation-files))))
+    (setq smm-active t)))
 
 ;;;###autoload
 (defun sawmill-console ()
