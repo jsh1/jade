@@ -763,6 +763,8 @@ afterwards, returning the value of (progn FORMS...).
 		curr_win->w_CurrVW = curr_vw;
 	    }
 	}
+	else
+	    res = signal_arg_error(res, 1);
 	POPGC;
 	return(res);
     }
