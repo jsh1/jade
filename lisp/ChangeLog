@@ -1,3 +1,8 @@
+2000-05-17  John Harper  <john@dcs.warwick.ac.uk>
+
+	* lisp-mode.jl (lisp-mode): fixed mode-defun-header to include
+	definitions not in column zero
+
 2000-05-15  John Harper  <john@dcs.warwick.ac.uk>
 
 	* tags.jl, rm-restrict.jl, page-summary.jl, html-decode.jl,
