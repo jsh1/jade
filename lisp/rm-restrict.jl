@@ -133,6 +133,13 @@ For example, to define a rule accepting only messages sent by me (that's
 	  input))
     input))
 
+;; Filter the list MESSAGES, by RULE
+(defun rm-filter-by-rule (messages rule)
+  (let
+      ((function (symbol-function (rm-rule-symbol rule))))
+    (filter #'(lambda (rm-rule-message)
+		(funcall function)))))
+
 
 ;; Standard rules
 
