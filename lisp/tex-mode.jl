@@ -81,8 +81,6 @@ Local bindings in this mode are:\n
 	generic-exp-special-re "[][(){}\"\$a-zA-Z0-9]")
   (make-local-variable 'ispell-ignore-word-hook)
   (add-hook 'ispell-ignore-word-hook 'tex-ispell-ignore-word-hook)
-  (call-hook 'text-mode-hook)
-  (call-hook 'tex-mode-hook)
   (cond (from-sub-mode)
 	((re-search-backward "^\\\\(document(class|style)|chapter|(sub)*section)"
 			     (min (forward-line 100 (start-of-buffer))
@@ -110,6 +108,8 @@ Local bindings in this mode are:\n
 	mode-name "LaTeX")
   (unless (assq 'tex-run-command (buffer-variables))
     (setq tex-run-command latex-run-command))
+  (call-hook 'text-mode-hook)
+  (call-hook 'tex-mode-hook)
   (call-hook 'latex-mode-hook))  
 
 ;;;###autoload
@@ -121,6 +121,8 @@ Local bindings in this mode are:\n
   (interactive)
   (unless from-super-mode
     (tex-mode t))
+  (call-hook 'text-mode-hook)
+  (call-hook 'tex-mode-hook)
   (call-hook 'plain-tex-mode-hook))
   
 (defun tex-insert-end ()
