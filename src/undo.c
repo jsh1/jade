@@ -321,6 +321,7 @@ taken from the prefix argument.
 	{
 	    /* clear modification flag. */
 	    VTX(tx)->tx_ProperSaveChanges = VTX(tx)->tx_Changes;
+	    VTX(tx)->tx_LastSaveChanges = VTX(tx)->tx_Changes;
 	}
 	TEST_INT;
 	if(INT_P)
