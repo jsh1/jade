@@ -754,6 +754,27 @@ over the COUNT following items."
 
 ;; Miscellaneous editing commands
 
+(defun quoted-insert (count)
+  "Read the next event; if it's a digit, read two more digits then insert the
+character whose octal value has been entered, otherwise simply insert the
+event as read. COUNT copies of the same character are inserted."
+  (interactive "p")
+  (let
+      ((first (next-event t)))
+    (if (digit-char-p (aref first 0))
+	;; Read two more digits
+	(let*
+	    ((second (next-event t))
+	     (third (next-event t)))
+	  (setq first (make-string count (+ (ash (- (aref first 0) ?0) 6)
+					    (ash (- (aref second 0) ?0) 3)
+					    (- (aref third 0) ?0))))
+	  (or (< (aref first 0) 256)
+	      (error "Character overflow")))
+      (if (/= count 1)
+	  (setq first (make-string count (aref first 0)))))
+    (insert first)))
+
 (defun backspace-char (count)
   "Delete COUNT characters preceding the cursor, if the cursor is past the
 end of the line simply move COUNT characters to the left."
