@@ -307,7 +307,7 @@ messagen(u_char *title, int length)
     if((w->w_Flags & WINFF_SLEEPING) == 0)
     {
 	if(w->w_Message != NULL)
-	    str_free(w->w_Message);
+	    sys_free(w->w_Message);
 	w->w_Message = str_dupn(title, length);
 	w->w_MessageLen = length;
 	w->w_Flags |= WINFF_MESSAGE;
@@ -339,7 +339,7 @@ messagef(u_char *fmt, ...)
 	if(log_messages)
 	   fprintf(stderr, "%s\n", fmtbuff);
 	if(w->w_Message != NULL)
-	    str_free(w->w_Message);
+	    sys_free(w->w_Message);
 	len = strlen(fmtbuff);
 	w->w_Message = str_dupn(fmtbuff, len);
 	w->w_MessageLen = len;
@@ -405,7 +405,7 @@ restore_message(WIN *w, u_char *old_msg, u_long old_msg_len)
     if(old_msg != NULL)
     {
 	if(w->w_Message != NULL)
-	    str_free(w->w_Message);
+	    sys_free(w->w_Message);
 	w->w_Message = old_msg;
 	w->w_MessageLen = old_msg_len;
 	w->w_Flags |= WINFF_MESSAGE;

@@ -327,7 +327,7 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 		long tlen = section_length(VTX(selection_info[selno].data),
 					   selection_info[selno].start,
 					   selection_info[selno].end);
-		char *string = str_alloc(tlen + 1);
+		char *string = sys_alloc(tlen + 1);
 		if(string)
 		{
 		    copy_section(VTX(selection_info[selno].data),
@@ -337,7 +337,7 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 		    XChangeProperty(ev->display, ev->requestor, ev->property,
 				    XA_STRING, 8, PropModeReplace,
 				    string, tlen);
-		    str_free(string);
+		    sys_free(string);
 		}
 	    }
 	}

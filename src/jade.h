@@ -28,9 +28,6 @@
 
 /* Some low-level configuration options */
 
-/* Define this to give each buffer its own allocation pool. */
-/* #define STRINGPOOL_PER_BUFFER */
-
 /* When defined, try to translate addresses to their symbols. */
 #define DB_RESOLVE_SYMBOLS
 

@@ -25,7 +25,6 @@
 #include <stdlib.h>
 
 _PR void buffer_sweep(void);
-_PR void flush_all_buffers(void);
 _PR void buffer_prin(VALUE, VALUE);
 _PR TX *first_buffer(void);
 _PR TX *swap_buffers(VW *, TX *);
@@ -46,11 +45,6 @@ static void make_marks_resident(VALUE newtx);
 /* Chain of all allocated TXs. */
 _PR TX *buffer_chain;
 TX *buffer_chain;
-
-#ifndef STRINGPOOL_PER_BUFFER
-_PR StrMem tx_StringPool;
-StrMem tx_StringPool;
-#endif
 
 _PR VALUE sym_auto_save_function;
 DEFSYM(auto_save_function, "auto-save-function");
@@ -118,9 +112,6 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
     if(tx != NULL)
     {
 	memset(tx, 0, sizeof(TX));
-#ifdef STRINGPOOL_PER_BUFFER
-	sm_init(&tx->tx_StringPool);
-#endif
 	if(clear_line_list(tx))
 	{
 	    tx->tx_Car = V_Buffer;
@@ -148,9 +139,6 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 		return(VAL(tx));
 	    }
 	    kill_line_list(tx);
-#ifdef STRINGPOOL_PER_BUFFER
-	    sm_kill(&tx->tx_StringPool);
-#endif
 	}
 	FREE_OBJECT(tx);
     }
@@ -169,9 +157,6 @@ buffer_sweep(void)
 	{
 	    make_marks_non_resident(tx);
 	    kill_line_list(tx);
-#ifdef STRINGPOOL_PER_BUFFER
-	    sm_kill(&tx->tx_StringPool);
-#endif
 	    FREE_OBJECT(tx);
 	}
 	else
@@ -182,21 +167,6 @@ buffer_sweep(void)
 	}
 	tx = nxt;
     }
-}
-
-void
-flush_all_buffers(void)
-{
-#ifdef STRINGPOOL_PER_BUFFER
-    TX *tx = buffer_chain;
-    while(tx != NULL)
-    {
-	sm_flush(&tx->tx_StringPool);
-	tx = tx->tx_Next;
-    }
-#else
-    sm_flush(&tx_StringPool);
-#endif
 }
 
 void
@@ -1213,10 +1183,6 @@ buffers_init(void)
     ADD_SUBR(subr_mark_file);
     ADD_SUBR(subr_mark_resident_p);
     ADD_SUBR(subr_markp);
-
-#ifndef STRINGPOOL_PER_BUFFER
-    sm_init(&tx_StringPool);
-#endif
 }
 
 void
@@ -1228,9 +1194,6 @@ buffers_kill(void)
     {
 	TX *nxttx = tx->tx_Next;
 	kill_line_list(tx);
-#ifdef STRINGPOOL_PER_BUFFER
-	sm_kill(&tx->tx_StringPool);
-#endif
 	FREE_OBJECT(tx);
 	tx = nxttx;
     }
@@ -1242,8 +1205,4 @@ buffers_kill(void)
 	mk = nxtmk;
     }
     mark_chain = NULL;
-
-#ifndef STRINGPOOL_PER_BUFFER
-    sm_kill(&tx_StringPool);
-#endif
 }

@@ -38,23 +38,21 @@
     in case it grows. */
 #define ALLOC_SPARE_LINES 32
 
-/* Strings stored in LINEs are allocated using stringmem.c, this
-   means that small strings are always allocated in chunks of GRAIN
-   (currently eight) bytes. So it makes sense to allocate lines in
-   multiples of this number; allowing many unnecessary re-allocations
-   to be avoided. */
+/* Strings stored in LINEs are allocated using stringmem.c, this means
+   that small strings are always allocated in chunks of eight bytes.
+   So it makes sense to allocate lines in multiples of this number;
+   allowing many unnecessary re-allocations to be avoided. */
 
 /* For a piece of memory of size X, this is the number of bytes we'll
-   actually ask to be allocated. This assumes that GRAIN is some power
-   of two. */
-#define LINE_BUF_SIZE(x) ROUND_UP_INT(x, GRAIN)
+   actually ask to be allocated. */
+#define LINE_BUF_SIZE(x) ROUND_UP_INT(x, 8)
 
 /* Allocate a chunk of memory to store a string of size X (including
    terminating zero). */
-#define ALLOC_LINE_BUF(tx, x) sm_alloc(&TX_STRINGPOOL(tx), LINE_BUF_SIZE(x))
+#define ALLOC_LINE_BUF(tx, x) sys_alloc(LINE_BUF_SIZE(x))
 
 /* Free something allocated with the previous macro. */
-#define FREE_LINE_BUF(tx, p)  sm_free(&TX_STRINGPOOL(tx), p)
+#define FREE_LINE_BUF(tx, p)  sys_free(p)
 
 #ifdef USE_R_ALLOC
 

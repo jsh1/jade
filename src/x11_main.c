@@ -336,7 +336,7 @@ x11_open_display(char *display_name)
     Display *display = XOpenDisplay(display_name);
     if(display)
     {
-	struct x11_display *xdisplay = str_alloc(sizeof(struct x11_display));
+	struct x11_display *xdisplay = sys_alloc(sizeof(struct x11_display));
 	if(xdisplay != 0)
 	{
 	    /* Add at end of list, since some functions grab the
@@ -405,7 +405,7 @@ x11_close_display(struct x11_display *xdisplay)
 					     xdisplay->screen))
 	XFreeColormap(xdisplay->display, xdisplay->colormap);
     XCloseDisplay(xdisplay->display);
-    str_free(xdisplay);
+    sys_free(xdisplay);
 }
     
 void
@@ -423,7 +423,7 @@ DEFSTRING(no_color, "Can't allocate color");
 struct x11_color *
 x11_make_color_dpy(Lisp_Color *c, struct x11_display *dpy)
 {
-    struct x11_color *cell = str_alloc(sizeof(struct x11_color));
+    struct x11_color *cell = sys_alloc(sizeof(struct x11_color));
     if(cell != 0)
     {
 	XColor tem;
@@ -435,7 +435,7 @@ x11_make_color_dpy(Lisp_Color *c, struct x11_display *dpy)
 	    c->color = cell;
 	    return cell;
 	}
-	str_free(cell);
+	sys_free(cell);
 	cmd_signal(sym_error, list_2(VAL(&no_color), c->name));
 	return 0;
     }
@@ -474,7 +474,7 @@ sys_free_color(Lisp_Color *c)
     {
 	struct x11_color *next = x->next;
 	XFreeColors(x->dpy->display, x->dpy->colormap, &x->color.pixel, 1, 0);
-	str_free(x);
+	sys_free(x);
 	x = next;
     }
     c->color = 0;
@@ -494,7 +494,7 @@ x11_free_dpy_colors(struct x11_display *dpy)
 		struct x11_color *next = (*x)->next;
 		XFreeColors(dpy->display, dpy->colormap,
 			    &(*x)->color.pixel, 1, 0);
-		str_free(*x);
+		sys_free(*x);
 		*x = next;
 		break;
 	    }

@@ -150,10 +150,6 @@ typedef struct _TX {
     LINE	   *tx_Lines;
     long	    tx_NumLines, tx_TotalLines;	/* text-lines, array-length */
 
-#ifdef STRINGPOOL_PER_BUFFER
-    StrMem	    tx_StringPool;
-#endif
-
     /* line numbers of `narrowed' region */
     long	    tx_LogicalStart, tx_LogicalEnd;
 
@@ -206,12 +202,6 @@ typedef struct _TX {
 #define flag_insertion(tx, start, end)		((tx)->tx_Changes++)
 #define flag_deletion(tx, start, end)		((tx)->tx_Changes++)
 #define flag_modification(tx, start, end)	((tx)->tx_Changes++)
-
-#ifdef STRINGPOOL_PER_BUFFER
-# define TX_STRINGPOOL(tx) ((tx)->tx_StringPool)
-#else
-# define TX_STRINGPOOL(tx) tx_StringPool
-#endif
 
 
 /* Each view in a window is like this */
