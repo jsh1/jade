@@ -46,7 +46,7 @@ _PR void buffers_kill(void);
 _PR TX *buffer_chain;
 TX *buffer_chain;
 
-VALUE sym_auto_save_function, sym_leading, sym_all;
+static DEFSYM(auto_save_function, "auto-save-function");
 
 _PR VALUE cmd_make_buffer_name(VALUE);
 DEFUN("make-buffer-name", cmd_make_buffer_name, subr_make_buffer_name, (VALUE rawName), V_Subr1, DOC_make_buffer_name) /*
@@ -101,35 +101,44 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 	if(curr_vw)
 	    oldTx = VAL(curr_vw->vw_Tx);
 	else
-	    oldTx = NULL;
+	    oldTx = LISP_NULL;
     }
-    if((tx = mycalloc(sizeof(TX))) && clear_line_list(tx))
+    tx = ALLOC_OBJECT(sizeof(TX));
+    if(tx != NULL)
     {
-	tx->tx_Type = V_Buffer;
-	tx->tx_Next = buffer_chain;
-	buffer_chain = tx;
-	data_after_gc += sizeof(TX);
-	tx->tx_BufferName = NILP(litName) ? cmd_make_buffer_name(name) : name;
-	if(tx->tx_BufferName)
+	memset(tx, 0, sizeof(TX));
+	if(clear_line_list(tx))
 	{
-	    tx->tx_FileName = null_string;
-	    tx->tx_MinorModeNameList = sym_nil;
-	    tx->tx_MinorModeNameString = null_string;
-	    tx->tx_SavedBlockStatus = -1;
-	    tx->tx_TabSize = 8;
-	    tx->tx_LocalVariables = sym_nil;
-	    tx->tx_GlyphTable = oldTx ? VTX(oldTx)->tx_GlyphTable
-		                      : cmd_default_glyph_table();
-	    tx->tx_LastSaveTime = sys_time();
-	    tx->tx_UndoList = sym_nil;
-	    tx->tx_ToUndoList = NULL;
-	    tx->tx_UndoneList = sym_nil;
-	    tx->tx_SavedCPos = make_pos(0, 0);
-	    tx->tx_SavedWPos = tx->tx_SavedCPos;
-	    return(VAL(tx));
+	    tx->tx_Type = V_Buffer;
+	    tx->tx_BufferName = NILP(litName)
+	        ? cmd_make_buffer_name(name) : name;
+	    if(tx->tx_BufferName)
+	    {
+		tx->tx_Next = buffer_chain;
+		buffer_chain = tx;
+		data_after_gc += sizeof(TX);
+
+		tx->tx_FileName = VAL(null_string);
+		tx->tx_MinorModeNameList = sym_nil;
+		tx->tx_MinorModeNameString = VAL(null_string);
+		tx->tx_SavedBlockStatus = -1;
+		tx->tx_TabSize = 8;
+		tx->tx_LocalVariables = sym_nil;
+		tx->tx_GlyphTable = (oldTx
+				     ? VTX(oldTx)->tx_GlyphTable
+				     : cmd_default_glyph_table());
+		tx->tx_LastSaveTime = sys_time();
+		tx->tx_UndoList = sym_nil;
+		tx->tx_ToUndoList = LISP_NULL;
+		tx->tx_UndoneList = sym_nil;
+		tx->tx_SavedCPos = make_pos(0, 0);
+		tx->tx_SavedWPos = tx->tx_SavedCPos;
+		return(VAL(tx));
+	    }
 	}
+	FREE_OBJECT(tx);
     }
-    return(NULL);
+    return LISP_NULL;
 }
 
 _PR VALUE cmd_destroy_buffer(VALUE);
@@ -144,17 +153,17 @@ non-resident.
     DECLARE1(tx, BUFFERP);
     make_marks_non_resident(VTX(tx));
     clear_line_list(VTX(tx));
-    VTX(tx)->tx_FileName = null_string;
-    VTX(tx)->tx_BufferName = null_string;
-    VTX(tx)->tx_ModeName = NULL;
+    VTX(tx)->tx_FileName = VAL(null_string);
+    VTX(tx)->tx_BufferName = VAL(null_string);
+    VTX(tx)->tx_ModeName = LISP_NULL;
     VTX(tx)->tx_MinorModeNameList = sym_nil;
-    VTX(tx)->tx_MinorModeNameString = null_string;
+    VTX(tx)->tx_MinorModeNameString = VAL(null_string);
     VTX(tx)->tx_Changes = 0;
     VTX(tx)->tx_LocalVariables = sym_nil;
     VTX(tx)->tx_GlyphTable = cmd_default_glyph_table();
     VTX(tx)->tx_Flags |= TXFF_RDONLY | TXFF_REFRESH_ALL | TXFF_NO_UNDO;
     VTX(tx)->tx_UndoList = sym_nil;
-    VTX(tx)->tx_ToUndoList = NULL;
+    VTX(tx)->tx_ToUndoList = LISP_NULL;
     VTX(tx)->tx_UndoneList = sym_nil;
 #if 0
     sm_flush(&main_strmem);
@@ -170,15 +179,15 @@ buffer_sweep(void)
     while(tx)
     {
 	TX *nxt = tx->tx_Next;
-	if(!GC_MARKEDP(VAL(tx)))
+	if(!GC_NORMAL_MARKEDP(VAL(tx)))
 	{
 	    make_marks_non_resident(tx);
 	    kill_line_list(tx);
-	    myfree(tx);
+	    FREE_OBJECT(tx);
 	}
 	else
 	{
-	    GC_CLR(VAL(tx));
+	    GC_CLR_NORMAL(VAL(tx));
 	    tx->tx_Next = buffer_chain;
 	    buffer_chain = tx;
 	}
@@ -193,10 +202,12 @@ buffer_prin(VALUE strm, VALUE obj)
     stream_putc(strm, '>');
 }
 
+static DEFSTRING(first_buffer_name, "*jade*");
+
 TX *
 first_buffer(void)
 {
-    TX *tx = VTX(cmd_make_buffer(MKSTR("*jade*"), sym_nil, sym_t));
+    TX *tx = VTX(cmd_make_buffer(VAL(first_buffer_name), sym_nil, sym_t));
     if(!curr_win)
     {
 	curr_win = VWIN(cmd_make_window(sym_nil, sym_nil, sym_nil, sym_nil));
@@ -359,27 +370,28 @@ auto_save_buffers(bool force_save)
     static bool Exclusion;
     if(!Exclusion)
     {
-	VALUE tx = VAL(buffer_chain);
+	TX *tx = buffer_chain;
 	u_long time = sys_time();
 	Exclusion = TRUE;
 	while(tx)
 	{
-	    if(VTX(tx)->tx_Changes
-	       && VTX(tx)->tx_AutoSaveInterval
-	       && (VTX(tx)->tx_LastSaveChanges != VTX(tx)->tx_Changes)
+	    if(tx->tx_Changes
+	       && tx->tx_AutoSaveInterval
+	       && (tx->tx_LastSaveChanges != tx->tx_Changes)
 	       && (force_save
-	           || (time > (VTX(tx)->tx_LastSaveTime + VTX(tx)->tx_AutoSaveInterval))))
+	           || (time > (tx->tx_LastSaveTime + tx->tx_AutoSaveInterval))))
 	    {
-		GCVAL gcv_tx;
-		PUSHGC(gcv_tx, tx);
-		call_lisp1(sym_auto_save_function, tx);
+		VALUE val_tx = VAL(tx);
+		GC_root gc_tx;
+		PUSHGC(gc_tx, val_tx);
+		call_lisp1(sym_auto_save_function, VAL(tx));
 		POPGC;
-		VTX(tx)->tx_LastSaveTime = time;
-		VTX(tx)->tx_LastSaveChanges = VTX(tx)->tx_Changes;
+		tx->tx_LastSaveTime = time;
+		tx->tx_LastSaveChanges = tx->tx_Changes;
 		Exclusion = FALSE;
 		return(1);
 	    }
-	    tx = VAL(VTX(tx)->tx_Next);
+	    tx = tx->tx_Next;
 	}
 	Exclusion = FALSE;
     }
@@ -488,7 +500,7 @@ Return the number of modifications to BUFFER.
 {
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    return(make_number(VTX(tx)->tx_Changes));
+    return(MAKE_INT(VTX(tx)->tx_Changes));
 }
 
 _PR VALUE cmd_buffer_modified_p(VALUE);
@@ -510,7 +522,7 @@ Returns t if the buffer has changed since it was last saved.
 }
 
 _PR VALUE cmd_set_buffer_modified(VALUE, VALUE);
-DEFUN("set-buffer-modified", cmd_set_buffer_modified, subr_set_buffer_modified, (VALUE tx, VALUE stat), V_Subr2, DOC_set_buffer_modified) /*
+DEFUN("set-buffer-modified", cmd_set_buffer_modified, subr_set_buffer_modified, (VALUE buf, VALUE stat), V_Subr2, DOC_set_buffer_modified) /*
 ::doc:set_buffer_modified::
 set-buffer-modified BUFFER STATUS
 
@@ -518,20 +530,19 @@ If STATUS is nil make it look as though buffer hasn't changed, else make
 it look as though it has.
 ::end:: */
 {
-    if(!BUFFERP(tx))
-	tx = VAL(curr_vw->vw_Tx);
+    TX *tx =BUFFERP(buf) ? VTX(buf) : curr_vw->vw_Tx;
     if(NILP(stat))
     {
-	VTX(tx)->tx_ProperSaveChanges = VTX(tx)->tx_Changes;
-	VTX(tx)->tx_LastSaveChanges = VTX(tx)->tx_Changes;
+	tx->tx_ProperSaveChanges = tx->tx_Changes;
+	tx->tx_LastSaveChanges = tx->tx_Changes;
     }
     else
     {
-	VTX(tx)->tx_ProperSaveChanges = VTX(tx)->tx_Changes - 1;
-	VTX(tx)->tx_LastSaveChanges = VTX(tx)->tx_Changes - 1;
+	tx->tx_ProperSaveChanges = tx->tx_Changes - 1;
+	tx->tx_LastSaveChanges = tx->tx_Changes - 1;
     }
-    VTX(tx)->tx_Flags |= TXFF_REFRESH_STATUS;
-    return(tx);
+    tx->tx_Flags |= TXFF_REFRESH_STATUS;
+    return VAL(tx);
 }
 
 _PR VALUE cmd_set_buffer_special(VALUE tx, VALUE specialp);
@@ -619,7 +630,7 @@ Returns the number of lines in BUFFER.
 {
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    return(make_number(VTX(tx)->tx_NumLines));
+    return(MAKE_INT(VTX(tx)->tx_NumLines));
 }
 
 _PR VALUE cmd_line_length(VALUE, VALUE);
@@ -641,7 +652,7 @@ using current cursor position if specifiers are not provided.
 	pos = curr_vw->vw_CursorPos;
 	tx = VAL(curr_vw->vw_Tx);
     }
-    return(make_number(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen - 1));
+    return(MAKE_INT(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen - 1));
 }
 
 _PR VALUE cmd_with_buffer(VALUE);
@@ -655,18 +666,18 @@ returning to the original buffer.
 {
     if(CONSP(args))
     {
-	GCVAL gcv_args;
+	GC_root gc_args;
 	VALUE res;
-	PUSHGC(gcv_args, args);
+	PUSHGC(gc_args, args);
 	if((res = cmd_eval(VCAR(args))) && BUFFERP(res))
 	{
 	    VALUE oldtx = VAL(swap_buffers_tmp(curr_vw, VTX(res)));
 	    if(oldtx)
 	    {
 		VALUE oldcurrvw = VAL(curr_vw);
-		GCVAL gcv_oldtx, gcv_oldcurrvw;
-		PUSHGC(gcv_oldtx, oldtx);
-		PUSHGC(gcv_oldcurrvw, oldcurrvw);
+		GC_root gc_oldtx, gc_oldcurrvw;
+		PUSHGC(gc_oldtx, oldtx);
+		PUSHGC(gc_oldcurrvw, oldcurrvw);
 		res = cmd_progn(VCDR(args));
 		POPGC; POPGC;
 		if(VVIEW(oldcurrvw)->vw_Win)
@@ -678,7 +689,7 @@ returning to the original buffer.
 	POPGC;
 	return(res);
     }
-    return(NULL);
+    return LISP_NULL;
 }
 
 _PR VALUE cmd_bufferp(VALUE);
@@ -813,7 +824,7 @@ DEFUN("last-save-time", var_last_save_time, subr_last_save_time, (VALUE val), V_
 System time at last save of this buffer (could be from an auto-save).
 ::end:: */
 {
-    return(handle_var_int(val, &curr_vw->vw_Tx->tx_LastSaveTime));
+    return(handle_var_long_int(val, &curr_vw->vw_Tx->tx_LastSaveTime));
 }
 
 _PR VALUE var_tab_size(VALUE);
@@ -838,7 +849,7 @@ line.
 	if(STRINGP(val))
 	    tx->tx_ModeName = val;
 	else
-	    tx->tx_ModeName = NULL;
+	    tx->tx_ModeName = LISP_NULL;
 	return(val);
     }
     else if(tx->tx_ModeName)
@@ -860,7 +871,7 @@ List of strings naming all minor-modes enabled in this buffer.
 	val = sym_nil;
     tx->tx_MinorModeNameList = val;
     if(NILP(val))
-	tx->tx_MinorModeNameString = null_string;
+	tx->tx_MinorModeNameString = VAL(null_string);
     else
     {
 	int len;
@@ -964,14 +975,14 @@ mark_sweep(void)
     while(mk)
     {
 	Mark *nxt = mk->mk_NextAlloc;
-	if(!GC_MARKEDP(VAL(mk)))
+	if(!GC_NORMAL_MARKEDP(VAL(mk)))
 	{
 	    unchain_mark(mk);
-	    str_free(mk);
+	    FREE_OBJECT(mk);
 	}
 	else
 	{
-	    GC_CLR(VAL(mk));
+	    GC_CLR_NORMAL(VAL(mk));
 	    mk->mk_NextAlloc = mark_chain;
 	    mark_chain = mk;
 	}
@@ -1038,7 +1049,7 @@ updated as the file changes -- it will always point to the same character
 (for as long as that character exists, anyway).
 ::end:: */
 {
-    Mark *mk = str_alloc(sizeof(Mark));
+    Mark *mk = ALLOC_OBJECT(sizeof(Mark));
     if(mk != NULL)
     {
 	mk->mk_Type = V_Mark;
@@ -1117,7 +1128,7 @@ Sets the position which MARK points to POS in FILE-NAME or BUFFER.
 	case V_StaticString:
 	case V_DynamicString:
 	    tmp = cmd_get_file_buffer(buffer);
-	    if((tmp == NULL) || NILP(tmp))
+	    if((tmp == LISP_NULL) || NILP(tmp))
 	    {
 		VMARK(mark)->mk_Resident = FALSE;
 		VMARK(mark)->mk_Next = non_resident_mark_chain;
@@ -1126,7 +1137,7 @@ Sets the position which MARK points to POS in FILE-NAME or BUFFER.
 	    }
 	    VMARK(mark)->mk_File.name = tmp;
 	    /* FALL THROUGH */
-	case V_TX:
+	case V_Buffer:
 	    VMARK(mark)->mk_Resident = TRUE;
 	    VMARK(mark)->mk_Next = VMARK(mark)->mk_File.tx->tx_MarkChain;
 	    VMARK(mark)->mk_File.tx->tx_MarkChain = VMARK(mark);
@@ -1193,9 +1204,7 @@ void
 buffers_init(void)
 {
     mark_static((VALUE *)&non_resident_mark_chain);
-    INTERN(sym_auto_save_function, "auto-save-function");
-    INTERN(sym_leading, "leading");
-    INTERN(sym_all, "all");
+    INTERN(auto_save_function);
     ADD_SUBR(subr_make_buffer_name);
     ADD_SUBR(subr_make_buffer);
     ADD_SUBR(subr_destroy_buffer);
@@ -1218,8 +1227,8 @@ buffers_init(void)
     ADD_SUBR(subr_line_length);
     ADD_SUBR(subr_with_buffer);
     ADD_SUBR(subr_bufferp);
-    ADD_SUBR(subr_restrict_buffer);
-    ADD_SUBR(subr_unrestrict_buffer);
+    ADD_SUBR_INT(subr_restrict_buffer);
+    ADD_SUBR_INT(subr_unrestrict_buffer);
     ADD_SUBR(subr_restriction_start);
     ADD_SUBR(subr_restriction_end);
     ADD_SUBR(subr_in_restriction_p);
@@ -1247,14 +1256,14 @@ buffers_kill(void)
     {
 	TX *nxttx = tx->tx_Next;
 	kill_line_list(tx);
-	myfree(tx);
+	FREE_OBJECT(tx);
 	tx = nxttx;
     }
     buffer_chain = NULL;
     while(mk)
     {
 	Mark *nxtmk = mk->mk_NextAlloc;
-	str_free(mk);
+	FREE_OBJECT(mk);
 	mk = nxtmk;
     }
     mark_chain = NULL;
