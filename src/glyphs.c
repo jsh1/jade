@@ -28,14 +28,14 @@
 # include <memory.h>
 #endif
 
-_PR long make_glyph_array(TX *, const u_char *, long, long, u_char *, long, long);
+_PR void make_window_glyphs(glyph_buf *g, WIN *w);
+
 _PR long string_glyph_length(TX *, const u_char *, long);
 _PR long glyph_col(TX *, long, long);
 _PR long char_col(TX *, long, long);
 _PR void calc_cursor_offset(VW *);
 _PR void adjust_cursor_to_glyph(VW *);
 _PR u_char *char_glyphs(TX *, u_char);
-_PR long expand_tabs(TX *, u_char *, long, long, long, long *);
 
 _PR void glyphtable_sweep(void);
 _PR void glyphtable_prin(VALUE, VALUE);
@@ -52,15 +52,15 @@ typedef char glyph_widths_t[256];
    many to use out of the possible 4.  */
 typedef u_char glyph_glyphs_t[256][4];
 
-typedef struct _GlyphTable{
+typedef struct glyph_table {
     VALUE		gt_Car;
-    struct _GlyphTable *gt_Next;
+    struct glyph_table *gt_Next;
     glyph_widths_t	gt_Widths;
     glyph_glyphs_t	gt_Glyphs;
-} GlyphTable;
+} glyph_table_t;
 #define GTF_STATIC (1 << CELL8_TYPE_BITS)	/* Don't free() this table */
 
-static GlyphTable default_glyph_table = {
+static glyph_table_t default_glyph_table = {
     V_GlyphTable | GTF_STATIC,
     NULL,
     {
@@ -117,93 +117,294 @@ static GlyphTable default_glyph_table = {
     }
 };
 
-static GlyphTable *gt_chain = &default_glyph_table;
+static glyph_table_t *gt_chain = &default_glyph_table;
 
-/* From the array of characters SRC, build an array of glyph codes DST.
-   SRC contains at least SRC-LEN characters. On return, there is guaranteed
-   to be no more than DST-LEN glyph codes in DST, the actual number is
-   the return value of the function. No glyphs are copied to DST until
-   DST-START glyphs have gone before. SRC-ORIG is the *true glyph* position
-   of SRC, for calculating tab sizes.  */
-long
-make_glyph_array(TX *tx, const u_char *src, long srcOrig, long srcLen,
-		 register u_char *dst, long dstStart, long dstLen)
+
+/* Filling glyph buffers */
+
+/* Output a glyph CH. Check for attribute changes, output
+   attribute, and advance glyph_col variable */
+#define OUTPUT(ch)					\
+    do {						\
+	if(!in_block && !cursor_row)			\
+	    *attrs++ = attr;				\
+	else if(!in_block)				\
+	{						\
+	    /* check for cursor pos. */			\
+	    if(char_col == cursor_col)			\
+	    {						\
+		*attrs++ = cursor_attrs[attr];		\
+		cursor_row = FALSE;			\
+	    }						\
+	    else					\
+		*attrs++ = attr;			\
+	}						\
+	else						\
+	{						\
+	    if(!rect_block)				\
+	    {						\
+		/* check for a normal block */		\
+		if(attr == GA_Text && block_start	\
+		   && char_col == VCOL(vw->vw_BlockS))	\
+		    attr = GA_Block;			\
+		if(attr == GA_Block && block_end	\
+		   && char_col == VCOL(vw->vw_BlockE))	\
+		    attr = GA_Text;			\
+	    }						\
+	    else if(block_row)				\
+	    {						\
+		/* check for a rectangular block */	\
+		if(glyph_col == block_start)		\
+		    attr = GA_Block;			\
+		else if(glyph_col == block_end)		\
+		    attr = GA_Text;			\
+	    }						\
+	    if(cursor_row && char_col == cursor_col)	\
+	    {						\
+		*attrs++ = cursor_attrs[attr];		\
+		cursor_row = FALSE;			\
+	    }						\
+	    else					\
+		*attrs++ = attr;			\
+	}						\
+	*codes++ = ch;					\
+	glyph_col++;					\
+    } while(0)
+
+/* Same as above, but check for overflowing past
+   the last column in the window. */
+#define OUTPUT_CHK(ch)					\
+    do {						\
+	if(glyph_col < last_col)			\
+	    OUTPUT(ch);					\
+    } while(0)
+
+/* Fill glyph buffer G with whatever should be displayed in window W. */
+void
+make_window_glyphs(glyph_buf *g, WIN *w)
 {
-    glyph_widths_t *width_table = &VGLYPHTAB(tx->tx_GlyphTable)->gt_Widths;
-    glyph_glyphs_t *glyph_table = &VGLYPHTAB(tx->tx_GlyphTable)->gt_Glyphs;
-    register long i = 0;
-    if(dstStart != 0)
+    glyph_code *codes = GLYPH_BUF_CODES(w->w_NewContent, 0);
+    glyph_attr *attrs = GLYPH_BUF_ATTRS(w->w_NewContent, 0);
+
+    /* Lookup table for changing an attribute to the cursor's equivalent. */
+    static const glyph_attr cursor_attrs[GA_MAX] =
+	{ GA_Text_RV, GA_Text, GA_Block_RV, GA_Block };
+
+    VW *vw;
+    int glyph_row = 0;
+
+    for(vw = w->w_ViewList;
+	vw != 0 && (!(vw->vw_Flags & VWFF_MINIBUF)
+		    || !(w->w_Flags & WINFF_MESSAGE));
+	vw = vw->vw_NextView)
     {
-	/* Skip DSTSTART glyphs */
-	register long j = 0;
-	while((j < dstStart) && (srcLen-- > 0))
+	glyph_widths_t *width_table
+	    = &VGLYPHTAB(vw->vw_Tx->tx_GlyphTable)->gt_Widths;
+	glyph_glyphs_t *glyph_table
+	    = &VGLYPHTAB(vw->vw_Tx->tx_GlyphTable)->gt_Glyphs;
+
+	glyph_attr attr;
+	int tab_size = vw->vw_Tx->tx_TabSize;
+	long first_col = VCOL(vw->vw_DisplayOrigin);
+	long first_row = VROW(vw->vw_DisplayOrigin);
+	long last_col = first_col + vw->vw_MaxX;
+	long last_row = MIN(first_row + vw->vw_MaxY, vw->vw_Tx->tx_LogicalEnd);
+	long cursor_col = VCOL(vw->vw_CursorPos);
+	long char_row = first_row;
+
+	bool in_block, rect_block = FALSE;
+	long block_start = 0, block_end = 0;
+
+	update_status_buffer(vw);
+
+	/* Memorise some facts about when the block starts and stops. */
+	if(vw->vw_BlockStatus == 0)
 	{
-	    register int w = (*width_table)[*src++];
-	    if(w == 0)
+	    if(POS_LESS_EQUAL_P(vw->vw_BlockE, vw->vw_DisplayOrigin)
+	       || VROW(vw->vw_BlockS) > first_row + vw->vw_MaxY)
+		in_block = FALSE;
+	    else
 	    {
-		j += tx->tx_TabSize - ((j + srcOrig) % tx->tx_TabSize);
-		if(j > dstStart)
+		in_block = TRUE;
+		if(vw->vw_Flags & VWFF_RECTBLOCKS)
 		{
-		    i = j - dstStart;
-		    memset(dst, ' ', i);
-		    dst += i;
-		    break;
+		    if(VCOL(vw->vw_BlockS) == VCOL(vw->vw_BlockE))
+			in_block = FALSE;
+		    else
+		    {
+			rect_block = TRUE;
+			block_start = MIN(VCOL(vw->vw_BlockS),
+					  VCOL(vw->vw_BlockE));
+			block_start = MAX(block_start, first_col);
+			block_end = MAX(VCOL(vw->vw_BlockS),
+					VCOL(vw->vw_BlockE));
+			block_end = MIN(block_end, first_col + vw->vw_MaxX);
+		    }
 		}
+		else
+		    rect_block = FALSE;
+	    }
+	}
+	else
+	    in_block = FALSE;
+
+	attr = GA_Text;
+	/* Check if the block is marked in the top left corner of VW */
+	if(in_block)
+	{
+	    if(!rect_block)
+	    {
+		if(POS_GREATER_EQUAL_P(vw->vw_DisplayOrigin, vw->vw_BlockS)
+		   && POS_LESS_P(vw->vw_DisplayOrigin, vw->vw_BlockE))
+		    attr = GA_Block;
 	    }
 	    else
 	    {
-		j += w;
-		if(j > dstStart)
+		if(VROW(vw->vw_DisplayOrigin) >= VROW(vw->vw_BlockS)
+		   && VCOL(vw->vw_DisplayOrigin) >= VCOL(vw->vw_BlockS)
+		   && VROW(vw->vw_DisplayOrigin) < VROW(vw->vw_BlockE)
+		   && VCOL(vw->vw_DisplayOrigin) < VCOL(vw->vw_BlockE))
+		    attr = GA_Block;
+	    }
+	}
+
+	while(char_row < last_row)
+	{
+	    /* Fill in the glyphs for GLYPH_ROW */
+	    u_char *src = vw->vw_Tx->tx_Lines[char_row].ln_Line;
+	    long src_len = vw->vw_Tx->tx_Lines[char_row].ln_Strlen - 1;
+	    long glyph_col = 0, char_col = 0;
+
+	    /* Is the cursor in this row? */
+	    bool cursor_row = (vw == w->w_CurrVW
+			       && VROW(vw->vw_CursorPos) == char_row);
+	    bool block_row = FALSE;
+	    if(in_block)
+	    {
+		block_row = (VROW(vw->vw_BlockS) <= char_row
+			     && VROW(vw->vw_BlockE) >= char_row);
+		if(!rect_block)
 		{
-		    i = j - dstStart;
-		    memcpy(dst, &(*glyph_table)[src[-1]][w-i], i);
-		    dst += i;
-		    break;
+		    /* Does the block start or end in this row? */
+		    block_start = VROW(vw->vw_BlockS) == char_row;
+		    block_end = VROW(vw->vw_BlockE) == char_row;
 		}
 	    }
-	}
-    }
-    while((i < dstLen) && (srcLen-- > 0))
-    {
-	register u_char c;
-	switch((*width_table)[c = *src++])
-	{
-	case 0:
+
+	    if(first_col > 0)
 	    {
-		/* TAB special case */
-		register int size = tx->tx_TabSize - ((i + srcOrig + dstStart)
-						      % tx->tx_TabSize);
-		memset(dst, ' ', size);
-		dst += size;
-		i += size;
+		/* First, skip glyphs up to the first displayed column. */
+		while(glyph_col < first_col && src_len-- > 0)
+		{
+		    int width = (*width_table)[*src++];
+		    if(width == 0)
+		    {
+			/* TAB */
+			glyph_col += tab_size - (glyph_col % tab_size);
+			if(glyph_col > first_col)
+			{
+			    int i = glyph_col - first_col;
+			    glyph_col = first_col;
+			    while(i-- > 0)
+				OUTPUT(' ');
+			}
+		    }
+		    else
+		    {
+			glyph_col += width;
+			if(glyph_col > first_col)
+			{
+			    int i = glyph_col - first_col;
+			    u_char *out = &(*glyph_table)[src[-1]][width - i];
+			    glyph_col = first_col;
+			    while(i-- > 0)
+				OUTPUT(*out++);
+			}
+		    }
+		    char_col++;
+		}
 	    }
-	    break;
-	case 1:
-	    *dst++ = (*glyph_table)[c][0];
-	    i++;
-	    break;
-	case 2:
-	    *dst++ = (*glyph_table)[c][0];
-	    *dst++ = (*glyph_table)[c][1];
-	    i += 2;
-	    break;
-	case 3:
-	    *dst++ = (*glyph_table)[c][0];
-	    *dst++ = (*glyph_table)[c][1];
-	    *dst++ = (*glyph_table)[c][2];
-	    i += 3;
-	    break;
-	case 4:
-	    *dst++ = (*glyph_table)[c][0];
-	    *dst++ = (*glyph_table)[c][1];
-	    *dst++ = (*glyph_table)[c][2];
-	    *dst++ = (*glyph_table)[c][3];
-	    i += 4;
-	    break;
+
+	    /* Now start outputting properly. */
+	    while(glyph_col < last_col && src_len-- > 0)
+	    {
+		u_char *ptr = &(*glyph_table)[*src][0];
+		switch((*width_table)[*src++])
+		{
+		case 0:
+		    {
+			/* TAB */
+			int i = tab_size - (glyph_col % tab_size);
+			while(glyph_col < last_col && i-- > 0)
+			    OUTPUT(' ');
+			break;
+		    }
+
+		    /* Do some funky fall through stuff to minimise
+		       calls to the big OUTPUT macro. */
+		case 4:
+		    OUTPUT_CHK(*ptr++);
+		case 3:
+		    OUTPUT_CHK(*ptr++);
+		case 2:
+		    OUTPUT_CHK(*ptr++);
+		case 1:
+		    OUTPUT_CHK(*ptr);
+		}
+		char_col++;
+	    }
+
+	    if(glyph_col < first_col)
+		/* in case EOL before first column */
+		char_col = glyph_col = first_col;
+
+	    while(glyph_col < last_col)
+	    {
+		/* This line ends before the last column in the
+		   window -- fill with spaces. */
+		OUTPUT(' ');
+		char_col++;		/* in case the cursor is past EOL */
+	    }
+	    glyph_row++;
+	    char_row++;
+	}
+	while(glyph_row < vw->vw_FirstY + vw->vw_MaxY)
+	{
+	    /* We reached the [logical] end of the buffer. Fill with
+	       blank lines */
+	    memset(codes, ' ', g->cols);
+	    memset(attrs, GA_Text, g->cols);
+	    codes += g->cols;
+	    attrs += g->cols;
+	    glyph_row++;
+	}
+	if((vw->vw_Flags & VWFF_MINIBUF) == 0)
+	{
+	    /* Do status line
+	       TODO: use glyph table to output status buffer */
+	    int len = strlen(vw->vw_StatusBuf);
+	    memcpy(codes, vw->vw_StatusBuf, MIN(len, g->cols));
+	    if(len < g->cols)
+		memset(codes + len, ' ', g->cols - len);
+	    memset(attrs, GA_Text_RV, g->cols);
+	    codes += g->cols;
+	    attrs += g->cols;
+	    glyph_row++;
 	}
     }
-    return(i);
+    if(vw != 0)
+    {
+	/* A minibuffer with a message obscuring it.
+           TODO: use glyph table to output message */
+	memcpy(codes, w->w_Message, MIN(w->w_MessageLen, g->cols));
+	if(w->w_MessageLen < g->cols)
+	    memset(codes + w->w_MessageLen, ' ', g->cols - w->w_MessageLen);
+	memset(attrs, GA_Text, g->cols);
+    }
 }
+
+
+/* Utility functions */
 
 /* Returns the number of glyphs needed to draw the string SRC.	*/
 long
@@ -292,80 +493,6 @@ char_glyphs(TX *tx, u_char ch)
     return(&VGLYPHTAB(tx->tx_GlyphTable)->gt_Glyphs[ch][0]);
 }
 
-/* Expands any tabs in the line LINE-NUM in TX, between the glyph
-   positions START-GLYPH and END-GLYPH into the buffer DST. The
-   actual number of characters copied into DST (won't be any more
-   than (END-GLYPH - START-GLYPH) is returned.	If WIDTH-P is non-NULL
-   the true width (in glyphs) of the copied portion is stored there. */
-long
-expand_tabs(TX *tx, u_char *dst, long start_glyph, long end_glyph,
-	    long linenum, long *width_p)
-{
-    LINE *line = tx->tx_Lines + linenum;
-    u_char *src = line->ln_Line;
-    u_char *orig_dst = dst;
-    long srclen = line->ln_Strlen - 1;
-    glyph_widths_t *width_table = &VGLYPHTAB(tx->tx_GlyphTable)->gt_Widths;
-    register long i = 0;
-    if(start_glyph > 0)
-    {
-	while(srclen-- != 0)
-	{
-	    register int w1 = (*width_table)[*src++];
-	    if(w1 == 0)
-	    {
-		i += tx->tx_TabSize - (i % tx->tx_TabSize);
-		if(i > start_glyph)
-		{
-		    memset(dst, ' ', i - start_glyph);
-		    dst += i - start_glyph;
-		    break;
-		}
-	    }
-	    else
-	    {
-		i += w1;
-		if(i > start_glyph)
-		{
-		    *dst++ = src[-1];
-		    break;
-		}
-	    }
-	}
-    }
-    if(srclen == -1)
-	return(dst - orig_dst);
-    while(srclen-- != 0)
-    {
-	u_char c = *src++;
-	register int w1 = (*width_table)[c];
-	if(w1 == 0)
-	{
-	    w1 = tx->tx_TabSize - (i % tx->tx_TabSize);
-	    if(w1 + i >= end_glyph)
-	    {
-
-		memset(dst, ' ', end_glyph - i);
-		dst += end_glyph - i;
-		break;
-	    }
-	    memset(dst, ' ', w1);
-	    dst += w1;
-	    i += w1;
-	}
-	else
-	{
-	    *dst++ = c;
-	    i += w1;
-	    if(i >= end_glyph)
-		break;
-	}
-    }
-    if(width_p)
-	*width_p = i - start_glyph;
-    return(dst - orig_dst);
-}
-
 _PR VALUE cmd_glyph_table_p(VALUE arg);
 DEFUN("glyph-table-p", cmd_glyph_table_p, subr_glyph_table_p, (VALUE arg), V_Subr1, DOC_glyph_table_p) /*
 ::doc:glyph_table_p::
@@ -435,21 +562,21 @@ SRC is a buffer that buffer's glyph-table will be copied. If SRC is nil the
 default glyph-table will be copied.
 ::end:: */
 {
-    GlyphTable *newgt = ALLOC_OBJECT(sizeof(GlyphTable));
+    glyph_table_t *newgt = ALLOC_OBJECT(sizeof(glyph_table_t));
     if(newgt)
     {
-	GlyphTable *srcgt;
+	glyph_table_t *srcgt;
 	if(GLYPHTABP(src))
 	    srcgt = VGLYPHTAB(src);
 	else if(BUFFERP(src))
 	    srcgt = VGLYPHTAB(VTX(src)->tx_GlyphTable);
 	else
 	    srcgt = &default_glyph_table;
-	memcpy(newgt, srcgt, sizeof(GlyphTable));
+	memcpy(newgt, srcgt, sizeof(glyph_table_t));
 	newgt->gt_Car = V_GlyphTable;
 	newgt->gt_Next = gt_chain;
 	gt_chain = newgt;
-	data_after_gc += sizeof(GlyphTable);
+	data_after_gc += sizeof(glyph_table_t);
 	return(VAL(newgt));
     }
     return mem_error();
@@ -465,7 +592,6 @@ for each character CHARACTER in any buffers which use the GLYPH-TABLE.
 ::end:: */
 {
     int glyphlen;
-    TX *tx;
     DECLARE1(gt, GLYPHTABP);
     DECLARE2(ch, INTP);
     DECLARE3(glyph, STRINGP);
@@ -488,15 +614,6 @@ for each character CHARACTER in any buffers which use the GLYPH-TABLE.
     }
     else
 	memcpy(&VGLYPHTAB(gt)->gt_Glyphs[VINT(ch)][0], VSTR(glyph), glyphlen);
-
-    tx = buffer_chain;
-    while(tx)
-    {
-	/* refresh all buffers which use this glyph table */
-	if(tx->tx_GlyphTable == gt)
-	    tx->tx_Flags |= TXFF_REFRESH_ALL;
-	tx = tx->tx_Next;
-    }
 
     return(sym_t);
 }
@@ -546,18 +663,17 @@ Sets the glyph-table being used in BUFFER to GLYPH-TABLE.
 	tx = VAL(curr_vw->vw_Tx);
     DECLARE2(gt, GLYPHTABP);
     VTX(tx)->tx_GlyphTable = gt;
-    VTX(tx)->tx_Flags |= TXFF_REFRESH_ALL;
     return(gt);
 }
 
 void
 glyphtable_sweep(void)
 {
-    GlyphTable *gt = gt_chain;
+    glyph_table_t *gt = gt_chain;
     gt_chain = NULL;
     while(gt)
     {
-	GlyphTable *nxt = gt->gt_Next;
+	glyph_table_t *nxt = gt->gt_Next;
 	if(!GC_CELL_MARKEDP(VAL(gt)) && !(gt->gt_Car & GTF_STATIC))
 	    FREE_OBJECT(gt);
 	else
@@ -593,10 +709,10 @@ glyphs_init(void)
 void
 glyphs_kill(void)
 {
-    GlyphTable *gt = gt_chain;
+    glyph_table_t *gt = gt_chain;
     while(gt)
     {
-	GlyphTable *nxt = gt->gt_Next;
+	glyph_table_t *nxt = gt->gt_Next;
 	if(!(gt->gt_Car & GTF_STATIC))
 	    FREE_OBJECT(gt);
 	gt = nxt;
