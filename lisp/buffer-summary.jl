@@ -38,7 +38,7 @@
 (defvar bs-functions '((select . bs-select-item)
 		       (delete . kill-buffer)
 		       (print . bs-print-item)
-		       (list . (lambda () buffer-list))
+		       (list . (lambda () (copy-sequence buffer-list)))
 		       (save . save-file))
   "Function vector for summary-mode.")
 
