@@ -65,6 +65,10 @@ for the prompt.")
   "Used by the `prompt-complete-from-list' and `prompt-validate-from-list'
 to supply possible completions.")
 
+(defvar prompt-list-fold-case nil
+  "When t `prompt-complete-from-list' and `prompt-validate-from-list' ignore
+case.")
+
 (defvar prompt-symbol-predicate nil
   "Predicate used when prompting for symbols.")
 
@@ -425,14 +429,22 @@ is rejected.")
       ((src prompt-list)
        (dst ()))
     (while src
-      (when (string-head-eq (car src) word)
+      (when (regexp-match (concat ?^ (regexp-quote word))
+			  (car src) prompt-list-fold-case)
 	(setq dst (cons (car src) dst)))
       (setq src (cdr src)))
     dst))
 
 (defun prompt-validate-from-list (name)
-  (when (member name prompt-list)
-    t))
+  (if (null prompt-list-fold-case)
+      (member name prompt-list)
+    (let
+	((list prompt-list))
+      (while list
+	(when (regexp-match (concat ?^ (regexp-quote name) ?$)
+			    (car list) t)
+	  (return t))
+	(setq list (cdr list))))))
 
 
 ;; High-level entrypoints; prompt for a specific type of object
