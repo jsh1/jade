@@ -60,10 +60,6 @@
 ;;; function usually toggles the mode on or off depending on the state of
 ;;; this variable.
 ;;;
-;;; There are two functions which *must* be used to install/remove a
-;;; minor mode -- `add-minor-mode' and `remove-minor-mode', see there
-;;; documentation for details.
-;;;
 ;;; Each buffer has a keymap for the bindings of all the minor modes
 ;;; active in the buffer (called `minor-mode-keymap'). These bindings
 ;;; have to be added when the mode is enabled and removed when it
@@ -107,6 +103,19 @@ tab stop after the end of the line is used instead.")
 (defvar default-major-mode 'fundamental-mode
   "The major mode that is installed in buffers for which no other mode either
 matches or is specified.")
+
+(defvar mode-name "Fundamental"
+  "Name of the buffer's major mode.")
+(make-variable-buffer-local 'mode-name)
+
+(defvar minor-mode-alist nil
+  "Alist of (VARIABLE . MODE-LINE-ELEMENT) defining how minor modes are mapped
+to strings in the mode line.")
+
+(defvar mode-line-format
+  '("-%*%+-%B %(" mode-name minor-mode-alist "%) %p %[%c, %l%]%-")
+  "Value defining how the status-line of each view is formatted.")
+(make-variable-buffer-local 'mode-line-format)
 
 
 ;; Generic expression configuration
@@ -226,41 +235,6 @@ fundamental mode is used instead."
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill)))
-
-
-;; Minor-mode handling
-
-(defvar minor-mode-list ()
-  "List of all minor-modes enabled in this buffer.")
-(make-variable-buffer-local 'minor-mode-list)
-
-(defun add-minor-mode (mode name &optional keymap)
-  "For use by minor-modes. MODE is the mode's function symbol. This sets up the
-current buffer. All minor-modes should call this before doing anything
-drastic. NAME is the string to be displayed in the status-line to show that
-the mode is enabled. When non-nil KEYMAP is a keymap defining the bindings
-of the minor mode; it will be added to the front of the list of active
-keymaps."
-  (when (minor-mode-installed-p mode)
-    (error "Minor mode already installed" mode))
-  (setq minor-mode-list (cons mode minor-mode-list)
-	minor-mode-names (cons name minor-mode-names))
-  (when (keymapp keymap)
-    (setq keymap-path (cons keymap keymap-path)))
-  mode)
-
-(defun remove-minor-mode (mode name &optional keymap)
-  "For use by minor-modes. MODE is the mode's function symbol. Removes MODE
-from the current buffer."
-  (setq minor-mode-list (delq mode minor-mode-list)
-	minor-mode-names (delete name minor-mode-names))
-  (when (keymapp keymap)
-    (setq keymap-path (delq keymap keymap-path)))
-  mode)
-
-(defun minor-mode-installed-p (mode)
-  "Returns t if MODE is installed in the current buffer."
-  (memq mode minor-mode-list))
 
 
 ;; Comment handling
