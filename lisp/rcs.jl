@@ -188,9 +188,9 @@ description entered. COUNT may be negative."
       ((info (concat "RCS" (if (buffer-read-only-p buffer) "-" ":")
 		     (rcs-version buffer))))
     (with-buffer buffer
-      (when (minor-mode-installed 'rcs-mode)
+      (when (minor-mode-installed-p 'rcs-mode)
 	(remove-minor-mode 'rcs-mode rcs-current-info-string))
-      (add-minor-mode 'rcs-mode info t)
+      (add-minor-mode 'rcs-mode info)
       (setq rcs-current-info-string info
 	    toggle-read-only-function 'rcs-toggle-read-only
 	    rcs-controlled-buffer t)
