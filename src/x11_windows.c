@@ -37,6 +37,7 @@ _PR void sys_activate_win(WIN *);
 _PR void sys_set_win_name(WIN *win, char *name);
 _PR void sys_set_win_pos(WIN *, long, long, long, long);
 _PR WIN *x11_find_window(Window);
+_PR void sys_draw_glyphs(WIN *, int, int, glyph_attr, char *, int, bool);
 _PR int sys_set_font(WIN *);
 _PR void sys_unset_font(WIN *);
 _PR void sys_reset_sleep_titles(TX *);
@@ -121,6 +122,8 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
     unsigned int x, y, width, height;
     Window win;
     struct x11_display *dpy;
+    VALUE face;
+    struct x11_color *bg, *fg;
 
     if(pending_display != 0)
 	dpy = pending_display;
@@ -170,62 +173,35 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	width = w->w_FontX * width;
 	height = (w->w_FontY * (height + 2));
     }
+
+    face = cmd_symbol_value(sym_default_face, sym_t);
+    if(FACEP(face))
+    {
+	fg = x11_get_color_dpy(VCOLOR(VFACE(face)->foreground), dpy);
+	bg = x11_get_color_dpy(VCOLOR(VFACE(face)->background), dpy);
+    }
+
     win = XCreateSimpleWindow(dpy->display,
 			      DefaultRootWindow(dpy->display),
 			      x, y, width, height, 1,
 			      (x11_opt_reverse_video
-			       ? dpy->back_pixel : dpy->fore_pixel),
+			       ? bg->color.pixel : fg->color.pixel),
 			      (x11_opt_reverse_video
-			       ? dpy->fore_pixel : dpy->back_pixel));
+			       ? fg->color.pixel : bg->color.pixel));
     if(win)
     {
-	XGCValues xgcv;
 	w->w_Window = win;
 	WINDOW_XDPY(w) = dpy;
 	dpy->window_count++;
 
-	xgcv.foreground = (x11_opt_reverse_video
-			   ? dpy->back_pixel : dpy->fore_pixel);
-	xgcv.background = (x11_opt_reverse_video
-			   ? dpy->fore_pixel : dpy->back_pixel);
-	xgcv.line_width = 1;
-	xgcv.font = w->w_WindowSys.ws_Font->fid;
-	w->w_WindowSys.ws_GC_array[P_TEXT] = XCreateGC(dpy->display,
-						       w->w_Window,
-						       GCForeground
-						       | GCBackground
-						       | GCLineWidth
-						       | GCFont,
-						       &xgcv);
-	xgcv.foreground = (x11_opt_reverse_video
-			   ? dpy->fore_pixel : dpy->back_pixel);
-	xgcv.background = (x11_opt_reverse_video
-			   ? dpy->back_pixel : dpy->fore_pixel);
-	w->w_WindowSys.ws_GC_array[P_TEXT_RV] = XCreateGC(dpy->display,
-							  w->w_Window,
-							  GCForeground
-							  | GCBackground
-							  | GCLineWidth
-							  | GCFont,
-							  &xgcv);
-	xgcv.foreground = dpy->fore_pixel;
-	xgcv.background = dpy->high_pixel;
-	w->w_WindowSys.ws_GC_array[P_BLOCK] = XCreateGC(dpy->display,
-							w->w_Window,
-							GCForeground
-							| GCBackground
-							| GCLineWidth
-							| GCFont,
-							&xgcv);
-	xgcv.foreground = dpy->high_pixel;
-	xgcv.background = dpy->fore_pixel;
-	w->w_WindowSys.ws_GC_array[P_BLOCK_RV] = XCreateGC(dpy->display,
-							   w->w_Window,
-							   GCForeground
-							   | GCBackground
-							   | GCLineWidth
-							   | GCFont,
-							   &xgcv);
+	w->w_WindowSys.ws_GC_values.line_width = 0;
+	w->w_WindowSys.ws_GC_values.foreground = fg->color.pixel;
+	w->w_WindowSys.ws_GC_values.background = bg->color.pixel;
+	w->w_WindowSys.ws_GC_values.font = w->w_WindowSys.ws_Font->fid;
+	w->w_WindowSys.ws_GC = XCreateGC(dpy->display, w->w_Window,
+					 GCForeground | GCBackground
+					 | GCLineWidth | GCFont,
+					 &w->w_WindowSys.ws_GC_values);
 	size_hints.x = x,
 	size_hints.y = y,
 	size_hints.width = width,
@@ -256,10 +232,8 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 void
 sys_kill_window(WIN *w)
 {
-    int i;
     x11_window_lose_selections(w);
-    for(i = 0; i < P_MAX; i++)
-	XFreeGC(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_GC_array[i]);
+    XFreeGC(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_GC);
     XDestroyWindow(WINDOW_XDPY(w)->display, w->w_Window);
     if(--(WINDOW_XDPY(w)->window_count) == 0)
 	x11_close_display(WINDOW_XDPY(w));
@@ -301,6 +275,94 @@ x11_find_window(Window win)
     return(w);
 }
 
+static inline void
+face_to_gc(WIN *w, Lisp_Face *f, bool invert)
+{
+    unsigned long mask = 0;
+    struct x11_color *c;
+
+    c = x11_get_color_dpy(VCOLOR(invert ? f->background : f->foreground),
+			  WINDOW_XDPY(w));
+    if(c != 0)
+    {
+	if(w->w_WindowSys.ws_GC_values.foreground != c->color.pixel)
+	    w->w_WindowSys.ws_GC_values.foreground = c->color.pixel;
+	mask |= GCForeground;
+    }
+
+    c = x11_get_color_dpy(VCOLOR(invert ? f->foreground : f->background),
+			  WINDOW_XDPY(w));
+    if(c != 0)
+    {
+	if(w->w_WindowSys.ws_GC_values.background != c->color.pixel)
+	    w->w_WindowSys.ws_GC_values.background = c->color.pixel;
+	mask |= GCBackground;
+    }
+
+    /* FIXME: Bold, italic?! */
+
+    if(mask != 0)
+	XChangeGC(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_GC,
+		  mask, &w->w_WindowSys.ws_GC_values);
+}
+
+void
+sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
+		int len, bool all_spaces)
+{
+    bool draw_rect = FALSE;
+    bool invert = FALSE;
+    Lisp_Face *f;
+    int x, y;
+
+    if(attr & GA_CursorFace)
+    {
+	if(!WINDOW_HAS_FOCUS(w))
+	   draw_rect = TRUE;
+	invert = TRUE;
+	attr &= ~GA_CursorFace;
+    }
+
+    f = face_table[attr];
+    if(!f)
+	return;
+    
+    x = w->w_LeftPix + w->w_FontX * col;
+    y = w->w_TopPix + w->w_FontY * row;
+    if(!all_spaces)
+    {
+	face_to_gc(w, f, invert);
+	XDrawImageString(WINDOW_XDPY(w)->display, w->w_Window,
+			 w->w_WindowSys.ws_GC,
+			 x, y + w->w_WindowSys.ws_Font->ascent, str, len);
+    }
+    else
+    {
+	face_to_gc(w, f, !invert);
+	XFillRectangle(WINDOW_XDPY(w)->display, w->w_Window,
+		       w->w_WindowSys.ws_GC, x, y,
+		       len * w->w_FontX, w->w_FontY);
+    }
+
+    if(VFACE(f)->car & FACEFF_UNDERLINE)
+    {
+	face_to_gc(w, f, invert);
+	XDrawLine(WINDOW_XDPY(w)->display, w->w_Window,
+		  w->w_WindowSys.ws_GC,
+		  x, y + w->w_WindowSys.ws_Font->ascent + 1,
+		  x + len * w->w_FontX,
+		  y + w->w_WindowSys.ws_Font->ascent + 1);
+    }
+
+    if(draw_rect)
+    {
+	face_to_gc(w, f, !invert);
+	XDrawRectangle(WINDOW_XDPY(w)->display, w->w_Window,
+		       w->w_WindowSys.ws_GC, x, y,
+		       w->w_FontX - 1, w->w_FontY - 1);
+    }
+}
+
 int
 sys_set_font(WIN *w)
 {
@@ -324,13 +386,10 @@ sys_set_font(WIN *w)
 	w->w_FontY = font->ascent + font->descent;
 	if(w->w_Window)
 	{
-	    int i;
 	    int width, height;
 	    width = w->w_MaxX * w->w_FontX;
 	    height = w->w_MaxY * w->w_FontY;
-	    for(i = 0; i < P_MAX; i++)
-		XSetFont(dpy->display,
-			 w->w_WindowSys.ws_GC_array[i], font->fid);
+	    XSetFont(dpy->display, w->w_WindowSys.ws_GC, font->fid);
 	    sys_update_dimensions(w);
 	    size_hints.width = width;
 	    size_hints.height = height;
