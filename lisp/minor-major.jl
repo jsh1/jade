@@ -41,7 +41,7 @@ Returns the extent containing the region. This extent always has its
      (save-restriction
        (restrict-buffer start end)
        (setq major-mode-kill nil)
-       (funcall mode)
+       (funcall (symbol-value mode))
        extent))))
 
 (defun delete-minor-major-mode (position)
