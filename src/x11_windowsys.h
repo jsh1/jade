@@ -51,6 +51,10 @@ struct x11_display {
 
     /* Modifier code of the Meta key in this display */
     u_long meta_mod;
+
+    /* Data for testing double-clicks */
+    Time last_click;
+    u_long last_click_button;
 };
 
 typedef struct {
