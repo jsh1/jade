@@ -117,6 +117,7 @@ the originally selected window.
 		    free_glyph_buf(w->w_NewContent);
 		if(w->w_Content)
 		    free_glyph_buf(w->w_Content);
+		free_visible_extents (w);
 		sys_kill_window(w);
 	    }
 	    sys_unset_font(w);
@@ -137,6 +138,7 @@ delete_window(WIN *w)
     free_glyph_buf(w->w_NewContent);
     free_glyph_buf(w->w_Content);
     w->w_NewContent = w->w_Content = NULL;
+    free_visible_extents (w);
     /* This flags that this window is dead.  */
     w->w_Window = WINDOW_NIL;
     if(curr_win == w)
