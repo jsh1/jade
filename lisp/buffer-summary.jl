@@ -47,7 +47,7 @@
   "Switch to the buffer-summary."
   (interactive)
   (goto-buffer bs-buffer)
-  (if (eq major-mode 'summary-mode)
+  (if (eq major-mode 'buffer-summary-mode)
       (summary-update)
     (insert "Buffer Summary:\n\n   MR\tName\t\tMode\t\tFile\n   --\t----\t\t----\t\t----\n")
     (summary-mode "Buffer-Summary" bs-functions bs-keymap)
