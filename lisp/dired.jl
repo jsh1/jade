@@ -38,7 +38,8 @@
     "Ctrl-o" 'dired-display-file
     "g" 'summary-update
     "C" 'dired-do-copy
-    "R" 'dired-do-rename))
+    "R" 'dired-do-rename
+    "+" 'dired-create-directory))
 
 (defvar dired-%-keymap
   (bind-keys (make-sparse-keymap)
@@ -134,7 +135,11 @@ bindings is:\n
 (defun dired-execute-end ()
   (map-y-or-n-p "Really delete file `%s'?"
 		(prog1 dired-delete-cache
-		  (setq dired-delete-cache nil)) 'delete-file))
+		  (setq dired-delete-cache nil))
+		#'(lambda (f)
+		    (if (file-directory-p f)
+			(delete-directory f)
+		      (delete-file f)))))
 
 ;; Marking
 
@@ -210,4 +215,13 @@ the new name for the file."
 	  ((dest (prompt-for-directory "Destination directory:" nil)))
 	(mapc #'(lambda (f)
 		  (rename-file f (expand-file-name f dest))) files)))
+    (summary-update)))
+
+(defun dired-create-directory (dir)
+  "Create a directory called DIR if one doesn't already exist."
+  (interactive "DDirectory to create:")
+  (if (file-exists-p dir)
+      (or (file-directory-p dir)
+	  (error "File exists: %s" dir))
+    (make-directory dir)
     (summary-update)))
