@@ -34,7 +34,7 @@
       ((window (current-window))
        (new (gtk-widget-get-toplevel (gtk-jade-new)))
        (book (gdecor-find-container
-	      (gtk-jade-window-widget window) 'gtk-notebook-p)))
+	      (gtk-jade-window-widget window) gtk-notebook-p)))
     (unless book
       (let*
 	  ((toplevel (gtk-widget-get-toplevel
@@ -53,7 +53,7 @@
   (interactive "p")
   (let
       ((book (gdecor-find-container
-	      (gtk-jade-window-widget (current-window)) 'gtk-notebook-p)))
+	      (gtk-jade-window-widget (current-window)) gtk-notebook-p)))
     (while (> count 0)
       (gtk-notebook-next-page book)
       (setq count (1- count)))

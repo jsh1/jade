@@ -102,52 +102,6 @@ centred each time it changes.")
 			       (gdb-current-file) (gdb-current-line)))
     (delete-breakpoint (gdb-command "clear %d\n" (gdb-current-line)))))
 
-;;;###autoload
-(defun gdb (args)
-  "Run the gdb debugger in an editor buffer (called `*gdb*'). ARGS is a string
-giving all arguments to the gdb subprocess (including the program to debug).
-See the `gdb-mode' documentation for details of the available commands.
-There is no limit to the number of gdb processes you may run at once."
-  (interactive "sArguments to gdb:")
-  (let*
-      ((buffer (get-buffer "*gdb*"))
-       (directory default-directory))
-    (if (or (not buffer) (with-buffer buffer shell-process))
-	(setq buffer (open-buffer "*gdb*" t))
-      (clear-buffer buffer))
-    (goto-buffer buffer)
-    (kill-all-local-variables)
-    (setq default-directory directory
-	  shell-program-args (list "-c" (concat gdb-program
-						" -fullname " args))
-	  shell-prompt-regexp "^(\\(gdb\\) *|.*\\(.+\\) *|.+---)"
-	  shell-output-stream (list 'lambda '(x)
-				    (list 'gdb-output-filter
-					  (current-buffer)
-					  'x))
-	  shell-callback-function 'gdb-callback)
-    (shell-mode)
-    (setq buffer-status-id (concat "GDB: " args)
-	  major-mode 'gdb-mode
-	  mode-name "GDB"
-	  local-ctrl-c-keymap gdb-ctrl-c-keymap
-	  gdb-last-buffer buffer
-	  gdb-buffer-p t
-	  gdb-actions gdb-gdb-actions
-	  gdb-input-filter 'gdb-gdb-input-filter)
-    (call-hook 'gdb-hook)))
-
-(defun gdb-mode ()
-  "Gdb Mode:\n
-This major-mode is used to run the GDB debugger in an editor buffer. To
-start a gdb subprocess use the `Meta-x gdb' command.\n
-Each time the target process stops executing the source line of the
-current frame is highlighted in a separate view.\n
-The following commands are available in the `*gdb*' buffer:\n
-\\{gdb-ctrl-c-keymap,Ctrl-c}
-They are also accessible in any buffer by replacing the `Ctrl-c' prefix
-with `Ctrl-x Ctrl-a'.")
-
 (defun gdb-gdb-input-filter (data)
   (let
       ((new-frame nil))
@@ -170,6 +124,53 @@ with `Ctrl-x Ctrl-a'.")
       (setq gdb-spare-output nil))
     new-frame))
 
+;;;###autoload
+(defun gdb (args)
+  "Run the gdb debugger in an editor buffer (called `*gdb*'). ARGS is a string
+giving all arguments to the gdb subprocess (including the program to debug).
+See the `gdb-mode' documentation for details of the available commands.
+There is no limit to the number of gdb processes you may run at once."
+  (interactive "sArguments to gdb:")
+  (let*
+      ((buffer (get-buffer "*gdb*"))
+       (directory default-directory))
+    (if (or (not buffer) (with-buffer buffer shell-process))
+	(setq buffer (open-buffer "*gdb*" t))
+      (clear-buffer buffer))
+    (goto-buffer buffer)
+    (kill-all-local-variables)
+    (setq default-directory directory
+	  shell-program-args (list "-c" (concat gdb-program
+						" -fullname " args))
+	  shell-prompt-regexp "^(\\(gdb\\) *|.*\\(.+\\) *|.+---)"
+	  shell-output-stream (make-closure
+			       (list 'lambda '(x)
+				     (list 'gdb-output-filter
+					   (current-buffer)
+					   'x)))
+	  shell-callback-function (lambda () (gdb-callback)))
+    (shell-mode)
+    (setq buffer-status-id (concat "GDB: " args)
+	  major-mode 'gdb-mode
+	  mode-name "GDB"
+	  local-ctrl-c-keymap gdb-ctrl-c-keymap
+	  gdb-last-buffer buffer
+	  gdb-buffer-p t
+	  gdb-actions gdb-gdb-actions
+	  gdb-input-filter gdb-gdb-input-filter)
+    (call-hook 'gdb-hook)))
+
+(defun gdb-mode ()
+  "Gdb Mode:\n
+This major-mode is used to run the GDB debugger in an editor buffer. To
+start a gdb subprocess use the `Meta-x gdb' command.\n
+Each time the target process stops executing the source line of the
+current frame is highlighted in a separate view.\n
+The following commands are available in the `*gdb*' buffer:\n
+\\{gdb-ctrl-c-keymap,Ctrl-c}
+They are also accessible in any buffer by replacing the `Ctrl-c' prefix
+with `Ctrl-x Ctrl-a'.")
+
 
 ;; Perldb support
 
@@ -180,51 +181,6 @@ with `Ctrl-x Ctrl-a'.")
     ;; XXX this needs to use (gdb-current-file) as well
     (set-breakpoint . (gdb-command "b %d\n" (gdb-current-line)))
     (delete-breakpoint (gdb-command "d %d\n" (gdb-current-line)))))
-
-;;;###autoload
-(defun perldb (args)
-  "Run the Perl debugger in an editor buffer (called `*perldb*'). ARGS is a
-string giving all arguments to the perl subprocess (including the program
-to debug). See the `perl-mode' documentation for details of the available
-commands. There is no limit to the number of processes you may run at once."
-  (interactive "sArguments to perl:")
-  (let*
-      ((buffer (get-buffer "*perldb*"))
-       (directory default-directory))
-    (if (or (not buffer) (with-buffer buffer shell-process))
-	(setq buffer (open-buffer "*perldb*" t))
-      (clear-buffer buffer))
-    (goto-buffer buffer)
-    (kill-all-local-variables)
-    (setq default-directory directory
-	  shell-program-args (list "-c" (concat perl-program " -d "
-						args " -emacs"))
-	  shell-prompt-regexp "^ *DB<+[0-9]+>+ *"
-	  shell-output-stream (list 'lambda '(x)
-				    (list 'gdb-output-filter
-					  (current-buffer) 'x))
-	  shell-callback-function 'gdb-callback)
-    (shell-mode)
-    (setq buffer-status-id (concat "PerlDB: " args)
-	  major-mode 'perldb-mode
-	  mode-name "PerlDB"
-	  local-ctrl-c-keymap gdb-ctrl-c-keymap
-	  gdb-last-buffer buffer
-	  gdb-buffer-p t
-	  gdb-actions gdb-perldb-actions
-	  gdb-input-filter 'gdb-perldb-input-filter)
-    (call-hook 'gdb-hook)))
-
-(defun perldb-mode ()
-  "PerlDB Mode:\n
-This major-mode is used to run the Perl debugger in an editor buffer. To
-start a PerlDB subprocess use the `Meta-x perldb' command.\n
-Each time the target process stops executing the source line of the
-current frame is highlighted in a separate view.\n
-The following commands are available in the `*perldb*' buffer:\n
-\\{gdb-ctrl-c-keymap,Ctrl-c}
-They are also accessible in any buffer by replacing the `Ctrl-c' prefix
-with `Ctrl-x Ctrl-a'.")
 
 (defun gdb-perldb-input-filter (data)
   (let
@@ -250,6 +206,52 @@ with `Ctrl-x Ctrl-a'.")
       (insert data)
       (setq gdb-spare-output nil))
     new-frame))
+
+;;;###autoload
+(defun perldb (args)
+  "Run the Perl debugger in an editor buffer (called `*perldb*'). ARGS is a
+string giving all arguments to the perl subprocess (including the program
+to debug). See the `perl-mode' documentation for details of the available
+commands. There is no limit to the number of processes you may run at once."
+  (interactive "sArguments to perl:")
+  (let*
+      ((buffer (get-buffer "*perldb*"))
+       (directory default-directory))
+    (if (or (not buffer) (with-buffer buffer shell-process))
+	(setq buffer (open-buffer "*perldb*" t))
+      (clear-buffer buffer))
+    (goto-buffer buffer)
+    (kill-all-local-variables)
+    (setq default-directory directory
+	  shell-program-args (list "-c" (concat perl-program " -d "
+						args " -emacs"))
+	  shell-prompt-regexp "^ *DB<+[0-9]+>+ *"
+	  shell-output-stream (make-closure
+			       (list 'lambda '(x)
+				     (list 'gdb-output-filter
+					   (current-buffer) 'x)))
+	  shell-callback-function (lambda () (gdb-callback)))
+    (shell-mode)
+    (setq buffer-status-id (concat "PerlDB: " args)
+	  major-mode 'perldb-mode
+	  mode-name "PerlDB"
+	  local-ctrl-c-keymap gdb-ctrl-c-keymap
+	  gdb-last-buffer buffer
+	  gdb-buffer-p t
+	  gdb-actions gdb-perldb-actions
+	  gdb-input-filter gdb-perldb-input-filter)
+    (call-hook 'gdb-hook)))
+
+(defun perldb-mode ()
+  "PerlDB Mode:\n
+This major-mode is used to run the Perl debugger in an editor buffer. To
+start a PerlDB subprocess use the `Meta-x perldb' command.\n
+Each time the target process stops executing the source line of the
+current frame is highlighted in a separate view.\n
+The following commands are available in the `*perldb*' buffer:\n
+\\{gdb-ctrl-c-keymap,Ctrl-c}
+They are also accessible in any buffer by replacing the `Ctrl-c' prefix
+with `Ctrl-x Ctrl-a'.")
 
 
 ;; Digs the variable VAR out of the gdb-last-buffer
