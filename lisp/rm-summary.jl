@@ -22,7 +22,7 @@
 (require 'read-mail)
 (provide 'rm-summary)
 
-(defvar rm-summary-format "%a  %D %m  %-^16F  %l"
+(defvar rm-summary-format "%a  %2D %3m  %-^16F  %l"
   "A string defining the format of lines in mail summary buffers. It is
 copied verbatim except for formatting directives introduced by percent
 signs (%). Each directive consists of a percent character, an optional
@@ -91,8 +91,10 @@ The list of formatting options can be extended by the variable
     "Ctrl-s" '(rm-command-with-folder 'rm-sort-folder)
     "+" '(rm-command-with-folder 'rm-add-mailbox)
     "-" '(rm-command-with-folder 'rm-subtract-mailbox)
+    "=" '(rm-command-with-folder 'rm-replace-all-mailboxes)
     "Ctrl--" '(rm-command-with-folder 'rm-subtract-all-mailboxes)
     "!" '(rm-command-with-folder 'rm-change-rule)
+    "@" '(rm-command-with-folder 'rm-null-rule)
     "|" '(rm-command-with-folder 'rm-pipe-message)))
 
 (defvar rm-summary-functions '((select . rm-summary-select-item)

@@ -179,33 +179,9 @@ be shown before the second.")
     ;; Ok, so we now have a list of THREADS, spit them out as the
     ;; list(s) of messages?
     (rm-set-folder-field folder rm-folder-sort-key 'thread)
-    (rm-fix-msg-lists folder (apply 'nconc threads))
+    (rm-install-messages folder (apply 'nconc threads))
+    (rm-redisplay-folder folder)
     (message "Threading folder...done" t)))
-
-;; Install the list of messages ALL, preserving the current message, and
-;; splitting ALL around it. Do this destructively
-(defun rm-fix-msg-lists (folder all)
-  (let
-      ((before nil)
-       (after all)
-       (current (rm-get-folder-field folder rm-folder-current-msg))
-       (index 0))
-    (while (not (eq (car after) current))
-      (setq after (prog1
-		      (cdr after)
-		    (rplacd after before)
-		    (setq before after))
-	    index (1+ index)))
-    (rm-set-folder-field folder rm-folder-before-list before)
-    (rm-set-folder-field folder rm-folder-after-list (cdr after))
-    (rm-set-folder-field folder rm-folder-current-index index)
-    (rm-set-folder-field folder rm-folder-cached-list 'invalid)
-    (rm-invalidate-status-cache folder)
-    (rm-display-current-message folder t)
-    (when (rm-get-folder-field folder rm-folder-summary)
-      (rm-invalidate-summary-cache folder)
-      (rm-with-summary folder
-       (summary-update)))))
 
 ;;;###autoload
 (defun rm-toggle-threading ()
@@ -256,13 +232,15 @@ the raw prefix argument."
     (unless (rm-get-folder-field folder rm-folder-current-msg)
       (error "No messages to sort!"))
     (rm-set-folder-field folder rm-folder-sort-key key)
-    (rm-fix-msg-lists folder (sort (nconc (rm-get-folder-field
-					   folder rm-folder-before-list)
-					  (list (rm-get-folder-field
-						 folder rm-folder-current-msg))
-					  (rm-get-folder-field
-					   folder rm-folder-after-list))
-				   (if reversed
-				       #'(lambda (x y)
-					   (not (funcall rm-sort-pred x y)))
-				     rm-sort-pred)))))
+    (rm-install-messages
+     folder (sort (nconc (rm-get-folder-field
+			  folder rm-folder-before-list)
+			 (list (rm-get-folder-field
+				folder rm-folder-current-msg))
+			 (rm-get-folder-field
+			  folder rm-folder-after-list))
+		  (if reversed
+		      #'(lambda (x y)
+			  (not (funcall rm-sort-pred x y)))
+		    rm-sort-pred)))
+    (rm-redisplay-folder folder)))

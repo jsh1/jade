@@ -268,6 +268,8 @@ arg TO specifies who to send it to."
   "Burst the currently displayed message, inserting the messages at the end
 of the folder. Prompts for the digest type, RFC-934 or RFC-1153."
   (interactive)
+  (when rm-buffer-read-only
+    (error "Read-only mailbox"))
   (let
       ((tem (re-search-forward rm-rfc934-preamble-sep (start-of-buffer))))
     (when tem

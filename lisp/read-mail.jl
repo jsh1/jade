@@ -49,6 +49,11 @@ STRUCTURE); it should return the string to be inserted (no newlines).")
   "List of cache tags whose values should be saved in the headers of each
 message (to improve performance when the folder is next loaded).")
 
+(defvar rm-auto-rule-alist nil
+  "List of (REGEXP . RULE). This list is only consulted when a mailbox is
+added to an otherwise empty folder. If the name of the mailbox matches
+REGEXP, then its restriction rule is initialised as RULE.")
+
 
 ;; Variables
 
@@ -87,8 +92,10 @@ message (to improve performance when the folder is next loaded).")
     "|" 'rm-pipe-message
     "+" 'rm-add-mailbox
     "-" 'rm-subtract-mailbox
+    "=" 'rm-replace-all-mailboxes
     "Ctrl--" 'rm-subtract-all-mailboxes
     "!" 'rm-change-rule
+    "@" 'rm-null-rule
     "Ctrl-t" 'rm-toggle-threading
     "Ctrl-s" 'rm-sort-folder)
   "Keymap for reading mail")
@@ -101,6 +108,10 @@ the next prompt.")
   "A buffer-local variable, when not the symbol `invalid', the list of
 messages in the buffer, in first to last order.")
 (make-variable-buffer-local 'rm-buffer-messages)
+
+(defvar rm-buffer-read-only nil
+  "When t, this mailbox buffer won't be modified.")
+(make-variable-buffer-local 'rm-buffer-read-only)
 
 
 ;; Entry points
@@ -122,16 +133,20 @@ RULE is the message restriction rule to apply."
 	   (and arg (rm-prompt-for-rule)))))
   (let
       ((folder (rm-make-folder rule name)))
+    (setq rm-open-folders (cons (cons (current-view) folder) rm-open-folders))
     (mapc #'(lambda (box)
 	      (unless (file-exists-p box)
 		(setq box (expand-file-name box mail-folder-dir)))
-	      (rm-add-mailbox box folder))
+	      (rm-add-mailbox box folder t))
 	  (if (listp boxes) boxes (list boxes)))
-    (rm-display-folder folder)))
+    (rm-display-current-message folder t)
+    (when mail-display-summary
+      (rm-summarize folder))))
 
 
 ;; Mailbox buffer handling
 
+;; Ensure that the mailbox named MAILBOX is in a buffer. Return that buffer
 (defun rm-open-mailbox (mailbox)
   (let
       ((buffer (find-file-read-only mailbox t)))
@@ -139,9 +154,11 @@ RULE is the message restriction rule to apply."
       (error "Can't open mailbox %s" mailbox))
     (with-buffer buffer
       (read-mail-mode))
-    (call-hook 'rm-open-mailbox-hook (list buffer))
-    (rm-parse-buffer buffer)))
+    buffer))
 
+;; The mailbox named MAILBOX is not required any longer. If DONT-UPDATE
+;; is t, the cached information won't be updated and the buffer won't
+;; be saved
 (defun rm-close-mailbox (mailbox &optional dont-update)
   (let
       ((buffer (get-file-buffer mailbox)))
@@ -157,6 +174,7 @@ RULE is the message restriction rule to apply."
 	  (fundamental-mode))
 	(kill-buffer buffer)))))
 
+;; Install the major-mode of mailbox buffers
 (defun read-mail-mode ()
   "Read-Mail Mode:\n
 Major mode for viewing mail folders. Local bindings are:\n
@@ -171,6 +189,7 @@ Major mode for viewing mail folders. Local bindings are:\n
 	  keymap-path (cons 'rm-keymap keymap-path))
     (call-hook 'read-mail-mode-hook)))
 
+;; Remove the major-mode of mailbox buffers
 (defun read-mail-mode-kill ()
   (setq rm-open-mailboxes (delq (current-buffer) rm-open-mailboxes))
   (kill-all-local-variables))
@@ -228,6 +247,7 @@ show all messages.")
 (defmacro rm-get-folder-field (folder field)
   (list 'aref folder field))
 
+;; Create a new unused folder object
 (defun rm-make-folder (&optional rule name)
   (let
       ((folder (make-vector rm-folder-struct-size)))
@@ -238,91 +258,70 @@ show all messages.")
     (rm-set-folder-field folder rm-folder-cached-list 'invalid)
     folder))
 
+;; Return t if OBJECT is a folder
 (defun rm-folder-p (object)
   (and (vectorp object) (eq (aref object rm-folder-type) 'folder)))
 
 (defun rm-rebuild-folder (folder)
+  (rm-install-messages
+   folder (rm-prune-messages
+	   (rm-parse-mailboxes
+	    (rm-get-folder-field folder rm-folder-boxes)) folder)))
+    
+;; Install the list of messages ALL, preserving the current message, and
+;; splitting ALL around it. Do this destructively
+(defun rm-install-messages (folder all)
   (let
-      ((original-index (rm-get-folder-field folder rm-folder-current-index)))
-    (rm-set-folder-field folder rm-folder-before-list nil)
-    (rm-set-folder-field folder rm-folder-current-msg nil)
-    (rm-set-folder-field folder rm-folder-after-list nil)
-    (rm-set-folder-field folder rm-folder-current-index 0)
+      ((before nil)
+       (after all)
+       (current (rm-get-folder-field folder rm-folder-current-msg))
+       (index 0))
+    (if (or (null current) (not (memq current all)))
+	(setq before (nreverse all)
+	      current (car before)
+	      before (cdr before)
+	      after nil
+	      index (length before))
+      (while (not (eq (car after) current))
+	(setq after (prog1
+			(cdr after)
+		      (rplacd after before)
+		      (setq before after))
+	      index (1+ index))))
+    (rm-set-folder-field folder rm-folder-current-msg current)
+    (rm-set-folder-field folder rm-folder-before-list before)
+    (rm-set-folder-field folder rm-folder-after-list (cdr after))
+    (rm-set-folder-field folder rm-folder-current-index index)
     (rm-set-folder-field folder rm-folder-cached-list 'invalid)
-    (let*
-	((messages (rm-prune-messages
-		    (rm-parse-mailboxes
-		     (rm-get-folder-field folder rm-folder-boxes)) folder))
-	 (count (length messages)))
-      (let
-	  (before current after)
-	(cond
-	 ((or (null original-index) (zerop original-index))
-	  ;; Make the current message the first
-	  (setq current (car messages)
-		after (cdr messages)
-		before nil))
-	 ((> count original-index)
-	  ;; Make the current message the one at ORIGINAL-INDEX
-	  (setq after (nthcdr (1- original-index) messages)
-		current (car (cdr after))
-		after (prog1 (cdr (cdr after))
-			(rplacd after nil))
-		before (nreverse messages)))
-	 (t
-	  ;; Make the current message the last
-	  (setq before (nreverse messages)
-		after nil
-		current (car before)
-		before (cdr before))))
-	(rm-set-folder-field folder rm-folder-current-msg current)
-	(rm-set-folder-field folder rm-folder-before-list before)
-	(rm-set-folder-field folder rm-folder-after-list after)
-	(rm-set-folder-field folder rm-folder-message-count count)
-	(rm-set-folder-field folder rm-folder-current-index
-			     (length before))))
     (when (rm-get-folder-field folder rm-folder-summary)
       (rm-invalidate-summary-cache folder))
     (rm-invalidate-status-cache folder)))
-    
-(defun rm-add-mailbox (mailbox folder &optional redisplay)
-  (interactive
-   (list (prompt-for-folder "Mailbox to add" rm-last-mailbox)
-	 (rm-current-folder) t))
-  (rm-set-folder-field folder rm-folder-boxes
-		       (cons mailbox
-			     (rm-get-folder-field folder rm-folder-boxes)))
-  (let
-      ((messages (rm-prune-messages
-		  (rm-parse-mailboxes (list mailbox)) folder)))
-    (if (null (rm-get-folder-field folder rm-folder-current-msg))
-	(let
-	    ((count (length messages)))
-	  (setq messages (nreverse messages))
-	  (rm-set-folder-field folder rm-folder-current-index (1- count))
-	  (rm-set-folder-field folder rm-folder-message-count count)
-	  (rm-set-folder-field folder rm-folder-current-msg (car messages))
-	  (rm-set-folder-field folder rm-folder-before-list (cdr messages))
-	  (rm-set-folder-field folder rm-folder-after-list nil))
-      (rm-set-folder-field folder rm-folder-message-count
-			   (+ (rm-get-folder-field
-			       folder rm-folder-message-count)
-			      (length messages)))
-      (rm-set-folder-field folder rm-folder-after-list
-			   (nconc
-			    (rm-get-folder-field folder rm-folder-after-list)
-			    messages)))
-    (rm-set-folder-field folder rm-folder-cached-list 'invalid)
-    (setq rm-last-mailbox mailbox))
-  (rm-invalidate-status-cache folder)
-  (when redisplay
-    (rm-display-current-message folder t))
-  (when (rm-get-folder-field folder rm-folder-summary)
-    (rm-invalidate-summary-cache folder)
-    (when redisplay
-      (rm-with-summary folder
-	(summary-update)))))
 
+;; Add MAILBOX to FOLDER. NO-REDISPLAY does at it suggests
+(defun rm-add-mailbox (mailbox folder &optional no-redisplay)
+  (interactive
+   (list (prompt-for-folder "Mailbox to add:" rm-last-mailbox)
+	 (rm-current-folder)))
+  (unless (rm-get-folder-field folder rm-folder-current-msg)
+    (let
+	((cell (assoc-regexp mailbox rm-auto-rule-alist)))
+      (rm-set-folder-field folder rm-folder-rule (cdr cell))))
+  (rm-set-folder-field folder rm-folder-boxes
+		       (nconc (rm-get-folder-field folder rm-folder-boxes)
+			      (list mailbox)))
+  (rm-open-mailbox mailbox)
+  (let
+      ((new-messages (rm-get-mail-for-box mailbox)))
+    (if (> new-messages 0)
+	;; Display the first new message
+	(while (> new-messages 1)
+	  (rm-move-backwards folder)
+	  (setq new-messages (1- new-messages)))
+      (rm-rebuild-folder folder)))
+  (unless no-redisplay
+    (rm-redisplay-folder folder)))
+
+;; Remove MAILBOX from FOLDER
 (defun rm-subtract-mailbox (mailbox folder)
   (interactive
    (let
@@ -336,36 +335,37 @@ show all messages.")
   (rm-rebuild-folder folder)
   (rm-close-mailbox mailbox)
   (rm-display-current-message folder t)
-  (when (rm-get-folder-field folder rm-folder-summary)
-    (rm-with-summary folder
-      (summary-update))))
+  (rm-redisplay-folder folder))
 
-(defun rm-subtract-all-mailboxes (folder)
+;; Remove all MAILBOXES from FOLDER
+(defun rm-subtract-all-mailboxes (folder &optional no-redisplay)
   (interactive (list (rm-current-folder)))
   (mapc 'rm-close-mailbox (rm-get-folder-field folder rm-folder-boxes))
   (rm-set-folder-field folder rm-folder-boxes nil)
   (rm-rebuild-folder folder)
-  (rm-display-current-message folder t)
-  (when (rm-get-folder-field folder rm-folder-summary)
-    (rm-with-summary folder
-      (summary-update))))
+  (unless no-redisplay
+    (rm-redisplay-folder folder)))
 
+;; Install MAILBOX as the sole one in FOLDER
+(defun rm-replace-all-mailboxes (folder mailbox)
+  (interactive
+   (list (rm-current-folder)
+	 (prompt-for-folder "Mailbox to open:" rm-last-mailbox)))
+  (rm-subtract-all-mailboxes folder)
+  (rm-add-mailbox mailbox folder))
+
+;; Install the restriction rule named RULE in FOLDER  
 (defun rm-change-rule (folder rule)
   (interactive
    (list (rm-current-folder)
 	 (rm-prompt-for-rule)))
   (rm-set-folder-field folder rm-folder-rule rule)
   (rm-rebuild-folder folder)
-  (rm-display-current-message folder t)
-  (when (rm-get-folder-field folder rm-folder-summary)
-    (rm-with-summary folder
-      (summary-update))))
+  (rm-redisplay-folder folder))
 
-(defun rm-display-folder (folder)
-  (setq rm-open-folders (cons (cons (current-view) folder) rm-open-folders))
-  (rm-display-current-message folder t)
-  (when mail-display-summary
-    (rm-summarize folder)))
+(defun rm-null-rule (folder)
+  (interactive (list (rm-current-folder)))
+  (rm-change-rule folder nil))
 
 ;; Apply FOLDER's restriction rule to MESSAGE-LISTS, creating a new
 ;; list of any messages matching
@@ -389,6 +389,7 @@ show all messages.")
   (or (and (boundp 'rm-summary-folder) rm-summary-folder)
       (cdr (assq (current-view) rm-open-folders))))
 
+;; Return the number of folders containing the mailbox contained by BUFFER
 (defun rm-folders-with-box (buffer)
   (apply '+ (mapcar #'(lambda (cell)
 			(if (memq buffer (rm-get-folder-field
@@ -396,6 +397,7 @@ show all messages.")
 			    1
 			  0)) rm-open-folders)))
 
+;; Add MSGS to BUFFER. Rebuilding any folders referencing BUFFER
 (defun rm-add-messages (buffer msgs)
   (unrestrict-buffer)
   (when msgs
@@ -407,6 +409,14 @@ show all messages.")
                                  (cdr cell) rm-folder-boxes))
                (rm-rebuild-folder (cdr cell))))
          rm-open-folders)))
+
+;; Assuming FOLDER is displayed in the current view, redisplay it and
+;; completely redisplay any associated summary
+(defun rm-redisplay-folder (folder)
+  (rm-display-current-message folder t)
+  (when (rm-get-folder-field folder rm-folder-summary)
+    (rm-with-summary folder
+      (summary-update))))
 
 
 ;; Internal message structure
@@ -431,30 +441,32 @@ show all messages.")
   '(make-vector rm-msg-struct-size))
 
 ;; Set FLAG in MSG
-(defun rm-set-flag (msg flag)
+(defun rm-set-flag (msg flag &optional undisplayed)
   (unless (memq flag (rm-get-msg-field msg rm-msg-flags))
     (rm-set-msg-field msg rm-msg-flags
 		      (cons flag (rm-get-msg-field msg rm-msg-flags)))
-    (rm-map-msg-folders #'(lambda (msg folder)
-			    (when (rm-get-folder-field
-				   folder rm-folder-summary)
-			      (rm-invalidate-summary msg)
-			      (rm-with-summary folder
-			        (summary-update-item msg))))
-			msg)))
+    (unless undisplayed
+      (rm-map-msg-folders #'(lambda (msg folder)
+			      (when (rm-get-folder-field
+				     folder rm-folder-summary)
+				(rm-invalidate-summary msg)
+				(rm-with-summary folder
+				  (summary-update-item msg))))
+			  msg))))
 
 ;; Unset FLAG in MSG
-(defun rm-clear-flag (msg flag)
+(defun rm-clear-flag (msg flag &optional undisplayed)
   (when (memq flag (rm-get-msg-field msg rm-msg-flags))
     (rm-set-msg-field msg rm-msg-flags
 		      (delq flag (rm-get-msg-field msg rm-msg-flags)))
-    (rm-map-msg-folders #'(lambda (msg folder)
-			    (when (rm-get-folder-field
-				   folder rm-folder-summary)
-			      (rm-invalidate-summary msg)
-			      (rm-with-summary folder
-			        (summary-update-item msg))))
-			msg)))
+    (unless undisplayed
+      (rm-map-msg-folders #'(lambda (msg folder)
+			      (when (rm-get-folder-field
+				     folder rm-folder-summary)
+				(rm-invalidate-summary msg)
+				(rm-with-summary folder
+				  (summary-update-item msg))))
+			  msg))))
 
 ;; Return t if FLAG is set in MSG
 (defmacro rm-test-flag (msg flag)
@@ -563,31 +575,31 @@ show all messages.")
 ;; Parse the list of files named by BOXES, return a list of lists of
 ;; messages. The returned message lists _may_not_ be altered destructively
 (defun rm-parse-mailboxes (boxes)
-  (mapcar 'rm-open-mailbox boxes))
+  (mapcar 'rm-parse-mailbox boxes))
 
-;; Return a list of message structures defining all messages found in
-;; BUFFER. This list is sorted by buffer position, first to last. This
-;; list _may_not_ be altered destructively
-(defun rm-parse-buffer (buffer)
-  (with-buffer buffer
-    (when (eq rm-buffer-messages 'invalid)
-      (save-restriction
-	(unrestrict-buffer)
-	(let
-	    ;; If we scan the buffer from start to end we create the
-	    ;; list in reverse order
-	    ((pos (start-of-buffer))
-	     (msgs nil)
-	     (count 0))
-	  (while (and pos (< pos (end-of-buffer)) (rm-message-start-p pos))
-	    (setq msgs (cons (rm-parse-message pos) msgs)
-		  count (1+ count)
-		  pos (forward-line (rm-get-msg-field (car msgs)
-						      rm-msg-total-lines)
-				    pos)))
-	  ;; Okay, we now have all messages
-	  (setq rm-buffer-messages (nreverse msgs)))))
-    rm-buffer-messages))
+;; Parse a single mailbox named BOX. Return a _read_only_ list of messages
+(defun rm-parse-mailbox (box)
+  (let
+      ((buffer (get-file-buffer box)))
+    (with-buffer buffer
+      (when (eq rm-buffer-messages 'invalid)
+	(save-restriction
+	  (unrestrict-buffer)
+	  (let
+	      ;; If we scan the buffer from start to end we create the
+	      ;; list in reverse order
+	      ((pos (start-of-buffer))
+	       (msgs nil)
+	       (count 0))
+	    (while (and pos (< pos (end-of-buffer)) (rm-message-start-p pos))
+	      (setq msgs (cons (rm-parse-message pos) msgs)
+		    count (1+ count)
+		    pos (forward-line (rm-get-msg-field (car msgs)
+							rm-msg-total-lines)
+				      pos)))
+	    ;; Okay, we now have all messages
+	    (setq rm-buffer-messages (nreverse msgs)))))
+      rm-buffer-messages)))
 
 ;; Parse one message in the current buffer at position START, and return a
 ;; message structure. The buffer should be unrestricted
@@ -654,7 +666,8 @@ show all messages.")
 ;; Updates the flags embedded in the message headers of BUFFER
 (defun rm-update-flags (buffer)
   (with-buffer buffer
-    (unless (eq rm-buffer-messages 'invalid)
+    (unless (or (eq rm-buffer-messages 'invalid)
+		rm-buffer-read-only)
       (save-restriction
 	(let
 	    ((inhibit-read-only t)
@@ -669,37 +682,50 @@ show all messages.")
 			 (print-escape t)
 			 tem)
 		      ;; First put flags into X-Jade-Flags-v1 header
-		      (if (re-search-forward
-			   "^X-Jade-Flags-v1[\t ]*:[\t ]*(.*)$"
-			   start nil t)
-			  (progn
-			    (setq tem (match-start 1))
-			    (delete-area (match-start 1) (match-end 1)))
-			(setq tem (forward-char -1 (insert
-						    "X-Jade-Flags-v1: \n"
-						    (mail-unfold-header
-						     start)))
-			      lines-added (1+ lines-added)))
-		      (prin1 (rm-get-msg-field msg rm-msg-flags)
-			     (cons buffer tem))
+		      (catch 'flags
+			(if (re-search-forward
+			     "^X-Jade-Flags-v1[\t ]*:[\t ]*(.*)$"
+			     start nil t)
+			    (progn
+			      (setq tem (match-start 1))
+			      (when (equal (read (cons (current-buffer) tem))
+					   (rm-get-msg-field msg rm-msg-flags))
+				;; don't bother
+				(throw 'flags nil))
+			      (delete-area (match-start 1) (match-end 1)))
+			  (setq tem (forward-char -1 (insert
+						      "X-Jade-Flags-v1: \n"
+						      (mail-unfold-header
+						       start)))
+				lines-added (1+ lines-added)))
+			(prin1 (rm-get-msg-field msg rm-msg-flags)
+			       (cons buffer tem)))
 		      ;; Then selected cache items into X-Jade-Cache-v1 header
-		      (if (re-search-forward
-			   "^X-Jade-Cache-v1[\t ]*:[\t ]*(.*)$"
-			   start nil t)
-			  (progn
-			    (setq tem (match-start 1))
-			    (delete-area (match-start 1) (match-end 1)))
-			(setq tem (forward-char -1 (insert
-						    "X-Jade-Cache-v1: \n"
-						    (mail-unfold-header
-						     start)))
-			      lines-added (1+ lines-added)))
-		      (prin1 (delete-if
-			      #'(lambda (x)
-				  (null (memq (car x) rm-saved-cache-tags)))
-			      (copy-sequence
-			       (rm-get-msg-field msg rm-msg-cache)))
-			     (cons (current-buffer) tem))
+		      (let
+			  ((cache-items
+			    (delete-if
+			     #'(lambda (x)
+				 (null (memq (car x) rm-saved-cache-tags)))
+			     (copy-sequence
+			      (rm-get-msg-field msg rm-msg-cache)))))
+			(catch 'cache
+			  (if (re-search-forward
+			       "^X-Jade-Cache-v1[\t ]*:[\t ]*(.*)$"
+			       start nil t)
+			      (progn
+				(setq tem (match-start 1))
+				(when (equal cache-items
+					     (read
+					      (cons (current-buffer) tem)))
+				  ;; don't bother
+				  (throw 'cache nil))
+				(delete-area (match-start 1) (match-end 1)))
+			    (setq tem (forward-char -1 (insert
+							"X-Jade-Cache-v1: \n"
+							(mail-unfold-header
+							 start)))
+				  lines-added (1+ lines-added)))
+			  (prin1 cache-items (cons (current-buffer) tem))))
 		      ;; Adjust total-lines and header-lines message attrs
 		      (rm-set-msg-field
 		       msg rm-msg-header-lines
@@ -778,41 +804,47 @@ show all messages.")
   (let
       ((current (rm-get-folder-field folder rm-folder-current-msg))
        mark)
-    (when current
-      (setq mark (rm-get-msg-field current rm-msg-mark))
-      (goto-buffer (mark-file mark))
-      (unrestrict-buffer)
-      (let
-	  ((header-start (mark-pos mark))
-	   visible-start)
-	(unless (looking-at mail-message-start header-start)
-	  (error "Position isn't start of header: %s" header-start))
-	(let
-	    ((end-of-hdrs (rm-message-body current))
-	     (inhibit-read-only t))
-	  ;; Just operate on the headers
-	  (restrict-buffer header-start end-of-hdrs)
-	  ;; First of all, move all visible headers after non-visible ones
-	  (setq visible-start (rm-coalesce-visible-headers))
-	  ;; Look for a header to highlight
-	  (when (re-search-forward mail-highlighted-headers header-start nil t)
-	    (mark-block (match-start 1)
-			(forward-char -1 (or (mail-unfold-header
-					      (match-start 1))
-					     (end-of-buffer)))))
+    (if current
+	(progn
+	  (setq mark (rm-get-msg-field current rm-msg-mark))
+	  (goto-buffer (mark-file mark))
 	  (unrestrict-buffer)
-	  (goto end-of-hdrs)
-	  (restrict-buffer visible-start (rm-message-end current))
-	  (rm-clear-flag current 'unread)
-	  (rm-fix-status-info current)
-	  ;; Called when the current restriction is about to be
-	  ;; displayed
-	  (call-hook 'rm-display-message-hook (list current folder)))))
+	  (let
+	      ((header-start (mark-pos mark))
+	       visible-start)
+	    (unless (looking-at mail-message-start header-start)
+	      (error "Position isn't start of header: %s" header-start))
+	    (let
+		((end-of-hdrs (rm-message-body current)))
+	      ;; Just operate on the headers
+	      (restrict-buffer header-start end-of-hdrs)
+	      ;; First of all, move all visible headers after non-visible ones
+	      (setq visible-start (rm-coalesce-visible-headers))
+	      ;; Look for a header to highlight
+	      (when (re-search-forward mail-highlighted-headers
+				       header-start nil t)
+		(mark-block (match-start 1)
+			    (forward-char -1 (or (mail-unfold-header
+						  (match-start 1))
+						 (end-of-buffer)))))
+	      (unrestrict-buffer)
+	      (goto end-of-hdrs)
+	      (restrict-buffer visible-start (rm-message-end current))
+	      (rm-clear-flag current 'unread)
+	      (rm-fix-status-info current)
+	      ;; Called when the current restriction is about to be
+	      ;; displayed
+	      (call-hook 'rm-display-message-hook (list current folder)))))
+      ;; No message to display. Try for an empty buffer
+      (let
+	  ((box (car (rm-get-folder-field folder rm-folder-boxes))))
+	(when box
+	  (goto-buffer (get-file-buffer box)))))
     (unless (or (not (rm-get-folder-field folder rm-folder-summary))
 		no-summary-update)
       ;; Fix the summary buffer if it exists
       (rm-with-summary folder
-       (rm-summary-update-current)))))
+	(rm-summary-update-current)))))
 
 ;; Set the minor-mode-names list to reflect the status of MESSAGE
 (defun rm-fix-status-info (message)
@@ -825,6 +857,7 @@ show all messages.")
   (setq minor-mode-names (mapcar 'symbol-name
 				 (rm-get-msg-field message rm-msg-flags))))
 
+;; Invalidate all cached status messages in FOLDER
 (defun rm-invalidate-status-cache (folder)
   (rm-map-messages #'(lambda (m)
 		       (rm-invalidate-tag m 'status-id)) folder))
@@ -844,38 +877,42 @@ show all messages.")
       ((first-visible (re-search-forward mail-visible-headers
 					(start-of-buffer) nil t))
        (current-hdr first-visible)
-       (next-hdr first-visible))
-    (while (and current-hdr (< current-hdr (end-of-buffer)))
-      ;; Move over all visible headers from CURRENT-HDR until
-      ;; reaching an invisible one
-      (setq next-hdr current-hdr)
-      (while (and next-hdr (< next-hdr (end-of-buffer))
-		  (looking-at mail-visible-headers next-hdr nil t))
-	(setq next-hdr (mail-unfold-header next-hdr)))
-      ;; Now we have a block of visible headers from CURRENT-HDR to
-      ;; NEXT-HDR (but not including NEXT-HDR). Next find the following
-      ;; visible header to delimit the block of invisible ones
-      (setq current-hdr next-hdr)
-      (while (and next-hdr (< next-hdr (end-of-buffer))
-		  (not (looking-at mail-visible-headers next-hdr nil t)))
-	(setq next-hdr (mail-unfold-header next-hdr)))
-      ;; Now we have a block of invisible headers, CURRENT-HDR to NEXT-HDR
-      ;; Move them to before the FIRST-VISIBLE-HDR, updating this to
-      ;; point to the end of the insertion
-      (unless next-hdr
-	(setq next-hdr (end-of-buffer)))
-      (when (and current-hdr
-	       (> current-hdr first-visible)
-	       (> next-hdr current-hdr))
-	(setq first-visible (insert (cut-area current-hdr next-hdr)
-				    first-visible))
-	(if (not (zerop (pos-col first-visible)))
-	    ;; Last insertion didn't add a trailing newline. This
-	    ;; means that the end of the headers has been reached!
-	    (setq first-visible (insert "\n" first-visible)
-		  current-hdr nil)
-	  (setq current-hdr next-hdr))))
-    first-visible))
+       (next-hdr first-visible)
+       (inhibit-read-only t))
+    (if rm-buffer-read-only
+	;; Don't try to reorder headers
+	first-visible
+      (while (and current-hdr (< current-hdr (end-of-buffer)))
+	;; Move over all visible headers from CURRENT-HDR until
+	;; reaching an invisible one
+	(setq next-hdr current-hdr)
+	(while (and next-hdr (< next-hdr (end-of-buffer))
+		    (looking-at mail-visible-headers next-hdr nil t))
+	  (setq next-hdr (mail-unfold-header next-hdr)))
+	;; Now we have a block of visible headers from CURRENT-HDR to
+	;; NEXT-HDR (but not including NEXT-HDR). Next find the following
+	;; visible header to delimit the block of invisible ones
+	(setq current-hdr next-hdr)
+	(while (and next-hdr (< next-hdr (end-of-buffer))
+		    (not (looking-at mail-visible-headers next-hdr nil t)))
+	  (setq next-hdr (mail-unfold-header next-hdr)))
+	;; Now we have a block of invisible headers, CURRENT-HDR to NEXT-HDR
+	;; Move them to before the FIRST-VISIBLE-HDR, updating this to
+	;; point to the end of the insertion
+	(unless next-hdr
+	  (setq next-hdr (end-of-buffer)))
+	(when (and current-hdr
+		   (> current-hdr first-visible)
+		   (> next-hdr current-hdr))
+	  (setq first-visible (insert (cut-area current-hdr next-hdr)
+				      first-visible))
+	  (if (not (zerop (pos-col first-visible)))
+	      ;; Last insertion didn't add a trailing newline. This
+	      ;; means that the end of the headers has been reached!
+	      (setq first-visible (insert "\n" first-visible)
+		    current-hdr nil)
+	    (setq current-hdr next-hdr))))
+      first-visible)))
 
 
 ;; Deleting messages
@@ -886,6 +923,8 @@ show all messages.")
   ;; When this hook returns t the message isn't deleted.
   (unless (call-hook 'rm-vet-deletion-hook (list message) 'or)
     (with-buffer (mark-file (rm-get-msg-field message rm-msg-mark))
+      (when rm-buffer-read-only
+	(error "Read-only mailbox"))
       (unrestrict-buffer)
       (let
 	  ((inhibit-read-only t)
@@ -960,7 +999,14 @@ show all messages.")
    ((or (null movemail-program)
 	(not (file-exists-p movemail-program)))
     (error "The variable `movemail-program' is invalid"))
+   ((not (eq major-mode 'read-mail-mode))
+    (error "Current buffer isn't a mailbox"))
+   (rm-buffer-read-only
+    (error "Read-only mailbox"))
    (t
+    ;; Ensure the buffer is already parsed. We need this later
+    (when (eq rm-buffer-messages 'invalid)
+      (rm-parse-mailbox (buffer-file-name)))
     (let*
 	((tofile (local-file-name (concat ".newmail-"
 					  (file-name-nondirectory inbox))))
@@ -997,22 +1043,57 @@ show all messages.")
 				  tofile) t)
 		 (sleep-for 1)
 		 (setq keep-going nil)))
-	      (unless (eq rm-buffer-messages 'invalid)
-		;; Parse all new messages. Work backwards
-		(setq pos (end-of-buffer))
-		(while (and pos (>= pos start)
-			    (setq pos (re-search-backward mail-message-start
-							  pos)))
-		  (when (rm-message-start-p pos)
-		    (setq msgs (cons (rm-parse-message pos) msgs)
-			  count (1+ count))
-		    (rm-set-flag (car msgs) 'unread))
-		  (setq pos (forward-line -1 pos)))
-		(setq rm-buffer-messages (nconc rm-buffer-messages msgs)))
+	      ;; Parse all new messages. Work backwards
+	      (setq pos (end-of-buffer))
+	      (while (and pos (>= pos start)
+			  (setq pos (re-search-backward mail-message-start
+							pos)))
+		(when (rm-message-start-p pos)
+		  (setq msgs (cons (rm-parse-message pos) msgs)
+			count (1+ count))
+		  (rm-set-flag (car msgs) 'unread t))
+		(setq pos (forward-line -1 pos)))
+	      (setq rm-buffer-messages (nconc rm-buffer-messages msgs))
 	      (and keep-going count)))
 	;; Errors
 	(goto-buffer temp-buffer)
 	(error "Couldn't move mail" inbox tofile))))))
+
+;; Returns the number of messages read
+(defun rm-get-mail-for-box (mailbox)
+  (let
+      ((buffer (get-file-buffer mailbox))
+       (inboxes (mail-find-inboxes mailbox))
+       (count 0)
+       file
+       (file-count 0))
+    (with-buffer buffer
+      (while (and inboxes (numberp file-count))
+	(setq file (car inboxes)
+	      inboxes (cdr inboxes))
+	(unless (or (file-name-absolute-p file)
+		    (file-exists-p file))
+	  (setq file (expand-file-name file mail-folder-dir)))
+	(if (file-exists-p file)
+	    (progn
+	      (setq file-count (rm-append-inbox file))
+	      (when (numberp file-count)
+		(setq count (+ count file-count))))
+	  (format t "Spool file %s doesn't exist" file)))
+      (call-hook 'rm-after-import-hook))
+    (when (> count 0)
+      ;; Any folders referencing this mailbox get rebuilt.
+      (mapc #'(lambda (cell)
+		(let
+		    ((folder (cdr cell)))
+		  (when (member mailbox (rm-get-folder-field
+					 folder rm-folder-boxes))
+		    (rm-rebuild-folder folder)
+		    (when (rm-get-folder-field folder rm-folder-summary)
+		      (rm-with-summary folder
+			(summary-update))))))
+	    rm-open-folders))
+    count))
 
 ;; Try and get new mail for the current folder. Returns the number of
 ;; messages actually read
@@ -1021,43 +1102,17 @@ show all messages.")
   (let*
       ((folder (rm-current-folder))
        (old-message (rm-get-folder-field folder rm-folder-current-msg))
-       (count 0))
-    (mapc #'(lambda (box)
-	      (let
-		  ((inboxes (mail-find-inboxes box))
-		   (this-ret 0)
-		   this)
-		(while (and inboxes (numberp this-ret))
-		  (setq this (car inboxes)
-			inboxes (cdr inboxes))
-		  (unless (or (file-name-absolute-p this)
-			      (file-exists-p this))
-		    (setq this (expand-file-name this mail-folder-dir)))
-		  (if (file-exists-p this)
-		      (progn
-			(setq this-ret (rm-append-inbox this))
-			(when (and (numberp this-ret) (> this-ret 0))
-			  (when (zerop count)
-			    ;; If this is the first new message we want
-			    ;; to display it afterwards
-			    (setq old-message
-				  (rm-get-folder-field folder
-						       rm-folder-current-msg)))
-			  (setq count (+ count this-ret))))
-		    (format t "Spool file %s doesn't exist" this)))))
-	  (rm-get-folder-field folder rm-folder-boxes))
-    (when (> count 0)
-      (mapc #'(lambda (cell)
-		(let
-		    ((folder (cdr cell)))
-		  (rm-rebuild-folder folder)
-		  (when (rm-get-folder-field folder rm-folder-summary)
-		    (rm-with-summary folder
-		      (summary-update)))))
-	    rm-open-folders)
-      (format t "Got %d new messages" count))
-    (rm-display-current-message folder t)
-    (call-hook 'rm-after-import-hook)
+       (count 0)
+       (boxes (rm-get-folder-field folder rm-folder-boxes)))
+    (while boxes
+      (setq count (+ count (rm-get-mail-for-box (car boxes)))
+	    boxes (cdr boxes)))
+    (if (> count 0)
+	(progn
+	  (message (format nil "Got %d new message%s"
+			   count (if (> count 1) "s" "")))
+	  (rm-display-current-message folder t))
+      (message "No new messages"))
     count))
 
 
@@ -1275,10 +1330,7 @@ nonrecoverable."
 			 (when (rm-test-flag m 'deleted)
 			   (setq deletions (cons m deletions)))) folder)
     (rm-delete-messages deletions)
-    (rm-display-current-message folder t)
-    (when (rm-get-folder-field folder rm-folder-summary)
-      (rm-with-summary folder
-	(summary-update)))))
+    (rm-redisplay-folder folder)))
 
 (defun rm-unmark-message ()
   "Unmarks the current message."

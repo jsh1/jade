@@ -92,7 +92,4 @@ otherwise write straight to the folder's file."
 		    msg-list (cdr msg-list)))
 	  (when (filep real-dest)
 	    (close-file real-dest)))))
-    (when (rm-get-folder-field folder rm-folder-summary)
-      (rm-with-summary folder
-	(summary-update)))
-    (rm-fix-status-info folder)))
+    (rm-redisplay-folder folder)))
