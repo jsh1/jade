@@ -207,18 +207,24 @@ of the defun is assumed instead.")
   "Initialise the standard major mode for the current buffer."
   (interactive)
   (unless major-mode
-    (setq major-mode (or (and (looking-at ".*-\\*- *([^ ]+) *-\\*-"
-					  (start-of-buffer))
-			      (cdr (assoc-regexp (expand-last-match "\\1")
-						 auto-mode-alist t)))
-			 (and (looking-at interpreter-mode-regexp
-					  (start-of-buffer))
-			      (cdr (assoc-regexp
-				    (copy-area (start-of-buffer)
-					       (end-of-line (start-of-buffer)))
-				    interpreter-mode-alist t)))
-			 (cdr (assoc-regexp
-			       (buffer-file-name) auto-mode-alist t)))))
+    (let ((text (and (looking-at
+		      ".*-\\*-\\s*(.+?)\\s*-\\*-" (start-of-buffer))
+		     (expand-last-match "\\1"))))
+      (when (and text (> (length text) 0))
+	(let ((pieces (string-split "\\s*;\\s*" text)))
+	  (when pieces
+	    (setq major-mode (cdr (assoc-regexp (car pieces)
+						auto-mode-alist t))))))
+      (unless major-mode
+	(setq major-mode (or (and (looking-at interpreter-mode-regexp
+					      (start-of-buffer))
+				  (cdr (assoc-regexp
+					(copy-area (start-of-buffer)
+						   (end-of-line
+						    (start-of-buffer)))
+					interpreter-mode-alist t)))
+			     (cdr (assoc-regexp
+				   (buffer-file-name) auto-mode-alist t)))))))
   (let
       ((fun (or major-mode default-major-mode)))
     (when (symbolp fun)

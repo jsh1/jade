@@ -74,6 +74,19 @@ contain.")
   "Extra indentation for labels.")
 (make-variable-buffer-local 'c-label-indent)
 
+(defvar c-styles '((bsd (c-body-indent . 4) (c-brace-indent . -4)
+		    (c-case-indent . -4) (c-label-indent . -4))
+		   (gnu (c-body-indent . 2) (c-brace-indent . 0)
+		    (c-case-indent . -2) (c-label-indent . -2))
+		   (k&r (c-body-indent . 5) (c-brace-indent . -5)
+		    (c-case-indent . -5) (c-label-indent . -5)))
+  "Alist of C styles.")
+
+(defvar c-style nil
+  "C style of current buffer.")
+(make-variable-buffer-local 'c-style)
+	    
+
 
 ;; Variables
 
@@ -101,6 +114,10 @@ Commands defined by this mode are:\n
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
+  (when c-style
+    (let ((style (cdr (assoc c-style c-styles))))
+      (when style
+	(mapc (lambda (x) (set (car x) (cdr x))) style))))
   (setq mode-name "C"
 	major-mode 'c-mode
 	major-mode-kill kill-all-local-variables

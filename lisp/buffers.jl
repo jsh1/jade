@@ -284,6 +284,22 @@ normal-mode, the hook after-read-file-hook is dispatched."
 ;; Scans the end of a file for any local-variable definitions
 (defun hack-local-variables ()
   (when enable-local-variables
+    ;; extract variables from -*- MODE; VAR: VALUE; ... -*- string
+    (let ((text (and (looking-at
+		      ".*-\\*-\\s*(.+?)\\s*-\\*-" (start-of-buffer))
+		     (expand-last-match "\\1"))))
+      (when (and text (> (length text) 0))
+	(let ((pieces (string-split "\\s*;\\s*" text)))
+	  (when pieces
+	    (mapc (lambda (x)
+		    (when (string-looking-at "(\\S+)\\s*:\\s*(\\S+)" x)
+		      (let ((var (intern (expand-last-match "\\1")))
+			    (value (expand-last-match "\\2")))
+			(when (or (eq enable-local-variables t)
+				  (y-or-n-p (format nil "Set %s to %s?"
+						    var value)))
+			  (set var (read-from-string value))))))
+		  pieces)))))
     (let
 	((p (pos 0 (- (buffer-length) local-variable-lines))))
       (when (< (pos-line p) 0)
