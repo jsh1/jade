@@ -278,7 +278,9 @@ the next line is started."
 	(when (= (get-char p) ?\ )
 	  (delete-area p (forward-char 1 p)))
 	(insert "\n" p)
-	(fill-insert-prefix (start-of-line))))))
+	(if mode-indent-line
+	    (mode-indent-line)
+	  (fill-insert-prefix (start-of-line)))))))
 
 
 ;; Centering
