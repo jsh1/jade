@@ -27,8 +27,7 @@ _PR void  undo_record_deletion(TX *, POS *, POS *);
 _PR VALUE undo_push_deletion(TX *, POS *, POS *);
 _PR void  undo_record_insertion(TX *, POS *, POS *);
 _PR void  undo_record_modification(TX *, POS *, POS *);
-_PR void  undo_distinct(void);
-_PR void  undo_new_group(void);
+_PR void  undo_end_of_command(void);
 _PR void  undo_trim(void);
 _PR void  undo_init(void);
 
@@ -41,10 +40,6 @@ static max_undo_size = 10000;
 static VALUE pending_deletion_string;
 static POS pending_deletion_start, pending_deletion_end;
 static TX *pending_deletion_tx;
-
-/* A new command has been invoked but the group-separator hasn't been
-   added yet. */
-static bool pending_group;
 
 /* While we're in cmd_undo() this is set.  This is also tested by
    undo_distinct(); if FALSE it will call coalesce_undo() if necessary.
@@ -88,22 +83,6 @@ check_first_mod(TX *tx)
     }
 }
 
-/* If pending_group is set a group-separator is added to the buffer's
-   undo list. */
-static void
-check_group(TX *tx)
-{
-    if(pending_group
-#if 0
-       && !NILP(tx->tx_UndoList)
-#endif
-       && ((tx->tx_Flags & TXFF_NO_UNDO) == 0))
-    {
-	tx->tx_UndoList = cmd_cons(sym_nil, tx->tx_UndoList);
-    }
-    pending_group = FALSE;
-}
-
 /* Grabs the string between START and END in buffer TX and adds it to
    the buffer's undo-list.  This has to be done *before* the text is
    actually deleted from the buffer (for obvious reasons).  */
@@ -140,7 +119,6 @@ undo_record_deletion(TX *tx, POS *start, POS *end)
 	    }
 	}
 	coalesce_undo(tx);
-	check_group(tx);
 	check_first_mod(tx);
 	tx->tx_UndoList = cmd_cons(cmd_cons(lstart, string),
 				   tx->tx_UndoList);
@@ -175,7 +153,6 @@ undo_record_insertion(TX *tx, POS *start, POS *end)
     {
 	VALUE item;
 	coalesce_undo(tx);
-	check_group(tx);
 	check_first_mod(tx);
 	item = tx->tx_UndoList;
 	if(CONSP(item) && CONSP(VCAR(item)))
@@ -207,10 +184,12 @@ undo_record_modification(TX *tx, POS *start, POS *end)
     }
 }
 
-/* Signal the end of this command. */
+/* Signal the end of this command. This includes adding a group-separator
+   to all buffer's undo lists (that need one). */
 void
-undo_distinct(void)
+undo_end_of_command(void)
 {
+    TX *tx;
     if((!last_command || !NILP(last_command))
        && (last_command != sym_undo)
        && last_undid_tx
@@ -219,25 +198,32 @@ undo_distinct(void)
 	coalesce_undo(last_undid_tx);
     }
     in_undo = FALSE;
+
+    tx = buffer_chain;
+    while(tx != NULL)
+    {
+	if(!NILP(tx->tx_UndoList)
+	   && ((tx->tx_Flags & TXFF_NO_UNDO) == 0)
+	   && !(CONSP(tx->tx_UndoList) && NILP(VCAR(tx->tx_UndoList))))
+	    tx->tx_UndoList = cmd_cons(sym_nil, tx->tx_UndoList);
+	tx = tx->tx_Next;
+    }
 }
 
-/* A new command is started. */
-void
-undo_new_group(void)
-{
-    pending_group = TRUE;
-}
-
-_PR VALUE cmd_undo(VALUE tx);
-DEFUN_INT("undo", cmd_undo, subr_undo, (VALUE tx), V_Subr1, DOC_undo, "") /*
+_PR VALUE cmd_undo(VALUE tx, VALUE arg);
+DEFUN_INT("undo", cmd_undo, subr_undo, (VALUE tx, VALUE arg), V_Subr2, DOC_undo, "\np") /*
 ::doc:undo::
-undo [BUFFER]
+undo [BUFFER] [ARG]
 
 In the buffer BUFFER, undo everything back to the start of the previous
 command. Consecutive undo commands work backwards through the BUFFER's
 history.
+
+ARG is the number of commands to undo, when called interactively this is
+taken from the commands prefix argument.
 ::end:: */
 {
+    long count = NUMBERP(arg) ? VNUM(arg) : 1;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     if(VTX(tx)->tx_ToUndoList == NULL)
@@ -245,6 +231,9 @@ history.
 	/* First call. */
 	VTX(tx)->tx_ToUndoList = VTX(tx)->tx_UndoList;
 	VTX(tx)->tx_UndoList = sym_nil;
+	if(CONSP(VTX(tx)->tx_ToUndoList) && NILP(VCAR(VTX(tx)->tx_ToUndoList)))
+	    /* Ignore the initial group separator */
+	    count++;
     }
     if(NILP(VTX(tx)->tx_ToUndoList))
 	return(cmd_signal(sym_error, LIST_1(MKSTR("Nothing to undo!"))));
@@ -256,7 +245,11 @@ history.
 	VTX(tx)->tx_ToUndoList = VCDR(VTX(tx)->tx_ToUndoList);
 	VTX(tx)->tx_UndoneList = cmd_cons(item, VTX(tx)->tx_UndoneList);
 	if(NILP(item))
-	    break;		/* Group separator; break the loop. */
+	{
+	    /* Group separator; break the loop if ARG commands undone. */
+	    if(--count <= 0)
+		break;
+	}
 	else if(CONSP(item) && POSP(VCAR(item)))
 	{
 	    if(STRINGP(VCDR(item)))
