@@ -29,31 +29,25 @@ typedef struct LINE {
 } LINE;
 
 
-/* Each bookmark has one of these in the tx_Marks list */
-typedef struct _Mark {
-    VALUE	    mk_Car;
-#define mk_Flags mk_Car
+/* Each bookmark has one of these */
+typedef struct lisp_mark {
+    VALUE car;
 
     /* When the file is resident this node is linked into its tx_Marks list,
        otherwise it's in a list of all non-resident marks.  */
-    struct _Mark   *mk_Next;
+    struct lisp_mark *next;
 
-    /* next allocated MARK  */
-    struct _Mark   *mk_NextAlloc;
+    /* Linked into the list of all allocated marks */
+    struct lisp_mark *next_alloc;
 
-    VALUE	    mk_Pos;
+    /* The position of the marked character. */
+    VALUE pos;
 
-    /* This union tells me where to look for the file this mark is in.
-       if (mk_Resident == 0) then the file (mk_File.name) has to be loaded and
-       used. Otherwise (mk_File.tx) is used.  */
-    union {
-	VALUE		name;
-	/* this TX should not be marked for gc */
-	struct _TX     *tx;
-    }		    mk_File;
-} Mark;
+    /* The file. Either a buffer, or a string naming an unloaded file. */
+    VALUE file;
+} Lisp_Mark;
 
-#define MKFF_RESIDENT (1 << CELL8_TYPE_BITS)
+#define MARK_RESIDENT_P(m) BUFFERP((m)->file)
 
 
 /* A buffer, strangely called `TX' */
@@ -62,7 +56,7 @@ typedef struct _TX {
 #define tx_Flags tx_Car
 
     struct _TX	   *tx_Next;
-    Mark	   *tx_MarkChain;
+    Lisp_Mark	   *tx_MarkChain;
     LINE	   *tx_Lines;
     long	    tx_NumLines, tx_TotalLines;	/* text-lines, array-length */
 
@@ -108,6 +102,10 @@ typedef struct _TX {
 
 /* No recording of undo information */
 #define TXFF_NO_UNDO		(1 << (CELL8_TYPE_BITS + 2))
+
+/* don't wrap long lines */
+#define TXFF_DONT_WRAP_LINES	(1 << (CELL8_TYPE_BITS + 3))
+#define TX_WRAP_LINES_P(tx)	(((tx)->tx_Flags & TXFF_DONT_WRAP_LINES) == 0)
 
 /* Remnants from the old redisplay code */
 #define flag_insertion(tx, start, end)		((tx)->tx_Changes++)
@@ -167,6 +165,9 @@ typedef struct _VW
 
 /* status text set by user */
 #define VWFF_CUSTOM_STATUS	(1 << (CELL8_TYPE_BITS + 2))
+
+/* at last redisplay, the last line in the buffer was visible */
+#define VWFF_AT_BOTTOM		(1 << (CELL8_TYPE_BITS + 3))
 
 
 /* Windows */
