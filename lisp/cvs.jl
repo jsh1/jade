@@ -666,8 +666,8 @@ files under that directory are also reverted."
 	      (let
 		  ((b (get-file-buffer f)))
 		(when b
-		  (revert-buffer b))))
-	    filenames)))
+		  (revert-buffer b)))))
+	filenames))
   
 (defun cvs-revert ()
   "Any CVS files whose status is `updated' or `conflict', and who are cached
