@@ -436,14 +436,6 @@ backwards. When called interactively the cursor is set to the position."
 
 ;; Block handling
 
-;; Called when the block changes
-(defun x11-block-status-function ()
-  (if (blockp)
-      (x11-set-selection 'xa-primary (block-start) (block-end))
-    (x11-lose-selection 'xa-primary)))
-(when (eq window-system 'x11)
-  (add-hook 'block-status-hook 'x11-block-status-function))
-
 (defun copy-block (&aux rc)
   "If a block is marked in the current window, return the text it contains and
 unmark the block."
@@ -577,11 +569,6 @@ the string is added to."
 	kill-last-cursor (cursor-pos))
   string)
 
-(when (eq window-system 'x11)
-  (add-hook 'after-kill-hook
-	    #'(lambda ()
-		(x11-set-selection 'xa-primary (killed-string)))))
-							       
 (defun killed-string (&optional depth)
   "Returns the string in the kill-buffer at position DEPTH."
   (get-from-ring kill-ring (1+ (or depth 0))))
@@ -607,29 +594,27 @@ kill storage."
 (defvar yank-last-start nil)
 (defvar yank-last-end nil)
 
-(defun yank-get-string ()
-  ;; Handle window-system specific stuff first, otherwise fall into
-  ;; yanking from the kill-ring
-  (cond
-   ;; When using X, only paste a selection if it's not owned by Jade
-   ((and (eq window-system 'x11)
-	 (x11-selection-active-p 'xa-primary)
-	 (not (x11-own-selection-p 'xa-primary)))
-    (setq yank-last-item nil)
-    (x11-get-selection 'xa-primary))
-   ((zerop (ring-size kill-ring))
-    (error "Nothing to yank"))
-   (t
-    (setq yank-last-item 0)
-    (killed-string))))
+(defun yank-get-string (&optional no-hooks)
+  (let
+      (tem)
+    (cond
+     ;; First call the pre-yank-hook. This is typically used by
+     ;; the window system to return the current selection
+     ((and (not no-hooks) (setq tem (call-hook 'pre-yank-hook nil 'or)))
+      (setq yank-last-item nil)
+      tem)
+     ((zerop (ring-size kill-ring))
+      (error "Nothing to yank"))
+     (t
+      (setq yank-last-item 0)
+      (killed-string)))))
 
-(defun yank ()
+(defun yank (&optional no-pre-yank-hooks)
   "Inserts text before the cursor. If running under X11, and a selection is
-active that is not owned by Jade, paste that; else yank the most recent entry
-in the kill-ring."
+active, paste that; else yank the most recent entry in the kill-ring."
   (interactive "P")
   (setq yank-last-start (cursor-pos))
-  (insert (yank-get-string))
+  (insert (yank-get-string no-pre-yank-hooks))
   (setq this-command 'yank))
 
 (defun yank-block ()
@@ -645,11 +630,11 @@ cursor position, then unmark the block."
 	  this-command (if (rect-blocks-p) 'yank-rectangle 'yank))
     (block-kill)))
 
-(defun yank-rectangle ()
+(defun yank-rectangle (no-pre-yank-hooks)
   "Similar to `yank' except that the inserted text is treated as a rectangle."
   (interactive "P")
   (setq yank-last-start (cursor-pos))
-  (insert-rectangle (yank-get-string))
+  (insert-rectangle (yank-get-string no-pre-yank-hooks))
   (setq this-command 'yank-rectangle))
 
 (defun yank-next (count)
@@ -930,7 +915,8 @@ current view."
       (when pos
 	(setq mouse-select-pos pos
 	      mouse-dragging nil)
-	(block-kill)))))
+	(when (and (blockp) (>= pos (block-start)) (< pos (block-end)))
+	  (block-kill))))))
 
 (defun mouse-double-select ()
   (interactive)
@@ -952,7 +938,8 @@ current view."
 	  (setq pos (forward-word (if (> pos mouse-select-pos) 1 -1) pos)))
 	(goto pos)
 	(if (equal pos mouse-select-pos)
-	    (block-kill)
+	    (when (and (blockp) (>= pos (block-start)) (< pos (block-end)))
+	      (block-kill))
 	  (setq mouse-dragging (or mouse-dragging t))
 	  (block-kill)
 	  (set-rect-blocks nil drag-rectangle)
