@@ -59,7 +59,8 @@ loaded so that the file can be decoded (through the `read-file-hook').")
     "m" 'info-menu
     "n" 'info-next
     "p" 'info-prev
-    "q" 'bury-buffer
+    "q" 'info-quit
+    "x" 'bury-buffer
     "u" 'info-up
     "v" 'info-visit-file
     "?" 'describe-mode
@@ -71,47 +72,37 @@ loaded so that the file can be decoded (through the `read-file-hook').")
     "Shift-TAB" 'info-prev-link)
   "Keymap for Info.")
 
-(defvar info-buffer (open-buffer "*Info*" t)
-  "Buffer in which Info nodes are displayed.")
-
-(defvar info-tags-buffer (make-buffer "*Info tags*")
+(defvar info-tags-buffer nil
   "Buffer for storing the current Info file's tag table.")
+(make-variable-buffer-local 'info-tags-buffer)
 
 (defvar info-history '()
   "List of `(FILE NODE POS)' showing how we got to the current node.")
+(make-variable-buffer-local 'info-history)
 
 (defvar info-file-name nil
   "The true name (in the filesystem, minus possible suffix) of the root
 of the current Info file.")
+(make-variable-buffer-local 'info-file-name)
 
 (defvar info-file-suffix nil
   "The suffix of the current Info file.")
+(make-variable-buffer-local 'info-file-suffix)
 
 (defvar info-node-name nil
   "The name of the current Info node.")
+(make-variable-buffer-local 'info-node-name)
 
 (defvar info-indirect-list nil
   "List of `(START-OFFSET . FILE-NAME)' saying where the current Info file
 is split.")
+(make-variable-buffer-local 'info-indirect-list)
 
 (defvar info-has-tags-p nil
   "t when we were able to load a tag table for this Info file.")
+(make-variable-buffer-local 'info-has-tags-p)
 
-(defvar info-initialised nil
-  "Protection against being loaded multiple times.")
-
-(unless info-initialised
-  (setq info-initialised t)
-  (put 'info-error 'error-message "Info")
-  (with-buffer info-buffer
-    (setq keymap-path (cons 'info-keymap keymap-path)
-	  major-mode 'info-mode
-	  mode-name "Info"
-	  buffer-record-undo nil)
-    (set-buffer-read-only info-buffer t)
-    (setq auto-save-p nil))
-  (with-buffer info-tags-buffer
-    (setq buffer-record-undo nil)))
+(put 'info-error 'error-message "Info")
 
 ;; Read the indirect list (if it exists) and tag table from the file FILENAME.
 ;; Indirect list ends up in `info-indirect-list', tag table is read into the
@@ -120,39 +111,37 @@ is split.")
 (defun info-read-tags (filename suffix)
   (let
       ((dir (file-name-directory filename)))
-    (with-buffer info-buffer
-      (clear-buffer)
-      (setq info-indirect-list nil
-	    info-has-tags-p nil)
-      ;; Get the file into the Info buffer
-      (read-file-into-buffer (concat filename suffix))
-      ;; Scan for tag table or indirect list
-      (let
-	  ((pos (re-search-forward "^(Tag Table:|Indirect:) *$"
-				  (pos 0 0) info-buffer t)))
-	(when (and pos (looking-at "Indirect:" pos nil t))
-	  ;; Parse the indirect list
-	  (setq pos (forward-line 1 pos))
-	  (while (and (/= (get-char pos) ?\^_)
-		      (looking-at "^(.*): ([0-9]+)$" pos nil t))
-	    (setq info-indirect-list
-		  (cons
-		   (cons
-		    (read (cons info-buffer (match-start 2)))
-		    (concat dir (copy-area (match-start 1) (match-end 1))))
-		   info-indirect-list))
-	    (setq pos (forward-line 1 pos)))
-	  (setq info-indirect-list (nreverse info-indirect-list)))
-	;; Now look for the tag table
-	(when (setq pos (re-search-forward "^Tag table: *$" pos nil t))
-	  ;; Copy this into the tags buffer
-	  (let
-	      ((end (char-search-forward ?\^_ pos)))
-	    (unless end
-	      (setq end (end-of-buffer)))
-	    (clear-buffer info-tags-buffer)
-	    (insert (copy-area pos end) nil info-tags-buffer)
-	    (setq info-has-tags-p t)))))))
+    (clear-buffer)
+    (setq info-indirect-list nil
+	  info-has-tags-p nil)
+    ;; Get the file into the Info buffer
+    (read-file-into-buffer (concat filename suffix))
+    ;; Scan for tag table or indirect list
+    (let
+	((pos (re-search-forward "^(Tag Table:|Indirect:) *$"
+				 (pos 0 0) nil t)))
+      (when (and pos (looking-at "Indirect:" pos nil t))
+	;; Parse the indirect list
+	(setq pos (forward-line 1 pos))
+	(while (and (/= (get-char pos) ?\^_)
+		    (looking-at "^(.*): ([0-9]+)$" pos nil t))
+	  (setq info-indirect-list
+		(cons (cons (read (cons (current-buffer) (match-start 2)))
+			    (concat dir (copy-area (match-start 1)
+						   (match-end 1))))
+		      info-indirect-list))
+	  (setq pos (forward-line 1 pos)))
+	(setq info-indirect-list (nreverse info-indirect-list)))
+      ;; Now look for the tag table
+      (when (setq pos (re-search-forward "^Tag table: *$" pos nil t))
+	;; Copy this into the tags buffer
+	(let
+	    ((end (char-search-forward ?\^_ pos)))
+	  (unless end
+	    (setq end (end-of-buffer)))
+	  (clear-buffer info-tags-buffer)
+	  (insert (copy-area pos end) nil info-tags-buffer)
+	  (setq info-has-tags-p t))))))
 
 ;; Read the `dir' file, if multiple `dir' files exist concatenate them
 (defun info-read-dir ()
@@ -335,18 +324,18 @@ is split.")
   (unless start
     (setq start ""))
   (let*
-      ((prompt-completion-function
-	#'(lambda (w)
-	    (unless prompt-list
-	      (with-buffer info-buffer
-		(setq prompt-list (funcall info-list-fun))))
-	    (prompt-complete-from-list w)))
-       (prompt-validate-function
-	#'(lambda (w)
-	    (unless prompt-list
-	      (with-buffer info-buffer
-		(setq prompt-list (funcall info-list-fun))))
-	    (prompt-validate-from-list w)))
+      ((prompt-completion-function `(lambda (w)
+				      (or prompt-list
+					  (with-buffer ,(current-buffer)
+					    (setq prompt-list
+						  (funcall info-list-fun))))
+				      (prompt-complete-from-list w)))
+       (prompt-validate-function `(lambda (w)
+				    (or prompt-list
+				      (with-buffer ,(current-buffer)
+					(setq prompt-list
+					      (funcall info-list-fun))))
+				    (prompt-validate-from-list w)))
        (prompt-list-fold-case t)
        ;;(prompt-word-regexps prompt-def-regexps)
        (prompt-list '())
@@ -356,12 +345,22 @@ is split.")
       res)))
 
 ;;;###autoload
-(defun info (&optional start-node)
+(defun info (&optional start-node new-buffer)
   "Start the Info viewer. If START-NODE is given it specifies the node to
 show, otherwise the current node is used (or `(dir)' if this is the first
 time that `info' has been called)."
-  (interactive)
-  (goto-buffer info-buffer)
+  (interactive "\nP")
+  (goto-buffer (open-buffer "*Info*" new-buffer))
+  (setq keymap-path '(info-keymap global-keymap)
+	major-mode 'info-mode
+	mode-name "Info"
+	buffer-record-undo nil
+	auto-save-p nil)
+  (set-buffer-read-only nil t)
+  (unless info-tags-buffer
+    (setq info-tags-buffer (make-buffer "*Info-tags*"))
+    (with-buffer info-tags-buffer
+      (setq buffer-record-undo nil)))
   (cond
    (start-node
     (info-remember)
@@ -371,6 +370,11 @@ time that `info' has been called)."
       (info-find-node (concat info-node-name))))
    (t
     (info-find-node "(dir)"))))
+
+(defun info-quit ()
+  "Exit the info browzer."
+  (interactive)
+  (kill-buffer (current-buffer)))
 
 ;; The *Info* buffer has this function as its major-mode so that `Ctrl-h m'
 ;; displays some meaningful text
