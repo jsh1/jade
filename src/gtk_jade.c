@@ -950,7 +950,7 @@ async_event_pred (Display *dpy, XEvent *ev, XPointer arg)
 	if (w->w_Window && GTK_WIDGET_REALIZED (GTK_WIDGET (w->w_Window)))
 	{
 	    GdkWindowPrivate *pri = (GdkWindowPrivate *)w->w_Window->widget.window;
-	    if (pri->xwindow == ev->xexpose.window)
+	    if (pri->xwindow == ev->xany.window)
 		break;
 	}
     }
@@ -960,7 +960,6 @@ async_event_pred (Display *dpy, XEvent *ev, XPointer arg)
 	switch (ev->xany.type)
 	{
 	case Expose:
-	case GraphicsExpose:
 	    return True;
 
 	case KeyPress:
@@ -998,7 +997,6 @@ gtk_jade_handle_async_input (void)
 		WIN *w;
 
 	    case Expose:
-	    case GraphicsExpose:
 		x = (xev.xexpose.x - ev_win->w_LeftPix) / ev_win->w_FontX;
 		y = (xev.xexpose.y - ev_win->w_TopPix) / ev_win->w_FontY;
 		/* Why +2? It seems to be necessary.. */
@@ -1045,6 +1043,14 @@ sys_windows_init(void)
     rep_ADD_SUBR (Sgtk_cursor_shape);
     rep_INTERN (gtk_jade_new_hook);
     rep_INTERN (dnd_drop_uri_list);
+#if 0
+    /* XXX this doesn't work. I sometimes get errors:
+       XXX	Xlib: unexpected async reply (sequence 0xc60)!
+       XXX and the only thing to do is `kill -9'. If I run with
+       XXX `--sync' it seems to hang within gdk_copy_area ().
+       XXX I'm wondering if there's a problem with GraphicsExpose
+       XXX events..? */
     rep_test_int_fun = gtk_jade_handle_async_input;
+#endif
     gtk_misc_init();
 }
