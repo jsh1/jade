@@ -237,6 +237,7 @@ void
 sys_kill_window(WIN *w)
 {
     int i;
+    x11_window_lose_selections(w->w_Window);
     for(i = 0; i < P_MAX; i++)
 	XFreeGC(x11_display, w->w_WindowSys.ws_GC_array[i]);
     XDestroyWindow(x11_display, w->w_Window);
