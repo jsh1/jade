@@ -21,8 +21,6 @@
 (require 'summary)
 (provide 'buffer-summary)
 
-(defvar bs-buffer (make-buffer "*buffers*"))
-
 (defvar bs-keymap (copy-sequence summary-keymap))
 (bind-keys bs-keymap
   "s" 'bs-mark-save
@@ -47,7 +45,8 @@
 (defun buffer-summary ()
   "Switch to the buffer-summary."
   (interactive)
-  (set-current-buffer bs-buffer)
+  (set-current-buffer (or (get-buffer "*buffers*")
+			  (make-buffer "*buffers*")))
   (if (eq major-mode 'buffer-summary-mode)
       (summary-update)
     (insert "Buffer Summary:\n\n\tName\t\tMode\t\tFile\n\t----\t\t----\t\t----\n")
