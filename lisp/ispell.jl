@@ -18,6 +18,11 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+;; TODO:
+;;
+;; Arbitrate access to the ispell-process when more than one context
+;; tries to use it at once (i.e. spell-checking two buffers concurrently).
+
 (provide 'ispell)
 
 
@@ -234,7 +239,7 @@ for. When called interactively, spell-check the current block."
 (defun ispell-handle-failure-interactively (word response start end)
   (let
       ((old-buffer (current-buffer))
-       options)
+       options word-extent)
     (when (string-looking-at "^[&?].*: " response)
       (let
 	  ((point (match-end)))
@@ -274,42 +279,49 @@ for. When called interactively, spell-check the current block."
 	(insert "[SP] <number> R\)epl A\)ccept I\)nsert L\)ookup U\)ncap Q\)uit e\(X\)it or ? for help")
 	(setq keymap-path (cons ispell-keymap keymap-path))
 	(setq read-only t)))
-    (with-view (other-view)
-      (goto-buffer ispell-options-buffer)
-      (shrink-view-if-larger-than-buffer))
-    (with-view (minibuffer-view)
-      (with-buffer ispell-prompt-buffer
-	(let
-	    ((done nil)
-	     command)
-	  (while (not done)
-	    (setq command (catch 'ispell-exit
-			    (recursive-edit)))
-	    (cond
-	     ((eq (car command) 'accept)
-	      (when (cdr command)
-		(write ispell-process (cdr command))
-		(write ispell-process word)
-		(write ispell-process ?\n))
-	      (setq done t))
-	     ((eq (car command) 'replace)
-	      (setq done t)
-	      (if (integerp (cdr command))
-		  (with-buffer old-buffer
-		    (setq end (replace-string word
-					      (ispell-strip-word
-					       (nth (cdr command) options))
-					      start)))
-		(let
-		    ((string (prompt-for-string "Replace with:" word)))
-		  (if string
-		      (setq end (replace-string word string start))
-		    (setq done nil)))))
-	     ((eq (car command) 'quit)
-	      (setq done t)
-	      (setq end (end-of-buffer old-buffer)))
-	     (t
-	      (error "Unknown ispell command, %S" command)))))))
+    (goto start)
+    (setq word-extent (make-extent start end (list 'face highlight-face)))
+    (unwind-protect
+	(progn
+	  (with-view (other-view)
+	    (goto-buffer ispell-options-buffer)
+	    (shrink-view-if-larger-than-buffer))
+	  (with-view (minibuffer-view)
+	    (with-buffer ispell-prompt-buffer
+	      (let
+		  ((done nil)
+		   command)
+		(while (not done)
+		  (setq command (catch 'ispell-exit
+				  (recursive-edit)))
+		  (cond
+		   ((eq (car command) 'accept)
+		    (when (cdr command)
+		      (write ispell-process (cdr command))
+		      (write ispell-process word)
+		      (write ispell-process ?\n))
+		    (setq done t))
+		   ((eq (car command) 'replace)
+		    (setq done t)
+		    (if (integerp (cdr command))
+			(with-buffer old-buffer
+			  (setq end (replace-string word
+						    (ispell-strip-word
+						     (nth (cdr command)
+							  options))
+						    start)))
+		      (let
+			  ((string (prompt-for-string "Replace with:" word)))
+			(if string
+			    (setq end (replace-string word string start))
+			  (setq done nil)))))
+		   ((eq (car command) 'quit)
+		    (setq done t)
+		    (setq end (end-of-buffer old-buffer)))
+		   (t
+		    (error "Unknown ispell command, %S" command))))))))
+      (when word-extent
+	(delete-extent word-extent)))
     end))
 
 
