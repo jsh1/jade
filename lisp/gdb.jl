@@ -28,6 +28,9 @@
   "When non-nil the current line in the source view is automatically
 centred each time it changes.")
 
+(defvar gdb-frame-face highlight-face
+  "Face used to highlight the line in the current stack frame.")
+
 (defvar gdb-last-frame nil
   "(FILE . LINE-NUMBER) representing the last frame we displayed.")
 (make-variable-buffer-local 'gdb-last-frame)
@@ -44,6 +47,9 @@ centred each time it changes.")
 
 (defvar gdb-delete-prompt nil)
 (make-variable-buffer-local 'gdb-delete-prompt)
+
+(defvar gdb-frame-extent nil)
+(make-variable-buffer-local 'gdb-frame-extent)
 
 (defvar gdb-ctrl-c-keymap
   (bind-keys (make-sparse-keymap shell-ctrl-c-keymap)
@@ -122,6 +128,9 @@ with `Ctrl-x Ctrl-a'.")
 (defmacro gdb-get-buffer-var (var)
   (list 'with-buffer 'gdb-last-buffer var))
 
+(defmacro gdb-set-buffer-var (var value)
+  (list 'with-buffer 'gdb-last-buffer (list 'setq var value)))
+
 ;; Gets the name of the current file
 (defun gdb-current-file ()
   (file-name-nondirectory (if gdb-buffer-p
@@ -186,7 +195,7 @@ with `Ctrl-x Ctrl-a'.")
 	(with-view view
 	  (setq old-buf (current-buffer))
 	  (find-file (car frame))
-	  (mark-block line-pos (end-of-line line-pos))
+	  (gdb-highlight-line line-pos)
 	  (goto (glyph-to-char-pos (indent-pos line-pos)))
 	  (when (or gdb-auto-centre (not (eq old-buf (current-buffer))))
 	    (center-display)))))))
@@ -200,9 +209,17 @@ with `Ctrl-x Ctrl-a'.")
 	((frame (gdb-get-buffer-var gdb-last-frame))
 	 (line-pos (pos 0 (cdr frame))))
       (find-file (car frame))
-      (mark-block line-pos (end-of-line line-pos))
+      (gdb-highlight-line line-pos)
       (goto (glyph-to-char-pos (indent-pos line-pos)))
       (center-display))))
+
+(defun gdb-highlight-line (line)
+  (when (gdb-get-buffer-var gdb-frame-extent)
+    (delete-extent (gdb-get-buffer-var gdb-frame-extent)))
+  (let
+      ((extent (make-extent line (end-of-line line)
+			    (list 'face gdb-frame-face))))
+    (gdb-set-buffer-var gdb-frame-extent extent)))
 
 ;; Called when the current buffer's process changes state
 (defun gdb-callback ()
@@ -210,6 +227,8 @@ with `Ctrl-x Ctrl-a'.")
   (shell-default-callback)
   ;; Then do our own cleanup at process termination
   (unless shell-process
+    (when gdb-frame-extent
+      (delete-extent gdb-frame-extent))
     (when (eq gdb-last-buffer (current-buffer))
       ;; Ensure the buffer can be gc'd in the future
       (setq gdb-last-buffer nil))))
