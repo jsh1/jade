@@ -96,6 +96,7 @@ alloc_glyph_buf(int cols, int rows)
 	p += sizeof(u_long) * rows;
 	for(i = 0; i < rows; i++)
 	{
+	    memset (p, 0, cols * (sizeof (glyph_code) + sizeof (glyph_attr)));
 	    g->codes[i] = p;
 	    p += sizeof(glyph_code) * cols;
 	    g->attrs[i] = p;
@@ -626,6 +627,76 @@ patch_display(WIN *w, glyph_buf *old_g, glyph_buf *new_g)
 
 /* Putting it all together */
 
+DEFUN_INT ("redisplay-window", Fredisplay_window, Sredisplay_window,
+	   (repv win, repv arg), rep_Subr2, rep_DS_NL "P") /*
+::doc:Sredisplay-window::
+redisplay-window [WINDOW] [FORCE]
+
+Redisplay everything that needs to be in WINDOW (or the current window).
+
+When FORCE (the raw prefix arg) is non-nil, absolutely everything is
+refreshed, not just what changed.
+::end:: */
+{
+    WIN *w;
+    rep_DECLARE1 (win, WINDOWP);
+    w = VWIN (win);
+
+#ifdef DEBUG
+    fprintf(stderr, "Entering redisplay..\n");
+#endif
+
+    redisplay_lock++;
+
+    if (w->w_Window != WINDOW_NIL)
+    {
+	glyph_buf *tem;
+
+	if(arg != Qnil || (w->w_Flags & WINFF_FORCE_REFRESH))
+	{
+	    /* Must redraw this window. The easiest way to do this
+	       is to just garbage the entire contents */
+	    garbage_glyphs(w, 0, 0, w->w_MaxX, w->w_MaxY);
+	    w->w_Flags &= ~(WINFF_FORCE_REFRESH | WINFF_PRESERVING);
+	}
+
+	if((w->w_Flags & WINFF_PRESERVING) == 0)
+	{
+	    make_window_glyphs(w->w_NewContent, w);
+	    hash_glyph_buf(w->w_NewContent);
+	}
+
+	if(!patch_display(w, w->w_Content, w->w_NewContent))
+	{
+	    /* MAX-D was exceeded. Draw all lines manually. */
+	    int row;
+	    for(row = 1; row <= w->w_MaxY; row++)
+		redisplay_do_draw(w, w->w_Content, w->w_NewContent, row);
+	}
+
+	/* Flip the old and new glyph buffers. */
+	tem = w->w_NewContent;
+	w->w_NewContent = w->w_Content;
+	w->w_Content = tem;
+	w->w_Flags &= ~WINFF_PRESERVING;
+
+	/* See if we should update the window name */
+	if(w->w_CurrVW->vw_Tx->tx_StatusId != 0
+	   && w->w_DisplayedName != w->w_CurrVW->vw_Tx->tx_StatusId)
+	{
+	    w->w_DisplayedName = w->w_CurrVW->vw_Tx->tx_StatusId;
+	    sys_set_win_name(w, rep_STR(w->w_DisplayedName));
+	}
+    }
+    redisplay_lock--;
+
+#ifdef DEBUG
+    fprintf(stderr, "Leaving redisplay.\n");
+#endif
+
+    return Qt;
+}
+
 DEFUN_INT("redisplay", Fredisplay, Sredisplay, (repv arg), rep_Subr1, "P") /*
 ::doc:Sredisplay::
 redisplay [FORCE]
@@ -636,59 +707,11 @@ non-nil, absolutely everything is refreshed, not just what changed.
 {
     WIN *w;
 
-#ifdef DEBUG
-    fprintf(stderr, "Entering redisplay..\n");
-#endif
-
-    redisplay_lock++;
     for(w = win_chain; w != 0; w = w->w_Next)
     {
-	if(w->w_Window != 0)
-	{
-	    glyph_buf *tem;
-
-	    if(!rep_NILP(arg) || (w->w_Flags & WINFF_FORCE_REFRESH))
-	    {
-		/* Must redraw this window. The easiest way to do this
-		   is to just garbage the entire contents */
-		garbage_glyphs(w, 0, 0, w->w_MaxX, w->w_MaxY);
-		w->w_Flags &= ~(WINFF_FORCE_REFRESH | WINFF_PRESERVING);
-	    }
-
-	    if((w->w_Flags & WINFF_PRESERVING) == 0)
-	    {
-		make_window_glyphs(w->w_NewContent, w);
-		hash_glyph_buf(w->w_NewContent);
-	    }
-
-	    if(!patch_display(w, w->w_Content, w->w_NewContent))
-	    {
-		/* MAX-D was exceeded. Draw all lines manually. */
-		int row;
-		for(row = 1; row <= w->w_MaxY; row++)
-		    redisplay_do_draw(w, w->w_Content, w->w_NewContent, row);
-	    }
-
-	    /* Flip the old and new glyph buffers. */
-	    tem = w->w_NewContent;
-	    w->w_NewContent = w->w_Content;
-	    w->w_Content = tem;
-	    w->w_Flags &= ~WINFF_PRESERVING;
-
-	    /* See if we should update the window name */
-	    if(w->w_CurrVW->vw_Tx->tx_StatusId != 0
-	       && w->w_DisplayedName != w->w_CurrVW->vw_Tx->tx_StatusId)
-	    {
-		w->w_DisplayedName = w->w_CurrVW->vw_Tx->tx_StatusId;
-		sys_set_win_name(w, rep_STR(w->w_DisplayedName));
-	    }
-	}
+	if (w->w_Window != WINDOW_NIL)
+	    Fredisplay_window (rep_VAL (w), arg);
     }
-    redisplay_lock--;
-
-#ifdef DEBUG
-    fprintf(stderr, "Leaving redisplay.\n");
-#endif
 
     Fflush_output();
     return Qt;
@@ -741,6 +764,7 @@ void
 redisplay_init(void)
 {
     rep_ADD_SUBR_INT(Sredisplay);
+    rep_ADD_SUBR_INT(Sredisplay_window);
     rep_ADD_SUBR(Sredisplay_max_d);
     rep_redisplay_fun = redisplay;
 }
