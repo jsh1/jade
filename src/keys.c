@@ -179,10 +179,8 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
     }
     else
     {
-	VALUE cmd;
 	VW *vw = curr_vw;
-	bool inmulti = !(NILP(next_keymap_path)
-			 || (next_keymap_path == sym_t));
+	VALUE cmd, tem, orig_next_keymap_path = next_keymap_path;
 	if(pending_meta)
 	{
 	    mods |= ev_mod_meta;
@@ -192,16 +190,29 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 	current_event[1] = mods;
 	current_os_event = OSInputMsg;
 	cmd = lookup_binding(code, mods);
-	if(cmd)
+	if(cmd != LISP_NULL)
+	{
+	    /* Found a binding for this event; evaluate it. */
 	    result = cmd_call_command(cmd, sym_nil);
-	else if(inmulti)
+	}
+	else if(!NILP(orig_next_keymap_path)
+		&& orig_next_keymap_path != sym_t
+		&& (tem = cmd_symbol_value(sym_keymap_path, sym_t))
+		&& orig_next_keymap_path != tem)
+	{
+	    /* A multi-key binding, but no final step; clear the prefix
+	       argument for the next command and beep. */
+	    var_prefix_arg(sym_nil);
 	    beep(vw);
+	}
 	else
 	{
-	    result = cmd_call_hook(sym_unbound_key_hook, sym_nil, sym_nil);
+	    /* An unbound key with no prefix keys. */
+	    result = cmd_call_hook(sym_unbound_key_hook, sym_nil, sym_or);
 	    if(result != LISP_NULL && NILP(result)
 	       && (mods & EV_TYPE_KEYBD) && OSInputMsg)
 	    {
+		/* Try to self-insert */
 		u_char buff[256];
 		int len;
 		if((len = cook_key(OSInputMsg, buff, 256 - 1)) >= 0)
@@ -226,8 +237,32 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 				    = VCDR(vw->vw_Tx->tx_UndoList);
 			    }
 			    if(pad_cursor(vw))
-				insert_string(vw->vw_Tx, buff,
-					      len, vw->vw_CursorPos);
+			    {
+				VALUE arg = cmd_prefix_numeric_argument(var_prefix_arg(LISP_NULL));
+				if(!INTP(arg) || VINT(arg) < 1)
+				    beep(vw);
+				else if(VINT(arg) == 1)
+				    insert_string(vw->vw_Tx, buff,
+						  len, vw->vw_CursorPos);
+				else if(len == 1 && len < sizeof(buff) - 1)
+				{
+				    /* Inserting a single char, more than
+				       once, build a string of them. */
+				    memset(buff, buff[0], VINT(arg));
+				    insert_string(vw->vw_Tx, buff,
+						  VINT(arg), vw->vw_CursorPos);
+				}
+				else
+				{
+				    /* Do a looping insertion */
+				    int i = VINT(arg);
+				    while(i-- > 0)
+					insert_string(vw->vw_Tx, buff,
+						      len, vw->vw_CursorPos);
+				}
+				/* Remove prefix arg. */
+				var_prefix_arg(sym_nil);
+			    }
 			    if(old_undo_head != LISP_NULL)
 			    {
 				VCDR(old_undo_head) = vw->vw_Tx->tx_UndoList;
