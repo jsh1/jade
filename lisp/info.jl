@@ -43,6 +43,15 @@
 each SUFFIX in turn. When one matches evaluate FORM so that the file can be
 decoded (through the `read-file-hook').")
 
+(defvar info-documentation-file "librep")
+(make-variable-buffer-local 'info-documentation-file)
+
+(defvar info-function-index-node "Function Index")
+(make-variable-buffer-local 'info-function-index-node)
+
+(defvar info-variable-index-node "Variable Index")
+(make-variable-buffer-local 'info-variable-index-node)
+
 (defvar info-keymap
   (bind-keys (make-keymap)
     "SPC" 'next-screen
@@ -484,30 +493,28 @@ local bindings are:\n
       (signal 'info-error (list "Menu line malformed")))))
 
 ;; Prompt for the name of a menu item (with a default) and find it's node.
-(defun info-menu ()
+(defun info-menu (&optional menu-name)
   (interactive)
-  (let
-      ((menu-name (and (looking-at "^\\* ([^:.]+)" (start-of-line))
-		       (expand-last-match "\\1"))))
-    (when (info-goto-menu-start)
-      (let
-	  ((opos (cursor-pos)))
+  (when (info-goto-menu-start)
+    (unless menu-name
+      (setq menu-name (and (looking-at "^\\* ([^:.]+)" (start-of-line))
+			   (expand-last-match "\\1")))
+      (save-excursion
 	(setq menu-name (info-prompt info-list-menu-items
-				     "Menu item:" menu-name))
-	(goto opos)))
-    (when menu-name
-      (if (re-search-forward (concat "^\\* " (quote-regexp menu-name) ?:)
-			     nil nil t)
-	  (progn
-	    (goto (match-start))
-	    (let
-		((node-name (info-parse-menu-line)))
-	      (if node-name
-		  (progn
-		    (info-remember)
-		    (info-find-node node-name))
-		(signal 'info-error (list "Menu line malformed")))))
-	(signal 'info-error (list "Can't find menu" menu-name))))))
+				     "Menu item:" menu-name)))))
+  (when menu-name
+    (if (re-search-forward (concat "^\\* " (quote-regexp menu-name) ?:)
+			   nil nil t)
+	(progn
+	  (goto (match-start))
+	  (let
+	      ((node-name (info-parse-menu-line)))
+	    (if node-name
+		(progn
+		  (info-remember)
+		  (info-find-node node-name))
+	      (signal 'info-error (list "Menu line malformed")))))
+      (signal 'info-error (list "Can't find menu" menu-name)))))
 
 ;; Retrace our steps one node.
 (defun info-last ()
@@ -639,3 +646,29 @@ local bindings are:\n
     (when ref
       (info-remember)
       (info-find-node (cdr ref)))))
+
+;;;###autoload
+(defun info-visit-node (info-file node-name &optional menu-key)
+  (info (concat ?\( info-file ?\) node-name))
+  (when menu-key
+    (info-menu menu-key)))
+
+;;;###autoload
+(defun info-describe-function (function)
+  (interactive
+   (list (prompt-for-string "Describe function:" (symbol-at-point))))
+  (when function
+    (info-visit-node
+     info-documentation-file info-function-index-node function)
+    (when (re-search-forward (format nil "^ - .* %s" (quote-regexp function)))
+      (goto (match-start)))))
+
+;;;###autoload
+(defun info-describe-variable (variable)
+  (interactive
+   (list (prompt-for-string "Describe variable:" (symbol-at-point))))
+  (when function
+    (info-visit-node
+     info-documentation-file info-variable-index-node variable)
+    (when (re-search-forward (format nil "^ - .* %s" (quote-regexp variable)))
+      (goto (match-start)))))
