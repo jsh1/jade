@@ -66,6 +66,7 @@ and hence hasn't been processed yet; or nil.")
   "A" 'cvs-change-log-other-view
   "b" 'cvs-diff-backup
   "c" 'cvs-commit
+  "C" 'cvs-commit-directory
   "d" 'cvs-diff-cvs
   "f" 'cvs-find-file
   "g" 'cvs-update-no-prompt
@@ -356,6 +357,9 @@ to CVS mode include:
 			 working copy and the new merged working copy
   `c'			Prompt for a log message, then commit all
 			 selected files to the repository
+  `C'			Run commit recursively in the current directory,
+			 specifying a prefix-argument causes the directory
+			 to be prompted for.
   `d'			Display the differences between all selected files
 			 and their relations in the repository
   `f'			Open the current item in the current view
@@ -544,15 +548,38 @@ commit them under."
    `(lambda (m)
       (cvs-commit-callback ',(cvs-command-get-filenames) m))))
 
+(defun cvs-commit-directory (directory)
+  "Commit all CVS files under the current working directory that need to be.
+If a prefix argument is given, the directory to commit in is prompted for."
+  (interactive
+   (list (if current-prefix-arg
+	     (prompt-for-directory "Directory to commit in:")
+	   ".")))
+  (cvs-callback-with-message
+   "Committing files"
+   `(lambda (m)
+      (cvs-commit-callback '(,directory) m))))
+
 (defun cvs-commit-callback (filenames message)
   (save-some-buffers)
   (cvs-command nil "commit" (list* "-m" message filenames))
   ;; Revert all loaded files (in case of keyword substitutions, etc.)
   (mapc #'(lambda (f)
-	    (let
-		((b (get-file-buffer f)))
-	      (when b
-		(revert-buffer b)))) filenames)
+	    (if (file-directory-p f)
+		;; Try to revert _anything_ under directory F
+		(let
+		    ((canon-f (canonical-file-name f)))
+		  (mapc #'(lambda (b)
+			    (when (and (not (buffer-special-p b))
+				       (string-head-eq (canonical-file-name
+							(buffer-file-name))
+						       canon-f))
+			      (revert-buffer b))) buffer-list))
+	      ;; A normal file
+	      (let
+		  ((b (get-file-buffer f)))
+		(when b
+		  (revert-buffer b)))) filenames))
   (cvs-show-output-buffer)
   (cvs-update-if-summary))
 
