@@ -1,0 +1,27 @@
+#!/bin/sh
+# $Id$
+
+# usage: jademail [-new-window] [FOLDER]
+
+opt_newwindow="no"
+default_folder=${JADE_DEFAULT_FOLDER:-INBOX}
+
+if [ "x$1" = "x-new-window" ]; then
+  opt_newwindow="yes"
+  shift
+fi
+
+if [ $# -eq 1 ]; then
+  folder=$1
+else
+  folder=${default_folder}
+fi
+
+if [ "${opt_newwindow}" = "yes" ]; then
+  jadeclient -- <<-EOF
+	(with-window (open-window)
+	  (read-mail-folder "$folder"))
+	EOF
+else
+  jadeclient -e '(read-mail-folder "'$folder'")'
+fi
