@@ -386,9 +386,10 @@ Major mode for viewing mail folders. Commands include:\n
 
 ;; Returns the position of the start of the last line in the current message.
 ;; Works no matter what the restriction is set to.
-(defun rm-current-message-end ()
-  (pos 0 (+ (pos-line (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark)))
-	    (rm-get-msg-field rm-current-msg rm-msg-total-lines) -1)))
+(defun rm-message-end (&optional msg)
+  (unless msg (setq msg rm-current-msg))
+  (pos 0 (+ (pos-line (mark-pos (rm-get-msg-field msg rm-msg-mark)))
+	    (rm-get-msg-field msg rm-msg-total-lines) -1)))
 
 ;; Updates the flags embedded in the message headers. Leaves the buffer
 ;; unrestricted.
@@ -504,7 +505,7 @@ Major mode for viewing mail folders. Commands include:\n
 		      (forward-char -1 (or (mail-unfold-header (match-start 1))
 					   (end-of-buffer)))))
 	(unrestrict-buffer)
-	(setq rm-current-msg-end (rm-current-message-end))
+	(setq rm-current-msg-end (rm-message-end))
 	(goto end-of-hdrs)
 	(rm-restrict-to-message)
 	(rm-clear-flag rm-current-msg 'unread)
@@ -603,7 +604,7 @@ Major mode for viewing mail folders. Commands include:\n
     (let
 	((inhibit-read-only t)
 	 ;; Don't use rm-curr-msg-end, it may not be initialised.
-	 (end (rm-current-message-end)))
+	 (end (rm-message-end)))
       (unrestrict-buffer)
       (unless (equal end (end-of-buffer))
 	;; Now this points to the first character of the next message
