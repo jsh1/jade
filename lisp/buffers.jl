@@ -75,6 +75,9 @@ searched for a `Local Variables:' section.")
 ;; Initialise the first window's buffer-list
 (setq buffer-list (list (current-buffer)))
 
+;; Ensure that the buffer's default-directory is preserved
+(put 'default-directory 'permanent-local t)
+
 
 ;; Buffer manipulation
 
