@@ -160,7 +160,8 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
 	UPD(VPOS(thismark->mk_Pos).pos_Line);
     }
 
-    UPD(tx->tx_LogicalStart);
+    if(tx->tx_LogicalStart > ypos)
+	tx->tx_LogicalStart += addy;
     UPD(tx->tx_LogicalEnd);
 
     UPD(tx->tx_SavedCPos.pos_Line);
