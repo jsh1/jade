@@ -1,3 +1,8 @@
+2000-11-12  John Harper  <jsh@eazel.com>
+
+	* server-dl.c: be sure that the functions are added to the
+	`jade' module
+
 2000-08-24  John Harper  <john@dcs.warwick.ac.uk>
 
 	main.c (inner_main): call rep_top_level_recursive_edit ()

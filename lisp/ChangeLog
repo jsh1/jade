@@ -1,3 +1,8 @@
+2000-11-12  John Harper  <jsh@eazel.com>
+
+	* Makefile.in: use JADEEXECDIR instead of REP_DL_PATH (which
+	was actually a typo, it should have been REP_DL_LOAD_PATH!)
+
 2000-10-19  John Harper  <jsh@eazel.com>
 
 	* read-mail.jl, maildefs.jl: hacking to support POP mailboxes
