@@ -190,7 +190,7 @@ that each of the FILENAMES contains no directory specifiers."
 Returns the new value of the list."
   (save-some-buffers)
   (setq cvs-file-list nil)
-  (cvs-command '() "update" '() t 'cvs-update-filter)
+  (cvs-command '() "update" '() t 'cvs-update-filter nil t)
   (setq cvs-update-pending nil
 	cvs-file-list (nreverse cvs-file-list)))
 
