@@ -4,8 +4,7 @@
 
 sys_name="`hostname`.`domainname`"
 user_name="$LOGNAME"
-os_name="`uname -s`"
-os_release="`uname -r`"
+host_type="$1"
 
 build_date="`date +'%a %b %e %Y'`"
 build_time="`date +'%T %Z'`"
@@ -17,8 +16,7 @@ cat >build.h <<EOF
 #ifndef BUILD_H
 #define BUILD_H
 
-#define OS_NAME "$os_name"
-#define OS_VERSION "$os_release"
+#define HOST_TYPE "$host_type"
 
 #define BUILD_HOST "$sys_name"
 #define BUILD_USER "$user_name"
