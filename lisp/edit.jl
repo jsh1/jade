@@ -209,6 +209,15 @@ set to this position."
 	 (start (backward-page)))
       (mark-block start end))))
 
+(defun restrict-to-page ()
+  "Restrict the buffer to the current page of text."
+  (interactive)
+  (save-cursor
+    (let
+	((end (forward-page))
+	 (start (backward-page)))
+      (restrict-buffer start end))))
+
 
 ;; Block handling
 
