@@ -54,6 +54,10 @@
 (defvar rm-inter-thread-sort-key 'date
   "Key to sort threads by.")
 
+(defvar rm-auto-thread-new-messages t
+  "When t, new messages incorporated into a threaded folder will also be
+threaded.")
+
 (defvar rm-sort-predicates
   (list (cons 'location
 	      #'(lambda (x y)
@@ -206,7 +210,8 @@ be shown before the second.")
 
 ;; Ensure that new messages in a buffer are kept threaded
 (add-hook 'rm-after-import-hook #'(lambda ()
-				    (when rm-threaded-folder
+				    (when (and rm-threaded-folder
+					       rm-auto-thread-new-messages)
 				      (rm-thread-folder))))
 
 
