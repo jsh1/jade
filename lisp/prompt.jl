@@ -84,29 +84,29 @@ case.")
 (defvar prompt-glyph-table nil
   "When non-nil the glyph table to use for prompts.")
 
+(defvar prompt-title-face bold-face
+  "Face used for titles of prompts.")
+
 
 ;; Working variables used by more than one function
 
 (defvar prompt-buffer nil
   "The buffer being used for the prompt.")
 
-(defvar prompt-title-view nil
-  "View whose status line is co-opted into displaying the prompt's title.")
-
-(defvar prompt-old-title-msg nil
-  "Original title.")
+(defvar prompt-title-extent nil
+  "Extent covering the title of the prompt.")
 
 (defvar prompt-title nil
   "Title string of the prompt.")
-
-(defvar prompt-reset-title nil
-  "t when the title string needs to be reinstalled.")
 
 (defvar prompt-original-buffer nil
   "The active buffer when the prompt was called.")
 
 (defvar prompt-original-view nil
   "The active view when the prompt was called.")
+
+(defvar prompt-original-size nil
+  "The number of lines in the minibuffer view originally.")
 
 (defvar prompt-history-index nil
   "The index of the current history item being looked at.")
@@ -128,23 +128,30 @@ title to print in the buffer, START the original contents of the buffer.
 The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
   (let*
       ((prompt-buffer (make-buffer "*prompt*"))
-       (prompt-title-view (nth (- (window-view-count) 2) (window-view-list)))
-       prompt-old-title-msg
        (prompt-original-buffer (current-buffer))
        (prompt-original-view (current-view))
        (prompt-history-index 0)
        (prompt-history-top nil)
-       result)
+       prompt-title-extent prompt-original-size result)
     (unless (stringp prompt-title)
       (setq prompt-title "Enter string:"))
-    (setq prompt-old-title-msg (set-status-message prompt-title
-						   prompt-title-view))
+    (unless (string-match " $" prompt-title)
+      (setq prompt-title (concat prompt-title ? )))
     (unwind-protect
 	(with-view (minibuffer-view)
+	  (setq prompt-original-size (cdr (view-dimensions)))
+	  (when (= prompt-original-size 1)
+	    (condition-case nil
+		(enlarge-view 1)
+	      (error)))
 	  (with-buffer prompt-buffer
 	    (when prompt-glyph-table
-	      (with-buffer prompt-buffer
-		(setq glyph-table prompt-glyph-table)))
+	      (setq glyph-table prompt-glyph-table))
+	    (setq prompt-title-extent
+		  (make-extent (start-of-buffer) (insert prompt-title)
+			       (list 'face prompt-title-face)))
+	    (extent-set prompt-title-extent 'read-only t)
+	    (extent-put prompt-title-extent 'front-sticky t)
 	    (when (stringp start)
 	      (insert start))
 	    (make-local-variable 'pre-command-hook)
@@ -156,9 +163,11 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 			   (not (equal (get-from-ring prompt-history)
 				       result))))
 	      (add-to-ring prompt-history result)))
+	  (with-view (minibuffer-view)
+	    (when (> (cdr (view-dimensions)) prompt-original-size)
+	      (shrink-view (- (cdr (view-dimensions)) prompt-original-size))))
 	  (kill-all-local-variables prompt-buffer))
-      (completion-remove-view)
-      (set-status-message prompt-old-title-msg prompt-title-view))
+      (completion-remove-view))
     result))
 
 
@@ -167,7 +176,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 (defun prompt-enter-line ()
   (interactive)
   (let
-      ((line (copy-area (start-of-buffer) (end-of-buffer))))
+      ((line (copy-area (extent-end prompt-title-extent) (end-of-buffer))))
     (if (or (not prompt-validate-function)
 	    (let
 		((res (funcall prompt-validate-function line)))
@@ -178,11 +187,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
       (beep))))
 
 (defun prompt-message (string)
-  (set-status-message (concat prompt-title "  " string) prompt-title-view)
-  (setq pre-command-hook (list #'(lambda ()
-				   (set-status-message prompt-title
-						       prompt-title-view)
-				   (setq pre-command-hook nil)))))
+  (message string))
 
 ;; Returns the number of completions found.
 (defun prompt-complete ()
@@ -194,7 +199,8 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	  (prompt-message "[No completion function]")
 	  0)
       (let*
-	  ((word (copy-area (start-of-buffer) (cursor-pos)))
+	  ((word-start (extent-end prompt-title-extent))
+	   (word (copy-area word-start (cursor-pos)))
 	   ;; Before making the list of completions, try to
 	   ;; restore the original context
 	   (comp-list (with-view prompt-original-view
@@ -207,17 +213,17 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	  (completion-remove-view)
 	  (prompt-message "[No completions]"))
 	 ((= num-found 1)
-	  (goto (replace-string word (car comp-list) (start-of-buffer)))
+	  (goto (replace-string word (car comp-list) word-start))
 	  (completion-remove-view)
 	  (prompt-message "[Unique completion]"))
 	 (t
 	  (when (not (string-head-eq (car comp-list) word))
 	    ;; Completions don't match their source at all.
-	    (delete-area (start-of-buffer) (cursor-pos))
+	    (delete-area word-start (cursor-pos))
 	    (setq word ""))
 	  (goto (replace-string word (complete-string word comp-list
 						      prompt-list-fold-case)
-				(start-of-buffer)))
+				word-start))
 	  (completion-list comp-list)
 	  (prompt-message (format nil "[%d completions]" num-found))))
 	num-found))))
@@ -231,7 +237,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	  (prompt-message "[No completion function]")
 	  0)
       (let*
-	  ((word (copy-area (start-of-buffer) (cursor-pos)))
+	  ((word (copy-area (extent-end prompt-title-extent) (cursor-pos)))
 	   ;; Before making the list of completions, try to
 	   ;; restore the original context
 	   (comp-list (with-view prompt-original-view
@@ -254,11 +260,12 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	(and (= prompt-history-index 0) (null prompt-default-value)))
     (error "No next item"))
    ((= prompt-history-index 0)
-    (setq prompt-history-top (copy-area (start-of-buffer) (end-of-buffer)))
-    (clear-buffer)
+    (setq prompt-history-top (copy-area (extent-end prompt-title-extent)
+					(end-of-buffer)))
+    (delete-area (extent-end prompt-title-extent) (end-of-buffer))
     (insert prompt-default-value))
    ((>= prompt-history-index 1)
-    (clear-buffer)
+    (delete-area (extent-end prompt-title-extent) (end-of-buffer))
     (insert (if (= prompt-history-index 1)
 		prompt-history-top
 	      (get-from-ring prompt-history (1- prompt-history-index))))))
@@ -275,8 +282,9 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
    ((and (>= prompt-history-index 0)
 	 (> (ring-size prompt-history) prompt-history-index))
     (when (zerop prompt-history-index)
-      (setq prompt-history-top (copy-area (start-of-buffer) (end-of-buffer))))
-    (clear-buffer)
+      (setq prompt-history-top (copy-area (extent-end prompt-title-extent)
+					  (end-of-buffer))))
+    (delete-area (extent-end prompt-title-extent) (end-of-buffer))
     (insert (get-from-ring prompt-history (1+ prompt-history-index))))
    (t
     (error "No previous item")))
