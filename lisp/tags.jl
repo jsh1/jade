@@ -126,7 +126,7 @@ move back to the previously found tag."
 	    (unless (looking-at "^(.+)\177((.+)\001|)([0-9]+)"
 				(start-of-line start) tags-buffer)
 	      (error "Malformed tag line at %S" start))
-	    (setq tag-pos (pos 0 (1- (read-from-string
+	    (setq tag-pos (pos 0 (1- (string->number
 				      (copy-area (match-start 4)
 						 (match-end 4) tags-buffer))))
 		  tag-line (copy-area (match-start 1)

@@ -85,7 +85,7 @@ Major mode used to summarise the pages in a buffer. Local commands are:\n
   (interactive)
   (when (looking-at "^Line ([0-9]+):$" (start-of-line))
     (let
-	((point (pos 0 (read-from-string (expand-last-match "\\1"))))
+	((point (pos 0 (string->number (expand-last-match "\\1"))))
 	 (file page-summary-file))
       (with-view (other-view)
 	(find-file file)

@@ -214,10 +214,9 @@ of the document, currently only `title' and `base' keys are defined."
 	    ;; Ascii code
 	    (if (= (aref string (+ start 2)) ?x)
 		;; hex
-		(setq char (read-from-string (concat
-					      "0x" (expand-last-match "\\2"))))
+		(setq char (string->number (expand-last-match "\\2") 16))
 	      ;; decimal
-	      (setq char (read-from-string (expand-last-match "\\2"))))
+	      (setq char (string->number (expand-last-match "\\2"))))
 	  ;; named character
 	  (setq char (cdr (assoc (expand-last-match "\\1")
 				 html-decode-char-name-alist))))

@@ -116,7 +116,7 @@ a buffer."
 	((host (expand-last-match "\\2"))
 	 (port (if (= (match-start 3) (match-end 3))
 		   nil
-		 (read-from-string
+		 (string->number
 		  (substring url (1+ (match-start 3)) (match-end 3))))))
       (telnet host port))))
 

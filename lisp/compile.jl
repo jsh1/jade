@@ -226,7 +226,7 @@ buffer in a form that `goto-next-error' understands."
 	   ((looking-at compile-error-regexp p)
 	    ;; Parse the error
 	    (let
-		((line (read-from-string
+		((line (string->number
 			(expand-last-match compile-line-expand)))
 		 (file (expand-file-name
 			(expand-last-match compile-file-expand)

@@ -399,7 +399,7 @@ contain its definition as a function."
        string nil t)
       (setq seconds-ago (* (if (= (aref string 0) ?a)
 			       1
-			     (read-from-string (expand-last-match "\\1")))
+			     (string->number (expand-last-match "\\1")))
 			   (if (= (aref string (match-start 2)) ?m)
 			       (if (= (aref string (1+ (match-start 2))) ?i)
 				   60
