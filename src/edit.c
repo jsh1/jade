@@ -766,19 +766,7 @@ order_block(VW *vw)
 void
 set_block_refresh(VW *vw)
 {
-    long endline = vw->vw_StartLine + vw->vw_MaxY;
-    if((vw->vw_BlockS.pos_Line > endline)
-       || (vw->vw_BlockE.pos_Line < vw->vw_StartLine))
-	return;
-    if(vw->vw_Flags & VWFF_REFRESH_BLOCK)
-	/*
-	 * If the all-powerful bit is already set I have no way of telling
-	 * myself to refresh two blocked areas, stupid huh? Anyway I just
-	 * blast in the whole window instead.
-	 */
-	vw->vw_Flags |= VWFF_FORCE_REFRESH;
-    else
-	vw->vw_Flags |= VWFF_REFRESH_BLOCK;
+    vw->vw_Flags |= VWFF_REFRESH_BLOCK;
 }
 
 bool
