@@ -483,13 +483,13 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
   (interactive)
   (cvs-find-file t))
 
-(defun cvs-find-file (&optional in-other-view)
+(defun cvs-find-file (&optional in-other)
   "Open the selected files in the `*cvs*' summary."
   (interactive)
   (let
       ((files (cvs-command-get-filenames))
        (root cvs-default-directory))
-    (when in-other-view
+    (when in-other
       (goto-other-view))
     (mapc #'(lambda (f)
 	      (find-file (expand-file-name f root))) files)))
