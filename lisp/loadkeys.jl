@@ -30,6 +30,9 @@
 (defvar ctrl-x-5-keymap (make-keylist)
   "Default `Ctrl-x 5' keymap.")
 
+(defvar ctrl-x-n-keymap (make-keylist)
+  "Default `Ctrl-x n' keymap.")
+
 (defvar ctrl-c-keymap nil
   "Hook to hang major mode `Ctrl-c' keymap from.")
 (make-variable-buffer-local 'ctrl-c-keymap)
@@ -191,11 +194,17 @@
   "h"		'mark-whole-buffer
   "i"		'insert-file
   "k"		'kill-buffer
+  "n"		'(setq next-keymap-path '(ctrl-x-n-keymap))
   "o"		'goto-next-view
   "s"		'save-some-buffers
   "u"		'undo
   "`"		'next-error
   "#"		'server-close-file)
+
+(bind-keys ctrl-x-n-keymap
+  "p"		'restrict-to-page
+  "w"		'unrestrict-buffer
+  "n"		'restrict-buffer)
 
 (bind-keys ctrl-x-4-keymap
   "Ctrl-f"	'(in-other-view 'find-file)
