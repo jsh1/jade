@@ -74,11 +74,16 @@ Special commands available are,\n
 	major-mode 'tex-mode
 	major-mode-kill 'tex-mode-kill
 	ctrl-c-keymap tex-ctrl-c-keymap
-	paragraph-regexp "^[\t ]*$"
-	page-regexp "^\\\\((sub)*section|chapter){.*}"
-	keymap-path (cons 'tex-keymap keymap-path))
-  (eval-hook 'text-mode-hook)
-  (eval-hook 'tex-mode-hook))
+	paragraph-separate "^([\t\f\n ]|(\\$\\$))*\n"
+	page-start "^\\\\((sub)*(section|paragraph)|chapter){.*}"
+	keymap-path (cons 'tex-keymap keymap-path)
+	generic-exp-single-delims '(?\" ?\$)
+	generic-exp-escape-char 0
+	generic-exp-comment-string "%"
+	generic-exp-symbol-re "[a-zA-Z0-9]+"
+	generic-exp-special-re "[][(){}\"\$a-zA-Z0-9]")
+  (call-hook 'text-mode-hook)
+  (call-hook 'tex-mode-hook))
 
 (defun tex-mode-kill ()
   (setq mode-name nil
