@@ -128,7 +128,8 @@ For example, to define a rule accepting only messages sent by me (that's
   "Compile the message selection rule called NAME (a symbol) to bytecode."
   (interactive "SRule to compile:")
   (let
-      ((symbol (rm-rule-symbol name)))
+      ((symbol (or (get name 'rm-rule-symbol)
+		   (error "No rule called %s" name))))
     (compile-function symbol)))
 
 (defmacro rm-rule-symbol (name)
@@ -158,9 +159,16 @@ contain its definition as a function."
 ;;;###autoload
 (defun rm-filter-by-rule (messages rule)
   (let
-      ((function (symbol-function (rm-rule-symbol rule))))
+      ((function (or (get rule 'rm-rule-symbol)
+		     (error "No rule called %s" rule))))
     (filter #'(lambda (rm-rule-message)
 		(funcall function)) messages)))
+
+;; Apply the message RM-RULE-MESSAGE to RULE, returning t if it matches
+;;;###autoload
+(defun rm-apply-rule (rule rm-rule-message)
+  (funcall (or (get rule 'rm-rule-symbol)
+	       (error "No rule called %s" rule))))
 
 
 ;; Standard rules
