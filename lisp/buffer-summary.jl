@@ -98,7 +98,7 @@ Commands for this mode are,\n
 	(setq minor-names (cdr minor-names))))
     (insert "\t")
     (indent-to 40)
-    (format (current-buffer) "%s\n" (buffer-file-name item))))
+    (format (current-buffer) "%s" (buffer-file-name item))))
 
 (defun bs-select-item (item)
   (bury-buffer bs-buffer)
