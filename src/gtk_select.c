@@ -152,12 +152,12 @@ Returns t if the selection defined by the symbol SELECTION (either
     {
 	int selno = selection_atom_to_index(selection);
 #ifdef HAVE_X11
-	if(selection_info[selno].owner != rep_NULL
+	if(selection_info[selno].owner != Qnil
 	   || XGetSelectionOwner(gdk_display, selection) != 0)
 #else
 	   /* XXX Arrgh! This only returns non-null if GDK
 	      XXX created the window. How fucking stupid.. */
-	if(selection_info[selno].owner != rep_NULL
+	if(selection_info[selno].owner != Qnil
 	   || gdk_selection_owner_get(selection) != 0)
 #endif
 	{
@@ -183,7 +183,7 @@ Returns t if the selection defined by the symbol SELECTION (either
        || selection == GDK_SELECTION_SECONDARY)
     {
 	int selno = selection_atom_to_index(selection);
-	if(selection_info[selno].owner != rep_NULL)
+	if(selection_info[selno].owner != Qnil)
 	    return Qt;
     }
     return Qnil;
@@ -216,7 +216,7 @@ If the selection currently has no value, nil is returned.
     {
 	int selno = selection_atom_to_index(selection);
 	repv res = Qnil;
-	if(selection_info[selno].owner != rep_NULL)
+	if(selection_info[selno].owner != Qnil)
 	{
 	    /* We own this selection, avoid the server. */
 	    if(selection_info[selno].type == Sel_string)
@@ -306,7 +306,7 @@ gtk_jade_selection_get(GtkWidget *widget, GtkSelectionData *sel_data,
     guchar *data;
     bool free_data = FALSE;
     int selno = selection_atom_to_index(sel_data->selection);
-    if (selection_info[selno].owner == rep_NULL)
+    if (selection_info[selno].owner == Qnil)
 	return;
     /* Convert to text. */
     if(selection_info[selno].type == Sel_string)
@@ -354,7 +354,7 @@ gtk_jade_selection_clear(GtkWidget *widget, GdkEventSelection *event)
     if(event->time != GDK_CURRENT_TIME
        && event->time > selection_info[selno].birthdate)
     {
-	selection_info[selno].owner = rep_NULL;
+	selection_info[selno].owner = Qnil;
 	selection_info[selno].data = Qnil;
     }
     return FALSE;
@@ -368,7 +368,7 @@ gtk_jade_window_lose_selections(WIN *w)
     {
 	if(selection_info[i].owner == rep_VAL (w))
 	{
-	    selection_info[i].owner = rep_NULL;
+	    selection_info[i].owner = Qnil;
 	    selection_info[i].data = Qnil;
 	    gtk_selection_owner_set (0, (i == 0) ? GDK_SELECTION_PRIMARY
 				     : GDK_SELECTION_SECONDARY,
@@ -393,7 +393,7 @@ Jade, relinquish ownership.
        || selection == GDK_SELECTION_SECONDARY)
     {
 	int selno = selection_atom_to_index(selection);
-	if(selection_info[selno].owner != rep_NULL)
+	if(selection_info[selno].owner != Qnil)
 	{
 	    gtk_selection_owner_set (0, selection, gtk_jade_last_event_time);
 	    selection_info[selno].owner = rep_NULL;
@@ -414,6 +414,7 @@ gtk_misc_init(void)
     int i;
     for(i = 0; i < 2; i++)
     {
+	selection_info[i].owner = Qnil;
 	rep_mark_static(&selection_info[i].owner);
 	rep_mark_static(&selection_info[i].data);
 	rep_mark_static(&selection_info[i].start);
