@@ -97,6 +97,7 @@
   "Meta-!"	'shell-command
   "Meta-|"	'shell-command-on-area
   "Ctrl-a"	'start-of-line
+  "Ctrl-Meta-a" 'start-of-defun
   "Ctrl-b"	'backward-char
   "Meta-b"	'backward-word
   "Ctrl-Meta-b"	'backward-exp
@@ -106,11 +107,13 @@
   "Ctrl-d"	'delete-char
   "Meta-d"	'kill-word
   "Ctrl-e"	'end-of-line
+  "Ctrl-Meta-e"	'end-of-defun
   "Ctrl-f"	'forward-char
   "Meta-f"	'forward-word
   "Ctrl-Meta-f"	'forward-exp
   "Ctrl-h"	'help
   "Meta-h"	'paragraph-edges
+  "Ctrl-Meta-h"	'mark-defun
   "Ctrl-i"	'insert-block
   "Meta-i"	'(insert "\t")
   "Meta-j"	'goto-line
