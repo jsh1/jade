@@ -142,6 +142,7 @@ it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
     (when all-headers-p
       ;; Quote ^From_
       (insert ">"))
+    (restrict-buffer (cursor-pos) (line-end))
     (insert (with-buffer (mark-file (rm-get-msg-field message rm-msg-mark))
 	      (save-restriction
 		(unrestrict-buffer)
@@ -151,6 +152,94 @@ it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
 							    rm-msg-mark))
 			      rm-current-msg-visible-start)))
 		  (copy-area start rm-current-msg-end)))))
+    ;; Quote "^-" as "- -" as specified by RFC-934
+    (let
+	((pos (buffer-start)))
+      (while (find-next-regexp "^-" pos)
+	(insert "- " (match-start))
+	(setq pos (line-end (match-start)))))
+    (unrestrict-buffer)
     (if (string= to "")
 	(goto-char (line-end (buffer-start)))
       (goto-next-line 2))))
+
+
+;; Message bursting
+
+;;;###autoload
+(defun rm-burst-message ()
+  "Burst the currently displayed message, inserting the messages at the end
+of the folder. The message being exploded should conform to the RFC-934
+standard for encapsulating messages. Some effort will be made to avoid
+inserting rubbish. The original message will be marked as deleted."
+  (interactive)
+  (let
+      ((inhibit-read-only t)
+       (input-start rm-current-msg-body)
+       ;; Work backwards from the last message in the digest
+       (input-pos rm-current-msg-end)
+       (last-pos nil)
+       (original-msg rm-current-msg)
+       (msgs nil)
+       (count 0)
+       output-pos new-msg)
+    (unrestrict-buffer)
+    (let
+	((rm-move-after-deleting nil))
+      (rm-mark-message-deletion))
+    ;; Find the last message in the folder
+    (while rm-after-msg-list
+      (rm-move-forwards))
+    (restrict-buffer input-start input-pos)
+    (unless (setq input-pos (find-prev-regexp "^-[^ ]" input-pos))
+      (error "Not an RFC-934 digest!"))
+    (setq last-pos input-pos
+	  input-pos (prev-line 1 (copy-pos input-pos)))
+    (while (setq input-pos (find-prev-regexp "^-[^ ]" input-pos))
+      (unrestrict-buffer)
+      (let
+	  ((start (next-line 1 (copy-pos input-pos))))
+	(when (looking-at "([\t ]*\n)+" start)
+	  (setq start (match-end)))
+	;; Try to ignore junk!?
+	(if (not (or (looking-at "^>?From " start)
+		     (looking-at mail-header-name start)))
+	    (message "Ignoring nonsense message!")
+	  ;; Enforce the "\n\n" rule between messages
+	  (rm-enforce-msg-separator)
+	  (setq output-pos (cursor-pos))
+	  (insert (copy-area start last-pos))
+	  ;; Unmangle "^- " lines
+	  (let
+	      ((pos (cursor-pos)))
+	    (restrict-buffer output-pos pos)
+	    (while (setq pos (find-prev-regexp "^- " pos))
+	      (delete-area (match-end) (match-start))
+	      (setq pos (prev-line 1 pos)))
+	    (unrestrict-buffer))
+	  ;; Unmangle quoted ^From_
+	  (when (looking-at "^>From " output-pos)
+	    (delete-area output-pos (next-char 1 (copy-pos output-pos))))
+	  (unless (looking-at mail-message-start output-pos)
+	    ;; No ^From_ line, kludge one ourselves
+	    (insert (concat "From jade " (current-time-string) ?\n)
+		    output-pos))
+	  (when (setq new-msg (rm-build-message-struct output-pos))
+	    (setq count (1+ count)
+		  msgs (cons new-msg msgs))
+	    (rm-set-flag new-msg 'unread)))
+	(setq last-pos input-pos
+	      input-pos (prev-line 1 (copy-pos input-pos)))
+	(restrict-buffer input-start last-pos)))
+    (unrestrict-buffer)
+    (when rm-current-msg
+      (setq rm-before-msg-list (cons rm-current-msg
+				     rm-before-msg-list)
+	    rm-current-msg-index (1+ rm-current-msg-index)))
+    (setq rm-current-msg (car msgs)
+	  rm-after-msg-list (cdr msgs)
+	  rm-message-count (+ rm-message-count count)
+	  rm-cached-msg-list 'invalid)
+    (rm-with-summary
+     (summary-update))
+    (rm-display-current-message)))
