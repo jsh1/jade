@@ -69,6 +69,8 @@ Major mode for editing Perl source code. Local keybindings are:\n
 	mode-backward-exp 'c-backward-exp
 	mode-defun-header "^sub ([a-zA-Z0-9_]+)[\t ]*{"
 	mode-defun-footer "^}"
+	paragraph-separate "^[\n\t\f ]*\n"
+	paragraph-start paragraph-separate
 	keymap-path (cons 'perl-mode-keymap keymap-path))
   (call-hook 'perl-mode-hook))
 

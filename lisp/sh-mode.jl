@@ -43,6 +43,8 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
 	major-mode-kill 'kill-all-local-variables
 	mode-comment-fun 'sh-insert-comment
 	mode-indent-line 'sh-indent-line
+	paragraph-separate "^[\n\t\f ]*\n"
+	paragraph-start paragraph-separate
 	keymap-path (cons 'sh-keymap keymap-path))
   (call-hook 'sh-mode-hook))
 

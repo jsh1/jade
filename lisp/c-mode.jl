@@ -108,6 +108,8 @@ Commands defined by this mode are:\n
 	mode-backward-exp 'c-backward-exp
 	mode-defun-header "^([a-zA-Z0-9_]+)[\t ]*\\([^}]+\n{"
 	mode-defun-footer "^}"
+	paragraph-separate "^[\n\t\f ]*\n"
+	paragraph-start paragraph-separate
 	ctrl-c-keymap c-mode-ctrl-c-keymap
 	keymap-path (cons 'c-mode-keymap keymap-path))
   (call-hook 'c-mode-hook))

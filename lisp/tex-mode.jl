@@ -59,7 +59,8 @@ Local bindings in this mode are:\n
 	major-mode 'tex-mode
 	major-mode-kill 'tex-mode-kill
 	ctrl-c-keymap tex-ctrl-c-keymap
-	paragraph-separate "^([\t\f\n ]|(\\$\\$))*\n"
+	paragraph-separate "^(([\t\f\n ]|(\\$\\$))*|\\\\(begin|end|noindent).*)\n"
+	paragraph-start "^( +|\\\\item)"
 	page-start "^\\\\((sub)*(section|paragraph)|chapter){.*}"
 	keymap-path (cons 'tex-keymap keymap-path)
 	mode-comment-header "%"
