@@ -168,9 +168,11 @@ of the document, currently only `title' and `base' keys are defined."
       (when (> end html-decode-point)
 	;; Found the next tag, output everything from POINT to END
 	;; using the current style.
-	(funcall html-decode-display
-		 (prog1 html-decode-point (setq html-decode-point end))
-		 end source dest))
+	(if html-decode-display
+	    (funcall html-decode-display
+		     (prog1 html-decode-point (setq html-decode-point end))
+		     end source dest)
+	  (setq html-decode-point end)))
       ;; Then decode the command
       (setq tag (html-decode-tag html-decode-point source))
       (setq html-decode-point (car tag))
