@@ -19,6 +19,7 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;; ::autoload-start::
+(autoload 'find-change-log-file "add-log")
 (autoload 'add-change-log-entry "add-log" t)
 (autoload 'changelog-mode "add-log" t)
 (autoload 'asm-mode "asm-mode" t)

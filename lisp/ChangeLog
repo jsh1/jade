@@ -1,3 +1,13 @@
+2000-07-05  John Harper  <john@dcs.warwick.ac.uk>
+
+	* cvs.jl (cvs-add-change-log-entries): use find-change-log-file
+	when prompting
+
+	* add-log.jl (find-change-log-file): new function, search for a
+	ChangeLog file in or above a given directory
+	(add-change-log-entry): use find-change-log-file in the
+	interactive spec
+
 2000-06-12  John Harper  <john@dcs.warwick.ac.uk>
 
 	* telnet.jl: fixed lisp-2 lossage
