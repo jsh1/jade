@@ -22,6 +22,7 @@
 #include <lib/jade_protos.h>
 #include <limits.h>
 #include <setjmp.h>
+#include <assert.h>
 
 #define DEBUG
 
@@ -383,20 +384,27 @@ find_extent(Lisp_Extent *root, Pos *pos)
 		ce->lru_clock = ++lru_time;
 		return ce->extent;
 	    }
-	    else if(PPOS_GREATER_EQUAL_P(pos, &ce->extent->start)
-		    && PPOS_LESS_P(pos, &ce->extent->end))
+	    else
 	    {
-		/* Not direct. But ce[i] contains POS. If this isn't
-		   the only item containing POS, use the innermost. */
-		if(out == -1
-		   || PPOS_GREATER_P(&ce->extent->start,
-				     &tx->tx_ExtentCache[out].extent->start))
-		    out = i;
-	    }
-	    if(ce->lru_clock < oldest_lru)
-	    {
-		oldest = i;
-		oldest_lru = ce->lru_clock;
+		long delta = row_delta(ce->extent);
+		if((pos->row > ce->extent->start.row + delta
+		    || (pos->row == ce->extent->start.row + delta
+			&& pos->col >= ce->extent->start.col))
+		   && (pos->row < ce->extent->end.row + delta
+		       || (pos->row == ce->extent->end.row + delta
+			   && pos->col < ce->extent->end.col)))
+		{
+		    /* Not direct. But ce[i] contains POS. If this isn't
+		       the only item containing POS, use the innermost. */
+		    if(out == -1)
+			out = i;
+		    /* FIXME: check which is innermost.. */
+		}
+		if(ce->lru_clock < oldest_lru)
+		{
+		    oldest = i;
+		    oldest_lru = ce->lru_clock;
+		}
 	    }
 	}
 	else
@@ -469,7 +477,7 @@ map_section_extents(void (*map_func)(Lisp_Extent *x, void *data),
 }
 
 /* Notify the cache that some extents in TX were changed. */
-static void
+static inline void
 invalidate_extent_cache(TX *tx)
 {
     int i;
@@ -592,24 +600,15 @@ Set the start and end positions of EXTENT to START and END respectively,
 without changing the buffer that EXTENT refers to.
 ::end:: */
 {
-    Lisp_Extent *e;
     DECLARE1(extent, EXTENTP);
     DECLARE2(start, POSP);
     DECLARE3(end, POSP);
 
-    e = VEXTENT(extent)->frag_next;
-    VEXTENT(extent)->frag_next = 0;
-    while(e != 0)
-    {
-	Lisp_Extent *next = e->frag_next;
-	unlink_extent_fragment(e);
-	e = next;
-    }
-
-    unlink_extent_fragment(VEXTENT(extent));
+    unlink_extent(VEXTENT(extent));
     COPY_VPOS(&VEXTENT(extent)->start, start);
     COPY_VPOS(&VEXTENT(extent)->end, end);
     insert_extent(VEXTENT(extent), VEXTENT(extent)->tx->tx_GlobalExtent);
+    invalidate_extent_cache(VEXTENT(extent)->tx);
 
     return extent;
 }
@@ -1038,6 +1037,8 @@ buffer_set_if_bound(VALUE symbol, VALUE value)
 void
 adjust_extents_add_cols(Lisp_Extent *x, long add_x, long col, long row)
 {
+    if(x->parent == 0)
+	invalidate_extent_cache(x->tx);
     for(; x != 0; x = x->right_sibling)
     {
 	if(x->first_child != 0 && x->start.row <= row && x->end.row >= row)
@@ -1057,14 +1058,20 @@ adjust_extents_add_cols(Lisp_Extent *x, long add_x, long col, long row)
 	{
 	    x->end.col += add_x;
 	}
+
+	if(x->end.row > row)
+	    break;
     }
 }
 
 void
 adjust_extents_sub_cols(Lisp_Extent *x, long sub_x, long col, long row)
 {
+    if(x->parent == 0)
+	invalidate_extent_cache(x->tx);
     for(; x != 0; x = x->right_sibling)
     {
+    top:
 	if(x->first_child != 0 && x->start.row <= row && x->end.row >= row)
 	    adjust_extents_sub_cols(x->first_child, sub_x,
 				    col, row - x->start.row);
@@ -1072,12 +1079,31 @@ adjust_extents_sub_cols(Lisp_Extent *x, long sub_x, long col, long row)
 	    x->start.col = MAX(col, x->start.col - sub_x);
 	if(x->end.row == row && x->end.col > col)
 	    x->end.col = MAX(col, x->end.col - sub_x);
+
+	if(x->start.row == x->end.row && x->start.col == x->end.col)
+	{
+	    /* Null extent. May as well be deleted. */
+	    Lisp_Extent *r = x->right_sibling;
+	    unlink_extent_fragment(x);
+	    if(r != 0)
+	    {
+		x = r;
+		goto top;
+	    }
+	    else
+		break;
+	}
+
+	if(x->end.row > row)
+	    break;
     }
 }
 
 void
 adjust_extents_add_rows(Lisp_Extent *x, long add_y, long row)
 {
+    if(x->parent == 0)
+	invalidate_extent_cache(x->tx);
     for(; x != 0; x = x->right_sibling)
     {
 	if(x->start.row > row
@@ -1103,40 +1129,70 @@ adjust_extents_add_rows(Lisp_Extent *x, long add_y, long row)
 void
 adjust_extents_sub_rows(Lisp_Extent *x, long sub_y, long row)
 {
+    if(x->parent == 0)
+	invalidate_extent_cache(x->tx);
     for(; x != 0; x = x->right_sibling)
     {
-	if(x->start.row > row)
-	    x->start.row = POS(x->start.row - sub_y);
-	else if(x->first_child != 0 && row <= x->end.row)
-	    adjust_extents_sub_rows(x->first_child, sub_y,
-				    row - x->start.row);
-	if(x->end.row > row)
-	    x->end.row = POS(x->end.row - sub_y);
+    top:
+	if(x->first_child != 0 && row >= x->start.row && row <= x->end.row)
+	    adjust_extents_sub_rows(x->first_child, sub_y, row - x->start.row);
+	if(x->start.row >= row)
+	{
+	    if(x->start.row >= row + sub_y)
+		x->start.row -= sub_y;
+	    else
+	    {
+		x->start.row = row;
+		x->start.col = 0;
+	    }
+	}
+	if(x->end.row >= row)
+	{
+	    if(x->end.row >= row + sub_y)
+		x->end.row -= sub_y;
+	    else
+	    {
+		x->end.row = row;
+		x->end.col = 0;
+	    }
+	}
+
+	if(x->start.row == x->end.row && x->start.col == x->end.col)
+	{
+	    /* Null extent. Delete it. */
+	    Lisp_Extent *r = x->right_sibling;
+	    unlink_extent_fragment(x);
+	    if(r != 0)
+	    {
+		x = r;
+		goto top;
+	    }
+	    else
+		break;
+	}
     }
 }
 
 void
 adjust_extents_split_row(Lisp_Extent *x, long col, long row)
 {
+    if(x->parent == 0)
+	invalidate_extent_cache(x->tx);
     for(; x != 0; x = x->right_sibling)
     {
 	if(x->start.row > row)
-	{
-	    if(x->first_child != 0)
-		adjust_extents_add_rows(x->first_child, 1, row - x->start.row);
 	    x->start.row++;
-	}
 	else if(x->start.row == row
 		&& (x->start.col > col
 		    || (x->start.col == col
 			&& !(x->car & EXTFF_OPEN_START))))
 	{
 	    if(x->first_child != 0)
-		adjust_extents_sub_cols(x->first_child, col, x->start.col, 0);
+		adjust_extents_sub_cols(x->first_child, col, 0, 0);
 	    x->start.row++;
 	    x->start.col -= col;
 	}
-	else if(x->first_child)
+	else if(x->first_child != 0)
 	    adjust_extents_split_row(x->first_child, col, row - x->start.row);
 
 	if(x->end.row > row)
@@ -1155,6 +1211,8 @@ adjust_extents_split_row(Lisp_Extent *x, long col, long row)
 void
 adjust_extents_join_rows(Lisp_Extent *x, long col, long row)
 {
+    if(x->parent == 0)
+	invalidate_extent_cache(x->tx);
     for(; x != 0; x = x->right_sibling)
     {
 	if(x->first_child != 0)
