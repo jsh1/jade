@@ -72,7 +72,7 @@ static bool new_window_no_show = FALSE;
 u_long gtk_jade_last_event_time;
 
 DEFSYM (gtk_jade_new_hook, "gtk-jade-new-hook"); /*
-::doc:Vgtk-jade-new-hook::
+::doc:gtk-jade-new-hook::
 This hook is called when a new gtk-jade widget is created, with the
 widget as its single argument. Any function in the hook trying to add
 the widget to a container should actually add the top-level widget, not
@@ -820,7 +820,7 @@ sys_deleting_window_would_exit (WIN *win)
 /* Some Lisp functions */
 
 DEFUN ("gtk-jade-p", Fgtk_jade_p, Sgtk_jade_p, (repv arg), rep_Subr1) /*
-::doc:Sgtk-jade-p::
+::doc:gtk-jade-p::
 gtk-jade-p ARG
 
 Returns t if ARG is a GtkJade widget.
@@ -832,7 +832,7 @@ Returns t if ARG is a GtkJade widget.
 
 DEFUN ("gtk-jade-new", Fgtk_jade_new, Sgtk_jade_new,
        (repv width, repv height), rep_Subr2) /*
-::doc:Sgtk-jade-new::
+::doc:gtk-jade-new::
 gtk-jade-new [WIDTH] [HEIGHT]
 
 Create and return a newly-allocated, un-realised, GTK widget representing
@@ -860,7 +860,7 @@ if adding to another container.
 
 DEFUN ("gtk-jade-window", Fgtk_jade_window, Sgtk_jade_window,
        (repv widget), rep_Subr1) /*
-::doc:Sgtk-jade-window::
+::doc:gtk-jade-window::
 gtk-jade-window WIDGET
 
 Return the window associated with the GTK widget WIDGET.
@@ -875,7 +875,7 @@ Return the window associated with the GTK widget WIDGET.
 
 DEFUN ("gtk-jade-window-widget", Fgtk_jade_window_widget,
        Sgtk_jade_window_widget, (repv win), rep_Subr1) /*
-::doc:Sgtk-jade-window-widget::
+::doc:gtk-jade-window-widget::
 gtk-jade-window-widget [WINDOW]
 
 Return the GTK widget associated with window WINDOW.
@@ -887,7 +887,7 @@ Return the GTK widget associated with window WINDOW.
 }
 
 DEFUN("flush-output", Fflush_output, Sflush_output, (void), rep_Subr0) /*
-::doc:Sflush-output::
+::doc:flush-output::
 flush-output
 
 Forces any cached window output to be drawn. This is usually unnecessary.
@@ -915,7 +915,7 @@ DEFUN ("make-window-on-display", Fmake_window_on_display,
 }
 
 DEFUN("gtk-cursor-shape", var_gtk_cursor_shape, Sgtk_cursor_shape, (repv arg), rep_Var) /*
-::doc:Vgtk-cursor-shape::
+::doc:gtk-cursor-shape::
 An integer identifying the cursor to use for editor windows. See
 <gdk/gdkcursors.h> for the list of available cursors.
 ::end:: */

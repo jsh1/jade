@@ -23,13 +23,13 @@
 
 
 DEFSYM(next_screen_context_lines, "next-screen-context-lines"); /*
-::doc:Vnext-screen-context-lines::
+::doc:next-screen-context-lines::
 This variable controls the number of lines of "overlap" when scrolling
 by screenfuls of text.
 ::end:: */
 
 DEFUN("goto", Fgoto, Sgoto, (repv pos), rep_Subr1) /*
-::doc:Sgoto::
+::doc:goto::
 goto POSITION
 
 Set the cursor position in the current window to the character position
@@ -48,7 +48,7 @@ POSITION.
 }
 
 DEFUN("goto-glyph", Fgoto_glyph, Sgoto_glyph, (repv pos), rep_Subr1) /*
-::doc:Sgoto-glyph::
+::doc:goto-glyph::
 goto-glyph POSITION
 
 Set the cursor position in the current window to the glyph position POSITION.
@@ -67,7 +67,7 @@ Set the cursor position in the current window to the glyph position POSITION.
 }
 
 DEFUN_INT("center-display", Fcenter_display, Scenter_display, (repv vw, repv arg), rep_Subr2, rep_DS_NL "P") /*
-::doc:Scenter-display::
+::doc:center-display::
 center-display [VIEW] [ARG]
 
 When ARG is nil arrange it so that the line that the cursor is on is
@@ -116,7 +116,7 @@ view.
 }
 
 DEFUN_INT("next-screen", Fnext_screen, Snext_screen, (repv number), rep_Subr1, "p") /*
-::doc:Snext-screen::
+::doc:next-screen::
 next-screen [NUMBER]
 
 Move NUMBER (default: 1) screens forwards in the current window.
@@ -153,7 +153,7 @@ Move NUMBER (default: 1) screens forwards in the current window.
 }
 
 DEFUN_INT("prev-screen", Fprev_screen, Sprev_screen, (repv number), rep_Subr1, "p") /*
-::doc:Sprev-screen::
+::doc:prev-screen::
 prev-screen [NUMBER]
 
 Move NUMBER (default: 1) screens backwards in the current window.
@@ -204,7 +204,7 @@ Move NUMBER (default: 1) screens backwards in the current window.
 
 DEFUN_INT("end-of-buffer", Fend_of_buffer, Send_of_buffer,
 	  (repv tx, repv irp), rep_Subr2, "!@") /*
-::doc:Send-of-buffer::
+::doc:end-of-buffer::
 end-of-buffer [BUFFER] [IGNORE-RESTRICTION-P]
 
 Return the position of the last character in BUFFER. Unless
@@ -227,7 +227,7 @@ of the buffer's restriction.
 
 DEFUN_INT("start-of-buffer", Fstart_of_buffer, Sstart_of_buffer,
 	  (repv tx, repv irp), rep_Subr2, "!@") /*
-::doc:Sstart-of-buffer::
+::doc:start-of-buffer::
 start-of-buffer [BUFFER] [IGNORE-RESTRICTION-P]
 
 Return the position of the start of the buffer. Unless
@@ -243,7 +243,7 @@ of the buffer's restriction.
 
 DEFUN_INT("end-of-line", Fend_of_line, Send_of_line,
 	  (repv pos, repv tx), rep_Subr2, "@") /*
-::doc:Send-of-line::
+::doc:end-of-line::
 end-of-line [POS] [BUFFER]
 
 Return the position of the last character in the line pointed to by POS (or
@@ -262,7 +262,7 @@ the cursor).
 
 DEFUN_INT("start-of-line", Fstart_of_line, Sstart_of_line,
 	  (repv pos), rep_Subr1, "@") /*
-::doc:Sstart-of-line::
+::doc:start-of-line::
 start-of-line [POS]
 
 Return the position of the first character in the line pointed to by POS
@@ -279,7 +279,7 @@ Return the position of the first character in the line pointed to by POS
 
 DEFUN_INT("forward-line", Fforward_line, Sforward_line,
 	  (repv lines, repv pos), rep_Subr2, "@p") /*
-::doc:Sforward-line::
+::doc:forward-line::
 forward-line [NUMBER] [POS]
 
 Return the position of the NUMBER'th (by default the next) line below
@@ -301,7 +301,7 @@ line number is made) nil is returned.
 
 DEFUN_INT("forward-char", Fforward_char, Sforward_char,
 	  (repv count, repv pos, repv tx), rep_Subr3, "@p") /*
-::doc:Sforward-char::
+::doc:forward-char::
 forward-char [COUNT] [POS] [BUFFER]
 
 Returns the position of the character COUNT characters (by default the next)
@@ -333,7 +333,7 @@ beginning or the end of the buffer is passed, nil is returned.
 
 DEFUN_INT("forward-tab", Fforward_tab, Sforward_tab,
 	  (repv num, repv pos, repv size), rep_Subr3, "@p") /*
-::doc:Sforward-tab::
+::doc:forward-tab::
 forward-tab [COUNT] [POS] [TAB-SIZE]
 
 Return the glyph position of the COUNT'th next tab stop to the right of
@@ -476,7 +476,7 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 DEFUN_INT("find-matching-bracket", Ffind_matching_bracket,
 	  Sfind_matching_bracket, (repv pos, repv tx, repv esc),
 	  rep_Subr3, "!@") /*
-::doc:Sfind-matching-bracket::
+::doc:find-matching-bracket::
 find-matching-bracket [POS] [BUFFER] [ESCAPE-CHAR]
 
 Find a bracket matching the one at POS (or the cursor). The things that match
@@ -502,7 +502,7 @@ Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
 }
 
 DEFUN("raw-mouse-pos", Fraw_mouse_pos, Sraw_mouse_pos, (void), rep_Subr0) /*
-::doc:Sraw-mouse-pos::
+::doc:raw-mouse-pos::
 raw-mouse-pos
 
 Return the glyph position of the mouse, relative to the current window.

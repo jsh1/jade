@@ -245,7 +245,7 @@ undo_end_of_command(void)
 DEFSTRING(nothing_to_undo, "Nothing to undo!");
 
 DEFUN_INT("undo", Fundo, Sundo, (repv tx, repv arg), rep_Subr2, rep_DS_NL "p") /*
-::doc:Sundo::
+::doc:undo::
 undo [BUFFER] [ARG]
 
 In the buffer BUFFER, undo everything back to the start of the previous
@@ -328,7 +328,7 @@ taken from the prefix argument.
 }
 
 DEFUN("max-undo-size", var_max_undo_size, Smax_undo_size, (repv val), rep_Var) /*
-::doc:Smax-undo-size::
+::doc:max-undo-size::
 The maximum amount of storage that a single buffer may devote to recording
 undo information.
 ::end:: */
@@ -344,7 +344,7 @@ undo information.
 }
 
 DEFUN("buffer-record-undo", var_buffer_record_undo, Sbuffer_record_undo, (repv val), rep_Var) /*
-::doc:Sbuffer-record-undo::
+::doc:buffer-record-undo::
 When nil no undo information is kept in this buffer.
 ::end:: */
 {
@@ -363,7 +363,7 @@ When nil no undo information is kept in this buffer.
 
 repv var_buffer_undo_list(repv val);
 DEFUN("buffer-undo-list", var_buffer_undo_list, Sbuffer_undo_list, (repv val), rep_Var) /*
-::doc:Sbuffer-undo-list::
+::doc:buffer-undo-list::
 This buffer's list of undo information.
 ::end:: */
 {

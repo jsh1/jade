@@ -64,12 +64,12 @@ static bool pending_meta;
 DEFSYM(idle_hook, "idle-hook");
 
 /* Some doc strings
-::doc:Vesc-means-meta::
+::doc:esc-means-meta::
 When this variable is non-nil the `ESC' key means that the next event
 is qualified by the `Meta' modifier.
 This feature is included mainly for compatibility with GNU Emacs.
 ::end::
-::doc:Vidle-hook::
+::doc:idle-hook::
 This hook gets evaluated every second while the editor is idle. Don't depend
 on how regularly this gets called, any events from the window-system will
 delay it. Also, auto-saving files and garbage-collection take precedence
@@ -558,7 +558,7 @@ lookup_event_name(u_char *buf, u_long code, u_long mods)
 
 /* Lisp functions */
 DEFUN("make-keymap", Fmake_keymap, Smake_keymap, (void), rep_Subr0) /*
-::doc:Smake-keymap::
+::doc:make-keymap::
 make-keymap
 
 Return a new keymap suitable for storing bindings in. This is a 127
@@ -571,7 +571,7 @@ bucket. Compare with the make-sparse-keymap function.
 
 DEFUN("make-sparse-keymap", Fmake_sparse_keymap, Smake_sparse_keymap,
       (repv base), rep_Subr1) /*
-::doc:Smake-sparse-keymap::
+::doc:make-sparse-keymap::
 make-sparse-keymap [BASE-KEYMAP]
 
 Return a new keymap suitable for storing bindings in. This is a cons cell
@@ -589,7 +589,7 @@ bindings are to be inherited by the new keymap.
 }
 
 DEFUN("bind-keys", Fbind_keys, Sbind_keys, (repv args), rep_SubrN) /*
-::doc:Sbind-keys::
+::doc:bind-keys::
 bind-keys KEYMAP { EVENT-DESCRIPTION COMMAND }...
 
 Adds key bindings to KEYMAP. Each EVENT-DESCRIPTION is a string naming an
@@ -650,7 +650,7 @@ end:
 }
 
 DEFUN("unbind-keys", Funbind_keys, Sunbind_keys, (repv args), rep_SubrN) /*
-::doc:Sunbind-keys::
+::doc:unbind-keys::
 unbind-keys KEY-MAP EVENT-DESCRIPTION...
 ::end:: */
 {
@@ -722,7 +722,7 @@ end:
 
 DEFUN("next-keymap-path", Fnext_keymap_path, Snext_keymap_path,
       (repv path), rep_Subr1) /*
-::doc:Snext-keymap-path::
+::doc:next-keymap-path::
 next-keymap-path [PATH]
 
 Install a temporary list of keymaps, PATH, to be used when the next input
@@ -748,7 +748,7 @@ active root keymaps.
 
 DEFSTRING(not_in_handler, "Not in event handler");
 DEFUN("current-event-string", Fcurrent_event_string, Scurrent_event_string, (void), rep_Subr0) /*
-::doc:Scurrent-event-string::
+::doc:current-event-string::
 current-event-string
 
 Returns the string which would have been inserted by the current event if
@@ -766,7 +766,7 @@ a Lisp function hadn't been called instead.
 }
 
 DEFUN("current-event", Fcurrent_event, Scurrent_event, (void), rep_Subr0) /*
-::doc:Scurrent-event::
+::doc:current-event::
 current-event
 
 Return the event which caused the current command to be invoked.
@@ -780,7 +780,7 @@ Return the event which caused the current command to be invoked.
 }
 
 DEFUN("last-event", Flast_event, Slast_event, (void), rep_Subr0) /*
-::doc:Slast-event::
+::doc:last-event::
 last-event
 
 Return the previous event which occurred.
@@ -794,7 +794,7 @@ Return the previous event which occurred.
 }
 
 DEFUN("event-name", Fevent_name, Sevent_name, (repv ev), rep_Subr1) /*
-::doc:Sevent-name::
+::doc:event-name::
 event-name EVENT
 
 Returns a string naming the event EVENT.
@@ -811,7 +811,7 @@ Returns a string naming the event EVENT.
 }
 
 DEFUN("lookup-event", Flookup_event, Slookup_event, (repv name), rep_Subr1) /*
-::doc:Slookup-event::
+::doc:lookup-event::
 lookup-event EVENT-NAME
 
 Return the event whose name is EVENT-NAME.
@@ -827,7 +827,7 @@ Return the event whose name is EVENT-NAME.
 }
 
 DEFUN("lookup-event-binding", Flookup_event_binding, Slookup_event_binding, (repv ev), rep_Subr1) /*
-::doc:Slookup-event-binding::
+::doc:lookup-event-binding::
 lookup-event-binding EVENT
 
 Return the command currently associated with the event EVENT.
@@ -858,7 +858,7 @@ Return the command currently associated with the event EVENT.
 
 DEFUN("search-keymap", Fsearch_keymap, Ssearch_keymap,
       (repv ev, repv km), rep_Subr2) /*
-::doc:Ssearch-keymap::
+::doc:search-keymap::
 search-keymap EVENT KEYMAP
 
 Return the (COMMAND . EVENT) binding of EVENT in KEYMAP, or nil.
@@ -871,7 +871,7 @@ Return the (COMMAND . EVENT) binding of EVENT in KEYMAP, or nil.
 }
 
 DEFUN("keymapp", Fkeymapp, Skeymapp, (repv arg), rep_Subr1) /*
-::doc:Skeymapp::
+::doc:keymapp::
 keymapp ARG
 
 Returns t if ARG can be used as a keymap.
@@ -885,7 +885,7 @@ Returns t if ARG can be used as a keymap.
 }
 
 DEFUN("eventp", Feventp, Seventp, (repv arg), rep_Subr1) /*
-::doc:Seventp::
+::doc:eventp::
 eventp ARG
 
 Returns t if the ARG is an input event.

@@ -48,10 +48,10 @@ static repv prefix_arg, current_prefix_arg;
 repv this_command, last_command;
 
 /* hooks.
-::doc:Vpre-command-hook::
+::doc:pre-command-hook::
 Hook called before evaluating each command.
 ::end::
-::doc:Vpost-command-hook::
+::doc:post-command-hook::
 Hook called after evaluating each command.
 ::end:: */
 
@@ -60,7 +60,7 @@ DEFSYM(post_command_hook, "post-command-hook");
 
 
 DEFUN("this-command", var_this_command, Sthis_command, (repv val), rep_Var) /*
-::doc:Vthis-command::
+::doc:this-command::
 This variable holds the command currently being evaluated, or nil if no
 command is active. The `command' is whatever is being evaluated; it could
 be a function, a form or even a list of forms (from a menu).
@@ -72,7 +72,7 @@ be a function, a form or even a list of forms (from a menu).
 }
 
 DEFUN("last-command", var_last_command, Slast_command, (repv val), rep_Var) /*
-::doc:Vlast-command::
+::doc:last-command::
 This variable holds the last interactive command evaluated. This will either
 be from a keybinding or a menu. Setting the value of the `next-keymap-path'
 variable is not considered a command. After a command finishes this variable
@@ -85,7 +85,7 @@ takes the value of `this-command'.
 }
 
 DEFUN("prefix-arg", var_prefix_arg, Sprefix_arg, (repv val), rep_Var) /*
-::doc:Vprefix-arg::
+::doc:prefix-arg::
 Value of the prefix argument for the next command.
 ::end:: */
 {
@@ -95,7 +95,7 @@ Value of the prefix argument for the next command.
 }
 
 DEFUN("current-prefix-arg", var_current_prefix_arg, Scurrent_prefix_arg, (repv val), rep_Var) /*
-::doc:Vcurrent-prefix-arg::
+::doc:current-prefix-arg::
 Value of the prefix argument for the current command.
 ::end:: */
 {
@@ -170,7 +170,7 @@ DEFSTRING(no_block, "No block marked");
 DEFSTRING(nil_arg, "Nil argument to command");
 DEFSTRING(not_command, "Not a command");
 DEFUN_INT("call-command", Fcall_command, Scall_command, (repv cmd, repv Farg), rep_Subr2, "CEnter command:" rep_DS_NL "P") /*
-::doc:Scall-command::
+::doc:call-command::
 call-command COMMAND [PREFIX-ARG]
 
 Invoke the command COMMAND. This can be one of,
@@ -431,7 +431,7 @@ exit:
 }
 
 DEFUN("prefix-numeric-argument", Fprefix_numeric_argument, Sprefix_numeric_argument, (repv arg), rep_Subr1) /*
-::doc:Sprefix-numeric-argument::
+::doc:prefix-numeric-argument::
 prefix-numeric-argument ARG
 
 Returns the numeric value of the raw prefix argument ARG.
@@ -454,7 +454,7 @@ Returns the numeric value of the raw prefix argument ARG.
 }
 
 DEFUN("interactive", Finteractive, Sinteractive, (repv arg_list), rep_SF) /*
-::doc:Sinteractive::
+::doc:interactive::
 interactive CALLING-SPEC
 
 This is a declaration used by the `call-command' function. For each Lisp
@@ -536,7 +536,7 @@ Example usage,
 }
 
 DEFUN("commandp", Fcommandp, Scommandp, (repv cmd), rep_Subr1) /*
-::doc:Scommandp::
+::doc:commandp::
 commandp COMMAND
 
 Returns t if COMMAND may be called interactively.

@@ -67,7 +67,7 @@ symbol_to_atom(repv sym)
 }
 
 DEFUN("x11-set-selection", Fx11_set_selection, Sx11_set_selection, (repv sel, repv start, repv end, repv buffer), rep_Subr4) /*
-::doc:Sx11-set-selection::
+::doc:x11-set-selection::
 x11-set-selection SELECTION [ STRING | START END [BUFFER] ]
 
 Defines the X11 selection whose name corresponds to the symbol SELECTION
@@ -143,7 +143,7 @@ selnotify_pred(Display *dpy, XEvent *ev, XPointer arg)
 }
 
 DEFUN("x11-selection-active-p", Fx11_selection_active_p, Sx11_selection_active_p, (repv sel), rep_Subr1) /*
-::doc:Sx11-selection-active-p::
+::doc:x11-selection-active-p::
 x11-selection-active-p SELECTION
 
 Returns t if the X11 selection defined by the symbol SELECTION (either
@@ -167,7 +167,7 @@ Returns t if the X11 selection defined by the symbol SELECTION (either
 }
 
 DEFUN("x11-own-selection-p", Fx11_own_selection_p, Sx11_own_selection_p, (repv sel), rep_Subr1) /*
-::doc:Sx11-own-selection-p::
+::doc:x11-own-selection-p::
 x11-own-selection-p SELECTION
 
 Returns t if the X11 selection defined by the symbol SELECTION (either
@@ -187,7 +187,7 @@ Returns t if the X11 selection defined by the symbol SELECTION (either
 }
 
 DEFUN("x11-get-selection", Fx11_get_selection, Sx11_get_selection, (repv sel), rep_Subr1) /*
-::doc:Sx11-get-selection::
+::doc:x11-get-selection::
 x11-get-selection SELECTION
 
 Returns the string corresponding to the current value of the X11 selection
@@ -372,7 +372,7 @@ x11_window_lose_selections(WIN *w)
 }
 
 DEFUN("x11-lose-selection", Fx11_lose_selection, Sx11_lose_selection, (repv sel), rep_Subr1) /*
-::doc:Sx11-lose-selection::
+::doc:x11-lose-selection::
 x11-lose-selection SELECTION
 
 If the X11 selection specified by the symbol SELECTION is currently owned
@@ -401,7 +401,7 @@ by Jade, relinquish ownership.
 
 
 DEFUN("x11-cursor-shape", var_x11_cursor_shape, Sx11_cursor_shape, (repv arg), rep_Var) /*
-::doc:Vx11-cursor-shape::
+::doc:x11-cursor-shape::
 An integer identifying the X cursor to use for editor windows. See
 <X11/cursorfont.h> for the list of available cursors.
 ::end:: */

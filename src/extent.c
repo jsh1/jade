@@ -494,7 +494,7 @@ reset_global_extent(TX *tx)
 
 DEFUN("make-extent", Fmake_extent, Smake_extent,
       (repv start, repv end, repv plist), rep_Subr3) /*
-::doc:Smake-extent::
+::doc:make-extent::
 make-extent START END [PLIST]
 
 Create and return a new extent in the current buffer from START to END.
@@ -534,7 +534,7 @@ will work reliably however.
 DEFSTRING(no_delete_root, "Deleting root extent");
 DEFUN("delete-extent", Fdelete_extent, Sdelete_extent,
       (repv extent), rep_Subr1) /*
-::doc:Sdelete-extent::
+::doc:delete-extent::
 delete-extent EXTENT
 
 Delete EXTENT from the buffer containing it. An error is signalled if
@@ -553,7 +553,7 @@ EXTENT is the root extent covering the entire buffer.
 
 DEFUN_INT("delete-all-extents", Fdelete_all_extents,
 	  Sdelete_all_extents, (repv extent), rep_Subr1, "") /*
-::doc:Sdelete-all-extents::
+::doc:delete-all-extents::
 delete-all-extents [ROOT]
 
 Delete all extents contained within ROOT (or the root of the current buffer).
@@ -569,7 +569,7 @@ Note that it's not possible to delete the global extent of a buffer itself.
 
 DEFUN("move-extent", Fmove_extent, Smove_extent,
       (repv extent, repv start, repv end), rep_Subr3) /*
-::doc:Smove-extent::
+::doc:move-extent::
 move-extent EXTENT START END
 
 Set the start and end positions of EXTENT to START and END respectively,
@@ -590,7 +590,7 @@ without changing the buffer that EXTENT refers to.
 }
 
 DEFUN("get-extent", Fget_extent, Sget_extent, (repv pos, repv tx), rep_Subr2) /*
-::doc:Sget-extent::
+::doc:get-extent::
 get-extent [POSITION] [BUFFER]
 
 Return the innermost extent at POSITION in BUFFER (by default the cursor
@@ -629,7 +629,7 @@ map_extents_callback (Lisp_Extent *e, void *data)
 
 DEFUN("map-extents", Fmap_extents, Smap_extents,
       (repv fun, repv start, repv end), rep_Subr3) /*
-::doc:Smap-extents::
+::doc:map-extents::
 map-extents FUNCTION START END
 
 Call (FUNCTION EXTENT) for all innermost extent fragments containing
@@ -665,7 +665,7 @@ deleted from within the callback function.
 }
 
 DEFUN("extent-start", Fextent_start, Sextent_start, (repv extent), rep_Subr1) /*
-::doc:Sextent-start::
+::doc:extent-start::
 extent-start EXTENT
 
 Return the position of the first character in EXTENT.
@@ -678,7 +678,7 @@ Return the position of the first character in EXTENT.
 }
 
 DEFUN("extent-end", Fextent_end, Sextent_end, (repv extent), rep_Subr1) /*
-::doc:Sextent-end::
+::doc:extent-end::
 extent-end EXTENT
 
 Return the position of the character following EXTENT.
@@ -691,7 +691,7 @@ Return the position of the character following EXTENT.
 }
 
 DEFUN("extent-parent", Fextent_parent, Sextent_parent, (repv extent), rep_Subr1) /*
-::doc:Sextent-parent::
+::doc:extent-parent::
 extent-parent EXTENT
 
 Return parent extent of EXTENT. Returns nil if EXTENT is the global extent
@@ -703,7 +703,7 @@ covering the entire buffer.
 }
 
 DEFUN("extent-root", Fextent_root, Sextent_root, (repv tx), rep_Subr1) /*
-::doc:Sextent-root::
+::doc:extent-root::
 extent-root [BUFFER]
 
 Return the global extent covering the whole of BUFFER. This extent has no
@@ -716,7 +716,7 @@ parent.
 }
 
 DEFUN("extent-plist", Fextent_plist, Sextent_plist, (repv extent), rep_Subr1) /*
-::doc:Sextent-plist::
+::doc:extent-plist::
 extent-plist EXTENT
 
 Return the property list associated with EXTENT.
@@ -728,7 +728,7 @@ Return the property list associated with EXTENT.
 
 DEFUN("set-extent-plist", Fset_extent_plist, Sset_extent_plist,
       (repv extent, repv plist), rep_Subr2) /*
-::doc:Sset-extent-plist::
+::doc:set-extent-plist::
 set-extent-plist EXTENT PLIST
 
 Set the property list associated with EXTENT (and all other fragments of
@@ -763,7 +763,7 @@ set_extent_locals(Lisp_Extent *e, repv value)
 
 DEFUN("extent-get", Fextent_get, Sextent_get,
       (repv extent, repv prop), rep_Subr2) /*
-::doc:Sextent-get::
+::doc:extent-get::
 extent-get EXTENT PROPERTY
 
 Return the value of PROPERTY (a symbol) in EXTENT, or any of its parents.
@@ -810,7 +810,7 @@ The special properties `front-sticky', `rear-sticky', `local-variables', and
 
 DEFUN("extent-put", Fextent_put, Sextent_put,
       (repv extent, repv prop, repv val), rep_Subr3) /*
-::doc:Sextent-put::
+::doc:extent-put::
 extent-put EXTENT PROPERTY repv
 
 Set the value of PROPERTY (a symbol) in EXTENT to repv.
@@ -883,7 +883,7 @@ function.
 
 DEFUN("buffer-get", Fbuffer_get, Sbuffer_get,
       (repv prop, repv pos, repv tx), rep_Subr3) /*
-::doc:Sbuffer-get::
+::doc:buffer-get::
 buffer-get PROPERTY [POSITION] [BUFFER]
 
 Get the value of PROPERTY (a symbol) at POSITION in BUFFER.
@@ -899,7 +899,7 @@ Get the value of PROPERTY (a symbol) at POSITION in BUFFER.
 
 DEFUN("buffer-symbol-value", Fbuffer_symbol_value, Sbuffer_symbol_value,
       (repv symbol, repv pos, repv tx, repv no_err), rep_Subr4) /*
-::doc:Sbuffer-symbol-value::
+::doc:buffer-symbol-value::
 buffer-symbol-value SYMBOL [POSITION | EXTENT] [BUFFER] [NO-ERROR-IF-VOID]
 
 Return the local value of the variable named by SYMBOL at POSITION in
@@ -945,7 +945,7 @@ deref_local_symbol (repv sym)
 
 DEFUN("extent-set", Fextent_set, Sextent_set,
       (repv extent, repv symbol, repv val), rep_Subr3) /*
-::doc:Sextent-set::
+::doc:extent-set::
 extent-set EXTENT SYMBOL repv
 
 Set the local value of the variable named SYMBOL in EXTENT to repv.
@@ -1021,7 +1021,7 @@ set_local_symbol (repv sym, repv value)
 
 DEFUN("make-local-variable", Fmake_local_variable, Smake_local_variable,
       (repv sym), rep_Subr1) /*
-::doc:Smake-local-variable::
+::doc:make-local-variable::
 make-local-variable SYMBOL
 
 Gives the variable SYMBOL a buffer-local binding in the current buffer. It
@@ -1046,7 +1046,7 @@ Returns SYMBOL.
 
 DEFUN("make-variable-buffer-local", Fmake_variable_buffer_local,
       Smake_variable_buffer_local, (repv sym), rep_Subr1) /*
-::doc:Smake-variable-buffer-local::
+::doc:make-variable-buffer-local::
 make-variable-buffer-local SYMBOL
 
 Marks the variable SYMBOL as being automatically buffer-local. Any attempts
@@ -1061,7 +1061,7 @@ Returns SYMBOL.
 
 DEFUN("buffer-variables", Fbuffer_variables, Sbuffer_variables,
       (repv tx), rep_Subr1) /*
-::doc:Sbuffer-variables::
+::doc:buffer-variables::
 buffer-variables [BUFFER]
 
 Returns a list of (SYMBOL . VALUE) bindings which take effect when the
@@ -1076,7 +1076,7 @@ for each minor extent.)
 
 DEFUN("kill-all-local-variables", Fkill_all_local_variables,
       Skill_all_local_variables, (repv tx), rep_Subr1) /*
-::doc:Skill-all-local-variables::
+::doc:kill-all-local-variables::
 kill-all-local-variables [BUFFER]
 
 Remove all buffer-local variables from BUFFER that are not marked as being
@@ -1106,7 +1106,7 @@ permanent (i.e. their `permanent-local' property is unset or non-nil.)
 
 DEFUN("kill-local-variable", Fkill_local_variable, Skill_local_variable,
       (repv sym, repv tx), rep_Subr2) /*
-::doc:Skill-local-variable::
+::doc:kill-local-variable::
 kill-local-variable SYMBOL [BUFFER]
 
 Remove the buffer-local value of the symbol SYMBOL in the specified buffer.

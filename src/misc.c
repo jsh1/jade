@@ -34,21 +34,21 @@ DEFSYM(jade_build_id, "jade-build-id");
 DEFSYM(jade_major_version, "jade-major-version");
 DEFSYM(jade_minor_version, "jade-minor-version");
 DEFSYM(jade_version, "jade-version"); /*
-::doc:Vwindow-system::
+::doc:window-system::
 A symbol defining the window system that Jade is running under. The only
 current possibilities are `x11' or `gtk'.
 ::end::
-::doc:Vjade-build-id::
+::doc:jade-build-id::
 A string describing when, where, and by who the running version of the
 editor was built.
 ::end::
-::doc:Vjade-major-version::
+::doc:jade-major-version::
 The major version number of the editor.
 ::end::
-::doc:Vjade-minor-version::
+::doc:jade-minor-version::
 The minor version number of the editor.
 ::end::
-::doc:Vjade-version::
+::doc:jade-version::
 A string naming the editor version.
 ::end:: */
 

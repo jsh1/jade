@@ -198,7 +198,7 @@ abortmem:
 DEFUN_INT("write-buffer-contents", Fwrite_buffer_contents,
 	  Swrite_buffer_contents, (repv file, repv start, repv end),
 	  rep_Subr3, "-FWrite block to file:" rep_DS_NL "m" rep_DS_NL "M") /*
-::doc:Swrite-buffer-contents::
+::doc:write-buffer-contents::
 write-buffer-contents FILE-OR-NAME [START] [END]
 
 Writes the text between positions START and END in the current buffer
@@ -273,7 +273,7 @@ the buffer (ignoring the current restriction).
 
 DEFUN("read-file-contents", Fread_file_contents, Sread_file_contents,
       (repv file), rep_Subr1) /*
-::doc:Sread-file-contents::
+::doc:read-file-contents::
 read-file-contents FILE-OR-NAME
 
 Overwrites the text in BUFFER with that from the file FILE-OR-NAME.
@@ -334,7 +334,7 @@ object to be used. Also removes any restriction on BUFFER.
 
 DEFUN("insert-file-contents", Finsert_file_contents,
       Sinsert_file_contents, (repv file), rep_Subr1) /*
-::doc:Sinsert-file-contents::
+::doc:insert-file-contents::
 insert-file-contents FILE-OR-NAME
 
 Insert the contents of FILE-OR-NAME (the name of a file, or a file object)

@@ -55,7 +55,7 @@ char *default_hl_color = "lightgoldenrod";
 char *default_ml_color = "lightsteelblue";
 
 DEFUN("make-face", Fmake_face, Smake_face, (repv name), rep_Subr1) /*
-::doc:Smake-face::
+::doc:make-face::
 make-face NAME
 
 Return the face called NAME. If no face with this name exists already, create
@@ -126,7 +126,7 @@ face_mark (repv val)
 
 DEFUN("set-face-attribute", Fset_face_attribute, Sset_face_attribute,
       (repv face, repv attr, repv value), rep_Subr3) /*
-::doc:Sset-face-attribute::
+::doc:set-face-attribute::
 set-face-attribute FACE ATTRIBUTE-NAME repv
 
 Set the attribute named ATTRIBUTE-NAME of FACE to repv. ATTRIBUTE-NAME
@@ -206,7 +206,7 @@ may be one of these symbols:
 
 DEFUN("face-attribute", Fface_attribute, Sface_attribute,
       (repv face, repv attr), rep_Subr2) /*
-::doc:Sface-attribute::
+::doc:face-attribute::
 face-attribute FACE ATTRIBUTE-NAME
 
 Return the current value of the attribute named ATTRIBUTE-NAME in FACE.
@@ -235,7 +235,7 @@ See `set-face-attribute' for the list of possible attributes.
 
 DEFUN("mouse-cursor-face", var_mouse_cursor_face, Smouse_cursor_face,
       (repv arg), rep_Var) /*
-::doc:Smouse-cursor-face::
+::doc:mouse-cursor-face::
 The face used to color the mouse cursor.
 ::end:: */
 {
@@ -423,7 +423,7 @@ Lisp_Color *allocated_colors;
 int color_type;
 
 DEFUN("get-color", Fget_color, Sget_color, (repv name), rep_Subr1) /*
-::doc:Sget-color::
+::doc:get-color::
 get-color NAME
 
 Return the Lisp object defining the color named NAME (a string).

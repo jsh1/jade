@@ -492,7 +492,7 @@ sys_get_mouse_pos(WIN *w)
 }
 
 DEFUN("flush-output", Fflush_output, Sflush_output, (void), rep_Subr0) /*
-::doc:Sflush-output::
+::doc:flush-output::
 flush-output
 
 Forces any cached window output to be drawn. This is usually unnecessary.
@@ -511,7 +511,7 @@ DEFSTRING(no_display, "Can't open display");
 DEFUN_INT("make-window-on-display", Fmake_window_on_display,
 	  Smake_window_on_display, (repv display), rep_Subr1,
 	  "sDisplay to open window on:") /*
-::doc:Smake-window-on-display::
+::doc:make-window-on-display::
 make-window-on-display DISPLAY-NAME
 
 Create a new window, as with make-window, but opened on the X11 display

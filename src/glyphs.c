@@ -1142,7 +1142,7 @@ set_cursor_vertically(VW *vw, long row)
 /* LISP interface */
 
 DEFUN("glyph-table-p", Fglyph_table_p, Sglyph_table_p, (repv arg), rep_Subr1) /*
-::doc:Sglyph-table-p::
+::doc:glyph-table-p::
 glyph-table-p ARG
 
 Returns t if ARG is a glyph-table.
@@ -1152,7 +1152,7 @@ Returns t if ARG is a glyph-table.
 }
 
 DEFUN("char-to-glyph-pos", Fchar_to_glyph_pos, Schar_to_glyph_pos, (repv pos, repv tx), rep_Subr2) /*
-::doc:Schar-to-glyph-pos::
+::doc:char-to-glyph-pos::
 char-to-glyph-pos [POS] [BUFFER]
 
 From the character position POS, find its true *physical* position when
@@ -1170,7 +1170,7 @@ rendered.
 }
 
 DEFUN("glyph-to-char-pos", Fglyph_to_char_pos, Sglyph_to_char_pos, (repv pos, repv tx), rep_Subr2) /*
-::doc:Sglyph-to-char-pos::
+::doc:glyph-to-char-pos::
 glyph-to-char-pos POS [BUFFER]
 
 For the physical position POS, find the closest matching actual character
@@ -1188,7 +1188,7 @@ position.
 
 DEFUN("display-to-char-pos", Fdisplay_to_char_pos,
       Sdisplay_to_char_pos, (repv pos, repv vw), rep_Subr2) /*
-::doc:Sdisplay-to-char-pos::
+::doc:display-to-char-pos::
 display-to-char-pos POSITION [VIEW]
 
 Return the position of the character displayed in VIEW (or the current view)
@@ -1224,7 +1224,7 @@ the buffer).
 
 DEFUN("char-to-display-pos", Fchar_to_display_pos, Schar_to_display_pos,
       (repv pos, repv vw), rep_Subr2) /*
-::doc:Schar-to-display-pos::
+::doc:char-to-display-pos::
 char-to-display-pos POSITION [VIEW]
 
 Return the screen coordinates, relative to the upper left corner of VIEW,
@@ -1283,7 +1283,7 @@ not currently being displayed, return nil.
 }
 
 DEFUN("default-glyph-table", Fdefault_glyph_table, Sdefault_glyph_table, (void), rep_Subr0) /*
-::doc:Sdefault-glyph-table::
+::doc:default-glyph-table::
 default-glyph-table
 
 Returns the standard glyph-table.
@@ -1293,7 +1293,7 @@ Returns the standard glyph-table.
 }
 
 DEFUN("make-glyph-table", Fmake_glyph_table, Smake_glyph_table, (repv src), rep_Subr1) /*
-::doc:Smake-glyph-table::
+::doc:make-glyph-table::
 make-glyph-table SRC
 
 Creates a new glyph-table. If SRC is a glyph-table it will be copied, else if
@@ -1329,7 +1329,7 @@ default glyph-table will be copied.
 }
 
 DEFUN("set-glyph", Fset_glyph, Sset_glyph, (repv gt, repv ch, repv glyph), rep_Subr3) /*
-::doc:Sset-glyph::
+::doc:set-glyph::
 set-glyph GLYPH-TABLE CHARACTER GLYPH-STRING
 
 Make the renderer draw the string GLYPH-STRING (no more than 4 characters)
@@ -1364,7 +1364,7 @@ for each character CHARACTER in any buffers which use the GLYPH-TABLE.
 }
 
 DEFUN("get-glyph", Fget_glyph, Sget_glyph, (repv gt, repv ch), rep_Subr2) /*
-::doc:Sget-glyph::
+::doc:get-glyph::
 get-glyph GLYPH-TABLE CHARACTER
 
 Return the string which is the rendered representation of CHARACTER in

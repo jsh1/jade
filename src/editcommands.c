@@ -39,13 +39,13 @@ DEFSYM(inhibit_read_only, "inhibit-read-only");
 DEFSYM(read_only, "read-only");
 
 /* Some doc strings
-::doc:Vinhibit-read-only::
+::doc:inhibit-read-only::
 When bound and non-nil this variable cancels the effect of the set-buffer-
 read-only command; in that the buffer is always writeable. This is
 intended to be bound while a command is executing that is allowed to
 modify a buffer.
 ::end::
-::doc:Vblock-status-hook::
+::doc:block-status-hook::
 The hook called when the status of the block changes. It will be called
 with a single argument, t if the block is now marked, nil if it isn't.
 ::end:: */
@@ -60,7 +60,7 @@ make_pos(long col, long row)
 }
 
 DEFUN("pos", Fpos, Spos, (repv x, repv y), rep_Subr2) /*
-::doc:Spos::
+::doc:pos::
 pos COLUMN ROW
 
 Returns a new position object with coordinates (COLUMN , ROW).
@@ -73,7 +73,7 @@ Returns a new position object with coordinates (COLUMN , ROW).
 
 
 DEFUN_INT("insert", Finsert, Sinsert, (repv string, repv pos, repv buff), rep_Subr3, "sString to insert:") /*
-::doc:Sinsert::
+::doc:insert::
 insert STRING [POS] [BUFFER]
 
 Inserts STRING into BUFFER at POS. Returns the first position of the first
@@ -95,7 +95,7 @@ character after the end of the inserted text.
 }
 
 DEFUN_INT("delete-area", Fdelete_area, Sdelete_area, (repv start, repv end, repv buff), rep_Subr3, "-m" rep_DS_NL "M") /*
-::doc:Sdelete-area::
+::doc:delete-area::
 delete-area START-POS END-POS [BUFFER]
 
 Deletes from START-POS up to (but not including) END-POS.
@@ -115,7 +115,7 @@ Deletes from START-POS up to (but not including) END-POS.
 }
 
 DEFUN("copy-area", Fcopy_area, Scopy_area, (repv start, repv end, repv buff), rep_Subr3) /*
-::doc:Scopy-area::
+::doc:copy-area::
 copy-area START-POS END-POS [BUFFER]
 
 Returns the string from START-POS up to END-POS.
@@ -140,7 +140,7 @@ Returns the string from START-POS up to END-POS.
 }
 
 DEFUN("cut-area", Fcut_area, Scut_area, (repv start, repv end, repv buff), rep_Subr3) /*
-::doc:Scut-area::
+::doc:cut-area::
 cut-area START-POS END-POS [BUFFER]
 
 The same as `copy-area' except that the section of text copied (START-POS to
@@ -166,7 +166,7 @@ END-POS) is deleted from the file after being duplicated.
 }
 
 DEFUN_INT("block-toggle", Fblock_toggle, Sblock_toggle, (void), rep_Subr0, "") /*
-::doc:Sblock-toggle::
+::doc:block-toggle::
 block-toggle
 ::end:: */
 {
@@ -196,7 +196,7 @@ block-toggle
 }
 
 DEFUN("block-start", Fblock_start, Sblock_start, (repv pos), rep_Subr1) /*
-::doc:Sblock-start::
+::doc:block-start::
 block-start [POS]
 
 Always returns the position of the block-start as it is, if POS is given
@@ -238,7 +238,7 @@ it is used as the new position of the start of the block.
 }
 
 DEFUN("block-end", Fblock_end, Sblock_end, (repv pos), rep_Subr1) /*
-::doc:Sblock-end::
+::doc:block-end::
 block-end [POS]
 
 Always returns the position of the block-end as it is, if POS is given
@@ -280,7 +280,7 @@ it is used as the new position of the end of the block.
 }
 
 DEFUN_INT("block-kill", Fblock_kill, Sblock_kill, (void), rep_Subr0, "") /*
-::doc:Sblock-kill::
+::doc:block-kill::
 block-kill
 
 Unmarks the block.
@@ -296,7 +296,7 @@ Unmarks the block.
 }
 
 DEFUN("blockp", Fblockp, Sblockp, (void), rep_Subr0) /*
-::doc:Sblockp::
+::doc:blockp::
 blockp
 
 Returns true if a block is currently marked.
@@ -356,7 +356,7 @@ unchanged.
 }
 
 DEFUN("get-char", Fget_char, Sget_char, (repv pos, repv tx), rep_Subr2) /*
-::doc:Sget-char::
+::doc:get-char::
 get-char [POS] [BUFFER]
 
 Returns the numerical value of the character at position POS in BUFFER. If no
@@ -383,7 +383,7 @@ character exists at that position, nil is returned.
 }
 
 DEFUN_INT("set-char", Fset_char, Sset_char, (repv ch, repv pos, repv tx), rep_Subr3, "cCharacter:") /*
-::doc:Sset-char::
+::doc:set-char::
 set-char CHARACTER [POS] [BUFFER]
 
 Sets the character at position POS in BUFFER to CHARACTER.
@@ -410,7 +410,7 @@ Sets the character at position POS in BUFFER to CHARACTER.
 }
 
 DEFUN("posp", Fposp, Sposp, (repv arg), rep_Subr1) /*
-::doc:Sposp::
+::doc:posp::
 posp ARG
 
 Returns t if ARG is a position object.
@@ -422,7 +422,7 @@ Returns t if ARG is a position object.
 }
 
 DEFUN("cursor-pos", Fcursor_pos, Scursor_pos, (void), rep_Subr0) /*
-::doc:Scursor-pos::
+::doc:cursor-pos::
 cursor-pos
 
 Returns the position of the cursor in the current window.
@@ -432,7 +432,7 @@ Returns the position of the cursor in the current window.
 }
 
 DEFUN("empty-line-p", Fempty_line_p, Sempty_line_p, (repv pos, repv tx), rep_Subr2) /*
-::doc:Sempty-line-p::
+::doc:empty-line-p::
 empty-line-p [POS] [BUFFER]
 
 Returns t if the line pointer to by POS (or the cursor) in BUFFER is
@@ -462,7 +462,7 @@ empty, ie, blank or only containing spaces.
 }
 
 DEFUN("indent-pos", Findent_pos, Sindent_pos, (repv pos, repv tx), rep_Subr2) /*
-::doc:Sindent-pos::
+::doc:indent-pos::
 indent-pos [POS] [BUFFER]
 
 Returns the glyph position of the first non-space character in the line
@@ -486,7 +486,7 @@ pointed to by POS (or the cursor), in BUFFER.
 }
 
 DEFUN("set-indent-pos", Fset_indent_pos, Sset_indent_pos, (repv indpos, repv tx, repv spaces_p), rep_Subr3) /*
-::doc:Sset-indent-pos::
+::doc:set-indent-pos::
 set-indent-pos POS [BUFFER] [ONLY-SPACES]
 
 Sets the indentation of the line pointed to by POS to the column pointed
@@ -584,7 +584,7 @@ If ONLY-SPACES in non-nil no tab characters are used.
 }
 
 DEFUN_INT("indent-to", Findent_to, Sindent_to, (repv col, repv spaces_p), rep_Subr2, "NIndent to column:") /*
-::doc:Sindent-to::
+::doc:indent-to::
 indent-to COLUMN [ONLY-SPACES]
 
 Inserts enough tabs and spaces to move the cursor to glyph column COLUMN.
@@ -635,7 +635,7 @@ COLUMN counts from zero.
 }
 	    
 DEFUN_INT("clear-buffer", Fclear_buffer, Sclear_buffer, (repv tx), rep_Subr1, "") /*
-::doc:Sclear-buffer::
+::doc:clear-buffer::
 clear-buffer [BUFFER]
 
 Remove all text from BUFFER, leaving just one empty line. Also removes
@@ -659,7 +659,7 @@ any restriction on the buffer.
 }
 
 DEFUN("pos-to-offset", Fpos_to_offset, Spos_to_offset, (repv pos, repv tx), rep_Subr2) /*
-::doc:Spos-to-offset::
+::doc:pos-to-offset::
 pos-to-offset [POS] [BUFFER]
 
 Returns the number of characters (counting from zero) that POS (or the cursor)
@@ -684,7 +684,7 @@ is from the beginning of the buffer.
 }
 
 DEFUN("offset-to-pos", Foffset_to_pos, Soffset_to_pos, (repv voffset, repv tx), rep_Subr2) /*
-::doc:Soffset-to-pos::
+::doc:offset-to-pos::
 offset-to-pos OFFSET [BUFFER]
 
 Returns the position which is OFFSET characters from the start of the buffer.
@@ -705,7 +705,7 @@ Returns the position which is OFFSET characters from the start of the buffer.
 
 DEFUN("call-process-area", Fcall_process_area,
       Scall_process_area, (repv arg_list), rep_SubrN) /*
-::doc:Scall-process-area::
+::doc:call-process-area::
 call-process-area [PROCESS] START END DELETEP [PROGRAM] [ARGS...]
 
 Starts a process running on process-object PROCESS. Waits for the child to

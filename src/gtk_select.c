@@ -74,7 +74,7 @@ symbol_to_atom(repv sym)
 DEFUN("gtk-jade-set-selection", Fgtk_jade_set_selection,
       Sgtk_jade_set_selection,
       (repv sel, repv start, repv end, repv buffer), rep_Subr4) /*
-::doc:Sgtk-jade-set-selection::
+::doc:gtk-jade-set-selection::
 gtk-jade-set-selection SELECTION [ STRING | START END [BUFFER] ]
 
 Defines the selection whose name corresponds to the symbol SELECTION
@@ -144,7 +144,7 @@ otherwise.
 
 DEFUN("gtk-jade-selection-active-p", Fgtk_jade_selection_active_p,
       Sgtk_jade_selection_active_p, (repv sel), rep_Subr1) /*
-::doc:Sgtk-jade-selection-active-p::
+::doc:gtk-jade-selection-active-p::
 gtk-jade-selection-active-p SELECTION
 
 Returns t if the selection defined by the symbol SELECTION (either
@@ -176,7 +176,7 @@ Returns t if the selection defined by the symbol SELECTION (either
 
 DEFUN("gtk-jade-own-selection-p", Fgtk_jade_own_selection_p,
       Sgtk_jade_own_selection_p, (repv sel), rep_Subr1) /*
-::doc:Sgtk-jade-own-selection-p::
+::doc:gtk-jade-own-selection-p::
 gtk-jade-own-selection-p SELECTION
 
 Returns t if the selection defined by the symbol SELECTION (either
@@ -206,7 +206,7 @@ selnotify_pred(Display *dpy, XEvent *ev, XPointer arg)
 
 DEFUN("gtk-jade-get-selection", Fgtk_jade_get_selection,
       Sgtk_jade_get_selection, (repv sel), rep_Subr1) /*
-::doc:Sgtk-jade-get-selection::
+::doc:gtk-jade-get-selection::
 gtk-jade-get-selection SELECTION
 
 Returns the string corresponding to the current value of the selection
@@ -386,7 +386,7 @@ gtk_jade_window_lose_selections(WIN *w)
 
 DEFUN("gtk-jade-lose-selection", Fgtk_jade_lose_selection,
       Sgtk_jade_lose_selection, (repv sel), rep_Subr1) /*
-::doc:Sgtk-jade-lose-selection::
+::doc:gtk-jade-lose-selection::
 gtk-jade-lose-selection SELECTION
 
 If the selection specified by the symbol SELECTION is currently owned by

@@ -114,7 +114,7 @@ pos_puts(TX *tx, repv *pos, u_char *buf, int bufLen)
 /* Buffers */
 
 DEFUN("make-buffer-name", Fmake_buffer_name, Smake_buffer_name, (repv rawName), rep_Subr1) /*
-::doc:Smake-buffer-name::
+::doc:make-buffer-name::
 make-buffer-name NAME
 
 Construct a unique buffer-name from NAME.
@@ -155,7 +155,7 @@ Construct a unique buffer-name from NAME.
 }
 
 DEFUN("make-buffer", Fmake_buffer, Smake_buffer, (repv name, repv oldTx, repv litName), rep_Subr3) /*
-::doc:Smake-buffer::
+::doc:make-buffer::
 make-buffer NAME
 
 Return a new buffer, it's name is the result of (make-buffer-name NAME).
@@ -417,7 +417,7 @@ swap_buffers(VW *vw, TX *new)
 }
 
 DEFUN("get-file-buffer", Fget_file_buffer, Sget_file_buffer, (repv name), rep_Subr1) /*
-::doc:Sget-file-buffer::
+::doc:get-file-buffer::
 get-file-buffer NAME
 
 Scan all buffers for one containing the file NAME.
@@ -447,7 +447,7 @@ Scan all buffers for one containing the file NAME.
 }
 
 DEFUN("get-buffer", Fget_buffer, Sget_buffer, (repv name), rep_Subr1) /*
-::doc:Sget-buffer::
+::doc:get-buffer::
 get-buffer NAME
 
 Scan all buffers for one whose name is NAME.
@@ -544,7 +544,7 @@ auto_save_buffers(bool force_save)
 }
 
 DEFUN("current-buffer", Fcurrent_buffer, Scurrent_buffer, (repv vw), rep_Subr1) /*
-::doc:Scurrent-buffer::
+::doc:current-buffer::
 current-buffer [VIEW]
 
 Return the buffer that VIEW (or the current view) is displaying.
@@ -556,7 +556,7 @@ Return the buffer that VIEW (or the current view) is displaying.
 }
 
 DEFUN("set-current-buffer", Fset_current_buffer, Sset_current_buffer, (repv tx, repv vw), rep_Subr2) /*
-::doc:Sset-current-buffer::
+::doc:set-current-buffer::
 set-current-buffer BUFFER [VIEW]
 
 Set the buffer that VIEW (or the current view) is displaying. Returns
@@ -570,7 +570,7 @@ the buffer which was being displayed before.
 }
 
 DEFUN("buffer-file-name", Fbuffer_file_name, Sbuffer_file_name, (repv tx), rep_Subr1) /*
-::doc:Sbuffer-file-name::
+::doc:buffer-file-name::
 buffer-file-name [BUFFER]
 
 Return the name of the file being edited in BUFFER. If the contents of BUFFER
@@ -583,7 +583,7 @@ isn't associated with a particular file, returns nil.
 }
 
 DEFUN("set-buffer-file-name", Fset_buffer_file_name, Sset_buffer_file_name, (repv tx, repv name), rep_Subr2) /*
-::doc:Sset-buffer-file-name::
+::doc:set-buffer-file-name::
 set-buffer-file-name BUFFER NAME
 
 Set the name of the file associated with the contents of BUFFER to NAME.
@@ -618,7 +618,7 @@ Set the name of the file associated with the contents of BUFFER to NAME.
 }
 
 DEFUN("buffer-name", Fbuffer_name, Sbuffer_name, (repv tx), rep_Subr1) /*
-::doc:Sbuffer-name::
+::doc:buffer-name::
 buffer-name [BUFFER]
 
 Return the name of BUFFER.
@@ -630,7 +630,7 @@ Return the name of BUFFER.
 }
 
 DEFUN("set-buffer-name", Fset_buffer_name, Sset_buffer_name, (repv tx, repv name), rep_Subr2) /*
-::doc:Sset-buffer-name::
+::doc:set-buffer-name::
 set-buffer-name BUFFER NAME
 
 Set the name of BUFFER to NAME.
@@ -650,7 +650,7 @@ Set the name of BUFFER to NAME.
 }
 
 DEFUN("buffer-changes", Fbuffer_changes, Sbuffer_changes, (repv tx), rep_Subr1) /*
-::doc:Sbuffer-changes::
+::doc:buffer-changes::
 buffer-changes [BUFFER]
 
 Return the number of modifications to BUFFER.
@@ -662,7 +662,7 @@ Return the number of modifications to BUFFER.
 }
 
 DEFUN("buffer-modified-p", Fbuffer_modified_p, Sbuffer_modified_p, (repv tx), rep_Subr1) /*
-::doc:Sbuffer-modified-p::
+::doc:buffer-modified-p::
 buffer-modified-p [BUFFER]
 
 Returns t if the buffer has changed since it was last saved to disk.
@@ -675,7 +675,7 @@ Returns t if the buffer has changed since it was last saved to disk.
 }
 
 DEFUN("set-buffer-modified", Fset_buffer_modified, Sset_buffer_modified, (repv buf, repv stat), rep_Subr2) /*
-::doc:Sset-buffer-modified::
+::doc:set-buffer-modified::
 set-buffer-modified BUFFER STATUS
 
 If STATUS is nil make it look as though buffer hasn't changed, else make
@@ -698,7 +698,7 @@ it look as though it has.
 }
 
 DEFUN("buffer-length", Fbuffer_length, Sbuffer_length, (repv tx), rep_Subr1) /*
-::doc:Sbuffer-length::
+::doc:buffer-length::
 buffer-length [BUFFER]
 
 Returns the number of lines in BUFFER.
@@ -710,7 +710,7 @@ Returns the number of lines in BUFFER.
 }
 
 DEFUN("line-length", Fline_length, Sline_length, (repv pos, repv tx), rep_Subr2) /*
-::doc:Sline-length::
+::doc:line-length::
 line-length [LINE-POS] [BUFFER]
 
 Returns the length (not including newline) of the specified line, or
@@ -731,7 +731,7 @@ using current cursor position if specifiers are not provided.
 }
 
 DEFUN("bufferp", Fbufferp, Sbufferp, (repv arg), rep_Subr1) /*
-::doc:Sbufferp::
+::doc:bufferp::
 bufferp ARG
 
 Returns t if ARG is a buffer.
@@ -743,7 +743,7 @@ Returns t if ARG is a buffer.
 }
 
 DEFUN_INT("restrict-buffer", Frestrict_buffer, Srestrict_buffer, (repv start, repv end, repv tx), rep_Subr3, "-m" rep_DS_NL "M") /*
-::doc:Srestrict-buffer::
+::doc:restrict-buffer::
 restrict-buffer START END [BUFFER]
 
 Limits the portion of BUFFER (or the current buffer) that may be displayed
@@ -765,7 +765,7 @@ to that between the lines specified by positions START and END.
 }
 
 DEFUN_INT("unrestrict-buffer", Funrestrict_buffer, Sunrestrict_buffer, (repv tx), rep_Subr1, "") /*
-::doc:Sunrestrict-buffer::
+::doc:unrestrict-buffer::
 unrestrict-buffer [BUFFER]
 
 Remove any restriction on the parts of BUFFER that may be displayed.
@@ -778,7 +778,7 @@ Remove any restriction on the parts of BUFFER that may be displayed.
     return Qt;
 }
 DEFUN("restriction-start", Frestriction_start, Srestriction_start, (repv tx), rep_Subr1) /*
-::doc:Srestriction-start::
+::doc:restriction-start::
 restriction-start [BUFFER]
 
 Return the position of the first character that may be displayed in BUFFER
@@ -791,7 +791,7 @@ Return the position of the first character that may be displayed in BUFFER
 }
 
 DEFUN("restriction-end", Frestriction_end, Srestriction_end, (repv tx), rep_Subr1) /*
-::doc:Srestriction-end::
+::doc:restriction-end::
 restriction-end [BUFFER]
 
 Return the position of the last character that may be displayed in BUFFER
@@ -805,7 +805,7 @@ Return the position of the last character that may be displayed in BUFFER
 }
 
 DEFUN("buffer-restricted-p", Fbuffer_restricted_p, Sbuffer_restricted_p, (repv tx), rep_Subr1) /*
-::doc:Sbuffer-restricted-p::
+::doc:buffer-restricted-p::
 buffer-restricted-p [BUFFER]
 
 Returns t when BUFFER (or the current buffer) has been restricted to display
@@ -820,7 +820,7 @@ less than its full contents.
 }
 
 DEFUN("auto-save-interval", var_auto_save_interval, Sauto_save_interval, (repv val), rep_Var) /*
-::doc:Vauto-save-interval::
+::doc:auto-save-interval::
 This buffer-local variable defines the period (in seconds) between each
 automatic save of the buffer. A value of zero means that this buffer is
 not to be auto-saved.
@@ -830,7 +830,7 @@ not to be auto-saved.
 }
 
 DEFUN("last-save-changes", var_last_save_changes, Slast_save_changes, (repv val), rep_Var) /*
-::doc:Vlast-save-changes::
+::doc:last-save-changes::
 Number of changes the last time this buffer was saved (could be auto-save).
 ::end:: */
 {
@@ -838,7 +838,7 @@ Number of changes the last time this buffer was saved (could be auto-save).
 }
 
 DEFUN("last-user-save-changes", var_last_user_save_changes, Slast_user_save_changes, (repv val), rep_Var) /*
-::doc:Vlast-user-save-changes::
+::doc:last-user-save-changes::
 Number of changes the last time this buffer was saved (not from auto-save).
 ::end:: */
 {
@@ -846,7 +846,7 @@ Number of changes the last time this buffer was saved (not from auto-save).
 }
 
 DEFUN("last-save-time", var_last_save_time, Slast_save_time, (repv val), rep_Var) /*
-::doc:Vlast-save-time::
+::doc:last-save-time::
 System time at last save of this buffer (could be from an auto-save).
 ::end:: */
 {
@@ -861,7 +861,7 @@ System time at last save of this buffer (could be from an auto-save).
 }
 
 DEFUN("tab-size", var_tab_size, Stab_size, (repv val), rep_Var) /*
-::doc:Vtab-size::
+::doc:tab-size::
 Sets the size of tab-stops.
 ::end:: */
 {
@@ -869,7 +869,7 @@ Sets the size of tab-stops.
 }
 
 DEFUN("truncate-lines", var_truncate_lines, Struncate_lines, (repv val), rep_Var) /*
-::doc:Vtruncate-lines::
+::doc:truncate-lines::
 When t lines that continue past the rightmost column of the screen are
 truncated, not wrapped onto the next row as when this variable is nil.
 The default value for all buffers is nil.
@@ -890,7 +890,7 @@ The default value for all buffers is nil.
 
 DEFUN("buffer-status-id", var_buffer_status_id, Sbuffer_status_id,
       (repv val), rep_Var) /*
-::doc:Vbuffer-status-id::
+::doc:buffer-status-id::
 This buffer-local string is displayed in the status line of the buffer. When
 the buffer is created it is set to `Jade: BUFFER-NAME'.
 ::end:: */
@@ -908,7 +908,7 @@ the buffer is created it is set to `Jade: BUFFER-NAME'.
 }
 
 DEFUN("all-buffers", Fall_buffers, Sall_buffers, (void), rep_Subr0) /*
-::doc:Sall-buffers::
+::doc:all-buffers::
 all-buffers
 
 Return a list of all allocated buffer objects.
@@ -1166,7 +1166,7 @@ mark_puts (repv stream, void *data, int len, rep_bool is_val)
 }
 
 DEFUN("make-mark", Fmake_mark, Smake_mark, (repv pos, repv buffer), rep_Subr2) /*
-::doc:Smake-mark::
+::doc:make-mark::
 make-mark [POS] [FILE]
 
 Creates a new mark pointing to position POS either in FILE or the current
@@ -1235,7 +1235,7 @@ updated as the file changes -- it will always point to the same character
 
 DEFUN("set-mark-pos", Fset_mark_pos, Sset_mark_pos,
       (repv mark, repv pos), rep_Subr2) /*
-::doc:Sset-mark-pos::
+::doc:set-mark-pos::
 set-mark-pos MARK POSITION
 
 Set the position pointed at by MARK to POSITION.
@@ -1249,7 +1249,7 @@ Set the position pointed at by MARK to POSITION.
 
 DEFUN("set-mark-file", Fset_mark_file, Sset_mark_file,
       (repv mark, repv file), rep_Subr2) /*
-::doc:Sset-mark-file::
+::doc:set-mark-file::
 set-mark-file MARK FILE
 
 Set the file pointed at by MARK to FILE, a buffer or a file name.
@@ -1301,7 +1301,7 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
 }
 
 DEFUN("mark-pos", Fmark_pos, Smark_pos, (repv mark), rep_Subr1) /*
-::doc:Smark-pos::
+::doc:mark-pos::
 mark-pos MARK
 
 Returns the position that MARK points to. (note that this is the *same*
@@ -1314,7 +1314,7 @@ really sure you know what you're doing)
 }
 
 DEFUN("mark-file", Fmark_file, Smark_file, (repv mark), rep_Subr1) /*
-::doc:Smark-file::
+::doc:mark-file::
 mark-file MARK
 
 Returns the file-name or buffer that MARK points to.
@@ -1325,7 +1325,7 @@ Returns the file-name or buffer that MARK points to.
 }
 
 DEFUN("mark-resident-p", Fmark_resident_p, Smark_resident_p, (repv mark), rep_Subr1) /*
-::doc:Smark-resident-p::
+::doc:mark-resident-p::
 mark-resident-p MARK
 
 Returns t if the file that MARK points to is in a buffer.
@@ -1336,7 +1336,7 @@ Returns t if the file that MARK points to is in a buffer.
 }
 
 DEFUN("markp", Fmarkp, Smarkp, (repv mark), rep_Subr1) /*
-::doc:Smarkp::
+::doc:markp::
 markp ARG
 
 Return t if ARG is a mark.

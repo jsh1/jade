@@ -29,16 +29,16 @@ DEFSYM(jade_directory, "jade-directory");
 DEFSYM(jade_lisp_lib_directory, "jade-lisp-lib-directory");
 DEFSYM(jade_site_lisp_directory, "jade-site-lisp-directory");
 DEFSYM(jade_exec_directory, "jade-exec-directory"); /*
-::doc:Vjade-directory::
+::doc:jade-directory::
 The directory in which all of Jade's installed data files live.
 ::end::
-::doc:Vjade-lisp-lib-directory::
+::doc:jade-lisp-lib-directory::
 The name of the directory in which the standard lisp files live.
 ::end::
-::doc:Vjade-site-lisp-directory::
+::doc:jade-site-lisp-directory::
 The name of the directory in which site-specific Lisp files are stored.
 ::end::
-::doc:Vjade-exec-directory::
+::doc:jade-exec-directory::
 The name of the directory containing Jade's architecture specific files.
 ::end:: */
 

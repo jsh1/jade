@@ -629,7 +629,7 @@ patch_display(WIN *w, glyph_buf *old_g, glyph_buf *new_g)
 
 DEFUN_INT ("redisplay-window", Fredisplay_window, Sredisplay_window,
 	   (repv win, repv arg), rep_Subr2, rep_DS_NL "P") /*
-::doc:Sredisplay-window::
+::doc:redisplay-window::
 redisplay-window [WINDOW] [FORCE]
 
 Redisplay everything that needs to be in WINDOW (or the current window).
@@ -698,7 +698,7 @@ refreshed, not just what changed.
 }
 
 DEFUN_INT("redisplay", Fredisplay, Sredisplay, (repv arg), rep_Subr1, "P") /*
-::doc:Sredisplay::
+::doc:redisplay::
 redisplay [FORCE]
 
 Redisplay everything that needs to be. When FORCE (the raw prefix arg) is
@@ -724,7 +724,7 @@ redisplay (void)
 }
 
 DEFUN("redisplay-max-d", var_redisplay_max_d, Sredisplay_max_d, (repv val), rep_Var) /*
-::doc:Vredisplay-max-d::
+::doc:redisplay-max-d::
 The upper bound on the number of edit operations (insert line, or delete
 line) per window redisplay. Zero means unbounded (i.e. 2*ROWS).
 

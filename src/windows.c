@@ -27,18 +27,18 @@ DEFSYM(make_window_hook, "make-window-hook");
 DEFSYM(delete_window_hook, "delete-window-hook");
 DEFSYM(visible_bell, "visible-bell");
 DEFSYM(visible_bell_length, "visible-bell-length"); /*
-::doc:Vmake-window-hook::
+::doc:make-window-hook::
 Hook called when a new window is created. Called with the new window
 selected.
 ::end::
-::doc:Vdelete-window-hook::
+::doc:delete-window-hook::
 Hook called when a window is deleted. Called with a single argument, the
 window in question.
 ::end::
-::doc:Vvisible-bell::
+::doc:visible-bell::
 When non-nil, the `beep' function attempts to visibly flash the window.
 ::end::
-::doc:Vvisible-bell-length::
+::doc:visible-bell-length::
 The number of milliseconds to hold the inverted display for when the
 `visible-bell' variable is set.
 ::end:: */
@@ -62,7 +62,7 @@ DEFSYM(save_and_quit, "save-and-quit");
 
 DEFUN_INT("make-window", Fmake_window, Smake_window,
       (repv xv, repv yv, repv wv, repv hv), rep_Subr4, "") /*
-::doc:Smake-window::
+::doc:make-window::
 make-window [X] [Y] [WIDTH] [HEIGHT]
 
 Return and select a new window, it will be displaying the same buffer as
@@ -182,7 +182,7 @@ delete_window(WIN *w)
 
 DEFUN_INT("delete-window", Fdelete_window, Sdelete_window,
 	  (repv win), rep_Subr1, "") /*
-::doc:Sdelete-window::
+::doc:delete-window::
 delete-window [WINDOW]
 
 Close WINDOW (or the current window). If there is only one window currently
@@ -222,7 +222,7 @@ update_window_dimensions(WIN *w)
 }
 
 DEFUN_INT("sleep-window", Fsleep_window, Ssleep_window, (repv win), rep_Subr1, "") /*
-::doc:Ssleep-window::
+::doc:sleep-window::
 sleep-window [WINDOW]
 
 Iconifies the current window.
@@ -237,7 +237,7 @@ Iconifies the current window.
 }
 
 DEFUN_INT("unsleep-window", Funsleep_window, Sunsleep_window, (repv win), rep_Subr1, "") /*
-::doc:Sunsleep-window::
+::doc:unsleep-window::
 unsleep-window [WINDOW]
 
 Uniconifies the current window.
@@ -251,7 +251,7 @@ Uniconifies the current window.
 }
 
 DEFUN_INT("next-window", Fnext_window, Snext_window, (repv win, repv activ), rep_Subr2, "!" rep_DS_NL "p") /*
-::doc:Snext-window::
+::doc:next-window::
 next-window [WINDOW] [ACTIVATE]
 
 Cycles through the open windows forwards.
@@ -430,7 +430,7 @@ jade_message (enum rep_message fn, ...)
 }
 
 DEFUN("message", Fmessage, Smessage, (repv string, repv now), rep_Subr2) /*
-::doc:Smessage::
+::doc:message::
 message STRING [DISPLAY-NOW]
 
 Temporarily sets the status display to STRING, this won't happen until the
@@ -445,7 +445,7 @@ window is next refreshed unless DISPLAY-NOW is non-nil.
 }
 
 DEFUN("font-name", Ffont_name, Sfont_name, (repv win), rep_Subr1) /*
-::doc:Sfont-name::
+::doc:font-name::
 font-name [WINDOW]
 
 Returns the name of the font being used in this window.
@@ -457,7 +457,7 @@ Returns the name of the font being used in this window.
 }
 
 DEFUN("window-asleep-p", Fwindow_asleep_p, Swindow_asleep_p, (void), rep_Subr0) /*
-::doc:Swindow-asleep-p::
+::doc:window-asleep-p::
 window-asleep-p
 
 Returns t if window is currently iconified.
@@ -469,7 +469,7 @@ Returns t if window is currently iconified.
 }
 
 DEFUN("position-window", Fposition_window, Sposition_window, (repv left, repv top, repv width, repv height), rep_Subr4) /*
-::doc:Sposition-window::
+::doc:position-window::
 position-window LEFT TOP WIDTH HEIGHT
 
 Sets the position and dimensions of the current window. These are all
@@ -486,7 +486,7 @@ Sets the position and dimensions of the current window. These are all
 }
 
 DEFUN("current-window", Fcurrent_window, Scurrent_window, (void), rep_Subr0) /*
-::doc:Scurrent-window::
+::doc:current-window::
 current-window
 
 Returns the currently active window. Note that this is the editor's notion
@@ -498,7 +498,7 @@ your window system will send input events to.
 }
 
 DEFUN("set-current-window", Fset_current_window, Sset_current_window, (repv win, repv activ), rep_Subr2) /*
-::doc:Sset-current-window::
+::doc:set-current-window::
 set-current-window WINDOW [ACTIVATE-P]
 
 Sets the window which jade reguards as current.
@@ -516,7 +516,7 @@ of the window as well).
 }
 
 DEFUN("window-id", Fwindow_id, Swindow_id, (repv win), rep_Subr1) /*
-::doc:Swindow-id::
+::doc:window-id::
 window-id [WINDOW]
 
 Returns the identifier of the physical window that the Lisp window WINDOW
@@ -531,7 +531,7 @@ under Intuition a pointer (integer) to the window structure.
 
 DEFUN("font-dimensions", Ffont_dimensions, Sfont_dimensions,
       (repv win), rep_Subr1) /*
-::doc:Sfont-dimensions::
+::doc:font-dimensions::
 font-dimensions [WINDOW]
 
 Returns (WIDTH . HEIGHT) of the window's font (in pixels).
@@ -544,7 +544,7 @@ Returns (WIDTH . HEIGHT) of the window's font (in pixels).
 }
 
 DEFUN("window-dimensions", Fwindow_dimensions, Swindow_dimensions, (repv win), rep_Subr2) /*
-::doc:Swindow-dimensions::
+::doc:window-dimensions::
 window-dimensions [VIEW]
 
 Returns (COLUMNS . ROWS) defining the size (in glyphs) of WINDOW (by default
@@ -558,7 +558,7 @@ the current window).
 }
 
 DEFUN("window-list", Fwindow_list, Swindow_list, (void), rep_Subr0) /*
-::doc:Swindow-list::
+::doc:window-list::
 window-list
 
 Return a list of all non-deleted windows.
@@ -580,7 +580,7 @@ Return a list of all non-deleted windows.
 }
 
 DEFUN("window-view-list", Fwindow_view_list, Swindow_view_list, (repv win), rep_Subr1) /*
-::doc:Swindow-view-list::
+::doc:window-view-list::
 window-view-list [WINDOW]
 
 Return a list of the views in WINDOW. The list will be ordered in top to
@@ -602,7 +602,7 @@ bottom order, ending with the mini-buffer.
 }
 
 DEFUN("window-view-count", Fwindow_view_count, Swindow_view_count, (repv win), rep_Subr1) /*
-::doc:Swindow-view-count::
+::doc:window-view-count::
 window-view-count [WINDOW]
 
 Return the number of views of window WINDOW. This *will* include the
@@ -615,7 +615,7 @@ minibuffer view, whether it's active or not.
 }
 
 DEFUN("window-first-view", Fwindow_first_view, Swindow_first_view, (repv win), rep_Subr1) /*
-::doc:Swindow-first-view::
+::doc:window-first-view::
 window-first-view [WINDOW]
 
 Returns the first view in WINDOW.
@@ -627,7 +627,7 @@ Returns the first view in WINDOW.
 }
 
 DEFUN("windowp", Fwindowp, Swindowp, (repv arg), rep_Subr1) /*
-::doc:Swindowp::
+::doc:windowp::
 windowp ARG
 
 Returns t if ARG is a window object.
@@ -639,7 +639,7 @@ Returns t if ARG is a window object.
 DEFSTRING(no_font, "Can't open font");
 
 DEFUN_INT("set-font", Fset_font, Sset_font, (repv fontname, repv win), rep_Subr2, "sFont name: ") /*
-::doc:Sset-font::
+::doc:set-font::
 set-font FONT-NAME [WINDOW]
 
 FONT-NAME specifies the font to use in WINDOW (or the active one), using

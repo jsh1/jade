@@ -152,7 +152,7 @@ server_accept_connection(int unused_fd)
 }
 
 DEFUN("server-open-p", Fserver_open_p, Sserver_open_p, (void), rep_Subr0) /*
-::doc:Sserver-open-p::
+::doc:server-open-p::
 server-open-p
 
 t if the edit-server is open.
@@ -166,7 +166,7 @@ t if the edit-server is open.
 DEFSTRING(no_name, "Can't make socket name");
 
 DEFUN_INT("server-open", Fserver_open, Sserver_open, (void), rep_Subr0, "") /*
-::doc:Sserver-open::
+::doc:server-open::
 server-open
 
 Creates the socket (or whatever) so that the editor's client program can
@@ -244,7 +244,7 @@ send us messages.
 }
 
 DEFUN_INT("server-close", Fserver_close, Sserver_close, (void), rep_Subr0, "") /*
-::doc:Sserver-close::
+::doc:server-close::
 server-close
 
 Stops listening for client messages.
@@ -263,7 +263,7 @@ Stops listening for client messages.
 
 DEFUN("server-reply", Fserver_reply, Sserver_reply,
       (repv file, repv rc), rep_Subr2) /*
-::doc:Sserver-reply::
+::doc:server-reply::
 server-reply [FILE-NAME] [RETURN-CODE]
 
 Replies to the editor client which asked us to edit the file FILE-NAME.

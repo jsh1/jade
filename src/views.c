@@ -30,11 +30,11 @@ static void kill_view(VW *vw);
 
 DEFSYM(split_view_hook, "split-view-hook");
 DEFSYM(delete_view_hook, "delete-view-hook"); /*
-::doc:Vsplit-view-hook::
+::doc:split-view-hook::
 Hook called whenever a new view is created; called with a single argument,
 the view that's just been made.
 ::end::
-::doc:Vdelete-view-hook::
+::doc:delete-view-hook::
 Hook called whenever a view is deleted, called with the view as its sole
 argument.
 ::end:: */
@@ -236,7 +236,7 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 
 DEFUN_INT("split-view", Fsplit_view, Ssplit_view,
 	  (repv sib, repv lines), rep_Subr2, "") /*
-::doc:Ssplit-view::
+::doc:split-view::
 split-view [VIEW] [SIZE]
 
 Split VIEW (or the selected view) into two. Returns a new view directly
@@ -278,7 +278,7 @@ DEFSTRING(mini_view, "Can't kill minibuffer view");
 
 DEFUN_INT("delete-view", Fdelete_view, Sdelete_view, (repv view),
 	  rep_Subr1, "") /*
-::doc:Sdelete-view::
+::doc:delete-view::
 delete-view [VIEW]
 
 Delete VIEW (or the current view) from the window containing it. Its window
@@ -694,7 +694,7 @@ update_status_buffer(VW *vw, char *buf, long buf_len)
 }
 
 DEFUN("y-scroll-step-ratio", var_y_scroll_step_ratio, Sy_scroll_step_ratio, (repv val), rep_Var) /*
-::doc:Vy-scroll-step-ratio::
+::doc:y-scroll-step-ratio::
 Controls the actual number of lines scrolled when the cursor moves out of
 view. The number of lines to move the display origin is calcualted with the
 formula:
@@ -716,7 +716,7 @@ If the value is 0 then the window will be scrolled by one line.
 }
 
 DEFUN("x-scroll-step-ratio", var_x_scroll_step_ratio, Sx_scroll_step_ratio, (repv val), rep_Var) /*
-::doc:Vx-scroll-step-ratio::
+::doc:x-scroll-step-ratio::
 Controls the actual number of columns scrolled when the cursor moves out of
 view. The number of lines to move the display origin is calcualted with the
 formula:
@@ -738,7 +738,7 @@ If the value is 0 then the window will be scrolled by one column.
 }
 
 DEFUN("rect-blocks-p", Frect_blocks_p, Srect_blocks_p, (repv vw), rep_Subr1) /*
-::doc:Srect-blocks-p::
+::doc:rect-blocks-p::
 rect-blocks-p [VIEW]
 
 Returns t if blocks marked in VIEW (or the current one) are treated as
@@ -753,7 +753,7 @@ rectangles.
 }
 
 DEFUN("set-rect-blocks", Fset_rect_blocks, Sset_rect_blocks, (repv vw, repv stat), rep_Subr2) /*
-::doc:Sset-rect-blocks::
+::doc:set-rect-blocks::
 set-rect-blocks VIEW STATUS
 
 Controls whether or not blocks are taken as contiguous regions of text or as
@@ -772,7 +772,7 @@ rectangles in VIEW. When STATUS is t rectangles are used.
 }
 
 DEFUN("current-view", Fcurrent_view, Scurrent_view, (repv win), rep_Subr1) /*
-::doc:Scurrent-view::
+::doc:current-view::
 current-view [WINDOW]
 
 Returns the currently active view in WINDOW.
@@ -782,7 +782,7 @@ Returns the currently active view in WINDOW.
 }
 
 DEFUN("set-current-view", Fset_current_view, Sset_current_view, (repv vw, repv activ), rep_Subr2) /*
-::doc:Sset-current-view::
+::doc:set-current-view::
 set-current-view VIEW [ACTIVATE-P]
 
 Sets the VIEW which jade reguards as current in the window containing it.
@@ -803,7 +803,7 @@ and activated.
 }
 
 DEFUN("buffer-list", var_buffer_list, Sbuffer_list, (repv val), rep_Var) /*
-::doc:Vbuffer-list::
+::doc:buffer-list::
 List of buffers in most-recently-used order. Each view has it's own.
 ::end:: */
 {
@@ -814,7 +814,7 @@ List of buffers in most-recently-used order. Each view has it's own.
 
 DEFUN("get-buffer-view", Fget_buffer_view, Sget_buffer_view,
       (repv buffer, repv all_windows), rep_Subr2) /*
-::doc:Sget-buffer-view::
+::doc:get-buffer-view::
 get-buffer-view BUFFER [ALL-WINDOWS]
 
 Return a view that is currently displaying BUFFER. 
@@ -844,7 +844,7 @@ is returned.
 }
 
 DEFUN("next-view", Fnext_view, Snext_view, (repv win, repv allp), rep_Subr2) /*
-::doc:Snext-view::
+::doc:next-view::
 next-view [WINDOW] [ALL-WINDOWS-P]
 
 Return the next view in WINDOW. If ALL-WINDOWS-P is t then views in
@@ -887,7 +887,7 @@ according to the same rules.
 }
 
 DEFUN("previous-view", Fprevious_view, Sprevious_view, (repv win, repv allp), rep_Subr2) /*
-::doc:Sprevious-view::
+::doc:previous-view::
 previous-view [WINDOW] [ALL-WINDOWS-P]
 
 Return the previous view in WINDOW. ALL-WINDOWS-P controls whether or
@@ -953,7 +953,7 @@ according to the same rules.
 }
 
 DEFUN("view-origin", Fview_origin, Sview_origin, (repv vw), rep_Subr1) /*
-::doc:Sview-origin::
+::doc:view-origin::
 view-origin [VIEW]
 
 Return the glyph position of the character displayed in the top-left corner
@@ -969,7 +969,7 @@ of either VIEW or the current view.
 }
 
 DEFUN("view-dimensions", Fview_dimensions, Sview_dimensions, (repv vw), rep_Subr1) /*
-::doc:Sview-dimensions::
+::doc:view-dimensions::
 view-dimensions [VIEW]
 
 Returns (COLUMNS . ROWS) defining the size (in glyphs) of VIEW (by default
@@ -983,7 +983,7 @@ the current view).
 }
 
 DEFUN("view-position", Fview_position, Sview_position, (repv vw), rep_Subr1) /*
-::doc:Sview-position::
+::doc:view-position::
 view-position [VIEW]
 
 Returns the screen position of VIEW in relation to the top-left hand corner of
@@ -999,7 +999,7 @@ DEFSTRING(no_view, "No view to expand into");
 DEFSTRING(no_room, "Not enough room");
 
 DEFUN("set-view-dimensions", Fset_view_dimensions, Sset_view_dimensions, (repv vw, repv cols, repv rows), rep_Subr3) /*
-::doc:Sset-view-dimensions::
+::doc:set-view-dimensions::
 set-view-dimensions [VIEW] [COLUMNS] [ROWS]
 
 Set the size of VIEW (or the current view) to COLUMNSxROWS glyphs. This is
@@ -1035,7 +1035,7 @@ the COLUMNS parameter is always ignored (for the moment).
 }
 
 DEFUN("find-view-by-pos", Ffind_view_by_pos, Sfind_view_by_pos, (repv pos, repv win), rep_Subr2) /*
-::doc:Sfind-view-by-pos::
+::doc:find-view-by-pos::
 find-view-by-pos POS [WINDOW]
 
 Attempt to find the view in the current window (or in WINDOW), that includes
@@ -1060,7 +1060,7 @@ the glyph at position POS in the window. Returns nil if no such view exists.
 }
 
 DEFUN("translate-pos-to-view", Ftranslate_pos_to_view, Stranslate_pos_to_view, (repv pos, repv vw), rep_Subr2) /*
-::doc:Stranslate-pos-to-view::
+::doc:translate-pos-to-view::
 translate-pos-to-view POS [VIEW]
 
 Return the screen position in the current view (or in VIEW) that corresponds
@@ -1086,7 +1086,7 @@ status line of VIEW, return t.
 }
 
 DEFUN("minibuffer-view-p", Fminibuffer_view_p, Sminibuffer_view_p, (repv vw), rep_Subr1) /*
-::doc:Sminibuffer-view-p::
+::doc:minibuffer-view-p::
 minibuffer-view-p [VIEW]
 
 Returns t if VIEW is a view of a minibuffer.
@@ -1098,7 +1098,7 @@ Returns t if VIEW is a view of a minibuffer.
 }
 
 DEFUN("minibuffer-view", Fminibuffer_view, Sminibuffer_view, (repv win), rep_Subr1) /*
-::doc:Sminibuffer-view::
+::doc:minibuffer-view::
 minibuffer-view [WINDOW]
 
 Returns the view of the minibuffer in WINDOW (or the current window).
@@ -1108,7 +1108,7 @@ Returns the view of the minibuffer in WINDOW (or the current window).
 }
 
 DEFUN("minibuffer-active-p", Fminibuffer_active_p, Sminibuffer_active_p, (repv win), rep_Subr1) /*
-::doc:Sminibuffer-active-p::
+::doc:minibuffer-active-p::
 minibuffer-active-p [WINDOW]
 
 Returns t if the minibuffer of WINDOW is being used.
@@ -1119,7 +1119,7 @@ Returns t if the minibuffer of WINDOW is being used.
 }
 
 DEFUN("viewp", Fviewp, Sviewp, (repv arg), rep_Subr1) /*
-::doc:Sviewp::
+::doc:viewp::
 viewp ARG
 
 Returns t if ARG is a view object.
