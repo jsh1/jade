@@ -29,8 +29,9 @@ _PR void buffer_prin(VALUE, VALUE);
 _PR TX *first_buffer(void);
 _PR void swap_buffers(VW *, TX *);
 _PR TX *swap_buffers_tmp(VW *, TX *);
-_PR POS *get_tx_cursor(TX *);
-_PR int auto_save_buffers(void);
+_PR VALUE *get_tx_cursor_ptr(TX *tx);
+_PR VALUE get_tx_cursor(TX *);
+_PR int auto_save_buffers(bool);
 _PR void make_marks_resident(TX *);
 _PR void make_marks_non_resident(TX *);
 _PR void mark_sweep(void);
@@ -123,6 +124,8 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 	    tx->tx_UndoList = sym_nil;
 	    tx->tx_ToUndoList = NULL;
 	    tx->tx_UndoneList = sym_nil;
+	    tx->tx_SavedCPos = make_pos(0, 0);
+	    tx->tx_SavedWPos = tx->tx_SavedCPos;
 	    return(VAL(tx));
 	}
     }
@@ -308,35 +311,46 @@ Scan all buffers for one whose name is NAME.
     return(sym_nil);
 }
 
-POS *
-get_tx_cursor(TX *tx)
+VALUE *
+get_tx_cursor_ptr(TX *tx)
 {
     VW *vw;
+
     /* Check active view first */
     if(curr_vw->vw_Tx == tx)
 	return(&curr_vw->vw_CursorPos);
+
     /* Then other views in the same window. */
     for(vw = curr_win->w_ViewList; vw != 0; vw = vw->vw_NextView)
     {
 	if(vw->vw_Win && vw->vw_Win->w_Window && (vw->vw_Tx == tx))
 	    return(&vw->vw_CursorPos);
     }
+
     /* Finally all other windows */
     for(vw = view_chain; vw != 0; vw = vw->vw_Next)
     {
 	if(vw->vw_Win && vw->vw_Win->w_Window && (vw->vw_Tx == tx))
 	    return(&vw->vw_CursorPos);
     }
+
     return(&tx->tx_SavedCPos);
+}    
+
+VALUE
+get_tx_cursor(TX *tx)
+{
+    return *get_tx_cursor_ptr(tx);
 }
 
-/*
- * returns the number of buffers saved.
- * (maybe should only save one buffer at a time, then wait to be called
- *  again to save next in line? This could be less intrusive: yes.)
- */
+/* returns the number of buffers saved.
+   (maybe should only save one buffer at a time, then wait to be called
+   again to save next in line? This could be less intrusive: yes.)
+
+   If force_save is true, don't worry about the time between saves,
+   just save the next buffer */
 int
-auto_save_buffers(void)
+auto_save_buffers(bool force_save)
 {
     /*
      * Stops me entering here more than once at the same time. This
@@ -353,7 +367,8 @@ auto_save_buffers(void)
 	    if(VTX(tx)->tx_Changes
 	       && VTX(tx)->tx_AutoSaveInterval
 	       && (VTX(tx)->tx_LastSaveChanges != VTX(tx)->tx_Changes)
-	       && (time > (VTX(tx)->tx_LastSaveTime + VTX(tx)->tx_AutoSaveInterval)))
+	       && (force_save
+	           || (time > (VTX(tx)->tx_LastSaveTime + VTX(tx)->tx_AutoSaveInterval))))
 	    {
 		GCVAL gcv_tx;
 		PUSHGC(gcv_tx, tx);
@@ -616,19 +631,17 @@ Returns the length (not including newline) of the specified line, or
 using current cursor position if specifiers are not provided.
 ::end:: */
 {
-    POS p;
     if(POSP(pos))
     {
 	if(!BUFFERP(tx))
 	    tx = VAL(curr_vw->vw_Tx);
-	p = VPOS(pos);
     }
     else
     {
-	p = curr_vw->vw_CursorPos;
+	pos = curr_vw->vw_CursorPos;
 	tx = VAL(curr_vw->vw_Tx);
     }
-    return(make_number(VTX(tx)->tx_Lines[p.pos_Line].ln_Strlen - 1));
+    return(make_number(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen - 1));
 }
 
 _PR VALUE cmd_with_buffer(VALUE);
@@ -681,8 +694,8 @@ Returns t if ARG is a buffer.
     return(sym_nil);
 }
 
-_PR VALUE cmd_restrict_buffer(VALUE lstart, VALUE lend, VALUE tx);
-DEFUN_INT("restrict-buffer", cmd_restrict_buffer, subr_restrict_buffer, (VALUE lstart, VALUE lend, VALUE tx), V_Subr3, DOC_restrict_buffer, "-m\nM") /*
+_PR VALUE cmd_restrict_buffer(VALUE start, VALUE end, VALUE tx);
+DEFUN_INT("restrict-buffer", cmd_restrict_buffer, subr_restrict_buffer, (VALUE start, VALUE end, VALUE tx), V_Subr3, DOC_restrict_buffer, "-m\nM") /*
 ::doc:restrict_buffer::
 restrict-buffer START END [BUFFER]
 
@@ -690,16 +703,15 @@ Limits the portion of BUFFER (or the current buffer) that may be displayed
 to that between the lines specified by positions START and END.
 ::end:: */
 {
-    DECLARE1(lstart, POSP);
-    DECLARE2(lend, POSP);
+    DECLARE1(start, POSP);
+    DECLARE2(end, POSP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     cmd_unrestrict_buffer(tx);
-    if(check_section(VTX(tx), &VPOS(lstart), &VPOS(lend))
-       && VPOS(lstart).pos_Line <= VPOS(lend).pos_Line)
+    if(check_section(VTX(tx), &start, &end) && VROW(start) <= VROW(end))
     {
-	VTX(tx)->tx_LogicalStart = VPOS(lstart).pos_Line;
-	VTX(tx)->tx_LogicalEnd = VPOS(lend).pos_Line + 1;
+	VTX(tx)->tx_LogicalStart = VROW(start);
+	VTX(tx)->tx_LogicalEnd = VROW(end) + 1;
 	return sym_t;
     }
     return sym_nil;
@@ -731,7 +743,7 @@ Return the position of the first character that may be displayed in BUFFER
 {
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    return make_lpos2(0, VTX(tx)->tx_LogicalStart);
+    return make_pos(0, VTX(tx)->tx_LogicalStart);
 }
 
 _PR VALUE cmd_restriction_end(VALUE tx);
@@ -745,12 +757,12 @@ Return the position of the last character that may be displayed in BUFFER
 {
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    return make_lpos2(VTX(tx)->tx_Lines[VTX(tx)->tx_LogicalEnd - 1].ln_Strlen
-		      - 1, VTX(tx)->tx_LogicalEnd - 1);
+    return make_pos(VTX(tx)->tx_Lines[VTX(tx)->tx_LogicalEnd - 1].ln_Strlen -1,
+		    VTX(tx)->tx_LogicalEnd - 1);
 }
 
-_PR VALUE cmd_in_restriction_p(VALUE lpos, VALUE tx);
-DEFUN("in-restriction-p", cmd_in_restriction_p, subr_in_restriction_p, (VALUE lpos, VALUE tx), V_Subr2, DOC_in_restriction_p) /*
+_PR VALUE cmd_in_restriction_p(VALUE pos, VALUE tx);
+DEFUN("in-restriction-p", cmd_in_restriction_p, subr_in_restriction_p, (VALUE pos, VALUE tx), V_Subr2, DOC_in_restriction_p) /*
 ::doc:in_restriction_p::
 in-restriction-p [POS] [BUFFER]
 
@@ -758,15 +770,12 @@ Returns t when POS (or the cursor) is inside the current display restriction
 of BUFFER (or the current buffer).
 ::end:: */
 {
-    POS *pos;
-    if(POSP(lpos))
-	pos = &VPOS(lpos);
-    else
-	pos = &curr_vw->vw_CursorPos;
+    if(!POSP(pos))
+	pos = curr_vw->vw_CursorPos;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    return (pos->pos_Line >= VTX(tx)->tx_LogicalStart
-	    && pos->pos_Line < VTX(tx)->tx_LogicalEnd) ? sym_t : sym_nil;
+    return (VROW(pos) >= VTX(tx)->tx_LogicalStart
+	    && VROW(pos) < VTX(tx)->tx_LogicalEnd) ? sym_t : sym_nil;
 }
 
 _PR VALUE var_auto_save_interval(VALUE);
@@ -987,8 +996,8 @@ mark_cmp(VALUE v1, VALUE v2)
 	    name2 = VSTR(VMARK(v2)->mk_File.name);
 	if(same_files(name1, name2))
 	{
-	    if(!(rc = VPOS(VMARK(v1)->mk_Pos).pos_Line - VPOS(VMARK(v2)->mk_Pos).pos_Line))
-		rc = VPOS(VMARK(v1)->mk_Pos).pos_Col - VPOS(VMARK(v2)->mk_Pos).pos_Col;
+	    if(!(rc = VROW(VMARK(v1)->mk_Pos) - VROW(VMARK(v2)->mk_Pos)))
+		rc = VCOL(VMARK(v1)->mk_Pos) - VROW(VMARK(v2)->mk_Pos);
 	}
     }
     return(rc);
@@ -1008,8 +1017,8 @@ mark_prin(VALUE strm, VALUE obj)
 	stream_putc(strm, '"');
     }
     sprintf(tbuf, " #<pos %ld %ld>>",
-	    VPOS(VMARK(obj)->mk_Pos).pos_Col,
-	    VPOS(VMARK(obj)->mk_Pos).pos_Line);
+	    VCOL(VMARK(obj)->mk_Pos),
+	    VROW(VMARK(obj)->mk_Pos));
     stream_puts(strm, tbuf, -1, FALSE);
 }
 
@@ -1029,17 +1038,14 @@ updated as the file changes -- it will always point to the same character
 (for as long as that character exists, anyway).
 ::end:: */
 {
-    Mark *mk = NULL;
-    if((mk = str_alloc(sizeof(Mark))) && (mk->mk_Pos = make_lpos(NULL)))
+    Mark *mk = str_alloc(sizeof(Mark));
+    if(mk != NULL)
     {
 	mk->mk_Type = V_Mark;
 	mk->mk_NextAlloc = mark_chain;
 	mark_chain = mk;
 	data_after_gc += sizeof(Mark);
-	if(POSP(pos))
-	    VPOS(mk->mk_Pos) = VPOS(pos);
-	else
-	    VPOS(mk->mk_Pos) = curr_vw->vw_CursorPos;
+	mk->mk_Pos = POSP(pos) ? pos : curr_vw->vw_CursorPos;
 	if(STRINGP(buffer))
 	{
 	    VALUE tx;
@@ -1069,9 +1075,7 @@ updated as the file changes -- it will always point to the same character
 	}
 	return(VAL(mk));
     }
-    if(mk)
-	str_free(mk);
-    return(NULL);
+    return mem_error();
 }
 
 _PR VALUE cmd_set_mark(VALUE, VALUE, VALUE);
@@ -1084,7 +1088,7 @@ Sets the position which MARK points to POS in FILE-NAME or BUFFER.
 {
     DECLARE1(mark, MARKP);
     if(POSP(pos))
-	VPOS(VMARK(mark)->mk_Pos) = VPOS(pos);
+	VMARK(mark)->mk_Pos = pos;
     if(BUFFERP(buffer) || STRINGP(buffer))
     {
 	Mark *mk, **chain;
@@ -1143,7 +1147,7 @@ really sure you know what you're doing)
 ::end:: */
 {
     DECLARE1(mark, MARKP);
-    return(VMARK(mark)->mk_Pos);
+    return VMARK(mark)->mk_Pos;
 }
 
 _PR VALUE cmd_mark_file(VALUE);
