@@ -19,6 +19,7 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (require 'file-subst)
+(require 'maildefs)			;for user-mail-address
 (provide 'html-style)
 
 ;;; Commentary:
