@@ -1,3 +1,13 @@
+2002-03-23  John Harper  <jsh@unfactored.org>
+
+	* tags.jl (tags-next-file): fixed bug when default-directory
+	has a trailing slash
+
+	* send-mail-smtp.jl: increased timeout; don't print addresses
+	while sending
+
+	* info.jl (info-directory-list): added /usr/share/info
+
 2001-09-14  John Harper  <jsh@pixelslut.com>
 
 	* jade.jl: when possible disable error reporting on stdio

@@ -27,7 +27,8 @@
 ;;;   makeinfo has to be used.
 ;;; - No editing of nodes.
 
-(defvar info-directory-list '("/usr/info" "/usr/local/info/" "~/info")
+(defvar info-directory-list '("/usr/info" "/usr/share/info"
+			      "/usr/local/info/" "~/info")
   "List of directories to search for info files if they can't be found as-is.")
 
 (defvar info-menu-face bold-face

@@ -77,7 +77,7 @@ SMTP directly.")
       (apply format socket fmt args)
       (setq got-result nil)
       (while (and (not got-result) (socketp socket))
-	(and (accept-socket-output-1 socket 30)
+	(and (accept-socket-output-1 socket 120)
 	     (error "Timed out waiting for SMTP server"))
 	(when error-occurred
 	  (error "SMTP error: %s" error-occurred))))
@@ -88,9 +88,6 @@ SMTP directly.")
       (mapc (lambda (x)
 	      (let ((addr (mail-parse-address x)))
 		(when (car addr)
-		  ;; XXX until I get confidence in this code,
-		  ;; XXX print all addresses sent to
-		  (format standard-error "sent: %s\n" (car addr))
 		  (smtp-command "RCPT To: <%s>\n" (car addr)))))
 	    addresses))
 

@@ -210,7 +210,8 @@ move back to the previously found tag."
 	  ;; Try to make current file relative to tags table location
 	  (when (string-match
 		 (concat ?^ (quote-regexp
-			     (canonical-file-name default-directory))
+			     (file-name-as-directory
+			      (canonical-file-name default-directory)))
 			 "(.*)$")
 		 (canonical-file-name current-file))
 	    (setq current-file (expand-last-match "\\1")))
