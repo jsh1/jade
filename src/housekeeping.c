@@ -176,7 +176,10 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
 
     if(tx->tx_LogicalStart > ypos)
 	tx->tx_LogicalStart += addy;
+    if(tx->tx_LastLogicalStart > ypos)
+	tx->tx_LastLogicalStart += addy;
     UPD(tx->tx_LogicalEnd);
+    UPD(tx->tx_LastLogicalEnd);
 
     UPD(tx->tx_SavedCPos.pos_Line);
     UPD(tx->tx_SavedWPos.pos_Line);
@@ -259,6 +262,8 @@ adjust_marks_sub_y(TX *tx, long suby, long ypos)
 
     UPD(tx->tx_LogicalStart);
     UPD(tx->tx_LogicalEnd);
+    UPD(tx->tx_LastLogicalStart);
+    UPD(tx->tx_LastLogicalEnd);
 
     UPD2(tx->tx_SavedCPos.pos_Col, tx->tx_SavedCPos.pos_Line);
     UPD2(tx->tx_SavedWPos.pos_Col, tx->tx_SavedWPos.pos_Line);
@@ -343,6 +348,8 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
 
     UPD(tx->tx_LogicalStart);
     UPD(tx->tx_LogicalEnd);
+    UPD(tx->tx_LastLogicalStart);
+    UPD(tx->tx_LastLogicalEnd);
 
     UPD2(tx->tx_SavedCPos.pos_Col, tx->tx_SavedCPos.pos_Line);
     UPD2(tx->tx_SavedWPos.pos_Col, tx->tx_SavedWPos.pos_Line);
@@ -426,6 +433,8 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
 
     UPD(tx->tx_LogicalStart);
     UPD(tx->tx_LogicalEnd);
+    UPD(tx->tx_LastLogicalStart);
+    UPD(tx->tx_LastLogicalEnd);
 
     UPD2(tx->tx_SavedCPos.pos_Col, tx->tx_SavedCPos.pos_Line);
     UPD2(tx->tx_SavedWPos.pos_Col, tx->tx_SavedWPos.pos_Line);
