@@ -1,5 +1,8 @@
 2000-07-05  John Harper  <john@dcs.warwick.ac.uk>
 
+	* fill.jl (fill-area): rename `goal-column' local-variable to
+	avoid defvar
+
 	* gtk-prompt.jl: removed all calls to gtk-window-position
 
 	* cvs.jl (cvs-add-change-log-entries): use find-change-log-file
