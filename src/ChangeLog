@@ -1,3 +1,12 @@
+2002-09-28  John Harper  <jsh@unfactored.org>
+
+	* x11_windowsys.h, x11_windows.c, x11_main.c, redisplay.c,
+	jade_subrs.h, gtk_jade.c, gtk_defs.h:
+
+	Avoid neverending cascades of graphics-expose events when the
+	window is partially obscured by turning off copying updates
+	from expose events when the window is obscured
+
 2001-09-03  John Harper  <jsh@pixelslut.com>
 
 	* x11_windowsys.h, x11_windows.c, x11_defs.h: added support for

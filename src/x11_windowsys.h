@@ -66,6 +66,7 @@ typedef struct {
     XGCValues		ws_GC_values;
     int			ws_Width, ws_Height;
     int			ws_HasFocus;
+    u_int		ws_Unobscured :1;
 } W_WindowSys;
 
 #define w_Window	w_WindowSys.ws_Window

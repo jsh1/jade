@@ -343,6 +343,7 @@ extern int redisplay_lock;
 extern repv Fredisplay_window(repv win, repv arg);
 extern repv Fredisplay(repv arg);
 extern repv var_redisplay_max_d(repv val);
+extern void redisplay_set_no_copy (void);
 
 /* from regjade.c */
 extern int regexec_tx(rep_regexp *prog, TX *tx, repv start, int flags);

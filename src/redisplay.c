@@ -65,6 +65,10 @@ static int redisplay_max_d = 0;
    should be run, and no asynchronous input should be taken. */
 int redisplay_lock;
 
+/* When true the next redisplay operation won't try to copy damaged lines.
+   Cleared after each redisplay pass. */
+static bool redisplay_no_copy;
+
 
 /* Glyph buffer basics */
 
@@ -181,23 +185,6 @@ compare_lines(glyph_buf *g1, glyph_buf *g2, int line1, int line2)
 
 /* Screen primitives */
 
-/* Copy N-LINES from SRC-LINE to DST-LINE (note that SRC-LINE and DST-LINE
-   both count from one). Updates OLD-G to reflect this. In this function
-   SRC-LINE and DST-LINE count from one.. */
-static void
-redisplay_do_copy(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
-		  int src_line, int dst_line, int n_lines)
-{
-    assert(src_line > 0 && dst_line > 0);
-    COPY_GLYPHS(w, 0, src_line - 1, w->w_MaxX, n_lines, 0, dst_line - 1);
-    memmove(old_g->codes[dst_line-1],
-	    old_g->codes[src_line-1],
-	    (sizeof(glyph_code) + sizeof(glyph_attr)) * n_lines * old_g->cols);
-    memmove(old_g->hashes + (dst_line-1),
-	    old_g->hashes + (src_line-1),
-	    sizeof(u_long) * n_lines);
-}
-
 /* Draw a single line of glyphs: LINE in NEW-G, given that the
    current contents of this line are contained in OLD-G at LINE.
    In this function LINE counts from one.. */
@@ -261,6 +248,31 @@ redisplay_do_draw(WIN *w, glyph_buf *old_g, glyph_buf *new_g, int line)
 
 	prefix = end;
     }
+}
+
+/* Copy N-LINES from SRC-LINE to DST-LINE (note that SRC-LINE and DST-LINE
+   both count from one). Updates OLD-G to reflect this. In this function
+   SRC-LINE and DST-LINE count from one.. */
+static void
+redisplay_do_copy(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
+		  int src_line, int dst_line, int n_lines)
+{
+    int i;
+
+    assert(src_line > 0 && dst_line > 0);
+
+    if (!redisplay_no_copy)
+	COPY_GLYPHS(w, 0, src_line - 1, w->w_MaxX, n_lines, 0, dst_line - 1);
+    else
+    {
+	for (i = 0; i < n_lines; i++)
+	    redisplay_do_draw (w, old_g, new_g, dst_line + i);
+    }
+    
+    memmove(old_g->codes[dst_line-1], old_g->codes[src_line-1],
+	    (sizeof(glyph_code) + sizeof(glyph_attr)) * n_lines * old_g->cols);
+    memmove(old_g->hashes + (dst_line-1), old_g->hashes + (src_line-1),
+	    sizeof(u_long) * n_lines);
 }
 
 
@@ -794,6 +806,12 @@ redisplay_message(WIN *w)
     Fflush_output();
 
     redisplay_lock--;
+}
+
+void
+redisplay_set_no_copy (void)
+{
+    redisplay_no_copy = TRUE;
 }
 
 void

@@ -528,6 +528,7 @@ x11_async_event_pred(Display *dpy, XEvent *ev, XPointer arg)
 {
     if(ev->xany.type == Expose
        || ev->xany.type == GraphicsExpose
+       || ev->xany.type == VisibilityNotify
        || ev->xany.type == MappingNotify
        || ev->xany.type == SelectionRequest
        || ev->xany.type == SelectionClear)
@@ -605,8 +606,15 @@ x11_handle_input(int fd, bool synchronous)
 		XRefreshKeyboardMapping(&xev.xmapping);
 		break;
 
-	    case Expose:
+	    case VisibilityNotify:
+		ev_win->w_WindowSys.ws_Unobscured = (xev.xvisibility.state
+						     == VisibilityUnobscured);
+		break;
+
 	    case GraphicsExpose:
+		/* Avoid cascading graphics expose events by never copying */
+		redisplay_set_no_copy ();
+	    case Expose:
 		if(ev_win->w_Flags & WINFF_SLEEPING)
 		{
 		    /* Guess that the wm uniconified us? */

@@ -34,6 +34,7 @@
 		      | GDK_BUTTON_RELEASE_MASK		\
 		      | GDK_KEY_PRESS_MASK		\
 		      | GDK_EXPOSURE_MASK		\
+		      | GDK_VISIBILITY_NOTIFY_MASK	\
 		      | GDK_ENTER_NOTIFY_MASK		\
 		      | GDK_LEAVE_NOTIFY_MASK 		\
 		      | GDK_POINTER_MOTION_MASK		\
@@ -48,6 +49,8 @@ static void gtk_jade_size_request (GtkWidget *widget,
 static void gtk_jade_size_allocate (GtkWidget *widget,
 				    GtkAllocation *allocation);
 static gint gtk_jade_expose (GtkWidget *widget, GdkEventExpose *event);
+static gint gtk_jade_visibility_event (GtkWidget *widget,
+				       GdkEventVisibility *event);
 static gint gtk_jade_input_event (GtkWidget *widget, GdkEvent *event);
 static gint gtk_jade_enter_notify (GtkWidget *widget, GdkEventCrossing *event);
 static gint gtk_jade_leave_notify (GtkWidget *widget, GdkEventCrossing *event);
@@ -125,6 +128,7 @@ gtk_jade_class_init (GtkJadeClass *class)
     widget_class->realize = gtk_jade_realize;
     widget_class->size_allocate = gtk_jade_size_allocate;
     widget_class->expose_event = gtk_jade_expose;
+    widget_class->visibility_notify_event = gtk_jade_visibility_event;
     widget_class->button_press_event = (void *)gtk_jade_input_event;
     widget_class->button_release_event = (void *)gtk_jade_input_event;
     widget_class->motion_notify_event = (void *)gtk_jade_input_event;
@@ -146,6 +150,7 @@ gtk_jade_init (GtkJade *jade)
     jade->gc_values_mask = 0;
     jade->width = jade->height = 0;
     jade->has_focus = 0;
+    jade->unobscured = 0;
 }
 
 int
@@ -407,8 +412,27 @@ gtk_jade_expose (GtkWidget *widget, GdkEventExpose *event)
 
     garbage_glyphs(jade->win, x, y, width, height);
 
+    if (!jade->unobscured)
+    {
+	/* Avoid cascading graphics expose events by never copying */
+	redisplay_set_no_copy ();
+    }
+
     if (event->count == 0)
 	Fredisplay_window (rep_VAL (jade->win), Qnil);
+
+    return FALSE;
+}
+
+static gint
+gtk_jade_visibility_event (GtkWidget *widget, GdkEventVisibility *event)
+{
+    GtkJade *jade;
+
+    g_return_val_if_fail (GTK_IS_JADE (widget), FALSE);
+    jade = GTK_JADE (widget);
+
+    jade->unobscured = (event->state == GDK_VISIBILITY_UNOBSCURED);
 
     return FALSE;
 }
