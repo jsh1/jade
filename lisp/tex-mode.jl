@@ -20,6 +20,8 @@
 
 (provide 'tex-mode)
 
+(eval-when-compile (require 'tex-shell))
+
 (defvar latex-run-command "latex %s"
   "Program for running LaTeX")
 
