@@ -447,9 +447,8 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		    real_glyph_col++;
 		    char_col++;		/* in case the cursor is past EOL */
 		}
+		glyph_row++;
 	    }
-
-	    glyph_row++;
 	    char_row++;
 	}
 
@@ -466,9 +465,13 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	   line text. TODO: should use glyph tables for this */
 	if((vw->vw_Flags & VWFF_MINIBUF) == 0)
 	{
-	    glyph_code *codes = w->w_NewContent->codes[glyph_row];
-	    glyph_attr *attrs = w->w_NewContent->attrs[glyph_row];
+	    glyph_code *codes;
+	    glyph_attr *attrs;
 	    int len;
+
+	    glyph_row = vw->vw_FirstY + vw->vw_MaxY;
+	    codes = w->w_NewContent->codes[glyph_row];
+	    attrs = w->w_NewContent->attrs[glyph_row];
 
 	    update_status_buffer(vw);
 	    len = strlen(vw->vw_StatusBuf);

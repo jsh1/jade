@@ -249,6 +249,8 @@ redisplay_do_draw(WIN *w, glyph_buf *old_g, glyph_buf *new_g, int line)
 		all_spaces = FALSE;
 	}
 
+	assert(attr <= GA_MAX);
+
 	if(!all_spaces)
 	    DRAW_GLYPHS(w, prefix, line-1, attr,
 			new_codes + prefix, end - prefix);
