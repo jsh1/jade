@@ -57,7 +57,7 @@ install : all installdirs
 	  $(rep_LIBTOOL) $(INSTALL_PROGRAM) $$p ${bindir}; \
 	done
 	for p in $(DL_OBJS); do \
-	  $(rep_DL_INSTALL) $(INSTALL_PROGRAM) $$p ${jadeexecdir}; \
+	  $(rep_DL_INSTALL) $$p ${jadeexecdir}; \
 	done
 
 uninstall :
