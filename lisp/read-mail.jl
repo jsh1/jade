@@ -97,10 +97,8 @@ when set to the symbol `invalid'.")
     (let
 	((mail-view (rm-find-view rm-summary-mail-buffer)))
       (set-current-view mail-view)))
-  (when (and (not (file-exists-p folder))
-	     (file-exists-p (file-name-concat mail-folder-dir folder)))
-    (setq folder (file-name-concat mail-folder-dir folder)))
-  (when (find-file-read-only folder)
+  (when (and (setq folder (mail-locate-file folder))
+	     (find-file-read-only folder))
     ;; The current buffer is now the folder. Set up the major mode
     (read-mail-mode)))
 
@@ -569,18 +567,16 @@ Major mode for viewing mail folders. Commands include:\n
     (while (and inboxes (numberp this-ret))
       (setq this (car inboxes)
 	    inboxes (cdr inboxes))
-      (when (and (not (file-exists-p this))
-	       (file-exists-p (file-name-concat mail-folder-dir this)))
-	(setq this (file-name-concat mail-folder-dir this)))
-      (setq this-ret (rm-append-inbox this))
-      (when (and (numberp this-ret) (> this-ret 0))
-	(when (zerop count)
-	  ;; If this is the first new message we want to display it
-	  ;; afterwards
-	  (setq old-msg rm-current-msg))
-	(setq count (+ count this-ret))))
-    (when (numberp this-ret)
-      (format t "Got %d new messages" count))
+      (when (setq this (mail-locate-file this))
+	(setq this-ret (rm-append-inbox this))
+	(when (and (numberp this-ret) (> this-ret 0))
+	  (when (zerop count)
+	    ;; If this is the first new message we want to display it
+	    ;; afterwards
+	    (setq old-msg rm-current-msg))
+	  (setq count (+ count this-ret))))
+      (when (numberp this-ret)
+        (format t "Got %d new messages" count)))
     (rm-with-summary
      (summary-update))
     (rm-display-message old-msg)
