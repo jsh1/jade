@@ -208,20 +208,26 @@ FILE is either a string naming the file to be opened or a Lisp file object
 _PR VALUE cmd_write_buffer(VALUE file, VALUE tx, VALUE urp);
 DEFUN("write-buffer", cmd_write_buffer, subr_write_buffer, (VALUE file, VALUE tx, VALUE urp), V_Subr3, DOC_write_buffer) /*
 ::doc:write_buffer::
-write-buffer [FILE-NAME] [BUFFER] [USE-RESTRICTION-P]
+write-buffer [FILE] [BUFFER] [USE-RESTRICTION-P]
 
-Saves the contents of BUFFER to file FILE-NAME. Normally any restriction to
-BUFFER is ignored, and the full contents of the buffer written. If USE-
-RESTRICTION-P is non-nil only the restricted area is written.
+Writes out the full contents of BUFFER to FILE. FILE may be a string
+representing the name of a file to be overwritten, or any of the standard
+stream types.
+
+Normally any restriction to BUFFER is ignored, and the full contents of
+the buffer written. If USE-RESTRICTION-P is non-nil only the restricted
+area is written.
 ::end:: */
 {
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    if(!STRINGP(file))
-	file = VTX(tx)->tx_FileName;
-    if(file)
+    if(file == sym_nil || STRINGP(file)
+       || cmd_streamp(file) == sym_nil)
     {
-	FILE *fh = fopen(VSTR(file), "w");
+	FILE *fh;
+	if(!STRINGP(file))
+	    file = VTX(tx)->tx_FileName;
+	fh = fopen(VSTR(file), "w");
 	if(fh)
 	{
 	    long i;
@@ -233,27 +239,50 @@ RESTRICTION-P is non-nil only the restricted area is written.
 	    {
 		if(fwrite(line->ln_Line, 1, line->ln_Strlen - 1, fh)
 		   != (line->ln_Strlen - 1))
-		    goto error;
+		{
+		    fclose(fh);
+		    goto file_error;
+		}
 		if(i != max - 1)
 		    fputc('\n', fh);
 	    }
 	    fclose(fh);
 	}
 	else
-error:
+	{
+	file_error:
 	    return(cmd_signal(sym_file_error, list_2(lookup_errno(), file)));
+	}
 	return(file);
     }
-    return(cmd_signal(sym_bad_arg, list_2(file, make_number(1))));
+    else
+    {
+	/* FILE is a stream. */
+	long i;
+	long min = NILP(urp) ? 0 : VTX(tx)->tx_LogicalStart;
+	long max = NILP(urp) ? VTX(tx)->tx_NumLines : VTX(tx)->tx_LogicalEnd;
+	LINE *line = VTX(tx)->tx_Lines;
+	for(i = min; i < max; i++, line++)
+	{
+	    if(stream_puts(file, line->ln_Line, line->ln_Strlen - 1, FALSE)
+	       != (line->ln_Strlen - 1))
+		goto stream_error;
+	    if(i != max - 1)
+		stream_putc(file, '\n');
+	}
+	return(file);
+    stream_error:
+	return cmd_signal(sym_invalid_stream, list_1(file));
+    }
 }
 
 _PR VALUE cmd_write_buffer_area(VALUE vstart, VALUE vend, VALUE file, VALUE tx);
 DEFUN("write-buffer-area", cmd_write_buffer_area, subr_write_buffer_area, (VALUE vstart, VALUE vend, VALUE file, VALUE tx), V_Subr4, DOC_write_buffer_area) /*
 ::doc:write_buffer_area::
-write-buffer-area START-POS END-POS [FILE-NAME] [BUFFER]
+write-buffer-area START-POS END-POS [FILE] [BUFFER]
 
-Writes the text between START-POS and END-POS in BUFFER to file
-FILE-NAME.
+Writes the text between START-POS and END-POS in BUFFER to FILE, which may
+be either a string naming a file to overwrite, or a standard stream object.
 ::end:: */
 {
     POS start, end;
@@ -261,15 +290,17 @@ FILE-NAME.
     DECLARE2(vend, POSP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    if(!STRINGP(file))
-	file = VTX(tx)->tx_FileName;
     start = VPOS(vstart);
     end = VPOS(vend);
     if(!check_section(VTX(tx), &start, &end))
 	return(cmd_signal(sym_invalid_area, list_3(tx, vstart, vend)));
-    if(file)
+    if(file == sym_nil || STRINGP(file)
+       || cmd_streamp(file) == sym_nil)
     {
-	FILE *fh = fopen(VSTR(file), "w");
+	FILE *fh;
+	if(!STRINGP(file))
+	    file = VTX(tx)->tx_FileName;
+	fh = fopen(VSTR(file), "w");
 	if(fh)
 	{
 	    LINE *line = VTX(tx)->tx_Lines + start.pos_Line;
@@ -280,7 +311,10 @@ FILE-NAME.
 			   - start.pos_Col - 1);
 		if(fwrite(line->ln_Line + start.pos_Col,
 			  1, len, fh) != len) 
-		    goto error;
+		{
+		    fclose(fh);
+		    goto file_error;
+		}
 		if(start.pos_Line != end.pos_Line)
 		    fputc('\n', fh);
 		start.pos_Line++;
@@ -290,11 +324,34 @@ FILE-NAME.
 	    fclose(fh);
 	}
 	else
-error:
+	{
+	file_error:
 	    return(cmd_signal(sym_file_error, list_2(lookup_errno(), file)));
+	}
 	return(file);
     }
-    return(cmd_signal(sym_bad_arg, list_2(file, make_number(1))));
+    else
+    {
+	/* file is a stream */
+	LINE *line = VTX(tx)->tx_Lines + start.pos_Line;
+	while(start.pos_Line <= end.pos_Line)
+	{
+	    int len = (((start.pos_Line == end.pos_Line)
+			? end.pos_Col : line->ln_Strlen)
+		       - start.pos_Col - 1);
+	    if(stream_puts(file, line->ln_Line + start.pos_Col, len, FALSE)
+	       != len) 
+		goto stream_error;
+	    if(start.pos_Line != end.pos_Line)
+		stream_putc(file, '\n');
+	    start.pos_Line++;
+	    start.pos_Col = 0;
+	    line++;
+	}
+	return file;
+    stream_error:
+	    return cmd_signal(sym_invalid_stream, list_1(file));
+    }
 }
 
 _PR VALUE cmd_cd(VALUE dir);
