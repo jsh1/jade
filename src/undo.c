@@ -23,6 +23,7 @@
 
 #include <string.h>
 
+_PR void  undo_record_unmodified(TX *tx);
 _PR void  undo_record_deletion(TX *, VALUE, VALUE);
 _PR VALUE undo_push_deletion(TX *, VALUE, VALUE);
 _PR void  undo_record_insertion(TX *, VALUE, VALUE);
@@ -81,6 +82,36 @@ check_first_mod(TX *tx)
     {
 	/* First modification, record this. */
 	tx->tx_UndoList = cmd_cons(sym_t, tx->tx_UndoList);
+    }
+}
+
+/* This should be called whenever the buffer is saved, and thus set as
+   being unmodified. Any previous "unmodified" marker in the buffer's
+   undo list is deleted, so that undoing back past this old marker won't
+   errnoneously set the buffer as being unmodified (i.e. the same as the
+   copy on disk). */
+void
+undo_record_unmodified(TX *tx)
+{
+    if((tx->tx_Changes == tx->tx_ProperSaveChanges)
+       && ((tx->tx_Flags & TXFF_NO_UNDO) == 0))
+    {
+	VALUE *ptr = &tx->tx_UndoList;
+	coalesce_undo(tx);
+	while(CONSP(*ptr))
+	{
+	    if(VCAR(*ptr) == sym_t)
+	    {
+		/* found it */
+		*ptr = VCDR(*ptr);
+		break;
+	    }
+	    else
+		ptr = &VCDR(*ptr);
+	    TEST_INT;
+	    if(INT_P)
+		break;
+	}
     }
 }
 
@@ -287,8 +318,13 @@ taken from the prefix argument.
 		cmd_goto(item);
 	}
 	else if(item == sym_t)
+	{
 	    /* clear modification flag. */
-	    cmd_set_buffer_modified(tx, sym_nil);
+	    VTX(tx)->tx_ProperSaveChanges = VTX(tx)->tx_Changes;
+	}
+	TEST_INT;
+	if(INT_P)
+	    break;
     }
     this_command = sym_undo;
     return(sym_t);
