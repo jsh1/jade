@@ -700,7 +700,6 @@ to that between the lines specified by positions START and END.
     {
 	VTX(tx)->tx_LogicalStart = VPOS(lstart).pos_Line;
 	VTX(tx)->tx_LogicalEnd = VPOS(lend).pos_Line + 1;
-	VTX(tx)->tx_Flags |= TXFF_REFRESH_ALL;
 	return sym_t;
     }
     return sym_nil;
