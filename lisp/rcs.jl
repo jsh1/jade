@@ -78,7 +78,7 @@
   (format t "Running RCS command: %s %s %s..." command file-name options)
   (clear-buffer rcs-output-buffer)
   (let ((arg-list (append options (list file-name))))
-    (unless (or (zerop (apply 'run-process rcs-process nil command arg-list))
+    (unless (or (zerop (apply 'call-process rcs-process nil command arg-list))
 		 ignore-errors)
       (signal 'file-error (list "Can't run RCS command"))))
   (format t "done")

@@ -35,7 +35,7 @@
 	((proc (make-process (current-buffer))))
       (message (concat "Uncompressing `" file-name "'") t)
       ;; gunzip can do .Z files as well
-      (unless (zerop (run-process proc nil "gunzip" "-c" file-name))
+      (unless (zerop (call-process proc nil "gunzip" "-c" file-name))
 	(signal 'file-error (list "Can't gunzip file" file-name))))))
     
 ;; In the read-file-hook
@@ -75,7 +75,7 @@
 	    (progn
 	      (setq proc (make-process dst-file))
 	      (message (concat "Compressing `" file-name "'... ") t)
-	      (when (/= (run-process proc nil compressor "-c" tmp-name) 0)
+	      (when (/= (call-process proc nil compressor "-c" tmp-name) 0)
 		(signal 'file-error (list "Can't compress file"
 					  tmp-name compressor))))
 	  (close dst-file)
