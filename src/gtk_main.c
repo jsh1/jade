@@ -221,7 +221,7 @@ sys_init(char *program_name)
     /* Loading the gtk rep library will replace the usual
        event loop with one that works with GTK. */
     rep_INTERN(gtk);
-    Fload (rep_string_dup ("gtk"), Qnil, Qnil, Qnil);
+    Fload (rep_string_dup ("gtk"), Qnil, Qnil, Qnil, Qnil);
 
     if (rep_throw_value == 0)
     {
