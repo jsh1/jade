@@ -598,7 +598,8 @@ of the document, currently only `title' and `base' keys are defined."
 (defun html-decode:html (tag dest)
   (if (html-decode-tag-entering-p tag)
       (html-decode-push-env tag dest)
-    (html-decode-pop-env tag dest)))
+    (html-decode-pop-env tag dest)
+    (setq html-decode-point (end-of-buffer html-decode-source))))
 (put 'html 'html-decode-fun html-decode:html)
 
 (defun html-decode-unknown-tag (tag)
