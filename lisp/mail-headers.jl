@@ -135,6 +135,16 @@
     (aset map ?_ ? )
     map))
 
+(defvar mail-encode-header-map
+  (let
+      ((map (make-string (1+ ? )))
+       (i 0))
+    (while (< i ? )
+      (aset map i i)
+      (setq i (1+ i)))
+    (aset map ?  ?_)
+    map))
+
 (defun mail-decode-header (string)
   (let
       ((point 0)
@@ -162,6 +172,20 @@
     (if out
 	(apply concat (nreverse (cons (substring string point) out)))
       string)))
+
+;; encode non ASCII characters in STRING
+(defun mail-encode-header-string (string)
+  (if (string-match "[\200-\377]" string)
+      (progn
+	;; needs encoding
+	(require 'mime-encode)
+	(let
+	    ((stream (make-string-output-stream)))
+	  (translate-string string mail-encode-header-map)
+	  (mime-encode-stream 'quoted-printable
+			      (make-string-input-stream string) stream)
+	  (concat "=?iso-8859-1?Q?" (get-output-stream-string stream) "?=")))
+    string))
 
 
 ;; General header manipulation
@@ -248,14 +272,13 @@
 ;; Return a quoted version of phrase STRING if necessary (i.e. if it
 ;; contains any specials or CTLs
 (defun mail-quote-phrase (string)
-  (if (string-match "[][()<>@,;\\\".\001-\037\177]+" string)
-      ;; It needs to be quoted
-      (progn
-	;; Escape any internal doublequotes
-	(while (string-match "^(.*[^\\])\"(.*)$" string)
-	  (setq string (expand-last-match "\\1\\\"\\2")))
-	(concat ?" string ?"))
-    string))
+  (when (string-match "[][()<>@,;\\\".\001-\037\177]+" string)
+    ;; It needs to be quoted
+    ;; Escape any internal doublequotes
+    (while (string-match "^(.*[^\\])\"(.*)$" string)
+      (setq string (expand-last-match "\\1\\\"\\2")))
+    (setq string (concat ?" string ?")))
+  (mail-encode-header-string string))
 
 ;; Return a string constructed from address ADDR and name NAME, according
 ;; to mail-address-style
