@@ -212,7 +212,8 @@ Move NUMBER (default: 1) screens backwards in the current window.
 }
 
 _PR VALUE cmd_end_of_buffer(VALUE tx, VALUE irp);
-DEFUN("end-of-buffer", cmd_end_of_buffer, subr_end_of_buffer, (VALUE tx, VALUE irp), V_Subr2, DOC_end_of_buffer) /*
+DEFUN_INT("end-of-buffer", cmd_end_of_buffer, subr_end_of_buffer,
+	  (VALUE tx, VALUE irp), V_Subr2, DOC_end_of_buffer, "!@") /*
 ::doc:end_of_buffer::
 end-of-buffer [BUFFER] [IGNORE-RESTRICTION-P]
 
@@ -235,7 +236,8 @@ of the buffer's restriction.
 }
 
 _PR VALUE cmd_start_of_buffer(VALUE tx, VALUE irp);
-DEFUN("start-of-buffer", cmd_start_of_buffer, subr_start_of_buffer, (VALUE tx, VALUE irp), V_Subr2, DOC_start_of_buffer) /*
+DEFUN_INT("start-of-buffer", cmd_start_of_buffer, subr_start_of_buffer,
+	  (VALUE tx, VALUE irp), V_Subr2, DOC_start_of_buffer, "!@") /*
 ::doc:start_of_buffer::
 start-of-buffer [BUFFER] [IGNORE-RESTRICTION-P]
 
@@ -250,8 +252,9 @@ of the buffer's restriction.
 	return cmd_restriction_start(tx);
 }
 
-_PR VALUE cmd_end_of_line(VALUE pos, VALUE tx, VALUE move);
-DEFUN_INT("end-of-line", cmd_end_of_line, subr_end_of_line, (VALUE pos, VALUE tx, VALUE move), V_Subr3, DOC_end_of_line, DS_NL DS_NL"t") /*
+_PR VALUE cmd_end_of_line(VALUE pos, VALUE tx);
+DEFUN_INT("end-of-line", cmd_end_of_line, subr_end_of_line,
+	  (VALUE pos, VALUE tx), V_Subr2, DOC_end_of_line, "@") /*
 ::doc:end_of_line::
 end-of-line [POS] [BUFFER]
 
@@ -264,18 +267,14 @@ the cursor).
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     if(VROW(pos) < VTX(tx)->tx_NumLines)
-    {
-	pos = make_pos(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
-	if(!NILP(move))
-	    cmd_goto(pos);
-	return pos;
-    }
+	return make_pos(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
     else
 	return sym_nil;
 }
 
-_PR VALUE cmd_start_of_line(VALUE pos, VALUE move);
-DEFUN_INT("start-of-line", cmd_start_of_line, subr_start_of_line, (VALUE pos, VALUE move), V_Subr2, DOC_start_of_line, DS_NL "t") /*
+_PR VALUE cmd_start_of_line(VALUE pos);
+DEFUN_INT("start-of-line", cmd_start_of_line, subr_start_of_line,
+	  (VALUE pos), V_Subr1, DOC_start_of_line, "@") /*
 ::doc:start_of_line::
 start-of-line [POS]
 
@@ -286,14 +285,14 @@ Return the position of the first character in the line pointed to by POS
     if(!POSP(pos))
 	pos = curr_vw->vw_CursorPos;
     if(VCOL(pos) != 0)
-	pos = make_pos(0, VROW(pos));
-    if(!NILP(move))
-	cmd_goto(pos);
-    return pos;
+	return make_pos(0, VROW(pos));
+    else
+	return pos;
 }
 
-_PR VALUE cmd_forward_line(VALUE lines, VALUE pos, VALUE move);
-DEFUN_INT("forward-line", cmd_forward_line, subr_forward_line, (VALUE lines, VALUE pos, VALUE move), V_Subr3, DOC_forward_line, "p" DS_NL DS_NL "t") /*
+_PR VALUE cmd_forward_line(VALUE lines, VALUE pos);
+DEFUN_INT("forward-line", cmd_forward_line, subr_forward_line,
+	  (VALUE lines, VALUE pos), V_Subr2, DOC_forward_line, "@p") /*
 ::doc:forward_line::
 forward-line [NUMBER] [POS]
 
@@ -308,24 +307,15 @@ line number is made) nil is returned.
     if(!POSP(pos))
 	pos = curr_vw->vw_CursorPos;
     row = VROW(pos) + (INTP(lines) ? VINT(lines) : 1);
-    if(NILP(move))
-    {
-	if(row < 0)
-	    return sym_nil;
-	else
-	    return make_pos(VCOL(pos), row);
-    }
-    else if(check_row(curr_vw->vw_Tx, row))
-    {
-	set_cursor_vertically(curr_vw, row);
-	return curr_vw->vw_CursorPos;
-    }
+    if(row < 0)
+	return sym_nil;
     else
-	return LISP_NULL;
+	return make_pos(VCOL(pos), row);
 }
 
-_PR VALUE cmd_forward_char(VALUE count, VALUE pos, VALUE tx, VALUE move);
-DEFUN_INT("forward-char", cmd_forward_char, subr_forward_char, (VALUE count, VALUE pos, VALUE tx, VALUE move), V_Subr4, DOC_forward_char, "p" DS_NL DS_NL DS_NL "t") /*
+_PR VALUE cmd_forward_char(VALUE count, VALUE pos, VALUE tx);
+DEFUN_INT("forward-char", cmd_forward_char, subr_forward_char,
+	  (VALUE count, VALUE pos, VALUE tx), V_Subr3, DOC_forward_char, "@p") /*
 ::doc:forward_char::
 forward-char [COUNT] [POS] [BUFFER]
 
@@ -351,18 +341,14 @@ beginning or the end of the buffer is passed, nil is returned.
     COPY_VPOS(&tem, pos);
     if((dist > 0 && forward_char(dist, VTX(tx), &tem))
        || backward_char(-dist, VTX(tx), &tem))
-    {
-	pos = COPY_POS(&tem);
-	if(!NILP(move))
-	    cmd_goto(pos);
-	return pos;
-    }
+	return COPY_POS(&tem);
     else
 	return sym_nil;
 }
 
-_PR VALUE cmd_forward_tab(VALUE num, VALUE pos, VALUE size, VALUE move);
-DEFUN_INT("forward-tab", cmd_forward_tab, subr_forward_tab, (VALUE num, VALUE pos, VALUE size, VALUE move), V_Subr4, DOC_forward_tab, "p" DS_NL DS_NL DS_NL "t") /*
+_PR VALUE cmd_forward_tab(VALUE num, VALUE pos, VALUE size);
+DEFUN_INT("forward-tab", cmd_forward_tab, subr_forward_tab,
+	  (VALUE num, VALUE pos, VALUE size), V_Subr3, DOC_forward_tab, "@p") /*
 ::doc:forward_tab::
 forward-tab [COUNT] [POS] [TAB-SIZE]
 
@@ -393,12 +379,7 @@ undefined; negative values move towards the left hand side of the screen.
 	tabs++;
     }
     if(col >= 0)
-    {
-	pos = make_pos(col, VROW(pos));
-	if(!NILP(move))
-	    cmd_goto(pos);
-	return pos;
-    }
+	return make_pos(col, VROW(pos));
     else
 	return(sym_nil);
 }
@@ -509,7 +490,9 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 }
 
 _PR VALUE cmd_find_matching_bracket(VALUE pos, VALUE tx, VALUE esc);
-DEFUN("find-matching-bracket", cmd_find_matching_bracket, subr_find_matching_bracket, (VALUE pos, VALUE tx, VALUE esc), V_Subr3, DOC_find_matching_bracket) /*
+DEFUN_INT("find-matching-bracket", cmd_find_matching_bracket,
+	  subr_find_matching_bracket, (VALUE pos, VALUE tx, VALUE esc),
+	  V_Subr3, DOC_find_matching_bracket, "!@") /*
 ::doc:find_matching_bracket::
 find-matching-bracket [POS] [BUFFER] [ESCAPE-CHAR]
 
@@ -558,14 +541,14 @@ movement_init(void)
     ADD_SUBR_INT(subr_center_display);
     ADD_SUBR_INT(subr_next_screen);
     ADD_SUBR_INT(subr_prev_screen);
-    ADD_SUBR(subr_end_of_buffer);
-    ADD_SUBR(subr_start_of_buffer);
+    ADD_SUBR_INT(subr_end_of_buffer);
+    ADD_SUBR_INT(subr_start_of_buffer);
     ADD_SUBR_INT(subr_end_of_line);
     ADD_SUBR_INT(subr_start_of_line);
     ADD_SUBR_INT(subr_forward_line);
     ADD_SUBR_INT(subr_forward_char);
     ADD_SUBR_INT(subr_forward_tab);
-    ADD_SUBR(subr_find_matching_bracket);
+    ADD_SUBR_INT(subr_find_matching_bracket);
     ADD_SUBR(subr_raw_mouse_pos);
 
     INTERN(next_screen_context_lines);
