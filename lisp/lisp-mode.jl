@@ -76,6 +76,12 @@ in the status line."
   (interactive)
   (prin1 (eval-sexp) t))
 
+;;;###autoload
+(defun eval-and-print (form)
+  "Eval FORM then print its value in the status line."
+  (interactive "xEval:")
+  (prin1 (eval form) t))
+
 (defun lisp-indent-line (&optional p)
   (unless p
     (setq p (cursor-pos)))
