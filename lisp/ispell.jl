@@ -75,9 +75,6 @@ if the hook (`or' style) returns t the word is assumed to be correct.")
 (defvar ispell-minor-mode-last-scan nil)
 (make-variable-buffer-local 'ispell-minor-mode-last-scan)
 
-(setq minor-mode-alist (cons (list 'ispell-minor-mode-last-scan " Ispell")
-			     minor-mode-alist))
-
 (defvar ispell-keymap (bind-keys (make-sparse-keymap)
 			"SPC" 'ispell-accept
 			"0" '(ispell-replace 0)
@@ -281,7 +278,7 @@ for. When called interactively, spell-check the current block."
       (setq ispell-prompt-buffer (make-buffer "*Ispell-prompt*"))
       (with-buffer ispell-prompt-buffer
 	(insert "[SP] <number> R\)epl A\)ccept I\)nsert L\)ookup U\)ncap Q\)uit e\(X\)it or ? for help")
-	(setq keymap-path (cons ispell-keymap keymap-path))
+	(setq local-keymap 'ispell-keymap)
 	(setq read-only t)))
     (goto start)
     (setq word-extent (make-extent start end (list 'face highlight-face)))
@@ -346,14 +343,18 @@ for. When called interactively, spell-check the current block."
       (setq point (match-end 1)))
     (while (string-looking-at "-([^+-]+)" word point)
       ;; [-prefix] | [-suffix]
-      (let
-	  ((tem (quote-regexp (substring word (match-start 1) (match-end 1)))))
+      (let*
+	  ((phrase (substring word (match-start 1) (match-end 1)))
+	   (quoted (quote-regexp phrase)))
 	(setq point (match-end))
 	(cond
-	 ((string-match (concat tem ?$) out)
+	 ((string-match (concat quoted ?$) out)
 	  (setq out (substring out 0 (match-start))))
-	 ((string-match (concat ?^ tem) out)
-	  (setq out (substring out (match-end)))))))
+	 ((string-match (concat ?^ quoted) out)
+	  (setq out (substring out (match-end))))
+	 (t
+	  ;; not a prefix or a suffix, just copy to the output
+	  (setq out (concat out ?- phrase))))))
     (when (string-looking-at "\\+([^+-]+)" word point)
       (setq out (concat out (substring word (match-start 1) (match-end 1)))))
     out))
@@ -388,6 +389,22 @@ for. When called interactively, spell-check the current block."
 
 ;; Non-interactive spell-checking
 
+(defvar ispell-misspelt nil)
+
+(setq minor-mode-alist (cons (list 'ispell-minor-mode-last-scan " Ispell")
+			     minor-mode-alist))
+
+(setq minor-mode-keymap-alist (cons '(ispell-misspelt . ispell-minor-keymap)
+				    minor-mode-keymap-alist))
+
+(defvar ispell-minor-keymap (bind-keys (make-sparse-keymap)
+			      "LMB-Click2" 'ispell-misspelt-word
+			      "C-c" 'ispell-minor-c-c-keymap))
+(defvar ispell-minor-c-c-keymap (bind-keys (make-sparse-keymap)
+				  "RET" 'ispell-misspelt-word
+				  "C-a" 'ispell-add-misspelt-word))
+(fset 'ispell-minor-c-c-keymap 'keymap)
+
 (defun ispell-delete-highlights (start end)
   (interactive (if (blockp)
 		   (list (block-start) (block-end))
@@ -407,9 +424,12 @@ for. When called interactively, spell-check the current block."
 		 (list (start-of-buffer) (end-of-buffer))))
   (let
       ((failure-fun #'(lambda (word response wstart wend)
-			(make-extent
-			 wstart wend (list 'face ispell-misspelt-face))
-			wend)))
+			(let
+			    ((e (make-extent
+				 wstart wend
+				 (list 'face ispell-misspelt-face))))
+			  (extent-set e 'ispell-misspelt t)
+			  wend))))
     (if (not abort-on-input)
 	;; Just scan the whole thing in one chunk
 	(progn
@@ -482,6 +502,16 @@ for. When called interactively, spell-check the current block."
 	      (when ispell-minor-mode-last-scan
 		(aset ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
 	buffer-list))
+
+(defun ispell-misspelt-word ()
+  (interactive)
+  (let
+      ((e (get-extent)))
+    (while (and e (not (eq (buffer-symbol-value 'ispell-misspelt e nil t) t)))
+      (setq e (extent-parent e)))
+    (or e (error "No misspelling here!"))
+    (ispell-region (extent-start e) (extent-end e))))
+
 
 ;; Dictionary management
 
