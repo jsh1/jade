@@ -245,3 +245,10 @@
 (defun mail-compare-addresses (addr1 addr2)
   (equal (if (consp addr1) (car addr1) addr1)
 	 (if (consp addr2) (car addr2) addr2)))
+
+;; Return a list of addresses uniqified from lists X and Y
+(defun mail-union-addresses (x y)
+  (mapc #'(lambda (a)
+	    (unless (assoc (car a) x)
+	      (setq x (cons a x)))) y)
+  x)
