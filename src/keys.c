@@ -261,11 +261,19 @@ eval_input_callback(repv key)
     return TRUE;
 }
 
-/* Process the event CODE+MODS. OS-INPUT-MSG is the raw input event
-   from the window-system, this is only used to cook a string from.  */
-repv
-eval_input_event(void *OSInputMsg, u_long code, u_long mods)
+struct eval_input_data {
+    void *osinput;
+    u_long code, mods;
+};
+
+static repv
+inner_eval_input_event(repv data_)
 {
+    struct eval_input_data *data = (struct eval_input_data *) rep_PTR(data_);
+    void *OSInputMsg = data->osinput;
+    u_long code = data->code;
+    u_long mods = data->mods;
+
     repv result = Qnil;
     event_buf[event_index++] = code;
     event_buf[event_index++] = mods;
@@ -410,6 +418,19 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
     if(next_keymap_path == rep_NULL && !pending_meta)
 	event_index = 0;
     return(result);
+}
+
+/* Process the event CODE+MODS. OS-INPUT-MSG is the raw input event
+   from the window-system, this is only used to cook a string from.  */
+repv
+eval_input_event(void *OSInputMsg, u_long code, u_long mods)
+{
+    struct eval_input_data data;
+    data.osinput = OSInputMsg;
+    data.code = code;
+    data.mods = mods;
+    return rep_call_with_barrier (inner_eval_input_event,
+				  rep_VAL(&data), rep_TRUE, 0, 0, 0);
 }
 
 

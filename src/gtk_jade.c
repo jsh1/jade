@@ -537,11 +537,12 @@ gtk_jade_drag_data_received (GtkWidget *widget, GdkDragContext *context,
 	data = end + strspn (end, "\r\n");
     }
 
-    rep_funcall (Fsymbol_value (Qdnd_drop_uri_list, Qnil),
-		 Fcons (Freverse (list),
-			Fcons (rep_VAL (jade->win),
-			       Fcons (pos, Qnil))),
-		 rep_FALSE);
+    rep_call_with_barrier (Ffuncall,
+			   Fcons (Fsymbol_value (Qdnd_drop_uri_list, Qnil),
+				  Fcons (Freverse (list),
+					 Fcons (rep_VAL (jade->win),
+						Fcons (pos, Qnil)))),
+			   rep_TRUE, 0, 0, 0);
 
     GTK_JADE_CALLBACK_POSTFIX;
 }
@@ -706,7 +707,7 @@ sys_update_dimensions(WIN *w)
 static gint
 window_deleted_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
 {
-    Fdelete_window (rep_VAL(data));
+    rep_call_with_barrier (Fdelete_window, rep_VAL(data), rep_TRUE, 0, 0, 0);
     GTK_JADE_CALLBACK_POSTFIX;
     return TRUE;
 }
