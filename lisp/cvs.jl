@@ -33,10 +33,9 @@ file and the current version. Used by the `cvs-diff-backup' command. Two
 strings can be substituted (using `%s'), the original file, and the merged
 version containing the conflict markers.")
 
-(defvar cvs-option-alist '(("diff" . ("-c"))
-			   ("status" . ("-v")))
+(defvar cvs-option-alist nil
   "Alist of (COMMAND-NAME . OPTION-LIST) defining extra command options to
-give to CVS commands.")
+give to CVS commands. The ~/.cvsrc file can be used to similar effect.")
 
 (defvar cvs-cvsroot nil
   "When non-nil the directory to use as the root of the CVS repository.")
@@ -74,6 +73,7 @@ and hence hasn't been processed yet; or nil.")
 (defvar cvs-after-update-hook nil
   "Hook called after completing a cvs-update command.")
 
+;;;###autoload
 (defvar cvs-keymap (copy-sequence summary-keymap))
 (bind-keys cvs-keymap
   "a" 'cvs-add
@@ -99,8 +99,7 @@ and hence hasn't been processed yet; or nil.")
   "~" 'cvs-undo-modification
   "`" 'cvs-next-conflict-marker)
 
-(bind-keys ctrl-x-keymap
-  "c" '(setq next-keymap-path '(cvs-keymap)))
+;;;###autoload (bind-keys ctrl-x-keymap "c" '(setq next-keymap-path '(cvs-keymap)))
 
 (defvar cvs-callback-ctrl-c-keymap (make-keylist))
 (bind-keys cvs-callback-ctrl-c-keymap
@@ -210,6 +209,22 @@ that each of the FILENAMES contains no directory specifiers."
 	(unless (= point (length out))
 	  (setq cvs-update-pending (substring out point))))))))
 
+;; Function called after `cvs update' has completed
+(defun cvs-update-finished (hook)
+  (setq cvs-update-pending nil
+	cvs-file-list (nreverse cvs-update-file-list)
+	cvs-update-in-progress nil)
+  (with-buffer cvs-buffer
+    (summary-update)
+    (remove-minor-mode 'cvs-update "Updating"))
+  (unless (cvs-buffer-p)
+    (with-view (other-view)
+      (goto-buffer cvs-buffer)
+      (shrink-view-if-larger-than-buffer)))
+  (add-buffer cvs-buffer)
+  (message "cvs update finished")
+  (call-hook hook))
+
 (defun cvs-error-if-updating ()
   (and cvs-update-in-progress
        (error "CVS update in progress")))
@@ -224,20 +239,9 @@ that each of the FILENAMES contains no directory specifiers."
        (cvs-command-output-stream 'cvs-update-filter)
        (cvs-command-dont-clear-output t)
        (cvs-command-async
-	#'(lambda ()
-	    (setq cvs-update-pending nil
-		  cvs-file-list (nreverse cvs-update-file-list)
-		  cvs-update-in-progress nil)
-	    (with-buffer cvs-buffer
-	      (summary-update)
-	      (remove-minor-mode 'cvs-update "Updating"))
-	    (unless (cvs-buffer-p)
-	      (with-view (other-view)
-		(goto-buffer cvs-buffer)
-		(shrink-view-if-larger-than-buffer)))
-	    (add-buffer cvs-buffer)
-	    (message "cvs update finished")
-	    (call-hook 'cvs-after-update-hook))))
+	;; Need to construct a call using the _current_ value of
+	;; cvs-after-update-hook (in case it's bound dynamically)
+	`(lambda () (cvs-update-finished ,cvs-after-update-hook))))
     (setq cvs-update-in-progress (cvs-command '() "update" '()))
     (when cvs-update-in-progress
       (with-buffer cvs-buffer
