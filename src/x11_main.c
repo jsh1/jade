@@ -1,4 +1,4 @@
-/* x11_display.c -- Initialisation for X11 window-system
+/* x11_main.c -- Main code for X11 window-system
    Copyright (C) 1993, 1994 John Harper <john@dcs.warwick.ac.uk>
    $Id$
 
@@ -25,47 +25,58 @@
 #include <X11/cursorfont.h>
 
 #ifdef HAVE_UNIX
-# include <sys/types.h>
-# include <sys/time.h>
-# include <signal.h>
 # include <fcntl.h>
-#else
-  you lose
-#endif
-
-#ifdef NEED_MEMORY_H
-# include <memory.h>
 #endif
 
 _PR void sys_usage(void);
 _PR int sys_init(int, char **);
+static void x11_handle_input(int fd);
+_PR void sys_flush_output(void);
 
-#ifdef HAVE_UNIX
-_PR fd_set x11_fd_read_set;
-fd_set x11_fd_read_set;
+/* The window in which the current event occurred. */
+_PR WIN *x11_current_event_win;
+WIN *x11_current_event_win;
 
-_PR void (*x11_fd_read_action[])(int);
-void (*x11_fd_read_action[FD_SETSIZE])(int);
-#endif
+/* The mouse position of the current event, relative to the origin of
+   the window that the event occurred in, measured in glyphs. */
+_PR long x11_current_mouse_x, x11_current_mouse_y;
+long x11_current_mouse_x, x11_current_mouse_y;
 
+/* The last event received which had a timestamp, was at this time. */
+_PR Time x11_last_event_time;
+Time x11_last_event_time;
+
+/* Out Display structure. */
 _PR Display *x11_display;
+Display *x11_display;
+
+/* The screen on the display. */
 _PR int x11_screen;
+int x11_screen;
+
+/* The colourmap */
 _PR Colormap x11_colour_map;
+Colormap x11_colour_map;
+
+/* Allocated colours. */
 _PR u_long x11_fore_pixel, x11_back_pixel, x11_high_pixel;
+u_long x11_fore_pixel, x11_back_pixel, x11_high_pixel;
+
+/* Atoms we use. */
 _PR Atom x11_wm_del_win, x11_jade_sel;
+Atom x11_wm_del_win, x11_jade_sel;
+
+/* Command line arguments. */
 _PR char **x11_argv;
 _PR int x11_argc;
-_PR Cursor x11_text_cursor;
-
-Display *x11_display;
-int x11_screen;
-Colormap x11_colour_map;
-u_long x11_fore_pixel, x11_back_pixel, x11_high_pixel;
-Atom x11_wm_del_win, x11_jade_sel;
 char **x11_argv;
 int x11_argc;
+
+/* The `I' type mouse pointer. */
+_PR Cursor x11_text_cursor;
 Cursor x11_text_cursor;
 
+/* Command line options, and their default values. */
 static char *display_name = NULL;
 static char *bg_str = "white";
 static char *fg_str = "black";
@@ -73,10 +84,12 @@ static char *hl_str = "skyblue3";
 static char *geom_str = "80x24";
 static char *prog_name;
 
+/* Default font name. */
 static DEFSTRING(def_font_str_data, DEFAULT_FONT);
 _PR VALUE def_font_str;
 VALUE def_font_str = VAL(def_font_str_data);
 
+/* Scan the resource db for the entries we're interested in. */
 static int
 get_resources(void)
 {
@@ -99,6 +112,7 @@ get_resources(void)
     return(TRUE);
 }
 
+/* Print the X11 options. */
 void
 sys_usage(void)
 {
@@ -115,6 +129,8 @@ sys_usage(void)
 	, stderr);
 }
 
+/* Scan the command line for the X11 options. Updating ARGC-P and ARGV-P to
+   point to the following options. */
 static int
 get_options(int *argc_p, char ***argv_p)
 {
@@ -155,6 +171,8 @@ get_options(int *argc_p, char ***argv_p)
     return(TRUE);
 }
 
+/* After parsing the command line and the resource database, use the
+   information. */
 static int
 use_options(void)
 {
@@ -205,6 +223,7 @@ use_options(void)
     return(TRUE);
 }
 
+/* Called from main(). */
 int
 sys_init(int argc, char **argv)
 {
@@ -222,11 +241,10 @@ sys_init(int argc, char **argv)
     x11_display = XOpenDisplay(display_name);
     if(x11_display)
     {
+	register_input_fd(ConnectionNumber(x11_display), x11_handle_input);
 #ifdef HAVE_UNIX
-	FD_ZERO(&x11_fd_read_set);
 	/* close-on-exec = TRUE	 */
 	fcntl(ConnectionNumber(x11_display), F_SETFD, 1);
-	FD_SET(ConnectionNumber(x11_display), &x11_fd_read_set);
 #endif /* HAVE_UNIX */
 
 	x11_screen = DefaultScreen(x11_display);
@@ -260,5 +278,181 @@ sys_init(int argc, char **argv)
 	fprintf(stderr, "jade: Can't open display: %s\n",
 		display_name ? display_name : "");
     }
-    return(5);
+    return 5;
+}
+
+
+/* X11 event handling. */
+
+static void
+x11_handle_input(int fd)
+{
+    /* Read all events in the input queue. */
+    while(throw_value == LISP_NULL
+	  && XEventsQueued(x11_display, QueuedAfterReading) > 0)
+    {
+	XEvent xev;
+	WIN *oldwin = curr_win, *ev_win;
+
+	XNextEvent(x11_display, &xev);
+
+	ev_win = x11_find_window(xev.xany.window);
+	if(ev_win != NULL)
+	{
+	    switch(xev.type)
+	    {
+		u_long code, mods;
+
+	    case MappingNotify:
+		XRefreshKeyboardMapping(&xev.xmapping);
+		break;
+
+	    case Expose:
+		if(ev_win->w_Flags & WINFF_SLEEPING)
+		{
+		    /* Guess that the wm uniconified us? */
+		    ev_win->w_Flags &= ~WINFF_SLEEPING;
+		}
+		if(ev_win->w_Flags & WINFF_FORCE_REFRESH)
+		{
+		    /* Wait until the last Expose then do a total redraw.  */
+		    if(xev.xexpose.count == 0)
+			refresh_window(ev_win);
+		}
+		else
+		    x11_handle_expose(ev_win, &xev.xexpose);
+		if(ev_win == oldwin)
+		    cursor(ev_win->w_CurrVW, CURS_ON);
+		break;
+
+	    case ConfigureNotify:
+		if((ev_win->w_WindowSys.ws_Width != xev.xconfigure.width)
+		   || (ev_win->w_WindowSys.ws_Height != xev.xconfigure.height))
+		{
+		    if(ev_win == oldwin)
+			cursor(ev_win->w_CurrVW, CURS_OFF);
+		    if((ev_win->w_WindowSys.ws_Height != 0)
+		       && (ev_win->w_WindowSys.ws_Height < xev.xconfigure.height))
+			ev_win->w_WindowSys.ws_Width = xev.xconfigure.width;
+		    ev_win->w_WindowSys.ws_Height = xev.xconfigure.height;
+		    x11_update_dimensions(ev_win, xev.xconfigure.width,
+					  xev.xconfigure.height);
+		    update_views_dimensions(ev_win);
+		    if(ev_win == oldwin)
+			cursor(ev_win->w_CurrVW, CURS_ON);
+		}
+		break;
+
+	    case ClientMessage:
+		if((xev.xclient.format == 32)
+		   && (xev.xclient.data.l[0] == x11_wm_del_win))
+		{
+		    curr_win = ev_win;
+		    if(ev_win != oldwin)
+		    {
+			curr_vw = curr_win->w_CurrVW;
+			/* Window switch */
+			cursor(oldwin->w_CurrVW, CURS_OFF);
+		    }
+		    else
+			cursor(ev_win->w_CurrVW, CURS_OFF);
+		    cmd_call_hook(sym_window_closed_hook, sym_nil, sym_nil);
+		    if(curr_win)
+		    {
+			refresh_world();
+			cursor(curr_vw, CURS_ON);
+		    }
+		}
+		break;
+
+	    case FocusIn:
+		if(ev_win != oldwin)
+		{
+		    cursor(oldwin->w_CurrVW, CURS_OFF);
+		    cursor(ev_win->w_CurrVW, CURS_ON);
+		    curr_win = ev_win;
+		    curr_vw = curr_win->w_CurrVW;
+		}
+		break;
+
+	    case MotionNotify:
+	    {
+		Window tmpw;
+		int tmp;
+		int x, y;
+		
+		/* Swallow any pending motion events as well. */
+		while(XCheckMaskEvent(x11_display, ButtonMotionMask, &xev))
+		    ;
+		x11_last_event_time = xev.xmotion.time;
+
+		/* It seems that further MotionNotify events are suspended
+		   until the pointer's position has been queried. I should
+		   check the Xlib manuals about this. */
+		if(XQueryPointer(x11_display, ev_win->w_Window,
+				 &tmpw, &tmpw, &tmp, &tmp,
+				 &x, &y, &tmp))
+		{
+		    x11_current_mouse_x = x;
+		    x11_current_mouse_y = y;
+		}
+		goto do_command;
+	    }
+
+	    case ButtonPress:
+	    case ButtonRelease:
+		x11_last_event_time = xev.xbutton.time;
+		x11_current_mouse_x = xev.xbutton.x;
+		x11_current_mouse_y = xev.xbutton.y;
+		goto do_command;
+
+	    case KeyPress:
+		x11_last_event_time = xev.xkey.time;
+		x11_current_mouse_x = xev.xkey.x;
+		x11_current_mouse_y = xev.xkey.y;
+		/* FALL THROUGH */
+
+	    do_command:
+		x11_current_event_win = ev_win;
+		x11_current_mouse_x
+		    = ((x11_current_mouse_x - ev_win->w_LeftPix)
+		       / ev_win->w_FontX);
+		x11_current_mouse_y
+		    = ((x11_current_mouse_y - ev_win->w_TopPix)
+		       / ev_win->w_FontY);
+		code = mods = 0;
+		translate_event(&code, &mods, &xev);
+		if(mods & EV_TYPE_MASK)
+		{
+		    curr_win = ev_win;
+		    if(oldwin != ev_win)
+		    {
+			curr_vw = curr_win->w_CurrVW;
+			cursor(oldwin->w_CurrVW, CURS_OFF);
+		    }
+		    reset_message(ev_win);
+		    usekey(&xev, code, mods, (ev_win == oldwin));
+		}
+		x11_current_event_win = NULL;
+		break;
+
+	    case SelectionRequest:
+		x11_last_event_time = xev.xselectionrequest.time;
+		x11_convert_selection(&xev.xselectionrequest);
+		break;
+
+	    case SelectionClear:
+		x11_last_event_time = xev.xselectionclear.time;
+		x11_lose_selection(&xev.xselectionclear);
+		break;
+	    }
+	    undo_end_of_command();
+	}
+    }
+}
+
+void
+sys_flush_output(void)
+{
+    XFlush(x11_display);
 }
