@@ -431,45 +431,6 @@ return the name of the current directory.
     return(res);
 }
 
-_PR VALUE cmd_write_file(VALUE file, VALUE str);
-DEFUN("write-file", cmd_write_file, subr_write_file, (VALUE file, VALUE str), V_Subr2, DOC_write_file) /*
-::doc:write_file::
-write-file FILE-NAME STRING
-
-Writes STRING to file FILE-NAME.
-::end:: */
-{
-    FILE *fh;
-    VALUE res = sym_nil;
-    DECLARE1(file, STRINGP);
-    DECLARE2(str, STRINGP);
-    fh = fopen(VSTR(file), "w");
-    if(fh)
-    {
-	int len = STRING_LEN(str);
-	if(fwrite(VSTR(str), 1, len, fh) != len)
-	    res = cmd_signal(sym_file_error, list_2(lookup_errno(), file));
-	else
-	    res = sym_t;
-	fclose(fh);
-    }
-    else
-	res = cmd_signal(sym_file_error, list_2(lookup_errno(), file));
-    return(res);
-}
-
-_PR VALUE cmd_read_file(VALUE file);
-DEFUN("read-file", cmd_read_file, subr_read_file, (VALUE file), V_Subr1, DOC_read_file) /*
-::doc:read_file::
-read-file FILE-NAME
-
-Return the contents of file FILE-NAME.
-::end:: */
-{
-    DECLARE1(file, STRINGP);
-    return(read_file(VSTR(file)));
-}
-
 DEFSTRING(cant_open, "Can't open file");
 _PR VALUE cmd_read_file_from_to(VALUE file, VALUE offset, VALUE ch);
 DEFUN("read-file-from-to", cmd_read_file_from_to, subr_read_file_from_to, (VALUE file, VALUE offset, VALUE ch), V_Subr3, DOC_read_file_from_to) /*
@@ -579,8 +540,6 @@ io_init(void)
     ADD_SUBR(subr_write_buffer);
     ADD_SUBR_INT(subr_write_buffer_area);
     ADD_SUBR(subr_cd);
-    ADD_SUBR(subr_write_file);
-    ADD_SUBR(subr_read_file);
     ADD_SUBR(subr_read_file_from_to);
     ADD_SUBR(subr_write_clip);
     ADD_SUBR(subr_read_clip);
