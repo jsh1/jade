@@ -775,7 +775,7 @@ works by deleting the local copy, before updating it from the repository."
 	    ;; Ensure that cvs-revert isn't called until the
 	    ;; update has completed
 	    ((cvs-after-update-hook (cons `(lambda ()
-					     (cvs-revert-filenames ,files))
+					     (cvs-revert-filenames ',files))
 					  cvs-after-update-hook)))
 	  (cvs-update-no-prompt)
 	  (message "Buffers haven't been reloaded yet.."))
