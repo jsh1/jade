@@ -882,11 +882,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Set the minor-mode-names list to reflect the status of MESSAGE
 (defun rm-fix-status-info (message)
   (setq buffer-status-id (rm-cached-form message 'status-id
-			   (let
-			       ((arg-list (cons message nil))
-				(format-hooks-alist rm-format-alist))
-			     (rplacd arg-list arg-list)
-			     (apply 'format nil rm-status-format arg-list))))
+			   (rm-format rm-status-format message)))
   (setq minor-mode-names (mapcar 'symbol-name
 				 (rm-get-msg-field message rm-msg-flags))))
 
@@ -1276,7 +1272,15 @@ key, the car the order to sort in, a positive or negative integer.")
 			   ((date (rm-get-date-vector m)))
 			 (when date
 			   (aref date mail-date-timezone)))))))))
-			 
+
+;; Format the string FORMAT for MESSAGE
+(defun rm-format (format message)
+  (let
+      ((arg-list (cons message nil))
+       (format-hooks-alist rm-format-alist))
+    (rplacd arg-list arg-list)
+    (apply 'format nil format arg-list)))
+
 
 ;; Commands, these must only be called from the folder buffer, *not*
 ;; from the summary.
