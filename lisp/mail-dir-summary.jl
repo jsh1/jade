@@ -25,9 +25,6 @@
 ;; Suppress annoying compiler warnings
 (eval-when-compile (require 'send-mail))
 
-(defvar mds-alias-buffer (make-buffer "*mail-aliases*"))
-(defvar mds-address-buffer (make-buffer "*mail-addresses*"))
-
 (defvar mds-keymap
   (bind-keys (make-sparse-keymap summary-keymap)
     "n" 'summary-next-item
@@ -43,21 +40,23 @@
     (delete . (lambda (item) (remove-mail-alias (car item))))
     (print . mds-print-alias)
     (list . (lambda () mail-alias-alist))
-    (after-marking . (lambda () (summary-next-item 1)))))
+    (after-marking . (lambda () (summary-next-item 1)))
+    (on-quit . kill-current-buffer)))
 
 (defvar mds-address-functions
   '((select . mds-compose-mail-to-item)
     (delete . (lambda (item) (remove-mail-address (car item))))
     (print . mds-print-address)
     (list . (lambda () mail-address-alist))
-    (after-marking . (lambda () (summary-next-item 1)))))
+    (after-marking . (lambda () (summary-next-item 1)))
+    (on-quit . kill-current-buffer)))
 
 ;;;###autoload
 (defun list-mail-aliases ()
   "List all mail aliases in a buffer."
   (interactive)
   (goto-other-view)
-  (goto-buffer mds-alias-buffer)
+  (goto-buffer (open-buffer "*mail-aliases*"))
   (if (eq major-mode 'summary-mode)
       (summary-update)
     (insert "Mail alias summary:\n\n  Alias\t\tExpansion\n  -----\t\t---------\n")
@@ -68,7 +67,7 @@
   "List all mail addresses in a buffer."
   (interactive)
   (goto-other-view)
-  (goto-buffer mds-address-buffer)
+  (goto-buffer (open-buffer "*mail-addresses*"))
   (if (eq major-mode 'summary-mode)
       (summary-update)
     (insert "Mail address summary:\n\n  Name\t\t\tAddress\n  ----\t\t\t-------\n")
@@ -88,12 +87,14 @@
   (indent-to 24)
   (insert (car item)))
 
+;; Return t if the current buffer is displaying the address list
+(defun mds-in-addresses-p ()
+  (string= (buffer-name) "*mail-addresses*"))
+
 (defun mds-add-item ()
   "Insert a new item into the list."
   (interactive)
-  (call-command (if (eq (current-buffer) mds-address-buffer)
-		    'add-mail-address
-		  'add-mail-alias))
+  (call-command (if (mds-in-addresses-p) 'add-mail-address 'add-mail-alias))
   (summary-update))
 
 (defun mds-edit-name ()
@@ -101,11 +102,11 @@
   (interactive)
   (let*
       ((item (summary-current-item))
-       (name (if (eq (current-buffer) mds-address-buffer)
+       (name (if (mds-in-addresses-p)
 		 (prompt-for-mail-full-name "New name:" t (cdr item))
 	       (prompt-for-mail-alias "New alias name:" t (car item)))))
     (when name
-      (if (eq (current-buffer) mds-address-buffer)
+      (if (mds-in-addresses-p)
 	  (rplacd item name)
 	(rplaca item name))
       (setq mail-directory-modified t)
@@ -117,7 +118,7 @@
   (let
       ((item (summary-current-item))
        new)
-    (if (eq (current-buffer) mds-address-buffer)
+    (if (mds-in-addresses-p)
 	(when (setq new (prompt-for-mail-address "New address:" t (car item)))
 	  (rplaca item new)
 	  (setq mail-directory-modified t))
@@ -135,7 +136,7 @@
 CC: field if the prefix arg is set)."
   (interactive (list (summary-current-item)))
   (let
-      ((in-address-list (eq (current-buffer) mds-address-buffer)))
+      ((in-address-list (mds-in-addresses-p)))
     (mail-setup)
     (if current-prefix-arg
 	(send-mail-go-cc)
@@ -152,7 +153,7 @@ CC: field if the prefix arg is set)."
 (defun mds-sort-list ()
   "Sort the list of mail addresses or aliases."
   (interactive)
-  (if (eq (current-buffer) mds-address-buffer)
+  (if (mds-in-addresses-p)
       (setq mail-address-alist (sort mail-address-alist 'mds-sort-predicate))
     (setq mail-alias-alist (sort mail-address-alist 'mds-sort-predicate)))
   (setq mail-directory-modified t)
