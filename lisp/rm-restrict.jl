@@ -252,7 +252,7 @@ contain its definition as a function."
 ;; (attribute FLAG-SYMBOL)
 (put 'attribute 'rm-rule-function 'rm-rule:attribute)
 (defmacro rm-rule:attribute (attr)
-  `(memq ,attr (rm-get-msg-field rm-rule-message rm-msg-flags)))
+  `(memq ',attr (rm-get-msg-field rm-rule-message rm-msg-flags)))
 
 ;; (body REGEXP)
 (put 'body 'rm-rule-function 'rm-rule:body)
