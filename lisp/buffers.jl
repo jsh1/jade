@@ -188,6 +188,12 @@ buried in each view though)."
 				  default)))
     (goto-buffer buffer)))
 
+(defun rename-buffer (new-name)
+  "Set the name of the current buffer to a uniqified instance of the string
+NEW-NAME (i.e. NEW-NAME possibly with a `<N>' suffix)."
+  (interactive "sNew name of buffer:")
+  (set-buffer-name nil (make-buffer-name new-name)))
+
 
 ;; Storing files in buffers
 
