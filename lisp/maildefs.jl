@@ -307,6 +307,18 @@ include any parenthesised expressions!")
 	(insert ", "))
       (setq list (cdr list)))))
 
+;; Return a string constructed from address ADDR and name NAME, according
+;; to mail-address-style
+(defun mail-format-address (addr name)
+  ;; Need to handle quoting full name a la RFC-822
+  (cond
+   ((eq mail-address-style 'angles)
+    (concat name " \<" addr "\>"))
+   ((eq mail-address-style 'parens)
+    (concat addr " \(" name "\)"))
+   (t
+    addr)))
+
 ;; History list of prompt-for-folder
 (defvar mail-prompt-history (make-ring))
 
