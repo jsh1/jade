@@ -129,7 +129,7 @@ the originally selected window.
 			else
 			{
 			    w->w_CurrVW->vw_BufferList
-				= curr_vw->vw_BufferList;
+				= cmd_copy_sequence(curr_vw->vw_BufferList);
 			}
 			cmd_set_current_window(VAL(w), sym_nil);
 			cmd_call_hook(sym_make_window_hook, sym_nil, sym_nil);
