@@ -90,7 +90,7 @@ written to. This is only consulted when the process is started.")
 
 ;; Ensure that the termcap stuff is set up correctly
 (setenv "TERM" "jade")
-(setenv "TERMCAP" "jade:tc=unknown")
+(setenv "TERMCAP" "jade:tc=unknown:")
 
 
 ;;;###autoload
@@ -144,9 +144,7 @@ Major mode for running a subprocess in a buffer. Special commands are,\n
 			       (list 'with-buffer (current-buffer)
 				     (list 'funcall
 					   'shell-callback-function)))
-			 (file-name-directory (buffer-file-name))
-			 shell-program
-			 shell-program-args))
+			 nil shell-program shell-program-args))
     (set-process-connection-type shell-process 'pty)
     (start-process shell-process)))
 
@@ -239,17 +237,14 @@ last in the buffer the current command is copied to the end of the buffer."
 `shell-mode'."
   (interactive)
   (let
-      ((buffer (get-buffer "*shell*"))
-       (dir (file-name-directory (buffer-file-name))))
+      ((buffer (get-buffer "*shell*")))
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
 	  (goto-buffer (open-buffer "*shell*" t))
-	  (set-buffer-file-name nil dir)
 	  (set-buffer-special nil t)
 	  (setq mildly-special-buffer t)
 	  (shell-mode))
       (goto-buffer buffer)
-      (set-buffer-file-name buffer dir)
       (shell-start-process))))
 
 
@@ -310,9 +305,7 @@ delete, i.e. replace the marked area with the output of the command."
 		       (cons (current-buffer) start)
 		     (current-buffer))
 		 (open-buffer "*shell-output*")))
-       (proc (make-process output nil
-			   (file-name-directory (buffer-file-name))
-			   shell-file-name (list "-c" command)))
+       (proc (make-process output nil nil shell-file-name (list "-c" command)))
        error-output
        result
        used-message)
