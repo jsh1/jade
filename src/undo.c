@@ -145,7 +145,7 @@ undo_push_deletion(TX *tx, VALUE start, VALUE end)
 	return(string);
     }
     else
-	return VAL(null_string);
+	return null_string();
 }
 
 /* Adds an insertion between START and END to the TX buffer's undo-list.
@@ -213,8 +213,10 @@ undo_end_of_command(void)
     }
 }
 
+DEFSTRING(nothing_to_undo, "Nothing to undo!");
+
 _PR VALUE cmd_undo(VALUE tx, VALUE arg);
-DEFUN_INT("undo", cmd_undo, subr_undo, (VALUE tx, VALUE arg), V_Subr2, DOC_undo, "\np") /*
+DEFUN_INT("undo", cmd_undo, subr_undo, (VALUE tx, VALUE arg), V_Subr2, DOC_undo, DS_NL "p") /*
 ::doc:undo::
 undo [BUFFER] [ARG]
 
@@ -240,8 +242,7 @@ taken from the prefix argument.
     }
     if(NILP(VTX(tx)->tx_ToUndoList))
     {
-	static DEFSTRING(nothing, "Nothing to undo!");
-	return(cmd_signal(sym_error, LIST_1(VAL(nothing))));
+	return(cmd_signal(sym_error, LIST_1(VAL(&nothing_to_undo))));
     }
     in_undo = TRUE;
     last_undid_tx = VTX(tx);

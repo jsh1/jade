@@ -333,7 +333,7 @@ area is written.
 }
 
 _PR VALUE cmd_write_buffer_area(VALUE start, VALUE end, VALUE file, VALUE tx);
-DEFUN_INT("write-buffer-area", cmd_write_buffer_area, subr_write_buffer_area, (VALUE start, VALUE end, VALUE file, VALUE tx), V_Subr4, DOC_write_buffer_area, "m\nM\nFWrite block to file:") /*
+DEFUN_INT("write-buffer-area", cmd_write_buffer_area, subr_write_buffer_area, (VALUE start, VALUE end, VALUE file, VALUE tx), V_Subr4, DOC_write_buffer_area, "m" DS_NL "M" DS_NL "FWrite block to file:") /*
 ::doc:write_buffer_area::
 write-buffer-area START-POS END-POS [FILE] [BUFFER]
 
@@ -470,6 +470,7 @@ Return the contents of file FILE-NAME.
     return(read_file(VSTR(file)));
 }
 
+DEFSTRING(cant_open, "Can't open file");
 _PR VALUE cmd_read_file_from_to(VALUE file, VALUE offset, VALUE ch);
 DEFUN("read-file-from-to", cmd_read_file_from_to, subr_read_file_from_to, (VALUE file, VALUE offset, VALUE ch), V_Subr3, DOC_read_file_from_to) /*
 ::doc:read_file_from_to::
@@ -510,8 +511,7 @@ error:
     }
     else
     {
-	static DEFSTRING(str, "Can't open file");
-	return(cmd_signal(sym_file_error, list_2(VAL(str), file)));
+	return(cmd_signal(sym_file_error, list_2(VAL(&cant_open), file)));
     }
     return(str);
 }

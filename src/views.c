@@ -52,6 +52,7 @@ VW *view_chain, *curr_vw;
    used. */
 _PR TX *mb_unused_buffer;
 TX *mb_unused_buffer;
+DEFSTRING(unused_mb, "*unused-minibuf*");
 
 /* Copy some preferences from SRC to DEST; SRC may be null */
 static void
@@ -74,6 +75,8 @@ copy_view_prefs(VW *dest, VW *src)
 #endif
     }
 }
+
+DEFSTRING(too_few_lines, "Too few lines to split");
 
 /* Create a new view. SIBLING if non-null is the view to split into
    half to create space. PARENT if non-null is the window to install it
@@ -145,10 +148,9 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	{
 	    if(parent->w_MaxY < lines + 2)
 	    {
-		static DEFSTRING(too_few, "Too few lines to split");
 	    size_error:
 		cmd_signal(sym_window_error,
-			   list_2(VAL(parent), VAL(too_few)));
+			   list_2(VAL(parent), VAL(&too_few_lines)));
 		return NULL;
 	    }
 	}
@@ -159,7 +161,7 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
     if(vw != NULL)
     {
 	memset(vw, 0, sizeof(VW));
-	vw->vw_Type = V_View;
+	vw->vw_Car = V_View;
 	vw->vw_Next = view_chain;
 	view_chain = vw;
 	vw->vw_Win = parent;
@@ -267,6 +269,9 @@ the number of lines desired in the new view.
 			 INTP(lines) ? VINT(lines) : 0, FALSE));
 }
 
+DEFSTRING(sole_view, "Can't kill the sole view in a window");
+DEFSTRING(mini_view, "Can't kill minibuffer view");
+
 _PR VALUE cmd_destroy_view(VALUE view);
 DEFUN("destroy-view", cmd_destroy_view, subr_destroy_view, (VALUE view), V_Subr1, DOC_destroy_view) /*
 ::doc:destroy_view::
@@ -281,14 +286,12 @@ views (minibuffer and one other) in any window.
     if(vw->vw_Win->w_ViewCount <= 2)
     {
 	/* Only two views are left. Don't destroy it. */
-	static DEFSTRING(sole_view, "Can't kill the sole view in a window");
-	return cmd_signal(sym_window_error, list_2(VAL(sole_view), VAL(vw)));
+	return cmd_signal(sym_window_error, list_2(VAL(&sole_view), VAL(vw)));
     }
     else if(vw->vw_Flags & VWFF_MINIBUF)
     {
 	/* Can't kill the minibuffer */
-	static DEFSTRING(mini_view, "Can't kill minibuffer view");
-	return cmd_signal(sym_window_error, list_2(VAL(mini_view), VAL(vw)));
+	return cmd_signal(sym_window_error, list_2(VAL(&mini_view), VAL(vw)));
     }
     cmd_call_hook(sym_destroy_view_hook, LIST_1(VAL(vw)), sym_nil);
     sys_kill_vw(vw);
@@ -823,6 +826,9 @@ the current view).
 		    MAKE_INT(VVIEW(vw)->vw_MaxY));
 }
 
+DEFSTRING(no_view, "No view to expand into");
+DEFSTRING(no_room, "Not enough room");
+
 _PR VALUE cmd_set_view_dimensions(VALUE vw, VALUE cols, VALUE rows);
 DEFUN("set-view-dimensions", cmd_set_view_dimensions, subr_set_view_dimensions, (VALUE vw, VALUE cols, VALUE rows), V_Subr3, DOC_set_view_dimensions) /*
 ::doc:set_view_dimensions::
@@ -845,14 +851,12 @@ the COLUMNS parameter is always ignored (for the moment).
     sibling = VVIEW(vw)->vw_NextView;
     if(sibling == 0 || sibling->vw_Flags & VWFF_MINIBUF)
     {
-	static DEFSTRING(no_view, "No view to expand into");
-	return cmd_signal(sym_window_error, list_2(VAL(no_view), vw));
+	return cmd_signal(sym_window_error, list_2(VAL(&no_view), vw));
     }
     new_sibling_height = sibling->vw_MaxY - (VINT(rows) - VVIEW(vw)->vw_MaxY);
     if(new_sibling_height < 1 || VINT(rows) < 1)
     {
-	static DEFSTRING(no_room, "Not enough room");
-	return cmd_signal(sym_window_error, list_2(VAL(no_room), vw));
+	return cmd_signal(sym_window_error, list_2(VAL(&no_room), vw));
     }
     VVIEW(vw)->vw_MaxY = VINT(rows);
     sibling->vw_MaxY = new_sibling_height;
@@ -990,8 +994,7 @@ If TEXT is the symbol nil, the normal behaviour is reinstated.
 void
 views_init(void)
 {
-    static DEFSTRING(unused_mb, "*unused-minibuf*");
-    mb_unused_buffer = VTX(cmd_make_buffer(VAL(unused_mb), sym_nil, sym_t));
+    mb_unused_buffer = VTX(cmd_make_buffer(VAL(&unused_mb), sym_nil, sym_t));
     cmd_set_buffer_special(VAL(mb_unused_buffer), sym_t);
     cmd_set_buffer_read_only(VAL(mb_unused_buffer), sym_t);
 
@@ -1042,9 +1045,9 @@ view_sweep(void)
     while(vw)
     {
 	VW *next = vw->vw_Next;
-	if(GC_NORMAL_MARKEDP(VAL(vw)))
+	if(GC_CELL_MARKEDP(VAL(vw)))
 	{
-	    GC_CLR_NORMAL(VAL(vw));
+	    GC_CLR_CELL(VAL(vw));
 	    vw->vw_Next = view_chain;
 	    view_chain = vw;
 	}
@@ -1067,7 +1070,7 @@ view_prin(VALUE stream, VALUE vw)
 	if(VVIEW(vw)->vw_Tx)
 	{
 	    stream_putc(stream, ' ');
-	    stream_puts(stream, VSTR(VVIEW(vw)->vw_Tx->tx_BufferName),
+	    stream_puts(stream, VPTR(VVIEW(vw)->vw_Tx->tx_BufferName),
 			-1, TRUE);
 	}
 	stream_putc(stream, '>');

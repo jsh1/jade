@@ -86,7 +86,7 @@ character after the end of the inserted text.
 }
 
 _PR VALUE cmd_delete_area(VALUE start, VALUE end, VALUE buff);
-DEFUN_INT("delete-area", cmd_delete_area, subr_delete_area, (VALUE start, VALUE end, VALUE buff), V_Subr3, DOC_delete_area, "-m\nM") /*
+DEFUN_INT("delete-area", cmd_delete_area, subr_delete_area, (VALUE start, VALUE end, VALUE buff), V_Subr3, DOC_delete_area, "-m" DS_NL "M") /*
 ::doc:delete_area::
 delete-area START-POS END-POS [BUFFER]
 
@@ -388,7 +388,7 @@ Note that the STRING really is modified, no copy is made!
     DECLARE1(string, STRINGP);
     DECLARE2(table, STRINGP);
     tablen = STRING_LEN(table);
-    if(!STRING_WRITEABLE_P(string))
+    if(!STRING_WRITABLE_P(string))
 	return(signal_arg_error(string, 1));
     str = VSTR(string);
     slen = STRING_LEN(string);

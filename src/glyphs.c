@@ -53,17 +53,15 @@ typedef char glyph_widths_t[256];
 typedef u_char glyph_glyphs_t[256][4];
 
 typedef struct _GlyphTable{
-    u_char		gt_Type;
-    u_char		gt_Flags;
+    VALUE		gt_Car;
     struct _GlyphTable *gt_Next;
     glyph_widths_t	gt_Widths;
     glyph_glyphs_t	gt_Glyphs;
 } GlyphTable;
-#define GTF_STATIC 1		/* Don't free() this table */
+#define GTF_STATIC (1 << CELL8_TYPE_BITS)	/* Don't free() this table */
 
 static GlyphTable default_glyph_table = {
-    V_GlyphTable,
-    GTF_STATIC,
+    V_GlyphTable | GTF_STATIC,
     NULL,
     {
 	2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2,
@@ -448,7 +446,7 @@ default glyph-table will be copied.
 	else
 	    srcgt = &default_glyph_table;
 	memcpy(newgt, srcgt, sizeof(GlyphTable));
-	newgt->gt_Flags &= ~GTF_STATIC;
+	newgt->gt_Car = V_GlyphTable;
 	newgt->gt_Next = gt_chain;
 	gt_chain = newgt;
 	data_after_gc += sizeof(GlyphTable);
@@ -560,11 +558,11 @@ glyphtable_sweep(void)
     while(gt)
     {
 	GlyphTable *nxt = gt->gt_Next;
-	if(!GC_NORMAL_MARKEDP(VAL(gt)) && !(gt->gt_Flags & GTF_STATIC))
+	if(!GC_CELL_MARKEDP(VAL(gt)) && !(gt->gt_Car & GTF_STATIC))
 	    FREE_OBJECT(gt);
 	else
 	{
-	    GC_CLR_NORMAL(VAL(gt));
+	    GC_CLR_CELL(VAL(gt));
 	    gt->gt_Next = gt_chain;
 	    gt_chain = gt;
 	}
@@ -599,7 +597,7 @@ glyphs_kill(void)
     while(gt)
     {
 	GlyphTable *nxt = gt->gt_Next;
-	if(!(gt->gt_Flags & GTF_STATIC))
+	if(!(gt->gt_Car & GTF_STATIC))
 	    FREE_OBJECT(gt);
 	gt = nxt;
     }

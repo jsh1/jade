@@ -66,7 +66,7 @@ Set the cursor position in the current window to the glyph position POSITION.
 }
 
 _PR VALUE cmd_center_display(VALUE vw, VALUE arg);
-DEFUN_INT("center-display", cmd_center_display, subr_center_display, (VALUE vw, VALUE arg), V_Subr2, DOC_center_display, "\nP") /*
+DEFUN_INT("center-display", cmd_center_display, subr_center_display, (VALUE vw, VALUE arg), V_Subr2, DOC_center_display, DS_NL "P") /*
 ::doc:center_display::
 center-display [VIEW] [ARG]
 
@@ -220,7 +220,7 @@ of the buffer's restriction.
 }
 
 _PR VALUE cmd_end_of_line(VALUE pos, VALUE tx, VALUE move);
-DEFUN_INT("end-of-line", cmd_end_of_line, subr_end_of_line, (VALUE pos, VALUE tx, VALUE move), V_Subr3, DOC_end_of_line, "\n\nt") /*
+DEFUN_INT("end-of-line", cmd_end_of_line, subr_end_of_line, (VALUE pos, VALUE tx, VALUE move), V_Subr3, DOC_end_of_line, DS_NL DS_NL"t") /*
 ::doc:end_of_line::
 end-of-line [POS] [BUFFER]
 
@@ -244,7 +244,7 @@ the cursor).
 }
 
 _PR VALUE cmd_start_of_line(VALUE pos, VALUE move);
-DEFUN_INT("start-of-line", cmd_start_of_line, subr_start_of_line, (VALUE pos, VALUE move), V_Subr2, DOC_start_of_line, "\nt") /*
+DEFUN_INT("start-of-line", cmd_start_of_line, subr_start_of_line, (VALUE pos, VALUE move), V_Subr2, DOC_start_of_line, DS_NL "t") /*
 ::doc:start_of_line::
 start-of-line [POS]
 
@@ -262,7 +262,7 @@ Return the position of the first character in the line pointed to by POS
 }
 
 _PR VALUE cmd_forward_line(VALUE lines, VALUE pos, VALUE move);
-DEFUN_INT("forward-line", cmd_forward_line, subr_forward_line, (VALUE lines, VALUE pos, VALUE move), V_Subr3, DOC_forward_line, "p\n\nt") /*
+DEFUN_INT("forward-line", cmd_forward_line, subr_forward_line, (VALUE lines, VALUE pos, VALUE move), V_Subr3, DOC_forward_line, "p" DS_NL DS_NL "t") /*
 ::doc:forward_line::
 forward-line [NUMBER] [POS]
 
@@ -292,7 +292,7 @@ nil is returned.
 }
 
 _PR VALUE cmd_forward_char(VALUE count, VALUE pos, VALUE tx, VALUE move);
-DEFUN_INT("forward-char", cmd_forward_char, subr_forward_char, (VALUE count, VALUE pos, VALUE tx, VALUE move), V_Subr4, DOC_forward_char, "p\n\n\nt") /*
+DEFUN_INT("forward-char", cmd_forward_char, subr_forward_char, (VALUE count, VALUE pos, VALUE tx, VALUE move), V_Subr4, DOC_forward_char, "p" DS_NL DS_NL DS_NL "t") /*
 ::doc:forward_char::
 forward-char [COUNT] [POS] [BUFFER]
 
@@ -329,7 +329,7 @@ beginning or the end of the buffer is passed, nil is returned.
 }
 
 _PR VALUE cmd_forward_tab(VALUE num, VALUE pos, VALUE size, VALUE move);
-DEFUN_INT("forward-tab", cmd_forward_tab, subr_forward_tab, (VALUE num, VALUE pos, VALUE size, VALUE move), V_Subr4, DOC_forward_tab, "p\n\n\nt") /*
+DEFUN_INT("forward-tab", cmd_forward_tab, subr_forward_tab, (VALUE num, VALUE pos, VALUE size, VALUE move), V_Subr4, DOC_forward_tab, "p" DS_NL DS_NL DS_NL "t") /*
 ::doc:forward_tab::
 forward-tab [COUNT] [POS] [TAB-SIZE]
 
@@ -371,6 +371,9 @@ undefined; negative values move towards the left hand side of the screen.
 	return(sym_nil);
 }
 
+DEFSTRING(no_brac, "No matching bracket");
+DEFSTRING(no_open_brac, "No opening bracket");
+
 static int
 find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 {
@@ -383,9 +386,6 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 	'`', '\'',
 	'<', '>'
     };
-
-    static DEFSTRING(no_brac, "No matching bracket");
-    static DEFSTRING(no_op_brac, "No opening bracket");
 
 /* Test for an escape character preceding COL in the string LINE. Beware
    that COL is referenced more than once, so no side effects please!   */
@@ -418,7 +418,7 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 		    {
 			if(--y < tx->tx_LogicalStart)
 			{
-			    cmd_signal(sym_error, LIST_1(VAL(no_brac)));
+			    cmd_signal(sym_error, LIST_1(VAL(&no_brac)));
 			    return(FALSE);
 			}
 			line--;
@@ -448,7 +448,7 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 		    {
 			if(++y >= tx->tx_LogicalEnd)
 			{
-			    cmd_signal(sym_error, LIST_1(VAL(no_brac)));
+			    cmd_signal(sym_error, LIST_1(VAL(&no_brac)));
 			    return(FALSE);
 			}
 			line++;
@@ -472,7 +472,7 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 	    return TRUE;
 	}
     }
-    cmd_signal(sym_error, LIST_1(VAL(no_op_brac)));
+    cmd_signal(sym_error, LIST_1(VAL(&no_open_brac)));
     return FALSE;
 }
 

@@ -109,7 +109,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 	memset(tx, 0, sizeof(TX));
 	if(clear_line_list(tx))
 	{
-	    tx->tx_Type = V_Buffer;
+	    tx->tx_Car = V_Buffer;
 	    tx->tx_BufferName = NILP(litName)
 	        ? cmd_make_buffer_name(name) : name;
 	    if(tx->tx_BufferName)
@@ -118,9 +118,9 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 		buffer_chain = tx;
 		data_after_gc += sizeof(TX);
 
-		tx->tx_FileName = VAL(null_string);
+		tx->tx_FileName = null_string();
 		tx->tx_MinorModeNameList = sym_nil;
-		tx->tx_MinorModeNameString = VAL(null_string);
+		tx->tx_MinorModeNameString = null_string();
 		tx->tx_SavedBlockStatus = -1;
 		tx->tx_TabSize = 8;
 		tx->tx_LocalVariables = sym_nil;
@@ -153,11 +153,11 @@ non-resident.
     DECLARE1(tx, BUFFERP);
     make_marks_non_resident(VTX(tx));
     clear_line_list(VTX(tx));
-    VTX(tx)->tx_FileName = VAL(null_string);
-    VTX(tx)->tx_BufferName = VAL(null_string);
+    VTX(tx)->tx_FileName = null_string();
+    VTX(tx)->tx_BufferName = null_string();
     VTX(tx)->tx_ModeName = LISP_NULL;
     VTX(tx)->tx_MinorModeNameList = sym_nil;
-    VTX(tx)->tx_MinorModeNameString = VAL(null_string);
+    VTX(tx)->tx_MinorModeNameString = null_string();
     VTX(tx)->tx_Changes = 0;
     VTX(tx)->tx_LocalVariables = sym_nil;
     VTX(tx)->tx_GlyphTable = cmd_default_glyph_table();
@@ -179,7 +179,7 @@ buffer_sweep(void)
     while(tx)
     {
 	TX *nxt = tx->tx_Next;
-	if(!GC_NORMAL_MARKEDP(VAL(tx)))
+	if(!GC_CELL_MARKEDP(VAL(tx)))
 	{
 	    make_marks_non_resident(tx);
 	    kill_line_list(tx);
@@ -187,7 +187,7 @@ buffer_sweep(void)
 	}
 	else
 	{
-	    GC_CLR_NORMAL(VAL(tx));
+	    GC_CLR_CELL(VAL(tx));
 	    tx->tx_Next = buffer_chain;
 	    buffer_chain = tx;
 	}
@@ -198,16 +198,16 @@ void
 buffer_prin(VALUE strm, VALUE obj)
 {
     stream_puts(strm, "#<buffer ", -1, FALSE);
-    stream_puts(strm, VSTR(VTX(obj)->tx_BufferName), -1, TRUE);
+    stream_puts(strm, VPTR(VTX(obj)->tx_BufferName), -1, TRUE);
     stream_putc(strm, '>');
 }
 
-static DEFSTRING(first_buffer_name, "*jade*");
+DEFSTRING(first_buffer_name, "*jade*");
 
 TX *
 first_buffer(void)
 {
-    TX *tx = VTX(cmd_make_buffer(VAL(first_buffer_name), sym_nil, sym_t));
+    TX *tx = VTX(cmd_make_buffer(VAL(&first_buffer_name), sym_nil, sym_t));
     if(!curr_win)
     {
 	curr_win = VWIN(cmd_make_window(sym_nil, sym_nil, sym_nil, sym_nil));
@@ -706,7 +706,7 @@ Returns t if ARG is a buffer.
 }
 
 _PR VALUE cmd_restrict_buffer(VALUE start, VALUE end, VALUE tx);
-DEFUN_INT("restrict-buffer", cmd_restrict_buffer, subr_restrict_buffer, (VALUE start, VALUE end, VALUE tx), V_Subr3, DOC_restrict_buffer, "-m\nM") /*
+DEFUN_INT("restrict-buffer", cmd_restrict_buffer, subr_restrict_buffer, (VALUE start, VALUE end, VALUE tx), V_Subr3, DOC_restrict_buffer, "-m" DS_NL "M") /*
 ::doc:restrict_buffer::
 restrict-buffer START END [BUFFER]
 
@@ -871,7 +871,7 @@ List of strings naming all minor-modes enabled in this buffer.
 	val = sym_nil;
     tx->tx_MinorModeNameList = val;
     if(NILP(val))
-	tx->tx_MinorModeNameString = VAL(null_string);
+	tx->tx_MinorModeNameString = null_string();
     else
     {
 	int len;
@@ -913,7 +913,7 @@ make_marks_resident(TX *newtx)
 	if(same_files(VSTR(newtx->tx_FileName), VSTR(mk->mk_File.name)))
 	{
 	    mk->mk_File.tx = newtx;
-	    mk->mk_Resident = TRUE;
+	    mk->mk_Flags |= MKFF_RESIDENT;
 	    mk->mk_Next = newtx->tx_MarkChain;
 	    newtx->tx_MarkChain = mk;
 	}
@@ -935,7 +935,7 @@ make_marks_non_resident(TX *oldtx)
     {
 	nxt = mk->mk_Next;
 	mk->mk_File.name = oldtx->tx_FileName;
-	mk->mk_Resident = FALSE;
+	mk->mk_Flags &= ~MKFF_RESIDENT;
 	mk->mk_Next = non_resident_mark_chain;
 	non_resident_mark_chain = mk;
 	mk = nxt;
@@ -949,7 +949,7 @@ static void
 unchain_mark(Mark *mk)
 {
     Mark **headp, *this;
-    if(!mk->mk_Resident)
+    if(!(mk->mk_Flags & MKFF_RESIDENT))
 	headp = &non_resident_mark_chain;
     else
 	headp = &(mk->mk_File.tx->tx_MarkChain);
@@ -975,14 +975,14 @@ mark_sweep(void)
     while(mk)
     {
 	Mark *nxt = mk->mk_NextAlloc;
-	if(!GC_NORMAL_MARKEDP(VAL(mk)))
+	if(!GC_CELL_MARKEDP(VAL(mk)))
 	{
 	    unchain_mark(mk);
 	    FREE_OBJECT(mk);
 	}
 	else
 	{
-	    GC_CLR_NORMAL(VAL(mk));
+	    GC_CLR_CELL(VAL(mk));
 	    mk->mk_NextAlloc = mark_chain;
 	    mark_chain = mk;
 	}
@@ -997,11 +997,11 @@ mark_cmp(VALUE v1, VALUE v2)
     if(VTYPE(v1) == VTYPE(v2))
     {
 	u_char *name1, *name2;
-	if(VMARK(v1)->mk_Resident)
+	if(VMARK(v1)->mk_Flags & MKFF_RESIDENT)
 	    name1 = VSTR(VMARK(v1)->mk_File.tx->tx_FileName);
 	else
 	    name1 = VSTR(VMARK(v1)->mk_File.name);
-	if(VMARK(v2)->mk_Resident)
+	if(VMARK(v2)->mk_Flags & MKFF_RESIDENT)
 	    name2 = VSTR(VMARK(v2)->mk_File.tx->tx_FileName);
 	else
 	    name2 = VSTR(VMARK(v2)->mk_File.name);
@@ -1019,12 +1019,12 @@ mark_prin(VALUE strm, VALUE obj)
 {
     u_char tbuf[40];
     stream_puts(strm, "#<mark ", -1, FALSE);
-    if(VMARK(obj)->mk_Resident)
+    if(VMARK(obj)->mk_Flags & MKFF_RESIDENT)
 	buffer_prin(strm, VAL(VMARK(obj)->mk_File.tx));
     else
     {
 	stream_putc(strm, '"');
-	stream_puts(strm, VSTR(VMARK(obj)->mk_File.name), -1, TRUE);
+	stream_puts(strm, VPTR(VMARK(obj)->mk_File.name), -1, TRUE);
 	stream_putc(strm, '"');
     }
     sprintf(tbuf, " #<pos %ld %ld>>",
@@ -1052,7 +1052,7 @@ updated as the file changes -- it will always point to the same character
     Mark *mk = ALLOC_OBJECT(sizeof(Mark));
     if(mk != NULL)
     {
-	mk->mk_Type = V_Mark;
+	mk->mk_Car = V_Mark;
 	mk->mk_NextAlloc = mark_chain;
 	mark_chain = mk;
 	data_after_gc += sizeof(Mark);
@@ -1062,14 +1062,14 @@ updated as the file changes -- it will always point to the same character
 	    VALUE tx;
 	    if((tx = cmd_get_file_buffer(buffer)) && BUFFERP(tx))
 	    {
-		mk->mk_Resident = TRUE;
+		mk->mk_Flags |= MKFF_RESIDENT;
 		mk->mk_File.tx = VTX(tx);
 		mk->mk_Next = VTX(tx)->tx_MarkChain;
 		VTX(tx)->tx_MarkChain = mk;
 	    }
 	    else
 	    {
-		mk->mk_Resident = FALSE;
+		mk->mk_Flags |= MKFF_RESIDENT;
 		mk->mk_File.name = buffer;
 		mk->mk_Next = non_resident_mark_chain;
 		non_resident_mark_chain = mk;
@@ -1079,7 +1079,7 @@ updated as the file changes -- it will always point to the same character
 	{
 	    if(!BUFFERP(buffer))
 		buffer = VAL(curr_vw->vw_Tx);
-	    mk->mk_Resident = TRUE;
+	    mk->mk_Flags |= MKFF_RESIDENT;
 	    mk->mk_File.tx = VTX(buffer);
 	    mk->mk_Next = VTX(buffer)->tx_MarkChain;
 	    VTX(buffer)->tx_MarkChain = mk;
@@ -1103,7 +1103,7 @@ Sets the position which MARK points to POS in FILE-NAME or BUFFER.
     if(BUFFERP(buffer) || STRINGP(buffer))
     {
 	Mark *mk, **chain;
-	if(VMARK(mark)->mk_Resident)
+	if(VMARK(mark)->mk_Flags & MKFF_RESIDENT)
 	    chain = &(VMARK(mark)->mk_File.tx->tx_MarkChain);
 	else
 	    chain = &non_resident_mark_chain;
@@ -1125,12 +1125,11 @@ Sets the position which MARK points to POS in FILE-NAME or BUFFER.
 	switch(VTYPE(buffer))
 	{
 	    VALUE tmp;
-	case V_StaticString:
-	case V_DynamicString:
+	case V_String:
 	    tmp = cmd_get_file_buffer(buffer);
 	    if((tmp == LISP_NULL) || NILP(tmp))
 	    {
-		VMARK(mark)->mk_Resident = FALSE;
+		VMARK(mark)->mk_Flags &= ~MKFF_RESIDENT;
 		VMARK(mark)->mk_Next = non_resident_mark_chain;
 		non_resident_mark_chain = VMARK(mark);
 		break;
@@ -1138,7 +1137,7 @@ Sets the position which MARK points to POS in FILE-NAME or BUFFER.
 	    VMARK(mark)->mk_File.name = tmp;
 	    /* FALL THROUGH */
 	case V_Buffer:
-	    VMARK(mark)->mk_Resident = TRUE;
+	    VMARK(mark)->mk_Flags |= MKFF_RESIDENT;
 	    VMARK(mark)->mk_Next = VMARK(mark)->mk_File.tx->tx_MarkChain;
 	    VMARK(mark)->mk_File.tx->tx_MarkChain = VMARK(mark);
 	    break;
@@ -1182,7 +1181,7 @@ Returns t if the file that MARK points to is in a buffer.
 ::end:: */
 {
     DECLARE1(mark, MARKP);
-    if(VMARK(mark)->mk_Resident)
+    if(VMARK(mark)->mk_Flags & MKFF_RESIDENT)
 	return(sym_t);
     return(sym_nil);
 }

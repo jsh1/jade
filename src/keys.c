@@ -102,7 +102,7 @@ findkey(VALUE km, u_long code, u_long mods)
     switch(VTYPE(km))
     {
     case V_Vector:
-	if(VVECT(km)->size != KEYTAB_SIZE)
+	if(VVECT_LEN(km) != KEYTAB_SIZE)
 	    return LISP_NULL;
 	km = VVECTI(km, KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE);
 	break;
@@ -383,7 +383,7 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
     if(!CONSP(args))
 	return LISP_NULL;
     km = VCAR(args);
-    if(!((VECTORP(km) && VVECT(km)->size == KEYTAB_SIZE)
+    if(!((VECTORP(km) && VVECT_LEN(km) == KEYTAB_SIZE)
        || CONSP(km)))
 	return(signal_arg_error(km, 1));
     args = VCDR(args);
@@ -454,6 +454,7 @@ usually used to chain together multi-key bindings.
     return(next_keymap_path);
 }
 
+DEFSTRING(not_in_handler, "Not in event handler");
 _PR VALUE cmd_current_event_string(void);
 DEFUN("current-event-string", cmd_current_event_string, subr_current_event_string, (void), V_Subr0, DOC_current_event_string) /*
 ::doc:current_event_string::
@@ -466,14 +467,11 @@ a Lisp function hadn't been called instead.
     u_char buff[256];
     int len;
     if(!current_os_event)
-    {
-	static DEFSTRING(str, "Not in event handler");
-	return(cmd_signal(sym_error, LIST_1(VAL(str))));
-    }
+	return(cmd_signal(sym_error, LIST_1(VAL(&not_in_handler))));
     len = cook_key(current_os_event, buff, 256 - 1);
     if(len > 0)
 	return(string_dupn(buff, len));
-    return(VAL(null_string));
+    return(null_string());
 }
 
 _PR VALUE cmd_current_event(void);
@@ -569,7 +567,7 @@ keymapp ARG
 Returns t if ARG can be used as a keymap.
 ::end:: */
 {
-    if((VECTORP(arg) && VVECT(arg)->size == KEYTAB_SIZE)
+    if((VECTORP(arg) && VVECT_LEN(arg) == KEYTAB_SIZE)
        || (CONSP(arg) && VCAR(arg) == sym_keymap))
 	return(sym_t);
     return(sym_nil);

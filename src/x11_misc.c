@@ -34,7 +34,7 @@ _PR void x11_lose_selection(XSelectionClearEvent *ev);
 _PR void x11_window_lose_selections(Window win);
 _PR void x11_misc_init(void);
 
-static DEFSTRING(no_cut_buf, "No cut buffer");
+DEFSTRING(no_cut_buf, "No cut buffer");
 
 int
 write_clip(int buffer, char *str, int len)
@@ -44,7 +44,7 @@ write_clip(int buffer, char *str, int len)
 	XStoreBuffer(x11_display, str, len, buffer);
     else
     {
-	cmd_signal(sym_error, list_2(VAL(no_cut_buf), MAKE_INT(buffer)));
+	cmd_signal(sym_error, list_2(VAL(&no_cut_buf), MAKE_INT(buffer)));
 	rc = FALSE;
     }
     return(rc);
@@ -62,7 +62,7 @@ read_clip(int buffer)
 	    return(string_dupn(mem, len));
 	return LISP_NULL;
     }
-    cmd_signal(sym_error, list_2(VAL(no_cut_buf), MAKE_INT(buffer)));
+    cmd_signal(sym_error, list_2(VAL(&no_cut_buf), MAKE_INT(buffer)));
     return LISP_NULL;
 }
 
@@ -90,7 +90,7 @@ static struct selection_info {
 static DEFSYM(xa_primary, "xa-primary");
 static DEFSYM(xa_secondary, "xa-secondary");
 
-static DEFSTRING(no_atom, "No atom for symbol");
+DEFSTRING(no_atom, "No atom for symbol");
 
 static INLINE int
 selection_atom_to_index(Atom atom)
@@ -168,7 +168,7 @@ otherwise.
 	    return sym_nil;
 	}
     }
-    return cmd_signal(sym_error, list_2(VAL(no_atom), sel));
+    return cmd_signal(sym_error, list_2(VAL(&no_atom), sel));
 }
 
 static Bool
@@ -324,7 +324,7 @@ If the selection currently has no value, nil is returned.
 	}
 	return res;
     }
-    return cmd_signal(sym_error, list_2(VAL(no_atom), sel));
+    return cmd_signal(sym_error, list_2(VAL(&no_atom), sel));
 }
 
 void
@@ -432,7 +432,7 @@ by Jade, relinquish ownership.
 	}
 	return sym_nil;
     }
-    return cmd_signal(sym_error, list_2(VAL(no_atom), sel));
+    return cmd_signal(sym_error, list_2(VAL(&no_atom), sel));
 }
 
 void

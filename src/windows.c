@@ -76,7 +76,6 @@ copy_win_prefs(WIN *dest, WIN *src)
     }
     else
     {
-	dest->w_Flags = 0;
 	dest->w_FontName = def_font_str;
 #ifdef HAVE_AMIGA
 	dest->w_WindowSys.ws_FontSize = ami_def_font_size;
@@ -108,7 +107,7 @@ active window.
     if(w != NULL)
     {
 	memset(w, 0, sizeof(WIN));
-	w->w_Type = V_Window;
+	w->w_Car = V_Window;
 	copy_win_prefs(w, curr_win);
 	if(sys_set_font(w))
 	{
@@ -225,7 +224,7 @@ Uniconifies the current window.
 }
 
 _PR VALUE cmd_next_window(VALUE win, VALUE activ);
-DEFUN_INT("next-window", cmd_next_window, subr_next_window, (VALUE win, VALUE activ), V_Subr2, DOC_next_window, "!\np") /*
+DEFUN_INT("next-window", cmd_next_window, subr_next_window, (VALUE win, VALUE activ), V_Subr2, DOC_next_window, "!" DS_NL "p") /*
 ::doc:next_window::
 next-window [WINDOW] [ACTIVATE]
 
@@ -691,9 +690,9 @@ window_sweep(void)
     while(w)
     {
 	WIN *next = w->w_Next;
-	if(GC_NORMAL_MARKEDP(VAL(w)))
+	if(GC_CELL_MARKEDP(VAL(w)))
 	{
-	    GC_CLR_NORMAL(VAL(w));
+	    GC_CLR_CELL(VAL(w));
 	    w->w_Next = win_chain;
 	    win_chain = w;
 	}

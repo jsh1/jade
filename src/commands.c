@@ -46,7 +46,7 @@ static DEFSYM(prompt_for_lisp, "prompt-for-lisp");
 static DEFSYM(read_event, "read-event");
 
 static DEFSYM(interactive, "interactive");
-static DEFSTRING(err_interactive, "Bad interactive specification");
+DEFSTRING(err_interactive, "Bad interactive specification");
 
 /* Prefix argument for the next command and the current command. */
 static VALUE prefix_arg, current_prefix_arg;
@@ -129,8 +129,7 @@ interactive_spec(VALUE cmd)
 	fun = cmd;
     if(!VOIDP(fun) && !NILP(fun))
     {
-	if(NORMALP(fun)
-	   && (VNORMAL_TYPE(fun) >= V_Subr0) && (VNORMAL_TYPE(fun) <= V_SubrN))
+	if((VTYPE(fun) >= V_Subr0) && (VTYPE(fun) <= V_SubrN))
 	    spec = VSUBR(fun)->int_spec;
 	else if(CONSP(fun))
 	{
@@ -180,8 +179,11 @@ interactive_spec(VALUE cmd)
     return(spec);
 }
 
+DEFSTRING(no_block, "No block marked");
+DEFSTRING(nil_arg, "Nil argument to command");
+DEFSTRING(not_command, "Not a command");
 _PR VALUE cmd_call_command(VALUE cmd, VALUE arg);
-DEFUN_INT("call-command", cmd_call_command, subr_call_command, (VALUE cmd, VALUE cmd_arg), V_Subr2, DOC_call_command, "CEnter command:\nP") /*
+DEFUN_INT("call-command", cmd_call_command, subr_call_command, (VALUE cmd, VALUE cmd_arg), V_Subr2, DOC_call_command, "CEnter command:" DS_NL "P") /*
 ::doc:call_command::
 call-command COMMAND [PREFIX-ARG]
 
@@ -219,8 +221,7 @@ any entered arg is given to the invoked COMMAND.
 	bool clear_block = FALSE;
 	if(int_spec == LISP_NULL)
 	{
-	    static DEFSTRING(not_command, "Not a command");
-	    cmd_signal(sym_error, list_2(VAL(not_command), cmd));
+	    cmd_signal(sym_error, list_2(VAL(&not_command), cmd));
 	    goto exit;
 	}
 	PUSHGC(gc_cmd, cmd);
@@ -328,9 +329,8 @@ any entered arg is given to the invoked COMMAND.
 			                 : cmd_block_end(sym_nil);
 			if(!arg || NILP(arg))
 			{
-			    static DEFSTRING(no_block, "No block marked");
 			    arg = LISP_NULL;
-			    cmd_signal(sym_error, LIST_1(VAL(no_block)));
+			    cmd_signal(sym_error, LIST_1(VAL(&no_block)));
 			}
 			break;
 		    case 'n':
@@ -383,8 +383,7 @@ any entered arg is given to the invoked COMMAND.
 		    }
 		    if(!can_be_nil && NILP(arg))
 		    {
-			static DEFSTRING(nil_arg, "Nil argument to command");
-			cmd_signal(sym_error, list_2(VAL(nil_arg), cmd));
+			cmd_signal(sym_error, list_2(VAL(&nil_arg), cmd));
 			args = LISP_NULL;
 			break;
 		    }
@@ -528,8 +527,7 @@ Returns t if COMMAND may be called interactively.
 	cmd = cmd_symbol_function(cmd, sym_t);
     if(!VOIDP(cmd) && !NILP(cmd))
     {
-	if((NORMALP(cmd)
-	    && (VTYPE(cmd) >= V_Subr0) && (VTYPE(cmd) <= V_SubrN))
+	if(((VTYPE(cmd) >= V_Subr0) && (VTYPE(cmd) <= V_SubrN))
 	   && (VSUBR(cmd)->int_spec != LISP_NULL))
 	    return(sym_t);
 	else if(CONSP(cmd))

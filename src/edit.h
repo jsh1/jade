@@ -21,20 +21,18 @@
 #ifndef _EDIT_H
 #define _EDIT_H
 
-/*
- * Line structure -- an array of these is in the TX->tx_Lines
- */
+
+/* Line structure -- an array of these is in the TX->tx_Lines */
 typedef struct LINE {
     u_char	   *ln_Line;
     long	    ln_Strlen;	/* includes '\0' */
 } LINE;
 
-/*
- * Each bookmark has one of these in the tx_Marks list
- */
+
+/* Each bookmark has one of these in the tx_Marks list */
 typedef struct _Mark {
-    u_char	    mk_Type;
-    bool	    mk_Resident;
+    VALUE	    mk_Car;
+#define mk_Flags mk_Car
 
     /* When the file is resident this node is linked into its tx_Marks list,
        otherwise it's in a list of all non-resident marks.  */
@@ -55,13 +53,13 @@ typedef struct _Mark {
     }		    mk_File;
 } Mark;
 
-/*
- * A buffer, strangely called `TX'
- */
+#define MKFF_RESIDENT (1 << CELL8_TYPE_BITS)
+
+
+/* A buffer, strangely called `TX' */
 typedef struct _TX {
-    u_char	    tx_Type;
-    u_char	    tx_Flags;
-    u_char	    tx_Pad1, tx_Pad2;
+    VALUE	    tx_Car;
+#define tx_Flags tx_Car
 
     struct _TX	   *tx_Next;
     Mark	   *tx_MarkChain;
@@ -108,22 +106,27 @@ typedef struct _TX {
     char	    tx_SavedBlockStatus;
 } TX;
 
-/* For tx_Flags */
-#define TXFF_RDONLY   1	    /* No modifications to file */
-#define TXFF_SPECIAL  2	    /* No mod flag, buffer never killed. */
-#define TXFF_REFRESH_ALL 4  /* *All* buffer has changed. */
-#define TXFF_NO_UNDO  8	    /* No recording of undo information */
-#define TXFF_REFRESH_STATUS 16 /* Views displaying this buffer need
-				  to update their status lines. */
+/* No modifications to file */
+#define TXFF_RDONLY		(1 << (CELL8_TYPE_BITS + 0))
 
-/*
- * Each view in a window is like this
- */
+/* No mod flag, buffer never killed. */
+#define TXFF_SPECIAL		(1 << (CELL8_TYPE_BITS + 1))
+
+/* *All* buffer has changed. */
+#define TXFF_REFRESH_ALL	(1 << (CELL8_TYPE_BITS + 2))
+
+/* No recording of undo information */
+#define TXFF_NO_UNDO		(1 << (CELL8_TYPE_BITS + 3))
+
+/* Views displaying this buffer need to update their status lines. */
+#define TXFF_REFRESH_STATUS	(1 << (CELL8_TYPE_BITS + 4))
+
+
+/* Each view in a window is like this */
 typedef struct _VW
 {
-    u_char	    vw_Type;
-    u_char	    vw_Flags;
-    u_char	    vw_Pad1, vw_Pad2;
+    VALUE	    vw_Car;
+#define vw_Flags vw_Car
 
     struct _VW	   *vw_Next;
     TX		   *vw_Tx;
@@ -170,21 +173,29 @@ typedef struct _VW
     u_short	    vw_MaxScroll;
 } VW;
 
-/* For vw_Flags	 */
-#define VWFF_RECTBLOCKS     1	/* mark rectangular blocks */
-#define VWFF_FORCE_REFRESH  2	/* full redraw next time */
-#define VWFF_REFRESH_BLOCK  4	/* redraw the block */
-#define VWFF_REFRESH_STATUS 8	/* redraw the status line */
-#define VWFF_MINIBUF	    16	/* view is of a minibuffer */
-#define VWFF_CUSTOM_STATUS  32	/* status text set by user */
+/* mark rectangular blocks */
+#define VWFF_RECTBLOCKS		(1 << (CELL8_TYPE_BITS + 0))
 
-/*
- * Each window is represented by one of these
- */
+/* full redraw next time */
+#define VWFF_FORCE_REFRESH	(1 << (CELL8_TYPE_BITS + 1))
+
+/* redraw the block */
+#define VWFF_REFRESH_BLOCK	(1 << (CELL8_TYPE_BITS + 2))
+
+/* redraw the status line */
+#define VWFF_REFRESH_STATUS	(1 << (CELL8_TYPE_BITS + 3))
+
+/* view is of a minibuffer */
+#define VWFF_MINIBUF		(1 << (CELL8_TYPE_BITS + 4))
+
+/* status text set by user */
+#define VWFF_CUSTOM_STATUS	(1 << (CELL8_TYPE_BITS + 5))
+
+
+/* Each window is represented by one of these */
 typedef struct _WIN {
-    u_char w_Type;
-    u_char w_Flags;
-    u_char w_Pad1, w_Pad2;
+    VALUE w_Car;
+#define w_Flags w_Car
 
     struct _WIN *w_Next;
 
@@ -211,11 +222,14 @@ typedef struct _WIN {
     short w_FontX, w_FontY;
 } WIN;
 
-/* For w_Flags */
-#define WINFF_FORCE_REFRESH 1	/* refresh whole window */
-#define WINFF_SLEEPING	    2	/* window is iconified */
-#define WINFF_MESSAGE	    4	/* a message is currently displayed
-				   in the minibuffer */
+/* refresh whole window */
+#define WINFF_FORCE_REFRESH	(1 << (CELL8_TYPE_BITS + 0))
+
+/* window is iconified */
+#define WINFF_SLEEPING		(1 << (CELL8_TYPE_BITS + 1))
+
+/* a message is currently displayed in the minibuffer */
+#define WINFF_MESSAGE		(1 << (CELL8_TYPE_BITS + 2))
 
 /* True when the minibuffer in WIN is in use. */
 #define MINIBUFFER_ACTIVE_P(win) \

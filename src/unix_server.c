@@ -43,6 +43,8 @@ static int socket_fd = -1;
 /* pathname of the socket. */
 static VALUE socket_name;
 
+DEFSTRING(read_error, "server_make_connection:read");
+
 static void
 server_accept_connection(int unused_fd)
 {
@@ -65,9 +67,8 @@ server_accept_connection(int unused_fd)
 	VSTR(filename)[filenamelen] = 0;
 	if(read(confd, &tmp, sizeof(u_long)) != sizeof(u_long))
 	{
-	    static DEFSTRING(err, "server_make_connection:read");
 	readerror:
-	    cmd_signal(sym_error, LIST_1(VAL(err)));
+	    cmd_signal(sym_error, LIST_1(VAL(&read_error)));
 	    return;
 	}
 	linenum = MAKE_INT(tmp - 1);
@@ -94,6 +95,9 @@ t if the edit-server is open.
     return(sym_nil);
 }
 
+DEFSTRING(unexp_name, "~/" JADE_SOCK_NAME);
+DEFSTRING(no_name, "Can't make socket name");
+
 _PR VALUE cmd_server_open(void);
 DEFUN_INT("server-open", cmd_server_open, subr_server_open, (void), V_Subr0, DOC_server_open, "") /*
 ::doc:server_open::
@@ -103,11 +107,10 @@ Creates the socket (or whatever) so that the editor's client program can
 send us messages.
 ::end:: */
 {
-    static DEFSTRING(unexp_name, "~/" JADE_SOCK_NAME);
     VALUE name;
     if(socket_fd >= 0)
 	return(sym_t);
-    name = cmd_expand_file_name(VAL(unexp_name), sym_nil);
+    name = cmd_expand_file_name(VAL(&unexp_name), sym_nil);
     if(name && STRINGP(name))
     {
 	VALUE tmp = cmd_file_exists_p(name);
@@ -141,8 +144,7 @@ send us messages.
 	}
 	else
 	{
-	    static DEFSTRING(no_name, "Can't make socket name");
-	    cmd_signal(sym_error, LIST_1(VAL(no_name)));
+	    cmd_signal(sym_error, LIST_1(VAL(&no_name)));
 	}
 	close(socket_fd);
 	socket_fd = -1;

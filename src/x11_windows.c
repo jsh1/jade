@@ -326,6 +326,8 @@ sys_unset_font(WIN *w)
     }
 }
 
+DEFSTRING(no_font, "Can't open font");
+
 _PR VALUE cmd_set_font(VALUE fontname, VALUE win);
 DEFUN_INT("set-font", cmd_set_font, subr_set_font, (VALUE fontname, VALUE win), V_Subr2, DOC_set_font, "sFont name: ") /*
 ::doc:set_font::
@@ -353,8 +355,7 @@ example "topaz.font-8" to get an 8-point topaz font).
     }
     else
     {
-	static DEFSTRING(no_font, "Can't open font");
-	cmd_signal(sym_error, list_2(VAL(no_font), fontname));
+	cmd_signal(sym_error, list_2(VAL(&no_font), fontname));
 	VWIN(win)->w_FontName = oldfont;
 	return LISP_NULL;
     }

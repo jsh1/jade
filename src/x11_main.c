@@ -85,9 +85,9 @@ static char *geom_str = "80x24";
 static char *prog_name;
 
 /* Default font name. */
-static DEFSTRING(def_font_str_data, DEFAULT_FONT);
+DEFSTRING(def_font_str_data, DEFAULT_FONT);
 _PR VALUE def_font_str;
-VALUE def_font_str = VAL(def_font_str_data);
+VALUE def_font_str;
 
 /* Scan the resource db for the entries we're interested in. */
 static int
@@ -229,6 +229,7 @@ sys_init(int argc, char **argv)
 {
     int i;
     prog_name = file_part(argv[0]);
+    def_font_str = VAL(&def_font_str_data);
     for(i = 1; i < argc; i++)
     {
 	/* These options have to be found *before* resources are looked
