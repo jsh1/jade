@@ -85,6 +85,18 @@ x11_update_dimensions(WIN *w, int width, int height)
     }
 }
 
+#ifdef HAVE_X11_XFT_XFT_H
+static void
+xcolor_to_xftcolor (XColor *xc, XftColor *xfc)
+{
+    xfc->pixel = xc->pixel;
+    xfc->color.red = xc->red;
+    xfc->color.green = xc->green;
+    xfc->color.blue = xc->blue;
+    xfc->color.alpha = 65535;
+}
+#endif
+
 /* The only thing necessary in `vw' is the font stuff (I think) */
 Window
 sys_new_window(WIN *oldW, WIN *w, short *dims)
@@ -160,6 +172,8 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 
     if(win)
     {
+	long gcmask = 0;
+
 	w->w_Window = win;
 	WINDOW_XDPY(w) = dpy;
 	dpy->window_count++;
@@ -167,11 +181,19 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 	w->w_WindowSys.ws_GC_values.line_width = 0;
 	w->w_WindowSys.ws_GC_values.foreground = fg->color.pixel;
 	w->w_WindowSys.ws_GC_values.background = bg->color.pixel;
+	gcmask = GCForeground | GCBackground | GCLineWidth;
+#ifndef HAVE_X11_XFT_XFT_H
 	w->w_WindowSys.ws_GC_values.font = w->w_WindowSys.ws_Font->fid;
+	gcmask |= GCFont;
+#else
+	w->w_WindowSys.ws_XftDraw = XftDrawCreate (dpy->display, w->w_Window,
+						   dpy->visual, dpy->colormap);
+#endif
 	w->w_WindowSys.ws_GC = XCreateGC(dpy->display, w->w_Window,
-					 GCForeground | GCBackground
-					 | GCLineWidth | GCFont,
-					 &w->w_WindowSys.ws_GC_values);
+					 gcmask, &w->w_WindowSys.ws_GC_values);
+#ifdef HAVE_X11_XFT_XFT_H
+	xcolor_to_xftcolor (&fg->color, &w->w_WindowSys.ws_XftColor);
+#endif
 	size_hints.x = x,
 	size_hints.y = y,
 	size_hints.width = width,
@@ -206,6 +228,9 @@ sys_kill_window(WIN *w)
 {
     x11_window_lose_selections(w);
     XFreeGC(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_GC);
+#ifdef HAVE_X11_XFT_XFT_H
+    XftDrawDestroy (w->w_WindowSys.ws_XftDraw);
+#endif
     XDestroyWindow(WINDOW_XDPY(w)->display, w->w_Window);
     if(--(WINDOW_XDPY(w)->window_count) == 0)
 	x11_close_display(WINDOW_XDPY(w));
@@ -252,7 +277,9 @@ face_to_gc(WIN *w, Merged_Face *f, bool invert)
 {
     unsigned long mask = 0;
     struct x11_color *c;
+#ifndef HAVE_X11_XFT_XFT_H
     Font fid;
+#endif
 
     if(f->car & FACEFF_INVERT)
 	invert = !invert;
@@ -264,6 +291,9 @@ face_to_gc(WIN *w, Merged_Face *f, bool invert)
 	if(w->w_WindowSys.ws_GC_values.foreground != c->color.pixel)
 	    w->w_WindowSys.ws_GC_values.foreground = c->color.pixel;
 	mask |= GCForeground;
+#ifdef HAVE_X11_XFT_XFT_H
+	xcolor_to_xftcolor (&c->color, &w->w_WindowSys.ws_XftColor);
+#endif
     }
 
     c = x11_get_color_dpy(VCOLOR(invert ? f->foreground : f->background),
@@ -275,6 +305,7 @@ face_to_gc(WIN *w, Merged_Face *f, bool invert)
 	mask |= GCBackground;
     }
 
+#ifndef HAVE_X11_XFT_XFT_H
     if((f->car & FACEFF_BOLD) && w->w_WindowSys.ws_BoldFont)
 	fid = w->w_WindowSys.ws_BoldFont->fid;
     else
@@ -284,12 +315,20 @@ face_to_gc(WIN *w, Merged_Face *f, bool invert)
 	w->w_WindowSys.ws_GC_values.font = fid;
 	mask |= GCFont;
     }
+#else
+    if((f->car & FACEFF_BOLD) && w->w_WindowSys.ws_BoldFont)
+	w->w_WindowSys.ws_XftFont = w->w_WindowSys.ws_BoldFont;
+    else
+	w->w_WindowSys.ws_XftFont = w->w_WindowSys.ws_Font;
+#endif
 
     /* FIXME: italic?! */
 
     if(mask != 0)
+    {
 	XChangeGC(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_GC,
 		  mask, &w->w_WindowSys.ws_GC_values);
+    }
 }
 
 void
@@ -310,10 +349,23 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
     y = w->w_TopPix + w->w_FontY * row;
     if(!all_spaces)
     {
+#ifndef HAVE_X11_XFT_XFT_H
 	face_to_gc(w, f, invert);
 	XDrawImageString(WINDOW_XDPY(w)->display, w->w_Window,
 			 w->w_WindowSys.ws_GC,
 			 x, y + w->w_WindowSys.ws_Font->ascent, str, len);
+#else
+	face_to_gc(w, f, !invert);
+	XFillRectangle (WINDOW_XDPY (w)->display, w->w_Window,
+			w->w_WindowSys.ws_GC, x, y,
+			w->w_FontX * len, w->w_FontY);
+	face_to_gc(w, f, invert);
+	XftDrawString8 (w->w_WindowSys.ws_XftDraw,
+			&w->w_WindowSys.ws_XftColor,
+			w->w_WindowSys.ws_XftFont,
+			x, y + w->w_WindowSys.ws_Font->ascent,
+			(XftChar8 *) str, len);
+#endif
     }
     else
     {
@@ -352,7 +404,11 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 int
 sys_set_font(WIN *w)
 {
+#ifndef HAVE_X11_XFT_XFT_H
     XFontStruct *font;
+#else
+    XftFont *font;
+#endif
 
     struct x11_display *dpy;
     if(WINDOW_XDPY(w) != 0)
@@ -362,25 +418,51 @@ sys_set_font(WIN *w)
     else
 	dpy = x11_display_list;
 
+#ifndef HAVE_X11_XFT_XFT_H
     if((font = XLoadQueryFont(dpy->display, rep_STR(w->w_FontName)))
        || (font = XLoadQueryFont(dpy->display, DEFAULT_FONT)))
+#else
+    if((font = XftFontOpenName(dpy->display, 0, rep_STR(w->w_FontName)))
+       || (font = XftFontOpenName(dpy->display, 0, DEFAULT_FONT)))
+#endif
     {
 	if(w->w_WindowSys.ws_Font)
+	{
+#ifndef HAVE_X11_XFT_XFT_H
 	    XFreeFont(dpy->display, w->w_WindowSys.ws_Font);
+#else
+	    XftFontClose (dpy->display, w->w_WindowSys.ws_Font);
+#endif
+	}
 	if(w->w_WindowSys.ws_BoldFont)
 	{
+#ifndef HAVE_X11_XFT_XFT_H
 	    XFreeFont(dpy->display, w->w_WindowSys.ws_BoldFont);
+#else
+	    XftFontClose (dpy->display, w->w_WindowSys.ws_BoldFont);
+#endif
 	    w->w_WindowSys.ws_BoldFont = 0;
 	}
 	w->w_WindowSys.ws_Font = font;
+
+#ifndef HAVE_X11_XFT_XFT_H
 	w->w_FontX = XTextWidth(font, "M", 1);
+#else
+	{ XGlyphInfo info;
+	  XftTextExtents8 (dpy->display, font, (XftChar8 *) "M", 1, &info);
+	  w->w_FontX = info.xOff; }
+#endif
 	w->w_FontY = font->ascent + font->descent;
 	if(w->w_Window)
 	{
 	    int width, height;
 	    width = w->w_MaxX * w->w_FontX;
 	    height = w->w_MaxY * w->w_FontY;
+#ifndef HAVE_X11_XFT_XFT_H
 	    XSetFont(dpy->display, w->w_WindowSys.ws_GC, font->fid);
+#else
+	    w->w_WindowSys.ws_XftFont = font;
+#endif
 	    sys_update_dimensions(w);
 	    size_hints.width = width;
 	    size_hints.height = height;
@@ -399,6 +481,7 @@ sys_set_font(WIN *w)
 
 	/* Now try to find the bold version. ho ho. */
 	{
+#ifndef HAVE_X11_XFT_XFT_H
 	    unsigned long value;
 	    if(XGetFontProperty(font, XA_FONT, &value))
 	    {
@@ -427,6 +510,11 @@ sys_set_font(WIN *w)
 		}
 		XFree(name);
 	    }
+#else
+	    char buf[1024];
+	    sprintf (buf, "%s:bold", rep_STR (w->w_FontName));
+	    w->w_WindowSys.ws_BoldFont = XftFontOpenName(dpy->display, 0, buf);
+#endif
 	}
 	return TRUE;
     }
@@ -440,12 +528,20 @@ sys_unset_font(WIN *w)
     {
 	if(w->w_WindowSys.ws_Font)
 	{
+#ifndef HAVE_X11_XFT_XFT_H
 	    XFreeFont(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_Font);
+#else
+	    XftFontClose (WINDOW_XDPY(w)->display, w->w_WindowSys.ws_Font);
+#endif
 	    w->w_WindowSys.ws_Font = NULL;
 	}
 	if(w->w_WindowSys.ws_BoldFont)
 	{
+#ifndef HAVE_X11_XFT_XFT_H
 	    XFreeFont(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_BoldFont);
+#else
+	    XftFontClose (WINDOW_XDPY(w)->display, w->w_WindowSys.ws_BoldFont);
+#endif
 	    w->w_WindowSys.ws_BoldFont = NULL;
 	}
     }

@@ -52,8 +52,16 @@ struct x11_display {
 typedef struct {
     struct x11_display *ws_Display;
     Window		ws_Window;
+#ifndef HAVE_X11_XFT_XFT_H
     XFontStruct	       *ws_Font;
     XFontStruct	       *ws_BoldFont;	/* or null */
+#else
+    XftFont	       *ws_Font;
+    XftFont	       *ws_BoldFont;
+    XftFont	       *ws_XftFont;	/* current font */
+    XftColor	        ws_XftColor;
+    XftDraw	       *ws_XftDraw;
+#endif
     GC			ws_GC;
     XGCValues		ws_GC_values;
     int			ws_Width, ws_Height;

@@ -23,6 +23,9 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#ifdef HAVE_X11_XFT_XFT_H
+# include <X11/Xft/Xft.h>
+#endif
 #include "x11_windowsys.h"
 
 /* This is probably totally unnecessary */
