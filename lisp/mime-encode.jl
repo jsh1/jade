@@ -42,7 +42,7 @@
 			     "C-n" 'mime-next-part
 			     "C-p" 'mime-previous-part
 			     "C-d" 'mime-encode-delete-part))
-
+(fset 'mime-encode-keymap 'keymap)
 ;;;###autoload (autoload-keymap 'mime-encode-keymap "mime-encode")
 
 
