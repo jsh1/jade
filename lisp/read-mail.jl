@@ -276,18 +276,30 @@ Major mode for viewing mail folders. Local bindings are:\n
 ;; Message structures and list manipulation
 
 ;; Twiddle the message lists so that the next message is current
-(defmacro rm-move-forwards ()
-  '(setq rm-before-msg-list (cons rm-current-msg rm-before-msg-list)
-	 rm-current-msg (car rm-after-msg-list)
-	 rm-after-msg-list (cdr rm-after-msg-list)
-	 rm-current-msg-index (1+ rm-current-msg-index)))
+(defun rm-move-forwards ()
+  (setq rm-after-msg-list
+	(prog1
+	    (cdr rm-after-msg-list)
+	  (setq rm-current-msg
+		(prog1
+		    (car rm-after-msg-list)
+		  (rplacd rm-after-msg-list rm-before-msg-list)
+		  (rplaca rm-after-msg-list rm-current-msg)
+		  (setq rm-before-msg-list rm-after-msg-list))))
+	rm-current-msg-index (1+ rm-current-msg-index)))
 
 ;; Twiddle the message lists so that the previous message is current
-(defmacro rm-move-backwards ()
-  '(setq rm-after-msg-list (cons rm-current-msg rm-after-msg-list)
-	 rm-current-msg (car rm-before-msg-list)
-	 rm-before-msg-list (cdr rm-before-msg-list)
-	 rm-current-msg-index (1- rm-current-msg-index)))
+(defun rm-move-backwards ()
+  (setq rm-before-msg-list
+	(prog1
+	    (cdr rm-before-msg-list)
+	  (setq rm-current-msg
+		(prog1
+		    (car rm-before-msg-list)
+		  (rplacd rm-before-msg-list rm-after-msg-list)
+		  (rplaca rm-before-msg-list rm-current-msg)
+		  (setq rm-after-msg-list rm-before-msg-list))))
+	rm-current-msg-index (1- rm-current-msg-index)))
 
 ;; Make MSG the current message, rejigging the message lists as necessary
 ;; Doesn't fix the variables defining some of the positions in the current
