@@ -180,7 +180,7 @@
 (autoload 'rm-apply-rules "rm-restrict")
 (autoload 'rm-prompt-for-rule "rm-restrict")
 (autoload 'rm-defrule "rm-restrict" t)
-(autoload 'defrule "rm-restrict")
+(autoload-macro 'defrule "rm-restrict")
 (autoload 'define-rule "rm-restrict" t)
 (autoload 'rule-lambda "rm-restrict")
 (autoload 'rm-prompt-for-anon-rule "rm-restrict")
