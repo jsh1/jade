@@ -25,6 +25,7 @@
 
 #include <sys/types.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 /* Stringify X. Expands macros in X. */
 #define QUOTE(x) QUOTE__(x)
