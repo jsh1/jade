@@ -100,7 +100,7 @@ For example, to define a rule accepting only messages sent by me (that's
   (let
       ((symbol (rm-rule-symbol name)))
     `(progn
-       (put ,name 'rm-rule-symbol ,symbol)
+       (put ',name 'rm-rule-symbol ',symbol)
        (defun ,symbol ,args ,(rm-make-rule-body body)))))
 (put 'defrule 'lisp-indent 'defun)
 
@@ -131,10 +131,10 @@ For example, to define a rule accepting only messages sent by me (that's
       ((symbol (rm-rule-symbol name)))
     (compile-function symbol)))
 
-(defun rm-rule-symbol (name)
+(defmacro rm-rule-symbol (name)
   "For a rule called NAME (a symbol), return the symbol that is used to
 contain its definition as a function."
-  (intern (concat "rm-rule:" (symbol-name name))))
+  `(intern (concat "rm-rule:" (symbol-name ,name))))
 
 ;; Translate all functions called in INPUT to their rule-based versions
 (defun rm-make-rule-body (input)
