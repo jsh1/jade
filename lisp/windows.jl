@@ -143,6 +143,14 @@ windows other than the current window are used when needed."
   (interactive "P")
   (set-current-view (next-view nil all-windows-p) all-windows-p))
 
+(defun scroll-next-view (&optional count)
+  "Scroll the view following the current view in this window by COUNT
+screenfuls. When called interactively COUNT is taken from the prefix arg.
+Negative arguments scroll backwards."
+  (interactive "p")
+  (with-view (next-view)
+    (next-screen count)))
+
 (defun enlarge-view (&optional count)
   "Enlarge the current view by one line. If COUNT is specified enlarge
 by COUNT lines. When called interactively, COUNT is taken from the prefix
