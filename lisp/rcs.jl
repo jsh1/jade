@@ -23,6 +23,7 @@
 ;;;   - commands for working with branches
 ;;;   - command to convert change descriptions to Changelog entries
 
+(require 'ring)
 (provide 'rcs)
 
 
@@ -35,11 +36,15 @@
 (defvar rcs-process (make-process rcs-output-buffer)
   "Process object used to run RCS commands.")
 
+(defvar rcs-descr-ring (make-ring 16)
+  "Ring buffer containing RCS history entries.")
+
 (defvar rcs-keymap (make-keylist)
   "Keymap containing RCS commands.")
 (defvar rcs-callback-ctrl-c-keymap (make-keylist)
   "Keymap for Ctrl-C when entering text for a callback.")
-
+(defvar rcs-callback-keymap (make-keylist)
+  "Keymap for callback buffer.")
 (make-variable-buffer-local 'rcs-current-info-string)
 
 (defvar rcs-controlled-buffer nil
@@ -55,6 +60,9 @@
     "=" 'rcs-display-diffs)
   (bind-keys rcs-callback-ctrl-c-keymap
     "Ctrl-c" 'rcs-call-callback)
+  (bind-keys rcs-callback-keymap
+    "Meta-p" 'rcs-down-history
+    "Meta-n" 'rcs-up-history)
   (bind-keys ctrl-x-keymap
     "v" '(setq next-keymap-path '(rcs-keymap)))
   (setq rcs-initialised t))
@@ -85,6 +93,9 @@
 ;; (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD)
 (make-variable-buffer-local 'rcs-callback-args)
 
+;; Depth of last inserted history item
+(make-variable-buffer-local 'rcs-history-level)
+
 ;; Arrange for (rcs-command COMMAND FILE OPTIONS REREAD-P) to be called
 ;; later including a piece of text entered by the user. It will be added
 ;; to OPTIONS preceded by TEXT-PREFIX. TITLE gives part of the title of
@@ -100,9 +111,11 @@
       (set-buffer-special buffer t)
       (goto-buffer buffer)
       (setq mildly-special-buffer t
+	    keymap-path (cons rcs-callback-keymap keymap-path)
 	    ctrl-c-keymap rcs-callback-ctrl-c-keymap
 	    rcs-callback-args (list file buffer command options
-				    text-prefix reread-p)))))
+				    text-prefix reread-p)))
+    (setq rcs-history-level nil)))
 
 ;; Called when Ctrl-C Ctrl-C is typed in a callback buffer.
 (defun rcs-call-callback ()
@@ -121,10 +134,31 @@
 			  (nth 3 rcs-callback-args))))
 	 (reread-p (nth 5 rcs-callback-args))
 	 (callback-buffer (current-buffer)))
+      (add-to-ring rcs-descr-ring text)
       (goto-buffer (get-file-buffer file))
       (rcs-command command file options reread-p)
       (kill-buffer callback-buffer))))
 
+(defun rcs-down-history (&optional count)
+  "Replace the buffer contents with the COUNT'th previous RCS change
+description entered. COUNT may be negative."
+  (interactive "p")
+  (let
+      ((level (if rcs-history-level
+		  (+ rcs-history-level (unless count 1))
+		1)))
+    (if (or (<= level 0) (>= level (ring-size rcs-descr-ring)))
+	(error 'RCS "Invalid history item" level)
+      (clear-buffer)
+      (insert (get-from-ring rcs-descr-ring level))
+      (setq rcs-history-level level))))
+
+(defun rcs-up-history (&optional count)
+  "Replace the buffer contents with the COUNT'th next RCS change
+description entered. COUNT may be negative."
+  (interactive "p")
+  (rcs-down-history (- (unless count) 1)))
+    
 ;; Returns t if BUFFER is locked under RCS
 (defun rcs-buffer-locked-p (buffer)
   ;; For now just check its read-only status
