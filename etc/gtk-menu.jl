@@ -37,14 +37,6 @@
 		      (setq cell (funcall (cdr cell)))
 		    (setq cell (cdr cell)))
 		  (cond
-		   ((consp (car cell))
-		    (let
-			((sub (gtk-jade-create-menu cell)))
-		      (setq item (gtk-menu-item-new-with-label label))
-		      (gtk-menu-item-set-submenu item sub)))
-		   ((eq (car cell) t)
-		    (setq item (gtk-menu-item-new-with-label label))
-		    (gtk-signal-connect item "activate" (nth 1 cell)))
 		   ((functionp (car cell))
 		    (when popup-menus-show-shortcuts
 		      (let
@@ -55,7 +47,15 @@
 		    (gtk-signal-connect item "activate"
 					`(lambda ()
 					   (popup-menu-dispatch-command
-					    ',(car cell)))))))
+					    ',(car cell)))))
+		   ((consp (car cell))
+		    (let
+			((sub (gtk-jade-create-menu cell)))
+		      (setq item (gtk-menu-item-new-with-label label))
+		      (gtk-menu-item-set-submenu item sub)))
+		   ((eq (car cell) t)
+		    (setq item (gtk-menu-item-new-with-label label))
+		    (gtk-signal-connect item "activate" (nth 1 cell)))))
 		(when item
 		  (funcall (if bar 'gtk-menu-bar-append
 			     'gtk-menu-append) menu item)
