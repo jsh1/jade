@@ -110,19 +110,41 @@ Set the cursor position in the current window to the glyph position POS.
     return(sym_nil);
 }
 
-_PR VALUE cmd_centre_display(VALUE vw);
-DEFUN_INT("centre-display", cmd_centre_display, subr_centre_display, (VALUE vw), V_Subr1, DOC_centre_display, "") /*
-::doc:centre_display::
-centre-display [VIEW]
+_PR VALUE cmd_center_display(VALUE vw, VALUE arg);
+DEFUN_INT("center-display", cmd_center_display, subr_center_display, (VALUE vw, VALUE arg), V_Subr2, DOC_center_display, "\nP") /*
+::doc:center_display::
+center-display [VIEW] [ARG]
 
-Arrange it so that the line that the cursor is on is displayed in the
-middle of the view (if possible).
+When ARG is nil arrange it so that the line that the cursor is on is
+displayed in the middle of the view (if possible).
+
+If ARG is non-nil it should be a number, 0 means centre the display, positive
+numbers mean that many lines from the top of the view, negative numbers
+go from the bottom of the view.
 ::end:: */
 {
     long start_line;
+    long xarg;
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
-    start_line = VVIEW(vw)->vw_CursorPos.pos_Line - (VVIEW(vw)->vw_MaxY / 2);
+    if(NILP(arg) || CONSP(arg))
+	xarg = 0;
+    else if(SYMBOLP(arg))
+	xarg = -1;
+    else if(NUMBERP(arg))
+	xarg = VNUM(arg);
+    else
+	xarg = 1;
+
+    if(xarg == 0)
+	start_line = (VVIEW(vw)->vw_CursorPos.pos_Line
+		      - (VVIEW(vw)->vw_MaxY / 2));
+    else if(xarg > 0)
+	start_line = VVIEW(vw)->vw_CursorPos.pos_Line - (xarg - 1);
+    else
+	start_line = (VVIEW(vw)->vw_CursorPos.pos_Line
+		      - VVIEW(vw)->vw_MaxY) - xarg;
+
     if(start_line < VVIEW(vw)->vw_Tx->tx_LogicalStart)
 	start_line = VVIEW(vw)->vw_Tx->tx_LogicalStart;
     if(start_line >= VVIEW(vw)->vw_Tx->tx_LogicalEnd)
@@ -882,7 +904,7 @@ movement_init(void)
     ADD_SUBR(subr_screen_last_column);
     ADD_SUBR(subr_goto_char);
     ADD_SUBR(subr_goto_glyph);
-    ADD_SUBR(subr_centre_display);
+    ADD_SUBR(subr_center_display);
     ADD_SUBR(subr_next_screen);
     ADD_SUBR(subr_prev_screen);
     ADD_SUBR(subr_buffer_end);
