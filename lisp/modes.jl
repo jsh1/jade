@@ -307,12 +307,18 @@ or insert a tab."
 (defun forward-exp (&optional number pos)
   "Find the end of the NUMBER'th next expression."
   (interactive "@p")
-  (funcall (or mode-forward-exp 'forward-word) number pos))
+  (cond ((> number 0)
+	 (funcall (or mode-forward-exp 'forward-word) number pos))
+	((< number 0)
+	 (funcall (or mode-backward-exp 'backward-word) (- number) pos))))
 
 (defun backward-exp (&optional number pos)
   "Find the start of the NUMBER'th previous expression."
   (interactive "@p")
-  (funcall (or mode-backward-exp 'backward-word) number pos))
+  (cond ((> number 0)
+	 (funcall (or mode-backward-exp 'backward-word) number pos))
+	((< number 0)
+	 (funcall (or mode-forward-exp 'forward-word) (- number) pos))))
 
 (defun kill-exp (&optional number)
   "Kill the next NUMBER expressions."
