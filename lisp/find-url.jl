@@ -64,6 +64,14 @@ kind of editor buffer, or spawning an external process."
     ;; Call default function
     (funcall find-url-default url)))
 
+;;;###autoload
+(defun find-file-as-url (filename)
+  "Display the file FILENAME as if it was loaded through the web browser."
+  (interactive "fFile to display as if a URL:")
+  (and (find-file filename)
+       (find-url-magic-buffer
+	(concat "file:/" (canonical-file-name filename)))))
+
 (defun find-url-external (url)
   "Spawn an external process (using find-url-external-command as template)
 to view URL."
