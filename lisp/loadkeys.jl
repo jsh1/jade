@@ -116,7 +116,7 @@
   "Meta-j"	'goto-line
   "Ctrl-k"	'kill-line
   "Ctrl-Meta-k"	'kill-exp
-  "Ctrl-l"	'centre-display
+  "Ctrl-l"	'center-display
   "Meta-l"	'downcase-word
   "Ctrl-m"	'block-toggle
   "Ctrl-M"	'toggle-rect-blocks
