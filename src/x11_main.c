@@ -551,6 +551,8 @@ x11_async_event_pred(Display *dpy, XEvent *ev, XPointer arg)
 	    return True;
 	}
     }
+    /* This event has now been read, so select() wouldn't notice it.. */
+    sys_mark_input_pending(ConnectionNumber(dpy));
     return False;
 }
 
