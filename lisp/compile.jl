@@ -38,11 +38,15 @@
   "Expansion template for the error description in an error matched by
 `compile-error-regexp'.")
 
-(defvar compile-push-directory-regexp "^make: Entering directory `(.*)'"
-  "Regexp matching output when a new directory is entered. First
-subexpression should contain the name of the directory.")
+(defvar compile-push-directory-regexp
+  "^make(\[[0-9]+\])?: Entering directory `(.*)'"
+  "Regexp matching output when a new directory is entered. See also the
+variable `compile-push-directory-expand'.")
 
-(defvar compile-pop-directory-regexp "^make: Leaving directory "
+(defvar compile-push-directory-expand "\\2"
+  "Regexp expansion string for `compile-push-directory-regexp'.")
+
+(defvar compile-pop-directory-regexp "^make(\[[0-9]+\])?: Leaving directory "
   "Regexp matching output when leaving a directory.")
 
 (defvar compile-command "make"
@@ -235,7 +239,8 @@ buffer in a form that `goto-next-error' understands."
 		      last-file file))))
 	   ((looking-at compile-push-directory-regexp pos)
 	    (setq dir-stack (cons current-dir dir-stack)
-		  current-dir (expand-file-name (expand-last-match "\\1")
+		  current-dir (expand-file-name (expand-last-match
+						 compile-push-directory-expand)
 						current-dir)))
 	   ((and (looking-at compile-pop-directory-regexp pos) dir-stack)
 	    (setq current-dir (car dir-stack)
