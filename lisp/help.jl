@@ -33,6 +33,7 @@
     "b" 'describe-keymap
     "e" 'apropos-variable
     "f" 'describe-function
+    "C-f" 'info-describe-function
     "h" 'help-help
     "Ctrl-h" 'help-help
     "i" 'info
@@ -41,6 +42,7 @@
     "m" 'describe-mode
     "?" 'help-help
     "v" 'describe-variable
+    "C-v" 'info-describe-variable
     "SPC" '(progn (next-screen) (help))
     "BS" '(progn (prev-screen) (help))))
 
