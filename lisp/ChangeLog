@@ -1,3 +1,9 @@
+1999-11-12  John Harper  <john@dcs.warwick.ac.uk>
+
+	* lisp-mode.jl: set indent properties for flet and macrolet
+
+	* shell.jl (shell-start-process): enclose lambda expr
+
 1999-11-10  John Harper  <john@dcs.warwick.ac.uk>
 
 	* shell.jl, rm-summary.jl, rm-restrict.jl, rm-msg-links.jl,
