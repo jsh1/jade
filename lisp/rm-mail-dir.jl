@@ -50,17 +50,19 @@
   (interactive)
   (let
       ((mail-dir-scan-messages t)
-       (mail-dir-prompt-when-scanning nil))
-    (rm-mail-dir-scanner rm-current-msg)))
+       (mail-dir-prompt-when-scanning nil)
+       (message (rm-get-folder-field (rm-current-folder)
+				     rm-folder-current-msg)))
+    (rm-mail-dir-scanner message)))
 
 ;; Bind to read-mail keymap
 (bind-keys rm-keymap
-  "+" 'rm-mail-dir-scan-current)
+  "Ctrl-k" 'rm-mail-dir-scan-current)
 
 ;; Similar for rm-summary keymap, but defer binding if it doesn't exist
 (if (featurep 'rm-summary)
     (bind-keys rm-summary-keymap
-      "+" '(rm-command-with-folder 'rm-mail-dir-scan-current))
+      "Ctrl-k" '(rm-command-with-folder 'rm-mail-dir-scan-current))
   (eval-after-load "rm-summary" '(bind-keys rm-summary-keymap
-				   "+" '(rm-command-with-folder
-					 'rm-mail-dir-scan-current))))
+				   "Ctrl-k" '(rm-command-with-folder
+					      'rm-mail-dir-scan-current))))

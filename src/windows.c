@@ -680,6 +680,18 @@ Returns the first view in WINDOW.
     return VAL(VWIN(win)->w_ViewList);
 }
 
+_PR VALUE cmd_windowp(VALUE);
+DEFUN("windowp", cmd_windowp, subr_windowp, (VALUE arg),
+      V_Subr1, DOC_windowp) /*
+::doc:windowp::
+windowp ARG
+
+Returns t if ARG is a window object.
+::end:: */
+{
+    return WINDOWP(arg) ? sym_t : sym_nil;
+}
+
 void
 windows_init(void)
 {
@@ -704,6 +716,7 @@ windows_init(void)
     ADD_SUBR(subr_window_view_list);
     ADD_SUBR(subr_window_view_count);
     ADD_SUBR(subr_window_first_view);
+    ADD_SUBR(subr_windowp);
     INTERN(make_window_hook); DOC(make_window_hook);
     INTERN(delete_window_hook); DOC(delete_window_hook);
     INTERN(save_and_quit);

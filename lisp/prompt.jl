@@ -356,9 +356,9 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 				prompt-symbol-predicate)))
 
 (defun prompt-validate-symbol (name)
-  (and (find-symbol name)
-       (or (not prompt-symbol-predicate)
-	   (funcall prompt-symbol-predicate (find-symbol name)))))
+  (and (or (not prompt-symbol-predicate)
+	   (funcall prompt-symbol-predicate (intern name)))
+       name))
 
 (defun prompt-complete-buffer (word)
   (delete-if-not #'(lambda (b)

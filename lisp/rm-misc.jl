@@ -34,15 +34,17 @@
 (defun rm-reply (&optional yankp followup-p)
   "Reply to the mail message currently being displayed."
   (interactive "P")
-  (or rm-current-msg (error "No current message"))
-  (let
-      ((message rm-current-msg)
-       (subject (rm-get-subject rm-current-msg))
+  (let*
+      ((folder (rm-current-folder))
+       (message (or (rm-get-folder-field folder rm-folder-current-msg)
+		    (error "No current message")))
+       (subject (rm-get-subject message))
        to cc msg-id references)
     (save-restriction
       ;; Need to look at *all* headers
-      (restrict-buffer (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark))
-		       rm-current-msg-body)
+      (restrict-buffer (mark-pos (rm-get-msg-field message rm-msg-mark))
+		       (rm-message-body message))
+      ;;; XXX TODO; use header cache
       (setq to (or (mail-get-header "Reply-To" t)
 		   (mail-get-header "From" t))
 	    cc (if followup-p
@@ -56,13 +58,13 @@
       (setq subject (concat mail-reply-prefix
 			    (mail-get-actual-subject subject))))
     (mail-setup to subject msg-id cc references
-		(list (cons #'(lambda (buffer message)
+		(list (cons #'(lambda (folder message)
 				(rm-set-flag message 'replied)
-				(with-buffer buffer
-				  (when rm-summary-buffer
-				    (rm-with-summary
-				     (summary-update-item message)))))
-			    (list (current-buffer) message))))
+				(when (rm-get-folder-field
+				       folder rm-folder-summary)
+				  (rm-with-summary folder
+				    (summary-update-item message))))
+			    (list folder message))))
     (setq rm-reply-message message)
     (when yankp
       (mail-yank-original))
@@ -127,38 +129,36 @@ message in that all recipients of the original wil receive the reply."
 ;; Message forwarding
 
 ;;;###autoload
-(defun rm-forward (&optional to all-headers-p)
+(defun rm-forward (&optional to)
   "Forward the current message using RFC-934 message encapsulation. Optional
-arg TO specifies who to send it to. When ALL-HEADERS-P is non-nil non-visible
-headers will be included."
+arg TO specifies who to send it to."
   (interactive "\nP")
-  (or rm-current-msg (error "No current message"))
   (unless to
     (setq to ""))
-  (let
-      ((subject (rm-get-subject rm-current-msg))
-       (message rm-current-msg)
+  (let*
+      ((folder (rm-current-folder))
+       (message (or (rm-get-folder-field folder rm-folder-current-msg)
+		    (error "No current message")))
+       (subject (rm-get-subject message))
        start tem)
     (mail-setup to subject nil nil nil
-		(list (cons #'(lambda (buffer message)
+		(list (cons #'(lambda (folder message)
 				(rm-set-flag message 'forwarded)
-				(with-buffer buffer
-				  (when rm-summary-buffer
-				    (rm-with-summary
-				     (summary-update-item message)))))
+				(when (rm-get-folder-field
+				       folder rm-folder-summary)
+				  (rm-with-summary folder
+				    (summary-update-item message))))
 			    (list (current-buffer) message))))
     (insert "----- begin forwarded message -----\n")
     (setq start (cursor-pos))
     (goto (insert (with-buffer (mark-file (rm-get-msg-field message
 							    rm-msg-mark))
 		    (let*
-			((start (if all-headers-p
-				    (mark-pos (rm-get-msg-field message
-								rm-msg-mark))
-				  rm-current-msg-visible-start)))
+			((start (restriction-start))
+			 (end (restriction-end)))
 		      (save-restriction
 			(unrestrict-buffer)
-			(copy-area start rm-current-msg-end))))))
+			(copy-area start end))))))
     ;; Quote "^-" as "- -" as specified by RFC-934
     (setq tem start)
     (while (re-search-forward "^-" tem)
@@ -186,12 +186,14 @@ headers will be included."
 (defvar rm-rfc934-stuffed-re "^- (.*)$")
 
 (defun rm-really-burst-message (preamble-sep message-sep stuffed-re)
-  (let
-      ((inhibit-read-only t)
-       (input-pos rm-current-msg-body)
-       (input-end rm-current-msg-end)
+  (let*
+      ((folder (rm-current-folder))
+       (message (or (rm-get-folder-field folder rm-folder-current-msg)
+		    (error "No current message")))
+       (inhibit-read-only t)
+       (input-pos (rm-message-body message))
+       (input-end (rm-message-end message))
        (last-pos nil)
-       (original-msg rm-current-msg)
        (msgs nil)
        (count 0)
        output-pos
@@ -201,8 +203,8 @@ headers will be included."
 	((rm-move-after-deleting nil))
       (rm-mark-message-deletion))
     ;; Find the last message in the folder
-    (while rm-after-msg-list
-      (rm-move-forwards))
+    (while (rm-get-folder-field folder rm-folder-after-list)
+      (rm-move-forwards folder))
 
     ;; Find the start of the first message
     (restrict-buffer input-pos input-end)
@@ -243,28 +245,14 @@ headers will be included."
 	      ;; No ^From_ line, kludge one ourselves
 	      (insert (concat "From jade " (current-time-string) ?\n)
 		      output-pos))
-	    (when (setq new-msg (rm-build-message-struct output-pos))
+	    (when (setq new-msg (rm-parse-message output-pos))
 	      (setq count (1+ count)
 		    msgs (cons new-msg msgs))
 	      (rm-set-flag new-msg 'unread))))
 	(setq input-pos (forward-line 1 input-pos)
 	      last-pos input-pos)
 	(restrict-buffer input-pos input-end)))
-    (unrestrict-buffer)
-    (when msgs
-      (when rm-current-msg
-	(setq rm-before-msg-list (cons rm-current-msg
-				       rm-before-msg-list)
-	      rm-current-msg-index (1+ rm-current-msg-index)))
-      (setq msgs (nreverse msgs)
-	    rm-current-msg (car msgs)
-	    rm-after-msg-list (cdr msgs)
-	    rm-message-count (+ rm-message-count count)
-	    rm-cached-msg-list 'invalid))
-    (when rm-summary-buffer
-      (rm-with-summary
-       (summary-update)))
-    (rm-display-current-message)))
+    (rm-add-messages folder msgs)))
   
 ;;;###autoload
 (defun rm-burst-message ()

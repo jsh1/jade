@@ -54,13 +54,13 @@ The list of formatting options can be extended by the variable
 
 ;; Summary interface
 
-(defmacro rm-command-with-folder (command)
-  (list 'rm-with-folder
-	(list 'call-command command 'current-prefix-arg)))
+(defun rm-command-with-folder (command)
+  (rm-with-folder
+   (call-command command current-prefix-arg)))
 
-(defmacro rm-command-in-folder (command)
-  (list 'rm-in-folder
-	(list 'call-command command 'current-prefix-arg)))
+(defun rm-command-in-folder (command)
+  (rm-in-folder
+   (call-command command current-prefix-arg)))
 
 (defvar rm-summary-keymap
   (bind-keys (make-sparse-keymap summary-keymap)
@@ -89,6 +89,10 @@ The list of formatting options can be extended by the variable
     "s" '(rm-command-with-folder 'rm-output)
     "Ctrl-t" '(rm-command-with-folder 'rm-toggle-threading)
     "Ctrl-s" '(rm-command-with-folder 'rm-sort-folder)
+    "+" '(rm-command-with-folder 'rm-add-mailbox)
+    "-" '(rm-command-with-folder 'rm-subtract-mailbox)
+    "Ctrl--" '(rm-command-with-folder 'rm-subtract-all-mailboxes)
+    "!" '(rm-command-with-folder 'rm-change-rule)
     "|" '(rm-command-with-folder 'rm-pipe-message)))
 
 (defvar rm-summary-functions '((select . rm-summary-select-item)
@@ -99,44 +103,82 @@ The list of formatting options can be extended by the variable
 			       (after-update . rm-summary-after-update))
   "Function vector for summary-mode.")
 
-(defvar rm-summary-mail-buffer nil
-  "The buffer whose folder is being summarised.")
-(make-variable-buffer-local 'rm-summary-mail-buffer)
+(defvar rm-summary-folder nil
+  "The folder currently being summarised by this buffer.")
+(make-variable-buffer-local 'rm-summary-folder)
 
 
 ;; Summary mechanics
 
-;; Create a summary buffer for the current buffer, and return it. Installs
-;; it in rm-summary-buffer as well.
-(defun rm-create-summary ()
-  (unless rm-summary-buffer
-    (setq rm-summary-buffer (make-buffer (concat "*summary of "
-						 (buffer-name) ?*)))
-    (let
-	((mail-buf (current-buffer)))
-      (with-buffer rm-summary-buffer
-	(setq rm-summary-mail-buffer mail-buf
-	      truncate-lines t)
-	(call-hook 'read-mail-summary-mode-hook)
-	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
-	(setq major-mode 'read-mail-mode)))))
-
 ;;;###autoload
-(defun rm-summary (&optional dont-update)
-  "Display a summary of all messages in a separate view."
-  (interactive)
-  (unless rm-summary-buffer
-    (rm-create-summary))
-  (rm-configure-views rm-summary-buffer (current-buffer))
-  (unless dont-update
-    (summary-update)
-    (rm-summary-update-current)))
+(defun rm-summarize (folder &optional dont-update)
+  "Display a summary of mail folder FOLDER in a separate view."
+  (interactive (list (rm-current-folder)))
+  (let
+      ((buffer (rm-get-folder-field folder rm-folder-summary)))
+    (unless buffer
+      (setq buffer (make-buffer "*mail-summary*"))
+      (with-buffer buffer
+	(setq rm-summary-folder folder
+	      truncate-lines t)
+	(call-hook 'rm-summary-mode-hook)
+	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
+	(setq major-mode 'read-mail-mode)))
+    (rm-set-folder-field folder rm-folder-summary buffer)
+    (with-view (rm-configure-views buffer folder)
+      (rm-display-current-message folder))
+    (unless dont-update
+      (summary-update)
+      (rm-summary-update-current))))
 
+(defun rm-kill-summary (folder)
+  (let
+      ((buffer (rm-get-folder-field folder rm-folder-summary)))
+    (rm-invalidate-summary-cache folder)
+    (when buffer
+      (with-buffer buffer
+	(kill-all-local-variables))
+      (kill-buffer buffer))
+    (when (= (window-view-count) 3)
+      (delete-view))))
+			
+;; Returns a view, a buffer.
+(defun rm-summary-view ()
+  (let*
+      ((message (rm-get-folder-field rm-summary-folder rm-folder-current-msg))
+       (buffer (and message (mark-file
+			     (rm-get-msg-field message rm-msg-mark)))))
+    (if buffer
+	(or (get-buffer-view buffer) buffer)
+      ;; Couldn't find the buffer. Try a last gasp for a view
+      (rm-configure-views (current-buffer) rm-summary-folder))))
+  
+;; When called from a summary buffer, installs the summary's mail buffer
+;; and executes FORMS.
+(defmacro rm-with-folder (&rest forms)
+  `(let
+       ((view (rm-summary-view)))
+     (cond
+      ((viewp view)
+       (with-view view ,@forms))
+      ((bufferp view)
+       (with-buffer view ,@forms)))))
+
+;; Switch to the buffer containing the folder and execute FORMS. Don't
+;; switch back afterwards
+(defmacro rm-in-folder (&rest forms)
+  `(let
+       ((view (rm-summary-view)))
+     (cond
+      ((viewp view)
+       (set-current-view view))
+      ((bufferp view)
+       (goto-buffer view)))
+     ,@forms))
+      
 ;; Configure the window to display the summary in one view, and the
-;; mail buffer in the other. Return the view displaying the mail buffer
-;; SUMMARY-BUFFER and MAIL-BUFFER are the buffers to display in the two
-;; views
-(defun rm-configure-views (summary-buffer mail-buffer)
+;; folder in the other. Return the view displaying the folder
+(defun rm-configure-views (summary-buffer folder)
   (let
       (mail-view summary-view)
     (if (= (window-view-count) 2)
@@ -169,23 +211,32 @@ The list of formatting options can be extended by the variable
       (window-error))
     (set-current-view summary-view)
     (goto-buffer summary-buffer)
-    (with-view mail-view
-      (goto-buffer mail-buffer))
+    (let
+	((cell (cons summary-view folder)))
+      ;; Ensure that rm-open-folders has the correct view
+      (when (member cell rm-open-folders)
+	(setq rm-open-folders (cons (cons mail-view folder)
+				    (delete cell rm-open-folders)))))
     mail-view))
 
 (defun rm-summary-list ()
-  (rm-with-folder
-   (if (eq rm-cached-msg-list 'invalid)
-       (setq rm-cached-msg-list
-	     (if rm-current-msg
-		 (nconc (reverse rm-before-msg-list)
-			(cons rm-current-msg
-			       (copy-sequence rm-after-msg-list)))
-	       '()))
-     rm-cached-msg-list)))
+  (if (eq (rm-get-folder-field rm-summary-folder rm-folder-cached-list)
+	  'invalid)
+      (rm-set-folder-field
+       rm-summary-folder rm-folder-cached-list
+       (if (rm-get-folder-field rm-summary-folder rm-folder-current-msg)
+	   (nconc (reverse (rm-get-folder-field
+			    rm-summary-folder rm-folder-before-list))
+		  (cons (rm-get-folder-field
+			 rm-summary-folder rm-folder-current-msg)
+			(copy-sequence (rm-get-folder-field
+					rm-summary-folder
+					rm-folder-after-list))))
+	 '()))
+    (rm-get-folder-field rm-summary-folder rm-folder-cached-list)))
 
 (defun rm-summary-print-item (item)
-  ;; Cache the summary line with the summary buffer as the tag
+  ;; Cache the summary line with the buffer as the tag
   (insert (rm-cached-form item (current-buffer)
 	    (let
 		((arg-list (cons item nil))
@@ -197,54 +248,50 @@ The list of formatting options can be extended by the variable
 ;; Delete all cached summary lines for MSG
 (defun rm-invalidate-summary (msg)
   (rm-set-msg-field msg rm-msg-cache
-		    (delete-if #'(lambda (x) (bufferp (car x)))
+		    (delete-if #'(lambda (x)
+				   (bufferp (car x)))
 			       (rm-get-msg-field msg rm-msg-cache))))
 
-;; Delete all cached summary lines
-(defun rm-invalidate-summary-cache ()
-  (mapc #'(lambda (l)
-	    (mapc 'rm-invalidate-summary l))
-	(list rm-before-msg-list
-	      (and rm-current-msg (list rm-current-msg))
-	      rm-after-msg-list)))
+;; Delete all cached summary lines in FOLDER
+(defun rm-invalidate-summary-cache (folder)
+  (let
+      ((summary (rm-get-folder-field folder rm-folder-summary)))
+    (when summary
+      (rm-map-messages #'(lambda (m)
+			   (rm-invalidate-tag m summary)) folder))))
 
 (defun rm-summary-select-item (item)
-  (with-view (rm-configure-views (current-buffer) rm-summary-mail-buffer)
-    (rm-display-message item)))
+  (let
+      ((folder rm-summary-folder))
+    (with-view (rm-configure-views (current-buffer) folder)
+      (rm-display-message folder item))))
   
 (defun rm-summary-current-item ()
-  (with-buffer rm-summary-mail-buffer
-    rm-current-msg-index))
+  (rm-get-folder-field rm-summary-folder rm-folder-current-index))
 
 (defun rm-summary-update-current ()
   (let
-      (msg index)
-    (with-buffer rm-summary-mail-buffer
-      (setq index rm-current-msg-index
-	    msg rm-current-msg))
-    (if msg
+      ((message (rm-get-folder-field rm-summary-folder rm-folder-current-msg)))
+    (if message
 	(progn
-	  (summary-update-item msg)
-	  (summary-goto-item index))
+	  (summary-update-item message)
+	  (summary-goto-item (rm-summary-current-item)))
       ;; No messages, call update to clear everything
       (summary-update))))
 
 (defun rm-summary-after-marking (msg)
   (rm-invalidate-summary msg)
-  (if (and (eq (with-buffer rm-summary-mail-buffer rm-current-msg) msg)
-	   rm-move-after-deleting)
-      (when (with-buffer rm-summary-mail-buffer rm-after-msg-list)
+  (if (and rm-move-after-deleting
+	   (eq (rm-get-folder-field rm-summary-folder rm-folder-current-msg)
+	       msg))
+      (when (rm-get-folder-field rm-summary-folder rm-folder-after-list)
 	(rm-with-folder
 	 (rm-next-undeleted-message 1)))
     (when (/= (summary-current-index)
-	      (with-buffer rm-summary-mail-buffer rm-message-count))
+	      (rm-get-folder-field rm-summary-folder rm-folder-message-count))
       (summary-next-item 1))))
 
 (defun rm-summary-after-update ()
-  (let
-      (msg index)
-    (with-buffer rm-summary-mail-buffer
-      (setq msg rm-current-msg
-	    index rm-current-msg-index))
-    (when msg
-      (summary-highlight-index index))))
+  (when (rm-get-folder-field rm-summary-folder rm-folder-current-msg)
+    (summary-highlight-index
+     (rm-get-folder-field rm-summary-folder rm-folder-current-index))))

@@ -1049,6 +1049,17 @@ If TEXT is the symbol nil, the normal behaviour is reinstated.
     return res;
 }
 	
+_PR VALUE cmd_viewp(VALUE);
+DEFUN("viewp", cmd_viewp, subr_viewp, (VALUE arg), V_Subr1, DOC_viewp) /*
+::doc:viewp::
+viewp ARG
+
+Returns t if ARG is a view object.
+::end:: */
+{
+    return VIEWP(arg) ? sym_t : sym_nil;
+}
+
 void
 views_init(void)
 {
@@ -1077,6 +1088,7 @@ views_init(void)
     ADD_SUBR(subr_minibuffer_view);
     ADD_SUBR(subr_minibuffer_active_p);
     ADD_SUBR(subr_set_status_message);
+    ADD_SUBR(subr_viewp);
     INTERN(split_view_hook); DOC(split_view_hook);
     INTERN(delete_view_hook); DOC(delete_view_hook);
 }

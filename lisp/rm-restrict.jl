@@ -53,13 +53,15 @@
 ;; Primitive rules include:
 ;;
 ;;	(header HEADER-REGEXP CONTENTS-REGEXP)
-;;	(sent-after RFC-822-DATE-STRING)
-;;	(sent-before RFC-822-DATE-STRING)
-;;	(folder FOLDER-REGEXP)
+;;	(sent-after DATE-STRING)
+;;	(sent-before DATE-STRING)
+;;	(mailbox FOLDER-REGEXP)
 ;;	(recipient REGEXP)
 ;;	(sender REGEXP)
+;;	(subject REGEXP)
 ;;	(lines NUMBER)
 ;;	(attribute FLAG-SYMBOL)
+;;	(body REGEXP)
 ;;
 ;; TODO:
 ;;  + Make the date syntax a lot friendlier. Currently we accept:
@@ -78,10 +80,8 @@
 (defvar rm-rule-fold-case t
   "When t, all string comparison in rules is case-insensitive.")
 
-(defun rm-rule-symbol (name)
-  "For a rule called NAME (a symbol), return the symbol that is used to
-contain its definition as a function."
-  (intern (concat "rm-rule-" (symbol-name name))))
+(defvar rm-rule-history (make-ring)
+  "The ring containing recently used restriction rules.")
 
 
 ;; Entry points
@@ -102,22 +102,41 @@ For example, to define a rule accepting only messages sent by me (that's
 	(list 'quote body)))
 (put 'defrule 'lisp-indent 'defun)
 
-;; Define a new rule. Called from the defrule macro
+;;;###autoload
 (defun rm-defrule (name args body)
+  "Define a rule for restricting the set of messages considered. The new rule
+is called NAME (a symbol), it takes the lambda list of arguments ARGS, and
+is defined by the single form BODY.
+
+For example, to define a rule accepting only messages sent by me (that's
+`john@dcs.warwick.ac.uk') BODY could be the form
+
+	(header \"from\" \"john@dcs\\\\.warwick\\\\.ac\\\\.uk\")"
+  (interactive
+   (list (prompt-for-symbol "Name of rule:" 'identity)
+	 nil
+	 (prompt-for-lisp "Body of rule:")))
   (let
       ((symbol (rm-rule-symbol name)))
     (fset symbol (list 'lambda args (rm-make-rule-body body)))
-    (put name 'rm-rule-function symbol)))
+    (put name 'rm-rule-function symbol)
+    name))
 
 (defun compile-rule (name)
   "Compile the message selection rule called NAME (a symbol) to bytecode."
+  (interactive "SRule to compile:")
   (let
       ((symbol (rm-rule-symbol name)))
     (compile-function symbol)))
 
+(defun rm-rule-symbol (name)
+  "For a rule called NAME (a symbol), return the symbol that is used to
+contain its definition as a function."
+  (intern (concat "rm-rule:" (symbol-name name))))
+
 ;; Translate all functions called in INPUT to their rule-based versions
 (defun rm-make-rule-body (input)
-  (if(listp input)
+  (if (listp input)
       (let
 	  ((function (car input)))
 	(if (symbolp function)
@@ -134,11 +153,12 @@ For example, to define a rule accepting only messages sent by me (that's
     input))
 
 ;; Filter the list MESSAGES, by RULE
+;;;###autoload
 (defun rm-filter-by-rule (messages rule)
   (let
       ((function (symbol-function (rm-rule-symbol rule))))
     (filter #'(lambda (rm-rule-message)
-		(funcall function)))))
+		(funcall function)) messages)))
 
 
 ;; Standard rules
@@ -148,19 +168,27 @@ For example, to define a rule accepting only messages sent by me (that's
 (put 'not 'rm-rule-function 'not)
 
 ;; (header HEADER-REGEXP CONTENTS-REGEXP)
-(put 'header 'rm-rule-function 'rm-rule-header)
-(defmacro rm-rule-header (name pattern)
-  `(string-match ,pattern (rm-get-msg-header rm-rule-message ,name)
-		 nil rm-rule-fold-case))
+(put 'header 'rm-rule-function 'rm-rule:header)
+(defmacro rm-rule:header (name pattern)
+  `(let
+       ((contents (rm-get-msg-header rm-rule-message ,name)))
+     (when contents
+       (string-match ,pattern contents nil rm-rule-fold-case))))
 
-;; (sent-after RFC-822-DATE-STRING)
-;; (sent-before RFC-822-DATE-STRING)
+;; (subject REGEXP)
+(put 'subject 'rm-rule-function 'rm-rule:subject)
+(defmacro rm-rule:subject (regexp)
+  `(let
+       ((subject (rm-get-subject rm-rule-message)))
+     (when subject
+       (string-match ,regexp subject nil rm-rule-fold-case))))
+
+;; (sent-after DATE-STRING)
+;; (sent-before DATE-STRING)
 (put 'sent-after 'rm-rule-compiler 'rm-compile-sent-x)
 (put 'sent-before 'rm-rule-compiler 'rm-compile-sent-x)
 (defun rm-compile-sent-x (form)
   (let
-      ;; TODO: need a friendlier date parser, this only accepts
-      ;; RFC-822 format (possibly with a few missing clauses)
       ((date (rm-parse-date (nth 1 form))))
     (list 'rm-rule-sent-date
 	  (list 'quote date)
@@ -169,33 +197,30 @@ For example, to define a rule accepting only messages sent by me (that's
 ;; DATE is (absolute DAYS . SECONDS) or (relative DAYS . SECONDS)
 (defun rm-rule-sent-date (date after)
   (let
-      ((msg-date (aref (rm-get-date-vector rm-rule-message)
-		       mail-date-epoch-time)))
-    (funcall (if after '> '<)
-	     msg-date
-	     (if (eq (car date) 'absolute)
-		 (cdr date)
-	       (let
-		   ((current (current-time)))
-		 (rplaca current (- (car current) (nth 1 date)))
-		 (rplacd current (- (cdr current) (nthcdr 2 date)))
-		 (fix-time current))))))
+      ((msg-date (rm-get-date-vector rm-rule-message)))
+    (when msg-date
+      (setq msg-date (aref msg-date mail-date-epoch-time))
+      (funcall (if after '> '<)
+	       msg-date
+	       (if (eq (car date) 'absolute)
+		   (cdr date)
+		 (let
+		     ((current (current-time)))
+		   (rplaca current (- (car current) (nth 1 date)))
+		   (rplacd current (- (cdr current) (nthcdr 2 date)))
+		   (fix-time current)))))))
 
-(defmacro rm-rule-sent-before (epoch-time)
-  `(< (aref (rm-get-date-vector rm-rule-message) mail-date-epoch-time)
-      ,epoch-time))
-
-;; (folder FOLDER-REGEXP)
-(put 'folder 'rm-rule-function 'rm-rule-folder)
-(defmacro rm-rule-folder (folder)
-  `(string-match ,folder (buffer-file-name
-			  (mark-file (rm-get-msg-field rm-rule-message
-						       rm-msg-mark)))
+;; (mailbox FOLDER-REGEXP)
+(put 'mailbox 'rm-rule-function 'rm-rule:mailbox)
+(defmacro rm-rule:mailbox (mailbox)
+  `(string-match ,mailbox (buffer-file-name
+			   (mark-file (rm-get-msg-field rm-rule-message
+							rm-msg-mark)))
 		 nil rm-rule-fold-case))
 
 ;; (recipient REGEXP)
-(put 'recipient 'rm-rule-function 'rm-rule-recipient)
-(defun rm-rule-recipient (name)
+(put 'recipient 'rm-rule-function 'rm-rule:recipient)
+(defun rm-rule:recipient (name)
   (catch 'return
     (mapc #'(lambda (cell)
 	      (when (or (and (car cell) (string-match name (car cell)
@@ -203,11 +228,12 @@ For example, to define a rule accepting only messages sent by me (that's
 			(and (cdr cell) (string-match name (cdr cell)
 						      nil rm-rule-fold-case)))
 		(throw 'return t)))
-	  (rm-get-recipients rm-rule-message))))
+	  (rm-get-recipients rm-rule-message))
+    nil))
 
 ;; (sender REGEXP)
-(put 'sender 'rm-rule-function 'rm-rule-sender)
-(defun rm-rule-sender (name)
+(put 'sender 'rm-rule-function 'rm-rule:sender)
+(defun rm-rule:sender (name)
   (catch 'return
     (mapc #'(lambda (cell)
 	      (when (or (and (car cell) (string-match name (car cell)
@@ -215,19 +241,28 @@ For example, to define a rule accepting only messages sent by me (that's
 			(and (cdr cell) (string-match name (cdr cell)
 						      nil rm-rule-fold-case)))
 		(throw 'return t)))
-	  (rm-get-senders rm-rule-message))))
+	  (rm-get-senders rm-rule-message))
+    nil))
 
 ;; (lines NUMBER)
-(put 'lines 'rm-rule-function 'rm-rule-lines)
-(defmacro rm-rule-lines (lines)
+(put 'lines 'rm-rule-function 'rm-rule:lines)
+(defmacro rm-rule:lines (lines)
   `(> (rm-get-msg-field rm-rule-message rm-msg-total-lines) ,lines))
 
 ;; (attribute FLAG-SYMBOL)
-(put 'attribute 'rm-rule-function 'rm-rule-attribute)
-(defmacro rm-rule-attribute (attr)
+(put 'attribute 'rm-rule-function 'rm-rule:attribute)
+(defmacro rm-rule:attribute (attr)
   `(memq ,attr (rm-get-msg-field rm-rule-message rm-msg-flags)))
 
-;; Also include body search?
+;; (body REGEXP)
+(put 'body 'rm-rule-function 'rm-rule:body)
+(defun rm-rule:body (regexp)
+  (with-buffer (mark-file (rm-get-msg-field rm-rule-message rm-msg-mark))
+    (save-restriction
+      (unrestrict-buffer)
+      (restrict-buffer (rm-message-body rm-rule-message)
+		       (rm-message-end rm-rule-message))
+      (re-search-forward regexp (start-of-buffer) nil rm-rule-fold-case))))
 
 
 ;; More intuitive date parsing
@@ -268,3 +303,22 @@ For example, to define a rule accepting only messages sent by me (that's
     (if seconds-ago
 	(list* 'relative (/ seconds-ago 86400) (mod seconds-ago 86400))
       (cons 'absolute abs-time))))
+
+
+;; Prompting
+
+;;;###autoload
+(defun rm-prompt-for-rule (&optional prompt)
+  (let
+      ((prompt-history rm-rule-history)
+       (rule (prompt-for-symbol (or prompt
+				    "Restriction rule (`new' to define rule):")
+				#'(lambda (sym)
+				    (or (eq sym 'new)
+					(eq sym 'nil)
+					(let
+					    ((fun (rm-rule-symbol sym)))
+					  (fboundp fun)))))))
+    (if (eq rule 'new)
+	(call-command 'rm-defrule)
+      rule)))

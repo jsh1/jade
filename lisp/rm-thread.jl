@@ -65,8 +65,14 @@ threaded.")
 		     (rm-get-msg-field y rm-msg-mark))))
 	(cons 'date
 	      #'(lambda (x y)
-		  (< (aref (rm-get-date-vector x) mail-date-epoch-time)
-		     (aref (rm-get-date-vector y) mail-date-epoch-time))))
+		  (let
+		      ((dx (rm-get-date-vector x))
+		       (dy (rm-get-date-vector y)))
+		    ;; Date-less messages earlier than dated messages
+		    (if (and dx dy)
+			(< (aref dx mail-date-epoch-time)
+			   (aref dy mail-date-epoch-time))
+		      dy))))
 	(cons 'subject
 	      #'(lambda (x y)
 		  (< (rm-get-actual-subject x) (rm-get-actual-subject y))))
@@ -88,22 +94,21 @@ be shown before the second.")
 
 ;; Variables
 
-(defvar rm-threaded-folder nil
-  "Non-nil when this folder is threaded.")
-(make-variable-buffer-local 'rm-threaded-folder)
-
 ;;;###autoload
 (defun rm-thread-folder ()
   "Display messages in the current folder by thread."
   (interactive)
-  (unless rm-current-msg
+  (let*
+      ((folder (rm-current-folder))
+       (threads nil)
+       (message-lists (list (rm-get-folder-field folder rm-folder-before-list)
+			    (list (rm-get-folder-field
+				   folder rm-folder-current-msg))
+			    (rm-get-folder-field
+			     folder rm-folder-after-list))))
+   (unless (rm-get-folder-field folder rm-folder-current-msg)
     (error "No messages to thread!"))
-  (let
-      ((threads nil)
-       (message-lists (list rm-before-msg-list
-			    (list rm-current-msg)
-			    rm-after-msg-list)))
-    (message "Threading folder..." t)
+   (message "Threading folder..." t)
     (mapc
      ;; Called for a list of messages
      #'(lambda (message-list)
@@ -173,46 +178,44 @@ be shown before the second.")
 				      (funcall rm-pred (car x) (car y))))))
     ;; Ok, so we now have a list of THREADS, spit them out as the
     ;; list(s) of messages?
-    (setq rm-threaded-folder t)
-    (message "Threading folder...done" t)
-    (rm-fix-msg-lists (apply 'nconc threads))))
+    (rm-set-folder-field folder rm-folder-sort-key 'thread)
+    (rm-fix-msg-lists folder (apply 'nconc threads))
+    (message "Threading folder...done" t)))
 
 ;; Install the list of messages ALL, preserving the current message, and
 ;; splitting ALL around it. Do this destructively
-(defun rm-fix-msg-lists (all)
+(defun rm-fix-msg-lists (folder all)
   (let
       ((before nil)
-       (after all))
-    (setq rm-current-msg-index 0)
-    (while (not (eq (car after) rm-current-msg))
+       (after all)
+       (current (rm-get-folder-field folder rm-folder-current-msg))
+       (index 0))
+    (while (not (eq (car after) current))
       (setq after (prog1
 		      (cdr after)
 		    (rplacd after before)
 		    (setq before after))
-	    rm-current-msg-index (1+ rm-current-msg-index)))
-    (setq rm-before-msg-list before
-	  rm-after-msg-list (cdr after)
-	  rm-cached-msg-list 'invalid)
-    (rm-invalidate-status-cache)
-    (rm-display-current-message t)
-    (when rm-summary-buffer
-      (rm-invalidate-summary-cache)
-      (rm-with-summary
+	    index (1+ index)))
+    (rm-set-folder-field folder rm-folder-before-list before)
+    (rm-set-folder-field folder rm-folder-after-list (cdr after))
+    (rm-set-folder-field folder rm-folder-current-index index)
+    (rm-set-folder-field folder rm-folder-cached-list 'invalid)
+    (rm-invalidate-status-cache folder)
+    (rm-display-current-message folder t)
+    (when (rm-get-folder-field folder rm-folder-summary)
+      (rm-invalidate-summary-cache folder)
+      (rm-with-summary folder
        (summary-update)))))
 
 ;;;###autoload
 (defun rm-toggle-threading ()
   (interactive)
   "Toggle threaded display of messages in the current folder."
-  (if rm-threaded-folder
-      (rm-sort-folder 'location)
-    (rm-thread-folder)))
-
-;; Ensure that new messages in a buffer are kept threaded
-(add-hook 'rm-after-import-hook #'(lambda ()
-				    (when (and rm-threaded-folder
-					       rm-auto-thread-new-messages)
-				      (rm-thread-folder))))
+  (let
+      ((folder (rm-current-folder)))
+    (if (eq (rm-get-folder-field folder rm-folder-sort-key) 'thread)
+	(rm-sort-folder 'location)
+      (rm-thread-folder))))
 
 
 ;; Folder sorting
@@ -245,17 +248,21 @@ the raw prefix argument."
 				(symbol-name (car p))) rm-sort-predicates)
 		    "Sort key:"))
 	   arg)))
-  (unless rm-current-msg
-    (error "No messages to sort!"))
   (let
-      ((rm-sort-pred (cdr (assq key rm-sort-predicates))))
+      ((folder (rm-current-folder))
+       (rm-sort-pred (cdr (assq key rm-sort-predicates))))
     (unless rm-sort-pred
       (error "Unknown sort key: %s" key))
-    (setq rm-threaded-folder nil)
-    (rm-fix-msg-lists (sort (nconc rm-before-msg-list
-				   (list rm-current-msg)
-				   rm-after-msg-list)
-			    (if reversed
-				#'(lambda (x y)
-				    (not (funcall rm-sort-pred x y)))
-			      rm-sort-pred)))))
+    (unless (rm-get-folder-field folder rm-folder-current-msg)
+      (error "No messages to sort!"))
+    (rm-set-folder-field folder rm-folder-sort-key key)
+    (rm-fix-msg-lists folder (sort (nconc (rm-get-folder-field
+					   folder rm-folder-before-list)
+					  (list (rm-get-folder-field
+						 folder rm-folder-current-msg))
+					  (rm-get-folder-field
+					   folder rm-folder-after-list))
+				   (if reversed
+				       #'(lambda (x y)
+					   (not (funcall rm-sort-pred x y)))
+				     rm-sort-pred)))))

@@ -31,7 +31,7 @@
 ;; Last folder written to
 (defvar rm-last-output-folder nil)
 
-;; Append MSG (a message structure), ending at position END, to the folder
+;; Append MSG (a message structure), ending at position END, to the mailbox
 ;; DEST, either a buffer or a file-stream
 (defun rm-output-message (msg dest)
   (let*
@@ -42,6 +42,8 @@
      ((bufferp dest)
       ;; DEST is a buffer. Append to that.
       (with-buffer dest
+	(when (eq major-mode 'read-mail-mode)
+	  (error "Can't append to buffers in read-mail-mode!"))
 	(save-restriction
 	  (unrestrict-buffer)
 	  (save-excursion
@@ -52,26 +54,7 @@
 		((ins-start (cursor-pos))
 		 ;; Don't override read-only in normal buffers
 		 (inhibit-read-only (eq major-mode 'read-mail-mode)))
-	      (insert text)
-	      (when (eq major-mode 'read-mail-mode)
-		;; Need to update mail reader's data structures :-}
-		(let
-		    ((new-msg (rm-build-message-struct ins-start)))
-		  (when new-msg
-		    (rm-set-msg-field new-msg rm-msg-flags
-				      (rm-get-msg-field msg rm-msg-flags))
-		    (if rm-current-msg
-			(setq rm-after-msg-list (nconc rm-after-msg-list
-						       (list new-msg))
-			      rm-message-count (1+ rm-message-count)
-			      rm-cached-msg-list 'invalid)
-		      ;; The new message becomes the current one
-		      (setq rm-current-msg new-msg
-			    rm-message-count 1
-			    rm-current-msg-index 0
-			    rm-cached-msg-list 'invalid)
-		      (call-hook 'rm-after-import-hook)
-		      (rm-display-current-message))))))))))
+	      (insert text))))))
      ((filep dest)
       ;; DEST is a file. Append to it
       (unless (zerop (file-size (file-binding dest)))
@@ -81,9 +64,7 @@
       (write dest text)))
     (rm-set-flag msg 'filed)
     (when rm-delete-after-output
-      (if (eq msg rm-current-msg)
-	  (rm-mark-message-deletion)
-	(rm-set-flag msg 'deleted)))))
+      (rm-set-flag msg 'deleted))))
 
 ;;;###autoload
 (defun rm-output (count dest)
@@ -93,10 +74,12 @@ otherwise write straight to the folder's file."
   (interactive (list (prefix-numeric-argument current-prefix-arg)
 		     (prompt-for-folder "Destination folder:"
 					rm-last-output-folder)))
-  (unless rm-current-msg
-    (error "No current message"))
-  (let
-      ((msg-list (cons rm-current-msg rm-after-msg-list)))
+  (let*
+      ((folder (rm-current-folder))
+       (msg-list (cons (rm-get-folder-field folder rm-folder-current-msg)
+		       (rm-get-folder-field folder rm-folder-after-list))))
+    (unless (car msg-list)
+      (error "No current message"))
     (save-restriction
       (unrestrict-buffer)
       (let
@@ -107,15 +90,9 @@ otherwise write straight to the folder's file."
 	      (rm-output-message (car msg-list) real-dest)
 	      (setq count (1- count)
 		    msg-list (cdr msg-list)))
-	  (cond
-	   ((filep real-dest)
-	    (close-file real-dest))
-	   ((bufferp real-dest)
-	    (with-buffer real-dest
-	      (when (and (eq major-mode 'read-mail-mode) rm-summary-buffer)
-		(rm-with-summary
-		 (summary-update))))))))))
-  (when rm-summary-buffer
-    (rm-with-summary
-     (summary-update)))
-  (rm-fix-status-info))
+	  (when (filep real-dest)
+	    (close-file real-dest)))))
+    (when (rm-get-folder-field folder rm-folder-summary)
+      (rm-with-summary folder
+	(summary-update)))
+    (rm-fix-status-info folder)))
