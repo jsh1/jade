@@ -723,7 +723,8 @@ will be prompted for."
 	      (add-change-log-entry
 	       (prompt-for-file
 		(format nil "Log file for directory `%s':" (car cell))
-		nil (expand-file-name "ChangeLog" (car cell)))
+		nil (or (find-change-log-file (car cell))
+			(expand-file-name "ChangeLog" (car cell))))
 	       (mapcar (lambda (f)
 			 (expand-file-name f (car cell))) (cdr cell))))
 	  files)))
