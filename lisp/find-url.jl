@@ -25,6 +25,9 @@
 
 (provide 'find-url)
 
+;; pacify the compiler
+(eval-when-compile (require 'html-display))
+
 ;; Configuration
 
 (defvar find-url-alist '(("^file:" . find-url-file)
@@ -88,14 +91,19 @@ to view URL."
     ;; Assume buffer contains HTML, decode it and delete
     ;; the original buffer
     (let
-	((buffer (current-buffer)))
+	((buffer (current-buffer))
+	 anchor)
+      (when (string-match "^(.*)#(.*)$" url)
+	(setq url (expand-last-match "\\1"))
+	(setq anchor (expand-last-match "\\2")))
       (html-display buffer url nil)
-      (kill-buffer buffer))))
+      (kill-buffer buffer)
+      (and anchor (html-display-goto-anchor anchor)))))
 
 (defun find-url-file (url)
   "Decode URL assuming that it locates a local file, then find this file in
 a buffer."
-  (when (string-match "^file:(.*)$" url nil t)
+  (when (string-match "^file:([^#]+)" url nil t)
     (find-file (expand-last-match "\\1"))
     (find-url-magic-buffer url)))
 
@@ -119,12 +127,12 @@ a buffer."
 
 (defun find-url-ftp (url)
   ;; XXX Doesn't handle ";type=<typecode>" appendage
-  (when (string-match "^ftp://(([^:@]+)(:([^@]+))?@)?([^/]+)/?" url)
+  (when (string-match "^ftp://(([^:@]+)(:([^@]+))?@)?([^/]+)/?([^#]*)" url)
     (let
 	((user (expand-last-match "\\2"))
 	 (passwd (expand-last-match "\\4"))
 	 (host (expand-last-match "\\5"))
-	 (file (substring url (match-end))))
+	 (file (expand-last-match "\\6")))
       (when (and (not (string= user ""))
 		 (not (string= passwd "")))
 	(remote-ftp-add-passwd user host passwd))
@@ -133,7 +141,7 @@ a buffer."
 			 ?@ host ?: file))
       (find-url-magic-buffer url))))
 
-(defun find-url-http-loaded (process url view output errors)
+(defun find-url-http-loaded (process url anchor view output errors)
   (require 'mail-headers)
   (unless (process-in-use-p process)
     (if (zerop (process-exit-value process))
@@ -154,6 +162,8 @@ a buffer."
 	   ((string-match "html" content-type nil t)
 	    (message "Parsing HTML..." t)
 	    (html-display output url view)
+	    (when anchor
+	      (html-display-goto-anchor anchor))
 	    (message "Parsing HTML...done" t))
 	   (t
 	    ;; XXX needs completing
@@ -170,7 +180,13 @@ a buffer."
        (errors (or (get-buffer "*wget-errors*")
 		   (make-buffer "*wget-errors*")))
        (process (make-process (cons buffer t)))
-       (args (list wget-program "-s" "-O" "-" url)))
+       load-url anchor args)
+    (if (string-match "^(.*)#(.*)$" url)
+	(progn
+	  (setq load-url (expand-last-match "\\1"))
+	  (setq anchor (expand-last-match "\\2")))
+      (setq load-url url))
+    (setq args (list wget-program "-s" "-O" "-" load-url))
     (set-process-error-stream process (cons errors t))
     (clear-buffer buffer)
     (clear-buffer errors)
@@ -179,9 +195,9 @@ a buffer."
 	(progn
 	  (set-process-function process `(lambda (p)
 					   (find-url-http-loaded
-					    p ,url ,(current-view)
+					    p ,load-url ,anchor ,(current-view)
 					    ,buffer ,errors)))
 	  (or (apply 'start-process process args)
 	      (error "Can't start wget")))
       (apply 'call-process process nil args)
-      (find-url-http-loaded process url (current-view) buffer errors))))
+      (find-url-http-loaded process url anchor (current-view) buffer errors))))
