@@ -28,6 +28,14 @@ parts of yacc buffers. If the variable's value is `t' all parts of the
 buffer which are though to be C are configured as such, otherwise only
 the C sections at the top and bottom of the file are used.")
 
+(defvar yacc-mode-scan-when-idle t
+  "When non-nil each time the editor becomes idle, and the buffer has been
+modified, rescan for C regions. This variable is only consulted when the
+mode is first initialised.")
+
+(defvar yacc-mode-last-scan nil)
+(make-variable-buffer-local 'yacc-mode-last-scan)
+
 (defvar yacc-mode-keymap (bind-keys (make-sparse-keymap)
 			   "TAB" 'text-mode-indent-tab))
 
@@ -61,6 +69,9 @@ The \\[yacc-mode-make-c-minor] command reparses the buffer for C sections."
 	ctrl-c-keymap yacc-mode-ctrl-c-keymap
 	keymap-path (cons 'yacc-mode-keymap keymap-path))
   (call-hook 'yacc-mode-hook)
+  (when yacc-mode-scan-when-idle
+    (make-local-variable 'idle-hook)
+    (add-hook 'idle-hook 'yacc-mode-idle-function))
   (yacc-mode-make-c-minor))
 
 (defun yacc-mode-kill ()
@@ -103,11 +114,20 @@ Give any such regions minor-major c-modes."
 		  ((start (match-start 1))
 		   end)
 		(setq tem (match-end))
-		(when (setq end (c-forward-exp 1 start))
-		  (unless (eq (buffer-get 'minor-major (match-end)) 'c-mode)
-		    (extent-put 'rear-sticky nil
-				(minor-major-mode 'c-mode start end)))
+		(when (and (not (eq (buffer-get 'minor-major tem) 'c-mode))
+			   (setq end (condition-case nil
+					 (c-forward-exp 1 start)
+				       (error))))
+		  (extent-put 'rear-sticky nil
+			      (minor-major-mode 'c-mode start end))
 		  (setq tem end))))))))))
+
+(defun yacc-mode-idle-function ()
+  (when (or (not yacc-mode-last-scan) (> (buffer-changes) yacc-mode-last-scan))
+    (yacc-mode-make-c-minor)
+    ;; Ensure that only one copy of yacc-mode-last-scan per buffer
+    ;; is maintained
+    (extent-set 'yacc-mode-last-scan (buffer-changes) (extent-root))))
 
 (defun yacc-mode-delete-minors ()
   "Delete all extents in the current buffer that use c-mode as a minor-major
