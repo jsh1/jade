@@ -77,10 +77,12 @@ typedef struct _TX {
        files by comparing their canonical names. */
     VALUE	    tx_CanonicalFileName;
 
+    /* Data for status line */
     VALUE	    tx_ModeName;
     VALUE	    tx_MinorModeNameList;
     VALUE	    tx_MinorModeNameString;
-
+    VALUE	    tx_StatusId;
+    
     int		    tx_Changes;
     int		    tx_LastSaveChanges;	 /* changes at last save (any type) */
     int		    tx_ProperSaveChanges; /* changes at last `proper' save */
@@ -102,6 +104,7 @@ typedef struct _TX {
     VALUE	    tx_SavedWPos;
     VALUE	    tx_SavedBlockPos[2];
     char	    tx_SavedBlockStatus;
+
 } TX;
 
 /* No modifications to file */
@@ -149,8 +152,8 @@ typedef struct _VW
     int		    vw_FirstX, vw_FirstY;
     int		    vw_MaxX, vw_MaxY;
 
-    u_char	   *vw_StatusBuf;
-#define STATUS_BUFSIZ 128
+    /* When non-null, a string to replace the normal status line. */
+    VALUE	    vw_StatusOverride;
 
 #ifndef NOSCRLBAR
     ScrollBar	    vw_SBar;
@@ -170,11 +173,8 @@ typedef struct _VW
 /* view is of a minibuffer */
 #define VWFF_MINIBUF		(1 << (CELL8_TYPE_BITS + 1))
 
-/* status text set by user */
-#define VWFF_CUSTOM_STATUS	(1 << (CELL8_TYPE_BITS + 2))
-
 /* at last redisplay, the last line in the buffer was visible */
-#define VWFF_AT_BOTTOM		(1 << (CELL8_TYPE_BITS + 3))
+#define VWFF_AT_BOTTOM		(1 << (CELL8_TYPE_BITS + 2))
 
 
 /* Windows */
