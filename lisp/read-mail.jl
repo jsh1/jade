@@ -54,6 +54,10 @@ message (to improve performance when the folder is next loaded).")
 added to an otherwise empty folder. If the name of the mailbox matches
 REGEXP, then its restriction rule is initialised as RULE.")
 
+(defvar rm-auto-delete-rules nil
+  "A list of message restriction rules. Any received messages that match
+any of the rules named by this list are immediately marked for deletion.")
+
 
 ;; Variables
 
@@ -1094,7 +1098,10 @@ key, the car the order to sort in, a positive or negative integer.")
 	    (when (rm-message-start-p pos)
 	      (setq msgs (cons (rm-parse-message pos) msgs)
 		    count (1+ count))
-	      (rm-set-flag (car msgs) 'unread t))
+	      (rm-set-flag (car msgs) 'unread t)
+	      (when (and rm-auto-delete-rules
+			 (rm-apply-rules rm-auto-delete-rules (car msgs)))
+		(rm-set-flag (car msgs) 'deleted t)))
 	    (setq pos (forward-line -1 pos)))
 	  (setq rm-buffer-messages (nconc rm-buffer-messages msgs))))
       (and keep-going count)))))
