@@ -125,7 +125,7 @@
   "Ctrl-M"	'toggle-rect-blocks
   "Meta-m"	'(goto-glyph (indent-pos))
   "Ctrl-n"	'next-line
-  "Meta-n"	'(progn (set-auto-mark) (goto (find-matching-bracket)))
+  "Meta-n"	'find-matching-bracket
   "Ctrl-o"	'open-line
   "Ctrl-p"	'previous-line
   "Ctrl-q"	'(next-keymap-path nil)
