@@ -305,10 +305,13 @@ of the document, currently only `title' and `base' keys are defined."
       (setq name (intern (translate-string (expand-last-match "\\2")
 					   downcase-table)))
       (setq point (match-end))
-      (while (looking-at "[ \t\r\n\f]*([a-zA-Z0-9_-]+)[ \t\r\n\f]*(=[ \t\r\n\f]*)?"
-			 point source)
-	(setq tem (intern (translate-string (expand-last-match "\\1")
-					    downcase-table)))
+      (while (or (looking-at "[ \t\r\n\f]*([a-zA-Z0-9_-]+)[ \t\r\n\f]*(=[ \t\r\n\f]*)?" point source)
+		 ;; bugzilla generates such shit as `<FONT ="+3">'
+		 (looking-at "[ \t\r\n\f]*()(=[ \t\r\n\f]*)" point source))
+	(let ((token (expand-last-match "\\1")))
+	  (if (string= token "")
+	      (setq tem nil)
+	    (setq tem (intern (translate-string token downcase-table)))))
 	(setq point (match-end))
 	(unless (equal (match-start 2) (match-end 2))
 	  (if (or (= (get-char point source) ?\")
@@ -350,7 +353,9 @@ of the document, currently only `title' and `base' keys are defined."
     (or (looking-at "[ \t\r\n\f]*>([ \t\r\n\f]*)" point source)
 	(error "No closing greater-than character %s, %s" point source))
     ;; XXX kludge so we don't lose anything following <pre> tag
-    (if (not (and (eq name 'pre) entering))
+    ;; XXX or lose EOLs within <pre> blocks
+    (if (and (not (and (eq name 'pre) entering))
+	     (not (eq html-decode-fill nil)))
 	(progn
 	  (setq point (match-end))
 	  (when (not (equal (match-start 1) (match-end 1)))
