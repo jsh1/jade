@@ -196,12 +196,13 @@ that mode are available as well.")
 
 (defun gdb-redisplay-frame ()
   (interactive)
-  (when gdb-buffer-p
-    (setq gdb-last-buffer (current-buffer)))
-  (let*
-      ((frame (gdb-get-buffer-var gdb-last-frame))
-       (line-pos (pos 0 (cdr frame))))
-    (goto-buffer (open-file (car frame)))
-    (mark-block line-pos (line-end line-pos))
-    (goto-char (line-end line-pos))
-    (centre-display)))
+  (with-view (if gdb-buffer-p (other-view) (current-view))
+    (when gdb-buffer-p
+      (setq gdb-last-buffer (current-buffer)))
+    (let*
+	((frame (gdb-get-buffer-var gdb-last-frame))
+	 (line-pos (pos 0 (cdr frame))))
+      (goto-buffer (open-file (car frame)))
+      (mark-block line-pos (line-end line-pos))
+      (goto-char (line-end line-pos))
+      (centre-display))))
