@@ -294,10 +294,10 @@ init-mode, the hook after-find-file-hook is dispatched."
 	      (make-local-variable name)
 	      (set name (read-from-string value))))))))))
 
-(defun find-file-read-only (name)
+(defun find-file-read-only (name &optional dont-activate)
   "Similar to `find-file' except that the buffer is edited in read-only mode."
   (interactive "FFind file read-only:")
-  (when (find-file name)
+  (when (find-file name dont-activate)
     (set-buffer-read-only (current-buffer) t)))
 
 (defun find-alternate-file (name)
