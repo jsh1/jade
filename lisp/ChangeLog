@@ -1,3 +1,9 @@
+2000-05-15  John Harper  <john@dcs.warwick.ac.uk>
+
+	* tags.jl, rm-restrict.jl, page-summary.jl, html-decode.jl,
+	find-url.jl, diff.jl, compile.jl: use string->number for
+	parsing numbers, not read-from-string
+
 2000-05-14  John Harper  <john@dcs.warwick.ac.uk>
 
 	* gtk-prompt.jl: replace calls to gtk-main by calls to
