@@ -36,4 +36,6 @@
 
 typedef unsigned PTR_SIZED_INT VALUE;
 
+#define VALUE_BITS PTR_SIZED_INT_BITS
+
 #endif /* _VALUE_H */
