@@ -18,6 +18,7 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(require 'prompt)
 (provide 'isearch)
 
 ;;; Bugs:
@@ -31,13 +32,36 @@ searching.")
 (defvar isearch-last-match nil
   "The last regexp successfully (i.e. entered with RET) found by isearch.")
 
+
 ;; Special vars
+
+;; History of the current search
 (defvar isearch-trace nil)
+(make-variable-buffer-local 'isearch-trace)
+
+;; Non-nil when searching forwards
 (defvar isearch-forwards nil)
+(make-variable-buffer-local 'isearch-forwards)
+
+;; Non-nil when search is failing
 (defvar isearch-failing nil)
+(make-variable-buffer-local 'isearch-failing)
+
+;; Non-nil when search has passed the end of the buffer
 (defvar isearch-wrapped nil)
+(make-variable-buffer-local 'isearch-wrapped)
+
+;; The original position
 (defvar isearch-initial-pos nil)
+(make-variable-buffer-local 'isearch-initial-pos)
+
+;; Non-nil when the regexp is malformed
 (defvar isearch-re-error nil)
+(make-variable-buffer-local 'isearch-re-error)
+
+;; The view in which we're searching
+(defvar isearch-view nil)
+(make-variable-buffer-local 'isearch-view)
 
 
 ;;; Wrappers for some regexp functions to trap errors
@@ -45,7 +69,9 @@ searching.")
 (defun isearch-find-next-regexp (pos)
   (setq isearch-re-error nil)
   (condition-case nil
-      (re-search-forward (car (car isearch-trace)) pos nil case-fold-search)
+      (re-search-forward (car (car isearch-trace)) pos
+			 (current-buffer isearch-view)
+			 case-fold-search)
     (regexp-error
       (setq isearch-re-error t)
       'regexp-error)))
@@ -53,7 +79,9 @@ searching.")
 (defun isearch-find-prev-regexp (pos)
   (setq isearch-re-error nil)
   (condition-case nil
-      (re-search-backward (car (car isearch-trace)) pos nil case-fold-search)
+      (re-search-backward (car (car isearch-trace)) pos
+			  (current-buffer isearch-view)
+			  case-fold-search)
     (regexp-error
       (setq isearch-re-error t)
       'regexp-error)))
@@ -61,7 +89,9 @@ searching.")
 (defun isearch-looking-at ()
   (setq isearch-re-error nil)
   (condition-case nil
-      (looking-at (car (car isearch-trace)) nil nil case-fold-search)
+      (looking-at (car (car isearch-trace))
+		  (with-view isearch-view (cursor-pos))
+		  (current-buffer isearch-view) case-fold-search)
     (regexp-error
       (setq isearch-re-error t)
       'regexp-error)))
@@ -80,9 +110,9 @@ searching.")
       ((item (car isearch-trace)))
     (if (cdr item)
 	(progn
-	  (goto (nth 1 item))
+	  (isearch-goto (nth 1 item))
 	  (rplaca isearch-trace (cons (car item) (nthcdr 2 item))))
-      (goto isearch-initial-pos)))
+      (isearch-goto isearch-initial-pos)))
   (setq isearch-failing nil))
 
 ;; Pops the top string, then moves to the top match of the next string.
@@ -102,18 +132,31 @@ searching.")
 (defun isearch-push-string (string)
   (isearch-push-match (cursor-pos))
   (setq isearch-trace (cons (cons string nil) isearch-trace))
-  (unless (isearch-looking-at)
+  (if (isearch-looking-at)
+      (isearch-goto (with-view isearch-view (cursor-pos)))
     (let
 	((next (if isearch-forwards
-		   (isearch-find-next-regexp (forward-char))
-		 (isearch-find-prev-regexp (forward-char -1)))))
+		   (isearch-find-next-regexp (with-view isearch-view
+					       (forward-char)))
+		 (isearch-find-prev-regexp (with-view isearch-view
+					     (forward-char -1))))))
       (cond
 	((posp next)
-	  (goto next)
-	  (setq isearch-failing nil))
+	 (isearch-goto next)
+	 (setq isearch-failing nil))
 	((null next)
-	  (setq isearch-failing t)
-	  (beep))))))
+	 (setq isearch-failing t)
+	 (beep))))))
+
+;; Goto the current isearch position
+(defun isearch-goto (pos)
+  (with-view isearch-view
+    (goto pos))
+  (isearch-looking-at)
+  (when (match-start)
+    (with-view isearch-view
+      (goto (match-start))
+      (mark-block (match-start) (match-end)))))
 
 
 ;; Keymap
@@ -133,21 +176,26 @@ searching.")
 
 ;; Display the status message, has to be done after each command
 (defun isearch-title ()
+  (clear-buffer)
+  (insert (concat (if isearch-failing "failing ")
+		  (if isearch-wrapped "wrapped ")
+		  "I-search: "
+		  (car (car isearch-trace))))
   (let
-      ((msg (concat (if isearch-failing "failing ")
-		    (if isearch-wrapped "wrapped ")
-		    "I-search: "
-		    (car (car isearch-trace))
-		    (if isearch-re-error "    *Invalid/incomplete regexp*"))))
-    (aset msg 0 (char-upcase (aref msg 0)))
-    (message msg)))
+      ((pos (cursor-pos)))
+    (when isearch-re-error
+      (insert "    *Invalid/incomplete regexp*"))
+    (goto (start-of-buffer))
+    (set-char (char-upcase (get-char)))
+    (goto pos)))
 
 ;; Accept our current position
 (defun isearch-accept ()
   (interactive)
-  (set-auto-mark isearch-initial-pos)
   (setq isearch-last-match (car (car isearch-trace)))
-  (throw 'isearch (cursor-pos)))
+  (with-view isearch-view
+    (set-auto-mark isearch-initial-pos))
+  (isearch-quit t))
 
 ;; Cancel the search or if search is failing backtrack to the last match
 (defun isearch-cancel ()
@@ -157,24 +205,42 @@ searching.")
 	(while (and (not (isearch-looking-at)) (cdr isearch-trace))
 	  (isearch-rubout))
 	(isearch-title))
-    (goto isearch-initial-pos)
-    (throw 'isearch nil)))
+    (isearch-goto isearch-initial-pos)
+    (isearch-quit nil)))
 
+(defun isearch-quit (status)
+  (unless status
+    (let
+	((old isearch-initial-pos))
+      (with-view isearch-view
+	(block-kill)
+	(goto old))))
+  (let
+      ((old-view isearch-view))
+    (kill-all-local-variables)
+    (return-prompt-buffer (current-buffer))
+    (kill-current-buffer)
+    (set-current-view old-view)))
+  
 ;; Copy the rest of the current word to the search string
 (defun isearch-yank-word ()
   (interactive)
   (when (isearch-looking-at)
-    (isearch-push-string (concat (car (car isearch-trace))
-				 (copy-area (match-end)
-					    (forward-word 1 (match-end))))))
+    (isearch-push-string
+     (concat (car (car isearch-trace))
+	     (with-view isearch-view
+	       (quote-regexp (copy-area (match-end)
+					(forward-word 1 (match-end))))))))
   (isearch-title))
 
 ;; Copy the rest of the line to the search string
 (defun isearch-yank-line ()
   (interactive)
   (when (isearch-looking-at)
-    (isearch-push-string (concat (car (car isearch-trace))
-				 (copy-area (match-end) (end-of-line)))))
+    (isearch-push-string
+     (concat (car (car isearch-trace))
+	     (with-view isearch-view
+	       (quote-regexp (copy-area (match-end) (end-of-line)))))))
   (isearch-title))
 
 ;; Backup one match/string
@@ -198,25 +264,27 @@ searching.")
       (isearch-push-string (concat (car (car isearch-trace)) str))))
   (isearch-title))
 
-(defun isearch (isearch-forwards)
+(defun isearch (forwards)
   (let
-      ((isearch-trace (cons (cons "" nil) nil))
-       (isearch-initial-pos (cursor-pos))
-       (isearch-buffer (current-buffer))
-       isearch-failing
-       isearch-wrapped
-       isearch-re-error
-       (esc-means-meta nil)		; want to bind to ESC
-       (old-kp keymap-path))
-    (setq keymap-path '(isearch-keymap))
-    (add-hook 'unbound-key-hook 'isearch-unbound-key-fun)
-    (unwind-protect
-	(catch 'isearch
-	  (isearch-title)
-	  (recursive-edit))
-      (with-buffer isearch-buffer
-	(remove-hook 'unbound-key-hook 'isearch-unbound-key-fun)
-	(setq keymap-path old-kp)))))
+      ((prompt-buffer (get-prompt-buffer))
+       (old-buffer (current-buffer))
+       ;; FIXME
+       (esc-means-meta nil))
+    (block-kill)
+    (with-buffer prompt-buffer
+      (setq isearch-trace (cons (cons "" nil) nil)
+	    isearch-initial-pos (with-buffer old-buffer (cursor-pos))
+	    isearch-failing nil
+	    isearch-wrapped nil
+	    isearch-re-error nil
+	    isearch-forwards forwards
+	    isearch-view (current-view))
+      (setq keymap-path (cons 'isearch-keymap keymap-path))
+      (make-local-variable 'unbound-key-hook)
+      (add-hook 'unbound-key-hook 'isearch-unbound-key-fun))
+    (set-current-view (minibuffer-view))
+    (goto-buffer prompt-buffer)
+    (isearch-title)))
 
 ;;;###autoload
 (defun isearch-forward ()
@@ -251,14 +319,17 @@ direction."
 	((next (if (and isearch-failing isearch-forwards)
 	           (progn
 		     (setq isearch-wrapped t)
-		     (start-of-buffer))
-		 (forward-char))))
+		     (with-view isearch-view
+		       (start-of-buffer)))
+		 (with-view isearch-view
+		   (forward-char)))))
       (setq next (isearch-find-next-regexp next))
       (cond
         ((posp next)
-	  (isearch-push-match (cursor-pos))
+	  (isearch-push-match (with-view isearch-view
+				(cursor-pos)))
 	  (setq isearch-failing nil)
-	  (goto next))
+	  (isearch-goto next))
 	((null next)
 	  (setq isearch-failing t)
 	  (beep)))
@@ -275,14 +346,17 @@ direction."
 	((next (if (and isearch-failing (not isearch-forwards))
 		   (progn
 		     (setq isearch-wrapped t)
-		     (end-of-buffer))
-		 (forward-char -1))))
+		     (with-view isearch-view
+		       (end-of-buffer)))
+		 (with-view isearch-view
+		   (forward-char -1)))))
       (setq next (isearch-find-prev-regexp next))
       (cond
        ((posp next)
-	(isearch-push-match (cursor-pos))
+	(isearch-push-match (with-view isearch-view
+			      (cursor-pos)))
 	(setq isearch-failing nil)
-	(goto next))
+	(isearch-goto next))
        ((null next)
 	(setq isearch-failing t)
 	(beep)))
