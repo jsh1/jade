@@ -25,48 +25,12 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-_PR int write_clip(int, char *, int);
-_PR VALUE read_clip(int);
 _PR void beep(VW *);
 
 _PR void x11_convert_selection(XSelectionRequestEvent *ev);
 _PR void x11_lose_selection(XSelectionClearEvent *ev);
 _PR void x11_window_lose_selections(WIN *w);
 _PR void x11_misc_init(void);
-
-DEFSTRING(no_cut_buf, "No cut buffer");
-
-/* TODO: these should have a WINDOW argument, to handle multiple
-   displays */
-int
-write_clip(int buffer, char *str, int len)
-{
-    int rc = TRUE;
-    if((buffer >= 0) && (buffer <= 7))
-	XStoreBuffer(x11_display_list->display, str, len, buffer);
-    else
-    {
-	cmd_signal(sym_error, list_2(VAL(&no_cut_buf), MAKE_INT(buffer)));
-	rc = FALSE;
-    }
-    return(rc);
-}
-
-VALUE
-read_clip(int buffer)
-{
-    
-    if((buffer >= 0) && (buffer <= 7))
-    {
-	int len;
-	u_char *mem = XFetchBuffer(x11_display_list->display, &len, buffer);
-	if(mem)
-	    return(string_dupn(mem, len));
-	return LISP_NULL;
-    }
-    cmd_signal(sym_error, list_2(VAL(&no_cut_buf), MAKE_INT(buffer)));
-    return LISP_NULL;
-}
 
 void
 beep(VW *vw)
