@@ -20,6 +20,8 @@
 
 (provide 'find-autoloads)
 
+(defvar autoload-finder nil)
+
 ;;; Code to manipulate the sequence of autoload functions in autoload.jl
 ;;; Basically you just do `ESC x add-autoloads' to add all marked functions
 ;;; and macros to the list and `ESC x remove-autoloads' to take them out.
@@ -45,6 +47,7 @@
   (when (find-file output-file)
     (let
 	((p (start-of-buffer))
+	 (local-finder (with-buffer buf autoload-finder))
 	 form
 	 (short-file-name (and (string-match "^(.+)\\.jl$"
 					     (file-name-nondirectory
@@ -52,27 +55,32 @@
 			       (expand-last-match "\\1")))
 	 (count 0))
       (while (setq p (re-search-forward
-			"^;;;###autoload[\t ]*(.*)$" p buf))
+			"^[; \t]*;;###autoload[\t ]*(.*)$" p buf))
 	(setq form (expand-last-match "\\1"))
 	(when (and form (not (equal "" form)))
 	  (funcall line-fun form)
 	  (setq count (1+ count))
 	  (message form t))
-	(setq p (forward-line 1 p))
-	(when (and (looking-at "^\\(def(un|macro|subst|var) " p buf)
-		   (setq form (read (cons buf p)))
-		   (memq (car form) '(defun defmacro defsubst
-				      defvar defconst)))
-	  (setq form (format nil (if (assq 'interactive form)
-				     ;; Can be called as a command
-				     "(autoload%s '%s %S t)"
-				   "(autoload%s '%s %S)")
-			     (if (eq (car form) 'defmacro) "-macro" "")
-			     (nth 1 form)
-			     short-file-name))
-	  (when (funcall line-fun form)
-	    (setq count (1+ count))
-	    (message form t))))
+	(catch 'next
+	  (while (setq p (forward-line 1 p))
+	    (setq form nil)
+	    (cond ((and (looking-at "^[ \t]*\\(def(un|macro|subst|var) " p buf)
+			(setq form (read (cons buf p)))
+			(memq (car form) '(defun defmacro defsubst
+					    defvar defconst)))
+		   (setq form (format nil (if (assq 'interactive form)
+					      ;; Can be called as a command
+					      "(autoload%s '%s %S t)"
+					    "(autoload%s '%s %S)")
+				      (if (eq (car form) 'defmacro)
+					  "-macro" "")
+				      (nth 1 form) short-file-name)))
+		  ((and local-finder
+			(setq form (local-finder p buf short-file-name))))
+		  (t (throw 'next)))
+	    (when (and form (funcall line-fun form))
+	      (setq count (1+ count))
+	      (message form t)))))
       count)))
 
 ;;;###autoload

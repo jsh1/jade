@@ -19,6 +19,7 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (eval-when-compile (require 'info))
+(eval-when-compile (require 'find-autoloads))
 
 (defvar smm-active nil)
 (make-variable-buffer-local 'smm-active)
@@ -74,15 +75,39 @@ in the status line."
    (list (prompt-for-string "Sawmill variable:" (symbol-at-point))))
   (sawmill-describe-function fn "Variable Index"))
 
+(defun sawmill-autoload-finder (point buf module)
+  (cond ((looking-at "[ \t]*\\(define-command(-to-screen)? '([^ ]+)" point buf)
+	 (let ((name (expand-last-match "\\2"))
+	       (type nil))
+	   (condition-case nil
+	       (with-buffer buf
+		 (save-excursion
+		   (goto (match-end))
+		   (goto (forward-exp 3))
+		   (let ((end (cursor-pos)))
+		     (goto (backward-exp 1))
+		     (setq type (copy-area (cursor-pos) end)))))
+	     (error))
+	   (if (and type (not (string= type "")))
+	       (format nil "(autoload-command '%s '%s %s)" name module type)
+	     (format nil "(autoload-command '%s '%s)" name module))))
+	     
+	((looking-at "[ \t]*\\(define-([^ ]+) '([^ ]+)" point buf)
+	 (format nil "(autoload-%s '%s '%s)"
+		 (expand-last-match "\\1") (expand-last-match "\\2") module))))
+
 ;;;###autoload
 (defun sawmill-minor-mode ()
   (interactive)
   (if smm-active
       (progn
 	(setq smm-active nil)
+	(setq autoload-finder nil)
 	(setq info-documentation-files
 	      (delete "sawmill" info-documentation-files)))
     (setq smm-active t)
+    (make-local-variable 'autoload-finder)
+    (setq autoload-finder sawmill-autoload-finder)
     (make-local-variable 'info-documentation-file)
     (setq info-documentation-files
 	  (if (boundp 'info-documentation-files)
@@ -99,3 +124,9 @@ in the status line."
 
 (put 'defcustom 'lisp-indent 'defun)
 (put 'defgroup 'lisp-indent 'defun)
+(put 'define-command 'lisp-indent 'defun)
+(put 'define-placement-mode 'lisp-indent 'defun)
+(put 'define-focus-mode 'lisp-indent 'defun)
+(put 'define-match-window-property 'lisp-indent 'defun)
+(put 'define-match-window-setter 'lisp-indent 'defun)
+(put 'define-match-window-formatter 'lisp-indent 'defun)
