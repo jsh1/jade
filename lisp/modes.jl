@@ -362,8 +362,8 @@ or insert a tab."
       (copy-area start end))))
 
 (defun defun-at-point ()
-  "Return the name of the function defined under the cursor."
-  (when (re-search-backward mode-defun-header)
+  "Return the name of the function defined under the cursor, or nil."
+  (when (and mode-defun-header (re-search-backward mode-defun-header))
     (expand-last-match "\\1")))
 
 (defun start-of-defun ()
