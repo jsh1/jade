@@ -178,7 +178,7 @@ main(int argc, char **argv)
 	{
 	    rc = 0;
 	    if(rep_SYM(Qbatch_mode)->value == Qnil)
-		res = rep_event_loop();
+		res = Frecursive_edit ();
 	}
 	else if(rep_throw_value && rep_CAR(rep_throw_value) == Qquit)
 	{
