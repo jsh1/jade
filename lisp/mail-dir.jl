@@ -170,6 +170,11 @@ definitions will be added to any existing definitions."
 			       (md-get-field r field)))
 			 mail-address-list)))
 
+(defun md-field-exists-p (key-field key field)
+  (let
+      ((record (md-get-record key-field key)))
+    (and record (md-get-field record field))))
+
 
 ;; Prompt variants
 
@@ -302,14 +307,17 @@ PRINT is t the expansion is also displayed in the message area."
 entity NAME."
   (interactive (list (prompt-for-mail-item "Name:")))
   (let
-      ((record (md-get-record ':name name))
+      ((record (or (md-get-record ':name name)
+		   (md-get-record ':net name)))
        field)
     (unless record
       (error "Record doesn't exist: %s" name))
     (require 'mail-headers)
     (cond
      ((setq field (md-get-field record ':net))
-      (goto (insert (mail-format-address (car field) name))))
+      (goto (insert (mail-format-address (car field)
+					 (or (car (md-get-field record ':name))
+					     name)))))
      ((setq field (md-get-field record ':net-alias))
       (mail-insert-address-list
        (mapcar #'(lambda (a)
@@ -319,11 +327,6 @@ entity NAME."
 		      a))) field)))
      (t
       (error "Nothing to insert in record: %s" record)))))
-
-(defun mail-dir-alias-p (name)
-  (let
-      ((record (md-get-record ':name name)))
-    (and record (md-get-field record ':net-alias))))
 
 
 ;; Snarfing address/name combinations from messages
