@@ -40,11 +40,12 @@ _PR void pen_to_glyph_pos(VW *, long, long);
 _PR void draw_bit(VW *, int, u_char *, int, long, long);
 _PR void draw_line(VW *, LINE *, long);
 _PR void redraw_all(VW *);
-_PR void redraw_region(VW *, VALUE, VALUE);
+_PR void redraw_region(VW *, Pos *, Pos *);
+_PR void redraw_vregion(VW *vw, VALUE, VALUE);
 _PR void redraw_lines(VW *, long, long);
 _PR void redraw_lines_clr(VW *, long, long);
 _PR void redraw_line_from(VW *, long, long);
-_PR void redraw_rect(VW *, VALUE, VALUE, bool);
+_PR void redraw_rect(VW *, Pos *, Pos *, bool);
 _PR void clear_lines(VW *, long, long);
 _PR void cut_paste_lines(VW *, long, long);
 _PR void scroll_vw(VW *vw, long lines);
@@ -455,35 +456,35 @@ redraw_all(VW *vw)
 }
 
 void
-redraw_region(VW *vw, VALUE start, VALUE end)
+redraw_region(VW *vw, Pos *start, Pos *end)
 {
-    long linenum = VROW(start);
+    long linenum = PROW(start);
     LINE *line;
     long y, yend, yord;
-    if(POS_EQUAL_P(start, end)
-       || (VROW(end) < VROW(vw->vw_DisplayOrigin))
-       || (VROW(end) < vw->vw_Tx->tx_LogicalStart)
-       || (VROW(start) > (VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY))
-       || (VROW(start) > (vw->vw_Tx->tx_LogicalEnd)))
+    if(PPOS_EQUAL_P(start, end)
+       || (PROW(end) < VROW(vw->vw_DisplayOrigin))
+       || (PROW(end) < vw->vw_Tx->tx_LogicalStart)
+       || (PROW(start) > (VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY))
+       || (PROW(start) > (vw->vw_Tx->tx_LogicalEnd)))
 	return;
     if(linenum < VROW(vw->vw_DisplayOrigin))
 	linenum = VROW(vw->vw_DisplayOrigin);
     line = vw->vw_Tx->tx_Lines + linenum;
     y = linenum - VROW(vw->vw_DisplayOrigin);
-    yend = VROW(end) - VROW(vw->vw_DisplayOrigin) + 1;
+    yend = PROW(end) - VROW(vw->vw_DisplayOrigin) + 1;
     if(yend > vw->vw_MaxY)
 	yend = vw->vw_MaxY;
     yord = y * vw->vw_Win->w_FontY;
     if((y >= 0) && (y < yend))
     {
-	long start_col = (linenum == VROW(start)
-			  ? VCOL(start) : VCOL(vw->vw_DisplayOrigin));
-	long gcol = glyph_col(vw->vw_Tx, start_col, VROW(start));
+	long start_col = (linenum == PROW(start)
+			  ? PCOL(start) : VCOL(vw->vw_DisplayOrigin));
+	long gcol = glyph_col(vw->vw_Tx, start_col, PROW(start));
 	long tmp = gcol - VCOL(vw->vw_DisplayOrigin);
 	if(tmp < 0)
 	{
 	    gcol = VCOL(vw->vw_DisplayOrigin);
-	    start_col = char_col(vw->vw_Tx, gcol, VROW(start));
+	    start_col = char_col(vw->vw_Tx, gcol, PROW(start));
 	    tmp = 0;
 	}
 	CLR_AREA(vw, tmp * vw->vw_Win->w_FontX, yord,
@@ -519,6 +520,15 @@ redraw_region(VW *vw, VALUE start, VALUE end)
 	    line++;
 	}
     }
+}
+
+void
+redraw_vregion(VW *vw, VALUE start, VALUE end)
+{
+    Pos tstart, tend;
+    COPY_VPOS(&tstart, start);
+    COPY_VPOS(&tend, end);
+    redraw_region(vw, &tstart, &tend);
 }
 
 /*
@@ -612,28 +622,28 @@ redraw_line_from(VW *vw, long col, long lineNum)
    `gapBlank' says whether or not I need to clear the space I'm drawing into.
    These coordinates are *GLYPH* coordinates. */
 void
-redraw_rect(VW *vw, VALUE start, VALUE end, bool gapBlank)
+redraw_rect(VW *vw, Pos *start, Pos *end, bool gapBlank)
 {
     TX *tx = vw->vw_Tx;
-    LINE *line = tx->tx_Lines + VROW(start);
-    int yord = ((VROW(start) - VROW(vw->vw_DisplayOrigin))
+    LINE *line = tx->tx_Lines + PROW(start);
+    int yord = ((PROW(start) - VROW(vw->vw_DisplayOrigin))
 		* vw->vw_Win->w_FontY);
     long row;
     if(!gapBlank)
     {
-	CLR_RECT(vw, (VCOL(start) - VCOL(vw->vw_DisplayOrigin))
+	CLR_RECT(vw, (PCOL(start) - VCOL(vw->vw_DisplayOrigin))
 		 * vw->vw_Win->w_FontX, yord,
-		 (VCOL(end) - VCOL(vw->vw_DisplayOrigin) + 1)
+		 (PCOL(end) - VCOL(vw->vw_DisplayOrigin) + 1)
 		  * vw->vw_Win->w_FontX,
-		 (VROW(end) - VROW(vw->vw_DisplayOrigin) + 1)
+		 (PROW(end) - VROW(vw->vw_DisplayOrigin) + 1)
 		  * vw->vw_Win->w_FontY);
     }
-    row = VROW(start);
-    while(VROW(end) >= row && row < tx->tx_LogicalEnd)
+    row = PROW(start);
+    while(PROW(end) >= row && row < tx->tx_LogicalEnd)
     {
-	pen_to_glyph_pos(vw, VCOL(start), row);
-	draw_line_glyph_length(vw, line, row, VCOL(start),
-			       VCOL(end) + 1);
+	pen_to_glyph_pos(vw, PCOL(start), row);
+	draw_line_glyph_length(vw, line, row, PCOL(start),
+			       PCOL(end) + 1);
 	line++;
 	row++;
     }

@@ -63,10 +63,10 @@ _PR bool clear_line_list(TX *);
 _PR void kill_line_list(TX *);
 _PR LINE *resize_line_list(TX *, long, long);
 _PR u_char *alloc_line_buf(long length);
-_PR bool insert_gap(TX *, long, VALUE);
+_PR bool insert_gap(TX *, long, long, long);
 _PR VALUE insert_bytes(TX *, const u_char *, long, VALUE);
 _PR VALUE insert_string(TX *, const u_char *, long, VALUE);
-_PR VALUE delete_chars(TX *, VALUE, long);
+_PR bool delete_chars(TX *, long, long, long);
 _PR VALUE delete_section(TX *, VALUE, VALUE);
 _PR bool pad_pos(TX *, VALUE);
 _PR bool pad_cursor(VW *);
@@ -224,15 +224,15 @@ alloc_line_buf(long length)
 /* Inserts LEN characters of `space' at pos. The gap will be filled
    with random garbage. */
 bool
-insert_gap(TX *tx, long len, VALUE pos)
+insert_gap(TX *tx, long len, long col, long row)
 {
-    LINE *line = tx->tx_Lines + VROW(pos);
+    LINE *line = tx->tx_Lines + row;
     long new_length = line->ln_Strlen + len;
     if(LINE_BUF_SIZE(new_length) == LINE_BUF_SIZE(line->ln_Strlen))
     {
 	/* Absorb the insertion in the current buffer */
-	memmove(line->ln_Line + VCOL(pos) + len,
-		line->ln_Line + VCOL(pos), line->ln_Strlen - VCOL(pos));
+	memmove(line->ln_Line + col + len,
+		line->ln_Line + col, line->ln_Strlen - col);
     }
     else
     {
@@ -242,9 +242,9 @@ insert_gap(TX *tx, long len, VALUE pos)
 	{
 	    if(line->ln_Strlen != 0)
 	    {
-		memcpy(newline, line->ln_Line, VCOL(pos));
-		memcpy(newline + VCOL(pos) + len, line->ln_Line + VCOL(pos),
-		       line->ln_Strlen - VCOL(pos));
+		memcpy(newline, line->ln_Line, col);
+		memcpy(newline + col + len, line->ln_Line + col,
+		       line->ln_Strlen - col);
 		FREE_LINE_BUF(line->ln_Line);
 	    }
 	    else
@@ -258,7 +258,7 @@ insert_gap(TX *tx, long len, VALUE pos)
 	}
     }
     line->ln_Strlen += len;
-    adjust_marks_add_x(tx, len, VCOL(pos), VROW(pos));
+    adjust_marks_add_x(tx, len, col, row);
     return TRUE;
 }
 
@@ -270,7 +270,7 @@ VALUE
 insert_bytes(TX *tx, const u_char *text, long textLen, VALUE pos)
 {
     LINE *line = tx->tx_Lines + VROW(pos);
-    if(insert_gap(tx, textLen, pos))
+    if(insert_gap(tx, textLen, VCOL(pos), VROW(pos)))
     {
 	memcpy(line->ln_Line + VCOL(pos), text, textLen);
 	return make_pos(VCOL(pos) + textLen, VROW(pos));
@@ -285,7 +285,8 @@ VALUE
 insert_string(TX *tx, const u_char *text, long textLen, VALUE pos)
 {
     const u_char *eol;
-    Pos tpos = *VPOS(pos);
+    Pos tpos;
+    COPY_VPOS(&tpos, pos);
     while((eol = memchr(text, '\n', textLen)))
     {
 	long len = eol - text;
@@ -294,7 +295,7 @@ insert_string(TX *tx, const u_char *text, long textLen, VALUE pos)
 	    if(len > 0)
 	    {
 		LINE *line = tx->tx_Lines + PROW(&tpos);
-		if(insert_gap(tx, len, VAL(&tpos)))
+		if(insert_gap(tx, len, PCOL(&tpos), PROW(&tpos)))
 		{
 		    memcpy(line->ln_Line + PCOL(&tpos), text, len);
 		    PCOL(&tpos) += len;
@@ -371,7 +372,7 @@ insert_string(TX *tx, const u_char *text, long textLen, VALUE pos)
     if(textLen > 0)
     {
 	LINE *line = tx->tx_Lines + PROW(&tpos);
-	if(insert_gap(tx, textLen, VAL(&tpos)))
+	if(insert_gap(tx, textLen, PCOL(&tpos), PROW(&tpos)))
 	{
 	    memcpy(line->ln_Line + PCOL(&tpos), text, textLen);
 	    PCOL(&tpos) += textLen;
@@ -389,26 +390,26 @@ insert_string(TX *tx, const u_char *text, long textLen, VALUE pos)
     }
 }
 
-/* Deletes some SIZE bytes from line at POS. Returns POS if okay.
-   This won't delete past the end of the line at POS. */
-VALUE
-delete_chars(TX *tx, VALUE pos, long size)
+/* Deletes some SIZE bytes from line at (COL,ROW). Returns true if okay.
+   This won't delete past the end of the line at (COL,ROW). */
+bool
+delete_chars(TX *tx, long col, long row, long size)
 {
-    LINE *line = tx->tx_Lines + VROW(pos);
+    LINE *line = tx->tx_Lines + row;
     if(line->ln_Strlen)
     {
 	long new_length;
-	if(size >= line->ln_Strlen - VCOL(pos))
-	    size = line->ln_Strlen - VCOL(pos) - 1;
+	if(size >= line->ln_Strlen - col)
+	    size = line->ln_Strlen - col - 1;
 	if(size <= 0)
-	    return LISP_NULL;
+	    return FALSE;
 	new_length = line->ln_Strlen - size;
 	if(LINE_BUF_SIZE(new_length) == LINE_BUF_SIZE(line->ln_Strlen))
 	{
 	    /* Absorb the deletion */
-	    memmove(line->ln_Line + VCOL(pos),
-		    line->ln_Line + VCOL(pos) + size,
-		    line->ln_Strlen - (VCOL(pos) + size));
+	    memmove(line->ln_Line + col,
+		    line->ln_Line + col + size,
+		    line->ln_Strlen - (col + size));
 	}
 	else
 	{
@@ -417,19 +418,19 @@ delete_chars(TX *tx, VALUE pos, long size)
 	    if(new_line == NULL)
 	    {
 		mem_error();
-		return LISP_NULL;
+		return FALSE;
 	    }
-            memcpy(new_line, line->ln_Line, VCOL(pos));
-            memcpy(new_line + VCOL(pos), line->ln_Line + VCOL(pos) + size,
-                   line->ln_Strlen - VCOL(pos) - size);
+            memcpy(new_line, line->ln_Line, col);
+            memcpy(new_line + col, line->ln_Line + col + size,
+                   line->ln_Strlen - col - size);
 	    FREE_LINE_BUF(line->ln_Line);
 	    line->ln_Line = new_line;
 	}
 	line->ln_Strlen -= size;
-	adjust_marks_sub_x(tx, size, VCOL(pos), VROW(pos));
-	return pos;
+	adjust_marks_sub_x(tx, size, col, row);
+	return TRUE;
     }
-    return LISP_NULL;
+    return FALSE;
 }
 
 /* Deletes from START to END; returns END if okay. */
@@ -439,20 +440,22 @@ delete_section(TX *tx, VALUE start, VALUE end)
     undo_record_deletion(tx, start, end);
     if(VROW(end) == VROW(start))
     {
-	delete_chars(tx, start, VCOL(end) - VCOL(start));
+	delete_chars(tx, VCOL(start), VROW(start),
+		     VCOL(end) - VCOL(start));
 	flag_deletion(tx, start, end);
     }
     else
     {
 	long middle_lines;
 	bool joinflag = FALSE;
-	Pos tstart = *VPOS(start), tend = *VPOS(end);
+	Pos tstart, tend;
+	COPY_VPOS(&tstart, start); COPY_VPOS(&tend, end);
 	if(PCOL(&tstart) != 0)
 	{
 	    long start_col = (tx->tx_Lines[PROW(&tstart)].ln_Strlen
 			      - PCOL(&tstart) - 1);
 	    if(start_col != 0)
-		delete_chars(tx, VAL(&tstart), start_col);
+		delete_chars(tx, PCOL(&tstart), PROW(&tstart), start_col);
 	    PCOL(&tstart) = 0;
 	    PROW(&tstart)++;
 	    joinflag = TRUE;
@@ -466,7 +469,7 @@ delete_section(TX *tx, VALUE start, VALUE end)
 	    PROW(&tend) = PROW(&tend) - middle_lines;
 	}
 	if(PCOL(&tend) != 0)
-	    delete_chars(tx, VAL(&tstart), PCOL(&tend));
+	    delete_chars(tx, PCOL(&tstart), PROW(&tstart), PCOL(&tend));
 	if(joinflag && PROW(&tstart) != 0)
 	{
 	    PROW(&tstart)--;
@@ -530,7 +533,8 @@ pad_pos(TX *tx, VALUE pos)
 	if(line->ln_Strlen < (VCOL(pos) + 1))
 	{
 	    VALUE point = make_pos(line->ln_Strlen - 1, VROW(pos));
-	    if(insert_gap(tx, VCOL(pos) - VCOL(point), point))
+	    if(insert_gap(tx, VCOL(pos) - VCOL(point),
+			  VCOL(point), VROW(point)))
 	    {
 		undo_record_insertion(tx, point, pos);
 		memset(line->ln_Line + VCOL(point), ' ',

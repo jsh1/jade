@@ -256,13 +256,13 @@ taken from the prefix argument.
 	    if(--count <= 0)
 		break;
 	}
-	else if(CONSP(item) && POSP(VCAR(item)))
+	else if(CONSP(item) && CONSP(VCAR(item)))
 	{
 	    if(STRINGP(VCDR(item)))
 	    {
 		/* A deleted string */
 		VALUE new = cmd_insert(VCDR(item), VCAR(item), tx);
-		if(new && POSP(new))
+		if(new && !NILP(new))
 		    cmd_goto(new);
 	    }
 	    else if(INTP(VCDR(item)))
@@ -272,17 +272,18 @@ taken from the prefix argument.
 		VSTR(tmp)[0] = (u_char)VINT(VCDR(item));
 		VSTR(tmp)[1] = 0;
 		tmp = cmd_insert(tmp, VCAR(item), tx);
-		if(tmp && POSP(tmp))
+		if(tmp && !NILP(tmp))
 		    cmd_goto(tmp);
 	    }
-	    else if(POSP(VCDR(item)))
+	    else if(CONSP(VCDR(item)))
 	    {
-		cmd_delete_area(VCAR(item), VCDR(item), tx); /* insert */
+		/* An insertion */
+		cmd_delete_area(VCAR(item), VCDR(item), tx);
 		cmd_goto(VCAR(item));
 	    }
+	    else if(POSP(item))
+		cmd_goto(item);
 	}
-	else if(POSP(item))
-	    cmd_goto(item);
 	else if(item == sym_t)
 	    /* clear modification flag. */
 	    cmd_set_buffer_modified(tx, sym_nil);
@@ -364,8 +365,8 @@ undo_trim(void)
 	    if(CONSP(item))
 	    {
 		size_count += sizeof(Lisp_Cons);
-		if(POSP(VCDR(item)))
-		    size_count += sizeof(Pos) * 2;
+		if(CONSP(VCDR(item)))
+		    size_count += sizeof(Lisp_Cons) * 2;
 		else if(STRINGP(VCDR(item)))
 		    size_count += STRING_LEN(VCDR(item));
 		if(size_count > max_undo_size)
@@ -376,10 +377,6 @@ undo_trim(void)
 		    *undo_list = sym_nil;
 		    break;
 		}
-	    }
-	    else if(POSP(item))
-	    {
-		size_count += sizeof(Pos);
 	    }
 	    undo_list = &VCDR(*undo_list);
 	}

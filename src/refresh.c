@@ -112,20 +112,20 @@ vert_scroll(VW *vw)
    Returns the number of pairs of coords put into DEST-ARRAY, either
    0, 1, or 2. */
 static int
-sub_intersect_regions(VALUE start1, VALUE end1, VALUE start2, VALUE end2,
-		      VALUE *dest_array)
+sub_intersect_regions(Pos *start1, Pos *end1, Pos *start2, Pos *end2,
+		      Pos **dest_array)
 {
-    if(POS_GREATER_P(start1, start2))
+    if(PPOS_GREATER_P(start1, start2))
     {
-	VALUE tmp;
+	Pos *tmp;
 	tmp = start1; start1 = start2; start2 = tmp;
 	tmp = end1;   end1 = end2;     end2 = tmp;
     }
-    if(POS_EQUAL_P(start1, start2))
+    if(PPOS_EQUAL_P(start1, start2))
     {
-	if(POS_EQUAL_P(end1, end2))
+	if(PPOS_EQUAL_P(end1, end2))
 	    return 0;
-	else if(POS_LESS_P(end1, end2))
+	else if(PPOS_LESS_P(end1, end2))
 	{
 	    dest_array[0] = end1;
 	    dest_array[1] = end2;
@@ -138,9 +138,9 @@ sub_intersect_regions(VALUE start1, VALUE end1, VALUE start2, VALUE end2,
 	    return 1;
 	}
     }
-    else if(POS_LESS_P(end1, end2))
+    else if(PPOS_LESS_P(end1, end2))
     {
-	if(POS_LESS_P(end1, start2))
+	if(PPOS_LESS_P(end1, start2))
 	{
 	    dest_array[0] = start1;
 	    dest_array[1] = end1;
@@ -159,7 +159,7 @@ sub_intersect_regions(VALUE start1, VALUE end1, VALUE start2, VALUE end2,
     }
     else
     {
-	if(POS_LESS_P(end2, start1))
+	if(PPOS_LESS_P(end2, start1))
 	{
 	    dest_array[0] = start1;
 	    dest_array[1] = end2;
@@ -180,20 +180,20 @@ sub_intersect_regions(VALUE start1, VALUE end1, VALUE start2, VALUE end2,
 
 /* Similar to above but subtracts region (START2,END2) from (START1,END1) */
 static int
-sub_regions(VALUE start1, VALUE end1, VALUE start2, VALUE end2,
-	    VALUE *dest_array)
+sub_regions(Pos *start1, Pos *end1, Pos *start2, Pos *end2,
+	    Pos **dest_array)
 {
-    if(POS_EQUAL_P(start1, start2))
+    if(PPOS_EQUAL_P(start1, start2))
     {
-	if(POS_GREATER_EQUAL_P(end2, end1))
+	if(PPOS_GREATER_EQUAL_P(end2, end1))
 	    return 0;
 	dest_array[0] = start1;
 	dest_array[1] = end1;
 	return 1;
     }
-    else if(POS_LESS_P(start1, start2))
+    else if(PPOS_LESS_P(start1, start2))
     {
-	if(POS_GREATER_EQUAL_P(end2, end1))
+	if(PPOS_GREATER_EQUAL_P(end2, end1))
 	{
 	    dest_array[0] = start1;
 	    dest_array[1] = end1;
@@ -210,7 +210,7 @@ sub_regions(VALUE start1, VALUE end1, VALUE start2, VALUE end2,
     }
     else
     {
-	if(POS_GREATER_EQUAL_P(end2, end1))
+	if(PPOS_GREATER_EQUAL_P(end2, end1))
 	    return 0;
 	dest_array[0] = end2;
 	dest_array[1] = end1;
@@ -231,16 +231,17 @@ refresh_block(VW *vw, VALUE start, VALUE end)
     /* Make copies so they can be reversed for rect-blocks sometimes */
     Pos block_start, block_end;
     Pos last_block_start, last_block_end;
+    Pos tstart, tend;
 
     if(vw->vw_BlockStatus == 0)
     {
-	block_start = *VPOS(vw->vw_BlockS);
-	block_end = *VPOS(vw->vw_BlockE);
+	COPY_VPOS(&block_start, vw->vw_BlockS);
+	COPY_VPOS(&block_end, vw->vw_BlockE);
     }
     if(vw->vw_LastBlockStatus == 0)
     {
-	last_block_start = *VPOS(vw->vw_LastBlockS);
-	last_block_end = *VPOS(vw->vw_LastBlockE);
+	COPY_VPOS(&last_block_start, vw->vw_LastBlockS);
+	COPY_VPOS(&last_block_end, vw->vw_LastBlockE);
     }
 
     if(vw->vw_Flags & VWFF_RECTBLOCKS)
@@ -264,10 +265,10 @@ refresh_block(VW *vw, VALUE start, VALUE end)
     if(vw->vw_BlockStatus == 0 && vw->vw_LastBlockStatus == 0)
     {
 	/* A block was drawn last time as well, try to economise. */
-	VALUE regions[4];
-	int count = sub_intersect_regions(VAL(&block_start), VAL(&block_end),
-					  VAL(&last_block_start),
-					  VAL(&last_block_end), regions);
+	Pos *regions[4];
+	int count = sub_intersect_regions(&block_start, &block_end,
+					  &last_block_start,
+					  &last_block_end, regions);
 	int i;
 	for(i = 0; i < count; i++)
 	{
@@ -275,10 +276,11 @@ refresh_block(VW *vw, VALUE start, VALUE end)
 		redraw_region(vw, regions[i*2], regions[i*2+1]);
 	    else
 	    {
-		VALUE dr_regions[4];
-		int dr_count = sub_regions(regions[i*2], regions[i*2+1],
-					   start, end, dr_regions);
-		int j;
+		Pos *dr_regions[4];
+		int dr_count, j;
+		dr_count = sub_regions(regions[i*2], regions[i*2+1],
+				       &tstart, &tend, dr_regions);
+		COPY_VPOS(&tstart, start); COPY_VPOS(&tend, end);
 		for(j = 0; j < dr_count; j++)
 		    redraw_region(vw, dr_regions[j*2], dr_regions[j*2+1]);
 	    }
@@ -286,27 +288,28 @@ refresh_block(VW *vw, VALUE start, VALUE end)
     }
     else
     {
-	VALUE start_draw, end_draw;
+	Pos *start_draw, *end_draw;
 	if(vw->vw_BlockStatus == 0)
 	{
 	    /* Draw the newly marked block */
-	    start_draw = VAL(&block_start);
-	    end_draw = VAL(&block_end);
+	    start_draw = &block_start;
+	    end_draw = &block_end;
 	}
 	else
 	{
 	    /* Wipeout the old block */
-	    start_draw = VAL(&last_block_start);
-	    end_draw = VAL(&last_block_end);
+	    start_draw = &last_block_start;
+	    end_draw = &last_block_end;
 	}
 	if(!start || !end)
 	    redraw_region(vw, start_draw, end_draw);
 	else
 	{
-	    VALUE regions[4];
-	    int count = sub_regions(start_draw, end_draw,
-				    start, end, regions);
-	    int i;
+	    Pos *regions[4];
+	    int count, i;
+	    COPY_VPOS(&tstart, start); COPY_VPOS(&tend, end);
+	    count = sub_regions(start_draw, end_draw,
+				&tstart, &tend, regions);
 	    for(i = 0; i < count; i++)
 		redraw_region(vw, regions[i*2], regions[i*2+1]);
 	}
@@ -329,8 +332,8 @@ refresh_view(VW *vw)
 	           || (vw->vw_Flags & VWFF_FORCE_REFRESH)
 		   || (vw->vw_Tx->tx_Flags & TXFF_REFRESH_STATUS)
 		   || (vw->vw_LastRefTx != vw->vw_Tx)
-		   || (!POS_EQUAL_P(&vw->vw_DisplayOrigin,
-				    &vw->vw_LastDisplayOrigin))))
+		   || (!POS_EQUAL_P(vw->vw_DisplayOrigin,
+				    vw->vw_LastDisplayOrigin))))
 	    {
 		update_status_buffer(vw);
 		redraw_status_buffer(vw);
@@ -391,7 +394,7 @@ refresh_view(VW *vw)
 		    else if(tx->tx_ModDelta == 0)
 		    {
 			/* not able to do any pasting */
-			redraw_region(vw, tx->tx_ModStart, tx->tx_ModEnd);
+			redraw_vregion(vw, tx->tx_ModStart, tx->tx_ModEnd);
 			if(vw->vw_Flags & VWFF_REFRESH_BLOCK)
 			    refresh_block(vw, tx->tx_ModStart, tx->tx_ModEnd);
 		    }
@@ -403,7 +406,7 @@ refresh_view(VW *vw)
 			    cut_paste_lines(vw, VROW(tx->tx_ModStart) + 1,
 					    VROW(tx->tx_ModStart)
 					    + tx->tx_ModDelta + 1);
-			redraw_region(vw, tx->tx_ModStart, tx->tx_ModEnd);
+			redraw_vregion(vw, tx->tx_ModStart, tx->tx_ModEnd);
 			if(vw->vw_Flags & VWFF_REFRESH_BLOCK)
 			    refresh_block(vw, tx->tx_ModStart, tx->tx_ModEnd);
 		    }
@@ -429,7 +432,7 @@ refresh_view(VW *vw)
 			    end = line_end;
 			else
 			    end = tx->tx_ModEnd;
-			redraw_region(vw, tx->tx_ModStart, end);
+			redraw_vregion(vw, tx->tx_ModStart, end);
 			if(vw->vw_Flags & VWFF_REFRESH_BLOCK)
 			    refresh_block(vw, tx->tx_ModStart, end);
 		    }

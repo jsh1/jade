@@ -302,6 +302,7 @@ beginning or the end of the buffer is passed, nil is returned.
 ::end:: */
 {
     long dist;
+    Pos tem;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     if(!POSP(pos))
@@ -314,10 +315,11 @@ beginning or the end of the buffer is passed, nil is returned.
     dist = INTP(count) ? VINT(count) : 1;
     if(dist == 0)
 	return pos;
-    pos = cmd_copy_pos(pos);
-    if((dist > 0 && forward_char(dist, VTX(tx), VPOS(pos)))
-       || backward_char(-dist, VTX(tx), VPOS(pos)))
+    COPY_VPOS(&tem, pos);
+    if((dist > 0 && forward_char(dist, VTX(tx), &tem))
+       || backward_char(-dist, VTX(tx), &tem))
     {
+	pos = COPY_POS(&tem);
 	if(!NILP(move))
 	    cmd_goto(pos);
 	return pos;
@@ -389,20 +391,20 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
    that COL is referenced more than once, so no side effects please!   */
 #define TST_ESC(line, col) ((col) > 0 && (line)[(col)-1] == esc)
 
-    LINE *line = tx->tx_Lines + VROW(pos);
-    if(VCOL(pos) < line->ln_Strlen)
+    LINE *line = tx->tx_Lines + PROW(pos);
+    if(PCOL(pos) < line->ln_Strlen)
     {
-	u_char startc = line->ln_Line[VCOL(pos)];
+	u_char startc = line->ln_Line[PCOL(pos)];
 	long i;
 	for(i = 0; i < NUM_BRAC_TYPES; i++)
 	{
 	    if(startc == bracs[i])
 		break;
 	}
-	if(!TST_ESC(line->ln_Line, VCOL(pos)) && (i < NUM_BRAC_TYPES))
+	if(!TST_ESC(line->ln_Line, PCOL(pos)) && (i < NUM_BRAC_TYPES))
 	{
-	    long x = VCOL(pos);
-	    long y = VROW(pos);
+	    long x = PCOL(pos);
+	    long y = PROW(pos);
 	    long braccount = 1;
 	    bool found = FALSE;
 	    if(i & 1)
@@ -465,8 +467,8 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 		    }
 		}
 	    }
-	    VCOL(pos) = x;
-	    VROW(pos) = y;
+	    PCOL(pos) = x;
+	    PROW(pos) = y;
 	    return TRUE;
 	}
     }
@@ -485,6 +487,7 @@ Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
 ::end:: */
 {
     u_char esc_char = INTP(esc) ? VINT(esc) : '\\';
+    Pos tem;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     if(!POSP(pos))
@@ -494,9 +497,9 @@ Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
 	if(!check_pos(VTX(tx), pos))
 	    return LISP_NULL;
     }
-    pos = cmd_copy_pos(pos);
-    if(find_matching_bracket(VPOS(pos), VTX(tx), esc_char))
-	return(pos);
+    COPY_VPOS(&tem, pos);
+    if(find_matching_bracket(&tem, VTX(tx), esc_char))
+	return COPY_POS(&tem);
     return(sym_nil);
 }
 
@@ -532,16 +535,18 @@ is returned, not a glyph position.
 	   current view. Translate it.
 
 	   NOTE: we do actually modify the result of cmd_raw_mouse_pos()! */
-	VROW(pos) = (VROW(pos)
-		     - (curr_vw->vw_TopPix / curr_vw->vw_Win->w_FontY)
-		     + VROW(curr_vw->vw_DisplayOrigin));
-	if(VROW(pos) < curr_vw->vw_Tx->tx_LogicalStart
-	   || VROW(pos) >= curr_vw->vw_Tx->tx_LogicalEnd)
+	long row, col;
+	row = (VROW(pos)
+	       - (curr_vw->vw_TopPix / curr_vw->vw_Win->w_FontY)
+	       + VROW(curr_vw->vw_DisplayOrigin));
+	if(row < curr_vw->vw_Tx->tx_LogicalStart
+	   || row >= curr_vw->vw_Tx->tx_LogicalEnd)
 	    return sym_nil;
-	VCOL(pos) = char_col(curr_vw->vw_Tx,
-			     VCOL(pos) + VCOL(curr_vw->vw_DisplayOrigin),
-			     VROW(pos));
-	return(pos);
+	col = char_col(curr_vw->vw_Tx,
+		       VCOL(pos) + VCOL(curr_vw->vw_DisplayOrigin), row);
+	VSETCOL(pos, col);
+	VSETROW(pos, row);
+	return pos;
     }
     else
 	return(sym_nil);

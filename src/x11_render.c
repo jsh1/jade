@@ -57,7 +57,7 @@ redraw_exposed_area(WIN *w, u_int x1, u_int y1, u_int x2, u_int y2)
 			  + VCOL(vw->vw_DisplayOrigin));
 	    PROW(&end) = last_row + VROW(vw->vw_DisplayOrigin);
 
-	    redraw_rect(vw, VAL(&start), VAL(&end), FALSE);
+	    redraw_rect(vw, &start, &end, FALSE);
 	}
 	if(!(vw->vw_Flags & VWFF_MINIBUF)
 	   && vw->vw_BottomPix < y2)
