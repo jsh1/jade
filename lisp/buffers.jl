@@ -66,9 +66,6 @@ with `enable-local-variables'.")
   "This variable defines how many of the bottom-most lines in a file are
 searched for a `Local Variables:' section.")
 
-(defvar before-exit-hook nil
-  "Hook called immediately prior to the editor finishing execution.")
-
 ;; Initialise the first window's buffer-list
 (setq buffer-list (list (current-buffer)))
 
@@ -588,14 +585,11 @@ will have to agree to this)."
 (defun save-and-quit (&optional no-query)
   "Exit the editor. Unless NO-QUERY is non-nil, ask the user whether or
 not to save any buffers with outstanding modifications. When NO-QUERY is
-numeric it's used as the exit status of the editor process.
-
-Immediately prior to exiting, calls `before-exit-hook'."
+numeric it's used as the exit status of the editor process."
   (interactive "P")
   (when (or no-query
 	    (save-some-buffers)
 	    (yes-or-no-p "Unsaved buffers exist; quit anyway?"))
-    (call-hook 'before-exit-hook)
     (throw 'quit (if (numberp no-query) no-query 0))))
 
 (defun buffer-read-only-p (&optional buffer)
