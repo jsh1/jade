@@ -351,6 +351,8 @@ kill_all_views(WIN *w)
 	kill_view(vw);
 	vw = next;
     }
+    w->w_CurrVW = 0;
+    w->w_ViewList = 0;
 }
 
 /* Initialise the scroll steps in VW, from the size of the view and 
