@@ -43,7 +43,7 @@
 	(mail-dir-scan-function (car (car to)) (cdr (car to))))
       (setq to (cdr to))))
   t)
-(add-hook 'read-mail-display-message-hook 'rm-mail-dir-scanner)
+(add-hook 'rm-display-message-hook 'rm-mail-dir-scanner)
 
 (defun rm-mail-dir-scan-current ()
   "Add the sender of the currently displayed message to the mail directory."
