@@ -93,7 +93,7 @@ DEFSYM(xa_secondary, "xa-secondary");
 
 DEFSTRING(no_atom, "No atom for symbol");
 
-static INLINE int
+static inline int
 selection_atom_to_index(Atom atom)
 {
     return (atom == XA_PRIMARY) ? 0 : 1;

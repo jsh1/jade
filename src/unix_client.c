@@ -18,16 +18,28 @@
    along with Jade; see the file COPYING.	If not, write to
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
+#include "jade.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
+#include <limits.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <pwd.h>
-#include "unix_defs.h"
+
+#ifdef HAVE_FCNTL_H
+# include <fcntl.h>
+#endif
+
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
+
+#ifndef PATH_MAX
+# define PATH_MAX 256
+#endif
 
 int
 main(int argc, char *argv[])
@@ -45,7 +57,11 @@ main(int argc, char *argv[])
 	result = 5;
 	if(argc >= 1 && **argv == '+')
 	{
+#ifdef HAVE_STRTOL
 	    linenum = strtol(argv[0], NULL, 0);
+#else
+	    linenum = atol(argv[0]);
+#endif
 	    if(linenum <= 0)
 		linenum = 1;
 	    argc--; argv++;
@@ -54,7 +70,7 @@ main(int argc, char *argv[])
 	    linenum = 1;
 	if(argc > 0)
 	{
-	    char buf[512];
+	    char buf[PATH_MAX];
 	    char *filename;
 	    int sock_fd;
 
@@ -63,7 +79,11 @@ main(int argc, char *argv[])
 	    if(**argv != '/' && **argv != '~')
 	    {
 		char *end;
-		if(!getcwd(buf, 511))
+#ifdef HAVE_GETCWD
+		if(!getcwd(buf, PATH_MAX))
+#else
+		if(!getwd(buf))
+#endif
 		{
 		    perror("getcwd");
 		    exit(5);

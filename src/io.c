@@ -22,15 +22,18 @@
 #include "jade_protos.h"
 
 #include <string.h>
+#include <limits.h>
 
 #ifdef NEED_MEMORY_H
 # include <memory.h>
 #endif
 
-#if defined( HAVE_UNIX )
+#ifdef HAVE_UNISTD_H
 # include <unistd.h>
-#elif defined( HAVE_AMIGA )
-  /* my Amiga compiler has chdir() etc in <stdio.h> */
+#endif
+
+#ifndef PATH_MAX
+# define PATH_MAX 256
 #endif
 
 _PR bool file_exists2(u_char *, u_char *);
@@ -402,8 +405,12 @@ return the name of the current directory.
     }
     else
     {
-	u_char buff[256];
-	if(getcwd(buff, 256))
+	u_char buff[PATH_MAX];
+#ifdef HAVE_GETCWD
+	if(getcwd(buff, PATH_MAX))
+#else
+	if(getwd(buff))
+#endif
 	    res = string_dup(buff);
     }
     return(res);

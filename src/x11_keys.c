@@ -379,7 +379,7 @@ sys_find_meta(void)
     int syms_per_code;
     XModifierKeymap *mods;
 
-#if HAVE_X11 >= 4
+#if XlibSpecificationRelease >= 4
     XDisplayKeycodes(x11_display, &min_code, &max_code);
 #else
     min_code = x11_display->min_keycode;

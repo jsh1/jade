@@ -25,10 +25,13 @@
 #include <X11/Xatom.h>
 #include "x11_windowsys.h"
 
-/*
- * It seems that X11R4 doesn't have XPointer type??
- */
-#if HAVE_X11 < 5
+/* This is probably totally unnecessary */
+#ifndef XlibSpecificationRelease
+# define XlibSpecificationRelease 1
+#endif
+
+/* It seems that X11R4 doesn't have XPointer type?? */
+#if XlibSpecificationRelease < 5
 typedef char *XPointer;
 #endif
 

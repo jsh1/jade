@@ -23,11 +23,14 @@
 
 #include <fcntl.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 _PR void server_init(void);
 _PR void server_kill(void);

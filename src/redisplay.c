@@ -65,7 +65,7 @@ free_glyph_buf(glyph_buf *gb)
 }
 
 /* Compute and return the hash code of line ROW in buffer G. */
-static INLINE u_long
+static inline u_long
 hash_glyph_row(glyph_buf *g, int row)
 {
     u_long value = 0;
@@ -82,7 +82,7 @@ hash_glyph_row(glyph_buf *g, int row)
 }
 
 /* Hash every row in glyph buffer G. */
-static INLINE void
+static inline void
 hash_glyph_buf(glyph_buf *g)
 {
     int i;
@@ -112,7 +112,7 @@ garbage_glyphs(WIN *w, int x, int y, int width, int height)
 /* Returns true iff line L1 of glyph buffer G1 exactly matches line L2 of
    buffer G2 (matching both codes and attributes). The hash arrays should
    have been filled in. In this function L1 and L2 count from zero.. */
-static INLINE bool
+static inline bool
 compare_lines(glyph_buf *g1, glyph_buf *g2, int line1, int line2)
 {
     return (g1->hashes[line1] == g2->hashes[line2]

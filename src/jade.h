@@ -21,6 +21,8 @@
 #ifndef _JADE_H
 #define _JADE_H
 
+#include <config.h>
+
 #include <sys/types.h>
 #include <stdio.h>
 
@@ -36,11 +38,6 @@ typedef char bool;
 
 #include "revision.h"
 #include "value.h"
-
-/* This should be either a link to the target systems config.h.X file
-   in configs/ or a file containing whatever your system needs.	 */
-#define C_CONFIG
-#include QUOTE(CONFIG_FILE)
 
 #ifdef HAVE_X11
 # include "x11_defs.h"
@@ -115,14 +112,6 @@ extern void *memchr(const void *, int, size_t);
 
 #ifndef _PR
 # define _PR extern
-#endif
-
-#ifndef INLINE
-# ifdef __GNUC__
-#  define INLINE __inline__
-# else
-#  define INLINE
-# endif
 #endif
 
 #ifndef NULL

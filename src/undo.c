@@ -73,7 +73,7 @@ coalesce_undo(TX *tx)
 
 /* Called *after* recording an undo command, checks if this is the
    first change to the buffer. Should be called before the operation. */
-static INLINE void
+static inline void
 check_first_mod(TX *tx)
 {
     if((tx->tx_Changes == tx->tx_ProperSaveChanges)
