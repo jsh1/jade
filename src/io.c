@@ -87,10 +87,10 @@ read_tx(TX *tx, FILE *fh, long file_length)
 	u_char *eol, *cur = buf;
 	while((eol = memchr(cur, '\n', (buf + len) - cur)))
 	{
-	    if(line->ln_Strlen)
+	    if(line->ln_Strlen != 0)
 	    {
 		newlen = line->ln_Strlen + (eol - cur);
-		new = str_alloc(newlen);
+		new = alloc_line_buf(newlen);
 		memcpy(new, line->ln_Line, line->ln_Strlen);
 		memcpy(new + line->ln_Strlen - 1, cur, eol - cur);
 		new[newlen-1] = 0;
@@ -101,7 +101,11 @@ read_tx(TX *tx, FILE *fh, long file_length)
 	    else
 	    {
 		newlen = eol - cur;
-		new = str_dupn(cur, newlen);
+		new = alloc_line_buf(newlen + 1);
+		if(new == NULL)
+		    goto abortmem;
+		memcpy(new, cur, newlen);
+		new[newlen] = 0;
 		line->ln_Line = new;
 		line->ln_Strlen = newlen+1;
 	    }
@@ -146,7 +150,7 @@ read_tx(TX *tx, FILE *fh, long file_length)
                 /* Only way we can get here is if there were *no* newlines in
                    the chunk we just read. */
 		newlen = line->ln_Strlen + len;
-		new = str_alloc(newlen);
+		new = alloc_line_buf(newlen);
 		if(!new)
 		    goto abortmem;
 		memcpy(new, line->ln_Line, line->ln_Strlen - 1);
@@ -159,7 +163,7 @@ read_tx(TX *tx, FILE *fh, long file_length)
             else
 	    {
 		newlen = (buf + len) - cur;
-		line->ln_Line = str_alloc(newlen + 1);
+		line->ln_Line = alloc_line_buf(newlen + 1);
 		if(!line->ln_Line)
 		    goto abortmem;
 		memcpy(line->ln_Line, cur, newlen);
@@ -170,7 +174,10 @@ read_tx(TX *tx, FILE *fh, long file_length)
     }
     if(line->ln_Strlen == 0)
     {
-	line->ln_Line = str_dupn("", 0);
+	line->ln_Line = alloc_line_buf(1);
+	if(line->ln_Line == NULL)
+	    goto abortmem;
+	line->ln_Line[0] = 0;
 	line->ln_Strlen = 1;
     }
     else
