@@ -150,12 +150,12 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
     (if buffer
 	(goto-buffer buffer)
       (setq buffer (open-buffer buf-name))
-      (goto-buffer buffer)
-      (setq local-keymap 'rcs-callback-keymap))
+      (goto-buffer buffer))
     (text-mode)
     (setq rcs-callback-args (list file buffer command options
 				  text-prefix reread-p)
-	  local-ctrl-c-keymap rcs-callback-ctrl-c-keymap
+	  local-keymap 'rcs-callback-keymap
+	  local-ctrl-c-keymap 'rcs-callback-ctrl-c-keymap
 	  rcs-history-level nil)))
 
 ;; Called when Ctrl-C Ctrl-C is typed in a callback buffer.
