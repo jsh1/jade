@@ -280,6 +280,7 @@ face_to_gc(WIN *w, Lisp_Face *f, bool invert)
 {
     unsigned long mask = 0;
     struct x11_color *c;
+    Font fid;
 
     c = x11_get_color_dpy(VCOLOR(invert ? f->background : f->foreground),
 			  WINDOW_XDPY(w));
@@ -297,6 +298,16 @@ face_to_gc(WIN *w, Lisp_Face *f, bool invert)
 	if(w->w_WindowSys.ws_GC_values.background != c->color.pixel)
 	    w->w_WindowSys.ws_GC_values.background = c->color.pixel;
 	mask |= GCBackground;
+    }
+
+    if((f->car & FACEFF_BOLD) && w->w_WindowSys.ws_BoldFont)
+	fid = w->w_WindowSys.ws_BoldFont->fid;
+    else
+	fid = w->w_WindowSys.ws_Font->fid;
+    if(w->w_WindowSys.ws_GC_values.font != fid)
+    {
+	w->w_WindowSys.ws_GC_values.font = fid;
+	mask |= GCFont;
     }
 
     /* FIXME: Bold, italic?! */
@@ -381,6 +392,11 @@ sys_set_font(WIN *w)
     {
 	if(w->w_WindowSys.ws_Font)
 	    XFreeFont(dpy->display, w->w_WindowSys.ws_Font);
+	if(w->w_WindowSys.ws_BoldFont)
+	{
+	    XFreeFont(dpy->display, w->w_WindowSys.ws_BoldFont);
+	    w->w_WindowSys.ws_BoldFont = 0;
+	}
 	w->w_WindowSys.ws_Font = font;
 	w->w_FontX = XTextWidth(font, "M", 1);
 	w->w_FontY = font->ascent + font->descent;
@@ -405,6 +421,38 @@ sys_set_font(WIN *w)
 	    XSetWMNormalHints(dpy->display, w->w_Window, &size_hints);
 	    XResizeWindow(dpy->display, w->w_Window, width, height);
 	}
+
+	/* Now try to find the bold version. ho ho. */
+	{
+	    unsigned long value;
+	    if(XGetFontProperty(font, XA_FONT, &value))
+	    {
+		char *name = (char *)XGetAtomName(dpy->display, (Atom)value);
+		char *tem = name;
+		int dashes = 0;
+		while(*tem && dashes != 3)
+		{
+		    if(*tem++ == '-')
+			dashes++;
+		}
+		if(dashes == 3)
+		{
+		    /* So the next part of the string should be the weight. */
+		    char buf[256];
+		    memcpy(buf, name, tem - name);
+		    strcpy(buf + (tem - name), "bold");
+		    while(*tem)
+		    {
+			if(*tem++ == '-')
+			    break;
+		    }
+		    strcat(buf, tem - 1);
+		    w->w_WindowSys.ws_BoldFont
+			= XLoadQueryFont(dpy->display, buf);
+		}
+		XFree(name);
+	    }
+	}
 	return TRUE;
     }
     return FALSE;
@@ -413,10 +461,18 @@ sys_set_font(WIN *w)
 void
 sys_unset_font(WIN *w)
 {
-    if(w->w_WindowSys.ws_Font && WINDOW_XDPY(w) != 0)
+    if(WINDOW_XDPY(w) != 0)
     {
-	XFreeFont(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_Font);
-	w->w_WindowSys.ws_Font = NULL;
+	if(w->w_WindowSys.ws_Font)
+	{
+	    XFreeFont(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_Font);
+	    w->w_WindowSys.ws_Font = NULL;
+	}
+	if(w->w_WindowSys.ws_BoldFont)
+	{
+	    XFreeFont(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_BoldFont);
+	    w->w_WindowSys.ws_BoldFont = NULL;
+	}
     }
 }
 
