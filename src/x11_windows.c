@@ -182,13 +182,22 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	bg = x11_get_color_dpy(VCOLOR(VFACE(face)->background), dpy);
     }
 
-    win = XCreateSimpleWindow(dpy->display,
-			      DefaultRootWindow(dpy->display),
-			      x, y, width, height, 1,
-			      (x11_opt_reverse_video
-			       ? bg->color.pixel : fg->color.pixel),
-			      (x11_opt_reverse_video
-			       ? fg->color.pixel : bg->color.pixel));
+    {
+	XSetWindowAttributes wa;
+	wa.background_pixel = (x11_opt_reverse_video
+			       ? fg->color.pixel : bg->color.pixel);
+	wa.border_pixel = (x11_opt_reverse_video
+			   ? bg->color.pixel : fg->color.pixel);
+	wa.colormap = dpy->colormap;
+	wa.cursor = dpy->text_cursor;
+
+	win = XCreateWindow(dpy->display, DefaultRootWindow(dpy->display),
+			    x, y, width, height, 1, dpy->depth, InputOutput,
+			    dpy->visual,
+			    CWBackPixel | CWBorderPixel
+			    | CWColormap | CWCursor, &wa);
+    }
+
     if(win)
     {
 	w->w_Window = win;
@@ -224,7 +233,6 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	XSetWMProtocols(dpy->display, win, &dpy->wm_delete_window, 1);
 	XSelectInput(dpy->display, win, INPUT_EVENTS);
 	XMapWindow(dpy->display, win);
-	XDefineCursor(dpy->display, win, dpy->text_cursor);
 	return win;
     }
     return FALSE;
