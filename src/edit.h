@@ -369,6 +369,8 @@ typedef struct {
        all data for a line can be copied by a single call to memcpy() */
 } glyph_buf;
 
+#define MAX_MOUSE_EXTENTS 16
+
 /* Each window is represented by one of these */
 typedef struct _WIN {
     repv w_Car;
@@ -384,7 +386,8 @@ typedef struct _WIN {
     W_WindowSys w_WindowSys;		/* Data for the window system */
     glyph_buf *w_Content, *w_NewContent; /* Data for redisplay */
     struct visible_extent *w_VisibleExtents;
-    Lisp_Extent *w_MouseExtent;
+    Lisp_Extent *w_MouseExtents[MAX_MOUSE_EXTENTS];
+    int w_NumMouseExtents;
 
     u_long w_LastClickMics;		/* Last mouse click event */
 
