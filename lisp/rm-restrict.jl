@@ -58,17 +58,18 @@
 ;;	(mailbox FOLDER-REGEXP)
 ;;	(recipient REGEXP)
 ;;	(sender REGEXP)
+;;	(sender-alias ALIAS-NAME)
 ;;	(subject REGEXP)
 ;;	(lines NUMBER)
 ;;	(attribute FLAG-SYMBOL)
 ;;	(body REGEXP)
 ;;
-;; TODO:
-;;  + Make the date syntax a lot friendlier. Currently we accept:
+;;  Date syntax:
+;;
 ;;	last (week|fortnight|month|year)
 ;;	N (day|week|fortnight|month|year)s? ago
 ;;	yesterday
-;;	DD Month YYYY HH:MM:SS TTTT	(time optional)
+;;	DD Month YYYY HH:MM:SS TZTZ	(all parts optional)
 
 
 
@@ -261,6 +262,19 @@ contain its definition as a function."
 		(throw 'return t)))
 	  (rm-get-senders rm-rule-message))
     nil))
+
+;; (sender-alias ALIAS-NAME)
+(put 'sender-alias 'rm-rule-compiler 'rm-rule:compile-sender-alias)
+(defun rm-rule:compile-sender-alias (form)
+  (let
+      ((addresses (get-mail-alias (nth 1 form)))
+       strings)
+    (while addresses
+      (setq strings (cons (concat (quote-regexp (car addresses))
+				  (and (cdr addresses) ?|))
+			  strings)
+	    addresses (cdr addresses)))
+    (list 'rm-rule:sender (apply 'concat (nreverse strings)))))
 
 ;; (lines NUMBER)
 (put 'lines 'rm-rule-function 'rm-rule:lines)
