@@ -495,6 +495,8 @@ reinstall the original window as the current one.
 	    POPGC;
 	    curr_win = VWIN(oldwin);
 	}
+	else
+	    res = signal_arg_error(res, 1);
 	POPGC;
 	return(res);
     }
