@@ -55,8 +55,7 @@ If MOVE is t then the cursor is moved to the result."
   (interactive "p\n\nt")
   (unless number
     (setq number 1))
-  (unless pos
-    (setq pos (cursor-pos)))
+  (setq pos (if pos (copy-pos pos) (cursor-pos)))
   (cond
     ((< number 0)
       ;; go backwards
@@ -180,7 +179,7 @@ backwards. If MOVEP is non-nil move the cursor to the position."
 	  (setq pos (match-end)
 		count (1- count)))
 	(when (= count 1)
-	  (setq pos buffer-end
+	  (setq pos (buffer-end)
 		count 0)))
     (when (looking-at page-regexp (line-start pos))
       (setq pos (prev-line 1 pos)))
@@ -193,10 +192,9 @@ backwards. If MOVEP is non-nil move the cursor to the position."
       (setq pos (buffer-start)
 	    count 0)))
   (if (zerop count)
-      (setq pos (cursor-pos))
+      (when movep
+	(goto-char pos))
     (error (if (> count 0) "End of buffer" "Start of buffer")))
-  (when movep
-    (goto-char pos))
   pos)
 
 (defun backward-page (&optional count pos movep)
@@ -207,17 +205,17 @@ backwards. If MOVEP is non-nil move the cursor to the position."
 (defun mark-page ()
   "Set the block to mark the current page of text."
   (interactive)
-  (let
-      ((end (forward-page))
-       (start (backward-page)))
+  (let*
+      ((end (forward-page 1))
+       (start (backward-page 1 end)))
     (mark-block start end)))
 
 (defun restrict-to-page ()
   "Restrict the buffer to the current page of text."
   (interactive)
-  (let
-      ((end (forward-page))
-       (start (backward-page)))
+  (let*
+      ((end (forward-page 1))
+       (start (backward-page 1 end)))
     (restrict-buffer start end)))
 
 
