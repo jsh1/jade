@@ -247,7 +247,7 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
 
 #define UPD(p)							\
     do {							\
-	if(p && VROW(p) >= ypos)				\
+	if(p && VROW(p) >= ypos && VCOL(p) >= xpos)		\
 	{							\
 	    (p) = make_pos((VROW(p) == ypos && VCOL(p) >= xpos)	\
 			   ? VCOL(p) - xpos : VCOL(p),		\
