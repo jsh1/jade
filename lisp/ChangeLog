@@ -1,3 +1,12 @@
+2000-04-23  John Harper  <john@dcs.warwick.ac.uk>
+
+	* lisp-mode.jl: hint for fluid-let
+
+2000-04-20  John Harper  <john@dcs.warwick.ac.uk>
+
+	* mime-decode.jl (mime-decode): only choose text/html from
+	alternatives if no lesser representation
+
 2000-04-10  John Harper  <john@dcs.warwick.ac.uk>
 
 	* lisp-mode.jl (eval-and-print): define this function here
