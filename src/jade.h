@@ -25,6 +25,21 @@
 #include <config.h>
 #endif
 
+
+/* Some low-level configuration options */
+
+/* Define this to give each buffer its own allocation pool. */
+/* #define STRINGPOOL_PER_BUFFER */
+
+/* When defined, try to translate addresses to their symbols. */
+#define DB_RESOLVE_SYMBOLS
+
+/* Define this to track unfreed memory allocations */
+/* #define DEBUG_SYS_ALLOC */
+
+
+/* General stuff */
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdarg.h>
