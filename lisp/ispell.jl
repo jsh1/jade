@@ -51,6 +51,11 @@ i.e. a single word.")
   (set-face-attribute ispell-misspelt-face 'underline t)
   (set-face-attribute ispell-misspelt-face 'foreground "#700000"))
 
+(defvar ispell-ignore-word-hook nil
+  "Hook called as (FUNCTION WORD START END) before WORD is to be spell-checked,
+if the hook (`or' style) returns t the word is assumed to be correct.")
+(make-variable-buffer-local 'ispell-ignore-word-hook)
+
 (defvar ispell-echo-output nil
   "Use for debugging only.")
 
@@ -192,7 +197,10 @@ i.e. a single word.")
 	(word-start word-end word)
       (setq word-start (re-search-forward ispell-word-re start))
       (if (and word-start
-	       (< (setq word-end (match-end)) end))
+	       (< (setq word-end (match-end)) end)
+	       (not (and ispell-ignore-word-hook
+			 (call-hook ispell-ignore-word-hook
+				    (list word word-start word-end) 'or))))
 	  (progn
 	    (ispell-start-process)
 	    (setq word (copy-area word-start word-end))
