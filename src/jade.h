@@ -15,7 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with Jade; see the file COPYING.	If not, write to
+   along with Jade; see the file COPYING.  If not, write to
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #ifndef _JADE_H
@@ -39,12 +39,40 @@ typedef char bool;
 #  error Need HAVE_X11 or HAVE_AMIGA defined
 # endif
 #endif
+#ifndef HAVE_UNIX
+# ifndef HAVE_AMIGA
+#  error Need HAVE_UNIX or HAVE_AMIGA defined
+# endif
+#endif
 
+#ifndef ALIGN_4
+# ifdef __GNUC__
+#  define ALIGN_4 __attribute__ ((aligned (4)))
+# else
+#  error Need ALIGN_4 macro
+# endif
+#endif
+#ifndef ALIGN_8
+# ifdef __GNUC__
+#  define ALIGN_8 __attribute__ ((aligned (8)))
+# else
+#  error Need ALIGN_8 macro
+# endif
+#endif
+
+/* Stringify X. Expands macros in X. */
+#define QUOTE(x) QUOTE__(x)
+#define QUOTE__(x) #x
+
+/* Concat two tokens. Expands macros in X and Y. */
+#define CONCAT(x, y) CONCAT__(x, y)
+#define CONCAT__(x, y) x##y
+
+#include "stringmem.h"
 #include "edit.h"
 #include "lisp.h"
 #include "doc-strings.h"
 #include "keys.h"
-#include "stringmem.h"
 
 
 /* Macros */
@@ -57,10 +85,6 @@ typedef char bool;
 #define IsMListEmpty(l) IsListEmpty((struct List *)l)
 #define IsLastMNode(n)	(!((n)->mln_Succ))
 
-/* Stringify X. Expands macros in X. */
-#define QUOTE(x) __QUOTE(x)
-#define __QUOTE(x) #x
-
 /* Maximum/minimum macros. Don't use when X or Y have side-effects! */
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
@@ -69,6 +93,9 @@ typedef char bool;
 /* Round the integer X to the next or previous multiple of Y. */
 #define ROUND_UP_INT(x,y) ((((x) + (y)-1) / (y)) * (y))
 #define ROUND_DOWN_INT(x,y) (((x) / (y)) * (y))
+
+/* Return the offset in data type S of the field X. */
+#define OFFSETOF(s,x) ((int)&(((s *)0)->x))
 
 
 #ifndef HAVE_STPCPY
