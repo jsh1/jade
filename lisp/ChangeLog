@@ -1,3 +1,9 @@
+2000-05-26  John Harper  <john@dcs.warwick.ac.uk>
+
+	* shell.jl, rm-restrict.jl, popup-menus.jl, mime-decode.jl,
+	info.jl, gdb.jl, find-url.jl, cvs.jl: replace kludgey calls to
+	make-closure by proper static closures
+
 2000-05-25  John Harper  <john@dcs.warwick.ac.uk>
 
 	* rcs.jl, prompt.jl, print.jl, mail-headers.jl, mail-dir.jl,
