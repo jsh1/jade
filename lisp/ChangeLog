@@ -1,3 +1,13 @@
+1999-07-04  John Harper  <john@dcs.warwick.ac.uk>
+
+	* ws-x11.jl, ws-gtk.jl: in the after-kill-hook, clear the
+	current selection
+
+1999-07-02  John Harper  <john@dcs.warwick.ac.uk>
+
+	* mail-headers.jl (mail-union-addresses): make sure that order
+	is preserved
+
 1999-06-27  John Harper  <john@dcs.warwick.ac.uk>
 
 	* ws-x11.jl, ws-gtk.jl: don't select kills anymore

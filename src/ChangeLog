@@ -1,3 +1,9 @@
+1999-07-04  John Harper  <john@dcs.warwick.ac.uk>
+
+	* x11_misc.c, gtk_select.c (Fx11_set_selection,
+	Fgtk_jade_set_selection): if given a nil second parameter,
+	clear the selection
+
 1999-06-30  John Harper  <john@dcs.warwick.ac.uk>
 
 	* gtk_jade.c (gtk_jade_handle_async_input): don't poll the X
