@@ -58,7 +58,7 @@
 ;;;###autoload
 (defun tex-mode (&optional from-sub-mode)
   "TeX Mode:\n
-Major mode for editing TeX and LaTeX source files.\n
+Major mode for editing TeX source files.\n
 Local bindings in this mode are:\n
 \\{tex-keymap}
 \\{tex-ctrl-c-ctrl-c-keymap,Ctrl-c Ctrl-c}"
@@ -98,6 +98,11 @@ Local bindings in this mode are:\n
 	keymap-path (delq 'tex-keymap keymap-path)))
 
 (defun latex-mode (&optional from-super-mode)
+  "LaTeX Mode:\n
+Major mode for editing LaTeX source files.\n
+Local bindings in this mode are:\n
+\\{tex-keymap}
+\\{tex-ctrl-c-ctrl-c-keymap,Ctrl-c Ctrl-c}"
   (interactive)
   (unless from-super-mode
     (tex-mode t))
@@ -108,6 +113,11 @@ Local bindings in this mode are:\n
   (call-hook 'latex-mode-hook))  
 
 (defun plain-tex-mode (&optional from-super-mode)
+  "Plain TeX Mode:\n
+Major mode for editing Plain TeX source files.\n
+Local bindings in this mode are:\n
+\\{tex-keymap}
+\\{tex-ctrl-c-ctrl-c-keymap,Ctrl-c Ctrl-c}"
   (interactive)
   (unless from-super-mode
     (tex-mode t))
