@@ -21,7 +21,9 @@
 (require 'read-mail)
 
 ;; Suppress annoying compiler warnings
-(eval-when-compile (require 'send-mail))
+(eval-when-compile (progn
+		     (require 'send-mail)
+		     (require 'rm-summary)))
 
 
 ;; Replying to messages
