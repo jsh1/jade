@@ -18,6 +18,8 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(eval-when-compile (require 'info))
+
 (provide 'c-mode)
 
 ;; Commentary:
@@ -112,6 +114,8 @@ Commands defined by this mode are:\n
 	paragraph-start paragraph-separate
 	local-ctrl-c-keymap c-mode-ctrl-c-keymap
 	local-keymap c-mode-keymap)
+  (make-local-variable 'info-documentation-file)
+  (setq info-documentation-file "libc")
   (call-hook 'c-mode-hook))
 
 (defun c-open-brace ()

@@ -18,6 +18,8 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(eval-when-compile (require 'info))
+
 (defvar smm-active nil)
 (make-variable-buffer-local 'smm-active)
 
@@ -60,12 +62,28 @@ in the status line."
   (interactive)
   (princ (smm-eval-sexp) t))
 
+(defun sawmill-describe-function (fn &optional index-node)
+  (interactive
+   (list (prompt-for-string "Sawmill function:" (symbol-at-point))
+	 "Function Index"))
+  (when fn
+    (info-visit-node "sawmill" index-node fn)))
+
+(defun sawmill-describe-variable (fn)
+  (interactive
+   (list (prompt-for-string "Sawmill variable:" (symbol-at-point))))
+  (sawmill-describe-function fn "Variable Index"))
+
 ;;;###autoload
 (defun sawmill-minor-mode ()
   (interactive)
   (if smm-active
-      (setq smm-active nil)
-    (setq smm-active t)))
+      (progn
+	(setq smm-active nil)
+	(kill-local-variable 'info-documentation-file))
+    (setq smm-active t)
+    (make-local-variable 'info-documentation-file)
+    (setq info-documentation-file "sawmill")))
 
 ;;;###autoload
 (defun sawmill-console ()
