@@ -32,15 +32,27 @@
 ;;
 ;; I'll probably fix this to do proper tree-oriented threading when I
 ;; get fed up with this method..
+;;
+;; This file also implements general sorting of display order. This is
+;; so trivial it's almost embarassing ;-)
 
 (require 'read-mail)
 (provide 'rm-thread)
+
+;; Suppress annoying compiler warnings
+(eval-when-compile (require 'rm-summary))
 
 
 ;; Configuration
 
 (defvar rm-thread-using-subject t
   "When t messages with the same subject will be put in the same thread.")
+
+(defvar rm-intra-thread-sort-key 'date
+  "Key to sort messages in each thread by.")
+
+(defvar rm-inter-thread-sort-key 'date
+  "Key to sort threads by.")
 
 (defvar rm-sort-predicates
   (list (cons 'location
@@ -87,6 +99,7 @@ be shown before the second.")
        (message-lists (list rm-before-msg-list
 			    (list rm-current-msg)
 			    rm-after-msg-list)))
+    (message "Threading folder..." t)
     (mapc
      ;; Called for a list of messages
      #'(lambda (message-list)
@@ -142,24 +155,22 @@ be shown before the second.")
 		  (setq threads (cons (list message) threads)))))
 	  message-list))
      message-lists)
-    ;; First sort the individual threads by time
-    (setq threads (mapcar
-		   #'(lambda (thread)
-		       (sort thread #'(lambda (x y)
-					(< (aref (rm-get-date-vector x)
-						 mail-date-epoch-time)
-					   (aref (rm-get-date-vector y)
-						 mail-date-epoch-time)))))
-		   threads))
-    ;; Then sort the threads by the time of their first message
-    (setq threads (sort threads #'(lambda (x y)
-				    (< (aref (rm-get-date-vector (car x))
-					     mail-date-epoch-time)
-				       (aref (rm-get-date-vector (car y))
-					     mail-date-epoch-time)))))
+    ;; First sort the messages in each thread
+    (let
+	((rm-pred (cdr (assq rm-intra-thread-sort-key rm-sort-predicates))))
+      (setq threads (mapcar
+		     #'(lambda (thread)
+			 (sort thread rm-pred))
+		     threads)))
+    ;; Then sort the threads themselves
+    (let
+	((rm-pred (cdr (assq rm-inter-thread-sort-key rm-sort-predicates))))
+      (setq threads (sort threads #'(lambda (x y)
+				      (funcall rm-pred (car x) (car y))))))
     ;; Ok, so we now have a list of THREADS, spit them out as the
     ;; list(s) of messages?
     (setq rm-threaded-folder t)
+    (message "Threading folder...done" t)
     (rm-fix-msg-lists (apply 'nconc threads))))
 
 ;; Install the list of messages ALL, preserving the current message, and
@@ -179,10 +190,11 @@ be shown before the second.")
 	  rm-after-msg-list (cdr after)
 	  rm-cached-msg-list 'invalid)
     (rm-invalidate-status-cache)
-    (rm-invalidate-summary-cache)
     (rm-display-current-message t)
-    (rm-with-summary
-     (summary-update))))
+    (when rm-summary-buffer
+      (rm-invalidate-summary-cache)
+      (rm-with-summary
+       (summary-update)))))
 
 ;;;###autoload
 (defun rm-toggle-threading ()
