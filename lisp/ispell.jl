@@ -37,7 +37,7 @@
 (defvar ispell-dictionary nil
   "Name of dictionary to pass to Ispell, or nil for the default.")
 
-(defvar ispell-timeout 60
+(defvar ispell-timeout 5
   "Seconds to wait for ispell output before giving up.")
 
 (defvar ispell-word-re "[a-zA-Z]([a-zA-Z']*[a-zA-Z])?"
@@ -137,7 +137,7 @@ results have been received.")
       (interrupt-process ispell-process))
     (let
 	((counter 0))
-      (while (and (not (accept-process-output ispell-timeout)) ispell-process)
+      (while (and (accept-process-output ispell-timeout) ispell-process)
 	(if (< counter 2)
 	    (interrupt-process ispell-process)
 	  (kill-process ispell-process))
