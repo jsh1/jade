@@ -113,13 +113,14 @@ COMMAND in it."
   (interactive)
   (set-current-view (other-view)))
 
-(defun other-view
-  "Return a different view in the current window."
+(defun other-view (&optional lines)
+  "Return a different view in the current window. If LINES is given it
+defines the number of lines to give any newly-created view."
   (if (= 2 (window-view-count))
       ;; open-view sets the new view as the current view; I don't
       ;; want that, so protect the current context.
       (with-view (current-view)
-	(open-view))
+	(open-view nil lines))
     (let
 	((view (next-view)))
       (when (minibuffer-view-p view)
