@@ -64,7 +64,7 @@ previous line, then works as normal. Local bindings in this mode are:\n
 	major-mode 'indented-text-mode
 	local-keymap 'text-mode-indent-keymap)
   (make-local-variable 'fill-prefix)
-  (setq fill-prefix 'text-mode-fill-prefix)
+  (setq fill-prefix text-mode-fill-prefix)
   (text-mode-init)
   (call-hook 'text-mode-hook)
   (call-hook 'indented-text-mode-hook))
@@ -98,19 +98,25 @@ previous line, then works as normal. Local bindings in this mode are:\n
 	    (indent-to (pos-col p))))))))
 
 (defun text-mode-fill-prefix (op p)
-  (cond
-   ((eq op 'insert)
-    (unless (zerop (pos-line p))
+  (let
+      ((get-indent (lambda ()
+		     (if (zerop (pos-line p))
+			 0
+		       (setq p (forward-line -1 p))
+		       (while (and (not (zerop (pos-line p)))
+				   (not (looking-at "^[ \t\f]*[^ \t\f\n]+" p)))
+			 (setq p (forward-line -1 p)))
+		       (pos-col (indent-pos p))))))
+    (cond
+     ((eq op 'insert)
       (save-excursion
 	(goto p)
-	(indent-to (pos-col (indent-pos (forward-line -1)))))))
-   ((eq op 'delete)
-    (when (looking-at "^[\t ]+" p)
-      (delete-area (match-start) (match-end))))
-   ((eq op 'width)
-    (if (zerop (pos-line p))
-	0
-      (pos-col (indent-pos (forward-line -1 p)))))))
+	(indent-to (get-indent p))))
+     ((eq op 'delete)
+      (when (looking-at "^[\t ]+" p)
+	(delete-area (match-start) (match-end))))
+     ((eq op 'width)
+      (get-indent)))))
 
 
 ;; Misc
