@@ -441,11 +441,12 @@ symbol must agree with it."
       ((prompt-completion-function t)
        (prompt-validate-function nil)
        (prompt-symbol-predicate nil)
-       (before-prompt-hook (cons #'(lambda ()
-				     (setq completion-hooks
-					   (cons 'lisp-complete-sexp
-						 completion-hooks)))
-				 before-prompt-hook)))
+       (before-prompt-hook
+	(cons #'(lambda ()
+		  (lisp-mode)
+		  ;; This is something of a kludge
+		  (setq keymap-path (delq 'lisp-mode-keymap keymap-path)))
+	      before-prompt-hook)))
     (read-from-string (prompt prompt start))))
 
 ;;;###autoload
