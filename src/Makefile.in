@@ -38,7 +38,7 @@ SRCS :=	$(SRCS) $($(windowsys)_SRCS)
 OBJS := $(SRCS:.c=.o)
 
 DL_SRCS := server-dl.c
-DL_OBJS := $(DL_SRCS:%.c=lib%.la)
+DL_OBJS := $(DL_SRCS:%.c=%.la)
 
 override CFLAGS := $(CFLAGS) $(REP_CFLAGS) $($(windowsys)_CFLAGS)
 override LIBS   := $(LIBS) $(REP_LIBS) $($(windowsys)_LIBS)
@@ -49,7 +49,7 @@ jade : $(OBJS) $(JADE_LIBOBJS) $(LIBOBJS)
 	$(rep_LIBTOOL) $(CC) -export-dynamic $(LDFLAGS) -o jade $(OBJS) \
 	  $(JADE_LIBOBJS) $(LIBOBJS) $(LIBS)
 
-lib%.la : %.lo
+%.la : %.lo
 	$(rep_DL_LD) $(LDFLAGS) -o $@ $<
 
 install : all installdirs
