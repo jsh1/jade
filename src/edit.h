@@ -244,6 +244,10 @@ typedef struct _WIN {
 /* a message is currently displayed in the minibuffer */
 #define WINFF_MESSAGE		(1 << (CELL8_TYPE_BITS + 2))
 
+/* using the w_NewContent field of the window to preserve the w_Content.
+   Used by asynchronous input handling to save screen contents */
+#define WINFF_PRESERVING	(1 << (CELL8_TYPE_BITS + 3))
+
 /* True when the minibuffer in WIN is in use. */
 #define MINIBUFFER_ACTIVE_P(win) \
     ((win)->w_MiniBuf->vw_Tx != mb_unused_buffer)
