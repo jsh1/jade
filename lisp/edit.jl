@@ -326,7 +326,7 @@ a block marked to save lots of flicker."
   "The first character of the COUNT'th next word is made upper-case, the
 rest lower-case."
   (interactive "p")
-  (forward-word count nil t)
+  (forward-word (if (> count 0) (- count 1) count) nil t)
   (unless (in-word-p)
     (goto-char (find-next-regexp word-regexp)))
   (translate-area (cursor-pos) (next-char) upcase-table)
