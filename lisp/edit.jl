@@ -22,19 +22,21 @@
 
 (defvar word-regexp "[a-zA-Z0-9]"
   "Regular expression which defines a character in a word.")
-(defvar word-not-regexp "[^a-zA-Z0-9]|$"
+(defvar word-not-regexp "[^a-zA-Z0-9]"
   "Regular expression which defines anything that is not in a word.")
 
-(defvar paragraph-regexp "^[\t ]*$"
-  "Regular expression which matches a paragraph-separating piece of text.")
+(defvar paragraph-separate "^[\t\f\n ]*\n"
+  "Regexp matching a paragraph-separating string. The character immediately
+following the matched text is taken as the start of the following
+paragraph.")
 
-(defvar page-regexp "^\f$"
+(defvar page-start "^\f"
   "Regular expression that matches the start of a page of text.")
 
 (make-variable-buffer-local 'word-regexp)
 (make-variable-buffer-local 'word-not-regexp)
-(make-variable-buffer-local 'paragraph-regexp)
-(make-variable-buffer-local 'page-regexp)
+(make-variable-buffer-local 'paragraph-separate)
+(make-variable-buffer-local 'page-start)
 
 (defvar toggle-read-only-function nil
   "May contain function to call when toggling a buffer between read-only
@@ -206,31 +208,79 @@ If MOVE is t then the cursor is moved to the result."
 
 ;; Paragraphs
 
-(defun forward-paragraph (&optional pos buf move)
-  "Returns the position of the start of the next paragraph. If MOVE
-is t then the cursor is set to this position."
-  (interactive "\n\nt")
-  (setq pos (or (re-search-forward paragraph-regexp (forward-char 1 pos)) buf)
-		(end-of-buffer))
-  (when move (goto pos))
-  pos)
+(defun forward-paragraph (count &optional pos move)
+  "Return the end of the COUNT'th paragraph. If MOVE is t, or the function
+is called interactively, the cursor is set to this position."
+  (interactive "p\n\nt")
+  (unless pos
+    (setq pos (cursor-pos)))
+  ;; Positive arguments
+  (while (and (> count 0)
+	      (< pos (end-of-buffer)))
+    ;; Skip any lines at POS matching the separator
+    (while (and (< (pos-line pos) (buffer-length))
+		(looking-at paragraph-separate pos))
+      (setq pos (forward-line 1 pos)))
+    ;; Search for the next separator
+    (if (re-search-forward paragraph-separate (forward-char 1 pos))
+	(setq count (1- count)
+	      pos (if (zerop count) (match-start) (match-end)))
+      (setq pos (end-of-buffer)
+	      count 0)))
+  ;; Negative arguments
+  (while (and (< count 0)
+	      (> pos (start-of-buffer)))
+    ;; Search for the previous separator
+    (if (re-search-backward paragraph-separate (backward-char 1 pos))
+	(progn
+	  ;; Check if we actually moved
+	  (unless (>= (match-end) pos)
+	    (setq count (1+ count)))
+	  (setq pos (if (zerop count) (match-end) (match-start)))
+	  ;; Skip lines above the current match, if they match
+	  ;; the separator as well, skip them
+	  (while (and (> (pos-line (match-start)) 0)
+		      (looking-at paragraph-separate
+				  (forward-line -1 (match-start))))
+	    (setq pos (if (zerop count) (match-end) (match-start)))))
+      (setq pos (start-of-buffer)
+	    count 0)))
+  (if move
+      (goto pos)
+    pos))
 
-(defun backward-paragraph (&optional pos buf move)
-  "Returns the start of the previous paragraph. If MOVE is t the cursor is
-set to this position."
-  (interactive "\n\nt")
-  (setq pos (or (re-search-backward paragraph-regexp (forward-char -1 pos) buf)
-		(start-of-buffer)))
-  (when move (goto pos))
-  pos)
+(defun backward-paragraph (count &optional pos move)
+  "Returns the start of the COUNT'th previous paragraph. If MOVE is t, or the
+function is called interactively, the cursor is set to this position."
+  (interactive "p\n\nt")
+  (forward-paragraph (- (or count 1)) pos move))
 
-(defun mark-paragraph ()
-  "Set the block-marks to the current paragraph."
-  (interactive)
+(defun paragraph-edges (count &optional pos mark)
+  "Return (START . END), the positions defining the outermost characters of
+the COUNT paragraphs around POS. Positive COUNTs mean to search forwards,
+negative to search backwards.
+When MARK is t, the block marks are set to START and END."
+  (interactive "p\n\nt")
+  (unless pos
+    (setq pos (cursor-pos)))
   (let
-      ((par (forward-paragraph)))
-    (set-rect-blocks nil nil)
-    (mark-block (backward-paragraph par) par)))
+      (start end)
+    (if (> count 0)
+	(setq start (forward-paragraph -1 (min (forward-char 1 pos)
+					       (end-of-buffer)))
+	      end (forward-paragraph count start))
+      (setq end (forward-paragraph 1 (max (forward-char -1 pos)
+					  (start-of-buffer)))
+	    start (forward-paragraph count end)))
+    (when mark
+      (set-rect-blocks nil nil)
+      (mark-block start end))
+    (cons start end)))
+
+(defun transpose-paragraphs (count)
+  "Move the paragrah at (before) the cursor COUNT paragraphs forwards."
+  (interactive "p")
+  (transpose-items 'forward-paragraph 'backward-paragraph count))
 
 
 ;; Page handling
@@ -243,17 +293,17 @@ backwards. If MOVEP is non-nil move the cursor to the position."
     (setq count 1))
   (if (> count 0)
       (progn
-	(when (looking-at page-regexp pos)
+	(when (looking-at page-start pos)
 	  (setq pos (match-end)))
-	(while (and (> count 0) (re-search-forward page-regexp pos))
+	(while (and (> count 0) (re-search-forward page-start pos))
 	  (setq pos (match-end)
 		count (1- count)))
 	(when (= count 1)
 	  (setq pos (end-of-buffer)
 		count 0)))
-    (when (looking-at page-regexp (start-of-line pos))
+    (when (looking-at page-start (start-of-line pos))
       (setq pos (forward-line -1 pos)))
-    (while (and (< count 0) (re-search-backward page-regexp pos))
+    (while (and (< count 0) (re-search-backward page-start pos))
       (setq pos (if (= count -1)
 		    (match-end)
 		  (forward-char -1 (match-start)))
@@ -291,8 +341,8 @@ backwards. If MOVEP is non-nil move the cursor to the position."
 
 ;; Block handling
 
-(defun x11-block-status-function (status)
-  (if status
+(defun x11-block-status-function ()
+  (if (blockp)
       (x11-set-selection 'xa-primary (block-start) (block-end))
     (x11-lose-selection 'xa-primary)))
 (when (x11-p)
@@ -430,7 +480,7 @@ the string is appended to."
     (if (eq last-command 'kill)
 	(set-ring-head kill-ring (concat (killed-string) string))
       (add-to-ring kill-ring string))
-    (eval-hook 'after-kill-hook))
+    (call-hook 'after-kill-hook))
   ;; this command did some killing
   (setq this-command 'kill)
   string)
@@ -733,10 +783,10 @@ finish."
   "Evaluate FORMS, ensuring that the initial position of the cursor in the
 current buffer is preserved. The behaviour is undefined if a new buffer is
 active after FORMS has been evaluated."
-  (list 'let '((save-cursor-pos (cursor-pos)))
+  (list 'let '((save-cursor-mark (make-mark)))
 	(list 'unwind-protect
 	      (cons 'progn forms)
-	      '(goto save-cursor-pos))))
+	      '(goto (mark-pos save-cursor-mark)))))
 
 
 ;; Mouse dragging etc
