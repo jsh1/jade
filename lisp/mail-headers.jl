@@ -123,6 +123,47 @@
 	(nreverse lst)))))
 
 
+;; decoding of RFC-2047 encoded phrases in headers
+
+(defvar mail-decode-header-map
+  (let
+      ((map (make-string (1+ ?_)))
+       (i 0))
+    (while (< i ?_)
+      (aset map i i)
+      (setq i (1+ i)))
+    (aset map ?_ ? )
+    map))
+
+(defun mail-decode-header (string)
+  (let
+      ((point 0)
+       (re (concat "=\\?(" mail-atom-re ")\\?(" mail-atom-re ")\\?(.*?)\\?="))
+       (out nil))
+    (while (string-match re string point)
+      (let
+	  ((encoding (expand-last-match "\\2"))
+	   (text (expand-last-match "\\3"))
+	   (stream (make-string-output-stream)))
+	(setq out (cons (substring string point (match-start)) out))
+	(setq point (match-end))
+	;; XXX ignore charset, just decode to 8-bit
+	(cond
+	 ((string-equal encoding "Q")
+	  ;; quoted-printable
+	  (require 'mime-decode)
+	  (setq text (translate-string text mail-decode-header-map))
+	  (mime-decode-string 'quoted-printable text stream))
+	 ((string-equal encoding "B")
+	  ;; base64
+	  (require 'mime-decode)
+	  (mime-decode-string 'base64 text stream)))
+	(setq out (cons (get-output-stream-string stream) out))))
+    (if out
+	(apply concat (nreverse (cons (substring string point) out)))
+      string)))
+
+
 ;; General header manipulation
 
 ;; Return the start of the header following the header starting at POS
@@ -145,19 +186,24 @@
 ;; will be a string with newlines converted to spaces, unless LISTP is
 ;; non-nil in which case the header will be split into a list of items
 ;; (separated by commas, unless NOT-COMMA-SEPARATED is t).
-(defun mail-get-header (header &optional lstp not-comma-separated)
+(defun mail-get-header (header &optional lstp not-comma-separated decode)
   (let
-      ((p (mail-find-header header)))
+      ((p (mail-find-header header))
+       out)
     (when p
       (if lstp
-	  (let
-	      ((lst (mail-parse-list p not-comma-separated)))
+	  (progn
+	    (setq out (mail-parse-list p not-comma-separated))
 	    (while (setq p (mail-find-header header (mail-unfold-header p)))
-	      (setq lst (nconc lst (mail-parse-list p not-comma-separated))))
-	    lst)
-	(translate-string (copy-area p (or (mail-unfold-header p)
-					   (end-of-buffer)))
-			  flatten-table)))))
+	      (setq out (nconc out (mail-parse-list p not-comma-separated))))
+	    (when decode
+	      (setq out (mapcar mail-decode-header out))))
+	(setq out (translate-string (copy-area p (or (mail-unfold-header p)
+						     (end-of-buffer)))
+				    flatten-table))
+	(when decode
+	  (setq out (mail-decode-header out)))))
+    out))
 
 ;; Delete the header at POS and return the position of the following
 ;; header, or nil for when the end of the buffer/restriction is reached
