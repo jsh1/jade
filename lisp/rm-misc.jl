@@ -21,9 +21,8 @@
 (require 'read-mail)
 
 ;; Suppress annoying compiler warnings
-(eval-when-compile (progn
-		     (require 'send-mail)
-		     (require 'rm-summary)))
+(eval-when-compile (require 'send-mail))
+(eval-when-compile (require 'rm-summary))
 
 (defvar rm-citation-format "%F writes:\n"
   "Format string defining how quoted messages are preceded. All standard
