@@ -1366,12 +1366,10 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Return the list of messages that the current command should operate on
 (defun rm-command-items (folder)
-  (let
-      ((summary (rm-get-folder-field folder rm-folder-summary)))
-    (if summary
-	(with-buffer summary
-	  (summary-command-items))
-      (list (rm-get-folder-field folder rm-folder-current-msg)))))
+  (if (rm-get-folder-field folder rm-folder-summary)
+      (rm-with-summary folder
+        (summary-command-items))
+    (list (rm-get-folder-field folder rm-folder-current-msg))))
 
 (defun rm-next-message (&optional count skip-deleted)
   "Display the next message in the current mail folder."
