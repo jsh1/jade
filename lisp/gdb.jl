@@ -110,23 +110,10 @@ This major-mode is used to run the GDB debugger in an editor buffer. To
 start a gdb subprocess use the `Meta-x gdb' command.\n
 Each time the target process stops executing the source line of the
 current frame is highlighted in a separate view.\n
-The following commands are available in the `*gdb*' buffer,\n
-  `Ctrl-c Ctrl-n'	Next line
-  `Ctrl-c Ctrl-s'	Step 
-  `Ctrl-c Ctrl-i'	Step the next instruction
-  `Ctrl-c Ctrl-I'	Next instruction
-  `Ctrl-c Ctrl-f'	Finish this frame
-  `Ctrl-c Ctrl-r'	Continue execution
-  `Ctrl-c Ctrl-<'	Move up one frame
-  `Ctrl-c Ctrl->'	Move down one frame
-  `Ctrl-c Ctrl-b'	Set a breakpoint at the current line
-  `Ctrl-c Ctrl-t'	Set a temporary breakpoint
-  `Ctrl-c Ctrl-d'	Delete the breakpoint at the current line
-  `Ctrl-c Ctrl-l'	Redisplay the current frame\n
+The following commands are available in the `*gdb*' buffer:\n
+\\{gdb-ctrl-c-keymap,Ctrl-c}
 They are also accessible in any buffer by replacing the `Ctrl-c' prefix
-with `Ctrl-x Ctrl-a'.\n
-Since this command is built on top of the shell-mode all commands from
-that mode are available as well.")
+with `Ctrl-x Ctrl-a'.")
 
 
 ;; Digs the variable VAR out of the gdb-last-buffer

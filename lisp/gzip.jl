@@ -47,10 +47,6 @@
       (with-buffer buffer
 	(gzip-uncompress file-name)
 	(goto old-pos)
-	(unless mode-name
-	  ;; so init-mode has a chance
-	  (setq mode-name (and (string-match "^(.*)\\.(gz|Z)$" file-name)
-			       (expand-last-match "\\1"))))
 	(setq buffer-file-modtime (file-modtime file-name))
 	(set-buffer-file-name buffer file-name))
       t)))

@@ -40,7 +40,8 @@
 
 ;;;###autoload
 (defun text-mode ()
-  "Mode for editing English text in."
+  "Mode for editing English text in. Local bindings in this mode are:\n
+\\{text-mode-keymap}"
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
@@ -53,7 +54,8 @@
 ;;;###autoload
 (defun indented-text-mode ()
   "Variant of `text-mode' in which the TAB key indents to the depth of the
-previous line, then works as normal."
+previous line, then works as normal. Local bindings in this mode are:\n
+\\{text-mode-keymap}"
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))

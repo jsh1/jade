@@ -49,25 +49,9 @@
 (defun texinfo-mode ()
   "Texinfo Mode:\n
 Major mode for editing Texinfo source files.\n
-Special commands available are,\n
-  `Ctrl-c Ctrl-c c'	Insert `@code'
-  `Ctrl-c Ctrl-c d'	Insert `@dfn'
-  `Ctrl-c Ctrl-c e'	Insert the correct `@end' command for the current
-			context.
-  `Ctrl-c Ctrl-c f'	Insert `@file'
-  `Ctrl-c Ctrl-c i'	Insert `@item'
-  `Ctrl-c Ctrl-c l'	Insert `@lisp'
-  `Ctrl-c Ctrl-c m'	Insert `@menu'
-  `Ctrl-c Ctrl-c Ctrl-m' Insert a menu item.
-  `Ctrl-c Ctrl-c n'	Prompt for each part of an `@node' line and insert
-			the constructed line.
-  `Ctrl-c Ctrl-c s'	Insert `@samp'
-  `Ctrl-c Ctrl-c v'	Insert `@var'
-  `Ctrl-c Ctrl-c {'	Insert a pair of braces and place the cursor between
-			them.
-  `Ctrl-c Ctrl-c }',
-  `Ctrl-c Ctrl-c ]'	Move the cursor to the character after the next closing
-			brace."
+Local bindings in this mode are:\n
+\\{texinfo-keymap}
+\\{texinfo-ctrl-c-ctrl-c-keymap,Ctrl-c Ctrl-c}"
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))

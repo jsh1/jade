@@ -94,11 +94,8 @@ contain.")
   "C Mode:\n
 Simple mode for editing C source code. Its main feature is to be able to
 indent lines to their (probably) correct depth.\n
-Special commands are,\n
-  `{', `}', `:'			Insert the character then indent the line
-  `TAB'				Indent the current line
-  `Ctrl-c Ctrl-\\'		Aligns backslash characters at the end
-				of each line in the current block."
+Commands defined by this mode are:\n
+\\{c-mode-keymap}\\{c-mode-ctrl-c-keymap,Ctrl-c}"
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))

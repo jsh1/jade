@@ -63,25 +63,8 @@
   "Buffer Menu Mode:\n
 This major mode is used in the `*Buffer Menu*' buffer; it provides
 interactive commands for manipulating the list of buffers loaded into
-the editor.\n
-Commands available are,\n
-  `d'			Mark buffer for deletion.
-  `s', `Ctrl-s'		Mark buffer to be saved.
-  `x'			Execute marked saves and deletions.
-  `u'			Unmark the current line.
-  `1'			Select the current line's buffer in the sole
-			 view of the current window.
-  `2'			Select the buffer in a second view, with
-			 the old buffer in the first.
-  `o'			Display the current line's buffer in a different
-			view.
-  `~'			Toggle the buffer's `modified' flag.
-  `%', `-'		Toggle the buffer's read-only status.
-  `Ctrl-f', `TAB'	Move forwards through the menu.
-  `Ctrl-b', `Meta-TAB'	Cycle backwards through the menu.
-  `Ctrl-l'		Redraw the menu, incorporating any changes to the
-			buffer-list.
-  `q'			Quit the buffer menu."
+the editor. Local bindings are:\n
+\\{bm-keymap}"
   (when major-mode-kill
     (funcall major-mode-kill))
   (setq major-mode 'buffer-menu-mode

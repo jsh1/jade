@@ -49,25 +49,9 @@
 (defun tex-mode ()
   "TeX Mode:\n
 Major mode for editing TeX and LaTeX source files.\n
-Special commands available are,\n
-  `Ctrl-c Ctrl-c b'	Insert `\\begin{}' leaving the cursor between the
-			 braces
-  `Ctrl-c Ctrl-c c'	Insert `\\cite{}'
-  `Ctrl-c Ctrl-c e'	Insert the correct LaTeX `\\end' command for the
-			 current context
-  `Ctrl-c Ctrl-c i'	Insert `\\textit{}'
-  `Ctrl-c Ctrl-c l'	Insert `\\label{}'
-  `Ctrl-c Ctrl-c m'	Insert `\\emph{}'
-  `Ctrl-c Ctrl-c n'	Insert `\\noindent'
-  `Ctrl-c Ctrl-c r'	Insert `\\ref{}'
-  `Ctrl-c Ctrl-c s'	Insert `\\section{}'
-  `Ctrl-c Ctrl-c u'	Insert `\\subsection{}'
-  `Ctrl-c Ctrl-c t'	Insert `\\texttt{}'
-  `Ctrl-c Ctrl-c {'	Insert a pair of braces and place the cursor between
-			them.
-  `Ctrl-c Ctrl-c }',
-  `Ctrl-c Ctrl-c ]'	Move the cursor to the character after the next
-			 closing brace."
+Local bindings in this mode are:\n
+\\{tex-keymap}
+\\{tex-ctrl-c-ctrl-c-keymap,Ctrl-c Ctrl-c}"
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))

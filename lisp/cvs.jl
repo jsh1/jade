@@ -421,51 +421,14 @@ Most of the standard `summary-mode' commands are available (with the notable
 exception of the `delete' operations). Extra commands that are specific
 to CVS mode include:
 
-  `a'			Add all selected files to the local copy
-			 of the repository
-  `b'			For selected files whose status is `conflict'
-			 show the differences between the previous
-			 working copy and the new merged working copy
-  `c'			Prompt for a log message, then commit all
-			 selected files to the repository
-  `C'			Run commit recursively in the current directory,
-			 specifying a prefix-argument causes the directory
-			 to be prompted for.
-  `d'			Display the differences between all selected files
-			 and their relations in the repository
-  `f'			Open the current item in the current view
-  `g'			Call `cvs update' again, rebuilding the display
-  `G'			Prompt for a new working directory to call
-			 `cvs update' on
-  `i'			Add all selected files to the relevant .cvsignore
-			 files so that CVS disregards them
-  `l'			Display the logs of all selected files
-  `o'			Open the current item in the other view
-  `p'			Call `cvs-update' on the current directory
-  `P'			Call `cvs-update' on the parent of the
-			 current directory
-  `r'			Delete all selected files then remove them from
-			 the local copy of the repository
-  `R'			Revert all locally buffered files that have
-			 changed since they were loaded (via the update)
-  `s'			Display the `cvs status' information of all
-			 selected files
-  `t'			Add a symbolic tag (prompted for) to all
-			 selected files
-  `T'			Prompt for the name of a working directory, then a
-			 tag, then tag all files under the directory
-  `%'			Remove all uninteresting items from the summary
-  `~'			Undo all modifications made to the selected
-			 files since they were checked out
-  ``'			Search the current file for the next CVS
-			 conflict marker
+\\{cvs-keymap}
 
-Where the commands work on the currently `selected' files, this means
+Most of the commands work on the currently `selected' files, this means
 one of two things:
 
    1. All files in the summary that are marked by an asterisk `*' (use
       the summary-mode `m' command to mark files, `u' or `U' to unmark
-      them); of if no files are marked
+      them); of if no files are marked,
 
    2. The current summary item. If a prefix argument is given, then ARG
       files starting at the current item are selected.

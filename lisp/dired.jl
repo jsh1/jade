@@ -94,25 +94,10 @@ deletion by the `&' command.")
 
 Major mode for viewing and manipulating directories in the local filing
 system. The standard summary interface (see the function `summary-mode')
-is used with the following commands that are specific to Dired:
+is used with commands specific to Dired added. The full list of local
+bindings is:
 
-  `#'			Mark all autosave files for deletion
-  `~'			Mark all backup files for deletion
-  `&'			Mark unwanted files for deletion (see the variable
-		 	`dired-garbage-files' for the definition of unwanted)
-  `% REGEXP RET'	Mark all files whose names match REGEXP for deletion
-  `f', `RET'		Edit the current item in the current view
-  `o'			Edit the current item in the other view
-  `Ctrl-o'		Display the current item in the other view, but
-			 leave the cursor in the Dired view
-  `g', `Ctrl-l'		Refresh the directory listing
-  `C NEW RET'		Copy all selected files (either all files that
-			 are marked, or the file under the cursor) to
-			 location `NEW'. If more than one file is selected
-			 `NEW' is a directory to copy to, otherwise it
-			 is the name of the new file
-  `R NEW RET'		Rename all selected files. `NEW' works like with
-			 the `C' command\n")
+\\{dired-keymap}")
 
 (defun dired-list ()
   (sort (directory-files default-directory)))

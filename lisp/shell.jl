@@ -96,17 +96,8 @@ written to. This is only consulted when the process is started.")
 ;;;###autoload
 (defun shell-mode ()
   "Shell Mode:\n
-Major mode for running a subprocess in a buffer. Special commands are,\n
-  `Ctrl-a'		Move to the start of this line (after the prompt)
-  `Ctrl-d'		If at the end of the buffer send the ^D character,
-			otherwise delete the current character.
-  `RET'			Send the current line to the process
-  `Ctrl-c Ctrl-c'	Send the `intr' character to the process (`^C')
-  `Ctrl-c Ctrl-z'	Send the `susp' character (`^Z')
-  `Ctrl-c Ctrl-d'	Send the `eof' character (`^D')
-  `Ctrl-c Ctrl-\\'	Send the `quit' character (`^\\')
-  `Ctrl-c Ctrl-n'	Move to the next prompt
-  `Ctrl-c Ctrl-p'	Move to the previous prompt"
+Major mode for running a subprocess in a buffer. Local bindings are:\n
+\\{shell-keymap}\\{shell-ctrl-c-keymap,Ctrl-c}"
   (setq keymap-path (cons 'shell-keymap keymap-path)
 	ctrl-c-keymap shell-ctrl-c-keymap
 	mode-name "Shell"

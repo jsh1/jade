@@ -58,26 +58,9 @@
 This major mode is used in the `*buffers*' buffer; it provides
 interactive commands for manipulating the list of buffers loaded into
 the editor. It is derived from the standard summary menu (see function
-`summary-mode'); all the standard summary commands are available.\n
-Commands for this mode are,\n
-  `d', `Ctrl-d'		Mark buffer for deletion.
-  `s', `Ctrl-s'		Mark buffer to be saved.
-  `x'			Execute marked saves and deletions.
-  `u'			Unmark the current line.
-  `1'			Select the current line's buffer in the sole
-			 view of the current window.
-  `2'			Select the buffer in a second view, with
-			 the old buffer in the first.
-  `o'			Display the current line's buffer in a different
-			view.
-  `~'			Toggle the buffer's `modified' flag.
-  `%'			Toggle the buffer's read-only status.
-  `n', `Ctrl-f', `TAB'	Move forwards through the menu.
-  `p`, `Ctrl-b', `Meta-TAB'
-			Cycle backwards through the menu.
-  `Ctrl-l'		Redraw the menu, incorporating any changes to the
-			buffer-list.
-  `q'			Quit the buffer menu.")
+`summary-mode'); all the standard summary commands are available.
+Local bindings for this mode are,\n
+\\{bs-keymap}.")
 
 (defun bs-quit ()
   (set-current-buffer (car buffer-list)))

@@ -183,34 +183,8 @@ the next prompt.")
 
 (defun read-mail-mode ()
   "Read-Mail Mode:\n
-Major mode for viewing mail folders. Commands include:\n
-  `n'			Display the next undeleted message.
-  `p'			Display the previous undeleted message.
-  `N', 'P'		Display the next or previous message, including
-			 those that have been marked for deletion.
-  `t'			Toggle between showing all headers and just
-			 showing important headers in the current msg.
-  `SPC'			Display the next page of the message.
-  `BS'			Display the previous page of the message.
-  `h'			Create/update the folder summary.
-  `d', `Ctrl-d'		Mark the current message to be deleted.
-  `k'			Mark that all messages with the same subject as
-			 the current message should be deleted.
-  `u'			Unmark the current message.
-  `x', `#'		Delete marked messages.
-  `g'			Get new mail.
-  `v'			Visit a different folder.
-  `q'			Quit.
-  `r'			Reply to the current message.
-  `R'			Reply, quoting the current message.
-  `f'			Follow-up to the current message (reply including
-			 all recipients of the original message).
-  `F'			Follow-up, quoting the current message.
-  `z'			Forward the current message to someone else.
-  `s'			Save the current message to a different folder.
-  `*'			Burst an RFC-934 or RFC-1153 digest message into
-			 its constituent messages.
-  `|'			Pipe the current message through a shell command."
+Major mode for viewing mail folders. Local bindings are:\n
+\\{rm-keymap}"
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Mail"

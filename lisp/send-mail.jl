@@ -125,7 +125,8 @@ being sent."
 
 (defun send-mail-mode ()
   "Mail Mode:\n
-Major mode for composing and sending mail messages."
+Major mode for composing and sending mail messages. Local bindings are:\n
+\\{send-mail-c-keymap,Ctrl-c}"
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Mail"

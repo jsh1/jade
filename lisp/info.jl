@@ -376,29 +376,9 @@ time that `info' has been called)."
 ;; displays some meaningful text
 (defun info-mode ()
   "Info mode:\n
-This mode is used to browse through the Info tree of documentation, special
-commands are,\n
-  `SPC'		Next screen of text
-  `BS'		Previous screen
-  `b'		Move to the start of this node
-  `1' to `9'	Go to the Nth menu item in this node
-  `d'		Find the `(dir)' node -- the root of Info
-  `f'		Find the node of the next cross-reference in this node
-  `g NODE RET'	Go to the node called NODE
-  `h'		Display the Info tutorial, the node `(info)Help'
-  `l'		Backtrack one node
-  `m'		Choose a menu item from this node
-  `n'		Find the `next' node
-  `p'		Go to the `previous' node
-  `u'		Display the parent node of this one
-  `v'		Prompts for the name of a file, then loads that file into
-		Info
-  `q'		Quit Info
-  `?', `HELP'	Display this command summary
-  `RET',
-  `LMB-CLICK2'	Go to the link (menu item or xref) on this line
-  `TAB'		Put the cursor on the next link in this node
-  `Meta-TAB'	Move to the previous link in this node")
+This mode is used to browse through the Info tree of documentation. The
+local bindings are:\n
+\\{info-keymap}")
 
 ;; Prompt for the name of a node and find it.
 (defun info-goto-node (node)

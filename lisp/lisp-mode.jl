@@ -31,16 +31,8 @@
 ;;;###autoload
 (defun lisp-mode ()
   "Lisp Mode:\n
-Major mode for editing Lisp source. Special commands in this mode are,\n
-  `Ctrl-j'		Evaluate the current s-expression as Jade Lisp code
-			and insert its value into the current buffer.
-  `TAB'			Indent the current line.
-  `Ctrl-Meta-x'		Evaluate the current sexp and print its value in
-			the status line.
-  `Ctrl-Meta-f'		Move to the past the current s-expression.
-  `Ctrl-Meta-b'		Move to the beginning of the current sexp.
-  `Ctrl-Meta-k'		Kill from the cursor to the end of this sexp.
-  `Ctrl-Meta-BS'	Kill from the start of this sexp to the cursor."
+Major mode for editing Lisp source. Local bindings in this mode are:\n
+\\{lisp-mode-keymap}"
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))

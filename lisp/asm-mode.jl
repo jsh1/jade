@@ -35,9 +35,8 @@
 ;;;###autoload
 (defun asm-mode ()
   "Asm Mode:\n
-Major mode for editing generic assembler source. Special commands are,\n
-  `RET'		break line and indent it (unless `asm-indent' is nil)
-  `:'		undent line, then insert a tab"
+Major mode for editing generic assembler source. Special commands are:\n
+\\{asm-keymap}"
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
