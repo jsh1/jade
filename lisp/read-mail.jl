@@ -841,9 +841,13 @@ Major mode for displaying a summary of a mail folder.")
 (defun rm-summary-after-marking (msg)
   (if (and (eq (with-buffer rm-summary-mail-buffer rm-current-msg) msg)
 	   rm-move-after-deleting)
-      (rm-with-folder
-       (rm-next-message 1 t))
-    (summary-next-item 1)))
+      (if (with-buffer rm-summary-mail-buffer rm-after-msg-list)
+	  (rm-with-folder
+	   (rm-next-message 1 t))
+	(rm-summary-after-update))
+    (when (/= (summary-current-index)
+	      (with-buffer rm-summary-mail-buffer rm-message-count))
+      (summary-next-item 1))))
 
 (defun rm-summary-after-update ()
   (let
