@@ -39,16 +39,8 @@
 (defun pwd-prompt (prompt)
   "Prompt for a confidential string, with PROMPT as the title string. The
 contents of the prompt will be masked out whilst being entered."
-  (let*
-      ((buffer (get-prompt-buffer))
-       (orig (buffer-glyph-table buffer)))
-    (set-buffer-glyph-table buffer pw-glyph-table)
-    ;; This relies upon the assumption that the next caller of
-    ;; get-prompt-buffer will be the prompt function itself
-    (return-prompt-buffer buffer)
-    (unwind-protect
-	(let
-	    ;; Don't want this item in the history ring
-	    ((prompt-history nil))
-	  (prompt prompt))
-      (set-buffer-glyph-table buffer orig))))
+  (let
+      ((prompt-glyph-table pw-glyph-table)
+       ;; Don't want this item in the history ring
+       (prompt-history nil))
+    (prompt prompt)))
