@@ -308,7 +308,7 @@ Returns true if a block is currently marked.
 }
 
 DEFUN("translate-area", Ftranslate_area, Stranslate_area, (repv start, repv end, repv table, repv tx), rep_Subr4) /*
-::doc:Stranslate-area:
+::doc:translate-area:
 translate-area START-POS END-POS TRANSLATION-TABLE [BUFFER]
 
 Applies the TRANSLATION-TABLE to the text between START-POS and END-POS.
