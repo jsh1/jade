@@ -1,3 +1,9 @@
+2005-02-13  John Harper  <jsh@unfactored.org>
+
+	* gtk-*.jl: moved into ../etc directory. The gtk code is still
+	trying to use gtk version one, which isn't installed and so the
+	build fails..
+
 2004-11-18  John Harper  <jsh@unfactored.org>
 
 	* c-mode.jl: added `linux' style (BSD with indent width = 8)
