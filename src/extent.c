@@ -1333,23 +1333,48 @@ adjust_extents_join_rows(Lisp_Extent *x, long col, long row)
 void
 start_visible_extent (WIN *w, Lisp_Extent *e, long start_col, long start_row)
 {
-    struct visible_extent *x = rep_alloc (sizeof (struct visible_extent));
-    x->next = w->w_VisibleExtents;
-    w->w_VisibleExtents = x;
-    x->extent = e;
-    x->start_col = start_col;
-    x->start_row = start_row;
+    struct visible_extent *x;
+    e = find_first_frag (e);
+    x = w->w_VisibleExtents;
+    while (x != 0 && x->extent != e)
+	x = x->next;
+    if (x != 0)
+    {
+	if (start_row < x->start_row
+	    || (start_row == x->start_row && start_col < x->start_col))
+	{
+	    x->start_row = start_row;
+	    x->start_col = start_col;
+	}
+    }
+    else
+    {
+	x = rep_alloc (sizeof (struct visible_extent));
+	x->next = w->w_VisibleExtents;
+	w->w_VisibleExtents = x;
+	x->extent = e;
+	x->start_col = start_col;
+	x->start_row = start_row;
+	x->end_col = start_col;
+	x->end_row = start_row;
+    }
 }
 
 void
 end_visible_extent (WIN *w, Lisp_Extent *e, long end_col, long end_row)
 {
-    struct visible_extent *x = w->w_VisibleExtents;
+    struct visible_extent *x;
+    e = find_first_frag (e);
+    x = w->w_VisibleExtents;
     while (x != 0 && x->extent != e)
 	x = x->next;
     assert (x != 0);
-    x->end_col = end_col;
-    x->end_row = end_row;
+    if (end_row > x->end_row
+	|| (end_row == x->end_row && end_col > x->end_col))
+    {
+	x->end_col = end_col;
+	x->end_row = end_row;
+    }
 }
 
 void
@@ -1365,11 +1390,11 @@ free_visible_extents (WIN *w)
     }
 }
 
-struct visible_extent *
-find_visible_extent (WIN *w, long col, long row)
+void
+map_visible_extents (WIN *w, long col, long row,
+		     void (*fun)(struct visible_extent *x))
 {
     struct visible_extent *x = w->w_VisibleExtents;
-    struct visible_extent *ret = 0;
     while (x != 0)
     {
 	if ((row > x->start_row && row < x->end_row)
@@ -1381,35 +1406,45 @@ find_visible_extent (WIN *w, long col, long row)
 		&& ((row == x->start_row && col >= x->start_col)
 		    || (row == x->end_row && col < x->end_col))))
 	{
-	    /* Try to ensure we find the innermost extent */
-	    if (ret == 0 || x->extent->parent == ret->extent)
-		ret = x;
+	    (*fun) (x);
 	}
 	x = x->next;
     }
-    return ret;
 }
 
 bool
 update_mouse_extent (WIN *w, long mouse_col, long mouse_row)
 {
-    struct visible_extent *x = find_visible_extent (w, mouse_col, mouse_row);
-    Lisp_Extent *old = w->w_MouseExtent;
-    w->w_MouseExtent = (x == 0) ? 0 : x->extent;
-    return w->w_MouseExtent != old;
+    /* XXX remove this GNU CC dependency */
+    void callback (struct visible_extent *x) {
+	if (w->w_NumMouseExtents < MAX_MOUSE_EXTENTS)
+	    w->w_MouseExtents[w->w_NumMouseExtents++] = x->extent;
+    }
+
+    Lisp_Extent *old[MAX_MOUSE_EXTENTS];
+    int old_num = w->w_NumMouseExtents;
+    memcpy (old, w->w_MouseExtents, old_num * sizeof(Lisp_Extent *));
+
+    w->w_NumMouseExtents = 0;
+    map_visible_extents (w, mouse_col, mouse_row, callback);
+
+    return (w->w_NumMouseExtents != old_num
+	    || memcmp (old, w->w_MouseExtents,
+		       old_num * sizeof(Lisp_Extent *)) != 0);
 }
 
 void
 mark_visible_extents (WIN *w)
 {
     struct visible_extent *x = w->w_VisibleExtents;
+    int i;
     while (x != 0)
     {
 	rep_MARKVAL (rep_VAL (x->extent));
 	x = x->next;
     }
-    if (w->w_MouseExtent != 0)
-	rep_MARKVAL (rep_VAL (w->w_MouseExtent));
+    for (i = 0; i < w->w_NumMouseExtents; i++)
+	rep_MARKVAL (rep_VAL (w->w_MouseExtents[i]));
 }
 
 
