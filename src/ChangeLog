@@ -1,3 +1,14 @@
+1999-05-23  John Harper  <john@dcs.warwick.ac.uk>
+
+	* server-dl.c, server.h, jadeclient.c: added two new request
+	types: `req_find_file_async' and `req_eval_async'. They're both
+	the same as their non-async equivalents except that no results
+	are ever returned. The -q option to jadeclient now uses these
+	requests
+
+	* gtk_select.c: only ever set the `owner' field of the
+	selection_info structure to Qnil or a window, never rep_NULL
+
 1999-05-21  John Harper  <john@dcs.warwick.ac.uk>
 
 	* gtk_jade.c: handle files being dropped onto one of our

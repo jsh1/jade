@@ -1,3 +1,21 @@
+1999-05-23  John Harper  <john@dcs.warwick.ac.uk>
+
+	* cvs.jl (cvs-update-stderr-filter): new function. stdout and
+	stderr output from `cvs update' is now separated, since
+	otherwise they can get mixed together
+	(cvs-print-long-status): new variable
+
+1999-05-22  John Harper  <john@dcs.warwick.ac.uk>
+
+	* shell.jl (shell-command-on-area): only switch to the
+	*shell-output* buffer if it's not already selected
+
+	* find-url.jl (find-url-http-loaded): handle non HTML
+	content-types more sensibly
+
+	* dict.jl (dict-mark-xrefs): new function, turns all cross
+	references in dictionary output into clickable ``hyperlinks''
+
 1999-05-21  John Harper  <john@dcs.warwick.ac.uk>
 
 	* edit.jl (dnd-drop-uri-list): new function, currently only
