@@ -19,6 +19,12 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (while t
-  (write (stdout-file) "jade> ")
-  (flush-file (stdout-file))
-  (format (stdout-file) " => %S\n" (eval (read (stdin-file)))))
+  (condition-case error-data
+      (progn
+	(write (stdout-file) "jade> ")
+	(flush-file (stdout-file))
+	(format (stdout-file) " => %S\n" (eval (read (stdin-file)))))
+    (end-of-stream
+     (throw 'quit 0))
+    (error
+     (format (stdout-file) "error--> %S\n" error-data))))
