@@ -35,10 +35,10 @@ Returns the extent containing the region. This extent always has its
   (interactive "-aMajor mode:\nm\nM")
   (let
       ((extent (make-extent start end)))
-    (extent-put 'rear-sticky t extent)
-    (extent-put 'catch-variables t extent)
-    (extent-put 'minor-major mode extent)
-    (extent-put 'face minor-major-face extent)
+    (extent-put extent 'rear-sticky t)
+    (extent-put extent 'catch-variables t)
+    (extent-put extent 'minor-major mode)
+    (extent-put extent 'face minor-major-face)
     (save-excursion
      (goto start)
      (save-restriction
@@ -53,7 +53,7 @@ position when called interactively)."
   (interactive "d")
   (let
       ((extent (get-extent position)))
-    (while (and extent (not (extent-get 'minor-major extent)))
+    (while (and extent (not (extent-get extent 'minor-major)))
       (setq extent (extent-parent extent)))
     (if extent
 	(delete-extent extent)

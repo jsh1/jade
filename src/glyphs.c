@@ -245,7 +245,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		next_extent = extent->end;
 	    next_extent.row += extent_delta;
 
-	    face = cmd_extent_get(sym_face, VAL(extent));
+	    face = cmd_extent_get(VAL(extent), sym_face);
 	    if(face && FACEP(face))
 		true_face = VFACE(face)->id;
 	    else
@@ -403,7 +403,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		} while(extent != old);
 		if(extent != orig)
 		{
-		    VALUE face = cmd_extent_get(sym_face, VAL(extent));
+		    VALUE face = cmd_extent_get(VAL(extent), sym_face);
 		    if(face && FACEP(face))
 			true_face = VFACE(face)->id;
 		    else

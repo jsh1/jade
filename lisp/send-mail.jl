@@ -87,7 +87,7 @@ being sent."
     (insert mail-header-separator)
     (insert "\n")
     ;; Make the separator read-only
-    (extent-set 'read-only t (make-extent (forward-line -1) (cursor-pos)))
+    (extent-set (make-extent (forward-line -1) (cursor-pos)) 'read-only t)
     (when mail-signature
       (let
 	  ((old (cursor-pos)))

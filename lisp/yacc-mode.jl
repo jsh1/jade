@@ -92,15 +92,14 @@ Give any such regions minor-major c-modes."
 	      ((start (match-end)))
 	    (when (re-search-forward "^%}" start)
 	      (unless (eq (buffer-get 'minor-major start) 'c-mode)
-		(extent-put 'front-sticky t
-			    (minor-major-mode 'c-mode start (match-start)))))))
+		(extent-put (minor-major-mode 'c-mode start (match-start))
+			    'front-sticky t)))))
 	(when (and (re-search-forward "^%%" (start-of-buffer))
 		   (setq rules-start (match-end))
 		   (setq rules-end (re-search-forward "^%%" (match-end))))
 	  (unless (eq (buffer-get 'minor-major (match-end)) 'c-mode)
-	    (extent-put 'front-sticky t
-			(minor-major-mode 'c-mode
-					  (match-end) (end-of-buffer))))))
+	    (extent-put (minor-major-mode 'c-mode (match-end) (end-of-buffer))
+			'front-sticky t))))
       (when (eq yacc-mode-c-minor t)
 	;; Scan all rules for C actions
 	(save-restriction
@@ -118,8 +117,8 @@ Give any such regions minor-major c-modes."
 			   (setq end (condition-case nil
 					 (c-forward-exp 1 start)
 				       (error))))
-		  (extent-put 'rear-sticky nil
-			      (minor-major-mode 'c-mode start end))
+		  (extent-put (minor-major-mode 'c-mode start end)
+			      'rear-sticky nil)
 		  (setq tem end))))))))))
 
 (defun yacc-mode-idle-function ()
@@ -127,7 +126,7 @@ Give any such regions minor-major c-modes."
     (yacc-mode-make-c-minor)
     ;; Ensure that only one copy of yacc-mode-last-scan per buffer
     ;; is maintained
-    (extent-set 'yacc-mode-last-scan (buffer-changes) (extent-root))))
+    (extent-set (extent-root) 'yacc-mode-last-scan (buffer-changes))))
 
 (defun yacc-mode-delete-minors ()
   "Delete all extents in the current buffer that use c-mode as a minor-major
@@ -136,7 +135,7 @@ mode."
   (let
       (extents)
     (map-extents #'(lambda (e)
-		     (when (eq (extent-get 'minor-major e) 'c-mode)
+		     (when (eq (extent-get e 'minor-major) 'c-mode)
 		       (setq extents (cons e extents))))
 		 (start-of-buffer) (end-of-buffer))
     (mapc 'delete-extent extents)))
