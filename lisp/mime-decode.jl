@@ -63,7 +63,7 @@ functions that operate as filters on their argument streams.")
   "Alist of (TYPE . COMMAND)")
 
 (defface mime-highlight-face "Face to highlight MIME stubs."
-  (set-face-attribute mime-highlight-face 'background "turquoise")
+  (set-face-attribute mime-highlight-face 'bold t)
   (set-face-attribute mime-highlight-face 'underline t))
 
 (defvar mmencode-program "mmencode"
