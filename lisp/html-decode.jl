@@ -329,19 +329,21 @@ of the document, currently only `title' and `base' keys are defined."
 	    (setq tem (cons tem (expand-last-match "\\0")))
 	    (setq point (match-end))))
 	(setq params (cons tem params))))
-     ((looking-at "<![ \t\r\n\f]*" point source)
-      (setq point (match-end))
-      (while (not (looking-at "[ \t\r\n\f]*>" point source))
-	(if (looking-at "[ \t\r\n\f]*--" point source)
-	    ;; skip comment
-	    (setq point (and (or (search-forward "--" (match-end) source)
-				 (error "Unterminated comment: %s, %s"
-					source point))
-			     (match-end)))
-	  ;; skip random declaration garbage?
-	  (setq point (or (re-search-forward "--|>" point source)
-			  (error "Unterminated declaration: %s, %s"
-				 source point))))))
+     ((looking-at "<!--" point source)
+      ;; From the HTML 4.01 Specification:
+
+      ;;   White space is not permitted between the markup declaration
+      ;;   open delimiter("<!") and the comment open delimiter ("--"),
+      ;;   but is permitted between the comment close delimiter ("--")
+      ;;   and the markup declaration close delimiter (">"). A common
+      ;;   error is to include a string of hyphens ("---") within a
+      ;;   comment. Authors should avoid putting two or more adjacent
+      ;;   hyphens inside comments.
+
+      (or (re-search-forward "--\\s*>" (match-end) source)
+	  (error "Unterminated comment: %s, %s" source point))
+      (format (stderr-file) "comment from %S to %S\n" point (match-end))
+      (setq point (forward-char -1 (match-end) source)))
      (t
       (error "Malformed tag: %s, %s" point source)))
     (or (looking-at "[ \t\r\n\f]*>([ \t\r\n\f]*)" point source)
