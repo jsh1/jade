@@ -674,3 +674,36 @@ active after FORMS has been evaluated."
 	(list 'unwind-protect
 	      (cons 'progn forms)
 	      '(goto-char save-cursor-pos))))
+
+
+;; Mouse dragging etc
+
+(defvar mouse-select-pos nil)
+(defvar mouse-dragging nil)
+(defvar mouse-dragging-objects nil)
+
+(defun mouse-select ()
+  (interactive)
+  (setq mouse-select-pos (mouse-pos)
+	mouse-dragging nil
+	mouse-dragging-objects nil)
+  (block-kill)
+  (goto-char mouse-select-pos))
+
+(defun mouse-double-select ()
+  (interactive)
+  (setq mouse-dragging-objects t))
+
+(defun mouse-select-drag ()
+  (interactive)
+  (let
+      ((pos (mouse-pos)))
+    (when mouse-dragging-objects
+      (setq pos (forward-word (if (> pos mouse-select-pos) 1 -1) pos)))
+    (goto-char pos)
+    (if (equal pos mouse-select-pos)
+	(block-kill)
+      (setq mouse-dragging pos)
+      (block-kill)
+      (block-start mouse-select-pos)
+      (block-end pos))))
