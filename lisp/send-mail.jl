@@ -106,7 +106,13 @@ being sent."
 	(goto old)))
     (set-buffer-modified buffer nil)
     (setq buffer-undo-list nil)
-    (send-mail-mode)))
+    (send-mail-mode)
+    (cond ((null to)
+	   (send-mail-go-to))
+	  ((null subject)
+	   (send-mail-go-subject))
+	  (t
+	   (send-mail-go-text)))))
 
 
 ;; Mail mode
