@@ -27,10 +27,6 @@
 (defvar rm-reply-message nil)
 (make-variable-buffer-local 'rm-reply-message)
 
-;; This matches most forms of "Re: SUBJECT" strings, leaving SUBJECT
-;; starting at the end of the first substring
-(defvar rm-Re-regexp "^[\t ]*(Re(\\([0-9]+\\)|\\^[0-9]+)?:[\t ]*)*")
-
 ;;;###autoload
 (defun rm-reply (&optional yankp followup-p)
   "Reply to the mail message currently being displayed."
@@ -53,9 +49,9 @@
 	    msg-id (mail-get-header "Message-Id")
 	    references (append (mail-get-header "References" t t)
 			       (and msg-id (list msg-id)))))
-    (when (and subject (string-match rm-Re-regexp subject nil t))
+    (when subject
       (setq subject (concat mail-reply-prefix
-			    (substring subject (match-end)))))
+			    (mail-get-actual-subject subject))))
     (mail-setup to subject msg-id cc references
 		(list (cons #'(lambda (buffer message)
 				(rm-set-flag message 'replied)
