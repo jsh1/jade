@@ -31,7 +31,8 @@
   "p" 'summary-next-item
   "a" 'mds-add-item
   "e" 'mds-edit-name
-  "b" 'mds-edit-body)
+  "b" 'mds-edit-body
+  "m" 'mds-compose-mail-to-item)
 
 (defvar mds-alias-functions
   '((select . nop)
@@ -84,6 +85,7 @@
   (insert (car item)))
 
 (defun mds-add-item ()
+  "Insert a new item into the list."
   (interactive)
   (call-command (if (eq (current-buffer) mds-address-buffer)
 		    'add-mail-address
@@ -91,6 +93,7 @@
   (summary-update))
 
 (defun mds-edit-name ()
+  "Edit the name of the current item."
   (interactive)
   (let*
       ((item (summary-current-item))
@@ -105,6 +108,7 @@
       (summary-update-item item))))
 
 (defun mds-edit-body (&optional append)
+  "Edit the body of the current item."
   (interactive "P")
   (let
       ((item (summary-current-item))
@@ -121,3 +125,20 @@
 	(rplacd item new))
       (setq mail-directory-modified t))
     (summary-update-item item)))
+
+(defun mds-compose-mail-to-item (in-cc)
+  "Compose a new mail message with the current item as the To: field (or the
+CC: field if IN-CC is t)."
+  (interactive "P")
+  (let
+      ((in-address-list (eq (current-buffer) mds-address-buffer))
+       (item (summary-current-item)))
+    (mail-setup)
+    (if in-cc
+	(send-mail-go-cc)
+      (send-mail-go-to))
+    (if in-address-list
+	(insert-mail-address-and-name (cdr item))
+      (insert-mail-alias (car item)))
+    (set-buffer-modified nil nil)
+    (send-mail-go-subject)))
