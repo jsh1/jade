@@ -46,6 +46,12 @@ the FCC header).")
   "Regular expression matching the message headers that should be displayed
 when showing a mail message.")
 
+(defvar mail-highlighted-headers
+  "^Subject[\t ]*:[\t ]*(.*)$"
+  "Regexp matching headers to be highlighted; currently only the first will
+that matches will actually be highlighted. Whatever is left in the first
+match buffer is actually highlighted.")
+
 (defvar mail-folder-dir (expand-file-name "~/Mail")
   "The directory in which mail folders are stored by default.")
 
