@@ -250,7 +250,7 @@ START and END except for the last line."
     (while (> number 0)
       ;; skip preceding white space
       (when (or (equal pos (buffer-start))
-		(not (setq pos (find-prev-regexp "[^\t\f ]" (prev-char 1 pos)))))
+		(not (setq pos (find-prev-regexp "[^\t\f\n ]" (prev-char 1 pos)))))
 	(error "No expression!"))
       (setq tmp (prev-char 1 (copy-pos pos)))
       (while (looking-at "\\*/" tmp)
@@ -258,7 +258,7 @@ START and END except for the last line."
 	(unless (setq tmp (find-prev-regexp "/\\*" tmp))
 	  (error "Comment doesn't start!"))
 	(when (or (equal tmp (buffer-start))
-		  (not (setq tmp (find-prev-regexp "[^\t\f ]" (prev-char 1 tmp)))))
+		  (not (setq tmp (find-prev-regexp "[^\t\f\n ]" (prev-char 1 tmp)))))
 	  (error "Beginning of buffer"))
 	(setq pos tmp))
       ;; Check for a cpp line

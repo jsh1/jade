@@ -142,7 +142,7 @@ in the status line."
 	(error "End of containing sexp"))
        (t
 	;; a symbol
-       (if (looking-at "[^][\t\f ()'\";]+" pos)
+       (if (looking-at "[^][\t\f\n ()'\";]+" pos)
 	   (setq pos (match-end))
 	 (error "Can't find end of symbol")))))
     (setq number (1- number)))
@@ -158,7 +158,7 @@ in the status line."
       ((pos (copy-pos orig-pos)))
     (while (> number 0)
       ;; skip preceding white space
-      (unless (setq pos (find-prev-regexp "[^\t\f ]" (prev-char 1 pos)))
+      (unless (setq pos (find-prev-regexp "[^\t\f\n ]" (prev-char 1 pos)))
 	(error "No expression!"))
       (while (regexp-match-line "^[\f\t ]*;|^[\f\t ]*$" pos)
 	(unless (setq pos (prev-line 1 pos))
@@ -186,7 +186,7 @@ in the status line."
 	  (error "Start of containing sexp"))
 	 (t
 	  ;; a symbol?
-	 (unless (setq pos (find-prev-regexp "[^][\f\t ()'\"]+|^" pos))
+	 (unless (setq pos (find-prev-regexp "[^][\f\t\n ()'\"]+|^" pos))
 	   (error "Symbol doesn't start??"))))
 	(when (= (get-char (prev-char 1 (copy-pos pos))) ?')
 	  (setq pos (prev-char 1 pos))
