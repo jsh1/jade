@@ -67,7 +67,7 @@ the directory named as its single argument.")
 			  (after-marking . (lambda () (summary-next-item 1)))
 			  (delete . dired-delete)
 			  (execute-end . dired-execute-end)
-			  (select . dired-find-file)
+			  (select . find-file)
 			  (on-quit . bury-buffer))
   "Function vector for Dired mode.")
 
@@ -162,23 +162,22 @@ bindings is:
 
 ;; Commands
 
-(defun dired-find-file (item)
-  (interactive (list (summary-current-item)))
-  (find-file item))
-
-(defun dired-find-file-other-view (item)
-  (interactive (list (summary-current-item)))
+(defun dired-find-file (files root &optional other-view)
+  (interactive (list (summary-command-items) default-directory))
   (let
-      ((name (expand-file-name item)))
-    (goto-other-view)
-    (find-file name)))
+      ((root default-directory))
+    (mapc #'(lambda (f)
+	      (find-file (expand-file-name f root))) files)))
 
-(defun dired-display-file (item)
-  (interactive (list (summary-current-item)))
-  (let
-      ((name (expand-file-name item)))
-    (with-view (other-view)
-      (find-file name))))
+(defun dired-find-file-other-view (files root)
+  (interactive (list (summary-command-items) default-directory))
+  (goto-other-view)
+  (dired-find-file files root t))
+
+(defun dired-display-file (files root)
+  (interactive (list (summary-command-items) default-directory))
+  (with-view (other-view)
+    (dired-find-file files root)))
 
 (defun dired-do-copy ()
   "Copy all selected files to a specified location. If more than one file
