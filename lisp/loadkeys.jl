@@ -20,7 +20,6 @@
 
 (defvar global-keymap (make-keymap)
   "The root keymap, active in all buffers.")
-(make-variable-buffer-local 'global-keymap)
 
 (defvar local-keymap nil
   "A keymap local to the current buffer.")
@@ -31,24 +30,28 @@
 (make-variable-buffer-local 'local-ctrl-c-keymap)
 (fset 'local-ctrl-c-keymap 'keymap)
 
+(defvar overriding-local-keymap nil
+  "When non-nil, a keymap to search instead of all extent, minor mode, or
+local keymaps.")
+
 (defvar ctrl-x-keymap (make-keymap)
-  "Default `Ctrl-x' keymap.")
+  "Default `C-x' keymap.")
 (fset 'ctrl-x-keymap 'keymap)
 
 (defvar ctrl-x-4-keymap (make-sparse-keymap)
-  "Default `Ctrl-x 4' keymap.")
+  "Default `C-x 4' keymap.")
 (fset 'ctrl-x-4-keymap 'keymap)
 
 (defvar ctrl-x-5-keymap (make-sparse-keymap)
-  "Default `Ctrl-x 5' keymap.")
+  "Default `C-x 5' keymap.")
 (fset 'ctrl-x-5-keymap 'keymap)
 
 (defvar ctrl-x-n-keymap (make-sparse-keymap)
-  "Default `Ctrl-x n' keymap.")
+  "Default `C-x n' keymap.")
 (fset 'ctrl-x-n-keymap 'keymap)
 
 (defvar user-keymap (make-sparse-keymap)
-  "Keymap for user-defined bindings, hung from `Ctrl-c'.")
+  "Keymap for user-defined bindings, hung from `C-c'.")
 (fset 'user-keymap 'keymap)
 
 (defvar unbound-key-hook nil
