@@ -25,6 +25,7 @@
 struct x11_display {
     struct x11_display *next;
 
+    char *name;
     Display *display;
     int screen;
     Visual *visual;
