@@ -249,14 +249,26 @@
 	(insert ", "))
       (setq list (cdr list)))))
 
+;; Return a quoted version of phrase STRING if necessary (i.e. if it
+;; contains any specials or CTLs
+(defun mail-quote-phrase (string)
+  (if (string-match "[][()<>@,;\\\".\001-\037\177]+" string)
+      ;; It needs to be quoted
+      (progn
+	;; Escape any internal doublequotes
+	(while (string-match "^(.*[^\\])\"(.*)$" string)
+	  (setq string (expand-last-match "\\1\\\"\\2")))
+	(concat ?" string ?"))
+    string))
+
 ;; Return a string constructed from address ADDR and name NAME, according
 ;; to mail-address-style
 (defun mail-format-address (addr name)
   ;; Need to handle quoting full name a la RFC-822
   (cond
    ((eq mail-address-style 'angles)
-    (concat name " \<" addr "\>"))
+    (concat (mail-quote-phrase name) " \<" addr "\>"))
    ((eq mail-address-style 'parens)
-    (concat addr " \(" name "\)"))
+    (concat addr " \(" (mail-quote-phrase name) "\)"))
    (t
     addr)))
