@@ -340,7 +340,8 @@ for. When called interactively, spell-check the current block."
       ;; [prefix+]
       (setq out (substring word (match-start 1) (match-end 1)))
       (setq point (match-end)))
-    (when (string-looking-at (concat ?\( ispell-word-re "\)[+-]") word point)
+    (when (string-looking-at (concat ?\( ispell-word-re "\)([+-]|$)")
+			     word point)
       ;; root
       (setq out (concat out (substring word (match-start 1) (match-end 1))))
       (setq point (match-end 1)))
@@ -355,7 +356,8 @@ for. When called interactively, spell-check the current block."
 	 ((string-match (concat ?^ tem) out)
 	  (setq out (substring out (match-end)))))))
     (when (string-looking-at (concat "\\+\(" ispell-word-re "\)") word point)
-      (setq out (concat out (substring word (match-start 1) (match-end 1)))))))
+      (setq out (concat out (substring word (match-start 1) (match-end 1)))))
+    out))
 
 (defun ispell-accept ()
   (interactive)
