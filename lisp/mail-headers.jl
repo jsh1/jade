@@ -148,7 +148,7 @@
 (defun mail-decode-header (string)
   (let
       ((point 0)
-       (re (concat "=\\?(" mail-atom-re ")\\?(" mail-atom-re ")\\?(.*?)\\?="))
+       (re (concat "=\\?([^?]+)\\?([^?]+)\\?(.*?)\\?="))
        (out nil))
     (while (string-match re string point)
       (let
