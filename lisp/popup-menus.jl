@@ -203,7 +203,7 @@ is over an extent.")
   (let
       ((current-command-from-mouse t)
        (location (and popup-menus-describe-location
-		      (functionp command)
+		      (commandp command)
 		      (where-is command))))
     (when location
       (message (format nil "You can run the command `%s' with `%s'"
@@ -214,4 +214,6 @@ is over an extent.")
       (when (posp (cdr popup-menus-pos))
 	(goto (cdr popup-menus-pos))))
     (setq popup-menus-pos nil)
-    (call-command command)))
+    (if (commandp command)
+	(call-command command)
+      (funcall command))))
