@@ -1047,6 +1047,7 @@ key, the car the order to sort in, a positive or negative integer.")
 	 (need-to-parse nil)
 	 (keep-going t)
 	 (start (end-of-buffer))
+	 (count 0)
 	 (inhibit-read-only t))
       ;; First look for messages left in the .newmail-FOO file from last time
       (when (and (file-exists-p tofile)
@@ -1060,9 +1061,7 @@ key, the car the order to sort in, a positive or negative integer.")
 	(cond
 	 ((not (file-exists-p inbox))
 	  (error "Inbox file doesn't exist" inbox))
-	 ((zerop (file-size inbox))
-	  (message (concat "No new mail in " inbox)))
-	 (t
+	 ((> (file-size inbox) 0)
 	  (if (zerop (call-process proc nil movemail-program
 				   (local-file-name inbox) tofile))
 	      ;; Now the temporary file contains the new messages
@@ -1075,8 +1074,7 @@ key, the car the order to sort in, a positive or negative integer.")
       ;; If necessary, parse all new messages. Work backwards
       (when need-to-parse
 	(let
-	    ((count 0)
-	     pos msgs)
+	    (pos msgs)
 	  (setq pos (end-of-buffer))
 	  (while (and pos
 		      (setq pos (re-search-backward mail-message-start pos))
@@ -1086,8 +1084,8 @@ key, the car the order to sort in, a positive or negative integer.")
 		    count (1+ count))
 	      (rm-set-flag (car msgs) 'unread t))
 	    (setq pos (forward-line -1 pos)))
-	  (setq rm-buffer-messages (nconc rm-buffer-messages msgs))
-	  (and keep-going count)))))))
+	  (setq rm-buffer-messages (nconc rm-buffer-messages msgs))))
+      (and keep-going count)))))
 
 ;; Returns the number of messages read
 (defun rm-get-mail-for-box (mailbox)
@@ -1111,18 +1109,19 @@ key, the car the order to sort in, a positive or negative integer.")
 		(setq count (+ count file-count))))
 	  (format t "Spool file %s doesn't exist" file)))
       (call-hook 'rm-after-import-hook))
-    (when (> count 0)
-      ;; Any folders referencing this mailbox get rebuilt.
-      (mapc #'(lambda (cell)
-		(let
-		    ((folder (cdr cell)))
-		  (when (member mailbox (rm-get-folder-field
-					 folder rm-folder-boxes))
-		    (rm-rebuild-folder folder)
-		    (when (rm-get-folder-field folder rm-folder-summary)
-		      (rm-with-summary folder
-			(summary-update))))))
-	    rm-open-folders))
+    (if (> count 0)
+	;; Any folders referencing this mailbox get rebuilt.
+	(mapc #'(lambda (cell)
+		  (let
+		      ((folder (cdr cell)))
+		    (when (member mailbox (rm-get-folder-field
+					   folder rm-folder-boxes))
+		      (rm-rebuild-folder folder)
+		      (when (rm-get-folder-field folder rm-folder-summary)
+			(rm-with-summary folder
+			  (summary-update))))))
+	      rm-open-folders)
+      (message (concat "No new messages for " mailbox) t))
     count))
 
 ;; Try and get new mail for the current folder. Returns the number of
