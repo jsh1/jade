@@ -46,19 +46,7 @@
 			 ("Toggle modified" bs-toggle-modified)
 			 ("Toggle read-only" bs-toggle-read-only)))
 
-(defvar bs-functions (list '(select . bs-select-item)
-			   '(delete . kill-buffer)
-			   '(print . bs-print-item)
-			   (cons 'list #'(lambda ()
-					   (copy-sequence buffer-list)))
-			   '(save . save-file)
-			   (cons 'after-marking #'(lambda ()
-						    (summary-next-item 1)))
-			   (cons 'with-extent
-				 #'(lambda (e)
-				     (extent-put
-				      e 'popup-menus bs-popup-menus)))
-			   '(on-quit . bs-quit))
+(defvar bs-functions nil
   "Function vector for summary-mode.")
 
 ;;;###autoload
@@ -158,3 +146,20 @@ Local bindings for this mode are,\n
 (defun bs-mark-save ()
   (interactive)
   (summary-add-pending-op (summary-current-item) 'save))
+
+
+;; init
+
+(setq bs-functions (list (cons 'select bs-select-item)
+			 (cons 'delete kill-buffer)
+			 (cons 'print bs-print-item)
+			 (cons 'list (lambda ()
+				       (copy-sequence buffer-list)))
+			 (cons 'save save-file)
+			 (cons 'after-marking (lambda ()
+						(summary-next-item 1)))
+			 (cons 'with-extent
+			       (lambda (e)
+				 (extent-put
+				  e 'popup-menus bs-popup-menus)))
+			 (cons 'on-quit bs-quit)))

@@ -33,9 +33,9 @@
   (when (x11-selection-active-p 'xa-primary)
     (x11-get-selection 'xa-primary)))
 
-(add-hook 'block-status-hook 'x11-block-status-function)
-(add-hook 'after-kill-hook 'x11-after-kill-function)
-(add-hook 'pre-yank-hook 'x11-pre-yank-function)
+(add-hook 'block-status-hook x11-block-status-function)
+(add-hook 'after-kill-hook x11-after-kill-function)
+(add-hook 'pre-yank-hook x11-pre-yank-function)
 
 ;; No graphical menus under X
 (autoload 'popup-menu-from-spec "prompt-menu" t)

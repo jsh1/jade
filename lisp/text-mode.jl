@@ -35,7 +35,7 @@
     "TAB" 'text-mode-indent-tab))
 
 (defun text-mode-init ()
-  (setq major-mode-kill 'text-mode-kill
+  (setq major-mode-kill text-mode-kill
 	word-regexp "[a-zA-Z0-9]"
 	word-not-regexp "[^a-zA-Z0-9]|$"))
 
@@ -81,42 +81,42 @@ previous line, then works as normal. Local bindings in this mode are:\n
 (defun text-mode-indent-tab ()
   (interactive)
   (let
-      ((pos (re-search-backward "^.+$" (forward-line -1))))
-    (if (or (null pos) (> (pos-col (cursor-pos)) (line-length pos)))
+      ((p (re-search-backward "^.+$" (forward-line -1))))
+    (if (or (null p) (> (pos-col (cursor-pos)) (line-length p)))
 	(insert "\t")
       (let
           ((gcurs (char-to-glyph-pos (cursor-pos))))
-        (setq gcurs (pos (pos-col gcurs) (pos-line pos))
-	      pos (glyph-to-char-pos gcurs))
-	(re-search-forward "[\t ]+|$" pos)
-	(if (equal (match-end) (end-of-line pos))
+        (setq gcurs (pos (pos-col gcurs) (pos-line p))
+	      p (glyph-to-char-pos gcurs))
+	(re-search-forward "[\t ]+|$" p)
+	(if (equal (match-end) (end-of-line p))
 	    (insert "\t")
-	  (setq pos (pos (pos-col (char-to-glyph-pos (match-end)))
-			 (pos-line (cursor-pos))))
-	  (if (empty-line-p pos)
-	      (set-indent-pos pos)
-	    (indent-to (pos-col pos))))))))
+	  (setq p (pos (pos-col (char-to-glyph-pos (match-end)))
+		       (pos-line (cursor-pos))))
+	  (if (empty-line-p p)
+	      (set-indent-pos p)
+	    (indent-to (pos-col p))))))))
 
-(defun text-mode-fill-prefix (op pos)
+(defun text-mode-fill-prefix (op p)
   (cond
    ((eq op 'insert)
-    (unless (zerop (pos-line pos))
+    (unless (zerop (pos-line p))
       (save-excursion
-	(goto pos)
+	(goto p)
 	(indent-to (pos-col (indent-pos (forward-line -1)))))))
    ((eq op 'delete)
-    (when (looking-at "^[\t ]+" pos)
+    (when (looking-at "^[\t ]+" p)
       (delete-area (match-start) (match-end))))
    ((eq op 'width)
-    (if (zerop (pos-line pos))
+    (if (zerop (pos-line p))
 	0
-      (pos-col (indent-pos (forward-line -1 pos)))))))
+      (pos-col (indent-pos (forward-line -1 p)))))))
 
 
 ;; Misc
 
 ;;;###autoload
-(defun word-count-area (start end &optional print)
+(defun word-count-area (start end &optional do-print)
   "Return the number of words in the area of text between START and END in
 the current buffer. If PRINT is non-nil this number is also displayed in the
 status line."
@@ -130,6 +130,6 @@ status line."
 	  (setq count (1+ count)
 		tmp (forward-word 1 tmp)))
       (error))
-    (when print
+    (when do-print
       (prin1 count t))
     count))

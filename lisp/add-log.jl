@@ -96,7 +96,7 @@ considered as referring to the same day.")
   (require 'text-mode)
   (setq mode-name "ChangeLog"
 	major-mode 'changelog-mode
-	major-mode-kill 'changelog-mode-kill
+	major-mode-kill changelog-mode-kill
 	local-keymap 'text-mode-indent-keymap)
   ;; In case fill.jl hasn't been loaded yet.
   (make-local-variable 'fill-prefix)

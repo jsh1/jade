@@ -65,10 +65,10 @@ scan."
     (funcall major-mode-kill))
   (setq mode-name "Yacc"
 	major-mode 'yacc-mode
-	major-mode-kill 'yacc-mode-kill
-	mode-comment-fun 'c-insert-comment
-	mode-forward-exp 'c-forward-exp
-	mode-backward-exp 'c-backward-exp
+	major-mode-kill yacc-mode-kill
+	mode-comment-fun c-insert-comment
+	mode-forward-exp c-forward-exp
+	mode-backward-exp c-backward-exp
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start "^([\n\t\f ]*\n|[a-zA-z0-9_]+:)"
 	local-ctrl-c-keymap yacc-mode-ctrl-c-keymap
@@ -76,7 +76,7 @@ scan."
   (call-hook 'yacc-mode-hook)
   (when yacc-mode-scan-when-idle
     (make-local-variable 'idle-hook)
-    (add-hook 'idle-hook 'yacc-mode-idle-function))
+    (add-hook 'idle-hook yacc-mode-idle-function))
   (yacc-mode-make-c-minor))
 
 (defun yacc-mode-kill ()
@@ -143,4 +143,4 @@ mode."
 		     (when (eq (extent-get e 'minor-major) 'c-mode)
 		       (setq extents (cons e extents))))
 		 (start-of-buffer) (end-of-buffer))
-    (mapc 'delete-extent extents)))
+    (mapc delete-extent extents)))

@@ -62,21 +62,21 @@ Major mode for editing Perl source code. Local keybindings are:\n
   (and major-mode-kill (funcall major-mode-kill))
   (setq mode-name "Perl"
 	major-mode 'perl-mode
-	major-mode-kill 'kill-all-local-variables
+	major-mode-kill kill-all-local-variables
 	mode-comment-header "#"
-	mode-indent-line 'perl-indent-line
-	mode-forward-exp 'c-forward-exp
-	mode-backward-exp 'c-backward-exp
+	mode-indent-line perl-indent-line
+	mode-forward-exp c-forward-exp
+	mode-backward-exp c-backward-exp
 	mode-defun-header "^sub ([a-zA-Z0-9_]+)[\t ]*{"
 	mode-defun-footer "^}"
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
-	local-keymap 'perl-mode-keymap)
+	local-keymap perl-mode-keymap)
   (call-hook 'perl-mode-hook))
 
-(defun perl-indent-line (&optional pos)
+(defun perl-indent-line (&optional p)
   (let*
-      ((line-pos (start-of-line pos))
+      ((line-pos (start-of-line p))
        (exp-pos (c-backward-stmt line-pos))
        exp-ind)
 

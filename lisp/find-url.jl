@@ -30,14 +30,6 @@
 
 ;; Configuration
 
-(defvar find-url-alist '(("^file:" . find-url-file)
-			 ("^http:" . find-url-http)
-			 ("^ftp:" . find-url-ftp)
-			 ("^telnet:" . find-url-telnet)
-			 ("^mailto:" . find-url-mailto))
-  "Alist of (REGEXP . FUNC) matching URLs to the Lisp functions used to
-display them.")
-
 (defvar find-url-default 'find-url-http
   "The function to pass any urls to that aren't matched by find-url-alist.")
 
@@ -93,7 +85,7 @@ to view URL."
     ;; An inifinite list of URLS to pass to format
     (rplacd args args)
     (message "Calling external browser..." t)
-    (system (apply 'format nil find-url-external-command args))))
+    (system (apply format nil find-url-external-command args))))
 
 (defun find-url-magic-buffer (url)
   (when (or (string-match "\\.html?$" (buffer-file-name))
@@ -200,7 +192,7 @@ a buffer."
 	  (setq load-url (expand-last-match "\\1"))
 	  (setq anchor (expand-last-match "\\2")))
       (setq load-url url))
-    (when (fboundp 'html-display-find-url)
+    (when (boundp 'html-display-find-url)
       (setq buffer (html-display-find-url url)))
     (if buffer
 	(progn
@@ -225,11 +217,11 @@ a buffer."
 						 p ,load-url ,anchor
 						 ,(current-view)
 						 ,buffer ,errors))))
-	      (or (apply 'start-process process args)
+	      (or (apply start-process process args)
 		  (error "Can't start wget"))
 	      (setq find-url-processes (cons (cons url process)
 					     find-url-processes)))
-	  (apply 'call-process process nil args)
+	  (apply call-process process nil args)
 	  (find-url-http-loaded process url anchor
 				(current-view) buffer errors))))))
 
@@ -238,7 +230,7 @@ a buffer."
   (interactive (let
 		   ((arg current-prefix-arg))
 		 (list (prompt-from-list
-			(mapcar 'car find-url-processes) "Abort URL:") arg)))
+			(mapcar car find-url-processes) "Abort URL:") arg)))
   (let
       ((cell (assoc url find-url-processes)))
     (if cell
@@ -248,5 +240,16 @@ a buffer."
 	   #'(lambda (p)
 	       (setq find-url-processes (delq cell find-url-processes))
 	       (message "[wget exited]")))
-	  (funcall (if kill 'kill-process 'interrupt-process) (cdr cell)))
+	  (funcall (if kill kill-process interrupt-process) (cdr cell)))
       (message "[No wget for that URL]"))))
+
+
+;; init
+
+(defvar find-url-alist (list (cons "^file:" find-url-file)
+			     (cons "^http:" find-url-http)
+			     (cons "^ftp:" find-url-ftp)
+			     (cons "^telnet:" find-url-telnet)
+			     (cons "^mailto:" find-url-mailto))
+  "Alist of (REGEXP . FUNC) matching URLs to the Lisp functions used to
+display them.")

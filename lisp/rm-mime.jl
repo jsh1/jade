@@ -87,7 +87,7 @@
 	      (goto top)
 	      (center-display nil -1))))))))
 
-(add-hook 'rm-display-message-hook 'rm-mime-display-msg-function)
+(add-hook 'rm-display-message-hook rm-mime-display-msg-function)
 
 ;; Command to decode the message again, giving markers to _all_ MIME parts
 (defun rm-mime-display-markers ()

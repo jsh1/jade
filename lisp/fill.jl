@@ -59,29 +59,29 @@ to display it, assuming that it's inserted at column zero.")
   '(or (stringp fill-prefix) (functionp fill-prefix)))
 
 ;; Insert the fill-prefix before the cursor
-(defun fill-insert-prefix (pos)
+(defun fill-insert-prefix (p)
   (cond
    ((stringp fill-prefix)
-    (insert fill-prefix pos))
+    (insert fill-prefix p))
    ((functionp fill-prefix)
-    (funcall fill-prefix 'insert pos))))
+    (funcall fill-prefix 'insert p))))
 
 ;; Delete the fill-prefix from POS
-(defun fill-delete-prefix (pos)
+(defun fill-delete-prefix (p)
   (cond
    ((stringp fill-prefix)
-    (when (buffer-compare-string fill-prefix pos)
+    (when (buffer-compare-string fill-prefix p)
       (delete-area (match-start) (match-end))))
    ((functionp fill-prefix)
-    (funcall fill-prefix 'delete pos))))
+    (funcall fill-prefix 'delete p))))
 
 ;; Return the width of the fill-prefix that would be inserted at POS
-(defun fill-get-prefix-width (pos)
+(defun fill-get-prefix-width (p)
   (cond
    ((stringp fill-prefix)
     fill-prefix-width)
    ((functionp fill-prefix)
-    (funcall fill-prefix 'width pos))))
+    (funcall fill-prefix 'width p))))
 
 
 ;; Filling functions
@@ -97,14 +97,14 @@ COLUMN or the current column."
   (format t "Fill column set to %d." fill-column))
 
 ;;;###autoload
-(defun set-fill-prefix (pos)
+(defun set-fill-prefix (p)
   "Sets the fill prefix to the string between the start of the current line
 and POS. When called interactively, POS is bound to the cursor position."
   (interactive "d")
   (if (functionp fill-prefix)
       (error "Fill prefix is defined by a function in this buffer")
-    (setq fill-prefix (copy-area (start-of-line pos) pos)
-	  fill-prefix-width (pos-col (char-to-glyph-pos pos)))
+    (setq fill-prefix (copy-area (start-of-line p) p)
+	  fill-prefix-width (pos-col (char-to-glyph-pos p)))
     (format t "Set fill prefix to %S" fill-prefix)))
 
 
@@ -173,14 +173,14 @@ and POS. When called interactively, POS is bound to the cursor position."
        ((> (pos-col g-line-end) goal-column)
 	;; The current line is too long
 	(let
-	    ((pos (re-search-backward fill-break-re
+	    ((p (re-search-backward fill-break-re
 				      (glyph-to-char-pos
 				       (pos goal-column
 					    (pos-line line-start))))))
-	  (when (and pos (/= (pos-col pos) 0))
-	    (when (= (get-char pos) ?\ )
-	      (delete-area pos (forward-char 1 pos)))
-	    (insert "\n" pos))
+	  (when (and pos (/= (pos-col p) 0))
+	    (when (= (get-char p) ?\ )
+	      (delete-area p (forward-char 1 p)))
+	    (insert "\n" p))
 	  ;; Move on to the next line (reinserting the fill prefix)
 	  (fill-area-next-line)))
 
@@ -270,41 +270,41 @@ the next line is started."
 (defun fill-check-line ()
   (when (>= (pos-col (char-to-glyph-pos (cursor-pos))) fill-column)
     (let
-	((pos (re-search-backward fill-break-re
+	((p (re-search-backward fill-break-re
 				  (glyph-to-char-pos
 				   (pos (1- fill-column)
 					(pos-line (cursor-pos)))))))
-      (when (and pos (/= (pos-col pos) 0))
-	(when (= (get-char pos) ?\ )
-	  (delete-area pos (forward-char 1 pos)))
-	(insert "\n" pos)
+      (when (and p (/= (pos-col p) 0))
+	(when (= (get-char p) ?\ )
+	  (delete-area p (forward-char 1 p)))
+	(insert "\n" p)
 	(fill-insert-prefix (start-of-line))))))
 
 
 ;; Centering
 
 ;;;###autoload
-(defun center-line (&optional pos)
+(defun center-line (&optional p)
   "Centre the line at POS."
   (interactive)
   (let*
-      ((spos (indent-pos pos))
-       (epos (char-to-glyph-pos (re-search-forward " *$" (start-of-line pos))))
+      ((spos (indent-pos p))
+       (epos (char-to-glyph-pos (re-search-forward " *$" (start-of-line p))))
        (len (- (pos-col epos) (pos-col spos))))
     (cond
       ((<= len 0))
       ((> len fill-column)
-	(set-indent-pos (start-of-line pos)))
+	(set-indent-pos (start-of-line p)))
       (t
 	(setq spos (pos (/ (- fill-column len) 2) (pos-line spos)))
 	(set-indent-pos spos)))))
 
 ;;;###autoload
-(defun center-paragraph (&optional pos)
+(defun center-paragraph (&optional p)
   "Centre the paragraph surrounding POS."
   (interactive)
   (let*
-      ((epos (forward-paragraph 1 pos))
+      ((epos (forward-paragraph 1 p))
        (spos (forward-paragraph -1 epos)))
     (while (< spos epos)
       (center-line spos)

@@ -42,13 +42,13 @@ message formatting characters are available.")
   (interactive "P")
   (let*
       ((folder (rm-current-folder))
-       (message (or (rm-get-folder-field folder rm-folder-current-msg)
+       (msg (or (rm-get-folder-field folder rm-folder-current-msg)
 		    (error "No current message")))
-       (subject (rm-get-subject message))
-       (to (or (mapcar 'mail-parse-address
-		       (rm-get-msg-header message "Reply-To" t))
-	       (rm-get-from message)
-	       (rm-get-sender message)))
+       (subject (rm-get-subject msg))
+       (to (or (mapcar mail-parse-address
+		       (rm-get-msg-header msg "Reply-To" t))
+	       (rm-get-from msg)
+	       (rm-get-sender msg)))
        (cc (if followup-p
 	       ;; Only include addresses not in the To or BCC headers
 	       (filter #'(lambda (addr)
@@ -59,17 +59,17 @@ message formatting characters are available.")
 				   (if mail-self-blind
 				       (cons user-mail-address to)
 				     to))
-			     t)) (rm-get-recipients message))))
-       (msg-id (rm-get-msg-header message "Message-Id"))
-       (references (append (rm-get-msg-header message "References" t t)
+			     t)) (rm-get-recipients msg))))
+       (msg-id (rm-get-msg-header msg "Message-Id"))
+       (references (append (rm-get-msg-header msg "References" t t)
 			   (and msg-id (list msg-id)))))
     (when subject
       (setq subject (concat mail-reply-prefix
 			    (mail-get-actual-subject subject))))
     (mail-setup nil subject msg-id nil references
-		(list (cons #'(lambda (folder message)
-				(rm-message-put message 'replied t))
-			    (list folder message))))
+		(list (cons #'(lambda (f m)
+				(rm-message-put m 'replied t))
+			    (list folder msg))))
     (when to
       (send-mail-go-to)
       (mail-insert-address-list to))
@@ -79,7 +79,7 @@ message formatting characters are available.")
     (if to
 	(send-mail-go-text)
       (send-mail-go-to))
-    (setq rm-reply-message message)
+    (setq rm-reply-message msg)
     (when yankp
       (mail-yank-original))
     (set-buffer-modified (current-buffer) nil)))
@@ -129,7 +129,7 @@ message in that all recipients of the original wil receive the reply."
     (unrestrict-buffer)
     t))
 
-(add-hook 'mail-yank-hooks 'rm-default-yank-function t)
+(add-hook 'mail-yank-hooks rm-default-yank-function t)
 
 
 ;; Message forwarding
@@ -143,21 +143,21 @@ arg TO specifies who to send it to."
     (setq to ""))
   (let*
       ((folder (rm-current-folder))
-       (message (or (rm-get-folder-field folder rm-folder-current-msg)
-		    (error "No current message")))
-       (subject (rm-get-subject message))
+       (msg (or (rm-get-folder-field folder rm-folder-current-msg)
+		(error "No current message")))
+       (subject (rm-get-subject msg))
        start tem)
     (mail-setup to subject nil nil nil
-		(list (cons #'(lambda (folder message)
-				(rm-message-put message 'forwarded t)
+		(list (cons #'(lambda (f m)
+				(rm-message-put m 'forwarded t)
 				(when (rm-get-folder-field
-				       folder rm-folder-summary)
-				  (rm-with-summary folder
-				    (summary-update-item message))))
-			    (list folder message))))
+				       f rm-folder-summary)
+				  (rm-with-summary f
+				    (summary-update-item m))))
+			    (list folder msg))))
     (insert "----- begin forwarded message -----\n")
     (setq start (cursor-pos))
-    (goto (insert (with-buffer (mark-file (rm-get-msg-field message
+    (goto (insert (with-buffer (mark-file (rm-get-msg-field msg
 							    rm-msg-mark))
 		    (let*
 			((start (restriction-start))
@@ -194,11 +194,11 @@ arg TO specifies who to send it to."
 (defun rm-really-burst-message (preamble-sep message-sep stuffed-re)
   (let*
       ((folder (rm-current-folder))
-       (message (or (rm-get-folder-field folder rm-folder-current-msg)
+       (msg (or (rm-get-folder-field folder rm-folder-current-msg)
 		    (error "No current message")))
        (inhibit-read-only t)
-       (input-pos (rm-message-body message))
-       (input-end (rm-message-end message))
+       (input-pos (rm-message-body msg))
+       (input-end (rm-message-end msg))
        (last-pos nil)
        (msgs nil)
        (count 0)
@@ -238,11 +238,11 @@ arg TO specifies who to send it to."
 	    (insert (copy-area start input-pos))
 	    ;; Unmangle stuffed lines
 	    (let
-		((pos (cursor-pos)))
-	      (restrict-buffer output-pos pos)
-	      (while (setq pos (re-search-backward stuffed-re pos))
+		((p (cursor-pos)))
+	      (restrict-buffer output-pos p)
+	      (while (setq p (re-search-backward stuffed-re p))
 		(replace-last-match "\\1")
-		(setq pos (forward-line -1 pos)))
+		(setq p (forward-line -1 p)))
 	      (unrestrict-buffer))
 	    ;; Unmangle quoted ^From_
 	    (when (looking-at "^>From " output-pos)

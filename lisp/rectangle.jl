@@ -19,14 +19,14 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;###autoload
-(defun insert-rectangle (text &optional pos)
+(defun insert-rectangle (text &optional p)
   "Insert TEXT rectangularly at position POS in the current buffer."
-  (unless pos
-    (setq pos (cursor-pos)))
+  (unless p
+    (setq p (cursor-pos)))
   (let
       ((index 0)
-       (column (pos-col (char-to-glyph-pos pos)))
-       (row (pos-line pos))
+       (column (pos-col (char-to-glyph-pos p)))
+       (row (pos-line p))
        sub-string has-nl)
     (while (and (< index (length text))
 		(string-match "[^\n]*" text index))
@@ -34,11 +34,11 @@
 	    index (if (equal (aref text (match-end)) ?\n)
 		      (1+ (match-end))
 		    (match-end)))
-      (insert sub-string pos)
+      (insert sub-string p)
       (setq row (1+ row))
       (when (> row (pos-line (end-of-buffer)))
 	(insert "\n" (end-of-buffer)))
-      (setq pos (glyph-to-char-pos (pos column row))))))
+      (setq p (glyph-to-char-pos (pos column row))))))
 
 ;;;###autoload
 (defun copy-rectangle (start end)
@@ -60,7 +60,7 @@ and END (the characters at opposite corners)."
 				     (glyph-to-char-pos (pos end-col row)))
 			  (cons ?\n strings))
 	    row (1- row)))
-    (apply 'concat strings)))
+    (apply concat strings)))
 
 ;;;###autoload
 (defun delete-rectangle (start end)

@@ -60,7 +60,7 @@ strategy."
        ((arg current-prefix-arg))
      (list (prompt-for-string "Word to lookup:" (symbol-at-point))
 	   (when arg
-	     (intern (prompt-from-list (mapcar 'symbol-name dict-strategy-list)
+	     (intern (prompt-from-list (mapcar symbol-name dict-strategy-list)
 				       "Lookup strategy:"))))))
   (or word (error "Null word to dictionary lookup"))
   ;; Maybe this should be run asynchronously? It could take a while..

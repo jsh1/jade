@@ -96,22 +96,22 @@ the auto-mark of the current buffer will be updated before the move."
   (when (markp mark)
     (let
 	((file (mark-file mark))
-	 (pos (mark-pos mark)))
+	 (p (mark-pos mark)))
       (unless dont-set-auto
 	(set-auto-mark))
       (if (stringp file)
 	  (find-file file)
 	(goto-buffer file))
-      (goto pos))))
+      (goto p))))
 
-(defun set-auto-mark (&optional pos)
+(defun set-auto-mark (&optional p)
   "Sets the mark `auto-mark' to POS (or the current position)."
   (interactive)
   (if auto-mark
       (progn
-	(set-mark-pos auto-mark (or pos (cursor-pos)))
+	(set-mark-pos auto-mark (or p (cursor-pos)))
 	(set-mark-file auto-mark (current-buffer)))
-    (setq auto-mark (make-mark pos)))
+    (setq auto-mark (make-mark p)))
   (message "Set auto-mark."))
 
 (defun swap-cursor-and-auto-mark ()
@@ -132,27 +132,27 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
 
 ;; Characters
 
-(defun backward-char (&optional count pos buf)
+(defun backward-char (&optional count p buf)
   (interactive "@p")
-  (forward-char (if count (- count) -1) pos buf))
+  (forward-char (if count (- count) -1) p buf))
 
 (defun transpose-chars (count)
   "Move the character before the cursor COUNT characters forwards."
   (interactive "p")
   (transpose-items 'forward-char 'backward-char count))
 
-(defun backward-tab (&optional count pos size)
+(defun backward-tab (&optional count p size)
   (interactive "@p")
-  (forward-tab (if count (- count) -1) pos size))
+  (forward-tab (if count (- count) -1) p size))
 
-(defmacro right-char (count pos)
+(defmacro right-char (count p)
   "Return the position COUNT characters to the right of POS."
-  (list 'pos (list '+ (list 'pos-col pos) count)
-	(list 'pos-line pos)))
+  (list 'pos (list '+ (list 'pos-col p) count)
+	(list 'pos-line p)))
 
-(defmacro left-char (count pos)
+(defmacro left-char (count p)
   "Return the position COUNT characters to the left of POS."
-  (list 'right-char (list '- count) pos))
+  (list 'right-char (list '- count) p))
 
 
 ;; Lines
@@ -163,11 +163,11 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
 ;; The view that the goal-column refers to
 (defvar goal-view nil)
 
-(defun backward-line (&optional count pos)
+(defun backward-line (&optional count p)
   "Return the position of the line COUNT lines below position POS. (defaults
 to one line from the cursor)."
   (interactive "@p")
-  (forward-line (if count (- count) -1) pos))
+  (forward-line (if count (- count) -1) p))
 
 (defun next-line (count)
   "Return the position of the line COUNT lines below the cursor, adjusting
@@ -187,13 +187,13 @@ the column position to preserve the original position."
   (interactive "@p")
   (next-line (- count)))
 
-(defun split-line (&optional count pos)
+(defun split-line (&optional count p)
   "Insert COUNT newline characters before position POS (or before the
 cursor)."
   (interactive "p")
   (insert (if (or (not count) (= count 1))
 	      "\n"
-	    (make-string count ?\n)) pos))
+	    (make-string count ?\n)) p))
 
 (defun kill-line (&optional arg)
   "If the cursor is not at the end of the line kill the text from the cursor
@@ -253,45 +253,45 @@ counted."
 
 ;; Words
 
-(defun forward-word (&optional number pos)
+(defun forward-word (&optional number p)
   "Return the position of first character after the end of this word.
 NUMBER is the number of words to move, negative values mean go backwards.
 If MOVE is t then the cursor is moved to the result."
   (interactive "@p")
   (unless number
     (setq number 1))
-  (unless pos (setq pos (cursor-pos)))
+  (unless p (setq p (cursor-pos)))
   (cond
     ((< number 0)
       ;; go backwards
       (while (/= number 0)
-	(setq pos (forward-char -1 pos))
-	(when (looking-at word-not-regexp pos)
+	(setq p (forward-char -1 p))
+	(when (looking-at word-not-regexp p)
 	  ;; not in word
-	  (unless (setq pos (re-search-backward word-regexp pos))
-	    (setq pos (start-of-buffer))))
+	  (unless (setq p (re-search-backward word-regexp p))
+	    (setq p (start-of-buffer))))
 	;; in middle of word
-	(unless (setq pos (re-search-backward word-not-regexp pos))
-	  (setq pos (start-of-buffer)))
+	(unless (setq p (re-search-backward word-not-regexp p))
+	  (setq p (start-of-buffer)))
 	(setq
-	  pos (re-search-forward word-regexp pos)
+	  p (re-search-forward word-regexp p)
 	  number (1+ number))))
     (t
       ;; forwards
       (while (/= number 0)
-	(when (looking-at word-not-regexp pos)
+	(when (looking-at word-not-regexp p)
 	  ;; already at end of a word
-	  (unless (setq pos (re-search-forward word-regexp pos))
-	    (setq pos (end-of-buffer))))
-	(unless (setq pos (re-search-forward word-not-regexp pos))
-	  (setq pos (end-of-buffer)))
+	  (unless (setq p (re-search-forward word-regexp p))
+	    (setq p (end-of-buffer))))
+	(unless (setq p (re-search-forward word-not-regexp p))
+	  (setq p (end-of-buffer)))
 	(setq number (1- number)))))
-  pos)
+  p)
 
-(defun backward-word (&optional number pos)
+(defun backward-word (&optional number p)
   "Basically `(forward-word -NUMBER POS)'"
   (interactive "@p")
-  (forward-word (if number (- number) -1) pos))
+  (forward-word (if number (- number) -1) p))
 
 (defun kill-word (count)
   "Kills from the cursor to the end of the word."
@@ -303,24 +303,24 @@ If MOVE is t then the cursor is moved to the result."
   (interactive "p")
   (kill-area (forward-word (- count)) (cursor-pos)))
 
-(defun word-start (&optional pos)
+(defun word-start (&optional p)
   "Returns the position of the start of *this* word."
   (interactive "@")
-  (when (looking-at word-regexp pos)
-    (if (re-search-backward word-not-regexp pos)
+  (when (looking-at word-regexp p)
+    (if (re-search-backward word-not-regexp p)
 	(re-search-forward word-regexp (match-end))
       (re-search-forward word-regexp (start-of-buffer)))))
 
-(defun in-word-p (&optional pos)
+(defun in-word-p (&optional p)
   "Returns t if POS is inside a word."
-  (when (looking-at word-regexp pos)
+  (when (looking-at word-regexp p)
     t))
 
-(defun mark-word (count &optional pos)
+(defun mark-word (count &optional p)
   "Marks COUNT words from POS."
   (interactive "p")
   (set-rect-blocks nil nil)
-  (mark-block (or pos (cursor-pos)) (forward-word count pos)))
+  (mark-block (or p (cursor-pos)) (forward-word count p)))
 
 (defun transpose-words (count)
   "Move the word at (before) the cursor COUNT words forwards."
@@ -330,68 +330,68 @@ If MOVE is t then the cursor is moved to the result."
 
 ;; Paragraphs
 
-(defun forward-paragraph (count &optional pos)
+(defun forward-paragraph (count &optional p)
   "Return the end of the COUNT'th paragraph. If the function is called
 interactively, the cursor is set to this position."
   (interactive "@p")
-  (unless pos
-    (setq pos (cursor-pos)))
+  (unless p
+    (setq p (cursor-pos)))
   (let
       ((sep-or-start (concat ?\( paragraph-separate ?\| paragraph-start ?\) )))
     ;; Positive arguments
     (while (and (> count 0)
-		(< pos (end-of-buffer)))
+		(< p (end-of-buffer)))
       ;; Skip any lines at POS matching the separator
-      (while (and (< (pos-line pos) (buffer-length))
-		  (looking-at paragraph-separate pos))
-	(setq pos (forward-line 1 pos)))
+      (while (and (< (pos-line p) (buffer-length))
+		  (looking-at paragraph-separate p))
+	(setq p (forward-line 1 p)))
       ;; Search for the next separator or start
-      (if (re-search-forward sep-or-start (forward-char 1 pos))
+      (if (re-search-forward sep-or-start (forward-char 1 p))
 	  (setq count (1- count)
-		pos (if (zerop count) (match-start) (match-end)))
-	(setq pos (end-of-buffer)
+		p (if (zerop count) (match-start) (match-end)))
+	(setq p (end-of-buffer)
 	      count 0)))
     ;; Negative arguments
     (while (and (< count 0)
-		(> pos (start-of-buffer)))
+		(> p (start-of-buffer)))
       ;; Skip any lines before POS matching the separator
-      (while (and (< (pos-line pos) (buffer-length))
-		  (looking-at paragraph-separate (forward-line -1 pos)))
-	(setq pos (forward-line -1 pos)))
+      (while (and (< (pos-line p) (buffer-length))
+		  (looking-at paragraph-separate (forward-line -1 p)))
+	(setq p (forward-line -1 p)))
       ;; Search for the previous paragraph
-      (if (re-search-backward sep-or-start (backward-char 1 pos))
+      (if (re-search-backward sep-or-start (backward-char 1 p))
 	  (let*
 	      ((start (match-start))
 	       (end (match-end))
-	       (orig pos)
+	       (orig p)
 	       (separator-match (looking-at paragraph-separate start)))
 	    (setq count (1+ count))
-	    (setq pos (if separator-match end start)))
-	(setq pos (start-of-buffer)
+	    (setq p (if separator-match end start)))
+	(setq p (start-of-buffer)
 	      count 0))))
-  pos)
+  p)
 
-(defun backward-paragraph (count &optional pos)
+(defun backward-paragraph (count &optional p)
   "Returns the start of the COUNT'th previous paragraph. If the function is
 called interactively, the cursor is set to this position."
   (interactive "@p")
-  (forward-paragraph (- (or count 1)) pos))
+  (forward-paragraph (- (or count 1)) p))
 
-(defun paragraph-edges (count &optional pos mark)
+(defun paragraph-edges (count &optional p mark)
   "Return (START . END), the positions defining the outermost characters of
 the COUNT paragraphs around POS. Positive COUNTs mean to search forwards,
 negative to search backwards.
 When MARK is t, the block marks are set to START and END."
   (interactive "p\n\nt")
-  (unless pos
-    (setq pos (cursor-pos)))
+  (unless p
+    (setq p (cursor-pos)))
   (let
       (start end)
     (if (> count 0)
-	(setq start (forward-paragraph -1 (min (forward-char 1 pos)
+	(setq start (forward-paragraph -1 (min (forward-char 1 p)
 					       (end-of-buffer)))
 	      end (forward-paragraph count start))
-      (setq end (forward-paragraph 1 (max (forward-char -1 pos)
+      (setq end (forward-paragraph 1 (max (forward-char -1 p)
 					  (start-of-buffer)))
 	    start (forward-paragraph count end)))
     (when mark
@@ -407,7 +407,7 @@ When MARK is t, the block marks are set to START and END."
 
 ;; Page handling
 
-(defun forward-page (&optional count pos)
+(defun forward-page (&optional count p)
   "Return the position COUNT pages forwards. If COUNT is negative, go
 backwards. When called interactively the cursor is set to the position."
   (interactive "@p")
@@ -415,30 +415,30 @@ backwards. When called interactively the cursor is set to the position."
     (setq count 1))
   (if (> count 0)
       (progn
-	(when (looking-at page-start pos)
-	  (setq pos (match-end)))
-	(while (and (> count 0) (re-search-forward page-start pos))
-	  (setq pos (match-end)
+	(when (looking-at page-start p)
+	  (setq p (match-end)))
+	(while (and (> count 0) (re-search-forward page-start p))
+	  (setq p (match-end)
 		count (1- count)))
 	(when (= count 1)
-	  (setq pos (end-of-buffer)
+	  (setq p (end-of-buffer)
 		count 0)))
-    (when (looking-at page-start (start-of-line pos))
-      (setq pos (forward-line -1 pos)))
-    (while (and (< count 0) (re-search-backward page-start pos))
-      (setq pos (if (= count -1)
+    (when (looking-at page-start (start-of-line p))
+      (setq p (forward-line -1 p)))
+    (while (and (< count 0) (re-search-backward page-start p))
+      (setq p (if (= count -1)
 		    (match-end)
 		  (forward-char -1 (match-start)))
 	    count (1+ count)))
     (when (= count -1)
-      (setq pos (start-of-buffer)
+      (setq p (start-of-buffer)
 	    count 0)))
-  pos)
+  p)
 
-(defun backward-page (&optional count pos)
+(defun backward-page (&optional count p)
   "Basically (forward-page (- COUNT) POS)."
   (interactive "@p")
-  (forward-page (- (or count 1)) pos))
+  (forward-page (- (or count 1)) p))
 
 (defun mark-page ()
   "Set the block to mark the current page of text."
@@ -464,7 +464,7 @@ backwards. When called interactively the cursor is set to the position."
   "If a block is marked in the current window, return the text it contains and
 unmark the block."
   (when (blockp)
-    (setq rc (funcall (if (rect-blocks-p) 'copy-rectangle 'copy-area)
+    (setq rc (funcall (if (rect-blocks-p) copy-rectangle copy-area)
 		      (block-start) (block-end)))
     (block-kill))
   rc)
@@ -473,7 +473,7 @@ unmark the block."
   "Similar to `copy-block' except the block is cut (copied then deleted) from
 the buffer."
   (when (blockp)
-    (setq rc (funcall (if (rect-blocks-p) 'cut-rectangle 'cut-area)
+    (setq rc (funcall (if (rect-blocks-p) cut-rectangle cut-area)
 		      (block-start) (block-end)))
     (block-kill))
   rc)
@@ -482,7 +482,7 @@ the buffer."
   "Deletes the block marked in the current window (if one exists)."
   (interactive)
   (when (blockp)
-    (funcall (if (rect-blocks-p) 'delete-rectangle 'delete-area)
+    (funcall (if (rect-blocks-p) delete-rectangle delete-area)
 	     (block-start) (block-end))
     (block-kill)))
 
@@ -530,9 +530,9 @@ the buffer."
   "Makes the next COUNT words from the cursor upper-case."
   (interactive "p")
   (let
-      ((pos (forward-word count)))
-    (upcase-area (cursor-pos) pos)
-    (goto pos)))
+      ((p (forward-word count)))
+    (upcase-area (cursor-pos) p)
+    (goto p)))
 
 (defun capitalize-word (count)
   "The first character of the COUNT'th next word is made upper-case, the
@@ -550,9 +550,9 @@ rest lower-case."
   "Makes the word under the cursor lower case."
   (interactive "p")
   (let
-      ((pos (forward-word count)))
-    (downcase-area (cursor-pos) pos)
-    (goto pos)))
+      ((p (forward-word count)))
+    (downcase-area (cursor-pos) p)
+    (goto p)))
 
 
 (defun mark-region ()
@@ -682,7 +682,7 @@ next string in the kill ring."
 	;; work as you'd expect...
 	(setq buffer-undo-list nil)
 	(goto yank-last-start)
-	(funcall (if (eq last-command 'yank) 'insert 'insert-rectangle)
+	(funcall (if (eq last-command 'yank) insert insert-rectangle)
 		 (killed-string yank-last-item))
 	(setq this-command last-command))
     (error "Can't yank (last command wasn't yank, or no undo info)")))
@@ -762,9 +762,9 @@ over the COUNT following items."
   (if overwrite-mode
       (progn
 	(setq overwrite-mode nil)
-	(remove-hook 'unbound-key-hook 'overwrite-insert))
+	(remove-hook 'unbound-key-hook overwrite-insert))
     (setq overwrite-mode t)
-    (add-hook 'unbound-key-hook 'overwrite-insert)))
+    (add-hook 'unbound-key-hook overwrite-insert)))
 
 (defun overwrite-insert (&optional str)
   (unless str
@@ -827,11 +827,11 @@ end of the line simply move COUNT characters to the left."
   (interactive "p")
   (when (member (get-char) '(?\  ?\t))
     (let
-	((pos (re-search-backward "[^\t ]|^")))
-      (when pos
-	(unless (zerop (pos-col pos))
-	  (setq pos (forward-char 1 pos)))
-	(when (and pos (looking-at "[\t ]+" pos))
+	((p (re-search-backward "[^\t ]|^")))
+      (when p
+	(unless (zerop (pos-col p))
+	  (setq p (forward-char 1 p)))
+	(when (and p (looking-at "[\t ]+" p))
 	  (delete-area (match-start) (match-end))
 	  (goto (match-start))))))
   (unless (zerop count)
@@ -970,19 +970,19 @@ from the innermost outwards."
 the current view. Returns nil if no such character can be found."
   (interactive "@")
   (let
-      ((pos (raw-mouse-pos)))
-    (when (and pos (setq pos (translate-pos-to-view pos)) (posp pos))
-      (display-to-char-pos pos))))
+      ((p (raw-mouse-pos)))
+    (when (and p (setq p (translate-pos-to-view p)) (posp p))
+      (display-to-char-pos p))))
 
 (defun mouse-view-pos ()
   "Return (VIEW . POS) defining the character position of the mouse, or nil."
   (let*
-      ((pos (raw-mouse-pos))
-       (mouse-view (find-view-by-pos pos)))
+      ((p (raw-mouse-pos))
+       (mouse-view (find-view-by-pos p)))
     (when mouse-view
-      (setq pos (translate-pos-to-view pos mouse-view))
-      (when (posp pos)
-	(cons mouse-view (display-to-char-pos pos mouse-view))))))
+      (setq p (translate-pos-to-view p mouse-view))
+      (when (posp p)
+	(cons mouse-view (display-to-char-pos p mouse-view))))))
 
 (defun goto-mouse ()
   "Move the cursor to the view and position under the mouse pointer, returns
@@ -1003,14 +1003,14 @@ current view."
 (defun mouse-select ()
   (interactive)
   (let
-      ((pos (goto-mouse)))
-    (if (eq pos t)
+      ((p (goto-mouse)))
+    (if (eq p t)
 	(setq mouse-select-pos 'status
 	      mouse-dragging 'view)
-      (when pos
-	(setq mouse-select-pos pos
+      (when p
+	(setq mouse-select-pos p
 	      mouse-dragging nil)
-	(when (and (blockp) (>= pos (block-start)) (< pos (block-end)))
+	(when (and (blockp) (>= p (block-start)) (< p (block-end)))
 	  (block-kill))))))
 
 (defun mouse-double-select ()
@@ -1027,26 +1027,26 @@ current view."
 	(set-view-dimensions nil nil new-height))
     ;; Mark a block
     (let
-	((pos (mouse-pos)))
-      (when (posp pos)
+	((p (mouse-pos)))
+      (when (posp p)
 	(when (eq mouse-dragging 'words)
-	  (setq pos (forward-word (if (> pos mouse-select-pos) 1 -1) pos)))
-	(goto pos)
-	(if (equal pos mouse-select-pos)
-	    (when (and (blockp) (>= pos (block-start)) (< pos (block-end)))
+	  (setq p (forward-word (if (> p mouse-select-pos) 1 -1) p)))
+	(goto p)
+	(if (equal p mouse-select-pos)
+	    (when (and (blockp) (>= p (block-start)) (< p (block-end)))
 	      (block-kill))
 	  (setq mouse-dragging (or mouse-dragging t))
 	  (block-kill)
 	  (set-rect-blocks nil drag-rectangle)
 	  (block-start (if (eq mouse-dragging 'words)
-			   (if (>= pos mouse-select-pos)
+			   (if (>= p mouse-select-pos)
 			       (or (word-start mouse-select-pos)
 				   mouse-select-pos)
 			     (if (in-word-p mouse-select-pos)
 				 (forward-word 1 mouse-select-pos)
 			       mouse-select-pos))
 			 mouse-select-pos))
-	  (block-end pos))))))
+	  (block-end p))))))
 
 (defun mouse-select-drag-block ()
   (interactive)
@@ -1067,12 +1067,12 @@ end of the inserted text."
 
 ;; Dropping files
 
-(defun dnd-drop-uri-list (files window pos)
+(defun dnd-drop-uri-list (files window p)
   "Called when the list of Universal Resource Identifiers FILES is dropped on
 WINDOW at cell POS. This function finds the view at POS (if one exists),
 activates it, then calls find-url for each of the FILES."
   (let
-      ((drop-view (find-view-by-pos pos window)))
+      ((drop-view (find-view-by-pos p window)))
     (when drop-view
       (set-current-view drop-view t))
-    (mapc 'find-url files)))
+    (mapc find-url files)))

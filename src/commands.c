@@ -111,12 +111,12 @@ interactive_spec(repv cmd)
 {
     repv fun, spec = rep_NULL;
     if(rep_SYMBOLP(cmd))
-	fun = Fsymbol_function(cmd, Qt);
+	cmd = Fsymbol_value(cmd, Qt);
+again:
+    if (rep_FUNARGP(cmd))
+	fun = rep_FUNARG(cmd)->fun;
     else
 	fun = cmd;
-again:
-    if (rep_FUNARGP(fun))
-	fun = rep_FUNARG(fun)->fun;
     if(!rep_VOIDP(fun) && !rep_NILP(fun))
     {
 	if((rep_TYPE(fun) >= rep_Subr0) && (rep_TYPE(fun) <= rep_SubrN))
@@ -149,14 +149,16 @@ again:
 		    }
 		}
 	    }
-	    else if(rep_CAR(fun) == Qautoload)
+	    else if(rep_CAR(fun) == Qautoload && rep_FUNARGP(cmd))
 	    {
 		/* An autoload, load it then try again. */
-		rep_GC_root gc_cmd;
-		rep_PUSHGC(gc_cmd, cmd);
-		fun = rep_load_autoload(cmd, fun, FALSE);
-		rep_POPGC;
-		if(fun != rep_NULL)
+		struct rep_Call lc;
+		lc.fun = lc.args = lc.args_evalled_p = Qnil;
+		rep_PUSH_CALL(lc);
+		rep_USE_FUNARG(cmd);
+		cmd = rep_load_autoload(cmd);
+		rep_POP_CALL(lc);
+		if(cmd != rep_NULL)
 		    goto again;
 	    }
 	}
@@ -281,25 +283,25 @@ any entered arg is given to the invoked COMMAND.
 		    switch(c)
 		    {
 		    case 'a':
-			arg = rep_call_lisp1(Qprompt_for_function, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_function, Qt), prompt);
 			break;
 		    case 'b':
-			arg = rep_call_lisp2(Qprompt_for_buffer, prompt, Qt);
+			arg = rep_call_lisp2(Fsymbol_value(Qprompt_for_buffer, Qt), prompt, Qt);
 			break;
 		    case 'B':
-			arg = rep_call_lisp1(Qprompt_for_buffer, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_buffer, Qt), prompt);
 			break;
 		    case 'c':
-			arg = rep_call_lisp1(Qprompt_for_char, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_char, Qt), prompt);
 			break;
 		    case 'C':
-			arg = rep_call_lisp1(Qprompt_for_command, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_command, Qt), prompt);
 			break;
 		    case 'd':
 			arg = Fcursor_pos();
 			break;
 		    case 'D':
-			arg = rep_call_lisp1(Qprompt_for_directory, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_directory, Qt), prompt);
 			break;
 		    case 'e':
 			arg = Fcurrent_event();
@@ -308,13 +310,13 @@ any entered arg is given to the invoked COMMAND.
 			arg = Fcurrent_event_string();
 			break;
 		    case 'f':
-			arg = rep_call_lisp2(Qprompt_for_file, prompt, Qt);
+			arg = rep_call_lisp2(Fsymbol_value(Qprompt_for_file, Qt), prompt, Qt);
 			break;
 		    case 'F':
-			arg = rep_call_lisp1(Qprompt_for_file, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_file, Qt), prompt);
 			break;
 		    case 'k':
-			arg = rep_call_lisp1(Qread_event, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qread_event, Qt), prompt);
 			break;
 		    case 'm':
 		    case 'M':
@@ -327,11 +329,11 @@ any entered arg is given to the invoked COMMAND.
 			}
 			break;
 		    case 'n':
-			arg = rep_call_lisp1(Qprompt_for_number, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_number, Qt), prompt);
 			break;
 		    case 'N':
 			if(rep_NILP(Farg))
-			    arg = rep_call_lisp1(Qprompt_for_number, prompt);
+			    arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_number, Qt), prompt);
 			else
 			    arg = Fprefix_numeric_argument(Farg);
 			break;
@@ -343,24 +345,24 @@ any entered arg is given to the invoked COMMAND.
 			can_be_nil = TRUE;
 			break;
 		    case 's':
-			arg = rep_call_lisp1(Qprompt_for_string, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_string, Qt), prompt);
 			break;
 		    case 'S':
-			arg = rep_call_lisp1(Qprompt_for_symbol, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_symbol, Qt), prompt);
 			can_be_nil = TRUE;
 			break;
 		    case 't':
 			arg = Qt;
 			break;
 		    case 'v':
-			arg = rep_call_lisp1(Qprompt_for_variable, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_variable, Qt), prompt);
 			break;
 		    case 'x':
-			arg = rep_call_lisp1(Qprompt_for_lisp, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_lisp, Qt), prompt);
 			can_be_nil = TRUE;
 			break;
 		    case 'X':
-			arg = rep_call_lisp1(Qprompt_for_lisp, prompt);
+			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_lisp, Qt), prompt);
 			if(arg)
 			    arg = Feval(arg);
 			can_be_nil = TRUE;
@@ -395,7 +397,11 @@ any entered arg is given to the invoked COMMAND.
 	   to build the list of arguments overwrote it. */
 	current_prefix_arg = Farg;
 	if(args)
+	{
+	    if (rep_SYMBOLP(cmd))
+		cmd = Fsymbol_value (cmd, Qt);
 	    res = rep_funcall(cmd, args, FALSE);
+	}
 	rep_POPGC;
 
 	if(goto_result && res != rep_NULL && POSP(res))
@@ -404,7 +410,7 @@ any entered arg is given to the invoked COMMAND.
 	    {
 		rep_GC_root gc_res;
 		rep_PUSHGC(gc_res, res);
-		rep_call_lisp0(Qset_auto_mark);
+		rep_call_lisp0(Fsymbol_value(Qset_auto_mark, Qt));
 		rep_POPGC;
 	    }
 	    Fgoto(res);
@@ -537,7 +543,7 @@ Returns t if COMMAND may be called interactively.
 ::end:: */
 {
     if(rep_SYMBOLP(cmd))
-	cmd = Fsymbol_function(cmd, Qt);
+	cmd = Fsymbol_value(cmd, Qt);
     if (rep_FUNARGP(cmd))
 	cmd = rep_FUNARG(cmd)->fun;
     if(!rep_VOIDP(cmd) && !rep_NILP(cmd))

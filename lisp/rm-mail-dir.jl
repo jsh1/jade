@@ -56,7 +56,7 @@ message isn't scanned.")
 				 (concat "Name of <" (car cell) ">:") t)))))
 	  (rm-get-recipients rm-message)))
   t)
-(add-hook 'rm-display-message-hook 'rm-mail-dir-scanner)
+(add-hook 'rm-display-message-hook rm-mail-dir-scanner)
 
 (defun rm-mail-dir-scan-messages (&optional all-addresses)
   "Add the senders of the selected message(s) to the mail directory.

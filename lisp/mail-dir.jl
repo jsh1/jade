@@ -65,7 +65,7 @@ definitions will be added to any existing definitions."
 		     current-prefix-arg))
   (let
       ((file-handle (open-file file 'read))
-       form list tem)
+       form tem)
     (if dont-merge
 	(setq mail-address-list nil
 	      mail-directory-modified nil)
@@ -93,18 +93,17 @@ definitions will be added to any existing definitions."
 
 ;; Output a LIST of objects to STREAM. Each object printed will be indented
 ;; by two spaces.
-(defun mail-dir-output-list (stream list)
-  (while (consp list)
-    (format stream "\n  %S" (car list))
-    (setq list (cdr list))))
+(defun mail-dir-output-list (stream lst)
+  (while (consp lst)
+    (format stream "\n  %S" (car lst))
+    (setq lst (cdr lst))))
 
 (defun save-mail-directory (file)
   "Save the current contents of the mail directory to the file FILE."
   (interactive (list (prompt-for-file "File to save mail directory to"
 				      nil mail-directory-file)))
   (let
-      ((file-handle (open-file file 'write))
-       list)
+      ((file-handle (open-file file 'write)))
     (when file-handle
       (unwind-protect
 	  (progn
@@ -164,11 +163,11 @@ definitions will be added to any existing definitions."
 
 ;; Return a flattened list of all fields matching FIELD
 (defun md-get-all-fields (field &optional required)
-  (apply 'append (mapcar #'(lambda (r)
-			     (when (or (not required)
-				       (md-get-field r required))
-			       (md-get-field r field)))
-			 mail-address-list)))
+  (apply append (mapcar #'(lambda (r)
+			    (when (or (not required)
+				      (md-get-field r required))
+			      (md-get-field r field)))
+			mail-address-list)))
 
 (defun md-field-exists-p (key-field key field)
   (let
@@ -178,29 +177,29 @@ definitions will be added to any existing definitions."
 
 ;; Prompt variants
 
-(defun prompt-for-mail-address (prompt &optional dont-validate initial)
-  (prompt-from-list (md-get-all-fields ':net) prompt initial dont-validate))
+(defun prompt-for-mail-address (title &optional dont-validate initial)
+  (prompt-from-list (md-get-all-fields ':net) title initial dont-validate))
 
-(defun prompt-for-mail-item (prompt &optional dont-validate initial)
-  (prompt-from-list (md-get-all-fields ':name) prompt initial dont-validate))
+(defun prompt-for-mail-item (title &optional dont-validate initial)
+  (prompt-from-list (md-get-all-fields ':name) title initial dont-validate))
 
-(defun prompt-for-mail-full-name (prompt &optional dont-validate initial)
+(defun prompt-for-mail-full-name (title &optional dont-validate initial)
   (prompt-from-list (md-get-all-fields ':name ':net)
-		    prompt initial dont-validate))
+		    title initial dont-validate))
 
-(defun prompt-for-mail-alias (prompt &optional dont-validate initial)
+(defun prompt-for-mail-alias (title &optional dont-validate initial)
   (prompt-from-list (md-get-all-fields ':name ':net-alias)
-		    prompt initial dont-validate))
+		    title initial dont-validate))
 
-(defun prompt-for-address-list (prompt &optional dont-validate)
+(defun prompt-for-address-list (title &optional dont-validate)
   (let
-      ((list '())
+      ((lst '())
        tem)
-    (while (setq tem (prompt-for-mail-address (concat prompt
+    (while (setq tem (prompt-for-mail-address (concat title
 						      " (Ctrl-g to finish)")
 					      dont-validate))
-      (setq list (cons tem list)))
-    (nreverse list)))
+      (setq lst (cons tem lst)))
+    (nreverse lst)))
 
 
 ;; Adding and removing entries
@@ -257,7 +256,7 @@ entity called FULL-NAME."
 ;; Accessor functions
 
 ;;;###autoload
-(defun get-mail-address (full-name &optional print)
+(defun get-mail-address (full-name &optional do-print)
   "Return the mail address of the entity called FULL-NAME (a string). When
 PRINT is t the address is also displayed in the message area."
   (interactive (list (prompt-for-mail-full-name "Name") t))
@@ -267,12 +266,12 @@ PRINT is t the address is also displayed in the message area."
     (unless record
       (error "Address for %s doesn't exist" full-name))
     (setq field (md-get-field record ':net))
-    (when print
+    (when do-print
       (format t "Address of %s is %S" full-name field))
     (car field)))
 
 ;;;###autoload
-(defun get-mail-name-from-address (address &optional print)
+(defun get-mail-name-from-address (address &optional do-print)
   "Return the name of the entity whose email address is ADDRESS. When PRINT
 is t the address is also displayed in the message area."
   (interactive (list (prompt-for-mail-address "Address") t))
@@ -282,12 +281,12 @@ is t the address is also displayed in the message area."
     (unless record
       (error "Address doesn't exist: %s" address))
     (setq field (md-get-field record ':name))
-    (when print
+    (when do-print
       (format t "Name of <%s> is %s" address (car field)))
     (car field)))
 
 ;;;###autoload
-(defun get-mail-alias (alias &optional print)
+(defun get-mail-alias (alias &optional do-print)
   "Return the expansion of mail alias ALIAS (a list of addresses). When
 PRINT is t the expansion is also displayed in the message area."
   (interactive (list (prompt-for-mail-alias "Alias") t))
@@ -297,7 +296,7 @@ PRINT is t the expansion is also displayed in the message area."
     (unless record
       (error "Alias doesn't exist: %s" alias))
     (setq field (md-get-field record ':net-alias))
-    (when print
+    (when do-print
       (format t "Alias %s expands to %s" alias field))
     field))
 

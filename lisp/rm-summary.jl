@@ -147,14 +147,6 @@ for the list of formatting options available.")
 			     (rm-command-with-folder 'rm-save-and-quit)))
     ("Jade" . rm-find-global-menus)))
 
-(defvar rm-summary-functions '((select . rm-summary-select-item)
-			       (list . rm-summary-list)
-			       (print . rm-summary-print-item)
-			       (current . rm-summary-current-item)
-			       (after-marking . rm-summary-after-marking)
-			       (after-update . rm-summary-after-update))
-  "Function vector for summary-mode.")
-
 (defvar rm-summary-folder nil
   "The folder currently being summarised by this buffer.")
 (make-variable-buffer-local 'rm-summary-folder)
@@ -202,9 +194,9 @@ for the list of formatting options available.")
 ;; Returns a view of the actual mail folder, even if it has to create one.
 (defun rm-summary-view ()
   (let*
-      ((message (rm-get-folder-field rm-summary-folder rm-folder-current-msg))
-       (buffer (and message (mark-file
-			     (rm-get-msg-field message rm-msg-mark)))))
+      ((msg (rm-get-folder-field rm-summary-folder rm-folder-current-msg))
+       (buffer (and msg (mark-file
+			     (rm-get-msg-field msg rm-msg-mark)))))
     (unless (and buffer (get-buffer-view buffer))
       ;; Couldn't find the view, try to create one
       (rm-configure-views (current-buffer) rm-summary-folder))))
@@ -325,10 +317,10 @@ for the list of formatting options available.")
 
 (defun rm-summary-update-current ()
   (let
-      ((message (rm-get-folder-field rm-summary-folder rm-folder-current-msg)))
-    (if message
+      ((msg (rm-get-folder-field rm-summary-folder rm-folder-current-msg)))
+    (if msg
 	(progn
-	  (summary-update-item message)
+	  (summary-update-item msg)
 	  (summary-goto-item (rm-summary-current-item)))
       ;; No messages, call update to clear everything
       (summary-update))))
@@ -349,3 +341,14 @@ for the list of formatting options available.")
   (when (rm-get-folder-field rm-summary-folder rm-folder-current-msg)
     (summary-highlight-index
      (rm-get-folder-field rm-summary-folder rm-folder-current-index))))
+
+
+
+(defvar rm-summary-functions
+  (list (cons 'select rm-summary-select-item)
+	(cons 'list rm-summary-list)
+	(cons 'print rm-summary-print-item)
+	(cons 'current rm-summary-current-item)
+	(cons 'after-marking rm-summary-after-marking)
+	(cons 'after-update rm-summary-after-update))
+  "Function vector for summary-mode.")

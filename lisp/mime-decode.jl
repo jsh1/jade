@@ -47,16 +47,16 @@ still given a highlighted header.")
 (defvar mime-xfer-encodings-alist
   (list (list 'base64
 	      #'(lambda (in out)
-		  (mime-decode-mmencode in out 'mime-encode-base64 t t))
+		  (mime-decode-mmencode in out mime-encode-base64 t t))
 	      #'(lambda (in out)
-		  (mime-decode-mmencode in out 'mime-decode-base64 nil t)))
+		  (mime-decode-mmencode in out mime-decode-base64 nil t)))
 	(list 'quoted-printable
 	      #'(lambda (in out)
 		  (mime-decode-mmencode
-		   in out 'mime-encode-quoted-printable t nil))
+		   in out mime-encode-quoted-printable t nil))
 	      #'(lambda (in out)
 		  (mime-decode-mmencode
-		   in out 'mime-decode-quoted-printable nil nil))))
+		   in out mime-decode-quoted-printable nil nil))))
   "Alist of (ENCODING ENCODER DECODER) where ENCODER and DECODER are
 functions that operate as filters on their argument streams.")
 
@@ -210,10 +210,10 @@ external mmencode program, otherwise handle locally.")
 	  (condition-case data
 	      (when (zerop (if buffer
 			       (with-buffer buffer
-				 (apply 'call-process-area process start end
+				 (apply call-process-area process start end
 					nil mmencode-program args))
 			     ;; must be a local file
-			     (apply 'call-process process
+			     (apply call-process process
 				    (local-file-name (file-binding input))
 				    mmencode-program args)))
 		;; success
@@ -299,7 +299,7 @@ external mmencode program, otherwise handle locally.")
       (let
 	  ((boundary (cdr (assq 'boundary (nthcdr 2 content-type))))
 	   (actual-src src-buffer)
-	   parts start end last)
+	   parts start end final)
 	(unless (stringp boundary)
 	  (error "No boundary parameter in multipart message"))
 	(setq boundary (concat "--" boundary))
@@ -313,12 +313,12 @@ external mmencode program, otherwise handle locally.")
 	(unless start
 	  (error "Can't find first boundary in multipart message"))
 	(setq start (forward-line 1 start))
-	(while (and (not last)
+	(while (and (not final)
 		    (setq end (search-forward boundary start actual-src)))
 	  (let
 	      (local-type local-enc local-disp)
 	    (when (looking-at "--" (match-end) actual-src)
-	      (setq last t))
+	      (setq final t))
 	    (with-buffer actual-src
 	      (save-restriction
 		(restrict-buffer start (forward-char -1 end))
@@ -456,7 +456,7 @@ interactively the MIME part under the cursor is used."
 	(mime-save-part extent file)
 	(rplacd args args)
 	(message "Calling external viewer..." t)
-	(shell-command (apply 'format nil viewer args))))
+	(shell-command (apply format nil viewer args))))
      (t
       (mime-save-part extent)))))
 
@@ -516,12 +516,12 @@ interactively the MIME part under the cursor is used."
       (when tem
 	(setq end (forward-char -1 (extent-start tem))))
       (goto (let
-		(last)
+		(final)
 	      (map-extents #'(lambda (e)
 			       (when (extent-get e 'content-type)
-				 (setq last (extent-start e))))
+				 (setq final (extent-start e))))
 			   (start-of-buffer) end)
-	      last)))
+	      final)))
     (setq count (1+ count))))
 
 (defun mime-previous-part (count)

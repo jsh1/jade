@@ -147,7 +147,7 @@ For example, to define a rule accepting only messages sent by me (that's
 	 (prompt-for-lisp "Body of rule:")))
   (let
       ((symbol (rm-rule-symbol name)))
-    (fset symbol (make-closure (list 'lambda args (rm-make-rule-body body))))
+    (set symbol (make-closure (list 'lambda args (rm-make-rule-body body))))
     (put name 'rm-rule-function symbol)
     name))
 
@@ -174,20 +174,20 @@ contain its definition as a function."
 (defun rm-make-rule-body (input)
   (if (listp input)
       (let
-	  ((function (car input)))
+	  ((fun (car input)))
 	(cond
-	 ((symbolp function)
+	 ((symbolp fun)
 	  (let
-	      ((compiler (get function 'rm-rule-compiler)))
+	      ((compiler (get fun 'rm-rule-compiler)))
 	    (if compiler
 		(macroexpand (funcall compiler input))
-	      (cons (or (get function 'rm-rule-function)
-			(error "Unknown operator in rule: %s" function))
+	      (cons (or (get fun 'rm-rule-function)
+			(error "Unknown operator in rule: %s" fun))
 		    (mapcar #'(lambda (x)
 				(macroexpand (rm-make-rule-body x)))
 			    (cdr input))))))
-	 ((listp function)
-	  (mapcar 'rm-make-rule-body input))
+	 ((listp fun)
+	  (mapcar rm-make-rule-body input))
 	 (t
 	  input)))
     input))
@@ -196,30 +196,30 @@ contain its definition as a function."
 ;;;###autoload
 (defun rm-filter-by-rule (messages rule)
   (let
-      ((function (if (functionp rule)
-		     rule
-		   (or (get rule 'rm-rule-function)
-		       (error "No rule called %s" rule)))))
+      ((fun (if (functionp rule)
+		rule
+	      (or (get rule 'rm-rule-function)
+		  (error "No rule called %s" rule)))))
     (filter #'(lambda (rm-rule-message)
-		(funcall function)) messages)))
+		(funcall fun)) messages)))
 
 ;; Apply the message RM-RULE-MESSAGE to RULE, returning t if it matches
 ;;;###autoload
 (defun rm-apply-rule (rule rm-rule-message)
   (let
-      ((function (if (functionp rule)
-		     rule
-		   (or (get rule 'rm-rule-function)
-		       (error "No rule called %s" rule)))))
-    (funcall function)))
+      ((fun (if (functionp rule)
+		rule
+	      (symbol-value (or (get rule 'rm-rule-function)
+				(error "No rule called %s" rule))))))
+    (funcall fun)))
 
 ;; Apply the message MESSAGE to the list of rules RULE-LIST. Return t if
 ;; any rule matches (without testing any remaining rules)
 ;;;###autoload
-(defun rm-apply-rules (rule-list message)
+(defun rm-apply-rules (rule-list msg)
   (catch 'exit
     (mapc #'(lambda (r)
-	      (and (rm-apply-rule r message)
+	      (and (rm-apply-rule r msg)
 		   (throw 'exit t))) rule-list)))
 
 ;; Combine RULE1 and RULE2 into a single anonymous rule, combination
@@ -231,10 +231,10 @@ contain its definition as a function."
    `(lambda ()
       (,op (funcall ,(if (functionp rule1)
 			 rule1
-		       (get rule1 'rm-rule-function)))
+		       (symbol-value (get rule1 'rm-rule-function))))
       (funcall ,(if (functionp rule2)
 		    rule2
-		  (get rule2 'rm-rule-function)))))))
+		  (symbol-value (get rule2 'rm-rule-function))))))))
 
 
 ;; Standard rules
@@ -281,14 +281,14 @@ contain its definition as a function."
 
 ;; (sent-after DATE-STRING)
 ;; (sent-before DATE-STRING)
-(put 'sent-after 'rm-rule-compiler 'rm-compile-sent-x)
-(put 'sent-before 'rm-rule-compiler 'rm-compile-sent-x)
 (defun rm-compile-sent-x (form)
   (let
       ((date (nth 1 form)))
     (when (stringp date)
       (setq date (list 'quote (rm-parse-date date))))
     (list 'rm-rule-sent-date date (eq (car form) 'sent-after))))
+(put 'sent-after 'rm-rule-compiler rm-compile-sent-x)
+(put 'sent-before 'rm-rule-compiler rm-compile-sent-x)
 
 ;; DATE is (absolute DAYS . SECONDS) or (relative DAYS . SECONDS)
 (defun rm-rule-sent-date (date after)
@@ -299,7 +299,7 @@ contain its definition as a function."
 	;; this will be slooow!
 	(setq date (rm-parse-date date)))
       (setq msg-date (aref msg-date date-vec-epoch-time))
-      (funcall (if after '> '<)
+      (funcall (if after > <)
 	       msg-date
 	       (if (eq (car date) 'absolute)
 		   (cdr date)
@@ -344,7 +344,6 @@ contain its definition as a function."
     nil))
 
 ;; (sender-alias ALIAS-NAME)
-(put 'sender-alias 'rm-rule-compiler 'rm-rule:compile-sender-alias)
 (defun rm-rule:compile-sender-alias (form)
   (let
       ((addresses (get-mail-alias (nth 1 form)))
@@ -354,7 +353,8 @@ contain its definition as a function."
 				  (and (cdr addresses) ?|))
 			  strings)
 	    addresses (cdr addresses)))
-    (list 'rm-rule:sender (apply 'concat (nreverse strings)))))
+    (list 'rm-rule:sender (apply concat (nreverse strings)))))
+(put 'sender-alias 'rm-rule-compiler rm-rule:compile-sender-alias)
 
 ;; (lines NUMBER)
 (put 'lines 'rm-rule-function 'rm-rule:lines)
@@ -429,10 +429,10 @@ contain its definition as a function."
 ;; Prompting
 
 ;;;###autoload
-(defun rm-prompt-for-rule (&optional prompt)
+(defun rm-prompt-for-rule (&optional title)
   (let
       ((prompt-history rm-rule-history)
-       (rule (prompt-for-symbol (or prompt
+       (rule (prompt-for-symbol (or title
 				    "Restriction rule (`lambda' for anonymous rule):")
 				#'(lambda (sym)
 				    (or (eq sym 'new)
@@ -440,7 +440,7 @@ contain its definition as a function."
 					(eq sym 'nil)
 					(let
 					    ((fun (rm-rule-symbol sym)))
-					  (fboundp fun)))))))
+					  (boundp fun)))))))
     (cond ((eq rule 'new)
 	   (call-command 'define-rule))
 	  ((eq rule 'lambda)
@@ -449,8 +449,8 @@ contain its definition as a function."
 	   rule))))
 
 ;;;###autoload
-(defun rm-prompt-for-anon-rule (&optional prompt)
-  (rule-lambda () (prompt-for-lisp (or prompt "Rule form:"))))
+(defun rm-prompt-for-anon-rule (&optional title)
+  (rule-lambda () (prompt-for-lisp (or title "Rule form:"))))
 
 
 ;; Commands

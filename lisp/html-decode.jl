@@ -155,7 +155,7 @@ of the document, currently only `title' and `base' keys are defined."
        (html-decode-indent html-decode-initial-indent)
        (html-decode-width (- (car (view-dimensions)) 8))
        (html-decode-fill 'left)
-       (html-decode-display 'html-decode-run)
+       (html-decode-display html-decode-run)
        (html-decode-list-type nil)
        (html-decode-list-id nil)
        (html-decode-list-depth 0)
@@ -185,7 +185,7 @@ of the document, currently only `title' and `base' keys are defined."
 	(setq html-decode-point (car tag))
 	(setq tag (cdr tag))
 	(funcall (or (get (car tag) 'html-decode-fun)
-		     'html-decode-unknown-tag) tag dest)))
+		     html-decode-unknown-tag) tag dest)))
     (html-decode-add-pending 'line)
     (html-decode-output-pending dest)
     (nconc (and html-decode-title (list (cons 'title html-decode-title)))
@@ -227,7 +227,7 @@ of the document, currently only `title' and `base' keys are defined."
     (if (= point 0)
 	string
       (setq out (cons (substring string point) out))
-      (apply 'concat (nreverse out)))))
+      (apply concat (nreverse out)))))
 
 ;; Decode the run of text from START to END in buffer SOURCE to point in
 ;; buffer DEST, assuming that there are no tags in this section
@@ -369,8 +369,8 @@ of the document, currently only `title' and `base' keys are defined."
   (let*
       ((symbol (car tag))
        (params (cdr (cdr tag)))
-       (env (mapcar #'(lambda (sym)
-			(cons sym (symbol-value sym)))
+       (env (mapcar (lambda (sym)
+		      (cons sym (symbol-value sym)))
 		    html-decode-environment))
        (frame (list* exit-func env symbol params dest data)))
     ;; If leaving this level would cause the fill style to
@@ -407,8 +407,8 @@ of the document, currently only `title' and `base' keys are defined."
 				    (cons frame html-decode-stack))
 	  (setq html-decode-pending-fill nil))))
     ;; restore the environment
-    (mapc #'(lambda (pair)
-	      (set (car pair) (cdr pair))) (nth 1 frame))
+    (mapc (lambda (pair)
+	    (set (car pair) (cdr pair))) (nth 1 frame))
     ;; then call the exit function
     (and (car frame)
 	 (apply (car frame) (nthcdr 2 frame)))))
@@ -522,12 +522,12 @@ of the document, currently only `title' and `base' keys are defined."
   ;; XXX this assumes that the first DATA argument given to
   ;; XXX html-decode-push-env is the position in the output
   (catch 'foo
-    (mapc #'(lambda (frame)
-	      (if (equal old (nth (+ 4 1) frame))
-		  ;; a match, so update it to the new position
-		  (rplaca (nthcdr (+ 4 1) frame) new)
-		;; no others can have either, so abort
-		(throw 'foo t))) stack)))
+    (mapc (lambda (frame)
+	    (if (equal old (nth (+ 4 1) frame))
+		;; a match, so update it to the new position
+		(rplaca (nthcdr (+ 4 1) frame) new)
+	      ;; no others can have either, so abort
+	      (throw 'foo t))) stack)))
 
 ;; Insert STRING in output buffer DEST, flushing output first
 (defun html-decode-insert (string dest)
@@ -536,19 +536,19 @@ of the document, currently only `title' and `base' keys are defined."
   (setq html-decode-pending-fill t))
 
 ;; Justify the line at POS, according to FILL-TYPE
-(defun html-decode-justify-line (fill-type &optional pos)
+(defun html-decode-justify-line (fill-type &optional p)
   (unless (or (null fill-type) (eq fill-type 'left))
     (let*
-	((spos (indent-pos pos))
+	((spos (indent-pos p))
 	 (epos (char-to-glyph-pos (re-search-forward
-				   " *$" (start-of-line pos))))
+				   " *$" (start-of-line p))))
 	 (len (- (pos-col epos) (pos-col spos))))
       (when (> (match-end) (match-start))
 	(delete-area (match-start) (match-end)))
       (cond
        ((<= len 0))
        ((> len html-decode-width)
-	(set-indent-pos (start-of-line pos)))
+	(set-indent-pos (start-of-line p)))
        (t
 	(cond
 	 ((eq fill-type 'center)
@@ -593,11 +593,11 @@ of the document, currently only `title' and `base' keys are defined."
 
 ;; Global tags
 
-(put 'html 'html-decode-fun 'html-decode:html)
 (defun html-decode:html (tag dest)
   (if (html-decode-tag-entering-p tag)
       (html-decode-push-env tag dest)
     (html-decode-pop-env tag dest)))
+(put 'html 'html-decode-fun html-decode:html)
 
 (defun html-decode-unknown-tag (tag)
   (when html-decode-echo-unknown-tags
@@ -606,23 +606,22 @@ of the document, currently only `title' and `base' keys are defined."
 
 ;; Tags in html section
 
-(put 'head 'html-decode-fun 'html-decode:head)
 (defun html-decode:head (tag dest)
   (if (html-decode-tag-entering-p tag)
       (html-decode-push-env tag dest)
     (html-decode-pop-env tag dest)))
+(put 'head 'html-decode-fun html-decode:head)
 
-(put 'body 'html-decode-fun 'html-decode:body)
 (defun html-decode:body (tag dest)
   (if (html-decode-tag-entering-p tag)
       (progn
 	(html-decode-add-env 'html-decode-display)
 	(html-decode-push-env tag dest)
 	;;; XXX look for color parameters
-	(setq html-decode-display 'html-decode-run))
+	(setq html-decode-display html-decode-run))
     (html-decode-pop-env tag dest)))
+(put 'body 'html-decode-fun html-decode:body)
 
-(put 'frameset 'html-decode-fun 'html-decode:frameset)
 (defun html-decode:frameset (tag dest)
   (if (html-decode-tag-entering-p tag)
       (progn
@@ -630,34 +629,34 @@ of the document, currently only `title' and `base' keys are defined."
 	(html-decode-add-pending 'paragraph))
     (html-decode-pop-env tag dest)
     (html-decode-add-pending 'paragraph)))
+(put 'frameset 'html-decode-fun html-decode:frameset)
 
 
 ;; Tags in head section
 
-(put 'title 'html-decode-fun 'html-decode:title)
 (defun html-decode:title (tag dest)
   (if (html-decode-tag-entering-p tag)
       (progn
 	(html-decode-add-env 'html-decode-display)
 	(html-decode-push-env tag dest)
 	(setq html-decode-display
-	      #'(lambda (start end source dest)
-		  (html-decode-to-var 'html-decode-title
-				      start end source dest))))
+	      (lambda (start end source dest)
+		(html-decode-to-var 'html-decode-title
+				    start end source dest))))
     (html-decode-pop-env tag dest)))
+(put 'title 'html-decode-fun html-decode:title)
 
-(put 'base 'html-decode-fun 'html-decode:base)
 (defun html-decode:base (tag)
   (when (html-decode-tag-entering-p tag)
     (let
 	((href (cdr (assq 'href (nthcdr 2 tag)))))
       (when href
 	(setq html-decode-base href)))))
+(put 'base 'html-decode-fun html-decode:base)
 
 
 ;; Tags in body section
 
-(put 'p 'html-decode-fun 'html-decode:p)
 (defun html-decode:p (tag dest)
   (when (html-decode-tag-entering-p tag)
     (html-decode-pop-optional tag dest))
@@ -666,35 +665,29 @@ of the document, currently only `title' and `base' keys are defined."
       (progn
 	(html-decode-tag:align tag)
 	(html-decode-add-pending 'paragraph))
-    #'(lambda (name params dest start)
-	(html-decode-add-pending 'paragraph))))
+    (lambda (name params dest start)
+      (html-decode-add-pending 'paragraph))))
+(put 'p 'html-decode-fun html-decode:p)
 
-(put 'br 'html-decode-fun 'html-decode:br)
 (defun html-decode:br (tag dest)
   (html-decode-add-pending 'line))
+(put 'br 'html-decode-fun html-decode:br)
 
-(put 'a 'html-decode-fun 'html-decode:a)
 (defun html-decode:a (tag dest)
   (html-decode-tag-with tag dest
       nil
-    #'(lambda (name params dest start)
-	(when (assq 'name params)
-	  ;; an anchor, remember its name and position
-	  (setq html-decode-anchors
-		(cons (cons (cdr (assq 'name params)) start)
-		      html-decode-anchors)))
-	(with-buffer dest
-	  (make-extent start (cursor-pos)
-		       (nconc (and (assq 'href params)
-				   (list 'face (html-decode-elt-face 'link)))
-			      (list 'html-anchor-params params)))))))
-
-(put 'h1 'html-decode-fun 'html-decode-header)
-(put 'h2 'html-decode-fun 'html-decode-header)
-(put 'h3 'html-decode-fun 'html-decode-header)
-(put 'h4 'html-decode-fun 'html-decode-header)
-(put 'h5 'html-decode-fun 'html-decode-header)
-(put 'h6 'html-decode-fun 'html-decode-header)
+    (lambda (name params dest start)
+      (when (assq 'name params)
+	;; an anchor, remember its name and position
+	(setq html-decode-anchors
+	      (cons (cons (cdr (assq 'name params)) start)
+		    html-decode-anchors)))
+      (with-buffer dest
+	(make-extent start (cursor-pos)
+		     (nconc (and (assq 'href params)
+				 (list 'face (html-decode-elt-face 'link)))
+			    (list 'html-anchor-params params)))))))
+(put 'a 'html-decode-fun html-decode:a)
 
 (defun html-decode-header (tag dest)
   (html-decode-pre-tag:align tag)
@@ -702,39 +695,45 @@ of the document, currently only `title' and `base' keys are defined."
       (progn
 	(html-decode-tag:align tag)
 	(html-decode-add-pending 'paragraph))
-    #'(lambda (name params dest start)
-	(with-buffer dest
-	  (make-extent start (cursor-pos)
-		       (list 'face (html-decode-elt-face name)
-			     'html-text-params params)))
-	(html-decode-add-pending 'paragraph))))
+    (lambda (name params dest start)
+      (with-buffer dest
+	(make-extent start (cursor-pos)
+		     (list 'face (html-decode-elt-face name)
+			   'html-text-params params)))
+      (html-decode-add-pending 'paragraph))))
 
-(put 'em 'html-decode-fun 'html-decode-fragment)
-(put 'strong 'html-decode-fun 'html-decode-fragment)
-(put 'cite 'html-decode-fun 'html-decode-fragment)
-(put 'dfn 'html-decode-fun 'html-decode-fragment)
-(put 'code 'html-decode-fun 'html-decode-fragment)
-(put 'samp 'html-decode-fun 'html-decode-fragment)
-(put 'kbd 'html-decode-fun 'html-decode-fragment)
-(put 'var 'html-decode-fun 'html-decode-fragment)
-(put 'tt 'html-decode-fun 'html-decode-fragment)
-(put 'i 'html-decode-fun 'html-decode-fragment)
-(put 'b 'html-decode-fun 'html-decode-fragment)
-(put 'big 'html-decode-fun 'html-decode-fragment)
-(put 'small 'html-decode-fun 'html-decode-fragment)
-(put 's 'html-decode-fun 'html-decode-fragment)
-(put 'u 'html-decode-fun 'html-decode-fragment)
+(put 'h1 'html-decode-fun html-decode-header)
+(put 'h2 'html-decode-fun html-decode-header)
+(put 'h3 'html-decode-fun html-decode-header)
+(put 'h4 'html-decode-fun html-decode-header)
+(put 'h5 'html-decode-fun html-decode-header)
+(put 'h6 'html-decode-fun html-decode-header)
 
 (defun html-decode-fragment (tag dest)
   (html-decode-tag-with tag dest
       nil
-    #'(lambda (name params dest start)
-	(with-buffer dest
-	  (make-extent start (cursor-pos)
+    (lambda (name params dest start)
+      (with-buffer dest
+	(make-extent start (cursor-pos)
 		       (list 'face (html-decode-elt-face name)
 			     'html-text-params params))))))
 
-(put 'pre 'html-decode-fun 'html-decode:pre)
+(put 'em 'html-decode-fun html-decode-fragment)
+(put 'strong 'html-decode-fun html-decode-fragment)
+(put 'cite 'html-decode-fun html-decode-fragment)
+(put 'dfn 'html-decode-fun html-decode-fragment)
+(put 'code 'html-decode-fun html-decode-fragment)
+(put 'samp 'html-decode-fun html-decode-fragment)
+(put 'kbd 'html-decode-fun html-decode-fragment)
+(put 'var 'html-decode-fun html-decode-fragment)
+(put 'tt 'html-decode-fun html-decode-fragment)
+(put 'i 'html-decode-fun html-decode-fragment)
+(put 'b 'html-decode-fun html-decode-fragment)
+(put 'big 'html-decode-fun html-decode-fragment)
+(put 'small 'html-decode-fun html-decode-fragment)
+(put 's 'html-decode-fun html-decode-fragment)
+(put 'u 'html-decode-fun html-decode-fragment)
+
 (defun html-decode:pre (tag dest)
   (when (html-decode-tag-entering-p tag)
     (html-decode-add-env 'html-decode-fill))
@@ -743,10 +742,10 @@ of the document, currently only `title' and `base' keys are defined."
 	(html-decode-add-pending 'paragraph)
 	(html-decode-tag:align tag)
 	(setq html-decode-fill nil))
-    #'(lambda (name params dest start)
-	(html-decode-add-pending 'paragraph))))
+    (lambda (name params dest start)
+      (html-decode-add-pending 'paragraph))))
+(put 'pre 'html-decode-fun html-decode:pre)
 
-(put 'blockquote 'html-decode-fun 'html-decode:blockquote)
 (defun html-decode:blockquote (tag dest)
   (html-decode-pre-tag:align tag)
   (html-decode-tag-with tag dest
@@ -756,16 +755,16 @@ of the document, currently only `title' and `base' keys are defined."
 	(setq html-decode-fill 'left
 	      html-decode-indent (+ html-decode-blockquote-indent
 				    html-decode-indent)))
-    #'(lambda (name params dest start)
-	(html-decode-add-pending 'paragraph))))
+    (lambda (name params dest start)
+      (html-decode-add-pending 'paragraph))))
+(put 'blockquote 'html-decode-fun html-decode:blockquote)
 
-(put 'q 'html-decode-fun 'html-decode:q)
 (defun html-decode:q (tag dest)
   (if (html-decode-tag-entering-p tag)
       (html-decode-insert "``" dest)
     (html-decode-insert "''" dest)))
+(put 'q 'html-decode-fun html-decode:q)
 
-(put 'table 'html-decode-fun 'html-decode:table)
 (defun html-decode:table (tag dest)
   (when (html-decode-tag-entering-p tag)
     (html-decode-add-env 'html-decode-fill))
@@ -773,26 +772,26 @@ of the document, currently only `title' and `base' keys are defined."
       (progn
 	(html-decode-add-pending 'paragraph)
 	(setq html-decode-fill 'left))
-    #'(lambda (name params dest start)
-	(html-decode-add-pending 'paragraph))))
+    (lambda (name params dest start)
+      (html-decode-add-pending 'paragraph))))
+(put 'table 'html-decode-fun html-decode:table)
 
-(put 'tr 'html-decode-fun 'html-decode:tr)
 (defun html-decode:tr (tag dest)
   (html-decode-add-pending 'paragraph))
+(put 'tr 'html-decode-fun html-decode:tr)
 
-(put 'td 'html-decode-fun 'html-decode:td)
 (defun html-decode:td (tag dest)
   (html-decode-add-pending 'line))
+(put 'td 'html-decode-fun html-decode:td)
 
-(put 'img 'html-decode-fun 'html-decode:img)
 (defun html-decode:img (tag dest)
   (let
       ((params (cdr (cdr tag))))
     (if (assq 'alt params)
 	(html-decode-insert (cdr (assq 'alt params)) dest)
       (html-decode-insert "[inline image]" dest))))
+(put 'img 'html-decode-fun html-decode:img)
 
-(put 'center 'html-decode-fun 'html-decode:center)
 (defun html-decode:center (tag dest)
   (when (html-decode-tag-entering-p tag)
     (html-decode-add-env 'html-decode-fill))
@@ -800,13 +799,9 @@ of the document, currently only `title' and `base' keys are defined."
       (progn
 	(html-decode-add-pending 'paragraph)
 	(setq html-decode-fill 'center))
-    #'(lambda (name params dest start)
-	(html-decode-add-pending 'paragraph))))
-
-(put 'ul 'html-decode-fun 'html-decode-list)
-(put 'ol 'html-decode-fun 'html-decode-list)
-(put 'dir 'html-decode-fun 'html-decode-list)
-(put 'menu 'html-decode-fun 'html-decode-list)
+    (lambda (name params dest start)
+      (html-decode-add-pending 'paragraph))))
+(put 'center 'html-decode-fun html-decode:center)
 
 (defun html-decode-list (tag dest)
   (when (html-decode-tag-entering-p tag)
@@ -823,12 +818,16 @@ of the document, currently only `title' and `base' keys are defined."
 	(setq html-decode-list-depth (1+ html-decode-list-depth))
 	(setq html-decode-indent (+ html-decode-indent
 				    html-decode-list-indent)))
-    #'(lambda (name params dest start)
-	(if (zerop html-decode-list-depth)
-	    (html-decode-add-pending 'paragraph)
-	  (html-decode-add-pending 'line)))))
+    (lambda (name params dest start)
+      (if (zerop html-decode-list-depth)
+	  (html-decode-add-pending 'paragraph)
+	(html-decode-add-pending 'line)))))
 
-(put 'li 'html-decode-fun 'html-decode:li)
+(put 'ul 'html-decode-fun html-decode-list)
+(put 'ol 'html-decode-fun html-decode-list)
+(put 'dir 'html-decode-fun html-decode-list)
+(put 'menu 'html-decode-fun html-decode-list)
+
 (defun html-decode:li (tag dest)
   (when (html-decode-tag-entering-p tag)
     (html-decode-pop-optional tag dest))
@@ -837,20 +836,20 @@ of the document, currently only `title' and `base' keys are defined."
 	(html-decode-add-pending 'line)
 	(setq html-decode-list-pending (car tag)))
     nil))
+(put 'li 'html-decode-fun html-decode:li)
 
-(put 'dl 'html-decode-fun 'html-decode:dl)
 (defun html-decode:dl (tag dest)
   (html-decode-tag-with tag dest
       (if (zerop html-decode-list-depth)
 	  (html-decode-add-pending 'paragraph)
 	;; XXX Should only do this if column is too wide
 	(html-decode-add-pending 'line))
-    #'(lambda (name params dest start)
-	(if (zerop html-decode-list-depth)
-	    (html-decode-add-pending 'paragraph)
-	  (html-decode-add-pending 'line)))))
+    (lambda (name params dest start)
+      (if (zerop html-decode-list-depth)
+	  (html-decode-add-pending 'paragraph)
+	(html-decode-add-pending 'line)))))
+(put 'dl 'html-decode-fun html-decode:dl)
 
-(put 'dt 'html-decode-fun 'html-decode:dt)
 (defun html-decode:dt (tag dest)
   (when (html-decode-tag-entering-p tag)
     (html-decode-pop-optional tag dest)
@@ -859,34 +858,34 @@ of the document, currently only `title' and `base' keys are defined."
       (progn
 	(html-decode-add-pending 'line)
 	(setq html-decode-list-pending 'dl))
-    #'(lambda (name params dest start)
-	(html-decode-output-pending dest)
-	(if (> (pos-col (with-buffer dest (char-to-glyph-pos (cursor-pos))))
-	       (+ html-decode-indent html-decode-dl-indent -1))
-	    (html-decode-add-pending 'line)
-	  (with-buffer dest
-	    (indent-to (+ html-decode-indent html-decode-dl-indent)))))))
+    (lambda (name params dest start)
+      (html-decode-output-pending dest)
+      (if (> (pos-col (with-buffer dest (char-to-glyph-pos (cursor-pos))))
+	     (+ html-decode-indent html-decode-dl-indent -1))
+	  (html-decode-add-pending 'line)
+	(with-buffer dest
+	  (indent-to (+ html-decode-indent html-decode-dl-indent)))))))
+(put 'dt 'html-decode-fun html-decode:dt)
 
-(put 'dd 'html-decode-fun 'html-decode:dd)
 (defun html-decode:dd (tag dest)
   (when (html-decode-tag-entering-p tag)
     (html-decode-pop-optional tag dest))
   (html-decode-tag-with tag dest
       (setq html-decode-indent (+ html-decode-indent html-decode-dl-indent))
-    #'(lambda (name params dest start)
-	(html-decode-add-pending 'line))))
+    (lambda (name params dest start)
+      (html-decode-add-pending 'line))))
+(put 'dd 'html-decode-fun html-decode:dd)
 
-(put 'script 'html-decode-fun 'html-decode:script)
 (defun html-decode:script (tag dest)
   (if (search-forward "</script>" html-decode-point html-decode-source t)
       (setq html-decode-point (match-end))
     (error "<SCRIPT> doesn't end: %s, %s"
 	   html-decode-source html-decode-point)))
+(put 'script 'html-decode-fun html-decode:script)
 
 
 ;; Tags in frameset section
 
-(put 'frame 'html-decode-fun 'html-decode:frame)
 (defun html-decode:frame (tag dest)
   (when (html-decode-tag-entering-p tag)
     (let*
@@ -902,5 +901,6 @@ of the document, currently only `title' and `base' keys are defined."
 		     (list 'face (html-decode-elt-face 'link)
 			   'html-anchor-params (list (cons 'href url)))))
       (html-decode-add-pending 'line))))
+(put 'frame 'html-decode-fun html-decode:frame)
 
-(put 'noframes 'html-decode-fun 'html-decode:body)
+(put 'noframes 'html-decode-fun html-decode:body)

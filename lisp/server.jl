@@ -50,7 +50,7 @@ into a new buffer and display it at line LINE-NUMBER."
 	(goto (pos 0 line-number))
 	(message (format nil "Client file `%s'." file)))
       (with-buffer buf
-	(add-hook 'kill-buffer-hook 'server-file-kill))
+	(add-hook 'kill-buffer-hook server-file-kill))
       buf)))
 
 ;; Hooked into kill-buffer, replies to the client if necessary

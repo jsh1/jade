@@ -304,7 +304,7 @@ Major mode for viewing mail folders. Local bindings are:\n
       (funcall major-mode-kill (current-buffer)))
     (setq rm-open-mailboxes (cons (current-buffer) rm-open-mailboxes)
 	  major-mode 'read-mail-mode
-	  major-mode-kill 'read-mail-mode-kill
+	  major-mode-kill read-mail-mode-kill
 	  local-keymap 'rm-keymap
 	  popup-menus rm-popup-menus)
     (call-hook 'read-mail-mode-hook)))
@@ -476,7 +476,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Remove all MAILBOXES from FOLDER
 (defun rm-subtract-all-mailboxes (folder &optional no-redisplay)
   (interactive (list (rm-current-folder)))
-  (mapc 'rm-close-mailbox (rm-get-folder-field folder rm-folder-boxes))
+  (mapc rm-close-mailbox (rm-get-folder-field folder rm-folder-boxes))
   (rm-set-folder-field folder rm-folder-boxes nil)
   (rm-rebuild-folder folder)
   (unless no-redisplay
@@ -517,27 +517,28 @@ key, the car the order to sort in, a positive or negative integer.")
 	  (require 'rm-restrict)
 	  (let
 	      (bits)
-	    (mapc #'(lambda (msgs)
-		      (setq bits (cons (rm-filter-by-rule msgs rule) bits)))
+	    (mapc #'(lambda (messages)
+		      (setq bits (cons (rm-filter-by-rule
+					messages rule) bits)))
 		  message-lists)
-	    (setq msgs (apply 'nconc bits))))
+	    (setq msgs (apply nconc bits))))
       ;; Can't use append to join lists since that doesn't clone the last one
-      (setq msgs (apply 'nconc (mapcar 'copy-sequence message-lists))))
+      (setq msgs (apply nconc (mapcar copy-sequence message-lists))))
     (when rm-uniquify-messages
       (let
-	  ((list msgs)
+	  ((lst msgs)
 	   id tem)
 	;; Now remove duplicates
-	(while list
-	  (setq id (rm-get-message-id (car list)))
+	(while lst
+	  (setq id (rm-get-message-id (car lst)))
 	  (when (setq tem (catch 'foo
 			    (mapc #'(lambda (m)
 				      (when (string= id (rm-get-message-id m))
-					(throw 'foo m))) (cdr list))
+					(throw 'foo m))) (cdr lst))
 			    nil))
 	    ;; this message has a duplicate
-	    (rplacd list (delq tem (cdr list))))
-	  (setq list (cdr list)))))
+	    (rplacd lst (delq tem (cdr lst))))
+	  (setq lst (cdr lst)))))
     msgs))
 
 ;; Return the folder being displayed in the current view
@@ -548,11 +549,11 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Return the number of folders containing the mailbox contained by BUFFER
 (defun rm-folders-with-box (buffer)
-  (apply '+ (mapcar #'(lambda (cell)
-			(if (memq buffer (rm-get-folder-field
-					  (cdr cell) rm-folder-boxes))
-			    1
-			  0)) rm-open-folders)))
+  (apply + (mapcar #'(lambda (cell)
+		       (if (memq buffer (rm-get-folder-field
+					 (cdr cell) rm-folder-boxes))
+			   1
+			 0)) rm-open-folders)))
 
 ;; Add MSGS to BUFFER. Rebuilding any folders referencing BUFFER
 (defun rm-add-messages (buffer msgs)
@@ -610,12 +611,11 @@ key, the car the order to sort in, a positive or negative integer.")
 			(cons (cons prop value)
 			      (rm-get-msg-field msg rm-msg-plist))))
     (unless (or undisplayed (not modified))
-      (rm-map-msg-folders #'(lambda (msg folder)
-			      (when (rm-get-folder-field
-				     folder rm-folder-summary)
-				(rm-invalidate-summary msg)
-				(rm-with-summary folder
-				  (summary-update-item msg))))
+      (rm-map-msg-folders #'(lambda (m f)
+			      (when (rm-get-folder-field f rm-folder-summary)
+				(rm-invalidate-summary m)
+				(rm-with-summary f
+				  (summary-update-item m))))
 			  msg))
     value))
 
@@ -726,7 +726,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Parse the list of files named by BOXES, return a list of lists of
 ;; messages. The returned message lists _may_not_ be altered destructively
 (defun rm-parse-mailboxes (boxes)
-  (mapcar 'rm-parse-mailbox boxes))
+  (mapcar rm-parse-mailbox boxes))
 
 ;; Parse a single mailbox named BOX. Return a _read_only_ list of messages
 (defun rm-parse-mailbox (box)
@@ -739,15 +739,15 @@ key, the car the order to sort in, a positive or negative integer.")
 	  (let
 	      ;; If we scan the buffer from start to end we create the
 	      ;; list in reverse order
-	      ((pos (start-of-buffer))
+	      ((p (start-of-buffer))
 	       (msgs nil)
 	       (count 0))
-	    (while (and pos (< pos (end-of-buffer)) (rm-message-start-p pos))
-	      (setq msgs (cons (rm-parse-message pos) msgs)
+	    (while (and p (< p (end-of-buffer)) (rm-message-start-p p))
+	      (setq msgs (cons (rm-parse-message p) msgs)
 		    count (1+ count)
-		    pos (forward-line (rm-get-msg-field (car msgs)
+		    p (forward-line (rm-get-msg-field (car msgs)
 							rm-msg-total-lines)
-				      pos)))
+				      p)))
 	    ;; Okay, we now have all messages
 	    (setq rm-buffer-messages (nreverse msgs)))))
       rm-buffer-messages)))
@@ -758,32 +758,32 @@ key, the car the order to sort in, a positive or negative integer.")
   (let
       ((end (re-search-forward "^$" start))
        (msg (rm-make-msg))
-       pos tem)
+       p tem)
     (restrict-buffer start (or end (end-of-buffer)))
     (rm-set-msg-field msg rm-msg-mark (make-mark start))
     (rm-set-msg-field msg rm-msg-header-lines (- (pos-line (restriction-end))
 						 (pos-line start)))
-    (when (setq pos (mail-find-header "^X-Jade-Flags-v1" start))
+    (when (setq p (mail-find-header "^X-Jade-Flags-v1" start))
       (rm-set-msg-field msg rm-msg-plist
 			(mapcar #'(lambda (f)
 				    (cons f t))
-				(read (cons (current-buffer) pos)))))
-    (when (setq pos (mail-find-header "^X-Jade-Cache-v1" start))
-      (rm-set-msg-field msg rm-msg-cache (read (cons (current-buffer) pos))))
+				(read (cons (current-buffer) p)))))
+    (when (setq p (mail-find-header "^X-Jade-Cache-v1" start))
+      (rm-set-msg-field msg rm-msg-cache (read (cons (current-buffer) p))))
     (when (mail-find-header "Replied" start)
       ;; MH annotates replied messages like this
       (rm-message-put msg 'replied t))
     (unrestrict-buffer)
     ;; Find the total number of lines in the message
     (if (null end)
-	(setq pos (end-of-buffer))
+	(setq p (end-of-buffer))
       ;; Find the start of the next message
-      (setq pos (forward-line 1 start))
-      (while (and pos (setq pos (re-search-forward mail-message-start pos))
-		  (not (rm-message-start-p pos)))
-	(setq pos (forward-line 1 pos))))
-    (rm-set-msg-field msg rm-msg-total-lines (- (if pos
-						    (pos-line pos)
+      (setq p (forward-line 1 start))
+      (while (and p (setq p (re-search-forward mail-message-start p))
+		  (not (rm-message-start-p p)))
+	(setq p (forward-line 1 p))))
+    (rm-set-msg-field msg rm-msg-total-lines (- (if p
+						    (pos-line p)
 						  (buffer-length))
 						(pos-line start)))
     (when rm-after-parse-rules
@@ -792,9 +792,9 @@ key, the car the order to sort in, a positive or negative integer.")
     msg))
 
 ;; Returns t if POS is the start of a message. Munges the regexp history
-(defun rm-message-start-p (pos)
-  (and (looking-at mail-message-start pos)
-       (or (equal pos (start-of-buffer))
+(defun rm-message-start-p (p)
+  (and (looking-at mail-message-start p)
+       (or (equal p (start-of-buffer))
 	   (looking-at "\n\n" (forward-char -2 (match-start))))))
 
 ;; Returns the position of the start of the last line in MSG.
@@ -812,11 +812,11 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Finds the first visible header in the current message
 (defun rm-message-first-visible ()
   (let
-      ((message (rm-get-folder-field (rm-current-folder)
+      ((msg (rm-get-folder-field (rm-current-folder)
 				     rm-folder-current-msg)))
     (save-restriction
-      (restrict-buffer (mark-pos (rm-get-msg-field message rm-msg-mark))
-		       (rm-message-body message))
+      (restrict-buffer (mark-pos (rm-get-msg-field msg rm-msg-mark))
+		       (rm-message-body msg))
       (or (re-search-forward mail-visible-headers (start-of-buffer) nil t)
 	  (restriction-start)))))
 
@@ -828,7 +828,7 @@ key, the car the order to sort in, a positive or negative integer.")
       (save-restriction
 	(let
 	    ((inhibit-read-only t)
-	     list msg start)
+	     start)
 	  (mapc #'(lambda (msg)
 		    (setq start (mark-pos (rm-get-msg-field msg rm-msg-mark)))
 		    (unrestrict-buffer)
@@ -841,7 +841,7 @@ key, the car the order to sort in, a positive or negative integer.")
 		      ;; First put flags into X-Jade-Flags-v1 header
 		      (let
 			  ((flags
-			    (mapcar 'car
+			    (mapcar car
 				    (filter #'(lambda (cell)
 						(and (cdr cell)
 						     (memq (car cell)
@@ -904,24 +904,24 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Call (mail-get-header HEADER LISTP NO-COMMA-SEP), with the current
 ;; restriction set to the headers of MSG
-(defun rm-get-msg-header (msg header &optional listp no-comma-sep)
+(defun rm-get-msg-header (msg header &optional lstp no-comma-sep)
   (with-buffer (mark-file (rm-get-msg-field msg rm-msg-mark))
     (save-restriction
       (restrict-buffer (mark-pos (rm-get-msg-field msg rm-msg-mark))
 		       (pos 0 (+ (rm-get-msg-field msg rm-msg-header-lines)
 				 (pos-line (mark-pos (rm-get-msg-field
 						      msg rm-msg-mark))))))
-      (mail-get-header header listp no-comma-sep))))
+      (mail-get-header header lstp no-comma-sep))))
 
 ;; Shortcuts to some common headers
 
 (defun rm-get-from (msg)
   (rm-cached-form msg 'from
-    (mapcar 'mail-parse-address (rm-get-msg-header msg "From" t))))
+    (mapcar mail-parse-address (rm-get-msg-header msg "From" t))))
 
 (defun rm-get-sender (msg)
   (rm-cached-form msg 'sender
-    (mapcar 'mail-parse-address (rm-get-msg-header msg "Sender" t))))
+    (mapcar mail-parse-address (rm-get-msg-header msg "Sender" t))))
 
 ;; this returns the union of the from and sender headers
 (defun rm-get-senders (msg)
@@ -929,7 +929,7 @@ key, the car the order to sort in, a positive or negative integer.")
 
 (defun rm-get-recipients (msg)
   (rm-cached-form msg 'recipient-list
-    (mapcar 'mail-parse-address (rm-get-msg-header msg "(To|Cc|Bcc)" t))))
+    (mapcar mail-parse-address (rm-get-msg-header msg "(To|Cc|Bcc)" t))))
 
 (defun rm-get-subject (msg)
   (rm-cached-form msg 'subject (rm-get-msg-header msg "Subject")))
@@ -1047,20 +1047,20 @@ key, the car the order to sort in, a positive or negative integer.")
 	(rm-summary-update-current)))))
 
 ;; Set the minor-mode-names list to reflect the status of MESSAGE
-(defun rm-fix-status-info (folder message)
+(defun rm-fix-status-info (folder msg)
   (let
-      ((id (rm-cached-form message 'status-id
-	     (rm-format rm-status-format message))))
+      ((id (rm-cached-form msg 'status-id
+	     (rm-format rm-status-format msg))))
     (setq buffer-status-id id)
     (when (rm-get-folder-field folder rm-folder-summary)
       (rm-with-summary folder
 	(setq buffer-status-id id))))
-  (setq mode-name (apply 'concat
+  (setq mode-name (apply concat
 			 (mapcar #'(lambda (cell)
 				     (and (cdr cell)
 					  (cdr (assq (car cell)
 						     rm-status-alist))))
-				 (rm-get-msg-field message rm-msg-plist)))))
+				 (rm-get-msg-field msg rm-msg-plist)))))
 
 ;; Invalidate all cached status messages in FOLDER
 (defun rm-invalidate-status-cache (folder)
@@ -1133,17 +1133,17 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Delete the current message. Unless GO-BACKWARDS-P is t the next
 ;; message is displayed (unless there is no next message).
-(defun rm-delete-message (message &optional go-backwards-p)
+(defun rm-delete-message (msg &optional go-backwards-p)
   ;; When this hook returns t the message isn't deleted.
-  (unless (call-hook 'rm-vet-deletion-hook (list message) 'or)
-    (with-buffer (mark-file (rm-get-msg-field message rm-msg-mark))
+  (unless (call-hook 'rm-vet-deletion-hook (list msg) 'or)
+    (with-buffer (mark-file (rm-get-msg-field msg rm-msg-mark))
       (when rm-buffer-read-only
 	(error "Read-only mailbox"))
       (unrestrict-buffer)
       (let
 	  ((inhibit-read-only t)
-	   (start (mark-pos (rm-get-msg-field message rm-msg-mark)))
-	   (end (rm-message-end message)))
+	   (start (mark-pos (rm-get-msg-field msg rm-msg-mark)))
+	   (end (rm-message-end msg)))
 	(if (not (equal end (end-of-buffer)))
 	    ;; Now this points to the first character of the next message
 	    (setq end (forward-line 1 end))
@@ -1153,7 +1153,7 @@ key, the car the order to sort in, a positive or negative integer.")
 	    (setq start (forward-line -1 start))))
 	(delete-area start end)
 	(unless (eq rm-buffer-messages 'invalid)
-	  (setq rm-buffer-messages (delq message rm-buffer-messages)))
+	  (setq rm-buffer-messages (delq msg rm-buffer-messages)))
 	;; Delete this message from any folders containing it
 	(rm-map-msg-folders
 	 #'(lambda (unused-message folder)
@@ -1167,7 +1167,7 @@ key, the car the order to sort in, a positive or negative integer.")
 		  (before (rm-get-folder-field folder rm-folder-before-list))
 		  (index (rm-get-folder-field folder rm-folder-current-index)))
 	       (cond
-		((eq message current)
+		((eq msg current)
 		 ;; Deleting the current message
 		 (if (and before (or go-backwards-p (null after)))
 		     (setq current (car before)
@@ -1175,24 +1175,24 @@ key, the car the order to sort in, a positive or negative integer.")
 			   index (1- index))
 		   (setq current (car after)
 			 after (cdr after))))
-		((memq message before)
+		((memq msg before)
 		 ;; Deleting from before the current message
-		 (setq before (delq message before)
+		 (setq before (delq msg before)
 		       index (1- index)))
 		(t
 		 ;; Deleting from after the current message
-		 (setq after (delq message after))))
+		 (setq after (delq msg after))))
 	       (rm-set-folder-field folder rm-folder-before-list before)
 	       (rm-set-folder-field folder rm-folder-current-msg current)
 	       (rm-set-folder-field folder rm-folder-after-list after)
 	       (rm-set-folder-field folder rm-folder-current-index index))
 	     (rm-set-folder-field folder rm-folder-cached-list 'invalid))
-	 message)))))
+	 msg)))))
 
 ;; Delete all messages in the list DEL-MSGS as efficiently as possible
 ;; rm-display-current-msg should be called after this has returned
 (defun rm-delete-messages (del-msgs)
-  (mapc 'rm-delete-message del-msgs))
+  (mapc rm-delete-message del-msgs))
 
 
 ;; Getting mail from inbox
@@ -1277,20 +1277,20 @@ key, the car the order to sort in, a positive or negative integer.")
 	;; If necessary, parse all new messages. Work backwards
 	(when need-to-parse
 	  (let
-	      (pos msgs)
-	    (setq pos (end-of-buffer))
-	    (while (and pos
-			(setq pos (re-search-backward mail-message-start pos))
-			(>= pos start))
-	      (when (rm-message-start-p pos)
-		(setq msgs (cons (rm-parse-message pos) msgs)
+	      (p msgs)
+	    (setq p (end-of-buffer))
+	    (while (and p
+			(setq p (re-search-backward mail-message-start p))
+			(>= p start))
+	      (when (rm-message-start-p p)
+		(setq msgs (cons (rm-parse-message p) msgs)
 		      count (1+ count))
 		(rm-message-put (car msgs) 'unread t t)
 		(when rm-after-import-rules
 		  (mapc #'(lambda (r)
 			    (rm-apply-rule r (car msgs)))
 			rm-after-import-rules)))
-	      (setq pos (forward-line -1 pos)))
+	      (setq p (forward-line -1 p)))
 	    (setq rm-buffer-messages (nconc rm-buffer-messages msgs))))
 	(and keep-going count))))))
 
@@ -1471,12 +1471,12 @@ key, the car the order to sort in, a positive or negative integer.")
 			   (aref date date-vec-timezone)))))))))
 
 ;; Format the string FORMAT for MESSAGE
-(defun rm-format (format message)
+(defun rm-format (fmt msg)
   (let
-      ((arg-list (cons message nil))
+      ((arg-list (cons msg nil))
        (format-hooks-alist rm-format-alist))
     (rplacd arg-list arg-list)
-    (apply 'format nil format arg-list)))
+    (apply format nil fmt arg-list)))
 
 
 ;; Commands, these must only be called from the folder buffer, *not*

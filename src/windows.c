@@ -194,7 +194,7 @@ This function always returns nil.
 {
     WIN *w = WINDOWP(win) ? VWIN(win) : curr_win;
     if(sys_deleting_window_would_exit (w))
-	rep_call_lisp0(Qsave_and_quit);
+	rep_call_lisp0(Fsymbol_value(Qsave_and_quit, Qt));
     else
 	delete_window(w);
     return Qnil;

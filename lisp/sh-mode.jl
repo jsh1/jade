@@ -40,12 +40,12 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "sh"
 	major-mode 'sh-mode
-	major-mode-kill 'kill-all-local-variables
-	mode-comment-fun 'sh-insert-comment
-	mode-indent-line 'sh-indent-line
+	major-mode-kill kill-all-local-variables
+	mode-comment-fun sh-insert-comment
+	mode-indent-line sh-indent-line
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
-	local-keymap 'sh-keymap)
+	local-keymap sh-keymap)
   (call-hook 'sh-mode-hook))
 
 (defun sh-insert-comment ()
@@ -57,30 +57,30 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
     (find-comment-pos)
     (insert "# ")))
 
-(defun sh-get-basic-indent (pos)
-  (if (zerop (pos-line pos))
+(defun sh-get-basic-indent (p)
+  (if (zerop (pos-line p))
       0
-    (setq pos (forward-line -1 pos))
-    (while (and (> (pos-line pos) 0)
-		(or (= (get-char (forward-char -2 pos)) ?\\ )
-		    (looking-at "^[\t\f ]*$" pos)))
-      (setq pos (forward-line -1 pos)))
-    (pos-col (indent-pos pos))))
+    (setq p (forward-line -1 p))
+    (while (and (> (pos-line p) 0)
+		(or (= (get-char (forward-char -2 p)) ?\\ )
+		    (looking-at "^[\t\f ]*$" p)))
+      (setq p (forward-line -1 p)))
+    (pos-col (indent-pos p))))
 
-(defun sh-indent-line (&optional pos)
-  (setq pos (start-of-line pos))
+(defun sh-indent-line (&optional p)
+  (setq p (start-of-line p))
   (let
-      ((indent (sh-get-basic-indent pos)))
+      ((indent (sh-get-basic-indent p)))
     ;; Look at the last token on the previous line
-    (if (= (get-char (forward-char -2 pos)) ?\\ )
+    (if (= (get-char (forward-char -2 p)) ?\\ )
 	(setq indent (+ indent sh-continuation-indent))
       (when (looking-at
 	     "((.*[^a-zA-Z0-9\n])?(do|then|else|elif|in|\{)|.*\\))[ \t]*$"
-	     (forward-line -1 pos))
+	     (forward-line -1 p))
 	(setq indent (+ indent sh-basic-indent)))
-      (when (looking-at ".*;;[\t ]*$" (forward-line -1 pos))
+      (when (looking-at ".*;;[\t ]*$" (forward-line -1 p))
 	(setq indent (- indent sh-basic-indent)))
       ;; Look at the contents of this line
-      (when (looking-at "[ \t]*(\\bdone\\b|\\belse\\b|\\belif\\b|\\bfi\\b|\\besac\\b|\})" pos)
+      (when (looking-at "[ \t]*(\\bdone\\b|\\belse\\b|\\belif\\b|\\bfi\\b|\\besac\\b|\})" p)
 	(setq indent (- indent sh-basic-indent))))
-    (set-indent-pos (pos indent (pos-line pos)))))
+    (set-indent-pos (pos indent (pos-line p)))))

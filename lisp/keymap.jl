@@ -101,7 +101,7 @@ binding, or nil if there was no prefix."
 	    (cond
 	     ((eq k 'keymap))		;An inherited sparse keymap
 	     ((or (and (symbolp (car k))
-		       (eq (symbol-function (car k) t) 'keymap))
+		       (eq (symbol-value (car k) t) 'keymap))
 		  (eq (car (car k)) 'next-keymap-path))
 	      ;; A prefix key
 	      (when map-keymap-recursively
@@ -214,7 +214,7 @@ is bound to be the operating system, not the event itself."
        (read-event-cooked cooked))
     (with-view (minibuffer-view)
       (with-buffer temp-buffer
-	(add-hook 'unbound-key-hook 'read-event-callback)
+	(add-hook 'unbound-key-hook read-event-callback)
 	(next-keymap-path nil)
 	(insert (or title "Enter key: "))
 	(catch 'read-event
@@ -227,7 +227,7 @@ the string that the operating system would normally insert for that event."
   (let
       ((old-ukh unbound-key-hook)
        (read-event-cooked cooked))
-    (add-hook 'unbound-key-hook 'read-event-callback)
+    (add-hook 'unbound-key-hook read-event-callback)
     (next-keymap-path nil)
     (unwind-protect
 	(catch 'read-event
@@ -249,7 +249,7 @@ would invoke."
       (setq command (lookup-event-binding event))
       (if command
 	  (cond ((and (symbolp command)
-		      (eq (symbol-function command t) 'keymap))
+		      (eq (symbol-value command t) 'keymap))
 		 ;; a prefix key
 		 (setq path (list command)))
 		((eq (car command) 'next-keymap-path)

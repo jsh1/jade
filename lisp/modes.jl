@@ -36,9 +36,9 @@
 ;;;
 ;;;   (setq mode-name "Lisp"
 ;;;	    major-mode 'lisp-mode
-;;;	    major-mode-kill 'lisp-mode-kill
-;;;	    mode-comment-fun 'lisp-mode-insert-comment
-;;;	    local-keymap 'lisp-mode-keymap)
+;;;	    major-mode-kill lisp-mode-kill
+;;;	    mode-comment-fun lisp-mode-insert-comment
+;;;	    local-keymap lisp-mode-keymap)
 ;;;   (call-hook 'lisp-mode-hook)
 ;;;
 ;;; The function to be called when the mode is removed should remove the
@@ -177,11 +177,11 @@ is nil.")
   "A function called to indent a specified line in the current buffer.")
 (make-variable-buffer-local 'mode-indent-line)
 
-(defvar mode-forward-exp 'generic-forward-exp
+(defvar mode-forward-exp nil
   "Function like `lisp-forward-sexp'.")
 (make-variable-buffer-local 'mode-forward-exp)
 
-(defvar mode-backward-exp 'generic-backward-exp
+(defvar mode-backward-exp nil
   "Function like `lisp-backward-sexp'.")
 (make-variable-buffer-local 'mode-backward-exp)
 
@@ -219,9 +219,11 @@ of the defun is assumed instead.")
 				    interpreter-mode-alist t)))
 			 (cdr (assoc-regexp
 			       (buffer-file-name) auto-mode-alist t)))))
-  (funcall (if (functionp major-mode)
-	       major-mode
-	     default-major-mode)))
+  (let
+      ((fun (or major-mode default-major-mode)))
+    (when (symbolp fun)
+      (setq fun (symbol-value fun)))
+    (funcall fun)))
 
 (defun fundamental-mode ()
   "Remove the major mode being used to edit the current buffer, the
@@ -251,9 +253,9 @@ comment should be written. This may or not be defined by each major mode."
 
 (defun find-comment-pos ()
   (let
-      ((pos (glyph-to-char-pos (pos (1- comment-column) nil))))
+      ((p (glyph-to-char-pos (pos (1- comment-column) nil))))
     (goto (end-of-line))
-    (if (>= (end-of-line) pos)
+    (if (>= (end-of-line) p)
 	(insert "\t")
       (indent-to (1- comment-column)))))
 
@@ -287,49 +289,49 @@ or insert a tab."
   (interactive)
   (if mode-indent-line
       (let
-	  ((pos (funcall mode-indent-line)))
-	(when (and (posp pos) (< (char-to-glyph-pos (cursor-pos)) pos))
-	  (goto-glyph pos))
-	(when (> (glyph-to-char-pos pos) (end-of-line))
+	  ((p (funcall mode-indent-line)))
+	(when (and (posp p) (< (char-to-glyph-pos (cursor-pos)) p))
+	  (goto-glyph p))
+	(when (> (glyph-to-char-pos p) (end-of-line))
 	  (goto (end-of-line))))
     (error "No method for indentation in this buffer.")))
 
 
 ;; Expressions
 
-(defun forward-exp (&optional number pos)
+(defun forward-exp (&optional number p)
   "Find the end of the NUMBER'th next expression."
   (interactive "@p")
   (cond ((> number 0)
-	 (funcall (or mode-forward-exp 'forward-word) number pos))
+	 (funcall (or mode-forward-exp forward-word) number p))
 	((< number 0)
-	 (funcall (or mode-backward-exp 'backward-word) (- number) pos))))
+	 (funcall (or mode-backward-exp backward-word) (- number) p))))
 
-(defun backward-exp (&optional number pos)
+(defun backward-exp (&optional number p)
   "Find the start of the NUMBER'th previous expression."
   (interactive "@p")
   (cond ((> number 0)
-	 (funcall (or mode-backward-exp 'backward-word) number pos))
+	 (funcall (or mode-backward-exp backward-word) number p))
 	((< number 0)
-	 (funcall (or mode-forward-exp 'forward-word) (- number) pos))))
+	 (funcall (or mode-forward-exp forward-word) (- number) p))))
 
 (defun kill-exp (&optional number)
   "Kill the next NUMBER expressions."
   (interactive "p")
-  (kill-area (cursor-pos) (funcall (or mode-forward-exp 'forward-word)
+  (kill-area (cursor-pos) (funcall (or mode-forward-exp forward-word)
 				   number)))
 
 (defun backward-kill-exp (&optional number)
   "Kills from the start of this NUMBER'th previous expression to the cursor."
   (interactive "p")
-  (kill-area (funcall (or mode-backward-exp 'backward-word) number)
+  (kill-area (funcall (or mode-backward-exp backward-word) number)
 	     (cursor-pos)))
 
 (defun transpose-exps (count)
   "Move the expression before the cursor COUNT expressions forwards."
   (interactive "p")
-  (transpose-items (or mode-forward-exp 'forward-word)
-		   (or mode-backward-exp 'backward-word)
+  (transpose-items (or mode-forward-exp forward-word)
+		   (or mode-backward-exp backward-word)
 		   count))
 
 
@@ -386,12 +388,12 @@ or insert a tab."
 
 ;; Generic expression handling
 
-(defun generic-forward-exp (&optional number pos)
+(defun generic-forward-exp (&optional number p)
   "Return the position of the NUMBER'th next expression from POS."
   (unless number
     (setq number 1))
-  (unless pos
-    (setq pos (cursor-pos)))
+  (unless p
+    (setq p (cursor-pos)))
   (let
       ((ws-re (if (null generic-exp-comment-string)
 		  "[\t\f\n ]+"
@@ -400,38 +402,38 @@ or insert a tab."
 			".*\n))+"))))
     (while (> number 0)
       ;; first, skip white space and comments
-      (when (looking-at ws-re pos)
-	(setq pos (match-end)))
-      (when (> pos (end-of-buffer))
+      (when (looking-at ws-re p)
+	(setq p (match-end)))
+      (when (> p (end-of-buffer))
 	(error "End of buffer"))
       (let
-	  ((c (get-char pos)))
+	  ((c (get-char p)))
 	(cond
 	 ((member c generic-exp-single-delims)
 	  ;; move over string
-	  (if (setq pos (char-search-forward c (forward-char 1 pos)))
-	      (while (= (get-char (forward-char -1 pos))
+	  (if (setq p (char-search-forward c (forward-char 1 p)))
+	      (while (= (get-char (forward-char -1 p))
 			generic-exp-escape-char)
-		(unless (setq pos (char-search-forward c (forward-char 1 pos)))
+		(unless (setq p (char-search-forward c (forward-char 1 p)))
 		  (error "String doesn't end!")))
 	    (error "String doesn't end!"))
-	  (setq pos (forward-char 1 pos)))
+	  (setq p (forward-char 1 p)))
 	 ((member c generic-exp-open-delims)
 	  ;; move over brackets
-	  (unless (setq pos (find-matching-bracket pos nil generic-exp-escape-char))
+	  (unless (setq p (find-matching-bracket p nil generic-exp-escape-char))
 	    (error "Expression doesn't end!"))
-	  (setq pos (forward-char 1 pos)))
+	  (setq p (forward-char 1 p)))
 	 ((member c generic-exp-close-delims)
 	  (error "End of containing expression"))
 	 (t
 	  ;; a symbol of some sort
-	  (if (looking-at generic-exp-symbol-re pos)
-	      (setq pos (match-end))
-	    (unless (setq pos (re-search-forward generic-exp-special-re pos))
+	  (if (looking-at generic-exp-symbol-re p)
+	      (setq p (match-end))
+	    (unless (setq p (re-search-forward generic-exp-special-re p))
 	      (error "Can't find end of symbol"))
 	    (setq number (1+ number))))))
       (setq number (1- number))))
-  pos)
+  p)
 
 (defun generic-backward-exp (&optional number orig-pos)
   "Return the position of the NUMBER'th previous s-expression from ORIG-POS."
@@ -440,7 +442,7 @@ or insert a tab."
   (unless orig-pos 
     (setq orig-pos (cursor-pos)))
   (let
-      ((pos orig-pos)
+      ((p orig-pos)
        comment-skip-some-re
        comment-skip-line-re)
     (when generic-exp-comment-string
@@ -454,36 +456,39 @@ or insert a tab."
 				  "|^[\f\t ]*$")))
     (while (> number 0)
       ;; skip preceding white space
-      (unless (setq pos (re-search-backward "[^\t\f\n ]" (forward-char -1 pos)))
+      (unless (setq p (re-search-backward "[^\t\f\n ]" (forward-char -1 p)))
 	(error "No expression!"))
       (when generic-exp-comment-string
-	(while (looking-at comment-skip-line-re (start-of-line pos))
-	  (unless (setq pos (forward-line -1 pos))
+	(while (looking-at comment-skip-line-re (start-of-line p))
+	  (unless (setq p (forward-line -1 p))
 	    (error "Beginning of buffer"))
-	  (setq pos (end-of-line pos)))
-	(when (and (looking-at comment-skip-some-re (start-of-line pos))
-		   (< (match-start 1) pos))
-	  (setq pos (forward-char -1 (match-start)))))
+	  (setq p (end-of-line p)))
+	(when (and (looking-at comment-skip-some-re (start-of-line p))
+		   (< (match-start 1) p))
+	  (setq p (forward-char -1 (match-start)))))
       (let
-	  ((c (get-char pos)))
+	  ((c (get-char p)))
 	(cond
 	 ((member c generic-exp-close-delims)
-	  (unless (setq pos (find-matching-bracket pos nil generic-exp-escape-char))
+	  (unless (setq p (find-matching-bracket p nil generic-exp-escape-char))
 	    (error "Brackets don't match")))
 	 ((member c generic-exp-single-delims)
-	  (if (setq pos (char-search-backward c (forward-char -1 pos)))
-	      (while (= (get-char (forward-char -1 pos))
+	  (if (setq p (char-search-backward c (forward-char -1 p)))
+	      (while (= (get-char (forward-char -1 p))
 			generic-exp-escape-char)
-		(unless (setq pos (char-search-backward c (forward-char -1 pos)))
+		(unless (setq p (char-search-backward c (forward-char -1 p)))
 		  (error "String doesn't start!")))
 	    (error "String doesn't start!")))
 	 ((member c generic-exp-open-delims)
 	  (error "Start of containing sexp"))
 	 (t
 	  ;; a symbol?
-	  (if (looking-at generic-exp-symbol-re pos)
-	      (unless (setq pos (re-search-backward generic-exp-symbol-re pos))
+	  (if (looking-at generic-exp-symbol-re p)
+	      (unless (setq p (re-search-backward generic-exp-symbol-re p))
 		(error "Can't classify expression"))
 	    (setq number (1+ number))))))
       (setq number (1- number)))
-    pos))
+    p))
+
+(setq-default mode-forward-exp generic-forward-exp)
+(setq-default mode-backward-exp generic-backward-exp)

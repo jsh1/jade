@@ -59,8 +59,8 @@
 
 (defun prompt-menu-prompt (tree title)
   (let*
-      ((list (mapcar #'(lambda (x) (car (cdr x))) tree))
-       (choice (prompt-from-list list (concat title ?:))))
+      ((lst (mapcar #'(lambda (x) (car (cdr x))) tree))
+       (choice (prompt-from-list lst (concat title ?:))))
     (while choice
       (setq choice (or (prompt-menu-find tree choice)
 		       (error "Can't find menu")))
@@ -69,7 +69,7 @@
 					 (concat title ?/ (nth 1 choice)))))
       (when choice
 	(throw 'prompt-menu-top choice))
-      (setq choice (prompt-from-list list (concat title ?:))))))
+      (setq choice (prompt-from-list lst (concat title ?:))))))
 
 (defun popup-menu-from-spec (spec)
   (let*

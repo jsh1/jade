@@ -73,7 +73,6 @@ centred each time it changes.")
     "Ctrl-t" 'gdb-set-temporary-breakpoint
     "Ctrl-d" 'gdb-delete-breakpoint
     "Ctrl-l" 'gdb-redisplay-frame))
-(fset 'gdb-ctrl-c-keymap 'keymap)
 
 (bind-keys ctrl-x-keymap
   "Ctrl-a" 'gdb-ctrl-c-keymap)
@@ -276,7 +275,7 @@ with `Ctrl-x Ctrl-a'.")
 (defun gdb-command (format-spec &rest format-args)
   (when gdb-buffer-p
     (setq gdb-last-buffer (current-buffer)))
-  (apply 'format
+  (apply format
 	 (gdb-get-buffer-var shell-process)
 	 format-spec format-args)
   (with-buffer gdb-last-buffer

@@ -34,8 +34,8 @@
   (when (gtk-jade-selection-active-p 'xa-primary)
     (gtk-jade-get-selection 'xa-primary)))
 
-(add-hook 'block-status-hook 'gtk-jade-block-status-function)
-(add-hook 'after-kill-hook 'gtk-jade-after-kill-function)
-(add-hook 'pre-yank-hook 'gtk-jade-pre-yank-function)
+(add-hook 'block-status-hook gtk-jade-block-status-function)
+(add-hook 'after-kill-hook gtk-jade-after-kill-function)
+(add-hook 'pre-yank-hook gtk-jade-pre-yank-function)
 
 (autoload 'popup-menu-from-spec "gtk-menu" t)

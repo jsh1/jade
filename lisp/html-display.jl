@@ -46,8 +46,7 @@
   (bind-keys (make-sparse-keymap)
     "C-c" 'find-url-abort))
 
-(fset 'html-display-map 'keymap)
-;;;###autoload (autoload-keymap 'html-display-map "html-display")
+;;;###autoload (autoload 'html-display-map "html-display")
 
 (defvar html-display-menus '("WWW"
 			     ("Find next link" html-display-next-link)
@@ -67,7 +66,7 @@
     ("Describe link" html-display-describe-link)))
 
 ;;;###autoload
-(defun html-display (source &optional url other-view)
+(defun html-display (source &optional url in-other-view)
   (interactive "bBuffer with HTML:\nsURL of document\nP")
   (let*
       ((output (make-buffer "*html-display*"))
@@ -87,8 +86,8 @@
 	(setq details (cons (cons 'base url) details))))
     (set-buffer-modified output nil)
     (set-buffer-read-only output t)
-    (with-view (if other-view
-		   (if (viewp other-view) other-view (other-view))
+    (with-view (if in-other-view
+		   (if (viewp in-other-view) in-other-view (other-view))
 		 (current-view))
       (goto-buffer output)
       (goto (start-of-buffer))
@@ -122,7 +121,7 @@
 				 (with-buffer b
 				   (eq major-mode 'html-display-mode)))
 			     buffer-list)))
-    (mapc 'kill-buffer html-buffers)))
+    (mapc kill-buffer html-buffers)))
 
 (defun html-display-find-url (url)
   (catch 'exit
@@ -166,12 +165,12 @@
       (when tem
 	(setq end (forward-char -1 (extent-start tem))))
       (goto (let
-		(last)
+		(final)
 	      (map-extents #'(lambda (e)
 			       (when (html-display-extent-is-link-p e)
-				 (setq last (extent-start e))))
+				 (setq final (extent-start e))))
 			   (start-of-buffer) end)
-	      last)))
+	      final)))
     (setq count (1+ count)))
   (and (html-display-current-link t)
        (html-display-describe-link)))
@@ -186,8 +185,7 @@
   (interactive (list (let
 			 ((prompt-list-fold-case t))
 		       (prompt-from-list
-			(mapcar 'car (cdr (assq 'anchors
-						html-display-details)))
+			(mapcar car (cdr (assq 'anchors html-display-details)))
 			"Anchor name:"))))
   (let
       ((anchor (assoc name (cdr (assq 'anchors html-display-details)))))
@@ -197,7 +195,7 @@
 
 ;; Selecting links
 
-(defun html-display-select (&optional other-view)
+(defun html-display-select (&optional in-other-view)
   (interactive "P")
   (let*
       ((e (html-display-current-link))
@@ -214,14 +212,14 @@
 	  (t
 	   ;; Relative to the current base
 	   (setq href (concat (or base (error "No known URL base")) href))))
-    (when other-view
+    (when in-other-view
       (goto-other-view))
     (find-url href)))
 
-(defun html-display-mouse-select (&optional other-view)
+(defun html-display-mouse-select (&optional in-other-view)
   (interactive "P")
   (goto-mouse)
-  (html-display-select other-view))
+  (html-display-select in-other-view))
 
 (defun html-display-select-other-view ()
   (interactive)
@@ -230,10 +228,10 @@
 (defun html-display-select-other-window ()
   (interactive)
   (let
-      ((pos (cursor-pos)))
+      ((p (cursor-pos)))
     (with-window (make-window)
       ;; XXX why is this required?!
-      (goto pos)
+      (goto p)
       (html-display-select))))
 
 (defun html-display-describe-link ()

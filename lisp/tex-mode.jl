@@ -54,7 +54,6 @@
     "{" 'tex-insert-braces
     "]" 'tex-move-over-braces
     "}" 'tex-move-over-braces))
-(fset 'tex-ctrl-c-ctrl-c-keymap 'keymap)
 
 ;;;###autoload
 (defun tex-mode (&optional from-sub-mode)
@@ -67,7 +66,7 @@ Local bindings in this mode are:\n
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "TeX"
 	major-mode 'tex-mode
-	major-mode-kill 'tex-mode-kill
+	major-mode-kill tex-mode-kill
 	local-ctrl-c-keymap tex-ctrl-c-keymap
 	paragraph-separate "^(([\t\f\n ]|(\\$\\$))*|\\\\(begin|end|noindent).*)\n"
 	paragraph-start "^( +|\\\\item)"
@@ -80,7 +79,7 @@ Local bindings in this mode are:\n
 	generic-exp-symbol-re "[a-zA-Z0-9:_@-]+"
 	generic-exp-special-re "[][(){}\"\$a-zA-Z0-9]")
   (make-local-variable 'ispell-ignore-word-hook)
-  (add-hook 'ispell-ignore-word-hook 'tex-ispell-ignore-word-hook)
+  (add-hook 'ispell-ignore-word-hook tex-ispell-ignore-word-hook)
   (cond (from-sub-mode)
 	((re-search-backward "^\\\\(document(class|style)|chapter|(sub)*section)"
 			     (min (forward-line 100 (start-of-buffer))
@@ -128,17 +127,17 @@ Local bindings in this mode are:\n
 (defun tex-insert-end ()
   (interactive)
   (let
-      ((pos (forward-char -1))
+      ((p (forward-char -1))
        (depth 0))
     (if (catch 'foo
-	  (while (re-search-backward "\\\\(end|begin)\{([^\}]+)" pos)
+	  (while (re-search-backward "\\\\(end|begin)\{([^\}]+)" p)
 	    (if (= (get-char (match-start 1)) ?b)
 		;; no end
 		(if (zerop depth)
 		    (throw 'foo t)
 		  (setq depth (1- depth)))
 	      (setq depth (1+ depth)))
-	    (setq pos (forward-char -1 (match-start)))))
+	    (setq p (forward-char -1 (match-start)))))
 	(format (current-buffer) "\\end{%s}\n" (copy-area (match-start 2)
 							  (match-end 2)))
       (tex-insert-braces "end")

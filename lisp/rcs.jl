@@ -67,9 +67,8 @@ visually.")
     "~" 'rcs-view-revision
     "b" 'rcs-set-default-branch)
   "Keymap containing RCS commands.")
-(fset 'rcs-keymap 'keymap)
 
-;;;###autoload (autoload-keymap 'rcs-keymap "rcs")
+;;;###autoload (autoload 'rcs-keymap "rcs")
 ;;;###autoload (bind-keys ctrl-x-keymap "v" 'rcs-keymap)
 
 (defvar rcs-callback-ctrl-c-keymap
@@ -125,7 +124,7 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
     (clear-buffer buffer)
     (when output-stream
       (set-process-output-stream process output-stream))
-    (unless (or (zerop (apply 'call-process process nil command arg-list))
+    (unless (or (zerop (apply call-process process nil command arg-list))
 		ignore-errors)
       (signal 'file-error (list "Can't run RCS command")))
     (format t "done")
@@ -232,10 +231,10 @@ description entered. COUNT may be negative."
     ;; Try to find its revision number and it's locked status, and put
     ;; them into the minor mode name.
     (let
-	((info (concat "RCS"
-		       (if (rcs-buffer-locked-p) ?: ?-)
-		       (or (rcs-get-version) "?"))))
-      (setq rcs-mode (concat " " info)
+	((inf (concat "RCS"
+		      (if (rcs-buffer-locked-p) ?: ?-)
+		      (or (rcs-get-version) "?"))))
+      (setq rcs-mode (concat " " inf)
 	    toggle-read-only-function 'rcs-toggle-read-only)
       (unless rcs-make-backup-files
 	;; Ensure no backup files are made for this buffer
@@ -281,7 +280,7 @@ be prompted for."
   ;; toggle-buffer-read-only, via rcs-toggle-read-only
   (when (and (not revision) current-prefix-arg)
     (setq revision (or (prompt-for-string
-			(apply 'concat "Check in as revision:"
+			(apply concat "Check in as revision:"
 			       (and rcs-revision
 				    (list " (currently " rcs-revision ")"))))
 		       (error "No revision specified"))))
@@ -304,7 +303,7 @@ prompted for."
   (unless revision
     (setq revision (if current-prefix-arg
 		       (or (prompt-for-string
-			    (apply 'concat "Revision to lock:"
+			    (apply concat "Revision to lock:"
 				   (and rcs-revision
 					(list " (currently "
 					      rcs-revision ")"))))
@@ -340,8 +339,8 @@ naming the revision, or nil, in which case it will be prompted for."
     (setq revision (prompt-for-string "Revision to view:")))
   (when revision
     (let*
-	((buffer-name (concat (buffer-name) ?~ revision ?~))
-	 (new-buffer (open-buffer buffer-name)))
+	((name (concat (buffer-name) ?~ revision ?~))
+	 (new-buffer (open-buffer name)))
       (when (check-changes new-buffer)
 	(clear-buffer new-buffer)
 	(set-buffer-read-only new-buffer nil)
@@ -388,7 +387,7 @@ file with the working copy."
      (if (not current-prefix-arg)
 	 (list rcs-revision nil)
        (let
-	   ((first (prompt-for-string (apply 'concat "Older revision:"
+	   ((first (prompt-for-string (apply concat "Older revision:"
 					     (when rcs-revision
 					       (list " (working on "
 						     rcs-revision ")"))))))
@@ -400,8 +399,9 @@ file with the working copy."
 	  ((kill1 t)
 	   (kill2 t)
 	   (rev2-buffer (if rev2
-			    (and (rcs-view-revision rev2)
-				 (current-buffer))
+			    (save-excursion
+			      (and (rcs-view-revision rev2)
+				   (current-buffer)))
 			  (setq kill2 nil)
 			  (current-buffer)))
 	   (rev1-buffer (and (rcs-view-revision rev1)

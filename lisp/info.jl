@@ -140,29 +140,29 @@ is split.")
     (read-file-into-buffer (concat filename suffix))
     ;; Scan for tag table or indirect list
     (let
-	((pos (re-search-forward "^(Tag Table:|Indirect:) *$"
+	((p (re-search-forward "^(Tag Table:|Indirect:) *$"
 				 (pos 0 0) nil t)))
-      (when (and pos (looking-at "Indirect:" pos nil t))
+      (when (and p (looking-at "Indirect:" p nil t))
 	;; Parse the indirect list
-	(setq pos (forward-line 1 pos))
-	(while (and (/= (get-char pos) ?\^_)
-		    (looking-at "^(.*): ([0-9]+)$" pos nil t))
+	(setq p (forward-line 1 p))
+	(while (and (/= (get-char p) ?\^_)
+		    (looking-at "^(.*): ([0-9]+)$" p nil t))
 	  (setq info-indirect-list
 		(cons (cons (read (cons (current-buffer) (match-start 2)))
 			    (concat dir (copy-area (match-start 1)
 						   (match-end 1))))
 		      info-indirect-list))
-	  (setq pos (forward-line 1 pos)))
+	  (setq p (forward-line 1 p)))
 	(setq info-indirect-list (nreverse info-indirect-list)))
       ;; Now look for the tag table
-      (when (setq pos (re-search-forward "^Tag table: *$" pos nil t))
+      (when (setq p (re-search-forward "^Tag table: *$" p nil t))
 	;; Copy this into the tags buffer
 	(let
-	    ((end (char-search-forward ?\^_ pos)))
+	    ((end (char-search-forward ?\^_ p)))
 	  (unless end
 	    (setq end (end-of-buffer)))
 	  (clear-buffer info-tags-buffer)
-	  (insert (copy-area pos end) nil info-tags-buffer)
+	  (insert (copy-area p end) nil info-tags-buffer)
 	  (setq info-has-tags-p t))))))
 
 ;; Read the `dir' file, if multiple `dir' files exist concatenate them
@@ -250,7 +250,7 @@ is split.")
 (defun info-find-node (nodename)
   (let
       ((inhibit-read-only t)
-       filename file-location offset)
+       filename file-location)
     (unrestrict-buffer)
     (if (string-match "^\\((.*)\\)(.*)$" nodename)
 	(setq filename (expand-last-match "\\1")
@@ -279,22 +279,22 @@ is split.")
 				      ?\^?)
 			      (pos 0 0) info-tags-buffer t)
 	    (let
-		((list info-indirect-list)
+		((lst info-indirect-list)
 		 (offset (read (cons info-tags-buffer (match-end))))
 		 subfile)
-	      (if (null list)
+	      (if (null lst)
 		  ;; No indirect list
 		  (setq offset (+ offset 2)
 			subfile file-location)
 		;; Indirect list, chase down the list for the
 		;; correct file to use
 		(catch 'info
-		  (while (cdr list)
-		    (when (< offset (car (car (cdr list))))
-		      (setq subfile (car list))
+		  (while (cdr lst)
+		    (when (< offset (car (car (cdr lst))))
+		      (setq subfile (car lst))
 		      (throw 'info))
-		    (setq list (cdr list))
-		    (setq subfile (car list))))
+		    (setq lst (cdr lst))
+		    (setq subfile (car lst))))
 		;; Use some magic to calculate the physical position of the
 		;; node. This seems to work?
 		(if (eq subfile (car info-indirect-list))
@@ -309,14 +309,14 @@ is split.")
 	  (signal 'info-error (list "Can't find node" nodename)))))
     ;; Now cursor should be at beginning of node text. Make sure
     (let
-	((pos (char-search-backward ?\^_)))
-      (when (and pos (looking-at (concat "^File:.*Node: "
+	((p (char-search-backward ?\^_)))
+      (when (and p (looking-at (concat "^File:.*Node: "
 					 (quote-regexp nodename))
-				 (forward-line 1 pos)))
+				 (forward-line 1 p)))
 	(goto (match-start)))
-      (setq pos (or (char-search-forward ?\^_ (forward-char))
+      (setq p (or (char-search-forward ?\^_ (forward-char))
 		    (end-of-buffer nil t)))
-      (restrict-buffer (cursor-pos) pos)
+      (restrict-buffer (cursor-pos) p)
       (info-highlight-buffer))
     (setq info-node-name nodename)
     (setq buffer-status-id
@@ -343,13 +343,13 @@ is split.")
 (defun info-list-nodes (start)
   (let
       ((regexp (concat "^Node: (" (quote-regexp start) ".*)\^?"))
-       (list ()))
+       (lst ()))
     (with-buffer info-tags-buffer
       (goto (start-of-buffer))
       (while (re-search-forward regexp nil nil t)
-	(setq list (cons (expand-last-match "\\1") list))
+	(setq lst (cons (expand-last-match "\\1") lst))
 	(goto (match-end))))
-    list))
+    lst))
 
 ;; "prompt" variant. LIST-FUN is a function to call the first time a list
 ;; of possible completions is required.
@@ -448,15 +448,15 @@ local bindings are:\n
 ;; Return a list of the names of all menu items
 (defun info-list-menu-items ()
   (let
-      ((list ())
+      ((lst ())
        (opos (restriction-start))
        name)
     (while (re-search-forward "^\\* ([a-zA-Z0-9]+[^:.]*)" opos)
       (setq name (expand-last-match "\\1"))
       (setq opos (match-end))
       (unless (string-match "^menu$" name nil t)
-	(setq list (cons name list))))
-    list))
+	(setq lst (cons name lst))))
+    lst))
 
 ;; Position the cursor at the start of the menu.
 (defun info-goto-menu-start ()
@@ -492,7 +492,7 @@ local bindings are:\n
     (when (info-goto-menu-start)
       (let
 	  ((opos (cursor-pos)))
-	(setq menu-name (info-prompt 'info-list-menu-items
+	(setq menu-name (info-prompt info-list-menu-items
 				     "Menu item:" menu-name))
 	(goto opos)))
     (when menu-name
@@ -566,23 +566,23 @@ local bindings are:\n
 (defun info-next-link ()
   (interactive)
   (let
-      ((pos (re-search-forward "(^\\* |\\*Note)" (forward-char) nil t)))
-    (while (and pos (looking-at "\\* Menu:" pos nil t))
-      (setq pos (re-search-forward "(^\\* |\\*Note)"
-				  (forward-char 1 pos) nil t)))
-    (when pos
-      (goto pos))))
+      ((p (re-search-forward "(^\\* |\\*Note)" (forward-char) nil t)))
+    (while (and p (looking-at "\\* Menu:" p nil t))
+      (setq p (re-search-forward "(^\\* |\\*Note)"
+				  (forward-char 1 p) nil t)))
+    (when p
+      (goto p))))
 
 ;; Move the cursor to the previous menuitem or xref
 (defun info-prev-link ()
   (interactive)
   (let
-      ((pos (re-search-backward "(^\\* |\\*Note)" (forward-char -1) nil t)))
-    (while (and pos (looking-at "\\* Menu:" pos nil t))
-      (setq pos (re-search-backward "(^\\* |\\*Note)"
-				  (forward-char -1 pos) nil t)))
-    (when pos
-      (goto pos))))
+      ((p (re-search-backward "(^\\* |\\*Note)" (forward-char -1) nil t)))
+    (while (and p (looking-at "\\* Menu:" p nil t))
+      (setq p (re-search-backward "(^\\* |\\*Note)"
+				  (forward-char -1 p) nil t)))
+    (when p
+      (goto p))))
 
 ;; Parse the cross-reference under the cursor into a cons-cell containing
 ;; its title and node. This is fairly hairy since it has to cope with refs
@@ -590,39 +590,39 @@ local bindings are:\n
 (defun info-parse-ref ()
   (when (looking-at "\\*Note *" nil nil t)
     (let
-	((pos (match-end))
+	((p (match-end))
 	 end ref-title ref-node)
       (if (setq end (re-search-forward "[\t ]*:"))
 	  (progn
-	    (while (> (pos-line end) (pos-line pos))
+	    (while (> (pos-line end) (pos-line p))
 	      (let
-		  ((bit (copy-area pos (re-search-forward "[\t ]*$" pos))))
+		  ((bit (copy-area p (re-search-forward "[\t ]*$" p))))
 		(unless (equal bit "")
 		  (setq ref-title (cons ?\  (cons bit ref-title)))))
-	      (setq pos (re-search-forward "[^\n\t ]" (match-end)))
-	      (unless pos
+	      (setq p (re-search-forward "[^\n\t ]" (match-end)))
+	      (unless p
 		(signal 'info-error '("Malformed reference"))))
-	    (setq ref-title (apply 'concat (nreverse (cons (copy-area pos end)
-							   ref-title)))
-		  pos (forward-char 1 end))
-	    (if (= (get-char pos) ?:)
+	    (setq ref-title (apply concat (nreverse (cons (copy-area p end)
+							  ref-title)))
+		  p (forward-char 1 end))
+	    (if (= (get-char p) ?:)
 		(setq ref-node ref-title)
-	      (when (looking-at " +" pos)
-		(setq pos (match-end)))
-	      (if (setq end (re-search-forward "[\t ]*[:,.]" pos))
+	      (when (looking-at " +" p)
+		(setq p (match-end)))
+	      (if (setq end (re-search-forward "[\t ]*[:,.]" p))
 		  (progn
-		    (while (> (pos-line end) (pos-line pos))
+		    (while (> (pos-line end) (pos-line p))
 		      (let
-			  ((bit (copy-area pos (re-search-forward "[\t ]*$"
-								 pos))))
+			  ((bit (copy-area p (re-search-forward "[\t ]*$"
+								 p))))
 			(unless (equal bit "")
 			  (setq ref-node (cons ?\  (cons bit ref-node))))
-			(setq pos (re-search-forward "[^\n\t ]" (match-end))))
-		      (unless pos
+			(setq p (re-search-forward "[^\n\t ]" (match-end))))
+		      (unless p
 			(signal 'info-error '("Malformed reference"))))
-		    (setq ref-node (apply 'concat (nreverse (cons (copy-area
-								   pos end)
-								  ref-node)))))
+		    (setq ref-node (apply concat (nreverse (cons (copy-area
+								  p end)
+								 ref-node)))))
 		(signal 'info-error '("Malformed reference")))))
 	(signal 'info-error '("Malformed reference")))
       (when (and ref-title ref-node)

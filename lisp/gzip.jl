@@ -36,7 +36,7 @@ DECOMPRESS-COMMAND and COMPRESS-COMMAND are lists of strings, the command
 names followed by their argument lists, such that they uncompress or compress
 their standard input to their standard output.")
 
-(defvar auto-compression-mode nil
+(defvar auto-compression-mode-enabled nil
   "When t, files whose suffixes match `compression-file-alist' are
 automatically uncompressed when loaded, and recompressed when saved.")
 
@@ -48,9 +48,10 @@ automatically uncompressed when loaded, and recompressed when saved.")
   "Toggle automatic decompression and compression of files whose suffixes
 match well-known suffixes."
   (interactive "P")
-  (setq auto-compression-mode (or force-active (not auto-compression-mode)))
+  (setq auto-compression-mode-enabled
+	(or force-active (not auto-compression-mode-enabled)))
   (unless force-active
-    (message (if auto-compression-mode
+    (message (if auto-compression-mode-enabled
 		 "Auto compression enabled"
 	       "Auto compression disabled"))))
 
@@ -60,7 +61,7 @@ match well-known suffixes."
 ;; Find the (REGEXP DECOMPRESSOR COMPRESSOR) rule for FILE-NAME. If FILE-NAME
 ;; isn't a local file, don't bother looking
 (defun gzip-file-rule (file-name)
-  (when (and auto-compression-mode
+  (when (and auto-compression-mode-enabled
 	     (local-file-name file-name))
     (assoc-regexp file-name auto-compression-alist)))
 
@@ -70,7 +71,7 @@ match well-known suffixes."
     (let
 	((proc (make-process (current-buffer))))
       (message (concat "Uncompressing `" file-name "'") t)
-      (unless (zerop (apply 'call-process proc file-name (nth 1 rule)))
+      (unless (zerop (apply call-process proc file-name (nth 1 rule)))
 	(signal 'file-error (list "Can't uncompress file" file-name))))))
     
 ;; In the read-file-hook
@@ -112,7 +113,7 @@ match well-known suffixes."
 	      (progn
 		(setq proc (make-process dst-file))
 		(message (concat "Compressing `" file-name "'... ") t)
-		(when (/= (apply 'call-process proc tmp-name (nth 2 rule)) 0)
+		(when (/= (apply call-process proc tmp-name (nth 2 rule)) 0)
 		  (signal 'file-error
 			  (list "Can't compress file" tmp-name))))
 	    (close-file dst-file)
@@ -121,6 +122,6 @@ match well-known suffixes."
 	    (set-file-modes file-name modes))
 	  t)))))
 
-(add-hook 'read-file-hook 'gzip-read-file)
-(add-hook 'insert-file-hook 'gzip-insert-file)
-(add-hook 'write-file-hook 'gzip-write-file)
+(add-hook 'read-file-hook gzip-read-file)
+(add-hook 'insert-file-hook gzip-insert-file)
+(add-hook 'write-file-hook gzip-write-file)

@@ -45,13 +45,12 @@
   (bind-keys (make-sparse-keymap)
     "d" 'dired-delete-by-regexp
     "m" 'dired-mark-by-regexp))
-(fset 'dired-%-keymap 'keymap)
 
 (defvar dired-garbage-files "\\.(orig|rej|aux|log)$"
   "Regular expression matching files under dired that should be marked for
 deletion by the `&' command.")
 
-(defvar dired-directory-files 'directory-files
+(defvar dired-directory-files directory-files
   "Function called by Dired that should return the list of files stored in
 the directory named as its single argument.")
 (make-variable-buffer-local 'dired-directory-files)
@@ -60,18 +59,6 @@ the directory named as its single argument.")
 
 (defvar dired-delete-cache nil)
 (make-variable-buffer-local 'dired-delete-cache)
-
-(defvar dired-functions
-  (list '(print . dired-print)
-	(cons 'after-move #'(lambda ()
-			      (goto-glyph (pos dired-cursor-column nil))))
-	'(list . dired-list)
-	(cons 'after-marking #'(lambda () (summary-next-item 1)))
-	'(delete . dired-delete)
-	'(execute-end . dired-execute-end)
-	'(select . find-file)
-	'(on-quit . bury-buffer))
-  "Function vector for Dired mode.")
 
 
 ;; Basic interface to summary-mode
@@ -108,7 +95,7 @@ bindings is:\n
 	(summary-update)
       (format (current-buffer) "[Dired] %s:\n\n" (buffer-file-name))
       (summary-mode "Dired" dired-functions dired-keymap)
-      (setq summary-assoc-item-function 'assoc)
+      (setq summary-assoc-item-function assoc)
       (setq major-mode 'dired-mode))))
 
 (defun dired-list ()
@@ -141,6 +128,18 @@ bindings is:\n
 		    (if (file-directory-p f)
 			(delete-directory f)
 		      (delete-file f)))))
+(defvar dired-functions
+  (list (cons 'print dired-print)
+	(cons 'after-move (lambda ()
+			    (goto-glyph (pos dired-cursor-column nil))))
+	(cons 'list dired-list)
+	(cons 'after-marking (lambda () (summary-next-item 1)))
+	(cons 'delete dired-delete)
+	(cons 'execute-end dired-execute-end)
+	(cons 'select find-file)
+	(cons 'on-quit bury-buffer))
+  "Function vector for Dired mode.")
+
 
 ;; Marking
 
@@ -171,7 +170,7 @@ bindings is:\n
 
 ;; Commands
 
-(defun dired-find-file (files root &optional other-view)
+(defun dired-find-file (files root)
   (interactive (list (summary-command-items) default-directory))
   (let
       ((root default-directory))
@@ -181,7 +180,7 @@ bindings is:\n
 (defun dired-find-file-other-view (files root)
   (interactive (list (summary-command-items) default-directory))
   (goto-other-view)
-  (dired-find-file files root t))
+  (dired-find-file files root))
 
 (defun dired-display-file (files root)
   (interactive (list (summary-command-items) default-directory))

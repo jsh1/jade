@@ -112,20 +112,20 @@ direction."
 
 ;;; Wrappers for some regexp functions to trap errors
 
-(defun isearch-find-next-regexp (pos)
+(defun isearch-find-next-regexp (p)
   (setq isearch-re-error nil)
   (condition-case nil
-      (re-search-forward (car (car isearch-trace)) pos
+      (re-search-forward (car (car isearch-trace)) p
 			 (current-buffer isearch-view)
 			 case-fold-search)
     (regexp-error
       (setq isearch-re-error t)
       'regexp-error)))
 
-(defun isearch-find-prev-regexp (pos)
+(defun isearch-find-prev-regexp (p)
   (setq isearch-re-error nil)
   (condition-case nil
-      (re-search-backward (car (car isearch-trace)) pos
+      (re-search-backward (car (car isearch-trace)) p
 			  (current-buffer isearch-view)
 			  case-fold-search)
     (regexp-error
@@ -168,10 +168,10 @@ direction."
     (isearch-pop-match)))
 
 ;; Pushes a match at POS onto the top string
-(defun isearch-push-match (pos)
+(defun isearch-push-match (p)
   (let
       ((item (car isearch-trace)))
-    (rplaca isearch-trace (cons (car item) (cons pos (cdr item))))))
+    (rplaca isearch-trace (cons (car item) (cons p (cdr item))))))
 
 ;; Pushes the current position, pushes the STRING onto the top of the
 ;; stack, then searches for it
@@ -195,9 +195,9 @@ direction."
 	 (beep))))))
 
 ;; Goto the current isearch position
-(defun isearch-goto (pos)
+(defun isearch-goto (p)
   (with-view isearch-view
-    (goto pos))
+    (goto p))
   (isearch-looking-at)
   (when (match-start)
     (let
@@ -221,21 +221,21 @@ direction."
 		  "I-search: "
 		  (car (car isearch-trace))))
   (let
-      ((pos (cursor-pos)))
+      ((p (cursor-pos)))
     (when isearch-re-error
       (insert "    *Invalid/incomplete regexp*"))
     (goto (start-of-buffer))
     (set-char (char-upcase (get-char)))
-    (goto pos)))
+    (goto p)))
 
 ;; Accept our current position
 (defun isearch-accept ()
   (interactive)
   (setq isearch-last-match (car (car isearch-trace)))
   (let
-      ((pos isearch-initial-pos))
+      ((p isearch-initial-pos))
     (with-view isearch-view
-      (set-auto-mark pos)))
+      (set-auto-mark p)))
   (isearch-quit t))
 
 ;; Cancel the search or if search is failing backtrack to the last match
@@ -308,7 +308,7 @@ direction."
 	    isearch-original-buffer (current-buffer (minibuffer-view)))
       (setq local-keymap 'isearch-keymap)
       (make-local-variable 'unbound-key-hook)
-      (add-hook 'unbound-key-hook 'isearch-unbound-key-fun))
+      (add-hook 'unbound-key-hook isearch-unbound-key-fun))
     (set-current-view (minibuffer-view))
     (goto-buffer prompt-buffer)
     (isearch-title)))

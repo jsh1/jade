@@ -67,28 +67,28 @@ Finally, note that the string \"@@\" expands to a single @ character."
   (let*
       ((file-subst-vars nil)
        (output-buffer (find-file output-file))
-       (pos (pos 0 0)))
+       (p (pos 0 0)))
     (file-subst-set 'date (current-time-string nil "%B %d, %Y"))
     ;; Now in output-buffer
     (clear-buffer)
     (insert-file-contents input-file)
-    (while (setq pos (re-search-forward file-subst-regexp pos))
+    (while (setq p (re-search-forward file-subst-regexp p))
       (if (equal (match-start 1) (match-end 1))
 	  ;; Null expansion, shortcut for @
 	  (progn
-	    (delete-area pos (match-start 1))
-	    (setq pos (forward-char 1 pos)))
+	    (delete-area p (match-start 1))
+	    (setq p (forward-char 1 p)))
 	;; Found an expansion to perform
 	(let
 	    ((value (read-from-string (copy-area (match-start 1)
 						 (match-end 1)))))
-	  (delete-area pos (match-end))
-	  (goto pos)
+	  (delete-area p (match-end))
+	  (goto p)
 	  (setq value (if (and (symbolp value) (assq value file-subst-vars))
 			  (cdr (assq value file-subst-vars))
 			(eval value)))
 	  (when (or (stringp value) (numberp value))
-	    (goto pos)
+	    (goto p)
 	    (princ value output-buffer)))))))
 
 ;;;###autoload

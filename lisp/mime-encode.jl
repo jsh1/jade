@@ -63,8 +63,7 @@
 			     "C-n" 'mime-next-part
 			     "C-p" 'mime-previous-part
 			     "C-d" 'mime-encode-delete-part))
-(fset 'mime-encode-keymap 'keymap)
-;;;###autoload (autoload-keymap 'mime-encode-keymap "mime-encode")
+;;;###autoload (autoload 'mime-encode-keymap "mime-encode")
 
 
 ;; Message composition functions
@@ -86,7 +85,7 @@
      ((eq major-mode 'send-mail-mode)
       (unless (memq 'mime-encode-message mail-send-hook)
 	(make-local-variable 'mail-send-hook)
-	(add-hook 'mail-send-hook 'mime-encode-message)))
+	(add-hook 'mail-send-hook mime-encode-message)))
      (t
       (error "Don't know how to hook into %s" major-mode)))
     (format (current-buffer) "[[%s: %s/%s"
@@ -189,7 +188,7 @@
 			      (random (length mime-encode-boundary-alphabet)))
 			chars))
       (setq i (1- i)))
-    (apply 'concat "jade-" chars)))
+    (apply concat "jade-" chars)))
 
 ;; Encode the message in the current buffer
 (defun mime-encode-message ()

@@ -125,7 +125,6 @@ being sent."
     "Ctrl-c" 'send-mail-go-cc
     "Ctrl-b" 'send-mail-go-bcc
     "Ctrl-f" 'send-mail-go-fcc))
-(fset 'send-mail-c-f-keymap 'keymap)
 
 (defun send-mail-mode ()
   "Mail Mode:\n
@@ -135,7 +134,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Mail"
 	major-mode 'send-mail-mode
-	major-mode-kill 'send-mail-mode-kill
+	major-mode-kill send-mail-mode-kill
 	paragraph-separate (concat "^([\t\f ]|"
 				   (quote-regexp mail-yank-prefix)
 				   ?| (quote-regexp mail-header-separator)
@@ -203,9 +202,9 @@ Major mode for composing and sending mail messages. Local bindings are:\n
   (interactive)
   (if (and mail-signature-file (file-exists-p mail-signature-file))
       (let
-	  ((pos (search-backward "\n\n-- \n" (end-of-buffer)))
+	  ((p (search-backward "\n\n-- \n" (end-of-buffer)))
 	   (old-pos (cursor-pos)))
-	(if pos
+	(if p
 	    (progn
 	      (goto (match-end))
 	      (delete-area (cursor-pos) (end-of-buffer)))
@@ -374,7 +373,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
     (let*
 	((temp-buffer (make-buffer "*sendmail-output*"))
 	 (proc (make-process temp-buffer)))
-      (apply 'call-process-area proc (start-of-buffer) (end-of-buffer) nil
+      (apply call-process-area proc (start-of-buffer) (end-of-buffer) nil
 	     (nconc (list (unless sendmail-program "/usr/lib/sendmail")
 			  ;; Dot doesn't specify end-of-message
 			  "-oi"

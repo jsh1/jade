@@ -52,7 +52,6 @@ DEFSYM(unbound_key_hook, "unbound-key-hook");
 DEFSYM(esc_means_meta, "esc-means-meta");
 DEFSYM(keymap, "keymap");
 DEFSYM(minor_mode_keymap_alist, "minor-mode-keymap-alist");
-DEFSYM(autoload_keymap, "autoload-keymap");
 DEFSYM(next_keymap_path, "next-keymap-path");
 DEFSYM(mouse_keymap, "mouse-keymap");
 
@@ -227,25 +226,37 @@ eval_input_callback(repv key)
     repv cmd = KEY_COMMAND(key);
     if(rep_SYMBOLP(cmd))
     {
-	repv fun = rep_SYM(cmd)->function;
-	if(rep_CONSP(fun) && rep_CAR(fun) == Qautoload_keymap)
+	cmd = Fsymbol_value (cmd, Qt);
+	if (rep_FUNARGP(cmd))
 	{
-	    rep_GC_root gc_key;
-	    rep_PUSHGC(gc_key, key);
-	    fun = rep_load_autoload(cmd, fun, FALSE);
-	    rep_POPGC;
-	    if(fun == rep_NULL)
-		return FALSE;
-	}
-	if(fun == Qkeymap)
-	{
-	    /* A prefix key, add its list to the next-keymap-path. */
-	    next_keymap_path = Fcons(cmd, next_keymap_path
-					? next_keymap_path : Qnil);
-	    /* Look for more prefix keys */
-	    return FALSE;
+	    repv fun = rep_FUNARG(cmd)->fun;
+	    if(rep_CONSP(fun) && rep_CAR(fun) == Qautoload)
+	    {
+		/* An autoload, try to load it. */
+		rep_GC_root gc_key;
+		struct rep_Call lc;
+		lc.fun = lc.args = lc.args_evalled_p = Qnil;
+		rep_PUSH_CALL(lc);
+		rep_USE_FUNARG(cmd);
+		rep_PUSHGC(gc_key, key);
+		cmd = rep_load_autoload(cmd);
+		rep_POPGC;
+		rep_POP_CALL(lc);
+		if(cmd == rep_NULL)
+		    return FALSE;
+	    }
 	}
     }
+    if(Fkeymapp (cmd) != Qnil)
+    {
+	/* A prefix key, add its list to the next-keymap-path. */
+	next_keymap_path = Fcons(cmd, next_keymap_path
+				 ? next_keymap_path : Qnil);
+	/* Look for more prefix keys */
+	return FALSE;
+    }
+    if (cmd == Qnil)
+	return FALSE;
     next_keymap_path = rep_NULL;
     return TRUE;
 }
@@ -932,7 +943,6 @@ keys_init(void)
     rep_INTERN_SPECIAL(idle_hook);
     rep_INTERN(keymap);
     rep_INTERN_SPECIAL(minor_mode_keymap_alist);
-    rep_INTERN(autoload_keymap);
     rep_INTERN(next_keymap_path);
     next_keymap_path = rep_NULL;
     rep_mark_static(&next_keymap_path);

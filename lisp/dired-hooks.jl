@@ -35,8 +35,8 @@
   (and (file-directory-p filename)
        (error "Can't insert directories, %s" filename)))
 
-(add-hook 'read-file-hook 'dired-read-file-hook)
-(add-hook 'write-file-hook 'dired-write-file-hook)
-(add-hook 'insert-file-hook 'dired-insert-file-hook)
+(add-hook 'read-file-hook dired-read-file-hook)
+(add-hook 'write-file-hook dired-write-file-hook)
+(add-hook 'insert-file-hook dired-insert-file-hook)
 
 ;;;###autoload (load "dired-hooks")

@@ -33,6 +33,6 @@
   (when (rcs-file-p (buffer-file-name buffer))
     (rcs-init-file buffer)))
 
-(add-hook 'after-read-file-hook 'rcs-read-file-function)
+(add-hook 'after-read-file-hook rcs-read-file-function)
 
 ;;;###autoload (load "rcs-hooks")

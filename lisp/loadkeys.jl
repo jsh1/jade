@@ -28,7 +28,6 @@
 (defvar local-ctrl-c-keymap nil
   "A keymap hung from C-c, local to the current buffer.")
 (make-variable-buffer-local 'local-ctrl-c-keymap)
-(fset 'local-ctrl-c-keymap 'keymap)
 
 (defvar overriding-local-keymap nil
   "When non-nil, a keymap to search instead of all extent, minor mode, or
@@ -36,23 +35,18 @@ local keymaps.")
 
 (defvar ctrl-x-keymap (make-keymap)
   "Default `C-x' keymap.")
-(fset 'ctrl-x-keymap 'keymap)
 
 (defvar ctrl-x-4-keymap (make-sparse-keymap)
   "Default `C-x 4' keymap.")
-(fset 'ctrl-x-4-keymap 'keymap)
 
 (defvar ctrl-x-5-keymap (make-sparse-keymap)
   "Default `C-x 5' keymap.")
-(fset 'ctrl-x-5-keymap 'keymap)
 
 (defvar ctrl-x-n-keymap (make-sparse-keymap)
   "Default `C-x n' keymap.")
-(fset 'ctrl-x-n-keymap 'keymap)
 
 (defvar user-keymap (make-sparse-keymap)
   "Keymap for user-defined bindings, hung from `C-c'.")
-(fset 'user-keymap 'keymap)
 
 (defvar unbound-key-hook nil
   "Called when no binding can be found for the current event.")
@@ -311,17 +305,3 @@ the key."
 		    (t
 		     (cons 4 nil)))
 	this-command last-command))
-
-(defun autoload-keymap (keymap-symbol file)
-  "Tell the evaluator that the value of KEYMAP-SYMBOL can be initialised
-by loading the lisp library called FILE."
-  (cond
-   ((and (boundp 'dumped-lisp-libraries)
-	 (member file dumped-lisp-libraries))
-    ;; If FILE has been dumped, but not yet loaded, load it
-    (unless (member file dumped-loaded-libraries)
-      (load file)
-      (setq dumped-loaded-libraries (cons file dumped-loaded-libraries))))
-   ((not (fboundp keymap-symbol))
-    ;; Else just add the autoload defn as normal
-    (fset keymap-symbol (list 'autoload-keymap file)))))

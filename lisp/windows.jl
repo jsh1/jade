@@ -21,11 +21,11 @@
 
 ;; Some macros
 
-(defmacro defface (name &optional documentation &rest forms)
+(defmacro defface (name &optional doc &rest forms)
   "Create a face called NAME, the Lisp FORMS are evaluated to initialise it.
 If the symbol NAME is already bound, only the documentation property is set."
   `(unless (prog1 (boundp ',name)
-	     (defvar ,name (make-face ,(symbol-name name)) ,documentation))
+	     (defvar ,name (make-face ,(symbol-name name)) ,doc))
      ,@forms))
 
 (defmacro with-view (view &rest forms)

@@ -65,11 +65,11 @@
       (goto-buffer buffer))
     buffer))
 
-(defun tex-shell-command (shell-buffer format &rest args)
+(defun tex-shell-command (shell-buffer fmt &rest args)
   (with-buffer shell-buffer
     (goto (end-of-buffer))
     (let
-	((command (apply 'format nil format args)))
+	((command (apply format nil fmt args)))
       (insert command)
       (insert "\n")
       (write shell-process command)

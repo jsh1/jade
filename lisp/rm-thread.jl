@@ -118,14 +118,14 @@ be shown before the second.")
        #'(lambda (message-list)
 	   (mapc
 	    ;; Called for a single message
-	    #'(lambda (message)
+	    #'(lambda (msg)
 		;; Called for each message. Basic strategy is to
 		;; keep creating new threads, trying to join them up
 		;; as we go (to cope with disordered messages)
 		(let
-		    ((message-id (rm-get-message-id message))
-		     (references (cons (rm-get-in-reply-to message)
-				       (rm-get-references message)))
+		    ((message-id (rm-get-message-id msg))
+		     (references (cons (rm-get-in-reply-to msg)
+				       (rm-get-references msg)))
 		     (tied-threads nil))
 		  (mapc
 		   ;; Called for a single thread of messages
@@ -138,7 +138,7 @@ be shown before the second.")
 			      ;; the References headers?
 			      (when (or (and rm-thread-using-subject
 					     (string= (rm-get-actual-subject
-						       message)
+						       msg)
 						      (rm-get-actual-subject
 						       thread-message)))
 					(memq (rm-get-message-id
@@ -161,11 +161,11 @@ be shown before the second.")
 						     (memq x tied-threads))
 						 threads))
 			;; ..then cons them onto the head as one
-			(setq threads (cons (apply 'nconc (list message)
+			(setq threads (cons (apply nconc (list msg)
 						   tied-threads)
 					    threads)))
 		    ;; No thread for MESSAGE, start a new one
-		    (setq threads (cons (list message) threads)))))
+		    (setq threads (cons (list msg) threads)))))
 	    message-list))
        message-lists)
       ;; First sort the messages in each thread
@@ -184,7 +184,7 @@ be shown before the second.")
       ;; list(s) of messages?
       ;; [no infinite regress]
       (rm-set-folder-field folder rm-folder-sort-key nil)
-      (rm-install-messages folder (apply 'nconc threads))))
+      (rm-install-messages folder (apply nconc threads))))
   (rm-set-folder-field folder rm-folder-sort-key 'thread)
   (unless no-redisplay
     (rm-redisplay-folder folder))

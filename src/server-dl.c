@@ -79,7 +79,8 @@ server_handle_request(int fd)
 	rep_STR(val)[len] = 0;
 	if (req != req_find_file_async)
 	    client_list = Fcons(Fcons(val, rep_MAKE_INT(fd)), client_list);
-	rep_call_lisp2(Qserver_find_file, val, rep_MAKE_INT(tem));
+	rep_call_lisp2(Fsymbol_value(Qserver_find_file, Qt),
+		       val, rep_MAKE_INT(tem));
 	if (req != req_find_file_async)
 	{
 	    /* Block any more input on this fd until we've replied to

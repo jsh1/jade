@@ -101,17 +101,17 @@ Commands defined by this mode are:\n
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "C"
 	major-mode 'c-mode
-	major-mode-kill 'kill-all-local-variables
-	mode-comment-fun 'c-insert-comment
-	mode-indent-line 'c-indent-line
-	mode-forward-exp 'c-forward-exp
-	mode-backward-exp 'c-backward-exp
+	major-mode-kill kill-all-local-variables
+	mode-comment-fun c-insert-comment
+	mode-indent-line c-indent-line
+	mode-forward-exp c-forward-exp
+	mode-backward-exp c-backward-exp
 	mode-defun-header "^([a-zA-Z0-9_]+)[\t ]*\\([^}]+\n{"
 	mode-defun-footer "^}"
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
 	local-ctrl-c-keymap c-mode-ctrl-c-keymap
-	local-keymap 'c-mode-keymap)
+	local-keymap c-mode-keymap)
   (call-hook 'c-mode-hook))
 
 (defun c-open-brace ()
@@ -133,40 +133,40 @@ Commands defined by this mode are:\n
 
 ;; Indentation
 
-(defun c-indent-line (&optional pos)
+(defun c-indent-line (&optional p)
   "Indent the line at POS (or the cursor) assuming that it's C source code."
-  (set-indent-pos (c-indent-pos pos)))
+  (set-indent-pos (c-indent-pos p)))
 
 ;; Attempt to find the previous statement. perl-mode also uses this
-(defun c-backward-stmt (pos &optional skip-blocks)
+(defun c-backward-stmt (p &optional skip-blocks)
   (let
       (stmt-pos back-1-pos)
     (condition-case nil
-	(while (setq pos (c-backward-exp 1 pos (not skip-blocks)))
+	(while (setq p (c-backward-exp 1 p (not skip-blocks)))
 	  (cond
 	   ((null back-1-pos)
-	    (setq back-1-pos pos))
-	   ((/= (pos-line back-1-pos) (pos-line pos))
+	    (setq back-1-pos p))
+	   ((/= (pos-line back-1-pos) (pos-line p))
 	    ;; Gone past the start of this line, break the loop
 	    (error "Ignored")))
-	  (setq stmt-pos pos))
+	  (setq stmt-pos p))
       (error))
     stmt-pos))
 
 ;; POS should point to an `else' keyword, the position of it's matching `if'
 ;; will be returned.
-(defun c-balance-ifs (pos &optional depth)
+(defun c-balance-ifs (p &optional depth)
   (unless depth
     (setq depth 1))
-  (while (and (/= depth 0) (setq pos (c-backward-stmt pos t)))
+  (while (and (/= depth 0) (setq p (c-backward-stmt p t)))
     (cond
-     ((and (looking-at "else[\t ]*" pos)
+     ((and (looking-at "else[\t ]*" p)
 	   (not (looking-at "[\t ]*if[\t ]*\\(" (match-end))))
       (setq depth (1+ depth)))
-     ((looking-at "if" pos)
+     ((looking-at "if" p)
       (setq depth (1- depth)))))
   (when (zerop depth)
-    pos))
+    p))
 
 ;; Work out where to indent LINE-POS to.
 (defun c-indent-pos (&optional line-pos)
@@ -176,14 +176,14 @@ Commands defined by this mode are:\n
       ;; Always indent preprocessor lines to the leftmost column
       (pos 0 (pos-line line-pos))
     (let
-	((pos line-pos)
+	((p line-pos)
 	 (exp-pos (c-backward-stmt line-pos))
 	 exp-ind)
 
       ;; Find the beginning of the expression to indent relative to
       (unless exp-pos
 	;; Start of the containing expression
-	(when (re-search-backward "[\{\(\[]" pos)
+	(when (re-search-backward "[\{\(\[]" p)
 	  (setq exp-pos (match-start))))
       (setq exp-ind (char-to-glyph-pos exp-pos))
 
@@ -277,62 +277,62 @@ Commands defined by this mode are:\n
 ;; Movement over C expressions. perl-mode also uses these functions
 ;; (that's why they allow $ and @ characters in symbols)
 
-(defun c-forward-exp (&optional number pos)
+(defun c-forward-exp (&optional number p)
   (unless number
     (setq number 1))
   (while (> number 0)
     ;; first, skip empty lines & comments
-    (while (looking-at "[\t\f ]*$|[\t\f ]*/\\*.*$" pos)
-      (if (looking-at "[\t\f ]*/\\*" pos)
+    (while (looking-at "[\t\f ]*$|[\t\f ]*/\\*.*$" p)
+      (if (looking-at "[\t\f ]*/\\*" p)
 	  (progn
-	    (unless (re-search-forward "\\*/" pos)
+	    (unless (re-search-forward "\\*/" p)
 	      (error "Comment doesn't end!"))
-	    (setq pos (match-end)))
-	(setq pos (forward-line 1 (start-of-line pos)))
-	(when (> pos (end-of-buffer))
+	    (setq p (match-end)))
+	(setq p (forward-line 1 (start-of-line p)))
+	(when (> p (end-of-buffer))
 	  (error "End of buffer"))))
     ;; Check for a cpp line
-    (if (looking-at "^[\t ]*#" (start-of-line pos))
-	(setq pos (end-of-line pos))
+    (if (looking-at "^[\t ]*#" (start-of-line p))
+	(setq p (end-of-line p))
       ;; now any other whitespace
-      (when (looking-at "[\t\f ]+" pos)
-	(setq pos (match-end)))
+      (when (looking-at "[\t\f ]+" p)
+	(setq p (match-end)))
       ;; Skip weird stuff
-      (while (looking-at "[!*~&<>/+%?:^-]+" pos)
-	(setq pos (match-end))
-	(when (equal pos (end-of-line pos))
-	  (setq pos (forward-char 1 pos))))
+      (while (looking-at "[!*~&<>/+%?:^-]+" p)
+	(setq p (match-end))
+	(when (equal p (end-of-line p))
+	  (setq p (forward-char 1 p))))
       (let
-	  ((c (get-char pos)))
+	  ((c (get-char p)))
 	(cond
 	 ((member c '(?\" ?\'))
 	  ;; move over string/character
-	  (if (setq pos (char-search-forward c (forward-char 1 pos)))
-	      (while (= (get-char (forward-char -1 pos)) ?\\ )
-		(unless (setq pos (char-search-forward c (forward-char 1 pos)))
+	  (if (setq p (char-search-forward c (forward-char 1 p)))
+	      (while (= (get-char (forward-char -1 p)) ?\\ )
+		(unless (setq p (char-search-forward c (forward-char 1 p)))
 		  (error "String doesn't end!")))
 	    (error "String doesn't end!"))
-	  (setq pos (forward-char 1 pos)))
+	  (setq p (forward-char 1 p)))
 	 ((member c '(?\( ?\[ ?\{))
 	  ;; move over brackets
-	  (unless (setq pos (find-matching-bracket pos))
+	  (unless (setq p (find-matching-bracket p))
 	    (error "Expression doesn't end!"))
-	  (setq pos (forward-char 1 pos)))
+	  (setq p (forward-char 1 p)))
 	 ((member c '(?, ?\; ?:))
-	  (setq pos (forward-char 1 pos)
+	  (setq p (forward-char 1 p)
 		number (1+ number)))
 	 ((member c '(?\) ?\] ?\}))
 	  (error "End of containing expression"))
 	 (t
 	  ;; a symbol?
-	  (if (looking-at "[a-zA-Z0-9_$@]+" pos)
-	      (setq pos (match-end))
-	    (unless (setq pos (re-search-forward "[][$@a-zA-Z0-9_ \t\f(){}'\"]"
-						pos))
+	  (if (looking-at "[a-zA-Z0-9_$@]+" p)
+	      (setq p (match-end))
+	    (unless (setq p (re-search-forward "[][$@a-zA-Z0-9_ \t\f(){}'\"]"
+						p))
 	      (error "Can't classify expression"))
 	    (setq number (1+ number))))))
       (setq number (1- number))))
-  pos)
+  p)
   
 (defun c-backward-exp (&optional number orig-pos no-blocks)
   (unless number
@@ -340,15 +340,15 @@ Commands defined by this mode are:\n
   (unless orig-pos 
     (setq orig-pos (cursor-pos)))
   (let
-      ((pos orig-pos)
+      ((p orig-pos)
        tmp)
     (while (> number 0)
       ;; skip preceding white space
-      (when (or (equal pos (start-of-buffer))
-		(not (setq pos (re-search-backward "[^\t\f\n ]"
-						 (forward-char -1 pos)))))
+      (when (or (equal p (start-of-buffer))
+		(not (setq p (re-search-backward "[^\t\f\n ]"
+						 (forward-char -1 p)))))
 	(error "No expression!"))
-      (setq tmp (forward-char -1 pos))
+      (setq tmp (forward-char -1 p))
       (while (looking-at "\\*/" tmp)
 	;; comment to skip
 	(unless (setq tmp (re-search-backward "/\\*" tmp))
@@ -357,21 +357,21 @@ Commands defined by this mode are:\n
 		  (not (setq tmp (re-search-backward "[^\t\f\n ]"
 						   (forward-char -1 tmp)))))
 	  (error "Beginning of buffer"))
-	(setq pos tmp))
+	(setq p tmp))
       ;; Check for a cpp line
-      (if (looking-at "^[\t ]*#" (start-of-line pos))
-	  (setq pos (start-of-line pos))
+      (if (looking-at "^[\t ]*#" (start-of-line p))
+	  (setq p (start-of-line p))
 	(let
-	    ((c (get-char pos)))
+	    ((c (get-char p)))
 	  (cond
 	   ((member c '(?\) ?\] ?\}))
 	    (when (or (/= c ?\}) (not no-blocks))
-	      (unless (setq pos (find-matching-bracket pos))
+	      (unless (setq p (find-matching-bracket p))
 		(error "Brackets don't match"))))
 	   ((member c '(?\" ?\'))
-	    (if (setq pos (char-search-backward c (forward-char -1 pos)))
-		(while (= (get-char (forward-char -1 pos)) ?\\ )
-		  (unless (setq pos (char-search-backward c (forward-char -1 pos)))
+	    (if (setq p (char-search-backward c (forward-char -1 p)))
+		(while (= (get-char (forward-char -1 p)) ?\\ )
+		  (unless (setq p (char-search-backward c (forward-char -1 p)))
 		    (error "String doesn't start!")))
 	      (error "String doesn't start!")))
 	   ((member c '(?\; ?: ?,))
@@ -381,20 +381,20 @@ Commands defined by this mode are:\n
 	    (error "Start of containing expression"))
 	   (t
 	    ;; a symbol?
-	    (if (looking-at "[$@a-zA-Z0-9_]" pos)
-		(unless (setq pos (re-search-backward
-				   "(^#[\t ]*|)[$@a-zA-Z0-9_]+" pos))
+	    (if (looking-at "[$@a-zA-Z0-9_]" p)
+		(unless (setq p (re-search-backward
+				   "(^#[\t ]*|)[$@a-zA-Z0-9_]+" p))
 		  (error "Can't classify expression"))
 	      ;; Assume that it's some extraneous piece of punctuation..
-;	      (unless (setq pos (re-search-backward
-;				 "[][$@a-zA-Z0-9_ \t\f(){}'\"]" pos))
+;	      (unless (setq p (re-search-backward
+;				 "[][$@a-zA-Z0-9_ \t\f(){}'\"]" p))
 ;		(error "Can't classify expression"))
 	      (setq number (1+ number)))))
-	  (when (member (get-char (forward-char -1 pos)) '(?! ?* ?- ?~))
+	  (when (member (get-char (forward-char -1 p)) '(?! ?* ?- ?~))
 	    ;; unary operator, skip over it
-	    (setq pos (forward-char -1 pos))))
+	    (setq p (forward-char -1 p))))
 	(setq number (1- number))))
-    pos))
+    p))
 
 
 ;; Miscellaneous functions
@@ -406,26 +406,26 @@ START and END except for the last line."
   (interactive "-m\nM")
   (let
       ((max-width 0)
-       (pos (start-of-line start))
+       (p (start-of-line start))
        tmp)
-    (while (<= pos end)
-      (setq tmp (char-to-glyph-pos (if (looking-at ".*([\t ]*\\\\ *)$" pos)
+    (while (<= p end)
+      (setq tmp (char-to-glyph-pos (if (looking-at ".*([\t ]*\\\\ *)$" p)
 				       (match-start 1)
-				     (end-of-line pos))))
+				     (end-of-line p))))
       (when (> (pos-col tmp) max-width)
 	(setq max-width (pos-col tmp)))
-      (setq pos (forward-line 1 pos)))
+      (setq p (forward-line 1 p)))
     (setq max-width (1+ max-width))
     (unless (= (% max-width tab-size) 0)
       (setq max-width (* (1+ (/ max-width tab-size)) tab-size)))
-    (setq pos (pos max-width (pos-line start)))
-    (while (< pos end)
-      (when (looking-at ".*([\t ]*\\\\ *)$" (start-of-line pos))
+    (setq p (pos max-width (pos-line start)))
+    (while (< p end)
+      (when (looking-at ".*([\t ]*\\\\ *)$" (start-of-line p))
 	(delete-area (match-start 1) (match-end 1)))
-      (goto (end-of-line pos))
+      (goto (end-of-line p))
       (indent-to max-width)
       (insert "\\")
-      (setq pos (forward-line 1 pos)))
+      (setq p (forward-line 1 p)))
     (goto end)))
 
 (defun c-insert-comment ()

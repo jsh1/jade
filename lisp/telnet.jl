@@ -89,19 +89,19 @@ prompted for if a prefix argument is given."
      (list (prompt-for-string "Host:")
 	   (and arg (prompt-for-number "Port:")))))
   (let*
-      ((buffer-name (concat (if use-rlogin "*rlogin-" "*telnet-")
-			    (if arg
-				(if use-rlogin
-				    (format nil "%s@%s" arg host)
-				  (format nil "%s:%d" host arg))
-			      host)
-			    "*"))
-       (buffer (get-buffer buffer-name))
+      ((name (concat (if use-rlogin "*rlogin-" "*telnet-")
+		     (if arg
+			 (if use-rlogin
+			     (format nil "%s@%s" arg host)
+			   (format nil "%s:%d" host arg))
+		       host)
+		     "*"))
+       (buffer (get-buffer name))
        (dir default-directory))
     (goto-other-view)
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
-	  (goto-buffer (open-buffer buffer-name t))
+	  (goto-buffer (open-buffer name t))
 	  (telnet-init host arg dir use-rlogin)
 	  (shell-mode)
 	  (setq major-mode 'telnet-mode

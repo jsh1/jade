@@ -528,7 +528,8 @@ auto_save_buffers(bool force_save)
 		repv val_tx = rep_VAL(tx);
 		rep_GC_root gc_tx;
 		rep_PUSHGC(gc_tx, val_tx);
-		rep_call_lisp1(Qauto_save_function, rep_VAL(tx));
+		rep_call_lisp1(Fsymbol_value(Qauto_save_function, Qt),
+			       rep_VAL(tx));
 		rep_POPGC;
 		tx->tx_LastSaveTime = time;
 		tx->tx_LastSaveChanges = tx->tx_Changes;
@@ -1112,7 +1113,8 @@ mark_prin(repv strm, repv obj)
 #else
     sprintf(tbuf,
 #endif
-	    " #<pos %ld %ld>>",
+	    " #<pos %" rep_PTR_SIZED_INT_CONV
+	    "d %" rep_PTR_SIZED_INT_CONV "d>>",
 	    VCOL(VMARK(obj)->pos),
 	    VROW(VMARK(obj)->pos));
     rep_stream_puts(strm, tbuf, -1, FALSE);

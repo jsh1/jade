@@ -188,13 +188,13 @@ include any parenthesised expressions!")
     ;; Must be a list of lists.
     (let
 	((tem mail-spool-files)
-	 list)
+	 lst)
       (while tem
 	(when (or (and (file-name-absolute-p (car (car tem)))
 		       (file-name= folder (car (car tem))))
 		  (file-name= folder (expand-file-name (car (car tem))
 						       mail-folder-dir)))
-	  (setq list (append list (if (consp (cdr (car tem)))
+	  (setq lst (append lst (if (consp (cdr (car tem)))
 				      (cdr (car tem))
 				    (cons (cdr (car tem)))))))
 	(setq tem (cdr tem)))
@@ -202,7 +202,7 @@ include any parenthesised expressions!")
       (mapcar #'(lambda (inbox)
 		  (if (file-name-absolute-p inbox)
 		      inbox
-		    (expand-file-name inbox mail-folder-dir))) list)))))
+		    (expand-file-name inbox mail-folder-dir))) lst)))))
 
 ;; History list of prompt-for-folder
 (defvar mail-prompt-history (make-ring))

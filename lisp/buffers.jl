@@ -171,7 +171,7 @@ buried in each view though)."
   (unless buffer
     (setq buffer (current-buffer)))
   (let
-      ((list (if all-views
+      ((lst (if all-views
 		 (window-list)
 	       (cons (current-window) nil))))
     (mapc #'(lambda (w)
@@ -184,7 +184,7 @@ buried in each view though)."
 		    (if all-views
 			(window-view-list w)
 		      (list (current-view)))))
-	  list)))
+	  lst)))
 
 (defun switch-to-buffer ()
   "Prompt the user for the name of a buffer, then display it."
@@ -204,11 +204,11 @@ NEW-NAME (i.e. NEW-NAME possibly with a `<N>' suffix)."
   (interactive "sNew name of buffer:")
   (set-buffer-name nil (make-buffer-name new-name)))
 
-(defun insert-buffer (buffer &optional pos)
+(defun insert-buffer (buffer &optional p)
   "Insert the contents of BUFFER before POS (or the cursor is POS is nil)."
   (interactive "bBuffer to insert:")
   (insert (copy-area (start-of-buffer buffer)
-		     (end-of-buffer buffer) buffer) pos))
+		     (end-of-buffer buffer) buffer) p))
 
 
 ;; Storing files in buffers
@@ -244,11 +244,10 @@ such buffer could be made."
       (unless (setq buf (call-hook 'find-file-hook (list name) 'or))
 	;; find-file-hook didn't; do keep going
 	(let
-	    ((buffer-name (file-name-nondirectory name)))
-	  (when (string= buffer-name "")
-	    (setq buffer-name (file-name-nondirectory
-			       (directory-file-name name))))
-	  (setq buf (open-buffer (file-name-nondirectory buffer-name) t)))
+	    ((b-name (file-name-nondirectory name)))
+	  (when (string= b-name "")
+	    (setq b-name (file-name-nondirectory (directory-file-name name))))
+	  (setq buf (open-buffer (file-name-nondirectory b-name) t)))
 	(with-buffer buf
 	  (read-file-into-buffer name))))
     (unless dont-activate
@@ -289,10 +288,10 @@ normal-mode, the hook after-read-file-hook is dispatched."
 (defun hack-local-variables ()
   (when enable-local-variables
     (let
-	((pos (pos 0 (- (buffer-length) local-variable-lines))))
-      (when (< (pos-line pos) 0)
-	(setq pos (start-of-buffer)))
-      (when (re-search-forward "^(.*)Local Variables:(.*)$" pos nil t)
+	((p (pos 0 (- (buffer-length) local-variable-lines))))
+      (when (< (pos-line p) 0)
+	(setq p (start-of-buffer)))
+      (when (re-search-forward "^(.*)Local Variables:(.*)$" p nil t)
 	(let
 	    ((re (concat ?^ (quote-regexp (copy-area (match-start 1)
 						     (match-end 1)))
@@ -300,9 +299,9 @@ normal-mode, the hook after-read-file-hook is dispatched."
 			 (quote-regexp (copy-area (match-start 2)
 						  (match-end 2))) ?$))
 	     name value finished)
-	  (setq pos (match-end))
-	  (while (and (not finished) (re-search-forward re pos))
-	    (setq pos (match-end)
+	  (setq p (match-end))
+	  (while (and (not finished) (re-search-forward re p))
+	    (setq p (match-end)
 		  name (copy-area (match-start 1) (match-end 1))
 		  value (copy-area (match-start 2) (match-end 2)))
 	    (cond

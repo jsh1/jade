@@ -32,7 +32,7 @@ the column width when displaying completions.")
 in the completion list; it should return an abbreviated version of this
 string if desirable.")
 
-(defvar completion-hooks '(complete-from-buffer)
+(defvar completion-hooks nil
   "List of functions called to complete a word. Each function is called as
 (FUNCTION WORD [WORD-START WORD-END]) and should return a list of all
 matching strings.")
@@ -82,7 +82,7 @@ matching strings.")
 ;; Display a list of completions in a *completions* buffer in the
 ;; current window
 (defun completion-list (completions)
-  (setq completions (funcall (if completion-sorted-lists 'sort 'identity)
+  (setq completions (funcall (if completion-sorted-lists sort identity)
 			     (if completion-abbrev-function
 				 (mapcar completion-abbrev-function
 					 completions)
@@ -120,21 +120,21 @@ matching strings.")
 (defun completion-insert (completions word &optional only-display fold-case)
   (let
       ((count (length completions))
-       (word-start (forward-char (- (length word)))))
+       (w-start (forward-char (- (length word)))))
     (if (zerop count)
 	(progn
 	  (completion-remove-view)
 	  (message "[No completions!]"))
       (if (and (not only-display) (= count 1))
 	  (progn
-	    (goto (replace-string word (car completions) word-start))
+	    (goto (replace-string word (car completions) w-start))
 	    (completion-remove-view)
 	    (message "[Unique completion]"))
 	(unless only-display
 	  (goto (replace-string word
 				(complete-string word completions
 						 completion-fold-case)
-				word-start)))
+				w-start)))
 	(completion-list completions)
 	(message (format nil "[%d completion(s)]" count))))))
 
@@ -154,19 +154,20 @@ matching strings.")
 	  (setq completions (cons tem completions)))))
     completions))
 
+(setq completion-hooks (nconc completion-hooks (list complete-from-buffer)))
+
 (defun complete-at-point (&optional only-display)
   "Complete the word immediately before the cursor. If ONLY-DISPLAY is non-nil,
 don't insert anything, just display the list of possible completions."
   (interactive "P")
   (let*
-      ((word-start (forward-exp -1))
-       (word-end (cursor-pos))
+      ((w-start (forward-exp -1))
+       (w-end (cursor-pos))
        (word (copy-area (forward-exp -1) (cursor-pos)))
        (completions (sort
-		     (apply
-		      'nconc (mapcar #'(lambda (h)
-					 (funcall h word word-start word-end))
-				     completion-hooks)))))
+		     (apply nconc (mapcar #'(lambda (h)
+					      (funcall h word w-start w-end))
+					  completion-hooks)))))
     ;; remove duplicates
     (when completions
       (while (and (cdr completions)

@@ -39,24 +39,19 @@ Major mode for editing Lisp source. Local bindings in this mode are:\n
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Lisp"
 	major-mode 'lisp-mode
-	major-mode-kill 'kill-all-local-variables
+	major-mode-kill kill-all-local-variables
 	mode-comment-header ";"
-	mode-indent-line 'lisp-indent-line
-	mode-forward-exp 'lisp-forward-sexp
-	mode-backward-exp 'lisp-backward-sexp
+	mode-indent-line lisp-indent-line
+	mode-forward-exp lisp-forward-sexp
+	mode-backward-exp lisp-backward-sexp
 	mode-symbol-regexp "[^][()?'`,@\"#; \t\f\n]+"
 	mode-defun-header "^\\(def[a-z]+[\t ]+([^ \t\f\n]+)"
 	mode-defun-footer nil
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
-	local-keymap 'lisp-mode-keymap
-	completion-hooks (cons 'lisp-complete-sexp completion-hooks))
+	local-keymap lisp-mode-keymap
+	completion-hooks (cons lisp-complete-sexp completion-hooks))
   (call-hook 'lisp-mode-hook))
-
-;; Now lisp-mode is loaded we may as well make the *jade* buffer use it
-(with-buffer default-buffer
-  (unless major-mode
-    (lisp-mode)))
 
 ;;;###autoload
 (defun eval-sexp ()
@@ -79,10 +74,10 @@ in the status line."
   (interactive)
   (prin1 (eval-sexp) t))
 
-(defun lisp-indent-line (&optional pos)
-  (unless pos
-    (setq pos (cursor-pos)))
-  (set-indent-pos (lisp-indent-pos pos)))
+(defun lisp-indent-line (&optional p)
+  (unless p
+    (setq p (cursor-pos)))
+  (set-indent-pos (lisp-indent-pos p)))
 
 (defun lisp-complete-sexp (sexp beg end)
   (let
@@ -91,54 +86,62 @@ in the status line."
     (when (and (> beg (start-of-buffer))
 	       (= (get-char (forward-char -1 beg)) ?\())
       (setq is-function t))
-    (setq completions (mapcar 'symbol-name
+    (setq completions (mapcar symbol-name
 			      (apropos (concat ?^ (quote-regexp sexp))
-				       (if is-function 'fboundp 'boundp))))
+				       (if is-function
+					   (lambda (x)
+					     (and (boundp x)
+						  (functionp
+						   (symbol-value x))))
+					 (lambda (x)
+					   (and (boundp x)
+						(not (functionp
+						      (symbol-value x)))))))))
     completions))
 
 
 ;; Expressions
 
-(defun lisp-forward-sexp (&optional number pos)
+(defun lisp-forward-sexp (&optional number p)
   "Return the position of the NUMBER'th next s-expression from POS."
   (unless number
     (setq number 1))
   (while (> number 0)
     ;; first, skip empty lines & comments
-    (while (looking-at "[\t\f ]*$|[\t\f ]*;.*$" pos)
-      (setq pos (forward-line 1 (start-of-line pos)))
-      (when (> pos (end-of-buffer))
+    (while (looking-at "[\t\f ]*$|[\t\f ]*;.*$" p)
+      (setq p (forward-line 1 (start-of-line p)))
+      (when (> p (end-of-buffer))
 	(error "End of buffer")))
     ;; now any other whitespace
-    (when (looking-at "[\t\f ]+" pos)
-      (setq pos (match-end)))
-    (while (member (get-char pos) '(?' ?# ?` ?, ?@))
-      (setq pos (forward-char 1 pos)))
+    (when (looking-at "[\t\f ]+" p)
+      (setq p (match-end)))
+    (while (member (get-char p) '(?' ?# ?` ?, ?@))
+      (setq p (forward-char 1 p)))
     (let
-        ((c (get-char pos)))
+        ((c (get-char p)))
       (cond
        ((= c ?\")
 	;; move over string
-	(if (setq pos (char-search-forward ?\" (forward-char 1 pos)))
-	    (while (= (get-char (forward-char -1 pos)) ?\\ )
-	      (unless (setq pos (char-search-forward ?\" (forward-char 1 pos)))
+	(if (setq p (char-search-forward ?\" (forward-char 1 p)))
+	    (while (= (get-char (forward-char -1 p)) ?\\ )
+	      (unless (setq p (char-search-forward ?\" (forward-char 1 p)))
 		(error "String doesn't end!")))
 	  (error "String doesn't end!"))
-	(setq pos (forward-char 1 pos)))
+	(setq p (forward-char 1 p)))
        ((member c '(?\( ?\[ ?\<))
 	;; move over brackets
-	(unless (setq pos (find-matching-bracket pos))
+	(unless (setq p (find-matching-bracket p))
 	  (error "Expression doesn't end!"))
-	(setq pos (forward-char 1 pos)))
+	(setq p (forward-char 1 p)))
        ((member c '(?\) ?\]))
 	(error "End of containing sexp"))
        (t
 	;; a symbol
-       (if (looking-at "[^][\t\f\n ()'\";]+" pos)
-	   (setq pos (match-end))
+       (if (looking-at "[^][\t\f\n ()'\";]+" p)
+	   (setq p (match-end))
 	 (error "Can't find end of symbol")))))
     (setq number (1- number)))
-  pos)
+  p)
 
 (defun lisp-backward-sexp (&optional number orig-pos)
   "Return the position of the NUMBER'th previous s-expression from ORIG-POS."
@@ -147,43 +150,43 @@ in the status line."
   (unless orig-pos 
     (setq orig-pos (cursor-pos)))
   (let
-      ((pos orig-pos))
+      ((p orig-pos))
     (while (> number 0)
       ;; skip preceding white space
-      (unless (setq pos (re-search-backward "[^\t\f\n ]" (forward-char -1 pos)))
+      (unless (setq p (re-search-backward "[^\t\f\n ]" (forward-char -1 p)))
 	(error "No expression!"))
-      (while (looking-at "^[\f\t ]*;|^[\f\t ]*$" (start-of-line pos))
-	(unless (setq pos (forward-line -1 pos))
+      (while (looking-at "^[\f\t ]*;|^[\f\t ]*$" (start-of-line p))
+	(unless (setq p (forward-line -1 p))
 	  (error "Beginning of buffer"))
-	(setq pos (end-of-line pos)))
-      (when (if (/= (pos-line orig-pos) (pos-line pos))
-		(looking-at ".*([\f\t ]+;|[\f\t ]*$)" (start-of-line pos))
-	      (looking-at ".*([\f\t ]+;)" (start-of-line pos)))
-	(setq pos (forward-char -1 (match-start 1))))
+	(setq p (end-of-line p)))
+      (when (if (/= (pos-line orig-pos) (pos-line p))
+		(looking-at ".*([\f\t ]+;|[\f\t ]*$)" (start-of-line p))
+	      (looking-at ".*([\f\t ]+;)" (start-of-line p)))
+	(setq p (forward-char -1 (match-start 1))))
       (let
-	  ((c (get-char pos)))
+	  ((c (get-char p)))
 	(cond
 	 ((member c '(?\) ?\] ?\>))
-	  (unless (setq pos (find-matching-bracket pos))
+	  (unless (setq p (find-matching-bracket p))
 	    (error "Brackets don't match"))
 	  (when (= c ?\>)
-	    (forward-char -1 pos)))
+	    (forward-char -1 p)))
 	 ((= c ?\")
-	  (if (setq pos (char-search-backward ?\" (forward-char -1 pos)))
-	      (while (= (get-char (forward-char -1 pos)) ?\\ )
-		(unless (setq pos (char-search-backward ?\" (forward-char -1 pos)))
+	  (if (setq p (char-search-backward ?\" (forward-char -1 p)))
+	      (while (= (get-char (forward-char -1 p)) ?\\ )
+		(unless (setq p (char-search-backward ?\" (forward-char -1 p)))
 		  (error "String doesn't start!")))
 	    (error "String doesn't start!")))
 	 ((member c '(?\( ?\[))
 	  (error "Start of containing sexp"))
 	 (t
 	  ;; a symbol?
-	 (unless (setq pos (re-search-backward "[^][\f\t\n ()'\"]+|^" pos))
+	 (unless (setq p (re-search-backward "[^][\f\t\n ()'\"]+|^" p))
 	   (error "Symbol doesn't start??"))))
-	(while (member (get-char (forward-char -1 pos)) '(?' ?# ?` ?, ?@))
-	  (setq pos (forward-char -1 pos))))
+	(while (member (get-char (forward-char -1 p)) '(?' ?# ?` ?, ?@))
+	  (setq p (forward-char -1 p))))
       (setq number (1- number)))
-    pos))
+    p))
 
 
 ;; Indentation
@@ -197,58 +200,58 @@ in the status line."
     (setq line-pos (cursor-pos)))
   (catch 'return
     (let*
-	((pos (start-of-line line-pos))
+	((p (start-of-line line-pos))
 	 (index 0)
-	 (sexp-ind pos)
+	 (sexp-ind p)
 	 last-ind
 	 (form-pos (end-of-buffer))
 	 form)
-      (if (looking-at "^[\t\f ]*(;;;|;[^;])" pos)
-	  (setq sexp-ind (pos (if (looking-at "^[\t\f ]*;;;" pos)
+      (if (looking-at "^[\t\f ]*(;;;|;[^;])" p)
+	  (setq sexp-ind (pos (if (looking-at "^[\t\f ]*;;;" p)
 				  0
 				(1- comment-column))
 			      (pos-line sexp-ind)))
 	;; Work back to the beginning of the containing sexp. The error-handler
 	;; catches the error that's signalled when the start is reached.
 	(condition-case nil
-	    (while (setq pos (lisp-backward-sexp 1 pos))
-	      (when (<= form-pos pos)
+	    (while (setq p (lisp-backward-sexp 1 p))
+	      (when (<= form-pos p)
 		(error "Infinite loop"))
-	      (when (zerop (pos-col pos))
+	      (when (zerop (pos-col p))
 		(setq sexp-ind (pos 0 (pos-line sexp-ind)))
 		(throw 'return sexp-ind))
-	      (setq form-pos pos
+	      (setq form-pos p
 		    index (1+ index))
 	      (when (or (null last-ind) (= (pos-line (car last-ind))
-					   (pos-line pos)))
-		(setq last-ind (cons (char-to-glyph-pos pos) last-ind))))
+					   (pos-line p)))
+		(setq last-ind (cons (char-to-glyph-pos p) last-ind))))
 	  (error))
 	;; If there weren't any previous sexps to indent against stop now
 	(unless (zerop index)
 	  (if last-ind
-	      (setq last-ind (if (and (= (pos-line pos)
+	      (setq last-ind (if (and (= (pos-line p)
 					 (pos-line (car last-ind)))
 				      (>= (length last-ind) 2))
 				 (nth 1 last-ind)
 			       (car last-ind)))
-	    (setq last-ind pos))
+	    (setq last-ind p))
 	  ;; pos now points to the first sexp in the containing sexp
 	  (setq sexp-ind (pos (pos-col (char-to-glyph-pos
-					(or (re-search-backward "[\(\[]" pos)
-					    pos)))
+					(or (re-search-backward "[\(\[]" p)
+					    p)))
 			      (pos-line sexp-ind)))
-	  (setq form (read (cons (current-buffer) pos)))
+	  (setq form (read (cons (current-buffer) p)))
 	  (when (symbolp form)
 	    (let
 		((type (get form 'lisp-indent)))
 	      (cond
 	       ((null type)
 		;; standard indentation
-		(if (and (= (- (pos-line line-pos) (pos-line pos)) 1)
+		(if (and (= (- (pos-line line-pos) (pos-line p)) 1)
 			 (< index 2))
 		    ;; on the second line of this sexp, with the first
 		    ;; argument, line up under the function name
-		    (setq sexp-ind (pos (pos-col (char-to-glyph-pos pos))
+		    (setq sexp-ind (pos (pos-col (char-to-glyph-pos p))
 					(pos-line sexp-ind)))
 		  ;; otherwise line up under the first argument
 		  (setq sexp-ind (pos (pos-col last-ind)
@@ -256,7 +259,7 @@ in the status line."
 	       ((eq type 'defun)
 		;; defun type indentation
 		(if (or (= index 2)
-			(= (- (pos-line line-pos) (pos-line pos)) 1))
+			(= (- (pos-line line-pos) (pos-line p)) 1))
 		    (setq sexp-ind (right-char lisp-body-indent sexp-ind))
 		  (setq sexp-ind (pos (pos-col last-ind)
 				      (pos-line sexp-ind)))))
@@ -272,8 +275,6 @@ in the status line."
 
 (put 'let 'lisp-indent 1)
 (put 'let* 'lisp-indent 1)
-(put 'flet 'lisp-indent 1)
-(put 'macrolet 'lisp-indent 1)
 (put 'if 'lisp-indent 2)
 (put 'when 'lisp-indent 1)
 (put 'unless 'lisp-indent 1)
@@ -300,3 +301,8 @@ in the status line."
 (put 'unbind-keys 'lisp-indent 1)
 (put 'save-restriction 'lisp-indent 0)
 (put 'save-excursion 'lisp-indent 0)
+
+;; Now lisp-mode is loaded we may as well make the *jade* buffer use it
+(with-buffer default-buffer
+  (unless major-mode
+    (lisp-mode)))

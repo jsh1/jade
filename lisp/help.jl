@@ -121,7 +121,7 @@ w   `where-is'
    (format standard-output "Apropos %s `%s':\n\n"
 	   (if all-functions "function" "command") regexp)
    (apropos-output (apropos regexp (if all-functions
-				       'fboundp
+				       'boundp
 				     'commandp)) t)))
 
 (defun apropos-variable (regexp)
@@ -236,4 +236,4 @@ strings of modes may contain any of these expansions."
 	  ;; next where-is is relative to keymap SYMBOL
 	  (setq whereis-rel (symbol-value symbol))))))
     (setq out (cons (substring string point) out))
-    (apply 'concat (nreverse out))))
+    (apply concat (nreverse out))))

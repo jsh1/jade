@@ -44,7 +44,6 @@
     "{" 'texinfo-insert-braces
     "]" 'texinfo-move-over-braces
     "}" 'texinfo-move-over-braces))
-(fset 'texinfo-ctrl-c-ctrl-c-keymap 'keymap)
 
 ;;;###autoload
 (defun texinfo-mode ()
@@ -58,7 +57,7 @@ Local bindings in this mode are:\n
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Texinfo"
 	major-mode 'texinfo-mode
-	major-mode-kill 'texinfo-mode-kill
+	major-mode-kill texinfo-mode-kill
 	local-ctrl-c-keymap texinfo-ctrl-c-keymap
 	;paragraph-separate "^@node.*\n"
 	;paragraph-start "^ +"
@@ -76,21 +75,21 @@ Local bindings in this mode are:\n
 (defun texinfo-insert-@end ()
   (interactive)
   (let
-      ((pos (end-of-line (forward-line -1)))
+      ((p (end-of-line (forward-line -1)))
        (depth 0))
     (if (catch 'foo
 	  (while (re-search-backward "^@(end |)(cartouche|deffn|defun|defmac\
 |defspec|defvr|defvar|defopt|deftypefn|deftypefun|deftypevr|deftypevar|defcv\
 |defivar|defop|defmethod|deftp|display|enumerate|example|flushleft|flushright\
 |format|ftable|group|ifclear|ifinfo|ifset|iftex|ignore|itemize|lisp|menu\
-|quotation|smallexample|smalllisp|table|tex|titlepage|vtable)" pos)
+|quotation|smallexample|smalllisp|table|tex|titlepage|vtable)" p)
 	    (if (equal (match-start 1) (match-end 1))
 		;; no end
 		(if (zerop depth)
 		    (throw 'foo t)
 		  (setq depth (1- depth)))
 	      (setq depth (1+ depth)))
-	    (setq pos (forward-char -1 (match-start)))))
+	    (setq p (forward-char -1 (match-start)))))
 	(format (current-buffer) "@end %s\n" (copy-area (match-start 2)
 							(match-end 2)))
       (insert "@end ")

@@ -33,11 +33,15 @@
 		(if (null cell)
 		    (setq item (gtk-menu-item-new))
 		  (setq label (car cell))
-		  (if (functionp (cdr cell))
-		      (setq cell (funcall (cdr cell)))
-		    (setq cell (cdr cell)))
+		  (cond ((functionp (cdr cell))
+			 (setq cell (funcall (cdr cell))))
+			((and (symbolp (cdr cell))
+			      (functionp (symbol-value (cdr cell))))
+			 (setq cell (funcall (symbol-value (cdr cell)))))
+			(t
+			 (setq cell (cdr cell))))
 		  (cond
-		   ((functionp (car cell))
+		   ((or (commandp (car cell)) (functionp (car cell)))
 		    (when popup-menus-show-shortcuts
 		      (let
 			  ((loc (where-is (car cell))))
@@ -57,8 +61,8 @@
 		    (setq item (gtk-menu-item-new-with-label label))
 		    (gtk-signal-connect item "activate" (nth 1 cell)))))
 		(when item
-		  (funcall (if bar 'gtk-menu-bar-append
-			     'gtk-menu-append) menu item)
+		  (funcall (if bar gtk-menu-bar-append
+			     gtk-menu-append) menu item)
 		  (gtk-widget-show item))))
 	  spec)
     menu))

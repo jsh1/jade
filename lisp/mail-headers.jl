@@ -55,74 +55,74 @@
 ;; Return (START . END) of the atom-ish expression at POS. "atom-ish"
 ;; includes comments, strings, angle-delimited addresses, and groups of
 ;; normal atoms, importantly though, _no_ commas
-(defun mail-parse-atom (pos &aux char)
-  (when (looking-at "[\t\n ]+" pos)
-    (setq pos (match-end)))
-  (when (setq char (get-char pos))
+(defun mail-parse-atom (p &aux char)
+  (when (looking-at "[\t\n ]+" p)
+    (setq p (match-end)))
+  (when (setq char (get-char p))
     (cond
      ((member char '(?\  ?\t ?\n))
       ;; Whitespace
-      (looking-at "[\t\n ]+" pos)
-      (cons pos (match-end)))
+      (looking-at "[\t\n ]+" p)
+      (cons p (match-end)))
      ((= char ?\")
       ;; A string
-      (unless (re-search-forward "[^\\]\"" pos)
-	(error "Unterminated string in list, %s" pos))
-      (cons pos (match-end)))
+      (unless (re-search-forward "[^\\]\"" p)
+	(error "Unterminated string in list, %s" p))
+      (cons p (match-end)))
      ((= char ?\()
       ;; A comment
-      (unless (re-search-forward "[^\\]\\)" pos)
-	(error "Unterminated comment in list, %s" pos))
-      (cons pos (match-end)))
+      (unless (re-search-forward "[^\\]\\)" p)
+	(error "Unterminated comment in list, %s" p))
+      (cons p (match-end)))
      ((= char ?\<)
       ;; An address spec
-      (unless (re-search-forward "[^\\]>" pos)
-	(error "Unterminated address in list, %s" pos))
-      (cons pos (match-end)))
+      (unless (re-search-forward "[^\\]>" p)
+	(error "Unterminated address in list, %s" p))
+      (cons p (match-end)))
      ((= char ?,)
       ;; A comma
       nil)
      (t
       ;; Some sort of atom
       (unless (looking-at (concat ?\( mail-atom-re
-				      "|[][.:;@]|[\t\n ]+\)+") pos)
-	(error "Can't parse atom, %s" pos))
-      (cons pos (match-end))))))
+				      "|[][.:;@]|[\t\n ]+\)+") p)
+	(error "Can't parse atom, %s" p))
+      (cons p (match-end))))))
 
 ;; Parse one list of atoms, ended by a comma or EOF. Returns (STRING . END),
 ;; the text of the group of atoms, and the position of the first non-included
 ;; character
-(defun mail-parse-group (pos)
+(defun mail-parse-group (p)
   (let
-      ((list '())
+      ((lst '())
        tem)
-    (while (setq tem (mail-parse-atom pos))
-      (setq list (cons (copy-area (car tem) (cdr tem)) list))
-      (setq pos (cdr tem)))
-    (when list
-      (cons (nreverse list) pos))))
+    (while (setq tem (mail-parse-atom p))
+      (setq lst (cons (copy-area (car tem) (cdr tem)) lst))
+      (setq p (cdr tem)))
+    (when lst
+      (cons (nreverse lst) p))))
 
 ;; Parse a list of comma-separated mail addresses, returns a list of
 ;; strings. Stops parsing at the end of the header starting at POS.
 ;; NO-COMMA-SEPS controls whether a comma-separated list is parsed,
 ;; or simply a sequence of "groups" (from the above function)
-(defun mail-parse-list (pos &optional no-comma-seps)
+(defun mail-parse-list (p &optional no-comma-seps)
   (save-restriction
     ;; Restrict ourselves to the current header
-    (restrict-buffer pos (forward-char -1 (or (mail-unfold-header pos)
+    (restrict-buffer p (forward-char -1 (or (mail-unfold-header p)
 					      (end-of-buffer))))
-    (when (looking-at (concat mail-header-name "[\t ]*") pos)
-      (setq pos (match-end)))
+    (when (looking-at (concat mail-header-name "[\t ]*") p)
+      (setq p (match-end)))
     (if no-comma-seps
-	(car (mail-parse-group pos))
+	(car (mail-parse-group p))
       (let
-	  (list tem)
-	(while (setq tem (mail-parse-group pos))
-	  (setq list (cons (apply 'concat (car tem)) list)
-		pos (if (looking-at "[\t\n ]*,[\t\n ]*" (cdr tem))
+	  (lst tem)
+	(while (setq tem (mail-parse-group p))
+	  (setq lst (cons (apply concat (car tem)) lst)
+		p (if (looking-at "[\t\n ]*,[\t\n ]*" (cdr tem))
 			(match-end)
 		      (cdr tem))))
-	(nreverse list)))))
+	(nreverse lst)))))
 
 
 ;; General header manipulation
@@ -130,16 +130,16 @@
 ;; Return the start of the header following the header starting at POS
 ;; This returns nil to show that the header goes to the end of the
 ;; buffer or restriction
-(defun mail-unfold-header (pos)
-  (if (looking-at ".*\n([\t ].*\n)*" pos)
+(defun mail-unfold-header (p)
+  (if (looking-at ".*\n([\t ].*\n)*" p)
       (match-end)
     nil))
 
 ;; Return the position at which a header matching HEADER occurs, or
 ;; nil if one doesn't. HEADER may be a regexp (i.e. "(From|Sender)")
-(defun mail-find-header (header &optional pos)
+(defun mail-find-header (header &optional p)
   (when (and (re-search-forward (concat "^(" header "[\t ]*:[\t ]*|$)")
-			       (or pos (start-of-buffer)) nil t)
+			       (or p (start-of-buffer)) nil t)
 	     (> (match-end) (match-start)))
     (match-end)))
 
@@ -147,40 +147,38 @@
 ;; will be a string with newlines converted to spaces, unless LISTP is
 ;; non-nil in which case the header will be split into a list of items
 ;; (separated by commas, unless NOT-COMMA-SEPARATED is t).
-(defun mail-get-header (header &optional listp not-comma-separated)
+(defun mail-get-header (header &optional lstp not-comma-separated)
   (let
-      ((pos (mail-find-header header)))
-    (when pos
-      (if listp
+      ((p (mail-find-header header)))
+    (when p
+      (if lstp
 	  (let
-	      ((list (mail-parse-list pos not-comma-separated)))
-	    (while (setq pos (mail-find-header header
-					       (mail-unfold-header pos)))
-	      (setq list (nconc list (mail-parse-list pos
-						      not-comma-separated))))
-	    list)
-	(translate-string (copy-area pos (or (mail-unfold-header pos)
-					     (end-of-buffer)))
+	      ((lst (mail-parse-list p not-comma-separated)))
+	    (while (setq p (mail-find-header header (mail-unfold-header p)))
+	      (setq lst (nconc lst (mail-parse-list p not-comma-separated))))
+	    lst)
+	(translate-string (copy-area p (or (mail-unfold-header p)
+					   (end-of-buffer)))
 			  flatten-table)))))
 
 ;; Delete the header at POS and return the position of the following
 ;; header, or nil for when the end of the buffer/restriction is reached
-(defun mail-delete-header (pos)
+(defun mail-delete-header (p)
   (let
-      ((end (mail-unfold-header pos)))
+      ((end (mail-unfold-header p)))
     (if end
 	(progn
-	  (delete-area pos end)
-	  pos)
+	  (delete-area p end)
+	  p)
       ;; Header goes up to the end of the restriction, delete the
       ;; previous newline instead of the next
-      (delete-area (forward-char -1 pos) (end-of-buffer))
+      (delete-area (forward-char -1 p) (end-of-buffer))
       nil)))
 
 ;; Insert a list of comma separated items. Breaks the list to satisfy
 ;; mail-fill-column. Unless NO-COMMAS is t, each item is separated by
 ;; a comma
-(defun mail-insert-list (list &optional no-commas)
+(defun mail-insert-list (lst &optional no-commas)
   (let
       ((initial-indent (if (looking-at
 			    (concat mail-header-name " *") (start-of-line))
@@ -188,16 +186,16 @@
 			   (pos-col (char-to-glyph-pos (match-end)))
 			 ;; Get from current indentation
 			 (pos-col (indent-pos)))))
-    (while list
-      (when (> (+ (length (car list))
+    (while lst
+      (when (> (+ (length (car lst))
 		  (pos-col (char-to-glyph-pos (cursor-pos))))
 	       mail-fill-column)
       (insert "\n")
       (indent-to initial-indent))
-      (insert (car list))
-      (when (and (not no-commas) (cdr list))
+      (insert (car lst))
+      (when (and (not no-commas) (cdr lst))
 	(insert ", "))
-      (setq list (cdr list)))))
+      (setq lst (cdr lst)))))
 
 ;; Return a quoted version of phrase STRING if necessary (i.e. if it
 ;; contains any specials or CTLs
@@ -225,10 +223,10 @@
 	addr))
     addr))
 
-(defun mail-insert-address-list (list &optional no-commas)
+(defun mail-insert-address-list (lst &optional no-commas)
   (mail-insert-list (mapcar #'(lambda (cell)
 				(mail-format-address (car cell) (cdr cell)))
-			    list) no-commas))
+			    lst) no-commas))
 
 ;; For a string from the Subject: header of a message, strip off any re:
 ;; prefixes, and return the string naming the _actual_ subject

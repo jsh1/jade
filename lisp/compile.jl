@@ -126,7 +126,7 @@ the command may output (i.e. `errors' for a compilation)."
     (save-some-buffers)
     (goto-buffer (compile-init))
     (setq compile-proc (make-process (cons (current-buffer) t)
-				     'compile-callback))
+				     compile-callback))
     (let
 	((shell-cmd (concat command ?\n)))
       (insert shell-cmd)
@@ -217,13 +217,13 @@ buffer in a form that `goto-next-error' understands."
   (unless compile-parsed-errors
     (with-buffer (get-buffer "*compilation*")
       (let
-	  ((pos compile-error-pos)
+	  ((p compile-error-pos)
 	   (dir-stack nil)
 	   (current-dir default-directory)
 	   errors last-line last-file)
-	(while (/= (pos-line pos) (buffer-length))
+	(while (/= (pos-line p) (buffer-length))
 	  (cond
-	   ((looking-at compile-error-regexp pos)
+	   ((looking-at compile-error-regexp p)
 	    ;; Parse the error
 	    (let
 		((line (read-from-string
@@ -234,24 +234,24 @@ buffer in a form that `goto-next-error' understands."
 	      (unless (and last-line (= line last-line)
 			   (file-name= file last-file))
 		(setq errors (cons (cons (make-mark (pos 0 (1- line)) file)
-					 (pos-line pos))
+					 (pos-line p))
 				   errors)
 		      last-line line
 		      last-file file))))
-	   ((looking-at compile-push-directory-regexp pos)
+	   ((looking-at compile-push-directory-regexp p)
 	    (setq dir-stack (cons current-dir dir-stack)
 		  current-dir (expand-file-name (expand-last-match
 						 compile-push-directory-expand)
 						current-dir)))
-	   ((and (looking-at compile-pop-directory-regexp pos) dir-stack)
+	   ((and (looking-at compile-pop-directory-regexp p) dir-stack)
 	    (setq current-dir (car dir-stack)
 		  dir-stack (cdr dir-stack))))
-	  (setq pos (forward-line 1 pos)))
+	  (setq p (forward-line 1 p)))
 	(when errors
 	  (setq compile-errors (nconc (nreverse errors))
 		compile-errors-exist t))
 	(if compile-proc
-	    (setq compile-error-pos pos)
+	    (setq compile-error-pos p)
 	  (setq compile-parsed-errors t))))))
 
 ;;;###autoload
@@ -262,10 +262,10 @@ buffer in a form that `goto-next-error' understands."
   (compile-parse-errors)
   (if compile-errors
       (let
-	  ((error (car compile-errors)))
-	(goto-mark (car error))
-	(when (and (cdr error)
-		   (looking-at compile-error-regexp (pos 0 (cdr error))
+	  ((err (car compile-errors)))
+	(goto-mark (car err))
+	(when (and (cdr err)
+		   (looking-at compile-error-regexp (pos 0 (cdr err))
 			       (get-buffer "*compilation*")))
 	  (message (expand-last-match compile-error-expand)))
 	(setq compile-errors (cdr compile-errors)))

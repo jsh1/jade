@@ -32,7 +32,7 @@
 ;; put the `expand-mail-aliases' function into the `mail-send-hook'.
 ;; Put the following form in your .jaderc if this is what you want:
 ;;
-;;   (add-hook 'mail-send-hook 'expand-mail-aliases)
+;;   (add-hook 'mail-send-hook expand-mail-aliases)
 ;;
 ;; But I don't really recommend this. Use the `Ctrl-c Ctrl-x' key-
 ;; binding in the mail composition buffer to expand all aliases in
@@ -73,7 +73,7 @@ message being composed."
 	(let
 	    (item addr)
 	  (while (setq item (mail-parse-group (cursor-pos)))
-	    (setq addr (apply 'concat (car item)))
+	    (setq addr (apply concat (car item)))
 	    (cond
 	     ((or (md-field-exists-p ':name addr ':net)
 		  (md-field-exists-p ':name addr ':net-alias))

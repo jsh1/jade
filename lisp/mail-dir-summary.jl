@@ -34,14 +34,6 @@
     "m" 'mds-compose
     "s" 'mds-sort-list))
 
-(defvar mds-functions
-  (list '(select . mds-edit)
-	'(delete . md-delete-record)
-	'(print . mds-print)
-	(cons 'list #'(lambda () mail-address-list))
-	(cons 'after-marking #'(lambda () (summary-next-item 1)))
-	'(on-quit . kill-current-buffer)))
-
 ;;;###autoload
 (defun list-mail-dir ()
   "List the mail directory in a buffer."
@@ -110,7 +102,7 @@ CC: field if the prefix arg is set)."
 (defun mds-sort-list ()
   "Sort the list of mail addresses or aliases."
   (interactive)
-  (setq mail-address-list (sort mail-address-list 'mds-sort-predicate))
+  (setq mail-address-list (sort mail-address-list mds-sort-predicate))
   (setq mail-directory-modified t)
   (summary-update))
 
@@ -219,3 +211,14 @@ Type \\[mds-edit-commit] to finalise the edits. The full list of local keybindin
     (insert field)
     (insert ": ()\n")
     (goto (forward-char -2))))
+
+
+;; init
+
+(defvar mds-functions
+  (list (cons 'select mds-edit)
+	(cons 'delete md-delete-record)
+	(cons 'print mds-print)
+	(cons 'list (lambda () mail-address-list))
+	(cons 'after-marking (lambda () (summary-next-item 1)))
+	(cons 'on-quit kill-current-buffer)))

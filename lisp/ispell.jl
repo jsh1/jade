@@ -104,20 +104,40 @@ results have been received.")
 			"HELP" 'ispell-help
 			"Ctrl-h" 'ispell-help))
 
-(add-hook 'before-exit-hook 'ispell-cleanup-before-exit)
-
 
 ;; Process management
+
+;; Function to buffer output from Ispell
+(defun ispell-output-filter (output)
+  (when (integerp output)
+    (setq output (make-string 1 output)))
+  (and ispell-echo-output
+       (stringp output)
+       (let
+	   ((print-escape t))
+	 (format (stderr-file) "Ispell: %S\n" output)))
+  (setq ispell-pending-output (concat ispell-pending-output output))
+  (while (and ispell-line-callback
+	      ispell-pending-output
+	      (string-match "\n" ispell-pending-output))
+    (let
+	((line (substring ispell-pending-output 0 (match-end))))
+      (setq ispell-pending-output (substring ispell-pending-output
+					     (match-end)))
+      (funcall ispell-line-callback line))))
 
 ;; Start the ispell-process if it isn't already
 (defun ispell-start-process ()
   (unless ispell-process
     (let
-	((process (make-process #'ispell-output-filter)))
-      (set-process-function process 'ispell-sentinel)
+	((process (make-process ispell-output-filter))
+	 (sentinel (lambda ()
+		     (setq ispell-process nil)
+		     (setq ispell-id-string nil))))
+      (set-process-function process sentinel)
       ;; Use a pty if possible. This allow EOF to be sent via ^D
       (set-process-connection-type process 'pty)
-      (apply 'start-process process ispell-program "-a"
+      (apply start-process process ispell-program "-a"
 	     (nconc (and ispell-dictionary
 			 (list "-d" ispell-dictionary))
 		    ispell-options))
@@ -147,30 +167,6 @@ results have been received.")
 	  (kill-process ispell-process))
 	(setq counter (1+ counter))))))
 
-;; Function to buffer output from Ispell
-(defun ispell-output-filter (output)
-  (when (integerp output)
-    (setq output (make-string 1 output)))
-  (and ispell-echo-output
-       (stringp output)
-       (let
-	   ((print-escape t))
-	 (format (stderr-file) "Ispell: %S\n" output)))
-  (setq ispell-pending-output (concat ispell-pending-output output))
-  (while (and ispell-line-callback
-	      ispell-pending-output
-	      (string-match "\n" ispell-pending-output))
-    (let
-	((line (substring ispell-pending-output 0 (match-end))))
-      (setq ispell-pending-output (substring ispell-pending-output
-					     (match-end)))
-      (funcall ispell-line-callback line))))
-
-;; Called when Ispell exits
-(defun ispell-sentinel ()
-  (setq ispell-process nil)
-  (setq ispell-id-string nil))
-
 ;; Read one whole line from the ispell-process (including newline)
 (defun ispell-read-line ()
   (let*
@@ -191,6 +187,8 @@ results have been received.")
 (defun ispell-cleanup-before-exit ()
   (when ispell-process
     (ispell-kill-process)))
+
+(add-hook 'before-exit-hook ispell-cleanup-before-exit)
 
 ;; Arbitrate access to the Ispell process, the mutex must be obtained
 ;; before sending a command that generates output. An error is signalled
@@ -228,21 +226,21 @@ results have been received.")
 (defun ispell-region-1 (function start end)
   (while (< start end)
     (let
-	(word-start word-end word response)
-      (setq word-start (re-search-forward ispell-word-re start))
-      (if (and word-start (<= (setq word-end (match-end)) end))
+	(w-start w-end word response)
+      (setq w-start (re-search-forward ispell-word-re start))
+      (if (and w-start (<= (setq w-end (match-end)) end))
 	  (if (and ispell-ignore-word-hook
 		   (call-hook ispell-ignore-word-hook
-			      (list word word-start word-end) 'or))
-	      (setq start word-end)
-	    (setq word (copy-area word-start word-end))
+			      (list word w-start w-end) 'or))
+	      (setq start w-end)
+	    (setq word (copy-area w-start w-end))
 	    (setq response (ispell-check-word word))
 	    (if (string-looking-at "^[*+-]" response)
 		;; Word spelt ok
-		(setq start word-end)
+		(setq start w-end)
 	      ;; Not ok
 	      (setq start (funcall function word response
-				   word-start word-end))))
+				   w-start w-end))))
 	;; Can't find word
 	(setq start end)))))
 
@@ -435,7 +433,6 @@ for. When called interactively, spell-check the current block."
 				  "RET" 'ispell-misspelt-word
 				  "C-a" 'ispell-add-word-to-dictionary
 				  "C-s" 'ispell-add-word-for-session))
-(fset 'ispell-minor-c-c-keymap 'keymap)
 
 (defvar ispell-minor-menus '(("Ispell word" ispell-misspelt-word)
 			     ("Add to dictionary"
@@ -451,7 +448,7 @@ for. When called interactively, spell-check the current block."
     (map-extents #'(lambda (e)
 		     (when (eq (extent-get e 'face) ispell-misspelt-face)
 		       (setq extents (cons e extents)))) start end)
-    (mapc 'delete-extent extents)))
+    (mapc delete-extent extents)))
 
 ;; Returns the end of the checked region
 ;;;###autoload
@@ -551,7 +548,7 @@ the cursor is placed in a misspelt word; they are,
 	(remove-hook 'idle-hook 'ispell-idle-function))
     (setq ispell-minor-mode-last-scan (vector 0 nil nil))
     (make-local-variable 'idle-hook)
-    (add-hook 'idle-hook 'ispell-idle-function)))
+    (add-hook 'idle-hook ispell-idle-function)))
 
 (defun ispell-invalidate-past-scans ()
   (mapc #'(lambda (b)

@@ -44,23 +44,23 @@
 (defun autoload-do-magic (output-file buf line-fun)
   (when (find-file output-file)
     (let
-	((pos (start-of-buffer))
+	((p (start-of-buffer))
 	 form
 	 (short-file-name (and (string-match "^(.+)\\.jl$"
 					     (file-name-nondirectory
 					      (buffer-file-name buf)))
 			       (expand-last-match "\\1")))
 	 (count 0))
-      (while (setq pos (re-search-forward
-			"^;;;###autoload[\t ]*(.*)$" pos buf))
+      (while (setq p (re-search-forward
+			"^;;;###autoload[\t ]*(.*)$" p buf))
 	(setq form (expand-last-match "\\1"))
 	(when (and form (not (equal "" form)))
 	  (funcall line-fun form)
 	  (setq count (1+ count))
 	  (message form t))
-	(setq pos (forward-line 1 pos))
-	(when (and (looking-at "^\\(def(un|macro|subst|var) " pos buf)
-		   (setq form (read (cons buf pos)))
+	(setq p (forward-line 1 p))
+	(when (and (looking-at "^\\(def(un|macro|subst|var) " p buf)
+		   (setq form (read (cons buf p)))
 		   (memq (car form) '(defun defmacro defsubst
 				      defvar defconst)))
 	  (setq form (format nil (if (assq 'interactive form)

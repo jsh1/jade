@@ -21,15 +21,15 @@
 (require 'gtk)
 (require 'mail-dir)
 
-(defun gmds-concat-list (list)
+(defun gmds-concat-list (lst)
   (let
       ((out nil))
-    (while list
-      (setq out (cons (car list) out))
-      (when (cdr list)
+    (while lst
+      (setq out (cons (car lst) out))
+      (when (cdr lst)
 	(setq out (cons ?  out)))
-      (setq list (cdr list)))
-    (apply 'concat (nreverse out))))
+      (setq lst (cdr lst)))
+    (apply concat (nreverse out))))
 
 (defun gtk-mail-dir-summary ()
   (interactive)

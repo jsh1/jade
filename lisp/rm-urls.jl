@@ -37,7 +37,7 @@
     "button2-off" 'html-display-mouse-select))
 
 ;; Called from the rm-display-message-hook
-(defun rm-highlight-urls (message folder)
+(defun rm-highlight-urls (msg folder)
   (let
       ((point (start-of-buffer)))
     (save-restriction
@@ -64,4 +64,4 @@
 
 ;; Add the function at the end of the hook, to guarantee it's after
 ;; the mime-decoder
-(add-hook 'rm-display-message-hook 'rm-highlight-urls t)
+(add-hook 'rm-display-message-hook rm-highlight-urls t)

@@ -155,7 +155,7 @@ local mode.")
 
 (defun popup-menu ()
   (interactive)
-  (or (fboundp 'popup-menu-from-spec)
+  (or (boundp 'popup-menu-from-spec)
       (error "Popup menus not supported in this window system"))
   (setq popup-menus-pos (if (not popup-menus-from-kbd)
 			    (mouse-view-pos)

@@ -210,10 +210,10 @@ command for more details."
 	  (when diff-dest-extent
 	    (delete-extent diff-dest-extent)))))))
 
-(defun diff-parse-range (pos cell)
+(defun diff-parse-range (p cell)
   (let
       (start end)
-    (unless (looking-at "([0-9]+)(,([0-9]+))?" pos diff-diff-buffer)
+    (unless (looking-at "([0-9]+)(,([0-9]+))?" p diff-diff-buffer)
       (error "Malformed diff output!"))
     (setq start (1- (read-from-string (expand-last-match "\\1"))))
     (if (match-start 2)

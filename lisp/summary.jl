@@ -115,7 +115,7 @@ line represents.")
   "Position of first entry in the menu.")
 (make-variable-buffer-local 'summary-first-line)
 
-(defvar summary-assoc-item-function 'assq
+(defvar summary-assoc-item-function assq
   "Should be either assq or assoc, used for comparing items with their
 alists. Normally assq will be best, in some case (items are strings)
 assoc is needed.")
@@ -145,13 +145,13 @@ items to be displayed and manipulated."
 	summary-first-line (start-of-line (end-of-buffer))
 	summary-actual-keymap (or keymap summary-keymap)
 	major-mode 'summary-mode
-	major-mode-kill 'summary-mode-kill
+	major-mode-kill summary-mode-kill
 	mode-name name
 	local-keymap summary-actual-keymap
 	buffer-record-undo nil
 	buffer-undo-list nil)
   (set-buffer-read-only (current-buffer) t)
-  (add-hook 'unbound-key-hook 'nop)
+  (add-hook 'unbound-key-hook nop)
   (call-hook 'summary-mode-hook)
   (summary-update))
 
@@ -232,7 +232,7 @@ isn't displayed in the summary."
 		     (when (extent-get e 'summary-highlight)
 		       (setq extents (cons e extents))))
 		   (start-of-buffer) (extent-end (extent-root)))
-    (mapc 'delete-extent extents)
+    (mapc delete-extent extents)
     (make-extent start end
 		 (list 'face highlight-face 'summary-highlight t))))
 

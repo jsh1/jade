@@ -37,10 +37,10 @@ character following the insertion."
     (insert new (match-start))))
 
 ;;;###autoload
-(defun replace-string (old new pos)
+(defun replace-string (old new p)
   "Replace the string OLD beginning at position POS, by the string NEW.
 Returns the position of the character following the insertion."
-  (when (looking-at (quote-regexp old) pos)
+  (when (looking-at (quote-regexp old) p)
     (delete-area (match-start) (match-end))
     (insert new (match-start))))
 
@@ -137,7 +137,7 @@ last change."
     (unwind-protect
 	(recursive-edit)
       (with-buffer buf
-	(add-hook 'unbound-key-hook 'query-replace-unbound-key-fun))))
+	(add-hook 'unbound-key-hook query-replace-unbound-key-fun))))
   (throw 'query-replace))
 
 (defun query-replace-delete ()
@@ -187,7 +187,7 @@ type one of the following special commands,\n
        (overriding-local-keymap 'query-replace-keymap)
        (esc-means-meta nil)		; want to bind to ESC
        match)
-    (add-hook 'unbound-key-hook 'query-replace-unbound-key-fun)
+    (add-hook 'unbound-key-hook query-replace-unbound-key-fun)
     (unwind-protect
 	(while (and (eq query-replace-alive t)
 		    (setq match (re-search-forward

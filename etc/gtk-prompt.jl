@@ -25,24 +25,23 @@
 
 (defvar gtk-prompt-enable 'mouse)
 
-(defvar gtk-prompt-old-y-or-n-p (symbol-function 'y-or-n-p))
-(defvar gtk-prompt-old-yes-or-no-p (symbol-function 'yes-or-no-p))
-(defvar gtk-prompt-old-map-y-or-n-p (symbol-function 'map-y-or-n-p))
-(defvar gtk-prompt-old-prompt-for-string (symbol-function 'prompt-for-string))
-(defvar gtk-prompt-old-prompt-from-list (symbol-function 'prompt-from-list))
-(defvar gtk-prompt-old-prompt-for-file (symbol-function 'prompt-for-file))
-(defvar gtk-prompt-old-prompt-for-directory
-  (symbol-function 'prompt-for-directory))
+(defvar gtk-prompt-old-y-or-n-p y-or-n-p)
+(defvar gtk-prompt-old-yes-or-no-p yes-or-no-p)
+(defvar gtk-prompt-old-map-y-or-n-p map-y-or-n-p)
+(defvar gtk-prompt-old-prompt-for-string prompt-for-string)
+(defvar gtk-prompt-old-prompt-from-list prompt-from-list)
+(defvar gtk-prompt-old-prompt-for-file prompt-for-file)
+(defvar gtk-prompt-old-prompt-for-directory prompt-for-directory)
 
 
 ;; General purpose GTK dialogs
 
 ;; Each BUTTON is (TEXT . RETURNED-VALUE)
-(defun gtk-prompt-dialog (message &rest buttons)
+(defun gtk-prompt-dialog (msg &rest buttons)
   (let
       ((window (gtk-window-new 'toplevel))
        (vbox (gtk-vbox-new nil 0))
-       (label (gtk-label-new message))
+       (label (gtk-label-new msg))
        (bbox (gtk-hbutton-box-new)))
     (catch 'exit
       (unwind-protect
@@ -68,12 +67,12 @@
 	    (gtk-main))
 	(gtk-widget-destroy window)))))
 
-(defun gtk-prompt-for-string (&optional prompt start)
+(defun gtk-prompt-for-string (&optional title start)
   (let
       ((window (gtk-window-new 'toplevel))
        (vbox (gtk-vbox-new nil 0))
        (hbox (gtk-hbox-new nil 0))
-       (label (gtk-label-new (or prompt "Enter string:")))
+       (label (gtk-label-new (or title "Enter string:")))
        (entry (gtk-entry-new))
        (bbox (gtk-hbutton-box-new))
        button)
@@ -118,12 +117,12 @@
 	(throw 'exit text)
       (beep))))
 
-(defun gtk-prompt-from-list (prompt-list prompt &optional start dont-validate)
+(defun gtk-prompt-from-list (prompt-list title &optional start dont-validate)
   (let
       ((window (gtk-window-new 'toplevel))
        (vbox (gtk-vbox-new nil 0))
        (hbox (gtk-hbox-new nil 0))
-       (label (gtk-label-new (or prompt "Enter string:")))
+       (label (gtk-label-new (or title "Enter string:")))
        (combo (gtk-combo-new))
        (bbox (gtk-hbutton-box-new))
        button)
@@ -161,11 +160,11 @@
 	    (gtk-main))
 	(gtk-widget-destroy window)))))
 
-(defun gtk-prompt-for-file (&optional prompt initial default predicate)
+(defun gtk-prompt-for-file (&optional title initial default predicate)
   (let
       ((sel (catch 'exit
 	      (let
-		  ((fs (gtk-file-selection-new (or prompt "Select file")))
+		  ((fs (gtk-file-selection-new (or title "Select file")))
 		   (file nil))
 		(unwind-protect
 		    (progn
@@ -245,32 +244,32 @@
 
 (defun prompt-for-string (&rest args)
   (apply (if (gtk-prompt-with-gtk-p)
-	     'gtk-prompt-for-string
+	     gtk-prompt-for-string
 	   gtk-prompt-old-prompt-for-string) args))
 
 (defun prompt-from-list (&rest args)
   (apply (if (gtk-prompt-with-gtk-p)
-	     'gtk-prompt-from-list
+	     gtk-prompt-from-list
 	   gtk-prompt-old-prompt-from-list) args))
 
-(defun prompt-for-file (&optional prompt existing start default &rest args)
+(defun prompt-for-file (&optional title existing start default &rest args)
   (if (gtk-prompt-with-gtk-p)
-      (gtk-prompt-for-file prompt start default
+      (gtk-prompt-for-file title start default
 			   (if existing
 			       #'(lambda (f)
 				   (and (file-exists-p f)
 					(not (file-directory-p f))))
 			     #'(lambda (f)
 				 (not (file-directory-p f)))))
-    (apply gtk-prompt-old-prompt-for-file prompt existing start default args)))
+    (apply gtk-prompt-old-prompt-for-file title existing start default args)))
 
-(defun prompt-for-directory (&optional prompt existing start default &rest args)
+(defun prompt-for-directory (&optional title existing start default &rest args)
   (if (gtk-prompt-with-gtk-p)
-      (gtk-prompt-for-file prompt start default
+      (gtk-prompt-for-file title start default
 			   (if existing
 			       'file-directory-p
 			     #'(lambda (f)
 				 (or (not (file-exists-p f))
 				     (file-directory-p f)))))
     (apply gtk-prompt-old-prompt-for-directory
-	   prompt existing start default args)))
+	   title existing start default args)))

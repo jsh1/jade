@@ -36,11 +36,11 @@
     (setq c (1+ c))))
 
 ;;;###autoload
-(defun pwd-prompt (prompt)
+(defun pwd-prompt (title)
   "Prompt for a confidential string, with PROMPT as the title string. The
 contents of the prompt will be masked out whilst being entered."
   (let
       ((prompt-glyph-table pw-glyph-table)
        ;; Don't want this item in the history ring
        (prompt-history nil))
-    (prompt prompt)))
+    (prompt title)))

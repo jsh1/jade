@@ -226,7 +226,7 @@ regular expression REGEXP. Further matches may be found though the use of the
 	   (goto-buffer buffer)
 	   (goto (match-start))
 	   (setq tags-continue-command
-		 `(tags-search ,regexp ,(make-mark (match-end))))
+		 `(,tags-search ,regexp ,(make-mark (match-end))))
 	   (throw 'out t)))
      mark)
     (message "[No matches]")))
@@ -241,7 +241,7 @@ may be found though the use of the `tags-loop-continue' function."
   (setq tags-continue-command nil)
   (catch 'out
     (let
-	((replace-all nil))
+	((do-all nil))
       (tags-map-buffers
        #'(lambda (buffer point)
 	   (message
@@ -249,15 +249,15 @@ may be found though the use of the `tags-loop-continue' function."
 	   (when (re-search-forward from point buffer case-fold-search)
 	     (with-buffer buffer
 	       (goto (match-start))
-	       (if replace-all
+	       (if do-all
 		   (while (re-search-forward from nil nil case-fold-search)
 		     (goto (replace-last-match to)))
 		 (setq point (query-replace from to))
 		 (cond ((eq point 'rest)
-			(setq replace-all t))
+			(setq do-all t))
 		       ((null point)
 			(setq tags-continue-command
-			      `(tags-query-replace ,from ,to ,(make-mark)))
+			      `(,tags-query-replace ,from ,to ,(make-mark)))
 			(throw 'out t)))))))
        mark))))
 

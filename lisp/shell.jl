@@ -57,7 +57,7 @@ line.")
   "A regexp matching the prompt of the shell.")
 (make-variable-buffer-local 'shell-prompt-regexp)
 
-(defvar shell-callback-function 'shell-default-callback
+(defvar shell-callback-function nil
   "Holds the function to call when the process changes state.")
 (make-variable-buffer-local 'shell-callback-function)
 
@@ -121,8 +121,8 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 	local-ctrl-c-keymap shell-ctrl-c-keymap
 	mode-name "Shell"
 	major-mode 'shell-mode
-	major-mode-kill 'shell-mode-kill)
-  (add-hook 'kill-buffer-hook 'shell-kill-buffer-hook)
+	major-mode-kill shell-mode-kill)
+  (add-hook 'kill-buffer-hook shell-kill-buffer-hook)
   (shell-start-process)
   (call-hook 'shell-mode-hook))
 
@@ -148,7 +148,7 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 			 (or shell-output-stream
 			     (make-closure
 			      `(lambda (o) (with-buffer ,(current-buffer)
-					     (funcall 'shell-filter o)))))
+					     (funcall shell-filter o)))))
 			 ;; Create a function which switches to the
 			 ;; process' buffer then calls the callback
 			 ;; function (through its variable)
@@ -172,6 +172,8 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 	     (t
 	      (setq shell-process nil)
 	      "\nProcess terminated\n")))))
+
+(setq-default shell-callback-function shell-default-callback)
 
 ;; Default output stream
 (defun shell-filter (output)
@@ -219,7 +221,7 @@ last in the buffer the current command is copied to the end of the buffer."
 	(progn
 	  (insert "\n")
 	  (write shell-process
-		 (funcall (if shell-echos 'cut-area 'copy-area)
+		 (funcall (if shell-echos cut-area copy-area)
 			  shell-last-output (cursor-pos))))
       ;; Try to identify a command on the current line
       (let
@@ -233,7 +235,7 @@ last in the buffer the current command is copied to the end of the buffer."
 	      (when shell-whole-line
 		(goto (end-of-line)))
 	      (insert "\n")
-	      (setq cmdstr (funcall (if shell-echos 'cut-area 'copy-area)
+	      (setq cmdstr (funcall (if shell-echos cut-area copy-area)
 				    start (cursor-pos))))
 	  ;; copy the command at this line to the end of the buffer
 	  (setq cmdstr (copy-area start (forward-line 1 (start-of-line))))

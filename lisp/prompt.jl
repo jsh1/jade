@@ -197,8 +197,8 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	 (complete-at-point only-display))
 	(t
 	 (let*
-	     ((word-start (extent-end prompt-title-extent))
-	      (word (copy-area word-start (cursor-pos)))
+	     ((w-start (extent-end prompt-title-extent))
+	      (word (copy-area w-start (cursor-pos)))
 	      ;; Before making the list of completions, try to
 	      ;; restore the original context
 	      (comp-list (with-view prompt-original-view
@@ -264,8 +264,8 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 ;; Various completion/validation functions
 
 (defun prompt-complete-symbol (word)
-  (mapcar 'symbol-name (apropos (concat ?^ (quote-regexp word))
-				prompt-symbol-predicate)))
+  (mapcar symbol-name (apropos (concat ?^ (quote-regexp word))
+			       prompt-symbol-predicate)))
 
 (defun prompt-validate-symbol (name)
   (and (or (not prompt-symbol-predicate)
@@ -275,7 +275,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 (defun prompt-complete-buffer (word)
   (delete-if-not #'(lambda (b)
 		     (string-head-eq b word))
-		 (mapcar 'buffer-name buffer-list)))
+		 (mapcar buffer-name buffer-list)))
 
 (defun prompt-validate-buffer (name)
   (and (or (equal name "")
@@ -346,75 +346,75 @@ is rejected.")
       ;; Make sure it returns the *symbol* t
       (and (member name prompt-list) t)
     (let
-	((list prompt-list))
+	((lst prompt-list))
       (catch 'exit
-	(while list
+	(while lst
 	  (when (string-match (concat ?^ (quote-regexp name) ?$)
-			      (car list) nil t)
+			      (car lst) nil t)
 	    (throw 'exit t))
-	  (setq list (cdr list)))))))
+	  (setq lst (cdr lst)))))))
 
 
 ;; High-level entrypoints; prompt for a specific type of object
 
 ;;;###autoload
-(defun prompt-for-file (&optional prompt existing start default history-list)
+(defun prompt-for-file (&optional title existing start default history-list)
   "Prompt for a file, if EXISTING is t only files which exist are
 allowed to be entered."
-  (unless (stringp prompt)
-    (setq prompt "Enter filename:"))
+  (unless (stringp title)
+    (setq title "Enter filename:"))
   (setq start (if (stringp start)
 		  (expand-file-name start)
 		(file-name-as-directory default-directory)))
   (let*
-      ((prompt-completion-function 'prompt-complete-filename)
+      ((prompt-completion-function prompt-complete-filename)
        (prompt-validate-function (if existing
-				     'prompt-validate-filename
+				     prompt-validate-filename
 				   nil))
        (prompt-history (or history-list prompt-file-history))
        (prompt-default-value (and default (expand-file-name default)))
-       (completion-abbrev-function 'prompt-abbreviate-filename)
-       (str (prompt prompt start)))
+       (completion-abbrev-function prompt-abbreviate-filename)
+       (str (prompt title start)))
     (when (and (string= str "") default)
       (setq str default))
     str))
 
 ;;;###autoload
-(defun prompt-for-directory (&optional prompt existing start default)
+(defun prompt-for-directory (&optional title existing start default)
   "Prompt for a directory, if EXISTING is t only files which exist are
 allowed to be entered."
-  (unless (stringp prompt)
-    (setq prompt "Enter filename:"))
+  (unless (stringp title)
+    (setq title "Enter filename:"))
   (unless (stringp start)
     (setq start (file-name-as-directory default-directory)))
   (let*
-      ((prompt-completion-function 'prompt-complete-directory)
+      ((prompt-completion-function prompt-complete-directory)
        (prompt-validate-function (if existing
-				     'prompt-validate-directory
+				     prompt-validate-directory
 				   nil))
        (prompt-history prompt-file-history)
        (prompt-default-value (and default (expand-file-name default)))
-       (completion-abbrev-function 'prompt-abbreviate-filename)
-       (str (prompt prompt start)))
+       (completion-abbrev-function prompt-abbreviate-filename)
+       (str (prompt title start)))
     (when (and (string= str "") default)
       (setq str default))
     str))
 
 ;;;###autoload
-(defun prompt-for-buffer (&optional prompt existing default)
+(defun prompt-for-buffer (&optional title existing default)
   "Prompt for a buffer, if EXISTING is t the buffer selected must exist,
 otherwise if EXISTING is nil the buffer will be created if it doesn't
 exist already. DEFAULT is the value to return if the user enters the null
 string, if nil the current buffer is returned."
-  (unless (stringp prompt)
-    (setq prompt "Enter buffer name:"))
+  (unless (stringp title)
+    (setq title "Enter buffer name:"))
   (let*
-      ((prompt-completion-function 'prompt-complete-buffer)
+      ((prompt-completion-function prompt-complete-buffer)
        (prompt-validate-function (if existing
-				     'prompt-validate-buffer
+				     prompt-validate-buffer
 				   nil))
        (prompt-default-value (buffer-name (or default (current-buffer))))
-       (buf (prompt prompt)))
+       (buf (prompt title)))
     (if (equal buf "")
 	(or default (current-buffer))
       (unless (get-buffer buf)
@@ -422,22 +422,22 @@ string, if nil the current buffer is returned."
 	  (open-buffer buf))))))
 
 ;;;###autoload
-(defun prompt-for-symbol (&optional prompt prompt-symbol-predicate start)
+(defun prompt-for-symbol (&optional title prompt-symbol-predicate start)
   "Prompt for an existing symbol. If PROMPT-SYMBOL-PREDICATE is given the
 symbol must agree with it."
-  (unless (stringp prompt)
-    (setq prompt "Enter name of symbol:"))
+  (unless (stringp title)
+    (setq title "Enter name of symbol:"))
   (let
-      ((prompt-completion-function 'prompt-complete-symbol)
-       (prompt-validate-function 'prompt-validate-symbol)
+      ((prompt-completion-function prompt-complete-symbol)
+       (prompt-validate-function prompt-validate-symbol)
        (prompt-history prompt-symbol-history))
-    (intern (prompt prompt start))))
+    (intern (prompt title start))))
 
 ;;;###autoload
-(defun prompt-for-lisp (&optional prompt start)
+(defun prompt-for-lisp (&optional title start)
   "Prompt for a lisp object."
-  (unless (stringp prompt)
-    (setq prompt "Enter a Lisp object:"))
+  (unless (stringp title)
+    (setq title "Enter a Lisp object:"))
   (let
       ((prompt-completion-function t)
        (prompt-validate-function nil)
@@ -448,49 +448,55 @@ symbol must agree with it."
 		  ;; This is something of a kludge
 		  (setq local-keymap 'prompt-keymap))
 	      before-prompt-hook)))
-    (read-from-string (prompt prompt start))))
+    (read-from-string (prompt title start))))
 
 ;;;###autoload
-(defun prompt-for-function (&optional prompt start)
+(defun prompt-for-function (&optional title start)
   "Prompt for a function."
-  (prompt-for-symbol (or prompt "Enter name of function:") 'fboundp start))
+  (prompt-for-symbol (or title "Enter name of function:")
+		     (lambda (x)
+		       (and (boundp x)
+			    (functionp (symbol-value x)))) start))
 
 ;;;###autoload
-(defun prompt-for-variable (&optional prompt start)
+(defun prompt-for-variable (&optional title start)
   "Prompt for a variable."
-  (prompt-for-symbol (or prompt "Enter name of variable:") 'boundp start))
+  (prompt-for-symbol (or title "Enter name of variable:")
+		     (lambda (x)
+		       (and (boundp x)
+			    (not (functionp (symbol-value x))))) start))
 
 ;;;###autoload
-(defun prompt-for-command (&optional prompt start)
+(defun prompt-for-command (&optional title start)
   "Prompt for a command."
-  (prompt-for-symbol (or prompt "Enter name of command:") 'commandp))
+  (prompt-for-symbol (or title "Enter name of command:") commandp))
 
 ;;;###autoload
-(defun prompt-from-list (prompt-list prompt &optional start dont-validate)
+(defun prompt-from-list (prompt-list title &optional start dont-validate)
   "Return a selected choice from the list of options (strings) PROMPT-LIST.
 PROMPT is the title displayed, START the starting choice.
 Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
   (let
-      ((prompt-completion-function 'prompt-complete-from-list)
+      ((prompt-completion-function prompt-complete-from-list)
        (prompt-validate-function (if dont-validate
 				     nil
-				   'prompt-validate-from-list))
+				   prompt-validate-from-list))
        (completion-fold-case prompt-list-fold-case))
-  (prompt prompt start)))
+  (prompt title start)))
 
 ;;;###autoload
-(defun prompt-for-string (&optional prompt start)
+(defun prompt-for-string (&optional title start)
   (let
-      ((prompt-completion-function 'prompt-complete-filename)
+      ((prompt-completion-function prompt-complete-filename)
        (prompt-validate-function nil))
-    (prompt (or prompt "Enter string: ") start)))
+    (prompt (or title "Enter string: ") start)))
 
 ;;;###autoload
-(defun prompt-for-number (&optional prompt)
+(defun prompt-for-number (&optional title)
   (let
       (num)
     (while (not (numberp num))
-      (setq num (read-from-string (prompt (or prompt "Enter number: ")))))
+      (setq num (read-from-string (prompt (or title "Enter number: ")))))
     num))
 
 ;; Compatibility
