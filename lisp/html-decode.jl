@@ -260,22 +260,21 @@ of the document, currently only `title' and `base' keys are defined."
 	    (setq pending-spaces nil)
 	    (setq col 0)
 	    (when (equal original tem)
-	      (html-decode-patch-starts original (with-buffer dest
-						   (cursor-pos))
-					html-decode-stack)
+	      (setq tem (with-buffer dest (cursor-pos)))
+	      (html-decode-patch-starts original tem html-decode-stack)
 	      (setq original tem))
 	    (when html-decode-pending-fill
 	      (with-buffer dest
 		(html-decode-justify-line html-decode-fill (forward-line -1)))
 	      (setq html-decode-pending-fill nil)))
-	  (when (and (zerop col) (not (= html-decode-indent
-					 html-decode-initial-indent)))
+	  (when (and (zerop col) (not (zerop html-decode-indent)))
 	    (with-buffer dest
 	      (setq tem (cursor-pos))
 	      (indent-to html-decode-indent)
 	      (when (equal original tem)
-		(html-decode-patch-starts original (cursor-pos)
-					  html-decode-stack)))
+		(setq tem (cursor-pos))
+		(html-decode-patch-starts original tem html-decode-stack)
+		(setq original tem)))
 	    (setq col html-decode-indent))
 	  (when pending-spaces
 	    (insert " " nil dest)
