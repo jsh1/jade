@@ -89,7 +89,8 @@ check_first_mod(TX *tx)
 void
 undo_record_deletion(TX *tx, POS *start, POS *end)
 {
-    if((tx->tx_Flags & TXFF_NO_UNDO) == 0)
+    if((tx->tx_Flags & TXFF_NO_UNDO) == 0
+       && !POS_EQUAL_P(start, end))
     {
 	VALUE string;
 	VALUE lstart = make_lpos(start);
@@ -134,14 +135,19 @@ VALUE
 undo_push_deletion(TX *tx, POS *start, POS *end)
 {
     long len = section_length(tx, start, end);
-    VALUE string = make_string(len + 1);
-    copy_section(tx, start, end, VSTR(string));
-    VSTR(string)[len] = 0;
-    pending_deletion_string = string;
-    pending_deletion_start = *start;
-    pending_deletion_end = *end;
-    pending_deletion_tx = tx;
-    return(string);
+    if(len > 0)
+    {
+	VALUE string = make_string(len + 1);
+	copy_section(tx, start, end, VSTR(string));
+	VSTR(string)[len] = 0;
+	pending_deletion_string = string;
+	pending_deletion_start = *start;
+	pending_deletion_end = *end;
+	pending_deletion_tx = tx;
+	return(string);
+    }
+    else
+	return null_string;
 }
 
 /* Adds an insertion between START and END to the TX buffer's undo-list.
@@ -149,7 +155,8 @@ undo_push_deletion(TX *tx, POS *start, POS *end)
 void
 undo_record_insertion(TX *tx, POS *start, POS *end)
 {
-    if((tx->tx_Flags & TXFF_NO_UNDO) == 0)
+    if((tx->tx_Flags & TXFF_NO_UNDO) == 0
+       && !POS_EQUAL_P(start, end))
     {
 	VALUE item;
 	coalesce_undo(tx);
@@ -177,7 +184,8 @@ undo_record_insertion(TX *tx, POS *start, POS *end)
 void
 undo_record_modification(TX *tx, POS *start, POS *end)
 {
-    if((tx->tx_Flags & TXFF_NO_UNDO) == 0)
+    if((tx->tx_Flags & TXFF_NO_UNDO) == 0
+       && !POS_EQUAL_P(start, end))
     {
 	undo_record_deletion(tx, start, end);
 	undo_record_insertion(tx, start, end);
