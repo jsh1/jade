@@ -29,7 +29,7 @@
 display them. If none match, the first in the list is used.")
 
 (defvar find-url-external-command
-  "netscape -remote 'openUrl(%s)' || netscape '%s'"
+  "netscape -remote 'openUrl(%s)' || netscape '%s' &"
   "Shell command used to direct an external web browser to load a http: url.
 Any `%s' substrings will be replaced by the name of the url.")
 
@@ -45,7 +45,9 @@ kind of editor buffer, or spawning an external process."
     (mapc #'(lambda (cell)
 	      (when (string-match (car cell) url nil t)
 		(throw 'foo (funcall (cdr cell) url))))
-	  find-url-alist)))
+	  find-url-alist)
+    ;; Call default function
+    (funcall (cdr (car find-url-alist)) url)))
 
 (defun find-url-external (url)
   "Spawn an external process (using find-url-external-command as template)
