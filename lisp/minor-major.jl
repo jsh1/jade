@@ -20,14 +20,17 @@
 
 (defvar minor-major-face (let
 			     ((face (make-face "minor-major")))
-			   (set-face-attribute face 'background "#eeeee1")
+			   (set-face-attribute face 'background "#dcdcd1")
 			   face)
   "Face used in areas of the buffer with a minor-major mode.")
 
 ;;;###autoload
 (defun minor-major-mode (mode start end)
   "Set the area of the current buffer between START and END (the current block
-when called interactively) to have the major-mode MODE."
+when called interactively) to have the major-mode MODE.
+
+Returns the extent containing the region. This extent always has its
+`rear-sticky' property set, but not its `front-sticky' property."
   (interactive "-aMajor mode:\nm\nM")
   (let
       ((extent (make-extent start end)))
@@ -40,7 +43,8 @@ when called interactively) to have the major-mode MODE."
      (save-restriction
        (restrict-buffer start end)
        (setq major-mode-kill nil)
-       (funcall mode)))))
+       (funcall mode)
+       extent))))
 
 (defun delete-minor-major-mode (position)
   "Remove the innermost minor-major mode containing POSITION (the cursor
