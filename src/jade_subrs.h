@@ -185,9 +185,9 @@ extern repv Fmake_variable_buffer_local(repv);
 extern repv Fbuffer_variables(repv);
 extern repv Fkill_all_local_variables(repv);
 extern repv Fkill_local_variable(repv, repv);
-extern void start_visible_extent (WIN *w, Lisp_Extent *e,
+extern void start_visible_extent (VW *vw, Lisp_Extent *e,
 				  long start_col, long start_row);
-extern void end_visible_extent (WIN *w, Lisp_Extent *e,
+extern void end_visible_extent (VW *vw, Lisp_Extent *e,
 				long end_col, long end_row);
 extern void free_visible_extents (WIN *w);
 extern void map_visible_extents (WIN *w, long col, long row,
@@ -196,7 +196,7 @@ extern void mark_visible_extents (WIN *w);
 extern bool update_mouse_extent (WIN *w, long mouse_col, long mouse_row);
 
 /* from faces.c */
-extern int merge_faces(WIN *w, Lisp_Extent *e, int in_active, int on_cursor);
+extern int merge_faces(VW *vw, Lisp_Extent *e, int in_active, int on_cursor);
 extern int get_face_id(WIN *w, Lisp_Face *f);
 extern void mark_merged_faces(WIN *w);
 extern bool faces_init(void);
