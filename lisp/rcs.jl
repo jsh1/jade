@@ -106,7 +106,7 @@
 (defun rcs-callback-with-description (title file command options
 				      text-prefix reread-p)
   (let*
-      ((buf-name (concat "*rcs: " title " " file "*"))
+      ((buf-name (concat "*rcs: " title " " (file-name-nondirectory file) "*"))
        (buffer (get-buffer buf-name)))
     (if buffer
 	(goto-buffer buffer)
@@ -114,11 +114,12 @@
       (set-buffer-special buffer t)
       (goto-buffer buffer)
       (setq mildly-special-buffer t
-	    keymap-path (cons rcs-callback-keymap keymap-path)
-	    ctrl-c-keymap rcs-callback-ctrl-c-keymap
-	    rcs-callback-args (list file buffer command options
-				    text-prefix reread-p)))
-    (setq rcs-history-level nil)))
+	    keymap-path (cons rcs-callback-keymap keymap-path)))
+    (text-mode)
+    (setq rcs-callback-args (list file buffer command options
+				  text-prefix reread-p)
+	  ctrl-c-keymap rcs-callback-ctrl-c-keymap
+	  rcs-history-level nil)))
 
 ;; Called when Ctrl-C Ctrl-C is typed in a callback buffer.
 (defun rcs-call-callback ()
@@ -224,7 +225,7 @@ piece of descriptive text desribing the file will be prompted for first."
   (unless buffer (setq buffer (current-buffer)))
   (rcs-verify-buffer buffer)
   (maybe-save-buffer buffer)
-  (rcs-callback-with-description "description of changes made to"
+  (rcs-callback-with-description "changes to"
 				 (buffer-file-name buffer)
 				 "ci" '("-u") "-m" t))
 
