@@ -193,12 +193,11 @@ if the hook (`or' style) returns t the word is assumed to be correct.")
     (let
 	(word-start word-end word)
       (setq word-start (re-search-forward ispell-word-re start))
-      (if (and word-start
-	       (< (setq word-end (match-end)) end)
-	       (not (and ispell-ignore-word-hook
-			 (call-hook ispell-ignore-word-hook
-				    (list word word-start word-end) 'or))))
-	  (progn
+      (if (and word-start (<= (setq word-end (match-end)) end))
+	  (if (and ispell-ignore-word-hook
+		   (call-hook ispell-ignore-word-hook
+			      (list word word-start word-end) 'or))
+	      (setq start word-end)
 	    (ispell-start-process)
 	    (setq word (copy-area word-start word-end))
 	    (write ispell-process word)
