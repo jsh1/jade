@@ -182,7 +182,8 @@
 	(require 'mime-encode)
 	(let
 	    ((stream (make-string-output-stream)))
-	  (translate-string string mail-encode-header-map)
+	  (setq string (translate-string (copy-sequence string)
+					 mail-encode-header-map))
 	  (mime-encode-stream 'quoted-printable
 			      (make-string-input-stream string) stream)
 	  (concat "=?iso-8859-1?Q?" (get-output-stream-string stream) "?=")))
