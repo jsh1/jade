@@ -203,7 +203,8 @@ the function doc is provided."
     (let
 	(doc)
       (if is-variable
-	  (setq doc (get symbol 'variable-documentation))
+	  (setq doc (or (subr-documentation symbol t)
+			(get symbol 'variable-documentation)))
 	(when (eq (car (symbol-function symbol)) 'autoload)
 	  (load (nth 1 (symbol-function symbol))))
 	(setq symbol (symbol-function symbol))
