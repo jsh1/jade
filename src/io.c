@@ -277,7 +277,7 @@ area is written.
 }
 
 _PR VALUE cmd_write_buffer_area(VALUE vstart, VALUE vend, VALUE file, VALUE tx);
-DEFUN("write-buffer-area", cmd_write_buffer_area, subr_write_buffer_area, (VALUE vstart, VALUE vend, VALUE file, VALUE tx), V_Subr4, DOC_write_buffer_area) /*
+DEFUN_INT("write-buffer-area", cmd_write_buffer_area, subr_write_buffer_area, (VALUE vstart, VALUE vend, VALUE file, VALUE tx), V_Subr4, DOC_write_buffer_area, "m\nM\nFWrite block to file:") /*
 ::doc:write_buffer_area::
 write-buffer-area START-POS END-POS [FILE] [BUFFER]
 
@@ -307,8 +307,8 @@ be either a string naming a file to overwrite, or a standard stream object.
 	    while(start.pos_Line <= end.pos_Line)
 	    {
 		int len = (((start.pos_Line == end.pos_Line)
-			    ? end.pos_Col : line->ln_Strlen)
-			   - start.pos_Col - 1);
+			    ? end.pos_Col : line->ln_Strlen - 1)
+			   - start.pos_Col);
 		if(fwrite(line->ln_Line + start.pos_Col,
 			  1, len, fh) != len) 
 		{
@@ -337,8 +337,8 @@ be either a string naming a file to overwrite, or a standard stream object.
 	while(start.pos_Line <= end.pos_Line)
 	{
 	    int len = (((start.pos_Line == end.pos_Line)
-			? end.pos_Col : line->ln_Strlen)
-		       - start.pos_Col - 1);
+			? end.pos_Col : line->ln_Strlen - 1)
+		       - start.pos_Col);
 	    if(stream_puts(file, line->ln_Line + start.pos_Col, len, FALSE)
 	       != len) 
 		goto stream_error;
