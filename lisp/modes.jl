@@ -73,13 +73,14 @@
 (defvar mode-alist '(
 ;;; ::mode-alist-start::
   ("\\.(c|h)$|^c(|-mode)$" . c-mode)
-  ("\\.jl$|^lisp(|-mode)$" . lisp-mode)
-  ("\\.(text|doc|txt|article|letter)$" . text-mode)
+  ("\\.jl$|^.jaderc$|^lisp(|-mode)$" . lisp-mode)
+  ("\\.(te?xt|doc|article|letter)$" . text-mode)
   ("^(text(|-mode)|(.*/|)draft)$" . text-mode)
   ("^indented-text(|-mode)$" . indented-text-mode)
   ("\\.[s]$|^asm(|-mode)$" . asm-mode)
   ("\\.[S]$|^asm-cpp(|-mode)$" . asm-cpp-mode)
   ("\\.texi(|nfo)|^texinfo(|-mode)$" . texinfo-mode)
+  ("\\.tex$|^(La)?TeX$" . tex-mode)
 ;;; ::mode-alist-end::
   ) "List of all major modes which can be enabled by loading a file into
 a buffer. List is made of `(REGEXP . MODE)' cells; the REGEXP is matched
