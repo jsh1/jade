@@ -61,34 +61,8 @@ The hook called when the status of the block changes. It will be called
 with a single argument, t if the block is now marked, nil if it isn't.
 ::end:: */
 
-_PR VALUE cmd_split_line(void);
-DEFUN_INT("split-line", cmd_split_line, subr_split_line, (void), V_Subr0, DOC_split_line, "") /*
-::doc:split_line::
-split-line
-
-Splits the line into two at the cursor position.
-::end:: */
-{
-    VW *vw = curr_vw;
-    TX *tx = vw->vw_Tx;
-    if(!read_only(tx))
-    {
-	POS old = vw->vw_CursorPos;
-	if(pad_cursor(vw))
-	{
-	    if(split_line(tx, &vw->vw_CursorPos))
-	    {
-		undo_record_insertion(tx, &old, &vw->vw_CursorPos);
-		flag_insertion(tx, &old, &vw->vw_CursorPos);
-		return(sym_t);
-	    }
-	}
-    }
-    return(sym_nil);
-}
-
 _PR VALUE cmd_insert(VALUE string, VALUE pos, VALUE buff);
-DEFUN_INT("insert", cmd_insert, subr_insert, (VALUE string, VALUE lpos, VALUE buff), V_Subr3, DOC_insert, "sString to insert:") /*
+DEFUN_INT("insert", cmd_insert, subr_insert, (VALUE string, VALUE pos, VALUE buff), V_Subr3, DOC_insert, "sString to insert:") /*
 ::doc:insert::
 insert STRING [POS] [BUFFER]
 
@@ -96,68 +70,62 @@ Inserts STRING into BUFFER at POS. Returns the first position of the first
 character after the end of the inserted text.
 ::end:: */
 {
-    POS pos;
     DECLARE1(string, STRINGP);
-    if(POSP(lpos))
-	pos = VPOS(lpos);
-    else
+    if(!POSP(pos))
 	pos = curr_vw->vw_CursorPos;
     if(!BUFFERP(buff))
 	buff = VAL(curr_vw->vw_Tx);
-    if(!read_only(VTX(buff)) && pad_pos(VTX(buff), &pos))
+    if(!read_only(VTX(buff)) && pad_pos(VTX(buff), pos))
     {
-	if(insert_string(VTX(buff), VSTR(string), STRING_LEN(string), &pos))
-	    return(make_lpos(&pos));
+	pos = insert_string(VTX(buff), VSTR(string), STRING_LEN(string), pos);
+	if(pos != NULL)
+	    return pos;
     }
     return(sym_nil);
 }
 
 _PR VALUE cmd_delete_area(VALUE start, VALUE end, VALUE buff);
-DEFUN_INT("delete-area", cmd_delete_area, subr_delete_area, (VALUE lstart, VALUE lend, VALUE buff), V_Subr3, DOC_delete_area, "-m\nM") /*
+DEFUN_INT("delete-area", cmd_delete_area, subr_delete_area, (VALUE start, VALUE end, VALUE buff), V_Subr3, DOC_delete_area, "-m\nM") /*
 ::doc:delete_area::
 delete-area START-POS END-POS [BUFFER]
 
 Deletes from START-POS up to (but not including) END-POS.
 ::end:: */
 {
-    POS start, end;
-    DECLARE1(lstart, POSP);
-    DECLARE2(lend, POSP);
-    start = VPOS(lstart);
-    end = VPOS(lend);
+    DECLARE1(start, POSP);
+    DECLARE2(end, POSP);
     if(!BUFFERP(buff))
 	buff = VAL(curr_vw->vw_Tx);
-    if(!read_only(VTX(buff)) && pad_pos(VTX(buff), &start)
-       && pad_pos(VTX(buff), &end) && check_section(VTX(buff), &start, &end))
+    if(!read_only(VTX(buff))
+       && pad_pos(VTX(buff), start)
+       && pad_pos(VTX(buff), end)
+       && check_section(VTX(buff), &start, &end))
     {
-	delete_section(VTX(buff), &start, &end);
-	return(sym_t);
+	delete_section(VTX(buff), start, end);
+	return start;
     }
     return(sym_nil);
 }
 
-_PR VALUE cmd_copy_area(VALUE lstart, VALUE lend, VALUE buff);
-DEFUN("copy-area", cmd_copy_area, subr_copy_area, (VALUE lstart, VALUE lend, VALUE buff), V_Subr3, DOC_copy_area) /*
+_PR VALUE cmd_copy_area(VALUE start, VALUE end, VALUE buff);
+DEFUN("copy-area", cmd_copy_area, subr_copy_area, (VALUE start, VALUE end, VALUE buff), V_Subr3, DOC_copy_area) /*
 ::doc:copy_area::
 copy-area START-POS END-POS [BUFFER]
 
 Returns the string from START-POS up to END-POS.
 ::end:: */
 {
-    POS start, end;
-    DECLARE1(lstart, POSP);
-    DECLARE2(lend, POSP);
-    start = VPOS(lstart);
-    end = VPOS(lend);
+    DECLARE1(start, POSP);
+    DECLARE2(end, POSP);
     if(!BUFFERP(buff))
 	buff = VAL(curr_vw->vw_Tx);
     if(check_section(VTX(buff), &start, &end))
     {
-	long tlen = section_length(VTX(buff), &start, &end) + 1;
+	long tlen = section_length(VTX(buff), start, end) + 1;
 	VALUE str = make_string(tlen);
 	if(str)
 	{
-	    copy_section(VTX(buff), &start, &end, VSTR(str));
+	    copy_section(VTX(buff), start, end, VSTR(str));
 	    VSTR(str)[tlen - 1] = 0;
 	    return(str);
 	}
@@ -165,8 +133,8 @@ Returns the string from START-POS up to END-POS.
     return(sym_nil);
 }
 
-_PR VALUE cmd_cut_area(VALUE lstart, VALUE lend, VALUE buff);
-DEFUN("cut-area", cmd_cut_area, subr_cut_area, (VALUE lstart, VALUE lend, VALUE buff), V_Subr3, DOC_cut_area) /*
+_PR VALUE cmd_cut_area(VALUE start, VALUE end, VALUE buff);
+DEFUN("cut-area", cmd_cut_area, subr_cut_area, (VALUE start, VALUE end, VALUE buff), V_Subr3, DOC_cut_area) /*
 ::doc:cut_area::
 cut-area START-POS END-POS [BUFFER]
 
@@ -174,21 +142,20 @@ The same as `copy-area' except that the section of text copied (START-POS to
 END-POS) is deleted from the file after being duplicated.
 ::end:: */
 {
-    POS start, end;
-    DECLARE1(lstart, POSP);
-    DECLARE2(lend, POSP);
-    start = VPOS(lstart);
-    end = VPOS(lend);
+    DECLARE1(start, POSP);
+    DECLARE2(end, POSP);
     if(!BUFFERP(buff))
 	buff = VAL(curr_vw->vw_Tx);
-    if(!read_only(VTX(buff)) && pad_pos(VTX(buff), &start)
-       && pad_pos(VTX(buff), &end) && check_section(VTX(buff), &start, &end))
+    if(!read_only(VTX(buff))
+       && pad_pos(VTX(buff), start)
+       && pad_pos(VTX(buff), end)
+       && check_section(VTX(buff), &start, &end))
     {
 	/* Only one copy is made. */
-	VALUE str = undo_push_deletion(VTX(buff), &start, &end);
+	VALUE str = undo_push_deletion(VTX(buff), start, end);
 	if(str)
 	{
-	    delete_section(VTX(buff), &start, &end);
+	    delete_section(VTX(buff), start, end);
 	    return(str);
 	}
     }
@@ -242,22 +209,22 @@ it is used as the new position of the start of the block.
     VW *vw = curr_vw;
     VALUE res;
     if(!vw->vw_BlockStatus || (vw->vw_BlockStatus == 1))
-	res = make_lpos(&vw->vw_BlockS);
+	res = vw->vw_BlockS;
     else
 	res = sym_nil;
-    if(POSP(pos) && check_line(vw->vw_Tx, &VPOS(pos)))
+    if(POSP(pos) && check_line(vw->vw_Tx, pos))
     {
 	switch(vw->vw_BlockStatus)
 	{
 	    GCVAL gcv_res;
 	    case 0:
 		set_block_refresh(vw);
-		vw->vw_BlockS = VPOS(pos);
+		vw->vw_BlockS = pos;
 		order_block(vw);
 		set_block_refresh(vw);
 		break;
 	    case 2:
-		vw->vw_BlockS = VPOS(pos);
+		vw->vw_BlockS = pos;
 		vw->vw_BlockStatus = 0;
 		order_block(vw);
 		set_block_refresh(vw);
@@ -270,11 +237,11 @@ it is used as the new position of the start of the block.
 		vw->vw_BlockStatus = 1;
 		/* FALL THROUGH */
 	    case 1:
-		vw->vw_BlockS = VPOS(pos);
+		vw->vw_BlockS = pos;
 		break;
 	}
     }
-    return(res);
+    return res;
 }
 
 _PR VALUE cmd_block_end(VALUE pos);
@@ -289,22 +256,22 @@ it is used as the new position of the end of the block.
     VW *vw = curr_vw;
     VALUE res;
     if(!vw->vw_BlockStatus || (vw->vw_BlockStatus == 2))
-	res = make_lpos(&vw->vw_BlockE);
+	res = vw->vw_BlockE;
     else
 	res = sym_nil;
-    if(POSP(pos) && check_line(vw->vw_Tx, &VPOS(pos)))
+    if(POSP(pos) && check_line(vw->vw_Tx, pos))
     {
 	switch(vw->vw_BlockStatus)
 	{
 	    GCVAL gcv_res;
 	    case 0:
 		set_block_refresh(vw);
-		vw->vw_BlockE = VPOS(pos);
+		vw->vw_BlockE = pos;
 		order_block(vw);
 		set_block_refresh(vw);
 		break;
 	    case 1:
-		vw->vw_BlockE = VPOS(pos);
+		vw->vw_BlockE = pos;
 		vw->vw_BlockStatus = 0;
 		order_block(vw);
 		set_block_refresh(vw);
@@ -317,11 +284,11 @@ it is used as the new position of the end of the block.
 		vw->vw_BlockStatus = 2;
 		/* FALL THROUGH */
 	    case 2:
-		vw->vw_BlockE = VPOS(pos);
+		vw->vw_BlockE = pos;
 		break;
 	}
     }
-    return(res);
+    return res;
 }
 
 _PR VALUE cmd_block_kill(void);
@@ -356,8 +323,8 @@ Returns true if a block is currently marked.
     return(sym_nil);
 }
 
-_PR VALUE cmd_translate_area(VALUE vstart, VALUE vend, VALUE table, VALUE tx);
-DEFUN("translate-area", cmd_translate_area, subr_translate_area, (VALUE vstart, VALUE vend, VALUE table, VALUE tx), V_Subr4, DOC_translate_area) /*
+_PR VALUE cmd_translate_area(VALUE start, VALUE end, VALUE table, VALUE tx);
+DEFUN("translate-area", cmd_translate_area, subr_translate_area, (VALUE start, VALUE end, VALUE table, VALUE tx), V_Subr4, DOC_translate_area) /*
 ::doc:translate_area:
 translate-area START-POS END-POS TRANSLATION-TABLE [BUFFER]
 
@@ -368,36 +335,35 @@ string is less than 256 chars long any undefined characters will remain
 unchanged.
 ::end:: */
 {
-    POS start, end;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    DECLARE1(vstart, POSP);
-    DECLARE2(vend, POSP);
+    DECLARE1(start, POSP);
+    DECLARE2(end, POSP);
     DECLARE3(table, STRINGP);
-    start = VPOS(vstart);
-    end = VPOS(vend);
     if(!read_only(VTX(tx)) && check_section(VTX(tx), &start, &end))
     {
-	LINE *line = VTX(tx)->tx_Lines + start.pos_Line;
+	LINE *line = VTX(tx)->tx_Lines + VROW(start);
+	long linenum = VROW(start), col;
 	int tablen = STRING_LEN(table);
 	register u_char *str;
-	undo_record_modification(VTX(tx), &start, &end);
-	flag_modification(VTX(tx), &start, &end);
-	while(start.pos_Line < end.pos_Line)
+	undo_record_modification(VTX(tx), start, end);
+	flag_modification(VTX(tx), start, end);
+	while(linenum < VROW(end))
 	{
 	    int llen = line->ln_Strlen - 1;
-	    str = line->ln_Line + start.pos_Col;
-	    while(start.pos_Col++ < llen)
+	    col = (linenum == VROW(start) ? VCOL(start) : 0);
+	    str = line->ln_Line + col;
+	    while(col++ < llen)
 	    {
 		register u_char c = *str;
 		*str++ = (c < tablen) ? VSTR(table)[c] : c;
 	    }
-	    start.pos_Col = 0;
-	    start.pos_Line++;
+	    linenum++;
 	    line++;
 	}
-	str = line->ln_Line + start.pos_Col;
-	while(start.pos_Col++ < end.pos_Col)
+	col = (linenum == VROW(start) ? VCOL(start) : 0);
+	str = line->ln_Line + col;
+	while(col++ < VCOL(end))
 	{
 	    register u_char c = *str;
 	    *str++ = (c < tablen) ? VSTR(table)[c] : c;
@@ -437,8 +403,8 @@ Note that the STRING really is modified, no copy is made!
     return(string);
 }
 
-_PR VALUE cmd_get_char(VALUE vpos, VALUE tx);
-DEFUN("get-char", cmd_get_char, subr_get_char, (VALUE vpos, VALUE tx), V_Subr2, DOC_get_char) /*
+_PR VALUE cmd_get_char(VALUE pos, VALUE tx);
+DEFUN("get-char", cmd_get_char, subr_get_char, (VALUE pos, VALUE tx), V_Subr2, DOC_get_char) /*
 ::doc:get_char::
 get-char [POS] [BUFFER]
 
@@ -446,56 +412,51 @@ Returns the numerical value of the character at position POS in BUFFER. If no
 character exists at that position, nil is returned.
 ::end:: */
 {
-    POS pos;
     LINE *line;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    if(POSP(vpos))
-	pos = VPOS(vpos);
-    else
-	pos = *(get_tx_cursor(VTX(tx)));
-    if(!check_line(VTX(tx), &pos))
+    if(!POSP(pos))
+	pos = get_tx_cursor(VTX(tx));
+    if(!check_line(VTX(tx), pos))
 	return(sym_nil);
-    line = VTX(tx)->tx_Lines + pos.pos_Line;
-    if(pos.pos_Col >= line->ln_Strlen)
+    line = VTX(tx)->tx_Lines + VROW(pos);
+    if(VCOL(pos) >= line->ln_Strlen)
 	return(sym_nil);
-    else if(pos.pos_Col == line->ln_Strlen - 1)
+    else if(VCOL(pos) == line->ln_Strlen - 1)
     {
-	if(pos.pos_Line == VTX(tx)->tx_LogicalEnd - 1)
+	if(VROW(pos) == VTX(tx)->tx_LogicalEnd - 1)
 	    return(sym_nil);
 	else
 	    return(make_number('\n'));
     }
     else
-	return(make_number(line->ln_Line[pos.pos_Col]));
+	return(make_number(line->ln_Line[VCOL(pos)]));
 }
 
-_PR VALUE cmd_set_char(VALUE ch, VALUE vpos, VALUE tx);
-DEFUN_INT("set-char", cmd_set_char, subr_set_char, (VALUE ch, VALUE vpos, VALUE tx), V_Subr3, DOC_set_char, "cCharacter:") /*
+_PR VALUE cmd_set_char(VALUE ch, VALUE pos, VALUE tx);
+DEFUN_INT("set-char", cmd_set_char, subr_set_char, (VALUE ch, VALUE pos, VALUE tx), V_Subr3, DOC_set_char, "cCharacter:") /*
 ::doc:set_char::
 set-char CHARACTER [POS] [BUFFER]
 
 Sets the character at position POS in BUFFER to CHARACTER.
 ::end:: */
 {
-    POS pos, end;
+    /* FIXME: make this handle insertion of newlines */
+    VALUE end;
     DECLARE1(ch, CHARP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    if(POSP(vpos))
-	pos = VPOS(vpos);
-    else
-	pos = *(get_tx_cursor(VTX(tx)));
-    if(!check_line(VTX(tx), &pos))
+    if(!POSP(pos))
+	pos = get_tx_cursor(VTX(tx));
+    if(!check_line(VTX(tx), pos))
 	return(sym_nil);
-    end.pos_Col = pos.pos_Col + 1;
-    end.pos_Line = pos.pos_Line;
-    if(pad_pos(VTX(tx), &end))
+    end = make_pos(VCOL(pos) + 1, VROW(pos));
+    if(pad_pos(VTX(tx), end))
     {
-	LINE *line = VTX(tx)->tx_Lines + pos.pos_Line;
-	undo_record_modification(VTX(tx), &pos, &end);
-	line->ln_Line[pos.pos_Col] = VCHAR(ch);
-	flag_modification(VTX(tx), &pos, &end);
+	LINE *line = VTX(tx)->tx_Lines + VROW(pos);
+	undo_record_modification(VTX(tx), pos, end);
+	line->ln_Line[VCOL(pos)] = VCHAR(ch);
+	flag_modification(VTX(tx), pos, end);
 	return(ch);
     }
     return(NULL);
@@ -612,7 +573,7 @@ Returns the line number which POS points to.
 ::end:: */
 {
     DECLARE1(pos, POSP);
-    return(make_number(VPOS(pos).pos_Line));
+    return(make_number(VROW(pos)));
 }
 
 _PR VALUE cmd_pos_col(VALUE pos);
@@ -624,35 +585,7 @@ Return the column number which POS points to.
 ::end:: */
 {
     DECLARE1(pos, POSP);
-    return(make_number(VPOS(pos).pos_Col));
-}
-
-_PR VALUE cmd_set_pos_line(VALUE pos, VALUE line);
-DEFUN("set-pos-line", cmd_set_pos_line, subr_set_pos_line, (VALUE pos, VALUE line), V_Subr2, DOC_set_pos_line) /*
-::doc:set_pos_line::
-set-pos-line POS LINE
-
-Sets the line number of POS to LINE.
-::end:: */
-{
-    DECLARE1(pos, POSP);
-    DECLARE2(line, NUMBERP);
-    VPOS(pos).pos_Line = VNUM(line);
-    return(line);
-}
-
-_PR VALUE cmd_set_pos_col(VALUE pos, VALUE col);
-DEFUN("set-pos-col", cmd_set_pos_col, subr_set_pos_col, (VALUE pos, VALUE col), V_Subr2, DOC_set_pos_col) /*
-::doc:set_pos_col::
-set-pos-col POS COL
-
-Sets the column number of POS to COL.
-::end:: */
-{
-    DECLARE1(pos, POSP);
-    DECLARE2(col, NUMBERP);
-    VPOS(pos).pos_Col = VNUM(col);
-    return(col);
+    return(make_number(VCOL(pos)));
 }
 
 _PR VALUE cmd_posp(VALUE arg);
@@ -676,11 +609,11 @@ cursor-pos
 Returns the position of the cursor in the current window.
 ::end:: */
 {
-    return(make_lpos(&curr_vw->vw_CursorPos));
+    return curr_vw->vw_CursorPos;
 }
 
-_PR VALUE cmd_empty_line_p(VALUE lpos, VALUE tx);
-DEFUN("empty-line-p", cmd_empty_line_p, subr_empty_line_p, (VALUE lpos, VALUE tx), V_Subr2, DOC_empty_line_p) /*
+_PR VALUE cmd_empty_line_p(VALUE pos, VALUE tx);
+DEFUN("empty-line-p", cmd_empty_line_p, subr_empty_line_p, (VALUE pos, VALUE tx), V_Subr2, DOC_empty_line_p) /*
 ::doc:empty_line_p::
 empty-line-p [POS] [BUFFER]
 
@@ -689,15 +622,12 @@ empty, ie, blank or only containing spaces.
 ::end:: */
 {
     VW *vw = curr_vw;
-    POS pos;
     LINE *line;
-    if(POSP(lpos))
-	pos = VPOS(lpos);
-    else
+    if(!POSP(pos))
 	pos = vw->vw_CursorPos;
     if(!BUFFERP(tx))
 	tx = VAL(vw->vw_Tx);
-    line = VTX(tx)->tx_Lines + pos.pos_Line;
+    line = VTX(tx)->tx_Lines + VROW(pos);
     if(line->ln_Strlen == 1)
 	return(sym_t);
     else
@@ -711,8 +641,8 @@ empty, ie, blank or only containing spaces.
     return(sym_nil);
 }
 
-_PR VALUE cmd_indent_pos(VALUE lpos, VALUE tx);
-DEFUN("indent-pos", cmd_indent_pos, subr_indent_pos, (VALUE lpos, VALUE tx), V_Subr2, DOC_indent_pos) /*
+_PR VALUE cmd_indent_pos(VALUE pos, VALUE tx);
+DEFUN("indent-pos", cmd_indent_pos, subr_indent_pos, (VALUE pos, VALUE tx), V_Subr2, DOC_indent_pos) /*
 ::doc:indent_pos::
 indent-pos [POS] [BUFFER]
 
@@ -721,20 +651,19 @@ pointed to by POS (or the cursor), in BUFFER.
 ::end:: */
 {
     VW *vw = curr_vw;
-    POS pos;
     long len;
     u_char *line;
     if(!BUFFERP(tx))
 	tx = VAL(vw->vw_Tx);
-    if(POSP(lpos) && check_line(VTX(tx), &VPOS(lpos)))
-	pos = VPOS(lpos);
+    if(POSP(pos) && check_line(VTX(tx), pos))
+	;
     else
 	pos = vw->vw_CursorPos;
-    line = VTX(tx)->tx_Lines[pos.pos_Line].ln_Line;
+    line = VTX(tx)->tx_Lines[VROW(pos)].ln_Line;
     for(len = 0; *line && isspace(*line); len++, line++)
 	;
-    len = glyph_col(VTX(tx), len, pos.pos_Line);
-    return(make_lpos2(len, pos.pos_Line));
+    len = glyph_col(VTX(tx), len, VROW(pos));
+    return make_pos(len, VROW(pos));
 }
 
 _PR VALUE cmd_set_indent_pos(VALUE indpos, VALUE tx, VALUE spaces_p);
@@ -752,11 +681,11 @@ If ONLY-SPACES in non-nil no tab characters are used.
     DECLARE1(indpos, POSP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    if((!read_only(VTX(tx))) && check_line(VTX(tx), &VPOS(indpos)))
+    if((!read_only(VTX(tx))) && check_line(VTX(tx), indpos))
     {
-	LINE *line = VTX(tx)->tx_Lines + VPOS(indpos).pos_Line;
+	LINE *line = VTX(tx)->tx_Lines + VROW(indpos);
 	u_char *s = line->ln_Line;
-	POS pos = VPOS(indpos), end;
+	VALUE pos = indpos;
 	long oldind, diff;
 	long tabs, spaces;
 	while(*s && isspace(*s))
@@ -764,75 +693,75 @@ If ONLY-SPACES in non-nil no tab characters are used.
 	oldind = s - line->ln_Line;
 	if(NILP(spaces_p))
 	{
-	    tabs = pos.pos_Col / VTX(tx)->tx_TabSize;
-	    spaces = pos.pos_Col % VTX(tx)->tx_TabSize;
+	    tabs = VCOL(pos) / VTX(tx)->tx_TabSize;
+	    spaces = VCOL(pos) % VTX(tx)->tx_TabSize;
 	}
 	else
 	{
 	    tabs = 0;
-	    spaces = pos.pos_Col;
+	    spaces = VCOL(pos);
 	}
 	diff = oldind - (tabs + spaces);
-	pos.pos_Col = 0;
-	end.pos_Col = diff;
-	end.pos_Line = pos.pos_Line;
+	pos = make_pos(0, VROW(pos));
 	if(diff > 0)
 	{
-	    undo_record_deletion(VTX(tx), &pos, &end);
-	    delete_chars(VTX(tx), &pos, diff);
-	    flag_deletion(VTX(tx), &pos, &end);
-	    end.pos_Col = tabs + spaces;
-	    undo_record_modification(VTX(tx), &pos, &end);
+	    VALUE end = make_pos(diff, VROW(pos));
+	    undo_record_deletion(VTX(tx), pos, end);
+	    delete_chars(VTX(tx), pos, diff);
+	    flag_deletion(VTX(tx), pos, end);
+	    end = make_pos(tabs + spaces, VROW(end));
+	    undo_record_modification(VTX(tx), pos, end);
 	    memset(line->ln_Line, '\t', tabs);
 	    memset(line->ln_Line + tabs, ' ', spaces);
-	    flag_modification(VTX(tx), &pos, &end);
+	    flag_modification(VTX(tx), pos, end);
 	}
 	else if(diff < 0)
 	{
+	    VALUE end;
 	    diff = -diff;
-	    end.pos_Col = diff;
-	    insert_gap(VTX(tx), diff, &pos);
-	    undo_record_insertion(VTX(tx), &pos, &end);
-	    flag_insertion(VTX(tx), &pos, &end);
-	    pos.pos_Col = diff;
-	    end.pos_Col = tabs + spaces;
-	    undo_record_modification(VTX(tx), &pos, &end);
+	    end = make_pos(diff, VROW(pos));
+	    insert_gap(VTX(tx), diff, pos);
+	    undo_record_insertion(VTX(tx), pos, end);
+	    flag_insertion(VTX(tx), pos, end);
+	    pos = make_pos(diff, VROW(pos));
+	    end = make_pos(tabs + spaces, VROW(end));
+	    undo_record_modification(VTX(tx), pos, end);
 	    memset(line->ln_Line, '\t', tabs);
 	    memset(line->ln_Line + tabs, ' ', spaces);
-	    flag_modification(VTX(tx), &pos, &end);
+	    flag_modification(VTX(tx), pos, end);
 	}
 	else
 	{
 	    u_char *s = line->ln_Line;
 	    long i;
-	    end.pos_Col = tabs + spaces;
+	    VALUE end = make_pos(tabs + spaces, VROW(pos));
 	    for(i = 0; i < tabs; i++)
 	    {
 		if(*s++ != '\t')
 		{
-		    undo_record_modification(VTX(tx), &pos, &end);
+		    undo_record_modification(VTX(tx), pos, end);
 		    memset(line->ln_Line, '\t', tabs);
 		    memset(line->ln_Line + tabs, ' ', spaces);
-		    flag_modification(VTX(tx), &pos, &end);
-		    return(indpos);
+		    flag_modification(VTX(tx), pos, end);
+		    return indpos;
 		}
 	    }
 	    for(i = 0; i < spaces; i++)
 	    {
 		if(*s++ != ' ')
 		{
-		    pos.pos_Col = tabs;
-		    undo_record_modification(VTX(tx), &pos, &end);
+		    pos = make_pos(tabs, VROW(pos));
+		    undo_record_modification(VTX(tx), pos, end);
 		    memset(line->ln_Line + tabs, ' ', spaces);
-		    flag_modification(VTX(tx), &pos, &end);
-		    return(indpos);
+		    flag_modification(VTX(tx), pos, end);
+		    return indpos;
 		}
 	    }
 	    /* No modifications required. */
 	}
-	return(indpos);
+	return indpos;
     }
-    return(sym_nil);
+    return sym_nil;
 }
 
 _PR VALUE cmd_indent_to(VALUE col, VALUE spaces_p);
@@ -872,14 +801,14 @@ COLUMN counts from zero.
 	}
 	if(spaces + tabs > 0)
 	{
-	    POS tmp = vw->vw_CursorPos;
-	    if(insert_gap(tx, spaces + tabs, &tmp))
+	    VALUE tmp = vw->vw_CursorPos;
+	    if(insert_gap(tx, spaces + tabs, tmp))
 	    {
-		u_char *line = tx->tx_Lines[tmp.pos_Line].ln_Line;
-		memset(line + tmp.pos_Col, '\t', tabs);
-		memset(line + tmp.pos_Col + tabs, ' ', spaces);
-		undo_record_insertion(tx, &tmp, &vw->vw_CursorPos);
-		flag_insertion(tx, &tmp, &vw->vw_CursorPos);
+		u_char *line = tx->tx_Lines[VROW(tmp)].ln_Line;
+		memset(line + VCOL(tmp), '\t', tabs);
+		memset(line + VCOL(tmp) + tabs, ' ', spaces);
+		undo_record_insertion(tx, tmp, vw->vw_CursorPos);
+		flag_insertion(tx, tmp, vw->vw_CursorPos);
 		return(col);
 	    }
 	}
@@ -897,24 +826,23 @@ Remove all text from BUFFER, leaving just one empty line. Also removes
 any restriction on the buffer.
 ::end:: */
 {
-    POS start, end;
+    VALUE start, end;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
     cmd_unrestrict_buffer(tx);
-    start.pos_Col = start.pos_Line = 0;
-    end.pos_Line = VTX(tx)->tx_NumLines - 1;
-    end.pos_Col = VTX(tx)->tx_Lines[end.pos_Line].ln_Strlen - 1;
-    undo_record_deletion(VTX(tx), &start, &end);
+    start = make_pos(0, 0);
+    end = cmd_end_of_buffer(VAL(tx), sym_t);
+    undo_record_deletion(VTX(tx), start, end);
     if(clear_line_list(VTX(tx)))
     {
 	reset_all_views(VTX(tx));
-	return(tx);
+	return tx;
     }
-    return(sym_nil);
+    return sym_nil;
 }
 
-_PR VALUE cmd_pos_to_offset(VALUE vpos, VALUE tx);
-DEFUN("pos-to-offset", cmd_pos_to_offset, subr_pos_to_offset, (VALUE vpos, VALUE tx), V_Subr2, DOC_pos_to_offset) /*
+_PR VALUE cmd_pos_to_offset(VALUE pos, VALUE tx);
+DEFUN("pos-to-offset", cmd_pos_to_offset, subr_pos_to_offset, (VALUE pos, VALUE tx), V_Subr2, DOC_pos_to_offset) /*
 ::doc:pos_to_offset::
 pos-to-offset [POS] [BUFFER]
 
@@ -922,22 +850,19 @@ Returns the number of characters (counting from zero) that POS (or the cursor)
 is from the beginning of the buffer.
 ::end:: */
 {
-    POS pos;
     LINE *line;
     long offset, line_num;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    if(POSP(vpos))
-	pos = VPOS(vpos);
-    else
-	pos = *get_tx_cursor(VTX(tx));
-    if(check_pos(VTX(tx), &pos))
+    if(!POSP(pos))
+	pos = get_tx_cursor(VTX(tx));
+    if(check_pos(VTX(tx), pos))
     {
 	line = VTX(tx)->tx_Lines;
-	for(offset = line_num = 0; line_num < pos.pos_Line; line++, line_num++)
+	for(offset = line_num = 0; line_num < VROW(pos); line++, line_num++)
 	    offset += line->ln_Strlen; /* includes the theoretical '\n' */
-	offset += pos.pos_Col;
-	return(make_number(offset));
+	offset += VCOL(pos);
+	return make_number(offset);
     }
     else
 	return NULL;
@@ -951,31 +876,29 @@ offset-to-pos OFFSET [BUFFER]
 Returns the position which is OFFSET characters from the start of the buffer.
 ::end:: */
 {
-    POS pos;
     long offset;
+    long col, row;
     LINE *line;
     DECLARE1(voffset, NUMBERP);
     offset = VNUM(voffset);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    pos.pos_Col = 0;
-    pos.pos_Line = 0;
-    line = VTX(tx)->tx_Lines + pos.pos_Line;
+    row = 0;
+    line = VTX(tx)->tx_Lines;
     while(offset >= line->ln_Strlen)
     {
 	offset -= line->ln_Strlen;
-	pos.pos_Line++;
+	row++;
 	line++;
     }
-    pos.pos_Col = offset;
-    return(make_lpos(&pos));
+    col = offset;
+    return make_pos(col, row);
 }
 
 void
 edit_init(void)
 {
     int i;
-    ADD_SUBR(subr_split_line);
     ADD_SUBR(subr_insert);
     ADD_SUBR(subr_delete_area);
     ADD_SUBR(subr_copy_area);
@@ -999,8 +922,6 @@ edit_init(void)
     ADD_SUBR(subr_char_downcase);
     ADD_SUBR(subr_pos_line);
     ADD_SUBR(subr_pos_col);
-    ADD_SUBR(subr_set_pos_line);
-    ADD_SUBR(subr_set_pos_col);
     ADD_SUBR(subr_posp);
     ADD_SUBR(subr_cursor_pos);
     ADD_SUBR(subr_empty_line_p);
