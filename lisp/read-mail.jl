@@ -956,7 +956,7 @@ key, the car the order to sort in, a positive or negative integer.")
 		      keymap-path (cons 'rm-keymap
 					(delq rm-keymap keymap-path)))
 		(set-buffer-read-only nil t))
-	      (rm-fix-status-info current))))
+	      (rm-fix-status-info folder current))))
       ;; No message to display. Try for an empty buffer
       (let
 	  ((box (car (rm-get-folder-field folder rm-folder-boxes))))
@@ -969,9 +969,14 @@ key, the car the order to sort in, a positive or negative integer.")
 	(rm-summary-update-current)))))
 
 ;; Set the minor-mode-names list to reflect the status of MESSAGE
-(defun rm-fix-status-info (message)
-  (setq buffer-status-id (rm-cached-form message 'status-id
-			   (rm-format rm-status-format message)))
+(defun rm-fix-status-info (folder message)
+  (let
+      ((id (rm-cached-form message 'status-id
+	     (rm-format rm-status-format message))))
+    (setq buffer-status-id id)
+    (when (rm-get-folder-field folder rm-folder-summary)
+      (rm-with-summary folder
+	(setq buffer-status-id id))))
   (setq mode-name (apply 'concat
 			 (mapcar #'(lambda (cell)
 				     (and (cdr cell)
@@ -1480,7 +1485,7 @@ current message."
       ((folder (rm-current-folder))
        (current (rm-get-folder-field folder rm-folder-current-msg)))
     (rm-message-put current 'deleted t)
-    (rm-fix-status-info current)
+    (rm-fix-status-info folder current)
     (when (and rm-move-after-deleting
 	       (rm-get-folder-field folder rm-folder-after-list))
       (rm-next-message))))
@@ -1508,7 +1513,7 @@ nonrecoverable."
     (when (rm-get-folder-field folder rm-folder-summary)
       (rm-with-summary folder
         (summary-unmark-item current)))
-    (rm-fix-status-info current)))
+    (rm-fix-status-info folder current)))
 
 (defun rm-unmark-all-messages ()
   "Unmarks all messages in the current folder."
