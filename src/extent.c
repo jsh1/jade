@@ -1331,12 +1331,12 @@ adjust_extents_join_rows(Lisp_Extent *x, long col, long row)
 /* Handling the visible-extents list. */
 
 void
-start_visible_extent (WIN *w, Lisp_Extent *e, long start_col, long start_row)
+start_visible_extent (VW *vw, Lisp_Extent *e, long start_col, long start_row)
 {
     struct visible_extent *x;
     e = find_first_frag (e);
-    x = w->w_VisibleExtents;
-    while (x != 0 && x->extent != e)
+    x = vw->vw_Win->w_VisibleExtents;
+    while (x != 0 && (x->extent != e || x->vw != vw))
 	x = x->next;
     if (x != 0)
     {
@@ -1350,9 +1350,10 @@ start_visible_extent (WIN *w, Lisp_Extent *e, long start_col, long start_row)
     else
     {
 	x = rep_alloc (sizeof (struct visible_extent));
-	x->next = w->w_VisibleExtents;
-	w->w_VisibleExtents = x;
+	x->next = vw->vw_Win->w_VisibleExtents;
+	vw->vw_Win->w_VisibleExtents = x;
 	x->extent = e;
+	x->vw = vw;
 	x->start_col = start_col;
 	x->start_row = start_row;
 	x->end_col = start_col;
@@ -1361,12 +1362,12 @@ start_visible_extent (WIN *w, Lisp_Extent *e, long start_col, long start_row)
 }
 
 void
-end_visible_extent (WIN *w, Lisp_Extent *e, long end_col, long end_row)
+end_visible_extent (VW *vw, Lisp_Extent *e, long end_col, long end_row)
 {
     struct visible_extent *x;
     e = find_first_frag (e);
-    x = w->w_VisibleExtents;
-    while (x != 0 && x->extent != e)
+    x = vw->vw_Win->w_VisibleExtents;
+    while (x != 0 && (x->extent != e || x->vw != vw))
 	x = x->next;
     assert (x != 0);
     if (end_row > x->end_row
@@ -1412,39 +1413,63 @@ map_visible_extents (WIN *w, long col, long row,
     }
 }
 
+static void
+update_mouse_extent_callback (struct visible_extent *x)
+{
+    VW *vw = x->vw;
+    if (vw->vw_NumMouseExtents < MAX_MOUSE_EXTENTS)
+	vw->vw_MouseExtents[vw->vw_NumMouseExtents++] = x->extent;
+}
+
+/* Return true if the display should be redrawn. */
 bool
 update_mouse_extent (WIN *w, long mouse_col, long mouse_row)
 {
     /* XXX remove this GNU CC dependency */
-    void callback (struct visible_extent *x) {
-	if (w->w_NumMouseExtents < MAX_MOUSE_EXTENTS)
-	    w->w_MouseExtents[w->w_NumMouseExtents++] = x->extent;
+    Lisp_Extent *old[w->w_ViewCount][MAX_MOUSE_EXTENTS];
+    int old_num[w->w_ViewCount];
+    VW *vw;
+    int i;
+
+    for (i = 0, vw = w->w_ViewList; vw != 0; i++, vw = vw->vw_NextView)
+    {
+	old_num[i] = vw->vw_NumMouseExtents;
+	memcpy (&old[i][0], vw->vw_MouseExtents,
+		 old_num[i] * sizeof(Lisp_Extent *));
+	vw->vw_NumMouseExtents = 0;
     }
 
-    Lisp_Extent *old[MAX_MOUSE_EXTENTS];
-    int old_num = w->w_NumMouseExtents;
-    memcpy (old, w->w_MouseExtents, old_num * sizeof(Lisp_Extent *));
+    map_visible_extents (w, mouse_col, mouse_row,
+			 update_mouse_extent_callback);
 
-    w->w_NumMouseExtents = 0;
-    map_visible_extents (w, mouse_col, mouse_row, callback);
-
-    return (w->w_NumMouseExtents != old_num
-	    || memcmp (old, w->w_MouseExtents,
-		       old_num * sizeof(Lisp_Extent *)) != 0);
+    for (i = 0, vw = w->w_ViewList; vw != 0; i++, vw = vw->vw_NextView)
+    {
+	if (vw->vw_NumMouseExtents != old_num[i]
+	    || memcmp (&old[i][0], vw->vw_MouseExtents,
+		       old_num[i] * sizeof(Lisp_Extent *)) != 0)
+	{
+	    return TRUE;
+	}
+    }
+    return FALSE;
 }
 
 void
 mark_visible_extents (WIN *w)
 {
     struct visible_extent *x = w->w_VisibleExtents;
-    int i;
+    VW *vw;
     while (x != 0)
     {
 	rep_MARKVAL (rep_VAL (x->extent));
 	x = x->next;
     }
-    for (i = 0; i < w->w_NumMouseExtents; i++)
-	rep_MARKVAL (rep_VAL (w->w_MouseExtents[i]));
+    for (vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
+    {
+	int i;
+	for (i = 0; i < vw->vw_NumMouseExtents; i++)
+	    rep_MARKVAL (rep_VAL (vw->vw_MouseExtents[i]));
+    }
 }
 
 
