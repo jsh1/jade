@@ -124,21 +124,25 @@ CC: field if the prefix arg is set)."
     (format buffer "name: %S\n" mds-edit-item)
     (mapc #'(lambda (cell)
 	      (unless (eq (car cell) ':name)
-		(format buffer "%s: \("
+		(format buffer "%s: "
 			(substring (symbol-name (car cell)) 1))
-		(let
-		    ((first t)
-		     (indent (pos-col (char-to-glyph-pos))))
-		  (mapc #'(lambda (e)
-			    (unless first
-			      (insert "\n")
-			      (indent-to indent))
-			    (prin1 e buffer)
-			    (setq first nil)) (cdr cell)))
-		(insert "\)\n"))) item)
+		(if (listp (cdr cell))
+		    (progn
+		      (insert "\(")
+		      (let
+			  ((first t)
+			   (indent (pos-col (char-to-glyph-pos))))
+			(mapc #'(lambda (e)
+				  (unless first
+				    (insert "\n")
+				    (indent-to indent))
+				  (prin1 e buffer)
+				  (setq first nil)) (cdr cell)))
+		      (insert "\)\n"))
+		  (prin1 (cdr cell) buffer)
+		  (insert "\n")))) item)
     (set-buffer-modified nil nil)
     (setq buffer-undo-list nil)
-    (shrink-view-if-larger-than-buffer)
     (message "Type `C-c C-c' to commit edits")))
 
 (defun mds-edit-commit ()
@@ -148,13 +152,13 @@ CC: field if the prefix arg is set)."
   (let
       ((record nil)
        (tem (start-of-buffer)))
-    (while (looking-at "^([a-z]+):" tem)
+    (while (re-search-forward "^([^ \t\n:]+)[ \t]*:" tem)
       (let*
 	  ((field (intern (concat ?: (expand-last-match "\\1"))))
 	   (stream (cons (current-buffer) (match-end)))
 	   (body (read stream)))
-	(setq tem (start-of-line (forward-line 1 (cdr stream))))
-	(setq record (cons (cons field body) record))))
+	(setq record (cons (cons field body) record))
+	(setq tem (cdr stream))))
     (or (assq ':name record)
 	(error "Record has no name field: %s" record))
     (let
