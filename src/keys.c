@@ -209,7 +209,7 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 	    }
 	    result = cmd_eval_hook2(sym_unbound_key_hook, sym_nil);
 	    if(result && !NILP(result))
-		undo_distinct();
+		;
 	    else if(result && (mods & EV_TYPE_KEYBD) && OSInputMsg)
 	    {
 		u_char buff[256];
@@ -222,11 +222,26 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 			if(!read_only(vw->vw_Tx))
 			{
 			    POS tmp = vw->vw_CursorPos;
-			    if(last_command != sym_t)
-				undo_new_group();
+			    VALUE old_undo_head = NULL;
 			    cmd_eval_hook2(sym_pre_command_hook, sym_nil);
+			    if(last_command == sym_t
+			       && CONSP(vw->vw_Tx->tx_UndoList)
+			       && NILP(VCAR(vw->vw_Tx->tx_UndoList)))
+			    {
+				/* Last command was also an insertion,
+				   fix it so that the undo information
+				   is merged. */
+				old_undo_head = vw->vw_Tx->tx_UndoList;
+				vw->vw_Tx->tx_UndoList
+				    = VCDR(vw->vw_Tx->tx_UndoList);
+			    }
 			    if(pad_cursor(vw))
 				insert_string(vw->vw_Tx, buff, len, &tmp);
+			    if(old_undo_head != NULL)
+			    {
+				VCDR(old_undo_head) = vw->vw_Tx->tx_UndoList;
+				vw->vw_Tx->tx_UndoList = old_undo_head;
+			    }
 			    cmd_eval_hook2(sym_post_command_hook, sym_nil);
 			    last_command = sym_t;
 			    result = sym_t;
