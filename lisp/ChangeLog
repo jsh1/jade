@@ -1,3 +1,9 @@
+1999-12-14  John Harper  <john@dcs.warwick.ac.uk>
+
+	* html-decode.jl (html-decode-tag): simplified how comments are
+	recognized and skipped, hopefully fixes the annoying ``no
+	closing greater-than character'' error messages
+
 1999-12-10  John Harper  <john@dcs.warwick.ac.uk>
 
 	* mime-encode.jl (mime-encode-stream): new optional arg, the
