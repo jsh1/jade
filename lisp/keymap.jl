@@ -96,12 +96,12 @@ binding, or nil if there was no prefix."
 	      (km-map-keylist (cdr keymap) function buffer))))))))
 
 ;; Map over a single list of keybindings
-(defun km-map-keylist (keylist function buffer)
+(defun km-map-keylist (keylist fun buffer)
   (mapc #'(lambda (k)
 	    (cond
 	     ((eq k 'keymap))		;An inherited sparse keymap
 	     ((or (and (symbolp (car k))
-		       (eq (symbol-value (car k) t) 'keymap))
+		       (keymapp (symbol-value (car k) t)))
 		  (eq (car (car k)) 'next-keymap-path))
 	      ;; A prefix key
 	      (when map-keymap-recursively
@@ -123,7 +123,7 @@ binding, or nil if there was no prefix."
 						   new-list)))))))
 	      (t
 	       ;; A normal binding
-	       (funcall function k km-prefix-string))))
+	       (fun k km-prefix-string))))
 	keylist))
 
 
