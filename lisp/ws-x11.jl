@@ -25,8 +25,8 @@
     (x11-lose-selection 'xa-primary)))
 
 ;; Called after killing some text
-(defun x11-after-kill-function ()
-  (x11-set-selection 'xa-primary (killed-string)))
+;(defun x11-after-kill-function ()
+;  (x11-set-selection 'xa-primary (killed-string)))
 
 ;; Supplies the yanked string if selection is active
 (defun x11-pre-yank-function ()     
@@ -34,7 +34,7 @@
     (x11-get-selection 'xa-primary)))
 
 (add-hook 'block-status-hook 'x11-block-status-function)
-(add-hook 'after-kill-hook 'x11-after-kill-function)
+;(add-hook 'after-kill-hook 'x11-after-kill-function)
 (add-hook 'pre-yank-hook 'x11-pre-yank-function)
 
 ;; No graphical menus under X
