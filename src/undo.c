@@ -337,20 +337,30 @@ undo information.
     return rep_handle_var_int (val, &max_undo_size);
 }
 
-DEFUN("buffer-record-undo", Fbuffer_record_undo, Sbuffer_record_undo, (repv val), rep_Subr1) /*
+DEFUN("buffer-record-undo", Fbuffer_record_undo, Sbuffer_record_undo, (void), rep_Subr0) /*
 ::doc:buffer-record-undo::
-buffer-record-undo VALUE
+buffer-record-undo
 
 When nil no undo information is kept in this buffer.
 ::end:: */
 {
     TX *tx = curr_vw->vw_Tx;
-    repv ret = (tx->tx_Flags & TXFF_NO_UNDO) ? Qnil : Qt;
+    return (tx->tx_Flags & TXFF_NO_UNDO) ? Qnil : Qt;
+}
+
+DEFUN("set-buffer-record-undo", Fset_buffer_record_undo, Sset_buffer_record_undo, (repv val), rep_Subr1) /*
+::doc:set-buffer-record-undo::
+set-buffer-record-undo VALUE
+
+When nil no undo information is kept in this buffer.
+::end:: */
+{
+    TX *tx = curr_vw->vw_Tx;
     if(rep_NILP(val))
 	tx->tx_Flags |= TXFF_NO_UNDO;
     else
 	tx->tx_Flags &= ~TXFF_NO_UNDO;
-    return ret;
+    return val;
 }
 
 DEFUN("buffer-undo-list", Fbuffer_undo_list, Sbuffer_undo_list, (void), rep_Subr0) /*
@@ -434,6 +444,7 @@ undo_init(void)
     rep_INTERN(undo);
     rep_ADD_SUBR_INT(Sundo);
     rep_ADD_SUBR(Smax_undo_size);
+    rep_ADD_SUBR(Sset_buffer_record_undo);
     rep_ADD_SUBR(Sbuffer_record_undo);
     rep_ADD_SUBR(Sbuffer_undo_list);
     rep_ADD_SUBR(Sset_buffer_undo_list);
