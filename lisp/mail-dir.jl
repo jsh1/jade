@@ -38,12 +38,10 @@
 directory without confirmation from the user.")
 
 (defvar mail-address-list nil
-  "List of address records. Each record is a list (KEY VALUES...) where
-KEY is a symbol (currently used keys are :net and :name for email addresses
-and real names respectively). All VALUES should be strings.")
-
-(defvar mail-alias-alist nil
-  "Alist of (EMAIL-ALIAS EMAIL-ADDRESSES...).")
+  "List of records. Each record is a list (KEY VALUES...) where KEY is a
+symbol (currently used keys are :net, :net-alias and :name for email
+addresses, email aliases, and real names respectively). All VALUES should
+be strings.")
 
 (defvar mail-dir-load-on-init t
   "When t the mail directory stored in mail-directory-file is read when
@@ -70,9 +68,8 @@ definitions will be added to any existing definitions."
        form list tem)
     (if dont-merge
 	(setq mail-address-list nil
-	      mail-alias-alist nil
 	      mail-directory-modified nil)
-      (when (or mail-address-list mail-alias-alist)
+      (when mail-address-list
 	(setq mail-directory-modified t)))
     (when file-handle
       (unwind-protect
@@ -81,27 +78,16 @@ definitions will be added to any existing definitions."
 		(setq form (read file-handle))
 		(cond
 		 ((null form))
-		 ((eq (car form) 'address-alist)
+		 ((eq (car form) 'mail-dir)
 		  ;; List of mail addresses
 		  (if dont-merge
 		      (setq mail-address-list (cdr form))
 		    ;; FIXME: remove duplicates
 		    (setq mail-address-list (nconc (cdr form)
 						   mail-address-list))))
-		 ((eq (car form) 'alias-alist)
-		  ;; List of mail aliases
-		  (if dont-merge
-		      (setq mail-alias-alist (cdr form))
-		    (mapc #'(lambda (alias)
-			      (setq mail-alias-alist
-				    (cons alias
-					  (delete-if #'(lambda (a)
-							 (string= (car alias)
-								  (car a)))
-						     mail-alias-alist))))
-			  (cdr form))))
 		 (t
-		  (error "Unknown item in mail directory: %s" (car form)))))
+		  (message (format nil "Ignoring unknown item in mail dir: %s"
+				   (car form))))))
 	    (end-of-stream))
 	(close-file file-handle)))))
 
@@ -124,75 +110,11 @@ definitions will be added to any existing definitions."
 	  (progn
 	    (format file-handle ";; Mail directory\n;; Created by %s on %s for %s\n\n"
 		    (version-string) (current-time-string) (user-login-name))
-	    (write file-handle ";; Address list\n\(address-alist")
+	    (write file-handle "\(mail-dir")
 	    (mail-dir-output-list file-handle mail-address-list)
-	    (write file-handle "\)\n\n;; Alias list\n\(alias-alist")
-	    (mail-dir-output-list file-handle mail-alias-alist)
 	    (write file-handle "\)\n"))
 	(close-file file-handle))
       (setq mail-directory-modified nil))))
-
-
-;; Alias handling
-
-;;;###autoload
-(defun prompt-for-mail-alias (prompt &optional dont-validate initial)
-  (prompt-from-list (mapcar 'car mail-alias-alist) prompt
-		    initial dont-validate))
-
-;;;###autoload
-(defun add-mail-alias (alias address-list)
-  (interactive (let
-		   ((alias (prompt-for-mail-alias "Alias to add" t)))
-		 (list alias (prompt-for-address-list (concat "Set alias "
-							alias " to:") t))))
-  (unless (and alias address-list)
-    (error "Null argument"))
-  (let
-      ((current (assoc alias mail-alias-alist)))
-    (if current
-	(if (y-or-n-p (concat "Alias " alias " already exists; add to it?"))
-	    (rplacd current (append address-list (cdr current)))
-	  (rplacd current address-list))
-      (setq mail-alias-alist (cons (cons alias address-list) mail-alias-alist)))
-    (setq mail-directory-modified t)))
-
-;;;###autoload
-(defun remove-mail-alias (alias)
-  "Remove the mail alias ALIAS from the mail directory."
-  (interactive (list (prompt-for-mail-alias mail-alias-alist
-					    "Alias to delete")))
-  (setq mail-alias-alist (delete-if #'(lambda (x)
-					(string= (car x) alias))
-				    mail-alias-alist)
-	mail-directory-modified t))
-
-;;;###autoload
-(defun get-mail-alias (alias &optional print)
-  "Return the expansion of mail alias ALIAS (a list of addresses). When
-PRINT is t the expansion is also displayed in the message area."
-  (interactive (list (prompt-for-mail-alias "Alias") t))
-  (let
-      ((body (assoc alias mail-alias-alist)))
-    (unless body
-      (error "Alias doesn't exist: %s" alias))
-    (when print
-      (format t "Alias %s expands to %s" alias (cdr body)))
-    (cdr body)))
-
-;;;###autoload
-(defun insert-mail-alias (name)
-  "Insert the expansion of alias NAME into the buffer."
-  (interactive (list (prompt-for-mail-alias "Alias:")))
-  (let
-      ((alias (get-mail-alias name)))
-    (mail-insert-list
-     (mapcar #'(lambda (item)
-		 (let
-		     ((name (get-mail-name-from-address item)))
-		   (if name
-		       (mail-format-address item name)
-		     item))) alias))))
 
 
 ;; Low-level mail-address functions
@@ -237,26 +159,34 @@ PRINT is t the expansion is also displayed in the message area."
     record))
 
 (defun md-delete-record (record)
-  (setq mail-address-list (delq mail-address-list record))
+  (setq mail-address-list (delq record mail-address-list))
   (setq mail-directory-modified t))
 
 ;; Return a flattened list of all fields matching FIELD
-(defun md-get-all-fields (field)
+(defun md-get-all-fields (field &optional required)
   (apply 'append (mapcar #'(lambda (r)
-			     (md-get-field r field)) mail-address-list)))
+			     (when (or (not required)
+				       (md-get-field r required))
+			       (md-get-field r field)))
+			 mail-address-list)))
 
 
 ;; Prompt variants
 
-;;;###autoload
 (defun prompt-for-mail-address (prompt &optional dont-validate initial)
   (prompt-from-list (md-get-all-fields ':net) prompt initial dont-validate))
 
-;;;###autoload
-(defun prompt-for-mail-full-name (prompt &optional dont-validate initial)
+(defun prompt-for-mail-item (prompt &optional dont-validate initial)
   (prompt-from-list (md-get-all-fields ':name) prompt initial dont-validate))
 
-;;;###autoload
+(defun prompt-for-mail-full-name (prompt &optional dont-validate initial)
+  (prompt-from-list (md-get-all-fields ':name ':net)
+		    prompt initial dont-validate))
+
+(defun prompt-for-mail-alias (prompt &optional dont-validate initial)
+  (prompt-from-list (md-get-all-fields ':name ':net-alias)
+		    prompt initial dont-validate))
+
 (defun prompt-for-address-list (prompt &optional dont-validate)
   (let
       ((list '())
@@ -291,14 +221,32 @@ entity called FULL-NAME."
     (format t "Added address of %s as <%s>" full-name address)))
 
 ;;;###autoload
-(defun remove-mail-address (address)
-  "Remove mail address ADDRESS from the mail directory."
-  (interactive (list (prompt-for-mail-address "Address to delete" t)))
+(defun add-mail-alias (alias address-list)
+  (interactive (let
+		   ((alias (prompt-for-mail-alias "Alias to add" t)))
+		 (list alias (prompt-for-address-list (concat "Set alias "
+							alias " to:") t))))
+  (unless (and alias address-list)
+    (error "Null argument"))
   (let
-      ((record (md-get-record ':net address)))
+      ((record (md-get-record ':name alias)))
+    (if record
+	(unless (y-or-n-p (concat "Alias " alias
+				  " already exists; add to it?"))
+	  (md-delete-field record ':net-alias))
+      (setq record (md-add-record ':name alias)))
+    (md-add-to-field record ':net-alias address-list)
+    (setq mail-directory-modified t)))
+
+;;;###autoload
+(defun remove-mail-item (name)
+  "Remove mail address NAME from the mail directory."
+  (interactive (list (prompt-for-mail-address "Name to delete" t)))
+  (let
+      ((record (md-get-record ':name name)))
     (when record
       (md-delete-record record)
-      (format t "Removed mail address <%s>" address))))
+      (format t "Removed mail item <%s>" name))))
 
 
 ;; Accessor functions
@@ -333,14 +281,49 @@ is t the address is also displayed in the message area."
       (format t "Name of <%s> is %s" address (car field)))
     (car field)))
 
-(defun insert-mail-address-and-name (name)
+;;;###autoload
+(defun get-mail-alias (alias &optional print)
+  "Return the expansion of mail alias ALIAS (a list of addresses). When
+PRINT is t the expansion is also displayed in the message area."
+  (interactive (list (prompt-for-mail-alias "Alias") t))
+  (let
+      ((record (md-get-record ':name alias))
+       field)
+    (unless record
+      (error "Alias doesn't exist: %s" alias))
+    (setq field (md-get-field record ':net-alias))
+    (when print
+      (format t "Alias %s expands to %s" alias field))
+    field))
+
+;;;###autoload
+(defun insert-mail-item (name)
   "Insert a mail address/name pair into the buffer for the address of the
 entity NAME."
-  (interactive (list (prompt-for-mail-full-name "Name:")))
+  (interactive (list (prompt-for-mail-item "Name:")))
   (let
-      ((addr (get-mail-address name)))
-    (goto (insert (mail-format-address addr name)))))
+      ((record (md-get-record ':name name))
+       field)
+    (unless record
+      (error "Record doesn't exist: %s" name))
+    (require 'mail-headers)
+    (cond
+     ((setq field (md-get-field record ':net))
+      (goto (insert (mail-format-address (car field) name))))
+     ((setq field (md-get-field record ':net-alias))
+      (mail-insert-address-list
+       (mapcar #'(lambda (a)
+		   (condition-case nil
+		       (cons a (get-mail-name-from-address a))
+		     (error
+		      a))) field)))
+     (t
+      (error "Nothing to insert in record: %s" record)))))
 
+(defun mail-dir-alias-p (name)
+  (let
+      ((record (md-get-record ':name name)))
+    (and record (md-get-field record ':net-alias))))
 
 
 ;; Snarfing address/name combinations from messages
