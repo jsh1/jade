@@ -206,7 +206,8 @@ include any parenthesised expressions!")
 	(setq tem (cdr tem)))
       ;; Ensure that inbox names are absolute
       (mapcar #'(lambda (inbox)
-		  (if (file-name-absolute-p inbox)
+		  (if (or (file-name-absolute-p inbox)
+			  (string-looking-at "^po:" inbox))
 		      inbox
 		    (expand-file-name inbox mail-folder-dir))) lst)))))
 

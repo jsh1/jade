@@ -1262,60 +1262,76 @@ key, the car the order to sort in, a positive or negative integer.")
       (rm-parse-mailbox (buffer-file-name)))
     (save-restriction
       (unrestrict-buffer)
-      (let*
-	  ((tofile (local-file-name (expand-file-name
-				     (concat ".newmail-"
-					     (file-name-nondirectory inbox))
-				     (file-name-directory
-				      (buffer-file-name)))))
-	   (temp-buffer (make-buffer "*movemail-output*"))
-	   (proc (make-process temp-buffer))
-	   (need-to-parse nil)
-	   (keep-going t)
-	   (start (end-of-buffer))
-	   (count 0)
-	   (inhibit-read-only t))
-	;; First look for messages left in the .newmail-FOO file from last time
-	(when (and (file-exists-p tofile)
-		   (> (file-size tofile) 0))
-	  (message (concat "Using messages left in " tofile) t)
-	  (setq keep-going (or (rm-append-save-and-delete-file tofile)
-			       keep-going)
-		need-to-parse t))
-	;; Then if that didn't fail horrendously, look for mail in the INBOX
-	(when keep-going
-	  (cond
-	   ((not (file-exists-p inbox))
-	    (error "Inbox file doesn't exist" inbox))
-	   ((> (file-size inbox) 0)
-	    (if (zerop (call-process proc nil movemail-program
-				     (local-file-name inbox) tofile))
-		;; Now the temporary file contains the new messages
-		(setq keep-going (or (rm-append-save-and-delete-file tofile)
-				     keep-going)
-		      need-to-parse t)
-	      ;; Errors
-	      (goto-buffer temp-buffer)
-	      (error "Couldn't move mail: %s, %s" tofile inbox)))))
-	;; If necessary, parse all new messages. Work backwards
-	(when need-to-parse
-	  (let
-	      (p msgs)
-	    (setq p (end-of-buffer))
-	    (while (and p
-			(setq p (re-search-backward mail-message-start p))
-			(>= p start))
-	      (when (rm-message-start-p p)
-		(setq msgs (cons (rm-parse-message p) msgs)
-		      count (1+ count))
-		(rm-message-put (car msgs) 'unread t t)
-		(when rm-after-import-rules
-		  (mapc #'(lambda (r)
-			    (rm-apply-rule r (car msgs)))
-			rm-after-import-rules)))
-	      (setq p (forward-line -1 p)))
-	    (setq rm-buffer-messages (nconc rm-buffer-messages msgs))))
-	(and keep-going count))))))
+      (let ((real-inbox inbox)
+	    (password ""))
+	;; Support POP mailboxes as "po:USER PASSWORD". $MAILHOST
+	;; must be set in environment..
+	(when (string-looking-at "^(po:[^ ]+) +(.+)$" inbox)
+	  (setq real-inbox (expand-last-match "\\1"))
+	  (setq password (expand-last-match "\\2")))
+	(unless (or (file-name-absolute-p real-inbox)
+		    (file-exists-p real-inbox)
+		    (string-looking-at "^po:" real-inbox))
+	  (setq real-inbox (expand-file-name real-inbox mail-folder-dir)))
+	(let*
+	    ((tofile (local-file-name (expand-file-name
+				       (concat ".newmail-"
+					       (file-name-nondirectory real-inbox))
+				       (file-name-directory
+					(buffer-file-name)))))
+	     (temp-buffer (make-buffer "*movemail-output*"))
+	     (proc (make-process temp-buffer))
+	     (need-to-parse nil)
+	     (keep-going t)
+	     (start (end-of-buffer))
+	     (count 0)
+	     (inhibit-read-only t))
+	  ;; First look for messages left in the .newmail-FOO file from last time
+	  (when (and (file-exists-p tofile)
+		     (> (file-size tofile) 0))
+	    (message (concat "Using messages left in " tofile) t)
+	    (setq keep-going (or (rm-append-save-and-delete-file tofile)
+				 keep-going)
+		  need-to-parse t))
+	  ;; Then if that didn't fail horrendously, look for mail in the INBOX
+	  (when keep-going
+	    (cond
+	     ((not (or (file-exists-p real-inbox)
+		       (string-looking-at "^po:" real-inbox)))
+	      (error "Inbox file doesn't exist" real-inbox))
+	     (t
+	      (if (zerop (call-process proc nil movemail-program
+				       (if (string-looking-at "^po:" real-inbox)
+					   real-inbox
+					 (local-file-name real-inbox))
+				       tofile password))
+		  ;; Now the temporary file contains the new messages
+		  (setq keep-going (or (or (not (file-exists-p tofile))
+					   (rm-append-save-and-delete-file tofile))
+				       keep-going)
+			need-to-parse t)
+		;; Errors
+		(goto-buffer temp-buffer)
+		(error "Couldn't move mail: %s, %s" tofile inbox)))))
+	  ;; If necessary, parse all new messages. Work backwards
+	  (when need-to-parse
+	    (let
+		(p msgs)
+	      (setq p (end-of-buffer))
+	      (while (and p
+			  (setq p (re-search-backward mail-message-start p))
+			  (>= p start))
+		(when (rm-message-start-p p)
+		  (setq msgs (cons (rm-parse-message p) msgs)
+			count (1+ count))
+		  (rm-message-put (car msgs) 'unread t t)
+		  (when rm-after-import-rules
+		    (mapc #'(lambda (r)
+			      (rm-apply-rule r (car msgs)))
+			  rm-after-import-rules)))
+		(setq p (forward-line -1 p)))
+	      (setq rm-buffer-messages (nconc rm-buffer-messages msgs))))
+	  (and keep-going count)))))))
 
 ;; Returns the number of messages read
 (defun rm-get-mail-for-box (mailbox)
@@ -1329,15 +1345,9 @@ key, the car the order to sort in, a positive or negative integer.")
       (while (and inboxes (numberp file-count))
 	(setq file (car inboxes)
 	      inboxes (cdr inboxes))
-	(unless (or (file-name-absolute-p file)
-		    (file-exists-p file))
-	  (setq file (expand-file-name file mail-folder-dir)))
-	(if (file-exists-p file)
-	    (progn
-	      (setq file-count (rm-append-inbox file))
-	      (when (numberp file-count)
-		(setq count (+ count file-count))))
-	  (format t "Spool file %s doesn't exist" file)))
+	(setq file-count (rm-append-inbox file))
+	(when (numberp file-count)
+	  (setq count (+ count file-count))))
       (call-hook 'rm-after-import-hook))
     (if (> count 0)
 	;; Any folders referencing this mailbox get rebuilt.
