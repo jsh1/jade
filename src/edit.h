@@ -183,11 +183,15 @@ typedef u_char glyph_code;
 typedef u_char glyph_attr;
 
 enum Glyph_Attrs {
-    GA_Text = P_TEXT,			/* foreground on background */
-    GA_Text_RV = P_TEXT_RV,		/* bg on fg */
-    GA_Block = P_BLOCK,			/* fg on highlight */
-    GA_Block_RV = P_BLOCK_RV,		/* hl on fg */
-    GA_MAX = P_MAX,
+    GA_Text = 0,			/* foreground on background */
+    GA_Text_RV,				/* bg on fg */
+    GA_Block,				/* fg on highlight */
+    GA_Block_RV,			/* highlight on fg */
+    GA_Text_Rect,
+    GA_Text_Rect_RV,
+    GA_Block_Rect,
+    GA_Block_Rect_RV,
+    GA_MAX,
     GA_Garbage = 255,			/* glyph was lost */
 };
 
