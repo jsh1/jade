@@ -38,6 +38,10 @@
 (defvar tags-fold-case t
   "When t, case isn't important when searching tags tables.")
 
+;; If non-nil, (FUNCTION . ARGS) that will restart the previous tags-search
+;; or tags-query-replace command
+(defvar tags-continue-command nil)
+
 
 ;; Code
 
@@ -113,7 +117,7 @@ move back to the previously found tag."
 						  start tags-buffer)
 			      (error "Can't find start of tags section"))
 			  (expand-file-name
-			   (file-name-nondirectory (expand-last-match "\\1"))
+			   (expand-last-match "\\1")
 			   (with-buffer tags-buffer default-directory))))
 	       ;; This also switches to buffer
 	       (buffer (or (find-file file)
@@ -150,3 +154,117 @@ move back to the previously found tag."
 		  tags-history (cons (make-mark) tags-history))
 	    (throw 'return (cursor-pos)))))
       (error "Tag %S not found" name))))
+
+
+;; Tags searching
+
+;; Returns the next file in tag table (after CURRENT-FILE if defined), or nil
+(defun tags-next-file (&optional current-file)
+  (tags-find-table)
+  (let*
+      ((tags-buffer (find-file tags-file-name t))
+       (point (start-of-buffer tags-buffer)))
+    (with-buffer tags-buffer
+      (when current-file
+	;; Try to make current file relative to tags table location
+	(when (string-match
+	       (concat ?^ (quote-regexp
+			   (canonical-file-name default-directory))
+		       "(.*)$")
+	       (canonical-file-name current-file))
+	  (setq current-file (expand-last-match "\\1")))
+	(when (re-search-forward
+	       (concat "\f\n" (quote-regexp current-file) ",.*\n") point)
+	  (setq point (match-end))))
+      (when (and (setq point (char-search-forward ?\f point))
+		 (looking-at "\f\n([^,]+)" point))
+	(expand-file-name (expand-last-match "\\1") default-directory)))))
+
+;; Map (FUNCTION BUFFER POINT) over all files in the current tags-table.
+;; MARK provides an optional start point
+(defun tags-map-buffers (function &optional mark)
+  (let
+      (file buffer kill-this-buffer point)
+    (when mark
+      (if (mark-resident-p mark)
+	  (progn
+	    (setq buffer (mark-file mark))
+	    (setq file (buffer-file-name buffer)))
+	(setq file (mark-file mark)))
+      (setq point (mark-pos mark)))
+    (unless file
+      (setq file (tags-next-file)))
+    (while file
+      (unless buffer
+	(setq buffer (get-file-buffer file))
+	(if buffer
+	    (setq kill-this-buffer nil)
+	  (setq buffer (find-file file t))
+	  (setq kill-this-buffer t)))
+      (unless point
+	(setq point (start-of-buffer buffer)))
+      (funcall function buffer point)
+      (when (and kill-this-buffer (not (buffer-modified-p buffer)))
+	(kill-buffer buffer))
+      (setq buffer nil)
+      (setq point nil)
+      (setq file (tags-next-file file)))))
+
+;;;###autoload
+(defun tags-search (regexp &optional mark)
+  "Search through all files in the current tags table for an occurrence of the
+regular expression REGEXP. Further matches may be found though the use of the
+`tags-loop-continue' function."
+  (interactive "sRegexp:")
+  (require 'isearch)			;for case-fold-search
+  (setq tags-continue-command nil)
+  (catch 'out
+    (tags-map-buffers
+     #'(lambda (buffer point)
+	 (message (format nil "Searching `%s'..." (buffer-file-name buffer)) t)
+	 (when (re-search-forward regexp point buffer case-fold-search)
+	   (goto-buffer buffer)
+	   (goto (match-start))
+	   (setq tags-continue-command
+		 `(tags-search ,regexp ,(make-mark (match-end))))
+	   (throw 'out t)))
+     mark)
+    (message "[No matches]")))
+
+;;;###autoload
+(defun tags-query-replace (from to &optional mark)
+  "Query replace through all files in the current tags table for an occurrence
+of the regular expression FROM, possibly replacing it with TO. Further matches
+may be found though the use of the `tags-loop-continue' function."
+  (interactive "sQuery replace regexp: \nsQuery replace `%s' with: ")
+  (require 'replace)
+  (setq tags-continue-command nil)
+  (catch 'out
+    (let
+	((replace-all nil))
+      (tags-map-buffers
+       #'(lambda (buffer point)
+	   (message
+	    (format nil "Searching `%s'..." (buffer-file-name buffer)) t)
+	   (when (re-search-forward from point buffer case-fold-search)
+	     (with-buffer buffer
+	       (goto (match-start))
+	       (if replace-all
+		   (while (re-search-forward from nil nil case-fold-search)
+		     (goto (replace-last-match to)))
+		 (setq point (query-replace from to))
+		 (cond ((eq point 'rest)
+			(setq replace-all t))
+		       ((null point)
+			(setq tags-continue-command
+			      `(tags-query-replace ,from ,to ,(make-mark)))
+			(throw 'out t)))))))
+       mark))))
+
+(defun tags-loop-continue ()
+  "Continue the most recent `tags-search' or `tags-query-replace' command, from
+the position where it left of."
+  (interactive)
+  (if tags-continue-command
+      (apply (car tags-continue-command) (cdr tags-continue-command))
+    (error "No tags-loop to continue")))
