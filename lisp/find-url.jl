@@ -220,7 +220,7 @@ a buffer."
 	  (set-process-function
 	   (cdr cell)
 	   `(lambda (p)
-	      (setq find-url-processes (delq ,cell find-url-processes))
+	      (setq find-url-processes (delq ',cell find-url-processes))
 	      (message "[wget exited]")))
-	  (funcall (if arg 'kill-process 'interrupt-process) (cdr cell)))
+	  (funcall (if kill 'kill-process 'interrupt-process) (cdr cell)))
       (message "[No wget for that URL]"))))
