@@ -410,6 +410,15 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 			true_face = GA_DefaultFace;
 		    if(!block_active)
 			attr = true_face;
+
+		    /* Reload the glyph table for the new extent. */
+		    glyph_tab = cmd_buffer_symbol_value(sym_glyph_table,
+							VAL(extent),
+							sym_nil, sym_t);
+		    if(!GLYPHTABP(glyph_tab))
+			glyph_tab = VAL(&default_glyph_table);
+		    width_table = &VGLYPHTAB(glyph_tab)->gt_Widths;
+		    glyph_table = &VGLYPHTAB(glyph_tab)->gt_Glyphs;
 		}
 	    }
 
@@ -465,15 +474,19 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    {
 		while(glyph_row < last_row && src_len-- > 0)
 		{
-		    register u_char *ptr = &(*glyph_table)[*src][0];
-		    register int width = (*width_table)[*src++];
+		    register u_char *ptr;
+		    register int width;
+
+		    CHECK_EXTENT();
+
+		    ptr = &(*glyph_table)[*src][0];
+		    width = (*width_table)[*src++];
 		    if(width == 0)
 		    {
 			/* TAB special case. */
 			width = tab_size - (glyph_col % tab_size);
 			ptr = spaces;
 		    }
-		    CHECK_EXTENT();
 		    while(width-- > 0)
 		    {
 			if(in_block)
@@ -503,15 +516,19 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    {
 		while(real_glyph_col < vw->vw_MaxX && src_len-- > 0)
 		{
-		    register u_char *ptr = &(*glyph_table)[*src][0];
-		    register int width = (*width_table)[*src++];
+		    register u_char *ptr;
+		    register int width;
+
+		    CHECK_EXTENT();
+
+		    ptr = &(*glyph_table)[*src][0];
+		    width = (*width_table)[*src++];
 		    if(width == 0)
 		    {
 			/* TAB special case. */
 			width = tab_size - (glyph_col % tab_size);
 			ptr = spaces;
 		    }
-		    CHECK_EXTENT();
 		    while(width-- > 0)
 		    {
 			if(in_block)
@@ -946,7 +963,8 @@ recenter_cursor(VW *vw)
 static inline long
 uncached_string_glyph_length(TX *tx, const u_char *src, long srcLen)
 {
-    /* FIXME: This is wrong */
+    /* FIXME: This is wrong, it's necessary to traverse the extent
+       tree on this line since the glyph-table can be changed. */
     VALUE gt = cmd_buffer_symbol_value(sym_glyph_table, sym_nil,
 				       VAL(tx), sym_t);
     register long w;
