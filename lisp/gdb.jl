@@ -25,7 +25,7 @@
   "The file name of the gdb program to run.")
 
 (defvar gdb-auto-centre nil
-  "When non-nil the current line in the source window is automatically
+  "When non-nil the current line in the source view is automatically
 centred each time it changes.")
 
 (defvar gdb-last-frame nil
@@ -99,9 +99,9 @@ There is no limit to the number of gdb processes you may run at once."
 (defun gdb-mode ()
   "Gdb Mode:\n
 This major-mode is used to run the GDB debugger in an editor buffer. To
-start a gdb subprocess use the `ESC x gdb' command.\n
+start a gdb subprocess use the `Meta-x gdb' command.\n
 Each time the target process stops executing the source line of the
-current frame is highlighted in a separate window.\n
+current frame is highlighted in a separate view.\n
 The following commands are available in the `*gdb*' buffer,\n
   `Ctrl-c Ctrl-n'	Next line
   `Ctrl-c Ctrl-s'	Step 
@@ -183,10 +183,10 @@ that mode are available as well.")
       ;; Now redisplay the frame and its highlight
       (let*
 	  ((frame (with-buffer buffer gdb-last-frame))
-	   (window (if gdb-buffer-p (other-window) (current-window)))
+	   (view (if gdb-buffer-p (other-view) (current-view)))
 	   (line-pos (pos 0 (cdr frame)))
 	   old-buf)
-	(with-window window
+	(with-view view
 	  (setq old-buf (current-buffer))
 	  (goto-buffer (open-file (car frame)))
 	  (mark-block line-pos (line-end line-pos))
