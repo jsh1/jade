@@ -161,7 +161,7 @@ read-buffer FILE [BUFFER]
 
 Overwrites the text in BUFFER with that from the file FILE.
 FILE is either a string naming the file to be opened or a Lisp file object
-(from `open') to be used.
+(from `open') to be used. Also removes any restriction on BUFFER.
 ::end:: */
 {
     VALUE res = sym_nil;
@@ -182,6 +182,7 @@ FILE is either a string naming the file to be opened or a Lisp file object
     }
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
+    cmd_unrestrict_buffer(tx);
     start.pos_Col = start.pos_Line = 0;
     end.pos_Line = VTX(tx)->tx_NumLines - 1;
     end.pos_Col = VTX(tx)->tx_Lines[end.pos_Line].ln_Strlen - 1;
@@ -204,12 +205,14 @@ FILE is either a string naming the file to be opened or a Lisp file object
     return(res);
 }
 
-_PR VALUE cmd_write_buffer(VALUE file, VALUE tx);
-DEFUN("write-buffer", cmd_write_buffer, subr_write_buffer, (VALUE file, VALUE tx), V_Subr2, DOC_write_buffer) /*
+_PR VALUE cmd_write_buffer(VALUE file, VALUE tx, VALUE urp);
+DEFUN("write-buffer", cmd_write_buffer, subr_write_buffer, (VALUE file, VALUE tx, VALUE urp), V_Subr3, DOC_write_buffer) /*
 ::doc:write_buffer::
-write-buffer [FILE-NAME] [BUFFER]
+write-buffer [FILE-NAME] [BUFFER] [USE-RESTRICTION-P]
 
-Saves the contents of BUFFER to file FILE-NAME.
+Saves the contents of BUFFER to file FILE-NAME. Normally any restriction to
+BUFFER is ignored, and the full contents of the buffer written. If USE-
+RESTRICTION-P is non-nil only the restricted area is written.
 ::end:: */
 {
     if(!BUFFERP(tx))
@@ -222,13 +225,16 @@ Saves the contents of BUFFER to file FILE-NAME.
 	if(fh)
 	{
 	    long i;
+	    long min = NILP(urp) ? 0 : VTX(tx)->tx_LogicalStart;
+	    long max = NILP(urp) ? VTX(tx)->tx_NumLines
+				 : VTX(tx)->tx_LogicalEnd;
 	    LINE *line = VTX(tx)->tx_Lines;
-	    for(i = 0; i < VTX(tx)->tx_NumLines; i++, line++)
+	    for(i = min; i < max; i++, line++)
 	    {
 		if(fwrite(line->ln_Line, 1, line->ln_Strlen - 1, fh)
 		   != (line->ln_Strlen - 1))
 		    goto error;
-		if(i != VTX(tx)->tx_NumLines - 1)
+		if(i != max - 1)
 		    fputc('\n', fh);
 	    }
 	    fclose(fh);
