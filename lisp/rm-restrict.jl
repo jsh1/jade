@@ -170,6 +170,14 @@ contain its definition as a function."
   (funcall (or (get rule 'rm-rule-symbol)
 	       (error "No rule called %s" rule))))
 
+;; Apply the message MESSAGE to the list of rules RULE-LIST. Return t if
+;; any rule matches (without testing any remaining rules)
+;;;###autoload
+(defun rm-apply-rules (rule-list message)
+  (catch 'exit
+    (mapc #'(lambda (r)
+	      (and (rm-apply-rule r message)
+		   (throw 'exit t))) rule-list)))
 
 ;; Standard rules
 
