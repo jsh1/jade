@@ -53,6 +53,11 @@ static int	regmatch(char *);
 static int	regrepeat(char *);
 static char    *regnext(char *);
 
+#ifdef DEBUG
+extern int regnarrate;
+extern char *regprop (char *);
+#endif
+
 /* Expands to the current input character at position P. This should
    not be called when P is past the end of the buffer. */
 #define INPUT_CHAR(p)						\
