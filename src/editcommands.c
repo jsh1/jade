@@ -796,9 +796,9 @@ If ONLY-SPACES in non-nil no tab characters are used.
 	    flag_insertion(VTX(tx), &pos, &end);
 	    pos.pos_Col = diff;
 	    end.pos_Col = tabs + spaces;
+	    undo_record_modification(VTX(tx), &pos, &end);
 	    memset(line->ln_Line, '\t', tabs);
 	    memset(line->ln_Line + tabs, ' ', spaces);
-	    undo_record_modification(VTX(tx), &pos, &end);
 	    flag_modification(VTX(tx), &pos, &end);
 	}
 	else
