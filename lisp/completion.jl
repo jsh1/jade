@@ -32,6 +32,12 @@ the column width when displaying completions.")
 in the completion list; it should return an abbreviated version of this
 string if desirable.")
 
+(defvar completion-hooks '(complete-from-buffer)
+  "List of functions called to complete a word. Each function is called as
+(FUNCTION WORD [WORD-START WORD-END]) and should return a list of all
+matching strings.")
+(make-variable-buffer-local 'completion-hooks)
+
 ;; t when the view displaying this buffer was created specially
 (defvar completion-deletable-view nil)
 (make-variable-buffer-local 'completion-deletable-view)
@@ -130,24 +136,48 @@ string if desirable.")
 
 ;; Completion commands
 
-(defun complete-from-buffer (&optional only-display)
-  "Complete the word before the cursor from all words in the current buffer."
-  (interactive)
-  (let*
-      ((word (copy-area (forward-exp -1) (cursor-pos)))
-       (point (start-of-buffer))
+(defun complete-from-buffer (word)
+  (let
+      ((point (start-of-buffer))
        completions tem)
     (while (search-forward word point)
       (setq point (match-end))
       (unless (equal point (cursor-pos))
 	(setq tem (copy-area (match-start)
-			     (forward-exp 1 (backward-exp 1 point))))
+			     (forward-exp 1 (forward-char -1 point))))
 	(unless (member tem completions)
 	  (setq completions (cons tem completions)))))
+    completions))
+
+(defun complete-at-point (&optional only-display)
+  "Complete the word immediately before the cursor. If ONLY-DISPLAY is non-nil,
+don't insert anything, just display the list of possible completions."
+  (interactive "P")
+  (let*
+      ((word-start (forward-exp -1))
+       (word-end (cursor-pos))
+       (word (copy-area (forward-exp -1) (cursor-pos)))
+       (completions (sort
+		     (apply
+		      'nconc (mapcar #'(lambda (h)
+					 (funcall h word word-start word-end))
+				     completion-hooks)))))
+    ;; remove duplicates
+    (when completions
+      (while (and (cdr completions)
+		  (equal (car completions) (car (cdr completions))))
+	(setq completions (cdr completions)))
+      (when completions
+	(let
+	    ((tem completions))
+	  (while (consp (cdr tem))
+	    (if (equal (car tem) (car (cdr tem)))
+		(rplacd tem (cdr (cdr tem)))
+	      (setq tem (cdr tem)))))))
     (completion-insert completions word only-display)))
 
-(defun show-buffer-completions ()
+(defun show-completions ()
   "Display all words in the current buffer matching the word immediately before
 the cursor."
   (interactive)
-  (complete-from-buffer t))
+  (complete-at-point t))
