@@ -89,6 +89,8 @@ REGEXP, then its restriction rule is initialised as RULE.")
     "z" 'rm-forward
     "*" 'rm-burst-message
     "s" 'rm-output
+    "a" 'rm-archive-folder
+    "A" 'rm-auto-archive-folder
     "|" 'rm-pipe-message
     "+" 'rm-add-mailbox
     "-" 'rm-subtract-mailbox
@@ -97,7 +99,7 @@ REGEXP, then its restriction rule is initialised as RULE.")
     "!" 'rm-change-rule
     "@" 'rm-null-rule
     "Ctrl-t" 'rm-toggle-threading
-    "Ctrl-s" 'rm-sort-folder)
+    "G" 'rm-sort-folder)
   "Keymap for reading mail")
   
 (defvar rm-last-mailbox mail-folder-dir
@@ -236,7 +238,8 @@ show all messages.")
   "A string defining the name of this folder.")
 
 (defconst rm-folder-sort-key 11
-  "The name of the sort key, nil by default.")
+  "The name of the sort key, nil by default. If a cons cell, the cdr is the
+key, the car the order to sort in, a positive or negative integer.")
 
 (defconst rm-folder-struct-size 12)
 
@@ -296,7 +299,10 @@ show all messages.")
     (rm-set-folder-field folder rm-folder-current-index index)
     (when (rm-get-folder-field folder rm-folder-summary)
       (rm-invalidate-summary-cache folder))
-    (rm-invalidate-status-cache folder)))
+    (rm-invalidate-status-cache folder)
+    (when (rm-get-folder-field folder rm-folder-sort-key)
+      (rm-sort-folder
+       folder (rm-get-folder-field folder rm-folder-sort-key) nil t))))
 
 ;; Add MAILBOX to FOLDER. NO-REDISPLAY does at it suggests
 (defun rm-add-mailbox (mailbox folder &optional no-redisplay)
