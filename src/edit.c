@@ -552,7 +552,17 @@ pad_pos(TX *tx, VALUE pos)
 bool
 pad_cursor(VW *vw)
 {
-    return(pad_pos(vw->vw_Tx, vw->vw_CursorPos));
+    VALUE old_cursor = vw->vw_CursorPos;
+    if(pad_pos(vw->vw_Tx, vw->vw_CursorPos))
+    {
+	/* Need to reinstall the old cursor position, since it
+	   may have been changed by the insertion of spaces
+	   before it. */
+	vw->vw_CursorPos = old_cursor;
+	return TRUE;
+    }
+    else
+	return FALSE;
 }
 
 /* if end is before start then swap the two */
