@@ -64,11 +64,36 @@ _PR void redisplay_init(void);
 glyph_buf *
 alloc_glyph_buf(int cols, int rows)
 {
-    glyph_buf *g = malloc(SIZEOF_GLYPH_BUF(cols, rows));
+    size_t size = (sizeof(glyph_buf)
+		   + sizeof(glyph_code *) * rows
+		   + sizeof(glyph_attr *) * rows
+		   + sizeof(u_long) * rows
+		   + sizeof(glyph_code) * rows * cols
+		   + sizeof(glyph_attr) * rows * cols);
+    glyph_buf *g = malloc(size);
     if(g == 0)
 	abort();
-    g->cols = cols;
-    g->rows = rows;
+    else
+    {
+	/* Initialise pointers */
+	char *p = ((char *)g) + sizeof(glyph_buf);
+	int i;
+	g->cols = cols;
+	g->rows = rows;
+	g->codes = (void *)p;
+	p += sizeof(glyph_code *) * rows;
+	g->attrs = (void *)p;
+	p += sizeof(glyph_attr *) * rows;
+	g->hashes = (void *)p;
+	p += sizeof(u_long) * rows;
+	for(i = 0; i < rows; i++)
+	{
+	    g->codes[i] = p;
+	    p += sizeof(glyph_code) * cols;
+	    g->attrs[i] = p;
+	    p += sizeof(glyph_attr) * cols;
+	}
+    }
     return g;
 }
 
@@ -85,11 +110,11 @@ hash_glyph_row(glyph_buf *g, int row)
 {
     u_long value = 0;
     int togo = g->cols;
-    glyph_code *codes = GLYPH_BUF_CODES(g, row);
-    glyph_attr *attrs = GLYPH_BUF_ATTRS(g, row);
+    glyph_code *codes = g->codes[row];
+    glyph_attr *attrs = g->attrs[row];
 
     while(togo-- > 0)
-	value = ROTATE(value, 3) + *codes++ + (*attrs++ << 8);
+	value = (value * 33) + *codes++ + (*attrs++ << 8);
 
     return value;
 }
@@ -115,8 +140,7 @@ garbage_glyphs(WIN *w, int x, int y, int width, int height)
 	height = g->rows - y;
     while(height > 0)
     {
-	memset(GLYPH_BUF_ATTRS(g, y) + x * sizeof(glyph_attr),
-	       GA_Garbage, width);
+	memset(g->attrs[y] + x * sizeof(glyph_attr), GA_Garbage, width);
 	g->hashes[y] = hash_glyph_row(g, y);
 	y++; height--;
     }
@@ -132,12 +156,8 @@ compare_lines(glyph_buf *g1, glyph_buf *g2, int line1, int line2)
     return g1->hashes[line1] == g2->hashes[line2];
 #else
     return (g1->hashes[line1] == g2->hashes[line2]
-	    && memcmp(GLYPH_BUF_CODES(g1, line1),
-		      GLYPH_BUF_CODES(g2, line2),
-		      g1->cols * sizeof(glyph_code)) == 0
-	    && memcmp(GLYPH_BUF_ATTRS(g1, line1),
-		      GLYPH_BUF_ATTRS(g2, line2),
-		      g1->cols * sizeof(glyph_attr)) == 0);
+	    && !memcmp(g1->codes[line1], g2->codes[line1],
+		       g1->cols * (sizeof(glyph_code) + sizeof(glyph_attr))));
 #endif
 }
 
@@ -153,12 +173,9 @@ redisplay_do_copy(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
 {
     assert(src_line > 0 && dst_line > 0);
     COPY_GLYPHS(w, 0, src_line - 1, w->w_MaxX, n_lines, 0, dst_line - 1);
-    memmove(GLYPH_BUF_CODES(old_g, dst_line-1),
-	    GLYPH_BUF_CODES(old_g, src_line-1),
-	    sizeof(glyph_code) * n_lines * old_g->cols);
-    memmove(GLYPH_BUF_ATTRS(old_g, dst_line-1),
-	    GLYPH_BUF_ATTRS(old_g, src_line-1),
-	    sizeof(glyph_attr) * n_lines * old_g->cols);
+    memmove(old_g->codes[dst_line-1],
+	    old_g->codes[src_line-1],
+	    (sizeof(glyph_code) + sizeof(glyph_attr)) * n_lines * old_g->cols);
     memmove(old_g->hashes + (dst_line-1),
 	    old_g->hashes + (src_line-1),
 	    sizeof(u_long) * n_lines);
@@ -172,10 +189,10 @@ redisplay_do_draw(WIN *w, glyph_buf *old_g, glyph_buf *new_g, int line)
 {
     /* Draw LINE from NEW-G. OLD-G[LINE] _will_ reflect the currently
        displayed contents of LINE. */
-    glyph_code *old_codes = GLYPH_BUF_CODES(old_g, line-1);
-    glyph_code *new_codes = GLYPH_BUF_CODES(new_g, line-1);
-    glyph_code *old_attrs = GLYPH_BUF_ATTRS(old_g, line-1);
-    glyph_code *new_attrs = GLYPH_BUF_ATTRS(new_g, line-1);
+    glyph_code *old_codes = old_g->codes[line-1];
+    glyph_code *new_codes = new_g->codes[line-1];
+    glyph_attr *old_attrs = old_g->attrs[line-1];
+    glyph_attr *new_attrs = new_g->attrs[line-1];
 
     int prefix, suffix;
 
@@ -679,12 +696,9 @@ redisplay_message(WIN *w)
 	return;
 
     /* Copy existing contents of the message to w_NewContent */
-    memcpy(GLYPH_BUF_CODES(w->w_NewContent, w->w_MaxY - 1),
-	   GLYPH_BUF_CODES(w->w_Content, w->w_MaxY - 1),
-	   w->w_MaxX);
-    memcpy(GLYPH_BUF_ATTRS(w->w_NewContent, w->w_MaxY - 1),
-	   GLYPH_BUF_ATTRS(w->w_Content, w->w_MaxY - 1),
-	   w->w_MaxX);
+    memcpy(w->w_NewContent->codes[w->w_MaxY - 1],
+	   w->w_Content->codes[w->w_MaxY - 1],
+	   w->w_MaxX * (sizeof(glyph_code) + sizeof(glyph_attr)));
     w->w_NewContent->hashes[w->w_MaxY-1] = w->w_Content->hashes[w->w_MaxY-1];
 
     make_message_glyphs(w->w_Content, w);
