@@ -32,7 +32,6 @@
   "o" 'bs-select-other-view
   "f" 'summary-select-item
   "~" 'bs-toggle-modified
-  "-" 'bs-toggle-read-only
   "%" 'bs-toggle-read-only)
 
 (defvar bs-functions '((select . bs-select-item)
@@ -51,7 +50,7 @@
   (set-current-buffer bs-buffer)
   (if (eq major-mode 'buffer-summary-mode)
       (summary-update)
-    (insert "Buffer Summary:\n\n   MR\tName\t\tMode\t\tFile\n   --\t----\t\t----\t\t----\n")
+    (insert "Buffer Summary:\n\n\tName\t\tMode\t\tFile\n\t----\t\t----\t\t----\n")
     (summary-mode "Buffer-Summary" bs-functions bs-keymap)
     (setq major-mode 'buffer-summary-mode)))
 
@@ -73,7 +72,7 @@ Commands for this mode are,\n
   `o'			Display the current line's buffer in a different
 			view.
   `~'			Toggle the buffer's `modified' flag.
-  `%', `-'		Toggle the buffer's read-only status.
+  `%'			Toggle the buffer's read-only status.
   `n', `Ctrl-f', `TAB'	Move forwards through the menu.
   `p`, `Ctrl-b', `Meta-TAB'
 			Cycle backwards through the menu.
@@ -87,11 +86,12 @@ Commands for this mode are,\n
 (defun bs-print-item (item)
   (let
       ((pending-ops (summary-get-pending-ops item)))
-    (format (current-buffer) "%c%c %c%c\t%s "
+    (format (current-buffer) "%c%c %s\t%s "
 	    (if (memq 'delete pending-ops) ?D ?\ )
 	    (if (memq 'save pending-ops) ?S ?\ )
-	    (if (buffer-modified-p item) ?+ ?\ )
-	    (if (buffer-read-only-p item) ?- ?\ )
+	    (if (buffer-modified-p item)
+		(if (buffer-read-only-p item) "%*" "**")
+	      (if (buffer-read-only-p item) "%%" "  "))
 	    (buffer-name item))
     (indent-to 24)
     ;; Print out the mode names
