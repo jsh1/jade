@@ -1,3 +1,7 @@
+1999-03-23  John Harper  <john@dcs.warwick.ac.uk>
+
+	* main.c (main): call Frecursive_edit, not rep_event_loop
+
 1999-03-18  John Harper  <john@dcs.warwick.ac.uk>
 
 	* server-dl.c (rep_dl_init): return Qt

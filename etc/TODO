@@ -27,6 +27,10 @@ Outstanding bugs
    functions don't. Fixing this might mean changing the extent cache
    architecture
 
+ ! If save-file-as is given the name of a file already loaded into the
+   editor (in a different buffer), we'll end up with _two_ files of the
+   same name loaded.
+
 
 General programming tasks:
 ==========================

@@ -1,3 +1,14 @@
+1999-03-23  John Harper  <john@dcs.warwick.ac.uk>
+
+	* html-display.jl: bind `C-c C-c' to find-url-abort
+
+	* find-url.jl (find-url-abort): make this command actually work
+
+1999-03-19  John Harper  <john@dcs.warwick.ac.uk>
+
+	* maildefs.jl (mail-default-headers): add "Jade " to the start
+	of the version string
+
 1999-03-11  John Harper  <john@dcs.warwick.ac.uk>
 
 	* find-url.jl (find-url-abort): new command, should allow
