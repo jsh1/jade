@@ -204,13 +204,6 @@ use_options(void)
     return(TRUE);
 }
 
-static void
-x11_int_handler(int unused_sig)
-{
-    throw_value = int_cell;
-    signal(SIGINT, x11_int_handler);
-}
-
 int
 sys_init(int argc, char **argv)
 {
@@ -233,9 +226,6 @@ sys_init(int argc, char **argv)
 	/* close-on-exec = TRUE	 */
 	fcntl(ConnectionNumber(x11_display), F_SETFD, 1);
 	FD_SET(ConnectionNumber(x11_display), &x11_fd_read_set);
-
-	/* Install the interrupt handler */
-	signal(SIGINT, x11_int_handler);
 #endif /* HAVE_UNIX */
 
 	x11_screen = DefaultScreen(x11_display);
