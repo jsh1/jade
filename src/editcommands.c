@@ -565,30 +565,6 @@ Returns the lower-case equivalent of CHAR.
     return(MAKE_INT(toupper(VINT(ch))));
 }
 
-_PR VALUE cmd_pos_line(VALUE pos);
-DEFUN("pos-line", cmd_pos_line, subr_pos_line, (VALUE pos), V_Subr1, DOC_pos_line) /*
-::doc:pos_line::
-pos-line POS
-
-Returns the line number which POS points to.
-::end:: */
-{
-    DECLARE1(pos, POSP);
-    return(MAKE_INT(VROW(pos)));
-}
-
-_PR VALUE cmd_pos_col(VALUE pos);
-DEFUN("pos-col", cmd_pos_col, subr_pos_col, (VALUE pos), V_Subr1, DOC_pos_col) /*
-::doc:pos_col::
-pos-col POS
-
-Return the column number which POS points to.
-::end:: */
-{
-    DECLARE1(pos, POSP);
-    return(MAKE_INT(VCOL(pos)));
-}
-
 _PR VALUE cmd_posp(VALUE arg);
 DEFUN("posp", cmd_posp, subr_posp, (VALUE arg), V_Subr1, DOC_posp) /*
 ::doc:posp::
@@ -708,7 +684,7 @@ If ONLY-SPACES in non-nil no tab characters are used.
 	{
 	    VALUE end = make_pos(diff, VROW(pos));
 	    undo_record_deletion(VTX(tx), pos, end);
-	    delete_chars(VTX(tx), pos, diff);
+	    delete_chars(VTX(tx), VCOL(pos), VROW(pos), diff);
 	    flag_deletion(VTX(tx), pos, end);
 	    end = make_pos(tabs + spaces, VROW(end));
 	    undo_record_modification(VTX(tx), pos, end);
@@ -721,7 +697,7 @@ If ONLY-SPACES in non-nil no tab characters are used.
 	    VALUE end;
 	    diff = -diff;
 	    end = make_pos(diff, VROW(pos));
-	    insert_gap(VTX(tx), diff, pos);
+	    insert_gap(VTX(tx), diff, VCOL(pos), VROW(pos));
 	    undo_record_insertion(VTX(tx), pos, end);
 	    flag_insertion(VTX(tx), pos, end);
 	    pos = make_pos(diff, VROW(pos));
@@ -803,7 +779,7 @@ COLUMN counts from zero.
 	if(spaces + tabs > 0)
 	{
 	    VALUE tmp = vw->vw_CursorPos;
-	    if(insert_gap(tx, spaces + tabs, tmp))
+	    if(insert_gap(tx, spaces + tabs, VCOL(tmp), VROW(tmp)))
 	    {
 		u_char *line = tx->tx_Lines[VROW(tmp)].ln_Line;
 		memset(line + VCOL(tmp), '\t', tabs);
@@ -921,8 +897,6 @@ edit_init(void)
     ADD_SUBR(subr_space_char_p);
     ADD_SUBR(subr_char_upcase);
     ADD_SUBR(subr_char_downcase);
-    ADD_SUBR(subr_pos_line);
-    ADD_SUBR(subr_pos_col);
     ADD_SUBR(subr_posp);
     ADD_SUBR(subr_cursor_pos);
     ADD_SUBR(subr_empty_line_p);
