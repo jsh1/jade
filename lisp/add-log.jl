@@ -32,14 +32,19 @@
   "Format of ChangeLog date string that must match for two entries to be
 considered as referring to the same day.")
 
+(defun change-log-shorten-file (file log-file)
+  (let ((log-dir (file-name-directory log-file)))
+    (if (string-looking-at (quote-regexp log-dir) file)
+	(substring file (match-end))
+      file)))
+
 ;;;###autoload
 (defun add-change-log-entry (&optional log-file file-list function-list)
   (interactive
    (let
        ((arg current-prefix-arg))
      (list (prompt-for-file "Log file:")
-	   (list (file-name-nondirectory (or (buffer-file-name)
-					     default-directory)))
+	   (list (or (buffer-file-name) default-directory))
 	   (when (not arg)
 	     (let
 		 ((defun (defun-at-point)))
@@ -64,7 +69,7 @@ considered as referring to the same day.")
     (when (or file-list function-list)
       (when file-list
 	(mapc #'(lambda (f)
-		  (insert f)
+		  (insert (change-log-shorten-file f log-file))
 		  (insert ", ")) file-list)
 	(backspace-char 2)
 	(insert " "))
