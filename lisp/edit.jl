@@ -570,3 +570,15 @@ its original position."
   (if toggle-read-only-function
       (funcall toggle-read-only-function)
     (set-buffer-read-only nil (not (buffer-read-only-p)))))
+
+(defmacro save-restriction (&rest forms)
+  "Evaluate FORMS, restoring the original buffer restriction when they
+finish."
+  (list 'let
+	'((save-restriction-start (restriction-start))
+	  (save-restriction-end (restriction-end))
+	  (save-restriction-buffer (current-buffer)))
+	(list 'unwind-protect
+	      (cons 'progn forms)
+	      '(restrict-buffer save-restriction-start save-restriction-end
+				save-restriction-buffer))))
