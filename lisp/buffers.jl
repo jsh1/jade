@@ -281,11 +281,12 @@ the cursor position."
     (unless (eval-hook 'insert-file-hook name)
       (insert (read-file name)))))
 
-(defun open-buffer (name)
+(defun open-buffer (name &optional always-create)
   "If no buffer called NAME exists, creates one and adds it to the main
-buffer-list. Always returns the buffer."
+buffer-list. Always returns the buffer. If ALWAYS-CREATE is non-nil never
+return an existing buffer, always create a new one."
   (let
-      ((buf (get-buffer name)))
+      ((buf (if always-create nil (get-buffer name))))
     (unless buf
       (when (setq buf (make-buffer name))
 	(add-buffer buf)))
