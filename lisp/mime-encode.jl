@@ -28,17 +28,31 @@
   '(("\\.jpe?g$" . "image/jpeg")
     ("\\.gif$" . "image/gif")
     ("\\.tiff$" . "image/tiff")
+    ("\\.png$" . "image/png")
     ("\\.e?ps$" . "application/postscript")
     ("\\.html?$" . "text/html")
-    ("\\.txt?$" . "text/plain"))
+    ("\\.txt?$" . "text/plain")
+    ("\\.mpe?g$" . "video/mpeg")
+    ("\\.au$" . "audio/basic"))
   "Alist of (REGEXP . CONTENT-TYPE-STRING).")
+
+;;;###autoload
+(defvar mime-encode-keymap (bind-keys (make-sparse-keymap)
+			     "C-a" 'mime-encode-attach-file
+			     "C-b" 'mime-encode-attach-buffer
+			     "C-n" 'mime-next-part
+			     "C-p" 'mime-previous-part
+			     "C-d" 'mime-encode-delete-part))
 
 
 ;; Message composition functions
 
 (defun mime-encode-insert (content-type content-disp &optional plist)
+  (and (mime-current-part t)
+       (error "Can't insert in existing MIME attachments!"))
   (let
-      ((start (cursor-pos)))
+      ((start (cursor-pos))
+       extent)
     (unless (listp content-type)
       (setq content-type (if (stringp content-type)
 			     (condition-case nil
@@ -59,51 +73,68 @@
       (format (current-buffer) " filename=%s"
 	      (cdr (assq 'filename (cdr content-disp)))))
     (format (current-buffer) "]]\n")
-    (make-extent (forward-char 2 start) (forward-char -3 (cursor-pos))
-		 (list* 'face mime-highlight-face
-			'content-type content-type
-			'content-disp content-disp
-			plist))))
+    (setq extent (make-extent (forward-char 2 start)
+			      (forward-char -3 (cursor-pos))
+			      (list* 'face mime-highlight-face
+				     'content-type content-type
+				     'content-disp content-disp
+				     plist)))
+    (extent-set extent 'read-only t)))
 
 ;;;###autoload
-(defun mime-encode-attach-file (filename &optional content-type)
-  (interactive (let*
-		   ((file (prompt-for-file "File to attach:" t))
-		    (default (cdr (assoc-regexp
-				   file mime-encode-auto-type-alist t)))
-		    (type (prompt-for-string
-			   (format nil "Content type (default: %s):"
-				   default))))
-		 (list file (if (and type (not (string= type "")))
-				type default))))
+(defun mime-encode-attach-file (filename &optional content-type inline)
+  (interactive "fFile to attach:\n\nP")
+  (unless content-type
+    (let
+	((default (or (cdr (assoc-regexp
+			    filename mime-encode-auto-type-alist t))
+		      "application/octet-stream")))
+      (setq content-type (prompt-for-string
+			  (format nil "Content type (default: %s):" default)))
+      (unless (and (stringp content-type) (not (string= content-type "")))
+	(setq content-type default))))
   (mime-encode-insert content-type
-		      `(attachment
-			(filename . ,(file-name-nondirectory filename)))
+		      (list (if inline 'inline 'attachment)
+			    (cons 'filename
+				  (file-name-nondirectory filename)))
 		      (list 'content-source filename)))
 
 ;;;###autoload
-(defun mime-encode-attach-buffer (buffer &optional content-type)
-  (interactive (let*
-		   ((buffer (prompt-for-buffer "Buffer to attach:" t))
-		    (name (or (file-name-nondirectory
-			       (buffer-file-name buffer))
-			      (buffer-name buffer)))
-		    (default (cdr (assoc-regexp
-				   name mime-encode-auto-type-alist t)))
-		    (type (prompt-for-string
-			   (format nil "Content type (default: %s):"
-				   default))))
-		 (list buffer (if (and type (not (string= type "")))
-				  type default))))
-  (mime-encode-insert content-type `(attachment (filename . ,name))
-		      (list 'content-source buffer)))
+(defun mime-encode-attach-buffer (buffer &optional content-type inline)
+  (interactive "bBuffer to attach:\n\nP")
+  (let
+      ((name (if (buffer-file-name buffer)
+		 (file-name-nondirectory
+		  (buffer-file-name buffer))
+	       (buffer-name buffer))))
+    (unless content-type
+      (let
+	  ((default (or (cdr (assoc-regexp
+			      name mime-encode-auto-type-alist t))
+			"application/octet-stream")))
+	(setq content-type (prompt-for-string
+			    (format nil "Content type (default: %s):"
+				    default)))
+	(unless (and (stringp content-type) (not (string= content-type "")))
+	  (setq content-type default))))
+    (mime-encode-insert content-type
+			(list (if inline 'inline 'attachment)
+			      (cons 'filename name))
+			(list 'content-source buffer))))
 
 
 ;; Encoding composed message to MIME
 
 (defun mime-encode-params (params)
   (mapc #'(lambda (param)
-	    (format (current-buffer) ";\n\t%s=" (car param))
+	    (insert ";")
+	    (if (>= (+ (pos-col (char-to-glyph-pos))
+		       (length (symbol-name (car param)))
+		       (length (cdr param)) 2)
+		    mail-fill-column)
+		(insert "\n\t")
+	      (insert " "))
+	    (format (current-buffer) "%s=" (car param))
 	    (if (string-match (concat ?^ mime-token-re ?$) (cdr param))
 		(insert (cdr param))
 	      (format (current-buffer) "\"%s\"" (cdr param))))
@@ -158,14 +189,12 @@
       (goto (match-start))
       ;; Insert boilerplate headers
       (insert "MIME-Version: 1.0\n")
-      (insert "Content-type: multipart/mixed; boundary=\"")
-      (setq boundaries (cons (cursor-pos) boundaries))
-      (insert "\"\n")
+      (insert "Content-type: multipart/mixed; boundary=\"\"\n")
+      (setq boundaries (cons (make-mark (forward-char -2)) boundaries))
       ;; Then boundary of the first message part
       (goto (forward-line))
-      (insert "--")
-      (setq boundaries (cons (cursor-pos) boundaries))
-      (insert "\n\n")
+      (insert "--\n")
+      (setq boundaries (cons (make-mark (forward-char -1)) boundaries))
       (mime-encode-content-type (list 'text 'plain))
       (insert "\n")
       (let
@@ -203,9 +232,9 @@
 		    (delete-area start end)
 		    (unless (zerop (pos-col (cursor-pos)))
 		      (insert "\n"))
-		    (insert "--")
-		    (setq boundaries (cons (cursor-pos) boundaries))
-		    (insert "\n")
+		    (insert "--\n")
+		    (setq boundaries (cons (make-mark (forward-char -1))
+					   boundaries))
 		    (mime-encode-content-type content-type)
 		    (mime-encode-content-disp content-disp)
 		    (format (current-buffer) "Content-transfer-encoding: %s\n"
@@ -219,14 +248,18 @@
 			(unwind-protect
 			    (mime-encode-stream content-xfer-enc file)
 			  (close-file file))))
+		     ((bufferp source)
+		      (mime-encode-stream
+		       content-xfer-enc
+		       (cons source (start-of-buffer source))))
 		     ((streamp source)
 		      (mime-encode-stream content-xfer-enc source))
 		     (t
 		      (error "Don't know how to access source: %s" source)))
 		    ;; XXX: this is truly fucked up, right here
-		    (insert "\n--")
-		    (setq boundaries (cons (cursor-pos) boundaries))
-		    (insert "\n")
+		    (insert "\n--\n")
+		    (setq boundaries (cons (make-mark (forward-char -1))
+					   boundaries))
 		    (mime-encode-content-type (list 'text 'plain))
 		    (insert "\n")))
 	      attachments))
@@ -234,13 +267,21 @@
       (goto (end-of-buffer))
       (unless (zerop (pos-col (cursor-pos)))
 	(insert "\n"))
-      (insert "--")
-      (setq boundaries (cons (cursor-pos) boundaries))
-      (insert "--\n")
+      (insert "----\n")
+      (setq boundaries (cons (make-mark (forward-char -3)) boundaries))
       ;; Now compute the boundary string and insert it wherever required
       (while (null boundary-string)
 	(setq boundary-string (mime-encode-make-boundary))
 	(when (search-forward boundary-string (start-of-buffer))
 	  (setq boundary-string nil)))
-      (mapc #'(lambda (p)
-		(insert boundary-string p)) boundaries))))
+      (mapc #'(lambda (m)
+		(insert boundary-string (mark-pos m))) boundaries))))
+
+
+;; Misc commands
+
+(defun mime-encode-delete-part (extent)
+  (interactive (list (mime-current-part)))
+  (extent-set extent 'read-only nil)
+  (delete-area (forward-char -2 (extent-start extent))
+	       (forward-char 3 (extent-end extent))))
