@@ -995,23 +995,27 @@ afterwards, returning the value of (progn FORMS...).
 	PUSHGC(gc_args, args);
 	if((res = cmd_eval(VCAR(args))) && VIEWP(res))
 	{
-	    VALUE oldvw = VAL(curr_vw);
-	    GC_root gc_oldvw;
-	    curr_vw = VVIEW(res);
+	    VALUE oldvw = VAL(VVIEW(res)->vw_Win->w_CurrVW);
+	    VALUE oldwin = VAL(curr_win);
+	    GC_root gc_oldvw, gc_oldwin;
+
 	    curr_win = curr_vw->vw_Win;
+	    curr_vw = VVIEW(res);
 	    curr_win->w_CurrVW = curr_vw;
 
 	    PUSHGC(gc_oldvw, oldvw);
+	    PUSHGC(gc_oldwin, oldwin);
 	    res = cmd_progn(VCDR(args));
-	    POPGC;
+	    POPGC; POPGC;
 
 	    /* Reinstall the old view */
 	    if(VVIEW(oldvw)->vw_Win
-	       && VVIEW(oldvw)->vw_Win->w_Window != WINDOW_NIL)
+	       && VVIEW(oldvw)->vw_Win->w_Window != WINDOW_NIL
+	       && WINDOWP(oldwin))
 	    {
-		curr_vw = VVIEW(oldvw);
-		curr_win = curr_vw->vw_Win;
-		curr_win->w_CurrVW = curr_vw;
+		VVIEW(oldvw)->vw_Win->w_CurrVW = VVIEW(oldvw);
+		curr_win = VWIN(oldwin);
+		curr_vw = curr_win->w_CurrVW;
 	    }
 	}
 	else
