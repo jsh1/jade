@@ -543,9 +543,9 @@ If the value is 0 then the window will be scrolled by one column.
 _PR VALUE cmd_rect_blocks_p(VALUE vw);
 DEFUN("rect-blocks-p", cmd_rect_blocks_p, subr_rect_blocks_p, (VALUE vw), V_Subr1, DOC_rect_blocks_p) /*
 ::doc:rect_blocks_p::
-rect-blocks-p [WINDOW]
+rect-blocks-p [VIEW]
 
-Returns t if blocks marked in WINDOW (or the current one) are treated as
+Returns t if blocks marked in VIEW (or the current one) are treated as
 rectangles.
 ::end:: */
 {
@@ -559,10 +559,10 @@ rectangles.
 _PR VALUE cmd_set_rect_blocks(VALUE vw, VALUE stat);
 DEFUN("set-rect-blocks", cmd_set_rect_blocks, subr_set_rect_blocks, (VALUE vw, VALUE stat), V_Subr2, DOC_set_rect_blocks) /*
 ::doc:set_rect_blocks::
-set-rect-blocks WINDOW STATUS
+set-rect-blocks VIEW STATUS
 
 Controls whether or not blocks are taken as contiguous regions of text or as
-rectangles in WINDOW. When STATUS is t rectangles are used.
+rectangles in VIEW. When STATUS is t rectangles are used.
 ::end:: */
 {
     int oflags;
@@ -574,7 +574,10 @@ rectangles in WINDOW. When STATUS is t rectangles are used.
     else
 	VVIEW(vw)->vw_Flags |= VWFF_RECTBLOCKS;
     if((VVIEW(vw)->vw_BlockStatus == 0) && (VVIEW(vw)->vw_Flags != oflags))
+    {
 	set_block_refresh(VVIEW(vw));
+	VVIEW(vw)->vw_Flags |= VWFF_FORCE_REFRESH;
+    }
     return(stat);
 }
 
