@@ -28,6 +28,16 @@ version="4.0-alpha"
 version_major=4
 version_minor=0
 
+dir_version=`pwd | sed -e 's/.*-//'`
+case "${dir_version}" in
+  *.*)
+    ;;
+  *)
+    version=${dir_version}
+    ;;
+esac
+unset dir_version
+
 jadedir='${datadir}/jade'
 lispdir='${jadedir}/${version}/lisp'
 jadeexecdir='${libexecdir}/jade/${version}/${host_type}'
@@ -48,7 +58,6 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_GCC_TRADITIONAL
-AM_PROG_LIBTOOL
 
 dnl Checks for libraries.
 AC_CHECK_LIB(nsl, xdr_void)
@@ -61,15 +70,7 @@ AC_HEADER_TIME
 AC_CHECK_HEADERS(fcntl.h sys/time.h sys/utsname.h unistd.h memory.h)
 
 dnl Check for librep
-AC_MSG_CHECKING([for librep]);
-rep_version=`rep-config --version`
-if test $? -eq 0; then
-  CPPFLAGS="$CPPFLAGS `rep-config --cflags`"
-  LIBS="$LIBS `rep-config --libs`"
-  AC_MSG_RESULT([version ${rep_version}])
-else
-  AC_MSG_ERROR([Can't find librep. Is it installed?])
-fi
+AM_PATH_REP
 
 dnl Check for window-systems
 windowsys=none
