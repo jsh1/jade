@@ -49,6 +49,7 @@ typedef struct {
     struct x11_display *ws_Display;
     Window		ws_Window;
     XFontStruct	       *ws_Font;
+    XFontStruct	       *ws_BoldFont;	/* or null */
     GC			ws_GC;
     XGCValues		ws_GC_values;
     int			ws_Width, ws_Height;
