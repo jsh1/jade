@@ -379,13 +379,21 @@ before the cursor in the current buffer.
 void
 files_init(void)
 {
+    repv tem;
+
     Fmake_variable_buffer_local(Qdefault_directory);
 
     rep_INTERN(write_buffer_contents);
     rep_INTERN(read_file_contents);
     rep_INTERN(insert_file_contents);
 
+#if rep_INTERFACE >= 9
+    tem = rep_push_structure ("rep");
+#endif
     rep_ADD_SUBR_INT(Swrite_buffer_contents);
     rep_ADD_SUBR(Sread_file_contents);
     rep_ADD_SUBR(Sinsert_file_contents);
+#if rep_INTERFACE >= 9
+    rep_pop_structure (tem);
+#endif
 }
