@@ -39,6 +39,7 @@ _PR VALUE sys_make_color(Lisp_Color *c);
 _PR struct x11_color *x11_get_color_dpy(Lisp_Color *c, struct x11_display *);
 _PR void sys_free_color(Lisp_Color *c);
 _PR void x11_free_dpy_colors(struct x11_display *dpy);
+_PR void sys_recolor_cursor(VALUE face);
 
 static void x11_handle_sync_input(int fd);
 _PR void x11_handle_async_input(void);
@@ -478,7 +479,6 @@ sys_free_color(Lisp_Color *c)
     while(x != 0)
     {
 	struct x11_color *next = x->next;
-	assert(next == 0);
 	XFreeColors(x->dpy->display, x->dpy->colormap, &x->color.pixel, 1, 0);
 	str_free(x);
 	x = next;
@@ -505,6 +505,30 @@ x11_free_dpy_colors(struct x11_display *dpy)
 		break;
 	    }
 	    x = &((*x)->next);
+	}
+    }
+}
+
+void
+sys_recolor_cursor(VALUE face)
+{
+    if(face && FACEP(face)
+       && COLORP(VFACE(face)->background)
+       && COLORP(VFACE(face)->foreground))
+    {
+	Lisp_Color *fg = VCOLOR(VFACE(face)->foreground);
+	Lisp_Color *bg = VCOLOR(VFACE(face)->background);
+	struct x11_display *xdpy = x11_display_list;
+	while(xdpy != 0)
+	{
+	    struct x11_color *xf = x11_get_color_dpy(fg, xdpy);
+	    struct x11_color *xb = x11_get_color_dpy(bg, xdpy);
+	    if(xf != 0 && xb != 0)
+	    {
+		XRecolorCursor(xdpy->display, xdpy->text_cursor,
+			       &xf->color, &xb->color);
+	    }
+	    xdpy = xdpy->next;
 	}
     }
 }
