@@ -1,3 +1,7 @@
+2002-09-28  John Harper  <jsh@unfactored.org>
+
+	* lisp-mode.jl: hint for define-special-variable
+
 2002-03-23  John Harper  <jsh@unfactored.org>
 
 	* tags.jl (tags-next-file): fixed bug when default-directory
