@@ -23,9 +23,10 @@ include ../Makedefs
 top_builddir=..
 top_srcdir=@top_srcdir@
 
-jade_prog = $(rep_LIBTOOL) --mode=execute -dlopen ../src/libserver-dl.la \
-	    ../src/jade --batch --no-rc
-COMPILE_ENV = JADELISPDIR=. JADEDOCFILE=../DOC
+jade_prog = $(rep_LIBTOOL) --mode=execute ../src/jade --batch --no-rc
+COMPILE_ENV = JADELISPDIR=. \
+	      JADEEXECDIR=$(top_builddir)/src/.libs \
+	      JADEDOCFILE=../DOC
 
 INSTALL_FILES = $(wildcard *.jl) $(wildcard *.jlc) $(wildcard *.jld)
 
