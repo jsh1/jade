@@ -951,12 +951,18 @@ void
 view_prin(VALUE stream, VALUE vw)
 {
     char buf[32];
-    sprintf(buf, "#<view %d,%d", VVIEW(vw)->vw_MaxX, VVIEW(vw)->vw_MaxY);
-    stream_puts(stream, buf, -1, FALSE);
-    if(VVIEW(vw)->vw_Tx)
+    if(VVIEW(vw)->vw_Win == 0)
+	stream_puts(stream, "#<dead-view>", -1, FALSE);
+    else
     {
-	stream_putc(stream, ' ');
-	stream_puts(stream, VSTR(VVIEW(vw)->vw_Tx->tx_BufferName), -1, TRUE);
+	sprintf(buf, "#<view %d,%d", VVIEW(vw)->vw_MaxX, VVIEW(vw)->vw_MaxY);
+	stream_puts(stream, buf, -1, FALSE);
+	if(VVIEW(vw)->vw_Tx)
+	{
+	    stream_putc(stream, ' ');
+	    stream_puts(stream, VSTR(VVIEW(vw)->vw_Tx->tx_BufferName),
+			-1, TRUE);
+	}
+	stream_putc(stream, '>');
     }
-    stream_putc(stream, '>');
 }
