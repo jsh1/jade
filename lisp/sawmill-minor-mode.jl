@@ -32,24 +32,30 @@
 		     "C-M-x" 'smm-eval-print-sexp
 		     "C-j" 'smm-eval-insert-sexp))
 
-(defvar sawmill-client-program "sawfish-client")
+(defun smm-eval (form &optional module)
+  (require 'sawfish.client)
+  (if (not module)
+      (sawfish-client-eval form t)
+    (sawfish-client-eval `(eval-in ',form ',module) t)))
 
-(defun smm-eval (form)
-  (let*
-      ((output (make-string-output-stream))
-       (process (make-process output))
-       (print-escape t))
-    (if (zerop (call-process process nil sawmill-client-program
-			     "-w" "-e" (format nil "%S" form)))
-	;; success
-	(get-output-stream-string output)
-      (error "can't call sawmill-client"))))
+(defun smm-identify-module (&optional point buf)
+  "Return the name of the Lisp module that the cursor is in."
+  (if (or (re-search-backward
+	   "\\(define-structure[ \t\n]+(.+?)[ \t\n]" point buf)
+	  (re-search-backward
+	   "\\(declare \\(in-module[ \t\n]+(.+?)[ \t\n]" point buf)
+	  (re-search-forward
+	   "\\(define-structure[ \t\n]+(.+?)[ \t\n]" point buf)
+	  (re-search-forward
+	   "\\(declare \\(in-module[ \t\n]+(.+?)[ \t\n]" point buf))
+      (intern (expand-last-match "\\1"))
+    nil))
 
 (defun smm-eval-sexp ()
   "Evaluates the Lisp expression before the cursor and returns its value."
   (interactive)
   (goto (lisp-backward-sexp))
-  (smm-eval (read (current-buffer))))
+  (smm-eval (read (current-buffer)) (smm-identify-module)))
 
 (defun smm-eval-insert-sexp ()
   "Evaluates the Lisp expression before the cursor, then inserts its value
@@ -75,26 +81,29 @@ in the status line."
    (list (prompt-for-string "Sawmill variable:" (symbol-at-point))))
   (sawmill-describe-function fn "Variable Index"))
 
-(defun sawmill-autoload-finder (point buf module)
-  (cond ((looking-at "[ \t]*\\(define-command(-to-screen)? '([^ ]+)" point buf)
-	 (let ((name (expand-last-match "\\2"))
-	       (type nil))
-	   (condition-case nil
-	       (with-buffer buf
-		 (save-excursion
-		   (goto (match-end))
-		   (goto (forward-exp 3))
-		   (let ((end (cursor-pos)))
-		     (goto (backward-exp 1))
-		     (setq type (copy-area (cursor-pos) end)))))
-	     (error))
-	   (if (and type (not (string= type "")))
-	       (format nil "(autoload-command '%s '%s %s)" name module type)
-	     (format nil "(autoload-command '%s '%s)" name module))))
+(defun sawmill-autoload-finder (point buf file)
+  (let ((module (or (smm-identify-module point buf) file)))
+    (cond ((looking-at
+	    "[ \t]*\\(define-command(-to-screen)? '([^ ]+)" point buf)
+	   (let ((name (expand-last-match "\\2"))
+		 (type nil))
+	     (condition-case nil
+		 (with-buffer buf
+		   (save-excursion
+		     (goto (match-end))
+		     (goto (forward-exp 3))
+		     (let ((end (cursor-pos)))
+		       (goto (backward-exp 1))
+		       (setq type (copy-area (cursor-pos) end)))))
+	       (error))
+	     (if (and type (not (string= type "")))
+		 (format nil "(autoload-command '%s '%s %s)" name module type)
+	       (format nil "(autoload-command '%s '%s)" name module))))
 	     
-	((looking-at "[ \t]*\\(define-([^ ]+) '([^ ]+)" point buf)
-	 (format nil "(autoload-%s '%s '%s)"
-		 (expand-last-match "\\1") (expand-last-match "\\2") module))))
+	  ((looking-at "[ \t]*\\(define-([^ ]+) '([^ ]+)" point buf)
+	   (format nil "(autoload-%s '%s '%s)"
+		   (expand-last-match "\\1")
+		   (expand-last-match "\\2") module)))))
 
 ;;;###autoload
 (defun sawmill-minor-mode ()
