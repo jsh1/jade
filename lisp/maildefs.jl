@@ -52,6 +52,10 @@ when showing a mail message.")
   "Regexp matching headers to be highlighted; currently only the first will
 that matches will actually be highlighted.")
 
+(defvar mail-highlight-face bold-face
+  "Face used for highlighting message headers. The variable `mail-highlighted-
+headers' defines which are selected.")
+
 (defvar mail-folder-dir "~/Mail/"
   "The directory in which mail folders are stored by default.")
 
