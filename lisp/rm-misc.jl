@@ -51,7 +51,7 @@
 		 '())
 	    msg-id (mail-get-header "Message-Id")
 	    references (append (mail-get-header "References" t t)
-			       (list msg-id))))
+			       (and msg-id (list msg-id)))))
     (when (and subject (string-match rm-Re-regexp subject t))
       (setq subject (concat mail-reply-prefix
 			    (substring subject (match-end)))))
@@ -229,7 +229,7 @@ headers will be included."
 		((pos (cursor-pos)))
 	      (restrict-buffer output-pos pos)
 	      (while (setq pos (re-search-backward stuffed-re pos))
-		(replace-regexp stuffed-re "\\1" pos)
+		(replace-last-match "\\1")
 		(setq pos (forward-line -1 pos)))
 	      (unrestrict-buffer))
 	    ;; Unmangle quoted ^From_
