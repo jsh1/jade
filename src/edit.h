@@ -70,7 +70,6 @@ typedef struct _TX {
 
     /* line numbers of `narrowed' region */
     long	    tx_LogicalStart, tx_LogicalEnd;
-    long	    tx_LastLogicalStart, tx_LastLogicalEnd;
 
     VALUE	    tx_FileName;
     VALUE	    tx_BufferName;
@@ -85,13 +84,6 @@ typedef struct _TX {
     long	    tx_LastSaveTime;	 /* time at last save (auto or user) */
 
     int		    tx_TabSize;
-
-    /* Section of buffer which may have changed since last refresh.  */
-    VALUE	    tx_ModStart, tx_ModEnd;
-    /* How many more lines in the above area than at the last refresh.	*/
-    long	    tx_ModDelta;
-    /* `tx_Changes' at last refresh.  */
-    long	    tx_LastChanges;
 
     VALUE	    tx_LocalVariables; /* alist of (SYMBOL . VALUE) */
     VALUE	    tx_GlyphTable;
@@ -114,14 +106,13 @@ typedef struct _TX {
 /* No mod flag, buffer never killed. */
 #define TXFF_SPECIAL		(1 << (CELL8_TYPE_BITS + 1))
 
-/* *All* buffer has changed. */
-#define TXFF_REFRESH_ALL	(1 << (CELL8_TYPE_BITS + 2))
-
 /* No recording of undo information */
-#define TXFF_NO_UNDO		(1 << (CELL8_TYPE_BITS + 3))
+#define TXFF_NO_UNDO		(1 << (CELL8_TYPE_BITS + 2))
 
-/* Views displaying this buffer need to update their status lines. */
-#define TXFF_REFRESH_STATUS	(1 << (CELL8_TYPE_BITS + 4))
+/* Remnants from the old redisplay code */
+#define flag_insertion(tx, start, end)		((tx)->tx_Changes++)
+#define flag_deletion(tx, start, end)		((tx)->tx_Changes++)
+#define flag_modification(tx, start, end)	((tx)->tx_Changes++)
 
 
 /* Each view in a window is like this */
@@ -143,21 +134,15 @@ typedef struct _VW
     TX		   *vw_LastCursorTx;
 
     VALUE	    vw_DisplayOrigin;
-    VALUE	    vw_LastDisplayOrigin;
 
     VALUE	    vw_BlockS, vw_BlockE;
-    VALUE	    vw_LastBlockS, vw_LastBlockE;
     /* 0=block marked, 1=start marked, 2=end marked, -1=none marked */
-    char	    vw_BlockStatus, vw_LastBlockStatus;
+    int		    vw_BlockStatus;
 
-    int		    vw_MaxX, vw_MaxY;	/* COLS,ROWS of pane, not including
-					   status line at bottom */
-    int		    vw_WidthPix, vw_HeightPix;
-    int		    vw_LeftPix, vw_RightPix;
-    int		    vw_TopPix, vw_BottomPix;
-
-    TX		   *vw_LastRefTx;
-    short	    vw_DeferRefresh;
+    /* This pane of vw_Win starts at glyph (FirstX, FirstY), for
+       (MaxX, MaxY) glyphs (not including status line) */
+    int		    vw_FirstX, vw_FirstY;
+    int		    vw_MaxX, vw_MaxY;
 
     u_char	   *vw_StatusBuf;
 #define STATUS_BUFSIZ 128
@@ -172,28 +157,62 @@ typedef struct _VW
 
     short	    vw_XStepRatio, vw_YStepRatio;
     short	    vw_XStep, vw_YStep;
-    u_short	    vw_MaxScroll;
 } VW;
 
 /* mark rectangular blocks */
 #define VWFF_RECTBLOCKS		(1 << (CELL8_TYPE_BITS + 0))
 
-/* full redraw next time */
-#define VWFF_FORCE_REFRESH	(1 << (CELL8_TYPE_BITS + 1))
-
-/* redraw the block */
-#define VWFF_REFRESH_BLOCK	(1 << (CELL8_TYPE_BITS + 2))
-
-/* redraw the status line */
-#define VWFF_REFRESH_STATUS	(1 << (CELL8_TYPE_BITS + 3))
-
 /* view is of a minibuffer */
-#define VWFF_MINIBUF		(1 << (CELL8_TYPE_BITS + 4))
+#define VWFF_MINIBUF		(1 << (CELL8_TYPE_BITS + 1))
 
 /* status text set by user */
-#define VWFF_CUSTOM_STATUS	(1 << (CELL8_TYPE_BITS + 5))
+#define VWFF_CUSTOM_STATUS	(1 << (CELL8_TYPE_BITS + 2))
 
 
+/* Windows */
+
+typedef u_char glyph_code;
+typedef u_char glyph_attr;
+
+enum Glyph_Attrs {
+    GA_Text = P_TEXT,			/* foreground on background */
+    GA_Text_RV = P_TEXT_RV,		/* bg on fg */
+    GA_Block = P_BLOCK,			/* fg on highlight */
+    GA_Block_RV = P_BLOCK_RV,		/* hl on fg */
+    GA_MAX = P_MAX,
+    GA_Garbage = 255,			/* glyph was lost */
+};
+
+typedef struct {
+    int cols, rows;
+    u_long hashes[0];			/* ROWS hash codes*/
+
+    /* Following the ROWS hash codes, we have COLSxROWS glyph codes
+       followed by COLSxROWS glyph attrs. Use the GLYPH_BUF_CODES and
+       GLYPH_BUF_ATTRS to get pointers into them. */
+} glyph_buf;
+
+#define SIZEOF_GLYPH_BUF(cols, rows)		\
+    (sizeof(glyph_buf)				\
+     + ((cols) * (rows) * sizeof(glyph_code))	\
+     + ((cols) * (rows) * sizeof(glyph_attr))	\
+     + ((rows) * sizeof(u_long)))
+
+/* Return the address of the code line ROW in glyph buffer G. */
+#define GLYPH_BUF_CODES(g,row)						\
+    ((glyph_code *)(((char *)g)						\
+		    + sizeof(glyph_buf)					\
+		    + (((g)->rows) * sizeof(u_long))			\
+		    + (((g)->cols * (row)) * sizeof(glyph_code))))
+
+/* Return the address of the attribute line ROW in glyph buffer G. */
+#define GLYPH_BUF_ATTRS(g,row)						\
+    ((glyph_attr *)(((char *)g)						\
+		    + sizeof(glyph_buf)					\
+		    + (((g)->rows) * sizeof(u_long))			\
+		    + (((g)->cols * (g)->rows) * sizeof(glyph_code))	\
+		    + (((g)->cols * (row)) * sizeof(glyph_attr))))
+
 /* Each window is represented by one of these */
 typedef struct _WIN {
     VALUE w_Car;
@@ -201,18 +220,17 @@ typedef struct _WIN {
 
     struct _WIN *w_Next;
 
-    VW *w_ViewList;
-    VW *w_CurrVW;
-    VW *w_MiniBuf;
+    VW *w_ViewList;			/* List of views in top-down order */
+    VW *w_CurrVW;			/* Active view in window */
+    VW *w_MiniBuf;			/* Minibuffer view */
+    int w_ViewCount;			/* Number of views in window */
 
-    int w_ViewCount;
+    W_WindowSys w_WindowSys;		/* Data for the window system */
+    glyph_buf *w_Content, *w_NewContent; /* Data for redisplay */
+    u_long w_LastClickMics;		/* Last mouse click event */
 
-    /* Data that the window-system needs.  */
-    W_WindowSys w_WindowSys;
-
-    u_char *w_Message;
+    u_char *w_Message;			/* non-null == msg in minibuffer */
     u_long w_MessageLen;
-    u_long w_LastClickMics;
 
     int w_MaxX, w_MaxY;			/* COLS,ROWS in whole window */
     int w_WidthPix, w_HeightPix;	/* width,height in pixels of window */
@@ -220,8 +238,7 @@ typedef struct _WIN {
     int w_TopPix, w_BottomPix;		/*  "      "   of bottom right */
 
     VALUE w_FontName;
-    short w_FontStart;
-    short w_FontX, w_FontY;
+    short w_FontX, w_FontY;		/* pixel width and height of glyphs */
 } WIN;
 
 /* refresh whole window */
