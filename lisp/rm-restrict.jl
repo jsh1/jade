@@ -86,6 +86,7 @@
 
 ;; Entry points
 
+;; Can't autoload macros..
 (defmacro defrule (name args body)
   "Define a rule for restricting the set of messages considered. The new rule
 is called NAME (a symbol), it takes the lambda list of arguments ARGS, and
@@ -96,14 +97,15 @@ For example, to define a rule accepting only messages sent by me (that's
 
 (defrule from-jsh ()
   (header \"from\" \"john@dcs\\\\.warwick\\\\.ac\\\\.uk\"))"
-  (list 'rm-defrule
-	(list 'quote name)
-	(list 'quote args)
-	(list 'quote body)))
+  (let
+      ((symbol (rm-rule-symbol name)))
+    `(progn
+       (put ,name 'rm-rule-symbol ,symbol)
+       (defun ,symbol ,args ,(rm-make-rule-body body)))))
 (put 'defrule 'lisp-indent 'defun)
 
 ;;;###autoload
-(defun rm-defrule (name args body)
+(defun define-rule (name args body)
   "Define a rule for restricting the set of messages considered. The new rule
 is called NAME (a symbol), it takes the lambda list of arguments ARGS, and
 is defined by the single form BODY.
@@ -320,5 +322,5 @@ contain its definition as a function."
 					    ((fun (rm-rule-symbol sym)))
 					  (fboundp fun)))))))
     (if (eq rule 'new)
-	(call-command 'rm-defrule)
+	(call-command 'define-rule)
       rule)))
