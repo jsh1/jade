@@ -762,22 +762,22 @@ afterwards, returning the value of (progn FORMS...).
 	PUSHGC(gcv_args, args);
 	if((res = cmd_eval(VCAR(args))) && VIEWP(res))
 	{
-	    VALUE oldwin = VAL(curr_win);
 	    VALUE oldvw = VAL(curr_vw);
-	    GCVAL gcv_oldwin, gcv_oldvw;
+	    GCVAL gcv_oldvw;
 	    curr_vw = VVIEW(res);
 	    curr_win = curr_vw->vw_Win;
 	    curr_win->w_CurrVW = curr_vw;
 
-	    PUSHGC(gcv_oldwin, oldwin);
 	    PUSHGC(gcv_oldvw, oldvw);
 	    res = cmd_progn(VCDR(args));
-	    POPGC; POPGC;
-	    /* Do some checks in case something got deleted. */
-	    if(VWIN(oldwin)->w_Window && VVIEW(oldvw)->vw_Win)
+	    POPGC;
+
+	    /* Reinstall the old view */
+	    if(VVIEW(oldvw)->vw_Win
+	       && VVIEW(oldvw)->vw_Win->w_Window != WINDOW_NIL)
 	    {
 		curr_vw = VVIEW(oldvw);
-		curr_win = VWIN(oldwin);
+		curr_win = curr_vw->vw_Win;
 		curr_win->w_CurrVW = curr_vw;
 	    }
 	}
