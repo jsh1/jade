@@ -29,7 +29,6 @@
     "LMB-CLICK2" 'prompt-select-completion
     "RMB-CLICK1" 'prompt-complete
     "Meta-?"	'prompt-list-completions
-    "Meta-/"	'prompt-list-completions
     "Meta-n"	'prompt-next-history
     "Meta-p"	'prompt-previous-history
     "Ctrl-g"	'prompt-cancel
@@ -38,19 +37,10 @@
 
 ;; Configuration variables
 
-(defvar prompt-complete-function nil
-  "When non-nil this function is called in place of prompt-complete to handle
-_all_ completion in the prompt. It should complete whatever precedes the
-cursor. Note that if this variable is non-nil. The `prompt-completion-
-function' isn't ever called.")
-
-(defvar prompt-list-completions-function nil
-  "Similar to `prompt-complete-function', but called instead of the `prompt-
-list-completions' command.")
-
 (defvar prompt-completion-function nil
   "Optional function taking one argument, the string to be completed. It
-should return a list of all matches.")
+should return a list of all matches. If the symbol `t', the command
+complete-at-point will be used instead.")
 
 (defvar prompt-validate-function nil
   "Optional function taking one argument, the string which has been entered.
@@ -87,6 +77,9 @@ case.")
 
 (defvar prompt-title-face bold-face
   "Face used for titles of prompts.")
+
+(defvar before-prompt-hook nil
+  "Prompt called before entering a prompt.")
 
 
 ;; Working variables used by more than one function
@@ -160,8 +153,9 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	      ;; Make this a separate undo operation
 	      (setq buffer-undo-list (cons nil buffer-undo-list)))
 	    (make-local-variable 'pre-command-hook)
-	    (setq keymap-path '(prompt-keymap global-keymap)
-		  result (catch 'prompt (recursive-edit)))
+	    (setq keymap-path '(prompt-keymap global-keymap))
+	    (call-hook 'before-prompt-hook)
+	    (setq result (catch 'prompt (recursive-edit)))
 	    (when (and result prompt-history
 		       (not (string= result ""))
 		       (or (zerop (ring-size prompt-history))
@@ -194,61 +188,26 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 (defun prompt-message (string)
   (message string))
 
-;; Returns the number of completions found.
-(defun prompt-complete ()
+(defun prompt-complete (&optional only-display)
   (interactive)
-  (if prompt-complete-function
-      (call-command prompt-complete-function current-prefix-arg)
-    (if (not prompt-completion-function)
-	(progn
-	  (prompt-message "[No completion function]")
-	  0)
-      (let*
-	  ((word-start (extent-end prompt-title-extent))
-	   (word (copy-area word-start (cursor-pos)))
-	   ;; Before making the list of completions, try to
-	   ;; restore the original context
-	   (comp-list (with-view prompt-original-view
-			(with-buffer prompt-original-buffer
-			  (funcall prompt-completion-function word))))
-	   (num-found (length comp-list)))
-	(cond
-	 ((= num-found 0)
-	  (completion-remove-view)
-	  (prompt-message "[No completions]"))
-	 ((= num-found 1)
-	  (goto (replace-string word (car comp-list) word-start))
-	  (completion-remove-view)
-	  (prompt-message "[Unique completion]"))
-	 (t
-	  (when (not (string-head-eq (car comp-list) word))
-	    ;; Completions don't match their source at all.
-	    (delete-area word-start (cursor-pos))
-	    (setq word ""))
-	  (goto (replace-string word (complete-string word comp-list
-						      prompt-list-fold-case)
-				word-start))
-	  (completion-list comp-list)
-	  (prompt-message (format nil "[%d completions]" num-found))))
-	num-found))))
-  
+  (cond ((null prompt-completion-function)
+	 (prompt-message "[No completion function]"))
+	((eq prompt-completion-function t)
+	 (complete-at-point only-display))
+	(t
+	 (let*
+	     ((word-start (extent-end prompt-title-extent))
+	      (word (copy-area word-start (cursor-pos)))
+	      ;; Before making the list of completions, try to
+	      ;; restore the original context
+	      (comp-list (with-view prompt-original-view
+			   (with-buffer prompt-original-buffer
+			     (funcall prompt-completion-function word)))))
+	   (completion-insert comp-list word only-display)))))
+
 (defun prompt-list-completions ()
   (interactive)
-  (if prompt-list-completions-function
-      (call-command prompt-list-completions-function current-prefix-arg)
-    (if (not prompt-completion-function)
-	(progn
-	  (prompt-message "[No completion function]")
-	  0)
-      (let*
-	  ((word (copy-area (extent-end prompt-title-extent) (cursor-pos)))
-	   ;; Before making the list of completions, try to
-	   ;; restore the original context
-	   (comp-list (with-view prompt-original-view
-			(with-buffer prompt-original-buffer
-			  (funcall prompt-completion-function word)))))
-	(completion-list comp-list)
-	(prompt-message (format nil "[%d completions]" (length comp-list)))))))
+  (prompt-complete t))
 
 (defun prompt-cancel ()
   (interactive)
@@ -479,10 +438,14 @@ symbol must agree with it."
   (unless (stringp prompt)
     (setq prompt "Enter a Lisp object:"))
   (let
-      ((prompt-complete-function 'lisp-complete-sexp)
-       (prompt-list-completions-function 'lisp-show-sexp-completions)
+      ((prompt-completion-function t)
        (prompt-validate-function nil)
-       (prompt-symbol-predicate nil))
+       (prompt-symbol-predicate nil)
+       (before-prompt-hook (cons #'(lambda ()
+				     (setq completion-hooks
+					   (cons 'lisp-complete-sexp
+						 completion-hooks)))
+				 before-prompt-hook)))
     (read-from-string (prompt prompt start))))
 
 ;;;###autoload
