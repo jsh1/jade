@@ -45,11 +45,13 @@ showing."
   (setup-new-window (make-window x y w h) buffer))
 
 (defun open-window-on-display (display &optional buffer)
-  "Create a new window on DISPLAY, optionally showing BUFFER."
+  "Create a new window on DISPLAY, optionally showing BUFFER. The new window
+is also set as the current window."
   (interactive "sDisplay:")
   (unless (fboundp 'make-window-on-display)
     (error "Multiple displays aren't supported by this window system"))
-  (setup-new-window (make-window-on-display display) buffer))
+  (set-current-window
+   (setup-new-window (make-window-on-display display) buffer)))
 
 (defun close-window (&optional win)
   "Close window WIN, or the current window."
