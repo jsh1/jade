@@ -30,7 +30,7 @@
 static void kill_view(VW *vw);
 _PR void kill_all_views(WIN *w);
 _PR void update_views_dimensions(WIN *w);
-_PR void update_status_buffer(VW *vw, char *status_buf, u_long buflen);
+_PR void update_status_buffer(VW *vw, char *status_buf, long buflen);
 _PR void views_init(void);
 _PR void views_kill(void);
 _PR void view_sweep(void);
@@ -455,8 +455,8 @@ update_views_dimensions(WIN *w)
 }
 
 /* Expand format characters */
-static u_long
-format_mode_string(char *fmt, VW *vw, char *buf, u_long buf_len)
+static long
+format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 {
     TX *tx = vw->vw_Tx;
     while(*fmt && buf_len > 0)
@@ -594,8 +594,8 @@ format_mode_string(char *fmt, VW *vw, char *buf, u_long buf_len)
     return buf_len;
 }
 
-static u_long
-format_mode_value(VALUE format, VW *vw, char *buf, u_long buf_len)
+static long
+format_mode_value(VALUE format, VW *vw, char *buf, long buf_len)
 {
     TX *tx = vw->vw_Tx;
 
@@ -686,7 +686,7 @@ format_mode_value(VALUE format, VW *vw, char *buf, u_long buf_len)
 
 /* Reformat the status string of VW. */
 void
-update_status_buffer(VW *vw, char *buf, u_long buf_len)
+update_status_buffer(VW *vw, char *buf, long buf_len)
 {
     if(!(vw->vw_Flags & VWFF_MINIBUF))
     {
@@ -999,8 +999,8 @@ afterwards, returning the value of (progn FORMS...).
 	    VALUE oldwin = VAL(curr_win);
 	    GC_root gc_oldvw, gc_oldwin;
 
-	    curr_win = curr_vw->vw_Win;
 	    curr_vw = VVIEW(res);
+	    curr_win = curr_vw->vw_Win;
 	    curr_win->w_CurrVW = curr_vw;
 
 	    PUSHGC(gc_oldvw, oldvw);
