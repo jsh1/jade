@@ -71,7 +71,7 @@ sent to it.")
 				 (list host (format nil "%d" arg)))
 			     (list host))
 	shell-echos telnet-echos
-	shell-output-filter 'telnet-filter)
+	shell-output-filter telnet-filter)
   (call-hook 'telnet-mode-hook))
 
 ;;;###autoload
