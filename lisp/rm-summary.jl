@@ -126,15 +126,14 @@ for the list of formatting options available.")
     (when (= (window-view-count) 3)
       (delete-view))))
 			
-;; Returns a view, a buffer.
+;; Returns a view of the actual mail folder, even if it has to create one.
 (defun rm-summary-view ()
   (let*
       ((message (rm-get-folder-field rm-summary-folder rm-folder-current-msg))
        (buffer (and message (mark-file
 			     (rm-get-msg-field message rm-msg-mark)))))
-    (if buffer
-	(or (get-buffer-view buffer) buffer)
-      ;; Couldn't find the buffer. Try a last gasp for a view
+    (unless (and buffer (get-buffer-view buffer))
+      ;; Couldn't find the view, try to create one
       (rm-configure-views (current-buffer) rm-summary-folder))))
   
 ;; When called from a summary buffer, installs the summary's mail buffer
@@ -142,22 +141,14 @@ for the list of formatting options available.")
 (defmacro rm-with-folder (&rest forms)
   `(let
        ((view (rm-summary-view)))
-     (cond
-      ((viewp view)
-       (with-view view ,@forms))
-      ((bufferp view)
-       (with-buffer view ,@forms)))))
+     (with-view view ,@forms)))
 
 ;; Switch to the buffer containing the folder and execute FORMS. Don't
 ;; switch back afterwards
 (defmacro rm-in-folder (&rest forms)
   `(let
        ((view (rm-summary-view)))
-     (cond
-      ((viewp view)
-       (set-current-view view))
-      ((bufferp view)
-       (goto-buffer view)))
+     (set-current-view view)
      ,@forms))
       
 ;; Configure the window to display the summary in one view, and the
