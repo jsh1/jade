@@ -117,6 +117,10 @@ w   `where-is'
 	that invoke may be used to invoke it.")
    (help)))
 
+(defun apropos-output (symbols)
+  (mapc (lambda (sym)
+	  (describe-value (symbol-value sym t) sym)) symbols))
+
 (defun apropos-function (regexp &optional all-functions)
   (interactive "sRegular expression:\nP")
   (help-wrapper
@@ -126,13 +130,13 @@ w   `where-is'
 				       (lambda (s)
 					 (and (boundp s)
 					      (functionp (symbol-value s))))
-				     commandp)) t)))
+				     commandp)))))
 
 (defun apropos-variable (regexp)
   (interactive "sRegular expression:")
   (help-wrapper
    (format standard-output "Apropos variable `%s':\n" regexp)
-   (apropos-output (apropos regexp 'boundp) nil)))
+   (apropos-output (apropos regexp 'boundp))))
 
 (defun describe-keymap ()
   "Print the full contents of the current keymap (and the keymaps that
@@ -150,14 +154,16 @@ it leads to)."
   (let
       ((doc (documentation fun)))
     (help-wrapper
-     (describe-function-1 fun)
+     (insert "\n")
+     (describe-value (symbol-value fun) fun)
+     (insert "\n")
      (insert (if doc (substitute-command-keys doc) "Undocumented."))
      (insert "\n"))))
 
 (defun describe-variable-1 (var &optional in-buffer)
   (format standard-output
 	  "\n%s: %s\nCurrent value: %S\n\n"
-	  (if (const-variable-p var) "Constant" "Variable")
+	  (if (binding-immutable-p var) "Constant" "Variable")
 	  (symbol-name var)
 	  (with-buffer (or in-buffer (current-buffer)) (symbol-value var t))))
 
