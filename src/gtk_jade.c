@@ -814,6 +814,23 @@ Forces any cached window output to be drawn. This is usually unnecessary.
     return Qt;
 }
 
+DEFUN ("make-window-on-display", Fmake_window_on_display,
+       Smake_window_on_display, (repv display), rep_Subr1)
+{
+    char *current_dpy = gdk_get_display ();
+    rep_DECLARE1 (display, rep_STRINGP);
+    /* XXX this should be a bit sloppier, i.e. append `.0' if not
+       XXX present, be sensible about host names, etc... */
+    if (strcmp (rep_STR (display), current_dpy) == 0)
+    {
+	return Fmake_window (Qnil, Qnil, Qnil, Qnil);
+    }
+    else
+	return Fsignal (Qerror, rep_list_2 (rep_string_dup
+					    ("can't connect to display"),
+					    display));
+}
+
 
 /* Initialisation */
 
@@ -826,6 +843,7 @@ sys_windows_init(void)
     rep_ADD_SUBR (Sgtk_jade_window);
     rep_ADD_SUBR (Sgtk_jade_window_widget);
     rep_ADD_SUBR (Sflush_output);
+    rep_ADD_SUBR (Smake_window_on_display);
     rep_INTERN (gtk_jade_new_hook);
 #if 0
     rep_test_int_fun = gtk_jade_handle_async_input;
