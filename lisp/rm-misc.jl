@@ -37,16 +37,17 @@ message formatting characters are available.")
 (make-variable-buffer-local 'rm-reply-message)
 
 ;;;###autoload
-(defun rm-reply (&optional yankp followup-p)
+(defun rm-reply (&optional yankp followup-p ignore-replyto)
   "Reply to the mail message currently being displayed."
-  (interactive "P")
+  (interactive "\n\nP")
   (let*
       ((folder (rm-current-folder))
        (msg (or (rm-get-folder-field folder rm-folder-current-msg)
 		    (error "No current message")))
        (subject (rm-get-subject msg))
-       (to (or (mapcar mail-parse-address
-		       (rm-get-msg-header msg "Reply-To" t))
+       (to (or (and (not ignore-replyto)
+		    (mapcar mail-parse-address
+			    (rm-get-msg-header msg "Reply-To" t)))
 	       (rm-get-from msg)
 	       (rm-get-sender msg)))
        (cc (if followup-p
@@ -81,11 +82,11 @@ message formatting characters are available.")
     (set-buffer-modified (current-buffer) nil)))
 
 ;;;###autoload
-(defun rm-followup (&optional yankp)
+(defun rm-followup (&optional yankp ignore-replyto)
   "Follow-up to the current mail message. This differs from replying to a
 message in that all recipients of the original wil receive the reply."
-  (interactive "P")
-  (rm-reply yankp t))
+  (interactive "\nP")
+  (rm-reply yankp t ignore-replyto))
 
 ;;;###autoload
 (defun mail-yank-original ()
