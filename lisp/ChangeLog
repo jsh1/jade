@@ -1,3 +1,8 @@
+2000-02-19  John Harper  <john@dcs.warwick.ac.uk>
+
+	* find-autoloads.jl: default autoload file when prompting is in
+	the current directory
+
 2000-02-15  John Harper  <john@dcs.warwick.ac.uk>
 
 	* summary.jl, info.jl, help.jl: use set-buffer-record-undo
