@@ -29,6 +29,8 @@ DYN_OBJS = $(DYN_SRCS:.c=.$(dynsuffix))
 
 JADE_SRCS = $(wildcard $(srcdir)/../src/*.c)
 
+INSTALL_FILES = $(addprefix @top_srcdir@/lib-src/, jademail)
+
 all : doc-strings.h jade_protos.h build.h $(DYN_OBJS) jadeclient
 
 jade_protos.h : stripproto $(JADE_SRCS)
@@ -39,6 +41,18 @@ doc-strings.h ../DOC : makedoc $(JADE_SRCS) $(DYN_SRCS)
 
 build.h : build-info
 	$< $(host_type)
+
+install : all installdirs
+	$(INSTALL_PROGRAM) jadeclient $(bindir)
+	$(INSTALL_PROGRAM) $(DYN_OBJS) $(jadeexecdir)
+	$(INSTALL_PROGRAM) $(INSTALL_FILES) $(jadeexecdir)
+
+installdirs : $(top_srcdir)/mkinstalldirs
+	$(SHELL) $(top_srcdir)/mkinstalldirs $(bindir) $(jadeexecdir)
+
+uninstall : all
+	rm -f $(bindir)/jadeclient
+	rm -rf $(jadeexecdir)
 
 clean :
 	rm -f *~ *.o jade_protos.h doc-strings.h ../DOC build.h core

@@ -18,32 +18,11 @@
 # along with Jade; see the file COPYING.  If not, write to
 # the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
-version=@version@
-SHELL=/bin/sh
+include ../Makedefs
 
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-datadir=@datadir@
 top_srcdir=@top_srcdir@
 srcdir=@srcdir@
-bindir=@bindir@
-includedir=@includedir@
-infodir=@infodir@
-libdir=@libdir@
-libexecdir=@libexecdir@
-localstatedir=@localstatedir@
-mandir=@mandir@
-sharedstatedir=@sharedstatedir@
-
-jadedir=@jadedir@
-lispdir=@lispdir@
-
-INSTALL=@INSTALL@
-INSTALL_DATA=@INSTALL_DATA@
-INSTALL_PROGRAM=@INSTALL_PROGRAM@
-
-# Add a colon to stop configure removing the entire directive
-VPATH = @srcdir@:.
+VPATH=@srcdir@
 
 SRCS = jade.texi user.texi programmer.texi news.texi
 
@@ -81,20 +60,16 @@ jade.ps : jade.dvi
 
 man : jade.info jade.guide jade.doc jade.dvi jade.ps
 
-install.info : jade.info $(infodir)
-	for file in jade.info*; \
-	do \
-	  $(INSTALL_DATA) $$file $(infodir)/$$file; \
-	done
-	if [ ! -e $(infodir)/dir ]; \
-	then \
-	  cp dir $(infodir); \
+install : jade.info installdirs
+	$(INSTALL_DATA) jade.info* $(infodir)
+	if [ ! -e $(infodir)/dir ]; then \
+	  $(INSTALL_DATA) dir $(infodir); \
 	fi
 
-$(infodir) :
-	mkdir $(infodir)
+installdirs : $(top_srcdir)/mkinstalldirs
+	$(SHELL) $(top_srcdir)/mkinstalldirs $(infodir)
 
-uninstall.info :
+uninstall :
 	rm -f $(infodir)/jade.info*
 
 clean realclean :
