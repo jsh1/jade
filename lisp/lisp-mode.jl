@@ -18,6 +18,7 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(require 'completion)
 (provide 'lisp-mode)
 
 (defvar symbol-word-regexps ["[^][()?'`,@\"#; ]" "[][()?'`,@\"#; ]|$"])
@@ -26,9 +27,7 @@
   (bind-keys (make-sparse-keymap)
     "Ctrl-j" 'eval-insert-sexp
     "Meta-Ctrl-x" 'eval-print-sexp
-    "TAB" 'indent-line
-    "Meta-TAB" 'lisp-complete-sexp
-    "Meta-?" 'lisp-show-sexp-completions))
+    "TAB" 'indent-line))
 
 ;;;###autoload
 (defun lisp-mode ()
@@ -50,7 +49,8 @@ Major mode for editing Lisp source. Local bindings in this mode are:\n
 	mode-defun-footer nil
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
-	keymap-path (cons 'lisp-mode-keymap keymap-path))
+	keymap-path (cons 'lisp-mode-keymap keymap-path)
+	completion-hooks (cons 'lisp-complete-sexp completion-hooks))
   (call-hook 'lisp-mode-hook))
 
 ;; Now lisp-mode is loaded we may as well make the *jade* buffer use it
@@ -84,39 +84,17 @@ in the status line."
     (setq pos (cursor-pos)))
   (set-indent-pos (lisp-indent-pos pos)))
 
-(defun lisp-complete-sexp (&optional all-symbols only-display)
-  "Complete the Lisp s-expression immediately preceding the cursor.
-
-If ALL-SYMBOLS is non-nil symbols bound either as subroutines or
-variables will be accepted. Otherwise the character preceding the start
-of the expression is examined; if it is an opening parenthesis
-character the expression is completed as the name of a subroutine, if
-not, it is completed as a variable.
-
-If ONLY-DISPLAY is non-nil nothing is inserted into the buffer, the list of
-completions is simply displayed."
-  (interactive "P")
-  (require 'completion)
+(defun lisp-complete-sexp (sexp beg end)
   (let
-      ((beg (lisp-backward-sexp))
-       (is-function nil)
-       sexp completions)
+      ((is-function nil)
+       completions)
     (when (and (> beg (start-of-buffer))
 	       (= (get-char (forward-char -1 beg)) ?\())
       (setq is-function t))
-    (setq sexp (copy-area beg (cursor-pos)))
     (setq completions (mapcar 'symbol-name
 			      (apropos (concat ?^ (quote-regexp sexp))
-				       (if all-symbols
-					   nil
-					 (if is-function 'fboundp 'boundp)))))
-    (completion-insert completions sexp only-display)))
-
-(defun lisp-show-sexp-completions (&optional all-symbols)
-  "Display the list of completions of the Lisp s-expression immediately
-preceding the cursor. See `lisp-complete-sexp' for more details."
-  (interactive "P")
-  (lisp-complete-sexp all-symbols t))
+				       (if is-function 'fboundp 'boundp))))
+    completions))
 
 
 ;; Expressions
