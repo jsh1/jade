@@ -1,5 +1,7 @@
 1999-03-11  John Harper  <john@dcs.warwick.ac.uk>
 
+	* faces.c (face_prin): fix snprintf switch
+
 	* windows.c (Ffont_x_size, Ffont_y_size): combined into one
 	function `font-dimensions'
 
