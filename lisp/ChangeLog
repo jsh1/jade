@@ -1,3 +1,13 @@
+1999-03-28  John Harper  <john@dcs.warwick.ac.uk>
+
+	* add-log.jl (changelog-mode): require 'text-mode so the keymap
+	is available
+
+	* gtk-prompt.jl (gtk-prompt-for-file): new function, used to
+	wrap prompt-for-file and prompt-for-directory
+	(gtk-prompt-for-string, gtk-prompt-from-list): put cancel
+	buttons on right not left
+
 1999-03-27  John Harper  <john@dcs.warwick.ac.uk>
 
 	* gtk-decor.jl (notebook-split-window, framed-window-mode): a

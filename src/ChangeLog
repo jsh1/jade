@@ -1,5 +1,9 @@
 1999-03-27  John Harper  <john@dcs.warwick.ac.uk>
 
+	* gtk_jade.c (Fmake_window_on_display): fake this function (GDK
+	only allows a single open display), so that `jadeclient -X' has
+	a chance of working
+
 	* windows.c (window_count, Fwindow_count): removed these, now
 	the window-system must provide a function
 	`sys_deleting_window_would_exit (win)' that is called by
