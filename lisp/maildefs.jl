@@ -151,6 +151,10 @@ as a single blank line or the start of the buffer, followed by this regexp.")
   "Regular expression defining a single atom in a mail header. May not
 include any parenthesised expressions!")
 
+(defvar mail-message-id-re (concat ?< mail-atom-re "(\\." mail-atom-re ")*@"
+				   mail-atom-re "(\\." mail-atom-re ")*>")
+  "Regular expression matching a message id.")
+
 (defvar mail-month-alist '(("Jan" . 1) ("Feb" . 2) ("Mar" . 3) ("Apr" . 4)
 			   ("May" . 5) ("Jun" . 6) ("Jul" . 7) ("Aug" . 8)
 			   ("Sep" . 9) ("Oct" . 10) ("Nov" . 11) ("Dec" . 12)
