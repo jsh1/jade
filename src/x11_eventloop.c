@@ -241,14 +241,6 @@ event_loop(void)
 		goto end;
 	}
 
-# ifdef HAVE_SUBPROCESSES
-	if(proc_notification())
-	{
-	    curr_vw->vw_Flags |= VWFF_REFRESH_STATUS;
-	    refresh_world_curs();
-	}
-# endif
-
 	XFlush(x11_display);
 
 #ifdef HAVE_UNIX
@@ -318,6 +310,11 @@ event_loop(void)
 #else
 	whatever you like...
 #endif /* HAVE_UNIX */
+
+#ifdef HAVE_SUBPROCESSES
+	if(proc_notification())
+	    refreshp = TRUE;
+#endif
 
 	if(refreshp)
 	{
