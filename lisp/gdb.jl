@@ -279,7 +279,7 @@ commands. There is no limit to the number of processes you may run at once."
     (kill-all-local-variables)
     (setq default-directory directory
 	  shell-program-args (list "-c" (concat rep-program
-						" --rep-debug --rep-emacs-debugger "
+						" --debug --emacs-debug "
 						args))
 	  shell-prompt-regexp "^rep-db> "
 	  shell-output-stream (let ((buffer (current-buffer)))

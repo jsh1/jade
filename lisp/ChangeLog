@@ -1,3 +1,7 @@
+2001-08-09  John Harper  <jsh@pixelslut.com>
+
+	* gdb.jl: changed rep debug args
+
 2001-08-07  John Harper  <jsh@pixelslut.com>
 
 	* gdb.jl: added support for rep's debugger  (rep-debugger
