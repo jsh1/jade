@@ -216,12 +216,8 @@ unlink_extent(Lisp_Extent *e)
 static void
 unlink_extent_recursively(Lisp_Extent *e)
 {
-    Lisp_Extent *x = e->first_child;
-    while(x != 0)
-    {
-	unlink_extent_recursively(x);
-	x = x->right_sibling;
-    }
+    while(e->first_child != 0)
+	unlink_extent_recursively(e->first_child);
     if(e->parent != 0)
 	unlink_extent_fragment(e);
 }
@@ -565,8 +561,9 @@ EXTENT is the root extent covering the entire buffer.
 }
 
 _PR VALUE cmd_delete_all_extents(VALUE);
-DEFUN("delete-all-extents", cmd_delete_all_extents, subr_delete_all_extents,
-      (VALUE extent), V_Subr1, DOC_delete_all_extents) /*
+DEFUN_INT("delete-all-extents", cmd_delete_all_extents,
+	  subr_delete_all_extents, (VALUE extent), V_Subr1,
+	  DOC_delete_all_extents, "") /*
 ::doc:delete_all_extents::
 delete-all-extents [ROOT]
 
@@ -1037,7 +1034,7 @@ buffer_set_if_bound(VALUE symbol, VALUE value)
 void
 adjust_extents_add_cols(Lisp_Extent *x, long add_x, long col, long row)
 {
-    for(; x != 0 && x->end.row >= row; x = x->left_sibling)
+    for(; x != 0; x = x->right_sibling)
     {
 	if(x->first_child != 0 && x->start.row <= row && x->end.row >= row)
 	    adjust_extents_add_cols(x->first_child, add_x,
@@ -1062,27 +1059,27 @@ adjust_extents_add_cols(Lisp_Extent *x, long add_x, long col, long row)
 void
 adjust_extents_sub_cols(Lisp_Extent *x, long sub_x, long col, long row)
 {
-    for(; x != 0 && x->end.row >= row; x = x->right_sibling)
+    for(; x != 0; x = x->right_sibling)
     {
 	if(x->first_child != 0 && x->start.row <= row && x->end.row >= row)
 	    adjust_extents_sub_cols(x->first_child, sub_x,
 				    col, row - x->start.row);
 	if(x->start.row == row && x->start.col > col)
-	    x->start.col = MIN(col, x->start.col - sub_x);
+	    x->start.col = MAX(col, x->start.col - sub_x);
 	if(x->end.row == row && x->end.col > col)
-	    x->end.col = MIN(col, x->end.col - sub_x);
+	    x->end.col = MAX(col, x->end.col - sub_x);
     }
 }
 
 void
 adjust_extents_add_rows(Lisp_Extent *x, long add_y, long row)
 {
-    for(; x != 0 && x->end.row >= row; x = x->right_sibling)
+    for(; x != 0; x = x->right_sibling)
     {
 	if(x->start.row > row
 	   || (x->start.row == row
-	       && x->start.col == 0
-	       && !(x->car & EXTFF_OPEN_START)))
+	       && (x->start.col > 0
+		   || !(x->car & EXTFF_OPEN_START))))
 	{
 	    x->start.row += add_y;
 	}
@@ -1090,9 +1087,9 @@ adjust_extents_add_rows(Lisp_Extent *x, long add_y, long row)
 	    adjust_extents_add_rows(x->first_child, add_y,
 				    row - x->start.row);
 	if(x->end.row > row
-	   || (x->end.col == 0
-	       && x->end.row == row
-	       && (x->car & EXTFF_OPEN_END)))
+	   || (x->end.row == row
+	       && (x->end.col > 0
+		   || (x->car & EXTFF_OPEN_END))))
 	{
 	    x->end.row += add_y;
 	}
@@ -1102,7 +1099,7 @@ adjust_extents_add_rows(Lisp_Extent *x, long add_y, long row)
 void
 adjust_extents_sub_rows(Lisp_Extent *x, long sub_y, long row)
 {
-    for(; x != 0 && x->end.row >= row; x = x->right_sibling)
+    for(; x != 0; x = x->right_sibling)
     {
 	if(x->start.row > row)
 	    x->start.row = POS(x->start.row - sub_y);
@@ -1117,7 +1114,7 @@ adjust_extents_sub_rows(Lisp_Extent *x, long sub_y, long row)
 void
 adjust_extents_split_row(Lisp_Extent *x, long col, long row)
 {
-    for(; x != 0 && x->end.row >= row; x = x->right_sibling)
+    for(; x != 0; x = x->right_sibling)
     {
 	if(x->start.row > row)
 	{
@@ -1154,7 +1151,7 @@ adjust_extents_split_row(Lisp_Extent *x, long col, long row)
 void
 adjust_extents_join_rows(Lisp_Extent *x, long col, long row)
 {
-    for(; x != 0 && x->end.row >= row; x = x->right_sibling)
+    for(; x != 0; x = x->right_sibling)
     {
 	if(x->first_child != 0)
 	    adjust_extents_join_rows(x->first_child, col, row - x->start.row);
@@ -1170,7 +1167,7 @@ adjust_extents_join_rows(Lisp_Extent *x, long col, long row)
 	if(x->end.row == row + 1)
 	{
 	    x->end.row--;
-	    x->start.col += col;
+	    x->end.col += col;
 	}
 	else if(x->end.row > row + 1)
 	    x->end.row--;
