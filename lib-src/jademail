@@ -19,7 +19,7 @@ fi
 
 if [ "${opt_newwindow}" = "yes" ]; then
   jadeclient -q -- <<-EOF
-	(with-window (open-window)
+	(with-window (make-window)
 	  (read-mail-folder "$folder"))
 	EOF
 else
