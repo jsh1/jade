@@ -76,13 +76,14 @@
   '(("\\.(c|h)$|^c$" . c-mode)
     ("\\.jl$|^.jaderc$|^lisp$" . lisp-mode)
     ("\\.(te?xt|doc|article|letter)$" . text-mode)
-    ("^(text(-mode)?|(.*/|)draft)$" . text-mode)
+    ("^(text|(.*/|)draft)$" . text-mode)
     ("^indented-text$" . indented-text-mode)
     ("\\.[s]$|^asm$" . asm-mode)
     ("\\.[S]$|^asm-cpp$" . asm-cpp-mode)
     ("\\.texi(|nfo)|^Texinfo$" . texinfo-mode)
     ("\\.tex$|^(La)?TeX$" . tex-mode)
     ("ChangeLog$" . changelog-mode)
+    ("\\.sh$|^sh(ell)?$" . sh-mode)
     ("\\.pl$|^perl$" . perl-mode))
   "List of all major modes which can be enabled by loading a file into
 a buffer. List is made of `(REGEXP . MODE)' cells; the REGEXP is matched
