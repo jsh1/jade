@@ -162,10 +162,9 @@ headers will be included."
     (while (re-search-forward "^-" tem)
       (insert "- " (match-start))
       (setq tem (end-of-line (match-start))))
-    (setq tem (start-of-line (forward-line -1)))
-    (while (looking-at "^[\t ]*\n" tem)
-      (delete-area (match-start) (match-end))
-      (setq pos (forward-line -1 tem)))
+    ;; Delete trailing blank lines
+    (when (looking-at "([\t ]*\n)+" (start-of-line (forward-line -1)))
+      (delete-area (match-start) (match-end)))
     (insert "----- end forwarded message -----\n")
     (if (null to)
 	(send-mail-go-to)

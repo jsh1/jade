@@ -86,6 +86,7 @@ last change."
 (defvar query-replace-title nil)
 (defvar query-replace-trace nil)
 (defvar query-replace-old-kp nil)
+(defvar query-replace-alive nil)
 
 (defun query-replace-replace ()
   (interactive)

@@ -75,7 +75,7 @@ Special commands available are,\n
 	major-mode 'texinfo-mode
 	major-mode-kill 'texinfo-mode-kill
 	ctrl-c-keymap texinfo-ctrl-c-keymap
-	paragraph-regexp "^@node.*\n"
+	paragraph-separate "^@node.*\n"
 	keymap-path (cons 'texinfo-keymap keymap-path))
   (call-hook 'text-mode-hook)
   (call-hook 'texinfo-mode-hook))

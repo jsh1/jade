@@ -83,7 +83,7 @@
 			  (file-name-directory (buffer-file-name)))
     (setq compile-errors nil
 	  compile-parsed-errors-p nil
-	  compile-errors-exists-p nil
+	  compile-errors-exist-p nil
 	  compile-error-pos (start-of-buffer))
     t))
 

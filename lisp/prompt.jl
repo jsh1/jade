@@ -618,6 +618,5 @@ string QUESTION, returns t for `y'."
 		(recursive-edit))
 	    (with-buffer prompt-buffer
 	      (setq keymap-path old-k-p
-		    unbound-key-hook old-u-k-h
-		    status-line-cursor nil))
+		    unbound-key-hook old-u-k-h))
 	    (return-prompt-buffer prompt-buffer)))))))

@@ -77,14 +77,11 @@ cause the new revision _not_ to be locked, only checked out. A successive
 as a string. May be nil if revision is unknown.")
 (make-variable-buffer-local 'rcs-revision)
 
-(unless (boundp 'rcs-initialised)
-  ;; Only do this stuff once
-  (bind-keys rcs-callback-ctrl-c-keymap
-    "Ctrl-c" 'rcs-call-callback)
-  (bind-keys rcs-callback-keymap
-    "Meta-p" 'rcs-down-history
-    "Meta-n" 'rcs-up-history)
-  (setq rcs-initialised t))
+(bind-keys rcs-callback-ctrl-c-keymap
+  "Ctrl-c" 'rcs-call-callback)
+(bind-keys rcs-callback-keymap
+  "Meta-p" 'rcs-down-history
+  "Meta-n" 'rcs-up-history)
 
 (defvar rcs-callback-args nil
   "Arguments stored for when `Ctrl-c Ctrl-c' is typed in the callback buffer.
