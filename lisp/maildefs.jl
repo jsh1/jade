@@ -205,12 +205,10 @@ include any parenthesised expressions!")
 	((tem mail-spool-files)
 	 list)
       (while tem
-	(when (or (and (file-exists-p (car (car tem)))
+	(when (or (and (file-name-absolute-p (car (car tem)))
 		       (file-name= folder (car (car tem))))
-		  (and (file-exists-p (file-name-concat mail-folder-dir
-							(car (car tem))))
-		       (file-name= folder (file-name-concat mail-folder-dir
-							    (car (car tem))))))
+		  (file-name= folder (file-name-concat mail-folder-dir
+						       (car (car tem)))))
 	  (setq list (append list (if (consp (cdr (car tem)))
 				      (cdr (car tem))
 				    (cons (cdr (car tem)))))))
