@@ -34,7 +34,10 @@
 (defvar mail-self-blind nil
   "When non-nil a BCC'd copy of the message is sent to the sender. The
 header line is included in the initialised message, and so may be deleted
-if necessary.")
+if necessary.
+
+If a string, it is intepreted as a regular expression that must not match
+any recipient addresses for a BCC header to be inserted.")
 
 (defvar mail-archive-file-name nil
   "The name of a file to store a copy of each outgoing message in (through
