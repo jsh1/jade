@@ -851,23 +851,33 @@ sys_set_win_name(WIN *win, char *name)
 	gtk_window_set_title (GTK_WINDOW (toplevel), name);
 }
 
+static void
+deleting_callback (GtkJade *jade, gpointer data)
+{
+    int *counter = data;
+    (*counter)++;
+}
+
 bool
 sys_deleting_window_would_exit (WIN *win)
 {
-    /* Does this window contain all realized jade widgets? */
-    GtkWidget *toplevel = gtk_widget_get_toplevel (GTK_WIDGET (win->w_Window));
-    WIN *w;
-    for (w = win_chain; w != 0; w = w->w_Next)
+    if (win->w_Window == 0)
+	return FALSE;
+    else
     {
-	if (w->w_Window != WINDOW_NIL)
+	GtkWidget *toplevel = (gtk_widget_get_toplevel
+			       (GTK_WIDGET (win->w_Window)));
+	int deleted = 0, total = 0;
+	gtk_jade_foreach (GTK_CONTAINER (toplevel),
+			  (GtkCallback) deleting_callback,
+			  (gpointer) &deleted);
+	for (win = win_chain; win != 0; win = win->w_Next)
 	{
-	    GtkWidget *wtop;
-	    wtop = gtk_widget_get_toplevel (GTK_WIDGET (w->w_Window));
-	    if (toplevel != wtop)
-		return FALSE;
+	    if (win->w_Window != WINDOW_NIL)
+		total++;
 	}
+	return deleted == total;
     }
-    return TRUE;
 }
 
 
