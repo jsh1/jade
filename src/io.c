@@ -210,12 +210,13 @@ abortmem:
     return(rc);
 }
 
-_PR VALUE cmd_read_buffer(VALUE file, VALUE tx);
-DEFUN("read-buffer", cmd_read_buffer, subr_read_buffer, (VALUE file, VALUE tx), V_Subr2, DOC_read_buffer) /*
-::doc:read_buffer::
-read-buffer FILE [BUFFER]
+_PR VALUE cmd_read_file_contents(VALUE file, VALUE tx);
+DEFUN("read-file-contents", cmd_read_file_contents, subr_read_file_contents, (VALUE file, VALUE tx), V_Subr2, DOC_read_file_contents) /*
+::doc:read_file_contents::
+read-file-contents FILE [BUFFER]
 
 Overwrites the text in BUFFER with that from the file FILE.
+
 FILE is either a string naming the file to be opened or a Lisp file object
 (from `open') to be used. Also removes any restriction on BUFFER.
 ::end:: */
@@ -261,98 +262,68 @@ FILE is either a string naming the file to be opened or a Lisp file object
     return(res);
 }
 
-_PR VALUE cmd_write_buffer(VALUE file, VALUE tx, VALUE urp);
-DEFUN("write-buffer", cmd_write_buffer, subr_write_buffer, (VALUE file, VALUE tx, VALUE urp), V_Subr3, DOC_write_buffer) /*
-::doc:write_buffer::
-write-buffer [FILE] [BUFFER] [USE-RESTRICTION-P]
+_PR VALUE cmd_insert_file_contents(VALUE file, VALUE pos, VALUE tx);
+DEFUN("insert-file-contents", cmd_insert_file_contents, subr_insert_file_contents, (VALUE file, VALUE pos, VALUE tx), V_Subr3, DOC_insert_file_contents) /*
+::doc:insert_file_contents::
+insert-file-contents FILE [POSITION] [BUFFER]
 
-Writes out the full contents of BUFFER to FILE. FILE may be a string
-representing the name of a file to be overwritten, or any of the standard
-stream types.
-
-Normally any restriction to BUFFER is ignored, and the full contents of
-the buffer written. If USE-RESTRICTION-P is non-nil only the restricted
-area is written.
+Insert the contents of FILE (the name of a file, or a file object) before
+the character at POSITION in BUFFER (or before the cursor).
 ::end:: */
 {
+    FILE *fh;
+    u_char buf[BUFSIZ];
+    long len;
+
+    if(!POSP(pos))
+	pos = curr_vw->vw_CursorPos;
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    if(file == sym_nil || STRINGP(file)
-       || cmd_streamp(file) == sym_nil)
-    {
-	FILE *fh;
-	if(!STRINGP(file))
-	    file = VTX(tx)->tx_FileName;
-	fh = fopen(VSTR(file), "w");
-	if(fh)
-	{
-	    long i;
-	    long min = NILP(urp) ? 0 : VTX(tx)->tx_LogicalStart;
-	    long max = NILP(urp) ? VTX(tx)->tx_NumLines
-				 : VTX(tx)->tx_LogicalEnd;
-	    LINE *line = VTX(tx)->tx_Lines;
-	    for(i = min; i < max; i++, line++)
-	    {
-		if(fwrite(line->ln_Line, 1, line->ln_Strlen - 1, fh)
-		   != (line->ln_Strlen - 1))
-		{
-		    fclose(fh);
-		    goto file_error;
-		}
-		if(i != max - 1)
-		    fputc('\n', fh);
-	    }
-	    fclose(fh);
-	}
-	else
-	{
-	file_error:
-	    return(cmd_signal(sym_file_error, list_2(lookup_errno(), file)));
-	}
-	return(file);
-    }
+
+    if(FILEP(file) && VFILE(file)->name)
+	fh = VFILE(file)->file;
     else
     {
-	/* FILE is a stream. */
-	long i;
-	long min = NILP(urp) ? 0 : VTX(tx)->tx_LogicalStart;
-	long max = NILP(urp) ? VTX(tx)->tx_NumLines : VTX(tx)->tx_LogicalEnd;
-	LINE *line = VTX(tx)->tx_Lines;
-	for(i = min; i < max; i++, line++)
-	{
-	    if(stream_puts(file, line->ln_Line, line->ln_Strlen - 1, FALSE)
-	       != (line->ln_Strlen - 1))
-		goto stream_error;
-	    if(i != max - 1)
-		stream_putc(file, '\n');
-	}
-	return(file);
-    stream_error:
-	return cmd_signal(sym_invalid_stream, list_1(file));
+	DECLARE1(file, STRINGP);
+	if(!(fh = fopen(VSTR(file), "r")))
+	    return(cmd_signal(sym_file_error, list_2(lookup_errno(), file)));
     }
+
+    while(pos != LISP_NULL && (len = fread(buf, 1, BUFSIZ, fh)) > 0)
+	pos = insert_string(VTX(tx), buf, len, pos);
+
+    if(STRINGP(file))
+	fclose(fh);
+
+    return pos;
 }
 
-_PR VALUE cmd_write_buffer_area(VALUE start, VALUE end, VALUE file, VALUE tx);
-DEFUN_INT("write-buffer-area", cmd_write_buffer_area, subr_write_buffer_area, (VALUE start, VALUE end, VALUE file, VALUE tx), V_Subr4, DOC_write_buffer_area, "m" DS_NL "M" DS_NL "FWrite block to file:") /*
-::doc:write_buffer_area::
-write-buffer-area START-POS END-POS [FILE] [BUFFER]
+_PR VALUE cmd_write_buffer_contents(VALUE file, VALUE start, VALUE end, VALUE tx);
+DEFUN_INT("write-buffer-contents", cmd_write_buffer_contents, subr_write_buffer_contents, (VALUE file, VALUE start, VALUE end, VALUE tx), V_Subr4, DOC_write_buffer_contents, "FWrite marked block to file:" DS_NL "m" DS_NL "M") /*
+::doc:write_buffer_contents::
+write-buffer-contents FILE [START] [END] [BUFFER]
 
-Writes the text between START-POS and END-POS in BUFFER to FILE, which may
-be either a string naming a file to overwrite, or a standard stream object.
+Writes the text between positions START and END in BUFFER to FILE,
+which may be either a string naming a file to overwrite, or a standard
+stream object.
+
+If START or END are undefined they are taken as the start and end of
+the buffer respectively (ignoring the current restriction).
 ::end:: */
 {
-    DECLARE1(start, POSP);
-    DECLARE2(end, POSP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
+    if(!POSP(start))
+	start = cmd_start_of_buffer(tx, sym_t);
+    if(!POSP(end))
+	end = cmd_end_of_buffer(tx, sym_t);
+
     if(!check_section(VTX(tx), &start, &end))
 	return(cmd_signal(sym_invalid_area, list_3(tx, start, end)));
-    if(file == sym_nil || STRINGP(file)
-       || cmd_streamp(file) == sym_nil)
+
+    if(STRINGP(file))
     {
 	FILE *fh;
-	if(!STRINGP(file))
-	    file = VTX(tx)->tx_FileName;
 	fh = fopen(VSTR(file), "w");
 	if(fh)
 	{
@@ -382,7 +353,7 @@ be either a string naming a file to overwrite, or a standard stream object.
 	}
 	return(file);
     }
-    else
+    else if(NILP(cmd_streamp(file)))
     {
 	/* file is a stream */
 	long lineno = VROW(start), col = VCOL(start);
@@ -400,8 +371,11 @@ be either a string naming a file to overwrite, or a standard stream object.
 	    line++;
 	}
 	return file;
+    }
+    else
+    {
     stream_error:
-	    return cmd_signal(sym_invalid_stream, list_1(file));
+	return cmd_signal(sym_invalid_stream, list_1(file));
     }
 }
 
@@ -536,9 +510,9 @@ signal_file_error(VALUE cdr)
 void
 io_init(void)
 {
-    ADD_SUBR(subr_read_buffer);
-    ADD_SUBR(subr_write_buffer);
-    ADD_SUBR_INT(subr_write_buffer_area);
+    ADD_SUBR(subr_read_file_contents);
+    ADD_SUBR(subr_insert_file_contents);
+    ADD_SUBR_INT(subr_write_buffer_contents);
     ADD_SUBR(subr_cd);
     ADD_SUBR(subr_read_file_from_to);
     ADD_SUBR(subr_write_clip);
