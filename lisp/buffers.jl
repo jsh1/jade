@@ -202,6 +202,12 @@ NEW-NAME (i.e. NEW-NAME possibly with a `<N>' suffix)."
   (interactive "sNew name of buffer:")
   (set-buffer-name nil (make-buffer-name new-name)))
 
+(defun insert-buffer (buffer &optional pos)
+  "Insert the contents of BUFFER before POS (or the cursor is POS is nil)."
+  (interactive "bBuffer to insert:")
+  (insert (copy-area (start-of-buffer buffer)
+		     (end-of-buffer buffer) buffer) pos))
+
 
 ;; Storing files in buffers
 
