@@ -23,7 +23,7 @@ include ../Makedefs
 top_builddir=..
 top_srcdir=@top_srcdir@
 
-jade_prog = $(LIBTOOL) --mode=execute -dlopen ../src/libserver-dl.la \
+jade_prog = $(rep_LIBTOOL) --mode=execute -dlopen ../src/libserver-dl.la \
 	    ../src/jade --batch --no-rc
 COMPILE_ENV = JADELISPDIR=. JADEDOCFILE=../DOC
 

@@ -40,29 +40,32 @@ OBJS := $(SRCS:.c=.o)
 DL_SRCS := server-dl.c
 DL_OBJS := $(DL_SRCS:%.c=lib%.la)
 
-CFLAGS := $(CFLAGS) $($(windowsys)_CFLAGS)
-LIBS   := $(LIBS) $($(windowsys)_LIBS)
+override CFLAGS := $(CFLAGS) $(REP_CFLAGS) $($(windowsys)_CFLAGS)
+override LIBS   := $(LIBS) $(REP_LIBS) $($(windowsys)_LIBS)
 
 all : jade jadeclient $(DL_OBJS)
 
 jade : $(OBJS) $(JADE_LIBOBJS) $(LIBOBJS)
-	$(LIBTOOL) $(CC) -export-dynamic $(LDFLAGS) -o jade $(OBJS) \
+	$(rep_LIBTOOL) $(CC) -export-dynamic $(LDFLAGS) -o jade $(OBJS) \
 	  $(JADE_LIBOBJS) $(LIBOBJS) $(LIBS)
+
+lib%.la : %.lo
+	$(rep_DL_LD) $(LDFLAGS) -o $@ $<
 
 install : all installdirs
 	for p in jade jadeclient; do \
-	  $(LIBTOOL) $(INSTALL_PROGRAM) $$p ${bindir}; \
+	  $(rep_LIBTOOL) $(INSTALL_PROGRAM) $$p ${bindir}; \
 	done
 	for p in $(DL_OBJS); do \
-	  $(LIBTOOL) $(INSTALL_PROGRAM) $$p ${jadeexecdir}; \
+	  $(rep_DL_INSTALL) $(INSTALL_PROGRAM) $$p ${jadeexecdir}; \
 	done
 
 uninstall :
 	for p in jade jadeclient; do \
-	  $(LIBTOOL) rm ${bindir}/$$p; \
+	  $(rep_LIBTOOL) rm ${bindir}/$$p; \
 	done
 	for p in $(DL_OBJS); do \
-	  $(LIBTOOL) rm ${jadeexecdir}/$$p; \
+	  $(rep_DL_UNINSTALL) rm ${jadeexecdir}/$$p; \
 	done
 
 installdirs : $(top_srcdir)/mkinstalldirs
