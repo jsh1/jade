@@ -241,11 +241,16 @@ The list of formatting options can be extended by the variable
   ;; Cache the summary line with the buffer as the tag
   (insert (rm-cached-form item (current-buffer)
 	    (let
-		((arg-list (cons item nil))
+		((format-string
+		  ;; Look in the message's buffer. This allows buffer-local
+		  ;; bindings of rm-summary-format to work correctly
+		  (with-buffer (mark-file (rm-get-msg-field item rm-msg-mark))
+		    rm-summary-format))
+		 (arg-list (cons item nil))
 		 (format-hooks-alist rm-format-alist))
 	      ;; An infinite list of ITEMs
 	      (rplacd arg-list arg-list)
-	      (apply 'format nil rm-summary-format arg-list)))))
+	      (apply 'format nil format-string arg-list)))))
 
 ;; Delete all cached summary lines for MSG
 (defun rm-invalidate-summary (msg)
