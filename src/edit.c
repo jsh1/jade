@@ -79,7 +79,8 @@ _PR bool check_row(TX *tx, long line);
 _PR long section_length(TX *, VALUE, VALUE);
 _PR void copy_section(TX *, VALUE, VALUE, u_char *);
 _PR void order_block(VW *);
-_PR bool read_only(TX *);
+_PR bool read_only_pos(TX *, VALUE);
+_PR bool read_only_section(TX *, VALUE, VALUE);
 
 /* Makes buffer TX empty (null string in first line) */
 bool
@@ -526,7 +527,7 @@ delete_section(TX *tx, VALUE start, VALUE end)
 bool
 pad_pos(TX *tx, VALUE pos)
 {
-    if(VROW(pos) < tx->tx_LogicalEnd)
+    if(VROW(pos) < tx->tx_LogicalEnd && !read_only_pos(tx, pos))
     {
 	LINE *line = tx->tx_Lines + VROW(pos);
 	if(line->ln_Strlen < (VCOL(pos) + 1))
@@ -726,16 +727,48 @@ order_block(VW *vw)
 /* Returns TRUE and signals an error if buffer TX is currently read-only,
    otherwise returns FALSE. */
 bool
-read_only(TX *tx)
+read_only_pos(TX *tx, VALUE pos)
 {
-    if(tx->tx_Flags & TXFF_RDONLY)
+    VALUE tmp = cmd_buffer_symbol_value(sym_read_only, pos, VAL(tx), sym_t);
+    if(VOIDP(tmp))
+	tmp = cmd_default_value(sym_read_only, sym_t);
+    if(!VOIDP(tmp) && !NILP(tmp))
     {
 	VALUE tmp = cmd_symbol_value(sym_inhibit_read_only, sym_t);
 	if(VOIDP(tmp) || NILP(tmp))
 	{
-	    cmd_signal(sym_buffer_read_only, LIST_1(VAL(tx)));
-	    return(TRUE);
+	    cmd_signal(sym_buffer_read_only, LIST_2(pos, VAL(tx)));
+	    return TRUE;
 	}
     }
-    return(FALSE);
+    return FALSE;
+}
+
+bool
+read_only_section(TX *tx, VALUE start, VALUE end)
+{
+    bool read_only = FALSE;
+    Pos p_start, p_end;
+
+    /* FIXME: remove this GCC'ism! */
+    void map_func (Lisp_Extent *e, void *data) {
+	VALUE val = cmd_buffer_symbol_value(sym_read_only, VAL(e),
+					    sym_nil, sym_t);
+	if(!VOIDP(val) && !NILP(val))
+	    read_only = TRUE;
+    }
+
+    COPY_VPOS(&p_start, start);
+    COPY_VPOS(&p_end, end);
+    map_section_extents(map_func, tx->tx_GlobalExtent, &p_start, &p_end, 0);
+    if(read_only)
+    {
+	VALUE tmp = cmd_symbol_value(sym_inhibit_read_only, sym_t);
+	if(VOIDP(tmp) || NILP(tmp))
+	{
+	    cmd_signal(sym_buffer_read_only, list_3(start, end, VAL(tx)));
+	    return TRUE;
+	}
+    }
+    return FALSE;
 }
