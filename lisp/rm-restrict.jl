@@ -441,7 +441,7 @@ contain its definition as a function."
 				#'(lambda (sym)
 				    (or (eq sym 'new)
 					(eq sym 'lambda)
-					(eq sym 'nil)
+					(eq sym nil)
 					(let
 					    ((fun (rm-rule-symbol sym)))
 					  (boundp fun)))))))
