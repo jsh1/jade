@@ -1,3 +1,22 @@
+2000-08-16  John Harper  <john@dcs.warwick.ac.uk>
+
+	* windows.jl, thesaurus.jl, text-mode.jl, texinfo-mode.jl,
+	tex-shell.jl, tex-mode.jl, telnet.jl, tags.jl, summary.jl,
+	shell.jl, sh-mode.jl, send-mail.jl, sawmill-minor-mode.jl,
+	rm-thread.jl, rm-summary.jl, rm-restrict.jl, rm-misc.jl,
+	rm-mail-dir.jl, rectangle.jl, read-mail.jl, rcs.jl, prompt.jl,
+	print.jl, perl-mode.jl, page-summary.jl, modes.jl, miranda.jl,
+	mime-encode.jl, mime-decode.jl, maildefs.jl, mail-headers.jl,
+	mail-dir.jl, lisp-mode.jl, keymap.jl, ispell.jl, info.jl,
+	html-style.jl, html-display.jl, html-decode.jl, help.jl,
+	gzip.jl, gtk-prompt.jl, gtk-menu.jl, gtk-decor.jl, gdb.jl,
+	find-url.jl, find-autoloads.jl, fill.jl, file-subst.jl,
+	edit.jl, dired.jl, dict.jl, cvs.jl, completion.jl, compile.jl,
+	c-mode.jl, buffers.jl, add-log.jl:
+
+	use #!optional and #!rest instead of deprecated &optional and
+	&rest
+
 2000-08-01  John Harper  <john@dcs.warwick.ac.uk>
 
 	* html-decode.jl (html-decode): bug fix for () no longer a
