@@ -32,12 +32,12 @@
 ;; Enough jargon. Here are a couple of examples:
 ;;
 ;;	(defrule recently-from-jsh ()
-;;	  (and (header "from" "john@dcs")
+;;	  (and (sender "john@dcs")
 ;;	       (sent-after "last week")))
 ;;
 ;;	(defrule from-jsh-to-djke ()
 ;;	  (and (recently-from-jsh)
-;;	       (header "to" "djke@dcs")))
+;;	       (recipient "djke@dcs")))
 ;;
 ;; As can be seen, complex structures can be created (the `and', `or',
 ;; and `not' boolean operators work as normal), with rules calling
@@ -101,7 +101,7 @@ For example, to define a rule accepting only messages sent by me (that's
   (let
       ((symbol (rm-rule-symbol name)))
     `(progn
-       (put ',name 'rm-rule-symbol ',symbol)
+       (put ',name 'rm-rule-function ',symbol)
        (defun ,symbol ,args ,(rm-make-rule-body body)))))
 (put 'defrule 'lisp-indent 'defun)
 
@@ -129,7 +129,7 @@ For example, to define a rule accepting only messages sent by me (that's
   "Compile the message selection rule called NAME (a symbol) to bytecode."
   (interactive "SRule to compile:")
   (let
-      ((symbol (or (get name 'rm-rule-symbol)
+      ((symbol (or (get name 'rm-rule-function)
 		   (error "No rule called %s" name))))
     (compile-function symbol)))
 
@@ -160,7 +160,7 @@ contain its definition as a function."
 ;;;###autoload
 (defun rm-filter-by-rule (messages rule)
   (let
-      ((function (or (get rule 'rm-rule-symbol)
+      ((function (or (get rule 'rm-rule-function)
 		     (error "No rule called %s" rule))))
     (filter #'(lambda (rm-rule-message)
 		(funcall function)) messages)))
@@ -168,7 +168,7 @@ contain its definition as a function."
 ;; Apply the message RM-RULE-MESSAGE to RULE, returning t if it matches
 ;;;###autoload
 (defun rm-apply-rule (rule rm-rule-message)
-  (funcall (or (get rule 'rm-rule-symbol)
+  (funcall (or (get rule 'rm-rule-function)
 	       (error "No rule called %s" rule))))
 
 ;; Apply the message MESSAGE to the list of rules RULE-LIST. Return t if
