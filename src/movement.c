@@ -79,31 +79,30 @@ center-display [VIEW] [ARG]
 When ARG is nil arrange it so that the line that the cursor is on is
 displayed in the middle of the view (if possible).
 
-If ARG is non-nil it should be a number, 0 means centre the display, positive
-numbers mean that many lines from the top of the view, negative numbers
-go from the bottom of the view.
+If ARG is non-nil it should be a number, negative numbers mean that many
+lines from the bottom of the view, other numbers count from the top of the
+view.
 ::end:: */
 {
-    long xarg, offset;
+    long offset;
     long col, row;
 
     if(!VIEWP(vw))
 	vw = VAL(curr_vw);
-    if(NILP(arg) || CONSP(arg))
-	xarg = 0;
-    else if(SYMBOLP(arg))
-	xarg = -1;
-    else if(INTP(arg))
-	xarg = VINT(arg);
-    else
-	xarg = 1;
 
-    if(xarg == 0)
+    if(NILP(arg) || CONSP(arg))
 	offset = VVIEW(vw)->vw_MaxY / 2;
-    else if (xarg > 0)
-	offset = xarg - 1;
+    else if(SYMBOLP(arg))
+	offset = VVIEW(vw)->vw_MaxY - 1;
+    else if(INTP(arg))
+    {
+	if(VINT(arg) < 0)
+	    offset = VVIEW(vw)->vw_MaxY + VINT(arg);
+	else
+	    offset = VINT(arg);
+    }
     else
-	offset = VVIEW(vw)->vw_MaxY + xarg;
+	offset = 0;
 
     if(!skip_glyph_rows_backwards(VVIEW(vw), offset,
 				  VCOL(VVIEW(vw)->vw_CursorPos),
