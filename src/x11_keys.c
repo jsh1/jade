@@ -86,14 +86,17 @@ translate_event(u_long *code, u_long *mods, XEvent *xev)
 	{
 	    /* Some keys don't have keysym at index 1, if not treat it as
 	       normal keysym shifted.  */
-	    *code = XKeycodeToKeysym(x11_display, xev->xkey.keycode, 1);
+	    *code = XKeycodeToKeysym(x11_display_list->display,
+				     xev->xkey.keycode, 1);
 	    if(*code == NoSymbol)
-		*code = XKeycodeToKeysym(x11_display, xev->xkey.keycode, 0);
+		*code = XKeycodeToKeysym(x11_display_list->display,
+					 xev->xkey.keycode, 0);
 	    else
 		*mods &= ~EV_MOD_SHIFT;
 	}
 	else
-	    *code = XKeycodeToKeysym(x11_display, xev->xkey.keycode, 0);
+	    *code = XKeycodeToKeysym(x11_display_list->display,
+				     xev->xkey.keycode, 0);
 	if((*code != NoSymbol) && !IsModifierKey(*code))
 	    *mods |= EV_TYPE_KEYBD;
 	break;
@@ -109,7 +112,7 @@ translate_event(u_long *code, u_long *mods, XEvent *xev)
 
     case ButtonRelease:
 	*code = EV_CODE_MOUSE_UP;
-button:
+    button:
 	*mods = EV_TYPE_MOUSE
 	    | translate_mods(*mods, xev->xbutton.state);
 	switch(xev->xbutton.button)
@@ -368,7 +371,9 @@ lookup_event_name(u_char *buf, u_long code, u_long mods)
 }
 
 /* Return the jade modifier mask used as the meta key. This code
-   shamelessly stolen from Emacs 19. :-) */
+   shamelessly stolen from Emacs 19. :-)
+
+   TODO: Should really maintain a separate Meta for each open display */
 u_long
 sys_find_meta(void)
 {
@@ -380,15 +385,16 @@ sys_find_meta(void)
     XModifierKeymap *mods;
 
 #if XlibSpecificationRelease >= 4
-    XDisplayKeycodes(x11_display, &min_code, &max_code);
+    XDisplayKeycodes(x11_display_list->display, &min_code, &max_code);
 #else
-    min_code = x11_display->min_keycode;
-    max_code = x11_display->max_keycode;
+    min_code = x11_display_list->display->min_keycode;
+    max_code = x11_display_list->display->max_keycode;
 #endif
 
-    syms = XGetKeyboardMapping(x11_display, min_code, max_code - min_code + 1,
+    syms = XGetKeyboardMapping(x11_display_list->display,
+			       min_code, max_code - min_code + 1,
 			       &syms_per_code);
-    mods = XGetModifierMapping(x11_display);
+    mods = XGetModifierMapping(x11_display_list->display);
 
     {
 	int row, col;
