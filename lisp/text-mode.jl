@@ -60,8 +60,9 @@ previous line, then works as normal."
   (setq mode-name "Indented Text"
 	major-mode 'indented-text-mode
 	keymap-path (cons 'text-mode-indent-keymap
-			  (cons 'text-mode-keymap keymap-path))
-	fill-prefix 'text-mode-fill-prefix)
+			  (cons 'text-mode-keymap keymap-path)))
+  (make-local-variable 'fill-prefix)
+  (setq fill-prefix 'text-mode-fill-prefix)
   (text-mode-init)
   (call-hook 'text-mode-hook)
   (call-hook 'indented-text-mode-hook))
@@ -72,7 +73,7 @@ previous line, then works as normal."
 			  (delq 'text-mode-indent-keymap keymap-path))
 	major-mode nil
 	major-mode-kill nil)
-  (when (functionp fill-prefix)
+  (when (and (boundp 'fill-prefix) (functionp fill-prefix))
     (setq fill-prefix nil))
   t)
 
