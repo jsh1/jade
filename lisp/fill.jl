@@ -193,22 +193,25 @@ and POS. When called interactively, POS is bound to the cursor position."
 	(let*
 	    ((space (- goal-column (pos-col g-line-end) 1))
 	     (move-start (forward-line 1 line-start))
-	     (move-end (pos (min space (line-length move-start))
-			    (pos-line move-start))))
-	  (when (> move-end end)
-	    (setq move-end end))
-	  (setq move-end (re-search-backward fill-break-re
-					     (glyph-to-char-pos move-end)))
+	     (move-end (min (glyph-to-char-pos (pos space
+						    (pos-line move-start)))
+			    (end-of-line move-start))))
+	  (if (>= move-end end)
+	      (setq move-end end)
+	    (setq move-end (re-search-backward fill-break-re move-end)))
 	  (if (and move-end (> move-end move-start))
 	      ;; We can move some words from the next line to
 	      ;; fill some of the gap
 	      (progn
-		(when (= (get-char move-end) ?\ )
+		(when (and (< move-end end) (= (get-char move-end) ?\ ))
 		  (delete-area move-end (forward-char 1 move-end)))
 		(insert (cut-area move-start move-end) (insert " " line-end))
 		(when (empty-line-p move-start)
 		  ;; We've created a blank line, delete it
-		  (delete-area move-start (forward-line 1 move-start))
+		  (if (>= end (end-of-buffer))
+		      ;; Can't delete to the next line
+		      (delete-area (forward-char -1 move-start) move-start)
+		    (delete-area move-start (forward-line 1 move-start)))
 		  (setq end (forward-line -1 end))))
 	    ;; The current line is as good as it gets, move
 	    ;; on to the next line
