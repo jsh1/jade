@@ -85,6 +85,9 @@ two arguments, the start and end of the inserted text.")
 (defvar mail-default-reply-to nil
   "If non-nil an address to put in the Reply-to header.")
 
+(defvar mail-ignored-reply-tos nil
+  "If non-nil, a regexp matching Reply-to headers to ignore.")
+
 (defvar mail-reply-prefix "Re: "
   "String to prepend to subject of replied messages.")
 
