@@ -52,6 +52,9 @@ Any `%s' substrings will be replaced by the name of the url.")
 (defvar find-url-asynchronously t
   "When non-nil URL's are loaded asynchronously where possible.")
 
+(defvar find-url-processes nil
+  "A list of (URL . PROCESS) objects for all asynchronous wget commands.")
+
 ;; Functions
 
 ;;;###autoload
@@ -144,6 +147,7 @@ a buffer."
 (defun find-url-http-loaded (process url anchor view output errors)
   (require 'mail-headers)
   (unless (process-in-use-p process)
+    (setq find-url-processes (delete (cons url process) find-url-processes))
     (if (zerop (process-exit-value process))
 	;; Success
 	(let
@@ -176,9 +180,8 @@ a buffer."
 	       
 (defun find-url-http (url)
   (let*
-      ((buffer (open-buffer "*wget-output*"))
-       (errors (or (get-buffer "*wget-errors*")
-		   (make-buffer "*wget-errors*")))
+      ((buffer (make-buffer "*wget-output*"))
+       (errors (make-buffer "*wget-errors*"))
        (process (make-process (cons buffer t)))
        load-url anchor args)
     (if (string-match "^(.*)#(.*)$" url)
@@ -198,6 +201,26 @@ a buffer."
 					    p ,load-url ,anchor ,(current-view)
 					    ,buffer ,errors)))
 	  (or (apply 'start-process process args)
-	      (error "Can't start wget")))
+	      (error "Can't start wget"))
+	  (setq find-url-processes (cons (cons url process)
+					 find-url-processes)))
       (apply 'call-process process nil args)
       (find-url-http-loaded process url anchor (current-view) buffer errors))))
+
+(defun find-url-abort (url &optional kill)
+  "Terminate the asynchronous connection loading URL."
+  (interactive (let
+		   ((arg current-prefix-arg))
+		 (list (prompt-from-list
+			(mapcar 'car find-url-processes) "Abort URL:") arg)))
+  (let
+      ((cell (assoc url find-url-processes)))
+    (if cell
+	(progn
+	  (set-process-function
+	   (cdr cell)
+	   `(lambda (p)
+	      (setq find-url-processes (delq ,cell find-url-processes))
+	      (message "[wget exited]")))
+	  (funcall (if arg 'kill-process 'interrupt-process) (cdr cell)))
+      (message "[No wget for that URL]"))))
