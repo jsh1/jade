@@ -439,9 +439,7 @@ file NAME."
 This function calls the hook `auto-save-hook', if this returns nil it then
 saves it to the file specified by `make-auto-save-name' appiled to the
 name of the file stored in BUFFER."
-  (format t "Auto-saving `%s'..." (buffer-name buffer))
-  (refresh-all)
-  (flush-output)
+  (message (concat "Auto-saving `" (buffer-name buffer) "'...") t)
   (with-buffer buffer
     (if (or (call-hook 'auto-save-hook (list buffer) 'or)
 	    (write-buffer-contents (make-auto-save-name (buffer-file-name))))
