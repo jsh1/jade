@@ -62,7 +62,10 @@ match buffer is actually highlighted.")
 (defvar mail-spool-files (concat "/usr/spool/mail/" (user-login-name))
   "The inboxes to check for new mail. This can be a single file name, a list
 of file names, or a list of association-lists, each associating a mail
-folder with a particular spool file (or list of spool files).")
+folder with a particular spool file (or list of spool files).
+
+If any of the spool files is specified using a non-absolute pathname, it
+is assumed to be relative to the `mail-folder-dir' directory.")
 
 (defvar mail-header-separator "--text follows this line--"
   "Text used to separate headers from message body; removed before the
@@ -191,7 +194,11 @@ include any parenthesised expressions!")
 				      (cdr (car tem))
 				    (cons (cdr (car tem)))))))
 	(setq tem (cdr tem)))
-      list))))
+      ;; Ensure that inbox names are absolute
+      (mapcar #'(lambda (inbox)
+		  (if (file-name-absolute-p inbox)
+		      inbox
+		    (expand-file-name inbox mail-folder-dir))) list)))))
 
 ;; History list of prompt-for-folder
 (defvar mail-prompt-history (make-ring))
