@@ -108,7 +108,8 @@ While comparing files the following commands are available:\n
 ;;;###autoload
 (defun diff-backup (file)
   "Compare FILE with its backup file. See the `diff' command for more details."
-  (interactive "fFile to diff with its backup:")
+  (interactive (list (prompt-for-file "File to diff with its backup:"
+				      t (buffer-file-name))))
   (let
       ((name (concat file ?~)))
     (diff name file)
@@ -120,7 +121,8 @@ While comparing files the following commands are available:\n
 (defun diff-auto-save (file)
   "Compare FILE with its auto-saved version. See the `diff' command for more
 details."
-  (interactive "fFile to diff with its auto-save:")
+  (interactive (list (prompt-for-file "File to diff with its auto-save:"
+				      t (buffer-file-name))))
   (let
       ((name (make-auto-save-name file)))
     (diff file name)
