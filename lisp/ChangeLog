@@ -1,3 +1,38 @@
+1999-05-12  John Harper  <john@dcs.warwick.ac.uk>
+
+	* buffer-summary.jl: use the with-extent vector to give each
+	item some popup menus
+
+	* summary.jl: added a new optional vector `with-extent', called
+	whenever an item is inserted, with the extent covering that
+	item
+
+1999-05-08  John Harper  <john@dcs.warwick.ac.uk>
+
+	* send-mail.jl (mail-setup): put the cursor on the to: or
+	subject: headers if either is empty
+
+	* gtk-prompt.jl (gtk-prompt-for-string, gtk-prompt-from-list):
+	added some spacing between prompt string and input entry
+
+	* popup-menus.jl: added some more commands to the tools menu
+	* loadkeys.jl: bind `M-z' to popup-menu
+
+1999-05-06  John Harper  <john@dcs.warwick.ac.uk>
+
+	* mime-decode.jl (mime-highlight-face): tone down this face a
+	little (bold instead of icky green background)
+
+1999-05-04  John Harper  <john@dcs.warwick.ac.uk>
+
+	* rm-msg-links.jl (rm-msg-links-alist): added sender header to
+	list of those containing address lists
+
+	* rm-restrict.jl (rm-combine-rules): new function
+
+	* html-decode.jl (html-decode-tag): don't swallow any spaces
+	immediately following a <pre> tag
+
 1999-04-27  John Harper  <john@dcs.warwick.ac.uk>
 
 	* rm-msg-links.jl: new file, hooks into the
