@@ -451,7 +451,7 @@ is rejected.")
 ;; High-level entrypoints; prompt for a specific type of object
 
 ;;;###autoload
-(defun prompt-for-file (&optional prompt existing start default)
+(defun prompt-for-file (&optional prompt existing start default history-list)
   "Prompt for a file, if EXISTING is t only files which exist are
 allowed to be entered."
   (unless (stringp prompt)
@@ -477,7 +477,7 @@ allowed to be entered."
 				       'prompt-validate-filename
 				     nil))
 	 (prompt-word-regexps prompt-def-regexps)
-	 (prompt-history prompt-file-history)
+	 (prompt-history (or history-list prompt-file-history))
 	 (prompt-default-value default)
 	 (str (prompt prompt start)))
       (when (and (string= str "") default)
