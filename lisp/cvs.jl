@@ -314,11 +314,13 @@ buffer will be activated."
   (unless (with-buffer cvs-output-buffer
 	    (equal (start-of-buffer) (end-of-buffer)))
     (let
-	((view (or (get-buffer-view cvs-output-buffer) (other-view))))
+	((view (or (get-buffer-view cvs-output-buffer) (other-view)))
+	 (original-buffer (current-buffer)))
       (with-view view
 	(goto-buffer cvs-output-buffer)
 	(goto (start-of-buffer))
-	(shrink-view-if-larger-than-buffer))
+	(unless (eq original-buffer cvs-buffer)
+	  (shrink-view-if-larger-than-buffer)))
       (when activate
 	(set-current-view view)))))
 
