@@ -179,7 +179,7 @@ sys_init(char *program_name)
     repv head, *last;
 
 #ifdef HAVE_UNIX
-    if (Fsymbol_value (Qbatch_mode, Qt) == Qnil)
+    if (!batch_mode_p ())
 	setpgid (0, 0);
 #endif
 
@@ -215,8 +215,11 @@ sys_init(char *program_name)
     /* Loading the gtk rep library will replace the usual
        event loop with one that works with GTK. */
     rep_INTERN(gtk);
+#if rep_INTERFACE >= 9
+    Frequire (Qgtk);
+#else
     Fload (rep_string_dup ("gtk"), Qnil, Qnil, Qnil, Qnil);
-
+#endif
     if (rep_throw_value == 0)
     {
 	/* Find the gtkobj<->lispobj converters */
