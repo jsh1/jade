@@ -10,3 +10,6 @@ aclocal.m4
 libtool
 build.h
 NEWS
+autom4te.cache
+autogen.sh
+.gdb_history
