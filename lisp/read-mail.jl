@@ -95,6 +95,10 @@ REGEXP, then its restriction rule is initialised as RULE.")
 added to an otherwise empty folder. If the name of the mailbox matches
 REGEXP, then its sort key is initialised as KEY.")
 
+(defvar rm-default-sort-key nil
+  "When non-nil, a key to sort folders by. Only used when the variable
+m-auto-sort-key-alist doesn't specify a key.")
+
 (defvar rm-after-import-rules nil
   "A list of message restriction rules. Called for all messages appended
 to a mailbox file. The rules are expected to have side-effects, the value
@@ -155,6 +159,45 @@ of each rule is ignored.")
     "Ctrl-t" 'rm-toggle-threading
     "G" 'rm-sort-folder)
   "Keymap for reading mail")
+
+(defvar rm-popup-menus
+  '(("Movement"
+     ("Next message" rm-next-undeleted-message)
+     ("Previous message" rm-previous-undeleted-message)
+     ("Next page" rm-next-page)
+     ("Previous page" rm-previous-page))
+    ("Dispose message"
+     ("Delete message" rm-mark-message-deletion)
+     ("Unmark message" rm-unmark-message)
+     ("Unmark all messages" rm-unmark-all-messages)
+     ()
+     ("Reply to message" rm-reply)
+     ("Reply with quotation" (lambda () (rm-reply t)))
+     ("Followup message" rm-followup)
+     ("Followup with quotation" (lambda () (rm-followup t)))
+     ("Forward message" rm-forward)
+     ()
+     ("Burst digest message" rm-burst-message)
+     ("Save message" rm-output)
+     ("Pipe message" rm-pipe-message))
+    ("Folder"
+     ("Add mailbox" rm-add-mailbox)
+     ("Subtract mailbox" rm-subtract-mailbox)
+     ("Replace all mailboxes" rm-replace-all-mailboxes)
+     ()
+     ("Get new mail" rm-get-mail)
+     ("Sort folder" rm-sort-folder)
+     ("Toggle threading" rm-toggle-threading)
+     ("Expunge deleted messages" rm-expunge)
+     ("Archive folder" rm-archive-folder)
+     ("Auto-archive folder" rm-auto-archive-folder))
+    ("Rules"
+     ("Define rule" define-rule)
+     ("Restrict by rule" rm-change-rule)
+     ("Remove restriction" rm-null-rule))
+    ()
+    ("Exit mail reader" rm-save-and-quit)
+    ("Jade" . rm-find-global-menus)))
   
 (defvar rm-last-mailbox mail-folder-dir
   "File name of the most recently opened folder. Used as a default value for
@@ -262,13 +305,17 @@ Major mode for viewing mail folders. Local bindings are:\n
     (setq rm-open-mailboxes (cons (current-buffer) rm-open-mailboxes)
 	  major-mode 'read-mail-mode
 	  major-mode-kill 'read-mail-mode-kill
-	  local-keymap 'rm-keymap)
+	  local-keymap 'rm-keymap
+	  popup-menus rm-popup-menus)
     (call-hook 'read-mail-mode-hook)))
 
 ;; Remove the major-mode of mailbox buffers
 (defun read-mail-mode-kill ()
   (setq rm-open-mailboxes (delq (current-buffer) rm-open-mailboxes))
   (kill-all-local-variables))
+
+(defun rm-find-global-menus ()
+  (default-value 'popup-menus))
 
 
 ;; Internal folder structure
@@ -386,12 +433,13 @@ key, the car the order to sort in, a positive or negative integer.")
   (unless mailbox
     (error "Null mailbox"))
   (unless (rm-get-folder-field folder rm-folder-current-msg)
-    (let
-	(cell)
-      (setq cell (assoc-regexp mailbox rm-auto-rule-alist))
-      (rm-set-folder-field folder rm-folder-rule (cdr cell))
-      (setq cell (assoc-regexp mailbox rm-auto-sort-key-alist))
-      (rm-set-folder-field folder rm-folder-sort-key (cdr cell))))
+    ;; Folder is empty, so look for rule and sort-key fields
+    (rm-set-folder-field
+     folder rm-folder-rule (cdr (assoc-regexp mailbox rm-auto-rule-alist)))
+    (rm-set-folder-field
+     folder rm-folder-sort-key (or (cdr (assoc-regexp
+					 mailbox rm-auto-sort-key-alist))
+				   rm-default-sort-key)))
   (rm-set-folder-field folder rm-folder-boxes
 		       (nconc (rm-get-folder-field folder rm-folder-boxes)
 			      (list mailbox)))
@@ -447,8 +495,9 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Install the restriction rule named RULE in FOLDER  
 (defun rm-change-rule (folder rule)
   (interactive
-   (list (rm-current-folder)
-	 (rm-prompt-for-rule)))
+   (list (rm-current-folder) (if current-prefix-arg
+				 (rm-prompt-for-anon-rule)
+			       (rm-prompt-for-rule))))
   (rm-set-folder-field folder rm-folder-rule rule)
   (rm-rebuild-folder folder)
   (rm-redisplay-folder folder))
@@ -1060,6 +1109,15 @@ key, the car the order to sort in, a positive or negative integer.")
 		    current-hdr nil)
 	    (setq current-hdr next-hdr))))
       first-visible)))
+
+(defun rm-find-message-by-id (folder id)
+  (catch 'return
+    (rm-map-messages #'(lambda (m)
+			 (let
+			     ((this-id (rm-get-message-id m)))
+			   (when (string= id this-id)
+			     (throw 'return m)))) folder)
+    nil))
 
 
 ;; Deleting messages
