@@ -725,11 +725,12 @@ DEFUN("mouse-pos", cmd_mouse_pos, subr_mouse_pos, (void), V_Subr0, DOC_mouse_pos
 mouse-pos
 
 Return the position of the mouse pointer, relative to the display origin of
-the buffer in the current window.
+the buffer in the current view of the current window. A *character* position
+is returned, not a glyph position.
 ::end:: */
 {
-    VALUE pos;
-    if((pos = make_lpos2(0, 0)) && sys_get_mouse_pos(&VPOS(pos), curr_win))
+    VALUE pos = cmd_raw_mouse_pos();
+    if(!NILP(pos))
     {
 	/* POS is relative to the window frame, not the buffer in the
 	   current view. Translate it. */
@@ -745,6 +746,21 @@ the buffer in the current window.
 	return(pos);
     }
     return(sym_nil);
+}
+
+_PR VALUE cmd_raw_mouse_pos(void);
+DEFUN("raw-mouse-pos", cmd_raw_mouse_pos, subr_raw_mouse_pos, (void), V_Subr0, DOC_raw_mouse_pos) /*
+::doc:raw_mouse_pos::
+raw-mouse-pos
+
+Return the glyph position of the mouse, relative to the current window.
+::end:: */
+{
+    VALUE pos = make_lpos2(0, 0);
+    if(pos != NULL && sys_get_mouse_pos(&VPOS(pos), curr_win))
+	return pos;
+    else
+	return sym_nil;
 }
 
 static long
@@ -933,4 +949,5 @@ movement_init(void)
     ADD_SUBR(subr_goto_prev_char);
     ADD_SUBR(subr_match_brackets);
     ADD_SUBR(subr_mouse_pos);
+    ADD_SUBR(subr_raw_mouse_pos);
 }
