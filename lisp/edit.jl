@@ -1063,3 +1063,16 @@ end of the inserted text."
   (unless mouse-yank-at-point
     (goto-mouse))
   (yank))
+
+
+;; Dropping files
+
+(defun dnd-drop-uri-list (files window pos)
+  "Called when the list of Universal Resource Identifiers FILES is dropped on
+WINDOW at cell POS. This function finds the view at POS (if one exists),
+activates it, then calls find-url for each of the FILES."
+  (let
+      ((drop-view (find-view-by-pos pos window)))
+    (when drop-view
+      (set-current-view drop-view t))
+    (mapc 'find-url files)))
