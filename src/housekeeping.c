@@ -413,20 +413,21 @@ resync_y(VW *vw)
 	    start_row += vw->vw_YStep;
     }
 
-    /* Finally do some sanity checks: ensure that nothing
-       outside the restriction is visible, and that there's
-       no wasted space when displaying the bottom of the
-       restriction. */
+    /* Finally do some sanity checks: ensure that nothing outside the
+       restriction is visible, and that there's no wasted space when
+       displaying the bottom of the restriction. */
     if(start_row < tx->tx_LogicalStart)
 	start_row = tx->tx_LogicalStart;
     else if(start_row >= tx->tx_LogicalEnd
-	    /* Check for a `gap' at the bottom of the display */
-	    || (start_row != VROW(vw->vw_DisplayOrigin)
-	        && (tx->tx_LogicalEnd - start_row) < vw->vw_MaxY))
-    {
-	start_row = MAX(tx->tx_LogicalEnd - vw->vw_MaxY,
-			tx->tx_LogicalStart);
-    }
+	    /* Check for a `gap' at the bottom of the display. This may
+	       seem to act a bit strangely---if the last screen of the
+	       buffer is being displayed, and lines are deleted from this
+	       screen, new data is scrolled into the _top_ of the screen,
+	       the bottom part _isn't_ scrolled up. This makes sense I
+	       think, since we want to keep as much of the window covered
+	       with buffer-contents as possible. */
+	    || (tx->tx_LogicalEnd - start_row) < vw->vw_MaxY)
+	start_row = MAX(tx->tx_LogicalEnd - vw->vw_MaxY, tx->tx_LogicalStart);
 
     if(VROW(vw->vw_DisplayOrigin) != start_row)
 	vw->vw_DisplayOrigin = make_pos(VCOL(vw->vw_DisplayOrigin), start_row);
