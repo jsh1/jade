@@ -18,13 +18,25 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
-;;; Hooks to allow messages in send-mail mode to have their aliases
-;;; expanded. Also binds `Ctrl-c a' to a command to interactively insert
-;;; an address, and `Ctrl-c Ctrl-a' to a command to insert an alias.
-;;;
-;;; To enable this code, add the following form to your .jaderc:
-;;;
-;;;   (eval-after-load "send-mail" '(require 'sm-mail-dir))
+;;; Commentary:
+;;
+;; Code to allow messages in send-mail mode to have their aliases
+;; expanded. Also binds `Ctrl-c Ctrl-a' to a command to interactively
+;; insert an address, and `Ctrl-c a' to a command to insert an alias.
+;;
+;; To enable this code, add the following form to your .jaderc:
+;;
+;;   (eval-after-load "send-mail" '(require 'sm-mail-dir))
+;;
+;; Note that aliases *won't* be expanded automatically unless you
+;; put the `expand-mail-aliases' function into the `mail-send-hook'.
+;; Put the following form in your .jaderc if this is what you want:
+;;
+;;   (add-hook 'mail-send-hook 'expand-mail-aliases)
+;;
+;; But I don't really recommend this. Use the `Ctrl-c Ctrl-x' key-
+;; binding in the mail composition buffer to expand all aliases in
+;; the headers. This lets you confirm any expansions before sending.
 
 (require 'mail-dir)
 (require 'maildefs)
@@ -39,11 +51,7 @@
 ;;;###autoload
 (defun expand-mail-aliases ()
   "Expand all mail aliases in the `From', `To', `CC' or `BCC' headers of the
-message being composed.
-
-To make this happen automatically, add this function to the `mail-send-hook'
-(i.e. add the form \"(add-hook 'expand-mail-aliases 'mail-send-hook)\" to
-your `.jaderc' file."
+message being composed."
   (interactive)
   (save-restriction
     (unrestrict-buffer)

@@ -308,7 +308,8 @@ mail directory. Also see the variables `mail-dir-scan-messages' and
 	   (file-readable-p mail-directory-file))
   (load-mail-directory mail-directory-file))
 
-(add-hook 'before-exit-hook #'(lambda ()
-				(when (and mail-directory-modified
-					   (y-or-n-p "Mail directory modified; save it?"))
-				  (save-mail-directory mail-directory-file))))
+(add-hook 'before-exit-hook
+	  #'(lambda ()
+	      (when (and mail-directory-modified
+			 (y-or-n-p "Mail directory modified; save it?"))
+		(save-mail-directory mail-directory-file))))
