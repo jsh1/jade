@@ -30,17 +30,24 @@
 
 _PR void make_window_glyphs(glyph_buf *g, WIN *w);
 
-_PR long string_glyph_length(TX *, const u_char *, long);
+_PR bool skip_glyph_rows_forwards(VW *, long, long, long, long *, long *);
+_PR bool skip_glyph_rows_backwards(VW *, long, long, long, long *, long *);
+
+static void recenter_cursor(VW *vw);
+static long line_glyph_length(TX *tx, long line);
+
 _PR long glyph_col(TX *, long, long);
 _PR long char_col(TX *, long, long);
-_PR void calc_cursor_offset(VW *);
-_PR void adjust_cursor_to_glyph(VW *);
-_PR u_char *char_glyphs(TX *, u_char);
+_PR long get_cursor_column(VW *);
+_PR void set_cursor_vertically(VW *vw, long row);
 
 _PR void glyphtable_sweep(void);
 _PR void glyphtable_prin(VALUE, VALUE);
 _PR void glyphs_init(void);
 _PR void glyphs_kill(void);
+
+
+/* Glyph table data structures */
 
 /* This table stores the number of glyphs which have to be printed to
    make up each character. 0 is a special case -- TABSIZE spaces.  */
@@ -120,58 +127,85 @@ static glyph_table_t default_glyph_table = {
 static glyph_table_t *gt_chain = &default_glyph_table;
 
 
+/* Data structures for the cache of "number of glyphs in a line" */
+
+/* These next two parameters can obviously take some tuning. Intuitively,
+   I think that there should always be more sets than there are lines in
+   the display. Associativity is harder to pin down, the higher the
+   better maybe, but then more searching needs to be done. It's also the
+   case that a lot of misses are due to the blanket invalidation, so
+   making the cache too big is pointless anyway.. */
+#define GL_CACHE_SETS	100		/* number of cache sets */
+#define GL_CACHE_ASSOC	2		/* entries in each set */
+
+/* Map a line number to a gl-cache set */
+#define GL_MAP_LINE(l) ((l) % GL_CACHE_SETS)
+
+typedef struct {
+    u_long line;			/* line number */
+    TX *tx;				/* buffer */
+    u_long glyphs;			/* number of glyphs in line */
+    u_long changes;			/* change-count at calc. time */
+    u_long lru_clock;			/* last access time */
+} gl_cache_entry_t;
+
+typedef struct {
+    gl_cache_entry_t data[GL_CACHE_SETS * GL_CACHE_ASSOC];
+    u_long lru_clock;
+    u_long misses, valid_hits, invalid_hits;
+} gl_cache_t;
+
+/* Get a pointer to the array of entries forming set S */
+#define GL_GET_SET(gl, s) ((gl)->data + ((s) * GL_CACHE_ASSOC))
+
+static gl_cache_t gl_cache;
+
+
 /* Filling glyph buffers */
 
 /* Assuming a block is active, check if it starts or ends at the current
-   position, if so update the attribute value. */
-#define CHECK_BLOCK_ATTR()				\
+   position, if so update the attribute value. CC is the positition in the
+   line of the current character, GC is the position in the screen row of
+   the next glyph to be output. */
+#define CHECK_BLOCK_ATTR(cc, gc)			\
     do {						\
 	if(!rect_block)					\
 	{						\
 	    /* check for a normal block */		\
 	    if(attr == GA_Text && block_start		\
-	       && char_col == VCOL(vw->vw_BlockS))	\
+	       && (cc) == VCOL(vw->vw_BlockS))		\
 		attr = GA_Block;			\
 	    if(attr == GA_Block && block_end		\
-	       && char_col == VCOL(vw->vw_BlockE))	\
+	       && (cc) == VCOL(vw->vw_BlockE))		\
 		attr = GA_Text;				\
 	}						\
 	else if(block_row)				\
 	{						\
 	    /* check for a rectangular block */		\
-	    if(glyph_col == block_start)		\
+	    if((gc) == block_start)			\
 		attr = GA_Block;			\
-	    else if(glyph_col == block_end)		\
+	    else if((gc) == block_end)			\
 		attr = GA_Text;				\
 	}						\
     } while(0)
 
-/* Output a glyph CH. Check for attribute changes, output
-   attribute, and advance glyph_col variable. If the current glyph
-   isn't visible ignore it. */
+/* Output a glyph CH with attribute defined by the variable "attr". */
 #define OUTPUT(ch)					\
     do {						\
-	if(in_block)					\
-	    CHECK_BLOCK_ATTR();				\
-	if(glyph_col >= first_col			\
-	   && glyph_col < last_col)			\
+	if(!cursor_row)					\
+	    *attrs++ = attr;				\
+	else						\
 	{						\
-	    if(!cursor_row)				\
-		*attrs++ = attr;			\
-	    else					\
+	    /* check for cursor pos. */			\
+	    if(char_col == cursor_col)			\
 	    {						\
-		/* check for cursor pos. */		\
-		if(char_col == cursor_col)		\
-		{					\
-		    *attrs++ = cursor_attrs[attr];	\
-		    cursor_row = FALSE;			\
-		}					\
-		else					\
-		    *attrs++ = attr;			\
+		*attrs++ = cursor_attrs[attr];		\
+		cursor_row = FALSE;			\
 	    }						\
-	    *codes++ = ch;				\
+	    else					\
+		*attrs++ = attr;			\
 	}						\
-	glyph_col++;					\
+	*codes++ = ch;					\
     } while(0)
 
 /* Fill glyph buffer G with whatever should be displayed in window W. */
@@ -184,6 +218,8 @@ make_window_glyphs(glyph_buf *g, WIN *w)
     /* Lookup table for changing an attribute to the cursor's equivalent. */
     static const glyph_attr cursor_attrs[GA_MAX] =
 	{ GA_Text_RV, GA_Text, GA_Block_RV, GA_Block };
+    static char spaces[] = "                                                 "
+"                                                                            ";
 
     VW *vw;
     int glyph_row = 0;
@@ -200,32 +236,34 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 
 	glyph_attr attr;
 	int tab_size = vw->vw_Tx->tx_TabSize;
-	long first_col, first_row, last_col, last_row, char_row;
-	long cursor_col = VCOL(vw->vw_CursorPos);
+	long first_col, first_row, first_char_col;
+	long last_row, char_row;
+	long cursor_col;
 
 	bool in_block, rect_block = FALSE;
 	long block_start = 0, block_end = 0;
 
-	update_status_buffer(vw);
+	recenter_cursor(vw);
 
 	/* First and last glyph columns of the viewable part of the buffer. */
 	first_col = VCOL(vw->vw_DisplayOrigin);
-	if(first_col != 0)
-	    first_col = glyph_col(vw->vw_Tx, first_col,
+	first_char_col = char_col(vw->vw_Tx, VCOL(vw->vw_DisplayOrigin),
 				  VROW(vw->vw_DisplayOrigin));
-	last_col = first_col + vw->vw_MaxX;
 
 	/* First and last viewable rows of the buffer. */
 	first_row = VROW(vw->vw_DisplayOrigin);
-	last_row = MIN(first_row + vw->vw_MaxY, vw->vw_Tx->tx_LogicalEnd);
+	last_row = glyph_row + vw->vw_MaxY;
 
 	/* Current row in the buffer. */
 	char_row = first_row;
+	cursor_col = VCOL(vw->vw_CursorPos);
 
 	/* Memorise some facts about when the block starts and stops. */
 	if(vw->vw_BlockStatus == 0)
 	{
-	    if(POS_LESS_EQUAL_P(vw->vw_BlockE, vw->vw_DisplayOrigin)
+	    if((VROW(vw->vw_BlockE) < VROW(vw->vw_DisplayOrigin)
+	        || (VROW(vw->vw_BlockE) == VROW(vw->vw_DisplayOrigin)
+	            && VCOL(vw->vw_BlockE) <= first_char_col))
 	       || VROW(vw->vw_BlockS) > first_row + vw->vw_MaxY)
 		in_block = FALSE;
 	    else
@@ -248,8 +286,6 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 			    block_start = block_end;
 			    block_end = tem;
 			}
-			block_start = MAX(block_start, first_col);
-			block_end = MIN(block_end, last_col);
 		    }
 		}
 		else
@@ -259,12 +295,16 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	else
 	    in_block = FALSE;
 
-	while(char_row < last_row)
+	while(glyph_row < last_row && char_row < vw->vw_Tx->tx_LogicalEnd)
 	{
-	    /* Fill in the glyphs for GLYPH_ROW */
+	    /* Fill in the glyphs for CHAR_ROW */
+
 	    u_char *src = vw->vw_Tx->tx_Lines[char_row].ln_Line;
 	    long src_len = vw->vw_Tx->tx_Lines[char_row].ln_Strlen - 1;
-	    long glyph_col = 0, char_col = 0;
+
+	    /* Position in current screen row, logical glyph position in
+	       current buffer line, actual character in buffer line. */
+	    long real_glyph_col = 0, glyph_col = 0, char_col = 0;
 
 	    /* Is the cursor in this row? */
 	    bool cursor_row = (vw == w->w_CurrVW
@@ -300,37 +340,107 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		{
 		    /* Is the block active in the first column of this row? */
 		    if(char_row >= VROW(vw->vw_BlockS)
-		       && VCOL(vw->vw_BlockS) == 0
+		       && block_start == 0
 		       && char_row < VROW(vw->vw_BlockE)
-		       && VCOL(vw->vw_BlockE) > 0)
+		       && block_end > 0)
 			attr = GA_Block;
 		}
 	    }
 
-	    /* Start outputting. */
-	    while(glyph_col < last_col && src_len-- > 0)
+	    /* Start output. Two versions, dependent on whether
+	       we wrap or truncate long lines. */
+	    if(TX_WRAP_LINES_P(vw->vw_Tx))
 	    {
-		static char spaces[] = "                                     \
-                                                                             ";
-		register u_char *ptr = &(*glyph_table)[*src][0];
-		register int width = (*width_table)[*src++];
-		if(width == 0)
+		while(glyph_row < last_row && src_len-- > 0)
 		{
-		    /* TAB special case. */
-		    width = tab_size - (glyph_col % tab_size);
-		    ptr = spaces;
+		    register u_char *ptr = &(*glyph_table)[*src][0];
+		    register int width = (*width_table)[*src++];
+		    if(width == 0)
+		    {
+			/* TAB special case. */
+			width = tab_size - (glyph_col % tab_size);
+			ptr = spaces;
+		    }
+		    while(width-- > 0)
+		    {
+			if(in_block)
+			    CHECK_BLOCK_ATTR(char_col, glyph_col);
+			if(char_row > first_row
+			   || glyph_col >= first_col)
+			{
+			    if(real_glyph_col >= vw->vw_MaxX - 1)
+			    {
+				*codes++ = '\\';
+				*attrs++ = attr;
+				real_glyph_col = 0;
+				++glyph_row;
+			    }
+			    if(glyph_row < last_row)
+				OUTPUT(*ptr++);
+			    real_glyph_col++;
+			}
+			glyph_col++;
+		    }
+		    char_col++;
 		}
-		while(width-- > 0)
-		    OUTPUT(*ptr++);
-		char_col++;
 	    }
-
+	    else
+	    {
+		while(real_glyph_col < vw->vw_MaxX && src_len-- > 0)
+		{
+		    register u_char *ptr = &(*glyph_table)[*src][0];
+		    register int width = (*width_table)[*src++];
+		    if(width == 0)
+		    {
+			/* TAB special case. */
+			width = tab_size - (glyph_col % tab_size);
+			ptr = spaces;
+		    }
+		    while(width-- > 0)
+		    {
+			if(in_block)
+			    CHECK_BLOCK_ATTR(char_col, glyph_col);
+			if(glyph_col >= first_col
+			   && real_glyph_col < vw->vw_MaxX)
+			{
+			    OUTPUT(*ptr++);
+			    real_glyph_col++;
+			}
+			glyph_col++;
+		    }
+		    char_col++;
+		}
+		if(glyph_col < first_col)
+		{
+		    if(in_block)
+		    {
+			while(glyph_col < first_col)
+			{
+			    CHECK_BLOCK_ATTR(char_col, glyph_col);
+			    glyph_col++; char_col++;
+			}
+		    }
+		    else
+		    {
+			char_col += (first_col - glyph_col);
+			glyph_col = first_col;
+		    }
+		}
+	    }
+		
 	    /* In case the line ends before the last column in the
 	       window -- fill with spaces. */
-	    while(glyph_col < last_col)
+	    if(glyph_row < last_row)
 	    {
-		OUTPUT(' ');
-		char_col++;		/* in case the cursor is past EOL */
+		while(real_glyph_col < vw->vw_MaxX)
+		{
+		    if(in_block)
+			CHECK_BLOCK_ATTR(char_col, glyph_col);
+		    OUTPUT(' ');
+		    glyph_col++;
+		    real_glyph_col++;
+		    char_col++;		/* in case the cursor is past EOL */
+		}
 	    }
 
 	    glyph_row++;
@@ -339,7 +449,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 
 	/* In case the logical end of the buffer is before the
 	   end of the view, fill with empty lines. */
-	while(glyph_row < vw->vw_FirstY + vw->vw_MaxY)
+	while(glyph_row < last_row)
 	{
 	    memset(codes, ' ', g->cols);
 	    memset(attrs, GA_Text, g->cols);
@@ -352,7 +462,9 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	   line text. TODO: should use glyph tables for this */
 	if((vw->vw_Flags & VWFF_MINIBUF) == 0)
 	{
-	    int len = strlen(vw->vw_StatusBuf);
+	    int len;
+	    update_status_buffer(vw);
+	    len = strlen(vw->vw_StatusBuf);
 	    memcpy(codes, vw->vw_StatusBuf, MIN(len, g->cols));
 	    if(len < g->cols)
 		memset(codes + len, ' ', g->cols - len);
@@ -375,23 +487,365 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 }
 
 
+/* Screen utility functions */
+
+/* From glyph COL in buffer line ROW, move COUNT display lines forwards,
+   storing the resulting position in *COLP and *ENDP. If there aren't
+   enough lines in the buffer to move COUNT rows forwards, return false
+   leaving COLP and ROWP unset, otherwise return true. */
+bool
+skip_glyph_rows_forwards(VW *vw, long count,
+			 long col, long row,
+			 long *colp, long *rowp)
+{
+    TX *tx = vw->vw_Tx;
+    if(TX_WRAP_LINES_P(tx))
+    {
+	long len = line_glyph_length(tx, row);
+	while(count-- > 0)
+	{
+	    col += vw->vw_MaxX - 1;
+	    if(col >= len)
+	    {
+		if(++row >= tx->tx_LogicalEnd)
+		    return FALSE;
+		col = 0;
+		len = line_glyph_length(tx, row);
+	    }
+	}
+	*colp = col;
+	*rowp = row;
+	return TRUE;
+    }
+    else
+    {
+	row += count;
+	if(row >= tx->tx_LogicalEnd)
+	    return FALSE;
+	*colp = VCOL(vw->vw_DisplayOrigin);
+	*rowp = row;
+	return TRUE;
+    }
+}
+
+/* From glyph COL in buffer line ROW, move COUNT display lines backwards,
+   storing the resulting position in *COLP and *ENDP. If there aren't
+   enough lines in the buffer to move COUNT rows backwards, return false
+   leaving COLP and ROWP unset, otherwise return true. */
+bool
+skip_glyph_rows_backwards(VW *vw, long count,
+			  long col, long row,
+			  long *colp, long *rowp)
+{
+    TX *tx = vw->vw_Tx;
+    if(TX_WRAP_LINES_P(tx))
+    {
+	while(count-- > 0)
+	{
+	    col -= vw->vw_MaxX - 1;
+	    if(col <= 0)
+	    {
+		if(--row < tx->tx_LogicalStart)
+		    return FALSE;
+		col = line_glyph_length(tx, row);
+	    }
+	}
+	*colp = ROUND_DOWN_INT(col, vw->vw_MaxX - 1);
+	*rowp = row;
+	return TRUE;
+    }
+    else
+    {
+	row -= count;
+	if(row < tx->tx_LogicalStart)
+	    return FALSE;
+	*colp = VCOL(vw->vw_DisplayOrigin);
+	*rowp = row;
+	return TRUE;
+    }
+}
+
+/* Do the necessary checks to ensure that the cursor is within the
+   visible region of the buffer (in this view)
+   TODO: set VWFF_AT_BOTTOM when appropriate. */
+static void
+recenter_cursor(VW *vw)
+{
+    TX *tx = vw->vw_Tx;
+    long start_col = VCOL(vw->vw_DisplayOrigin);
+    long start_row = VROW(vw->vw_DisplayOrigin);
+
+    /* First check that the cursor is within the current
+       restriction, if not move the cursor until it is. */
+    if(VROW(vw->vw_CursorPos) < tx->tx_LogicalStart)
+	vw->vw_CursorPos = cmd_restriction_start(VAL(tx));
+    if(VROW(vw->vw_CursorPos) >= tx->tx_LogicalEnd)
+	vw->vw_CursorPos = cmd_restriction_end(VAL(tx));
+    
+    /* Check how cursor is in relation to the viewable region of the
+       buffer. Change the viewable region if necessary. */
+    if(!TX_WRAP_LINES_P(tx))
+    {
+	/* First for the easy case when lines are never wrapped. */
+
+	long offset = get_cursor_column(vw);
+	long delta;
+
+	/* Move horizontally if necessary */
+	while((offset - start_col) >= vw->vw_MaxX)
+	    start_col += vw->vw_XStep;
+	while(offset < start_col)
+	{
+	    start_col -= vw->vw_XStep;
+	    if(start_col < 0)
+		start_col = 0;
+	}
+
+	/* Move vertically if necessary */
+	delta = VROW(vw->vw_CursorPos) - start_row;
+	if(delta < 0)
+	{
+	    if(-delta > vw->vw_YStep)
+		start_row = VROW(vw->vw_CursorPos) - (vw->vw_MaxY / 2);
+	    else
+		start_row -= vw->vw_YStep;
+	}
+	else if(delta >= vw->vw_MaxY)
+	{
+	    if((vw->vw_MaxY + vw->vw_YStep) <= delta)
+		start_row = VROW(vw->vw_CursorPos) - (vw->vw_MaxY / 2);
+	    else
+		start_row += vw->vw_YStep;
+	}
+
+	/* Finally do some sanity checks: ensure that nothing outside
+	   the restriction is visible, and that there's no wasted space
+	   when displaying the bottom of the restriction. */
+	if(start_row < tx->tx_LogicalStart)
+	    start_row = tx->tx_LogicalStart;
+	/* Check for a `gap' at the bottom of the display. This may
+	   seem to act a bit strangely---if the last screen of the
+	   buffer is being displayed, and lines are deleted from this
+	   screen, new data is scrolled into the _top_ of the screen,
+	   the bottom part _isn't_ scrolled up. This makes sense I
+	   think, since we want to keep as much of the window covered
+	   with buffer-contents as possible. */
+	else if(start_row >= tx->tx_LogicalEnd
+		|| (tx->tx_LogicalEnd - start_row) < vw->vw_MaxY)
+	    start_row = MAX(tx->tx_LogicalEnd - vw->vw_MaxY,
+			    tx->tx_LogicalStart);
+
+	if(start_row >= tx->tx_LogicalEnd - vw->vw_MaxY)
+	    vw->vw_Flags |= VWFF_AT_BOTTOM;
+	else
+	    vw->vw_Flags &= ~VWFF_AT_BOTTOM;
+    }
+    else
+    {
+	/* The more difficult case when lines may be wrapped. */
+
+	long offset = get_cursor_column(vw);
+
+	if(start_row < tx->tx_LogicalStart)
+	    start_row = tx->tx_LogicalStart;
+	else if(start_row >= tx->tx_LogicalEnd)
+	    start_row = tx->tx_LogicalEnd - 1;
+
+	/* First, is the cursor past the end of the last row of glyphs
+	   that will be displayed for the line it's on? */
+	{
+	    LINE *line = tx->tx_Lines + VROW(vw->vw_CursorPos);
+	    long last_col = line_glyph_length(tx, VROW(vw->vw_CursorPos));
+	    if(last_col == 0)
+		/* Always display a line, even if there's no glyphs at all */
+		last_col = vw->vw_MaxX - 1;
+	    else
+		last_col = ROUND_UP_INT(last_col, vw->vw_MaxX - 1);
+	    if(offset > last_col)
+	    {
+		vw->vw_CursorPos = make_pos(line->ln_Strlen - 1,
+					    VROW(vw->vw_CursorPos));
+		offset = get_cursor_column(vw);
+	    }
+	}
+
+	/* Check the easiest case first; is the cursor before the start
+	   of the viewable region? */
+	if(VROW(vw->vw_CursorPos) < start_row
+	   || (VROW(vw->vw_CursorPos) == start_row && offset < start_col))
+	{
+	    /* Yes. Try scrolling up vw_YStep lines */
+	    if(!skip_glyph_rows_backwards(vw, vw->vw_YStep,
+					 start_col, start_row,
+					 &start_col, &start_row))
+	    {
+		start_col = 0; start_row = tx->tx_LogicalStart;
+	    }
+	    else if(VROW(vw->vw_CursorPos) < start_row
+		    || (VROW(vw->vw_CursorPos) == start_row
+		        && offset < start_col))
+	    {
+		/* The scroll-step is too small. We need to recenter on
+		   the cursor position. */
+		if(!skip_glyph_rows_backwards(vw, vw->vw_MaxY / 2,
+					      VCOL(vw->vw_CursorPos),
+					      VROW(vw->vw_CursorPos),
+					      &start_col, &start_row))
+		{
+		    start_col = 0; start_row = tx->tx_LogicalStart;
+		}
+	    }
+	}
+	/* Check if the cursor is beyond the last visible line in the view. */
+	else
+	{
+	    /* Find the position of the start of the glyph
+	       row following the end of the view. */
+	    long next_line_col, next_line_row;
+	    if(skip_glyph_rows_forwards(vw, vw->vw_MaxY,
+					start_col, start_row,
+					&next_line_col, &next_line_row)
+	       && (VROW(vw->vw_CursorPos) > next_line_row
+		   || (VROW(vw->vw_CursorPos) == next_line_row
+		       && offset >= next_line_col)))
+	    {
+		/* Yes, the cursor's past the end of the screen.
+		   Try scrolling vw_YStep lines forwards. */
+		if(skip_glyph_rows_forwards(vw, vw->vw_YStep,
+					    next_line_col, next_line_row,
+					    &next_line_col, &next_line_row)
+		   && (VROW(vw->vw_CursorPos) > next_line_row
+		       || (VROW(vw->vw_CursorPos) == next_line_row
+			   && offset >= next_line_col)))
+		{
+		    /* The scroll step is too small. recenter */
+		    if(!skip_glyph_rows_backwards(vw, vw->vw_MaxY / 2,
+						  VCOL(vw->vw_CursorPos),
+						  VROW(vw->vw_CursorPos),
+						  &start_col, &start_row))
+		    {
+			start_col = 0; start_row = tx->tx_LogicalStart;
+		    }
+		}
+		else
+		{
+		    /* This is ok, but we need to find the new
+		       start of the display. */
+		    skip_glyph_rows_forwards(vw, vw->vw_YStep,
+					     start_col, start_row,
+					     &start_col, &start_row);
+		}
+	    }
+	}
+
+	if(start_row < tx->tx_LogicalStart)
+	    start_row = tx->tx_LogicalStart;
+	else if(start_row >= tx->tx_LogicalEnd)
+	    start_row = tx->tx_LogicalEnd - 1;
+
+	vw->vw_Flags &= ~VWFF_AT_BOTTOM;
+	if(start_row + vw->vw_MaxY >= tx->tx_LogicalEnd)
+	{
+	    /* There's the possibility of a gap at the bottom of
+	       the view. If so, supress it. */
+	    long row = tx->tx_LogicalEnd - 1;
+	    long col = tx->tx_Lines[row].ln_Strlen - 1;
+	    if(skip_glyph_rows_backwards(vw, vw->vw_MaxY - 1,
+					 col, row, &col, &row))
+	    {
+		if(start_row > row
+		   || (start_row == row && start_col >= col))
+		{
+		    /* The proposed origin would leave a gap. Change it */
+		    start_col = col;
+		    start_row = row;
+		    vw->vw_Flags |= VWFF_AT_BOTTOM;
+		}
+	    }
+	    else
+	    {
+		/* Since we can't skip one screen backwards, we must be
+		   at the start of the buffer. Make this the origin */
+		start_col = 0;
+		start_row = tx->tx_LogicalStart;
+		vw->vw_Flags |= VWFF_AT_BOTTOM;
+	    }
+	}
+    }
+    if(start_col != VCOL(vw->vw_DisplayOrigin)
+       || start_row != VROW(vw->vw_DisplayOrigin))
+	vw->vw_DisplayOrigin = make_pos(start_col, start_row);
+}
+
+
 /* Utility functions */
 
-/* Returns the number of glyphs needed to draw the string SRC.	*/
-long
-string_glyph_length(TX *tx, const u_char *src, long srcLen)
+/* Returns the number of glyphs needed to draw the string SRC.
+   TODO: this function is called a lot, should really cache its results */
+static inline long
+uncached_string_glyph_length(TX *tx, const u_char *src, long srcLen)
 {
     glyph_widths_t *width_table = &VGLYPHTAB(tx->tx_GlyphTable)->gt_Widths;
     register long w;
     for(w = 0; srcLen-- > 0;)
     {
 	register int w1 = (*width_table)[*src++];
-	if(w1 == 0)
-	    w += tx->tx_TabSize - (w % tx->tx_TabSize);
-	else
+	if(w1 != 0)
 	    w += w1;
+	else
+	    w += tx->tx_TabSize - (w % tx->tx_TabSize);
     }
     return(w);
+}
+
+/* Return the total number of glyphs needed to display the whole of line
+   LINE in buffer TX. This caches the results from recently examined
+   lines (the cache handling is copied from my libsim.a cache simulator) */
+static long
+line_glyph_length(TX *tx, long line)
+{
+    u_long set = GL_MAP_LINE(line);
+    gl_cache_entry_t *set_data = GL_GET_SET(&gl_cache, set);
+    int i, lru_set = 0;
+    u_long lru_time = ~0;
+    for(i = 0; i < GL_CACHE_ASSOC; i++)
+    {
+	if(set_data[i].line == line
+	   && set_data[i].tx == tx)
+	{
+	    /* Found the entry. Is it still valid? */
+	    if(set_data[i].changes != tx->tx_Changes)
+	    {
+		/* No. Recalculate */
+		LINE *l = tx->tx_Lines + line;
+		set_data[i].glyphs
+		    = uncached_string_glyph_length(tx, l->ln_Line,
+						   l->ln_Strlen - 1);
+		set_data[i].changes = tx->tx_Changes;
+		gl_cache.invalid_hits++;
+	    }
+	    else
+		gl_cache.valid_hits++;
+	    set_data[i].lru_clock = ++gl_cache.lru_clock;
+	    return set_data[i].glyphs;
+	}
+	if(set_data[i].lru_clock < lru_time)
+	{
+	    lru_set = i;
+	    lru_time = set_data[i].lru_clock;
+	}
+    }
+    /* Not in cache. Overwrite least-recently used entry */
+    set_data = set_data + lru_set;
+    set_data->line = line;
+    set_data->tx = tx;
+    set_data->glyphs
+        = uncached_string_glyph_length(tx, tx->tx_Lines[line].ln_Line,
+				       tx->tx_Lines[line].ln_Strlen - 1);
+    set_data->changes = tx->tx_Changes;
+    set_data->lru_clock = ++gl_cache.lru_clock;
+    gl_cache.misses++;
+    return set_data->glyphs;
 }
 
 /* Return the glyph index of (COL,LINE) in TX.	*/
@@ -401,11 +855,12 @@ glyph_col(TX *tx, long col, long linenum)
     LINE *line = tx->tx_Lines + linenum;
     if(col >= line->ln_Strlen)
     {
-	return((string_glyph_length(tx, line->ln_Line, line->ln_Strlen - 1)
-		+ (col - (line->ln_Strlen - 1))));
+	return (line_glyph_length(tx, linenum)
+		+ (col - (line->ln_Strlen - 1)));
     }
     else
-	return(string_glyph_length(tx, line->ln_Line, col));
+	/* TODO: make this work with the cache */
+	return uncached_string_glyph_length(tx, line->ln_Line, col);
 }
 
 /* Find how many chars to glyph position col. */
@@ -431,8 +886,9 @@ char_col(TX *tx, long col, long linenum)
 	return(src - line->ln_Line);
 }
 
-void
-calc_cursor_offset(VW *vw)
+/* Return the actual column on the screen that the cursor appears in. */
+long
+get_cursor_column(VW *vw)
 {
     TX *tx = vw->vw_Tx;
     if(!((tx == vw->vw_LastCursorTx)
@@ -446,23 +902,20 @@ calc_cursor_offset(VW *vw)
 	vw->vw_LastCursorChanges = tx->tx_Changes;
 	vw->vw_LastCursorPos = vw->vw_CursorPos;
     }
+    return vw->vw_LastCursorOffset;
 }
 
-/* Sets the vw_CursorPos.pos_Col so that the cursor's glyph pos is the same
-   as vw_LastCursorOffset.  */
+/* Sets the vw_CursorPos.pos_Col so that the cursor appears in line ROW,
+   as near as possible to vw_LastCursorOffset horizontally.  */
 void
-adjust_cursor_to_glyph(VW *vw)
+set_cursor_vertically(VW *vw, long row)
 {
-    vw->vw_CursorPos = make_pos(char_col(vw->vw_Tx, vw->vw_LastCursorOffset,
-					 VROW(vw->vw_CursorPos)),
-				VROW(vw->vw_CursorPos));
+    long col = char_col(vw->vw_Tx, vw->vw_LastCursorOffset, row);
+    vw->vw_CursorPos = make_pos(col, row);
 }
 
-u_char *
-char_glyphs(TX *tx, u_char ch)
-{
-    return(&VGLYPHTAB(tx->tx_GlyphTable)->gt_Glyphs[ch][0]);
-}
+
+/* LISP interface */
 
 _PR VALUE cmd_glyph_table_p(VALUE arg);
 DEFUN("glyph-table-p", cmd_glyph_table_p, subr_glyph_table_p, (VALUE arg), V_Subr1, DOC_glyph_table_p) /*
@@ -510,6 +963,105 @@ position.
 	return make_pos(char_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
     else
 	return LISP_NULL;
+}
+
+_PR VALUE cmd_display_to_char_pos(VALUE pos, VALUE vw);
+DEFUN("display-to-char-pos", cmd_display_to_char_pos,
+      subr_display_to_char_pos, (VALUE pos, VALUE vw),
+      V_Subr2, DOC_display_to_char_pos) /*
+::doc:display_to_char_pos::
+display-to-char-pos POSITION [VIEW]
+
+Return the position of the character displayed in VIEW (or the current view)
+at screen coordinate POSITION (relative to the upper-left glyph in VIEW).
+Returns nil if no such character exists (i.e. POSITION is past the end of
+the buffer).
+::doc:: */
+{
+    TX *tx;
+    long col, row;
+    DECLARE1(pos, POSP);
+    if(!VIEWP(vw))
+	vw = VAL(curr_vw);
+    tx = VVIEW(vw)->vw_Tx;
+    col = VCOL(pos);
+    row = VROW(pos);
+    if(!(col >= 0 && col < VVIEW(vw)->vw_MaxX
+	 && row >= 0 && row < VVIEW(vw)->vw_MaxY))
+	return signal_arg_error(pos, 1);
+
+    if(skip_glyph_rows_forwards(VVIEW(vw), row,
+				VCOL(VVIEW(vw)->vw_DisplayOrigin),
+				VROW(VVIEW(vw)->vw_DisplayOrigin),
+				&col, &row))
+    {
+	/* Got the character at the start of the screen row. Now
+	   find the exact character in this row. */
+	col = char_col(tx, col + VCOL(pos), row);
+	return make_pos(col, row);
+    }
+    return sym_nil;
+}
+
+_PR VALUE cmd_char_to_display_pos(VALUE pos, VALUE vw);
+DEFUN("char-to-display-pos", cmd_char_to_display_pos, subr_char_to_display_pos,
+      (VALUE pos, VALUE vw), V_Subr2, DOC_char_to_display_pos) /*
+::doc:char_to_display_pos::
+char-to-display-pos POSITION [VIEW]
+
+Return the screen coordinates, relative to the upper left corner of VIEW,
+that the character at POSITION in VIEW is displayed. If this character is
+not currently being displayed, return nil.
+::end:: */
+{
+    TX *tx;
+    long gcol, grow;
+
+    DECLARE1(pos, POSP);
+    if(!VIEWP(vw))
+	vw = VAL(curr_vw);
+    tx = VVIEW(vw)->vw_Tx;
+    if(!check_line(tx, pos))
+	return LISP_NULL;
+    if(POS_LESS_P(pos, VVIEW(vw)->vw_DisplayOrigin))
+	return sym_nil;
+
+    if(TX_WRAP_LINES_P(tx))
+    {
+	long row = VROW(VVIEW(vw)->vw_DisplayOrigin);
+	grow = 0;
+	while(row < VROW(pos) && grow < VVIEW(vw)->vw_MaxY)
+	{
+	    long len = line_glyph_length(tx, row);
+	    if(len != 0)
+	    {
+		len = ROUND_UP_INT(len, VVIEW(vw)->vw_MaxX - 1);
+		grow += len / (VVIEW(vw)->vw_MaxX - 1);
+	    }
+	    else
+		grow++;
+	    row++;
+	}
+	if(grow >= VVIEW(vw)->vw_MaxY)
+	    return sym_nil;
+	gcol = glyph_col(tx, VCOL(pos), VROW(pos));
+	while(gcol >= VVIEW(vw)->vw_MaxX - 1)
+	{
+	    gcol -= VVIEW(vw)->vw_MaxX - 1;
+	    grow++;
+	}
+    }
+    else
+    {
+	grow = VROW(pos) - VROW(VVIEW(vw)->vw_DisplayOrigin);
+	if(grow < 0 || grow >= VVIEW(vw)->vw_MaxY)
+	    return sym_nil;
+	gcol = (glyph_col(tx, VCOL(pos), VROW(pos))
+		- VCOL(VVIEW(vw)->vw_DisplayOrigin));
+	if(gcol < 0 || gcol >= VVIEW(vw)->vw_MaxX)
+	    return sym_nil;
+    }
+    return make_pos(gcol, grow);
 }
 
 _PR VALUE cmd_default_glyph_table(void);
@@ -667,8 +1219,10 @@ void
 glyphs_init(void)
 {
     ADD_SUBR(subr_glyph_table_p);
-    ADD_SUBR(subr_glyph_to_char_pos);
     ADD_SUBR(subr_char_to_glyph_pos);
+    ADD_SUBR(subr_glyph_to_char_pos);
+    ADD_SUBR(subr_display_to_char_pos);
+    ADD_SUBR(subr_char_to_display_pos);
     ADD_SUBR(subr_default_glyph_table);
     ADD_SUBR(subr_make_glyph_table);
     ADD_SUBR(subr_set_glyph);
