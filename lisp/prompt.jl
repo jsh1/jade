@@ -278,7 +278,8 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 		 (mapcar 'buffer-name buffer-list)))
 
 (defun prompt-validate-buffer (name)
-  (and (get-buffer name) t))
+  (and (or (equal name "")
+	   (get-buffer name)) t))
 
 (defvar prompt-file-exclude '"\\.(o|jlc|x)$|~$|^#.*#$"
   "A regexp, if it matches the file being considered for completion, the file
