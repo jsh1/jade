@@ -456,7 +456,12 @@ symbol must agree with it."
   (prompt-for-symbol (or title "Enter name of function:")
 		     (lambda (x)
 		       (and (boundp x)
-			    (functionp (symbol-value x)))) start))
+			    (let
+				((value (symbol-value x)))
+			      (or (functionp value)
+				  (macrop value)
+				  (special-form-p value)))))
+		     start))
 
 ;;;###autoload
 (defun prompt-for-variable (&optional title start)
