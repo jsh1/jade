@@ -100,6 +100,17 @@ inline) to be saved or manipulated."
        (mime-decode-mark-inlines t))
     (rm-display-current-message folder t)))
 
+(defun rm-mime-delete-part (extent)
+  (interactive (list (mime-current-part)))
+  (when extent
+    (let*
+	((folder (rm-current-folder))
+	 (msg (rm-get-folder-field folder rm-folder-current-msg))
+	 (inhibit-read-only t))
+      (mime-delete-part extent)
+      (rm-reparse-message msg)
+      (rm-display-current-message folder t))))
+    
 ;; Extra bindings in read-mail folders
 (bind-keys rm-keymap
   "RET" 'mime-decode-part
@@ -108,6 +119,7 @@ inline) to be saved or manipulated."
   "TAB" 'mime-next-part
   "M-TAB" 'mime-previous-part
   "D" 'rm-mime-display-markers
+  "C-d" 'rm-mime-delete-part
   "w" 'html-display-map)
 
 (lazy-bind-keys rm-summary rm-summary-keymap
