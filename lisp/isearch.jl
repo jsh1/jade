@@ -36,7 +36,7 @@ searching.")
 
 (defun isearch-find-next-regexp (pos)
   (setq isearch-re-error nil)
-  (error-protect
+  (condition-case nil
       (re-search-forward (car (car isearch-trace)) pos nil case-fold-search)
     (regexp-error
       (setq isearch-re-error t)
@@ -44,7 +44,7 @@ searching.")
 
 (defun isearch-find-prev-regexp (pos)
   (setq isearch-re-error nil)
-  (error-protect
+  (condition-case nil
       (re-search-backward (car (car isearch-trace)) pos nil case-fold-search)
     (regexp-error
       (setq isearch-re-error t)
@@ -52,7 +52,7 @@ searching.")
 
 (defun isearch-looking-at ()
   (setq isearch-re-error nil)
-  (error-protect
+  (condition-case nil
       (looking-at (car (car isearch-trace)) nil nil case-fold-search)
     (regexp-error
       (setq isearch-re-error t)

@@ -653,7 +653,7 @@ Major mode for viewing mail folders. Commands include:\n
 	      (rm-enforce-msg-separator)
 	      (setq start (cursor-pos))
 	      (insert-file tofile)
-	      (error-protect
+	      (condition-case nil
 		  (progn
 		    ;; Try to save the folder..
 		    (save-file)

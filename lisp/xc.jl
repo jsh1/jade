@@ -45,7 +45,7 @@ contain.")
   (let*
       (stmt-pos
        back-1-pos)
-    (error-protect
+    (condition-case nil
 	(while (setq pos (c-backward-exp 1 pos t))
 	  (cond
 	   ((null back-1-pos)

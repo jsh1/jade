@@ -219,7 +219,7 @@ in the status line."
 			    (pos-line sexp-ind)))
       ;; Work back to the beginning of the containing sexp. The error-handler
       ;; catches the error that's signalled when the start is reached.
-      (error-protect
+      (condition-case nil
 	  (while (setq pos (lisp-backward-sexp 1 pos))
 	    (when (<= form-pos pos)
 	      (error "Infinite loop"))
@@ -292,7 +292,7 @@ in the status line."
 (put 'prog1 'lisp-indent 1)
 (put 'prog2 'lisp-indent 2)
 (put 'unwind-protect 'lisp-indent 1)
-(put 'error-protect 'lisp-indent 1)
+(put 'condition-case 'lisp-indent 2)
 (put 'with-buffer 'lisp-indent 1)
 (put 'with-window 'lisp-indent 1)
 (put 'with-view 'lisp-indent 1)
