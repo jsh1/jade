@@ -169,8 +169,8 @@ buffer_sweep(void)
 	{
 	    if(tx->tx_MarkChain != NULL)
 	    {
-		/* mark_value has ensured that tx_CanonicalFileName is
-		   kept even if the buffer isn't */
+		/* mark_value has ensured that tx_CanonicalFileName
+		   and tx_FileName are kept even if the buffer isn't */
 		make_marks_non_resident(tx);
 	    }
 	    kill_line_list(tx);
@@ -867,30 +867,6 @@ make_marks_resident(VALUE newtx)
     }
 }
 
-/* Put all marks pointing to buffer OLDTX onto the list of non-resident
-   marks */
-static void
-make_marks_non_resident(TX *oldtx)
-{
-    VALUE canon_file = (STRINGP(oldtx->tx_CanonicalFileName)
-			? oldtx->tx_CanonicalFileName
-			: null_string());
-    VALUE file = (STRINGP(oldtx->tx_FileName)
-		  ? oldtx->tx_FileName
-		  : null_string());
-    Lisp_Mark *nxt, *mk = oldtx->tx_MarkChain;
-    oldtx->tx_MarkChain = NULL;
-    while(mk != NULL)
-    {
-	nxt = mk->next;
-	mk->file = file;
-	mk->canon_file = canon_file;
-	mk->next = non_resident_mark_chain;
-	non_resident_mark_chain = mk;
-	mk = nxt;
-    }
-}
-
 /* Takes MK off the buffer mark chain that it's on (or the list of non-
    resident marks). */
 static void
@@ -912,6 +888,42 @@ unchain_mark(Lisp_Mark *mk)
 	    *headp = this;
 	}
 	this = tmp;
+    }
+}
+
+/* Put all marks pointing to buffer OLDTX onto the list of non-resident
+   marks.
+
+   **NOTE** this function is called from the buffer gc sweep function,
+   and thus OLDTX may be unused; any VALUE fields within it used by this
+   function _must_ be explicitly marked by mark_value in the V_Mark case. */
+static void
+make_marks_non_resident(TX *oldtx)
+{
+    VALUE canon_file = (STRINGP(oldtx->tx_CanonicalFileName)
+			? oldtx->tx_CanonicalFileName
+			: sym_nil);
+    VALUE file = (STRINGP(oldtx->tx_FileName)
+		  ? oldtx->tx_FileName
+		  : canon_file);
+    Lisp_Mark *nxt, *mk = oldtx->tx_MarkChain;
+    oldtx->tx_MarkChain = NULL;
+    while(mk != NULL)
+    {
+	nxt = mk->next;
+	if (NILP(canon_file) || NILP(file))
+	{
+	    /* No file to associate with, lose the mark. */
+	    unchain_mark(mk);
+	}
+	else
+	{
+	    mk->next = non_resident_mark_chain;
+	    non_resident_mark_chain = mk;
+	}
+	mk->file = file;
+	mk->canon_file = canon_file;
+	mk = nxt;
     }
 }
 
