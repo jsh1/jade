@@ -257,15 +257,21 @@ isn't displayed in the summary."
   (let
       ((ops (summary-get-pending-ops item)))
     (when ops
-      (setq summary-pending-ops (delq ops summary-pending-ops))
-      (summary-maybe-dispatch 'after-marking item)
+      (setq summary-pending-ops (delq ops summary-pending-ops)))
+    (summary-maybe-dispatch 'after-marking item)
+    (when ops
       (summary-update-item item))))
 
 (defun summary-unmark-all ()
   "Discard all pending operations."
   (interactive)
-  (setq summary-pending-ops nil)
-  (summary-update))
+  (let
+      ((old-ops summary-pending-ops))
+    (setq summary-pending-ops nil)
+    (when (summary-function-exists-p 'after-marking)
+      (mapc #'(lambda (cell)
+		(summary-dispatch 'after-marking (car cell))) old-ops))
+    (summary-update)))
 
 (defun summary-update ()
   "Redraw the menu, after rebuilding the list of items. Loses the current
