@@ -26,6 +26,10 @@
 (require 'ring)
 (provide 'rcs)
 
+(defvar rcs-initial-comment nil
+  "When non-nil ask for a string describing the file being registered,
+when initialising RCS files.")
+
 
 ;; Initialisation
 
@@ -39,8 +43,6 @@
 (defvar rcs-descr-ring (make-ring 16)
   "Ring buffer containing RCS history entries.")
 
-(defvar rcs-keymap (make-keylist)
-  "Keymap containing RCS commands.")
 (defvar rcs-callback-ctrl-c-keymap (make-keylist)
   "Keymap for Ctrl-C when entering text for a callback.")
 (defvar rcs-callback-keymap (make-keylist)
@@ -53,18 +55,11 @@
 
 (unless (boundp 'rcs-initialised)
   ;; Only do this stuff once
-  (bind-keys rcs-keymap
-    "i" 'rcs-register-buffer
-    "l" 'rcs-display-log
-    "u" 'rcs-revert-buffer
-    "=" 'rcs-display-diffs)
   (bind-keys rcs-callback-ctrl-c-keymap
     "Ctrl-c" 'rcs-call-callback)
   (bind-keys rcs-callback-keymap
     "Meta-p" 'rcs-down-history
     "Meta-n" 'rcs-up-history)
-  (bind-keys ctrl-x-keymap
-    "v" '(setq next-keymap-path '(rcs-keymap)))
   (setq rcs-initialised t))
 
 
@@ -74,10 +69,13 @@
 ;; options OPTIONS. If REREAD-BUFFER-P is t the current buffer will
 ;; be reinitialised from FILE after the command completes.
 (defun rcs-command (command file-name options &optional
-		    reread-buffer-p ignore-errors)
+		    reread-buffer-p ignore-errors output-stream)
   (format t "Running RCS command: %s %s %s..." command file-name options)
   (clear-buffer rcs-output-buffer)
-  (let ((arg-list (append options (list file-name))))
+  (let
+      ((arg-list (append options (list file-name))))
+    (set-process-output-stream rcs-process
+			       (or output-stream rcs-output-buffer))
     (unless (or (zerop (apply 'call-process rcs-process nil command arg-list))
 		 ignore-errors)
       (signal 'file-error (list "Can't run RCS command"))))
@@ -207,37 +205,83 @@ description entered. COUNT may be negative."
 
 ;; User interface
 
-(defun rcs-register-buffer (&optional buffer with-description-p)
-  "Register the file in BUFFER with RCS. If WITH-DESCRIPTION-P is t a
-piece of descriptive text desribing the file will be prompted for first."
-  (interactive)
+;;;###autoload
+(defun rcs-register-buffer (&optional buffer revision)
+  "Register the file in BUFFER with RCS. If the variable rcs-initial-comment
+is non-nil a description of the file will be prompted for. REVISION is
+optionally the initial revision number to give the file. When called
+interactively a non-nil prefix-argument causes the initial revision to
+be prompted for."
+  (interactive (list nil (and current-prefix-arg
+			      (prompt-for-string "Initial revision:"))))
   (unless buffer (setq buffer (current-buffer)))
   (maybe-save-buffer buffer)
-  (if with-description-p
+  (if rcs-initial-comment
       (rcs-callback-with-description "description of"
 				     (buffer-file-name buffer)
-				     "ci" '("-u") "-t-" t)
-    (rcs-command "ci" (buffer-file-name buffer) '("-u") t)))
+				     "ci" (list (concat "-u" (or revision "")))
+				     "-t-" t)
+    (rcs-command "ci" (buffer-file-name buffer)
+		 (list (concat "-u" (or revision "")) "-t-") t)))
 
-(defun rcs-check-in-buffer (&optional buffer)
-  "Checks in BUFFER, assuming that it's currently locked."
+(defun rcs-check-in-buffer (&optional buffer revision)
+  "Checks in BUFFER, assuming that it's currently locked. If REVISION is
+nil the next revision number will be used; otherwise REVISION should be
+a string naming the revision to check the file in as. If REVISION is nil
+and the current-prefix-arg non-nil a revision will be prompted for."
   (interactive)
   (unless buffer (setq buffer (current-buffer)))
+  ;; Can't use the interactive spec since this is called from
+  ;; toggle-buffer-read-only, via rcs-toggle-read-only
+  (when (and (not revision) current-prefix-arg)
+    (setq revision (prompt-for-string "Revision to lock:")))
   (rcs-verify-buffer buffer)
   (maybe-save-buffer buffer)
   (rcs-callback-with-description "changes to"
 				 (buffer-file-name buffer)
-				 "ci" '("-u") "-m" t))
+				 "ci" (list (concat "-u" (or revision "")))
+				 "-m" t))
 
-(defun rcs-lock-buffer (&optional buffer)
-  "Checks out BUFFER locking it for modification."
+(defun rcs-lock-buffer (&optional buffer revision)
+  "Checks out BUFFER, locking it for modification. If REVISION is nil
+the current revision will be checked out; otherwise REVISION should be
+a string naming the revision to check out. If REVISION is nil and
+the current-prefix-arg non-nil a revision will be prompted for."
   (interactive)
   (unless buffer (setq buffer (current-buffer)))
+  ;; Can't use the interactive spec since this is called from
+  ;; toggle-buffer-read-only, via rcs-toggle-read-only
+  (when (and (not revision) current-prefix-arg)
+    (setq revision (prompt-for-string "Revision to lock:")))
   (rcs-verify-buffer buffer)
   (when (or (not (buffer-modified-p buffer))
 	    (y-or-n-p (concat "Buffer " (buffer-name buffer)
 			      " modified; continue")))
-    (rcs-command "co" (buffer-file-name buffer) '("-l") t)))
+    (rcs-command "co" (buffer-file-name buffer)
+		 (list (concat "-l" (or revision ""))) t)))
+
+(defun rcs-view-revision (&optional buffer revision)
+  "Display an old revision of BUFFER. REVISION is a string naming the
+revision, or nil, in which case it will be prompted for."
+  (interactive)
+  (unless buffer
+    (setq buffer (current-buffer)))
+  (unless revision
+    (setq revision (prompt-for-string "Revision to view:")))
+  (when revision
+    (let*
+	((buffer-name (concat (buffer-name buffer) ?~ revision ?~))
+	 (new-buffer (or (get-buffer buffer-name)
+			 (make-buffer buffer-name))))
+      (when (check-changes new-buffer)
+	(clear-buffer new-buffer)
+	(set-buffer-read-only new-buffer nil)
+	(rcs-command "co" (buffer-file-name buffer)
+		     (list (concat "-p" revision)) nil nil new-buffer)
+	(set-buffer-read-only new-buffer t)
+	(set-buffer-modified new-buffer nil)
+	(goto-buffer new-buffer)
+	(goto-buffer-start)))))
 
 (defun rcs-revert-buffer (&optional buffer)
   "Discards any changes made since locking BUFFER."
@@ -252,12 +296,14 @@ piece of descriptive text desribing the file will be prompted for first."
     (maybe-save-buffer buffer)
     (rcs-command "co" (buffer-file-name buffer) '("-f" "-u") t)))
 
+;;;###autoload
 (defun rcs-display-log (file-name)
   "Displays the RCS log of FILE-NAME."
   (interactive (list (buffer-file-name)))
   (rcs-command "rlog" file-name '() nil)
   (rcs-goto-buffer))
 
+;;;###autoload
 (defun rcs-display-diffs (file-name)
   "Displays the differences between the last two versions of FILE-NAME."
   (interactive (list (buffer-file-name)))
