@@ -81,8 +81,15 @@ typedef struct lisp_extent {
 
 } Lisp_Extent;
 
+/* Absorb characters inserted immediately before the extent into the extent. */
 #define EXTFF_OPEN_START	(1 << (CELL8_TYPE_BITS + 0))
+
+/* Absorb characters inserted immediately after the extent into the extent. */
 #define EXTFF_OPEN_END		(1 << (CELL8_TYPE_BITS + 1))
+
+/* If setting a non-permanent-local buffer-local symbol in this extent,
+   set its value in _this_ extent. */
+#define EXTFF_CATCH_VARIABLES	(1 << (CELL8_TYPE_BITS + 2))
 
 #define EXTENT_CACHE_SIZE 4
 
