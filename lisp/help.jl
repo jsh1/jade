@@ -132,7 +132,8 @@ it leads to)."
 
 (defun describe-function (fun &aux doc)
   "Display the documentation of a function, macro or special-form."
-  (interactive "aDescribe function:")
+  (interactive
+   (list (prompt-for-function "Describe function:" (symbol-at-point))))
   (setq doc (documentation fun))
   (help-wrapper
    (let*
@@ -174,7 +175,8 @@ it leads to)."
    (insert "\n")))
 
 (defun describe-variable (var)
-  (interactive "vDescribe variable:")
+  (interactive
+   (list (prompt-for-variable "Describe variable:" (symbol-at-point))))
   (let
       ((doc (documentation var t))
        (old-buf (current-buffer)))
