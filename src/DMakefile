@@ -1,0 +1,109 @@
+# DMakefile for Amiga version of Jade (dmake == Matt Dillon's make)
+# Copyright (C) 1993, 1994 John Harper <john@dcs.warwick.ac.uk>
+# $Id$
+
+# Jade is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+
+# Jade is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with Jade; see the file COPYING.  If not, write to
+# the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+
+CC = dcc
+MAKE = dmake
+
+COMMON_SRCS = buffers.c commandline.c commands.c edit.c editcommands.c \
+	      editrect.c find.c glyphs.c housekeeping.c io.c keys.c lisp.c \
+	      lispcmds.c lispmach.c main.c misc.c movement.c refresh.c \
+	      render.c undo.c streams.c stringmem.c symbols.c values.c \
+	      windows.c
+
+COMMON_HDRS = jade.h edit.h lisp.h keys.h config.h stringmem.h value.h \
+	      doc-strings.h
+COMMON_OBJS = $(COMMON_SRCS:"*.?":"%1.o")
+
+AMIGA_SRCS  = amiga_clipboard.c amiga_commandline.c amiga_display.c \
+	      amiga_eventloop.c amiga_keys.c amiga_memory.c amiga_menus.c \
+	      amiga_minrexx.c amiga_misc.c amiga_render.c amiga_server.c \
+	      amiga_stksize.c amiga_windows.c
+AMIGA_HDRS  = amiga_defs.h amiga_windowsys.h
+AMIGA_OBJS  = $(AMIGA_SRCS:"*.?":"%1.o")
+
+X11_SRCS    = x11_commandline.c x11_display.c x11_eventloop.c x11_keys.c \
+	      x11_misc.c x11_render.c x11_windows.c
+#X11_HDRS   = x11_defs.h x11_windowsys.h
+#X11_OBJS   = $(X11_SRCS:"*.c":"%1.o")
+
+UNIX_SRCS   = lists.c unix_misc.c unix_processes.c unix_memory.c unix_server.c
+#UNIX_HDRS  = unix_defs.h
+#UNIX_OBJS  = $(UNIX_SRCS:"*.c":"%1.o")
+
+RE_LIB = regexp/regexpsr.lib
+
+SRCS = $(COMMON_SRCS) $(AMIGA_SRCS)
+HDRS = $(COMMON_HDRS) $(AMIGA_HDRS)
+OBJS = $(COMMON_OBJS) $(AMIGA_OBJS)
+LIBS = $(RE_LIB)
+
+# These flags mean compile pure, fully registered args, inline libcalls.
+CFLAGS = -r -mRR -mi
+LDFLAGS = -s
+#LDFLAGS =
+
+all : jade jadeclient
+
+jade : jade_protos.h $(OBJS) $(RE_LIB)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o %(left) $(OBJS) $(LIBS)
+
+jade_protos.h : stripproto $(SRCS)
+	stripproto -o jade_protos.h $(SRCS)
+
+# Have to do this in two parts so not to overflow the AmigaDOS max command
+# line length :(
+doc-strings.h doc : makedoc
+	makedoc DOC.bare doc-strings.h $(COMMON_SRCS) $(X11_SRCS)
+	makedoc -a DOC.bare doc-strings.h $(UNIX_SRCS) $(AMIGA_SRCS)
+	copy DOC.bare /DOC
+
+stripproto makedoc : stripproto.c makedoc.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o %(left) %(right)
+
+$(OBJS) : $(SRCS)
+	$(CC) $(CFLAGS) -c -o %(left) %(right)
+
+$(RE_LIB) :
+	cd regexp
+	dmake
+	cd
+
+jadeclient : amiga_client.c amiga_server.h
+	$(CC) $(CFLAGS) $(LDFLAGS) -o %(left) amiga_client.c
+
+nobak :
+	-delete #?~
+
+clean : nobak
+	-delete #?.o jade_protos.h doc-strings.h
+
+realclean : clean
+	-delete DOC.bare makedoc stripproto config.#?
+	cd regexp
+	$(MAKE) clean
+	cd
+
+$(OBJS) 	:: $(HDRS)
+
+main.o		: revision.h
+
+misc.o		: revision.h
+
+amiga_windows.o : revision.h
+
+amiga_server.o	: amiga_server.h

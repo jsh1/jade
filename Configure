@@ -1,0 +1,19 @@
+#!/bin/sh
+# Configure -- makes the src/config.h symbolic link.
+
+if [ $# -ne 1 ]; then
+  echo "Usage: $0 CONFIG-NAME"
+  echo "       $0 -a"
+else
+  if [ $1 = -a ]; then
+    sys=`uname -s`
+  else
+    sys=$1
+  fi
+  if [ -h src/config.h ]; then
+    echo "rm -f src/config.h"
+    rm -f src/config.h
+  fi
+  echo "ln -s configs/config.h.$sys src/config.h"
+  ln -s configs/config.h.$sys src/config.h
+fi
