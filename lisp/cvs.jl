@@ -259,7 +259,8 @@ Finally, unless the cvs-command-dont-clear-output parameter is non-nil, the
 			      (and (functionp cvs-command-async)
 				   cvs-command-async)
 			      (or cvs-command-directory
-				  (with-buffer (get-buffer "*cvs*")
+				  (with-buffer (or (get-buffer "*cvs*")
+						   (current-buffer))
 				    default-directory)))))
     (message (format nil "%sing CVS: %s..."
 		     (if cvs-command-async "Start" "Call") arg-list) t)
