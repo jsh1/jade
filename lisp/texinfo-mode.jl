@@ -74,10 +74,10 @@ Special commands available are,\n
 	major-mode 'texinfo-mode
 	major-mode-kill 'texinfo-mode-kill
 	ctrl-c-keymap texinfo-ctrl-c-keymap
-	paragraph-regexp "^@node"
+	paragraph-regexp "^@node.*\n"
 	keymap-path (cons 'texinfo-keymap keymap-path))
-  (eval-hook 'text-mode-hook)
-  (eval-hook 'texinfo-mode-hook))
+  (call-hook 'text-mode-hook)
+  (call-hook 'texinfo-mode-hook))
 
 (defun texinfo-mode-kill ()
   (setq mode-name nil
