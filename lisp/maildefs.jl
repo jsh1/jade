@@ -125,8 +125,9 @@ buffer as the first substring. No other substrings may be used.")
 only have two, lower order, digits. This is picked up automatically from
 the current year, i.e. 1997 -> \"19\", 2001 -> \"20\".")
 
-(defvar mail-summary-lines 8
-  "The number of lines that the summary view of a mail folder contains.")
+(defvar mail-summary-percent 15
+  "The percentage of the window that the summary view of a mail folder should
+take up.")
 
 (defvar mail-display-summary nil
   "When non-nil a summary of the current folder is always displayed when
