@@ -224,8 +224,8 @@ Major mode for viewing mail folders. Commands include:\n
 	  ((atom-re "[a-zA-Z0-9_*+!#$~%^&={}'|-]+")
 	   (addr-re (concat atom-re "(\\." atom-re ")*@" atom-re "(\\." atom-re ")*"))
 	   (angle-addr-re (concat "<(" addr-re ")>"))
-	   (angle-name-re "[\t ]*\"?([^<\t\" ]([\t ]*[^<\t\" ])*)")
-	   (paren-name-re "[\t ]*\\(\"?([^\"]+)\"?\\)"))
+	   (angle-name-re "[\t ]*\"?([^<\t\" \n\f]([\t ]*[^<\t\" \n\f])*)")
+	   (paren-name-re "[\t ]*\\(\"?([^\n\"]+)\"?\\)"))
 	(cond
 	 ((looking-at addr-re pos)
 	  ;; straightforward "foo@bar.baz" format..
@@ -616,7 +616,7 @@ Major mode for displaying a summary of a mail folder.")
       (rm-delete-messages del-msgs))))
     
 (defun rm-summary-update-current ()
-  (if rm-current-msg
+  (if (with-buffer rm-summary-mail-buffer rm-current-msg)
       (progn
 	(summary-update-item rm-summary-current-marked)
 	(summary-update-item (with-buffer rm-summary-mail-buffer
