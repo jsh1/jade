@@ -144,7 +144,18 @@ lookup_binding(u_long code, u_long mods)
 	VALUE thispath = VCAR(kp);
 	VALUE k;
 	if(SYMBOLP(thispath))
-	    thispath = cmd_symbol_value(thispath, sym_t);
+	{
+	    VALUE tem = cmd_symbol_value(thispath, sym_t);
+	    if(CONSP(tem) && VCAR(tem) == sym_autoload)
+	    {
+		/* This symbol needs to be autoloaded */
+		thispath = load_autoload(thispath, tem, TRUE);
+		if(thispath == LISP_NULL)
+		    return LISP_NULL;
+	    }
+	    else
+		thispath = tem;
+	}
 	if(!VOIDP(thispath))
 	{
 	    if(!NILP(cmd_keymapp(thispath)))
