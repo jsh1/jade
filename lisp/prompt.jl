@@ -157,6 +157,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	    (call-hook 'before-prompt-hook)
 	    (setq result (catch 'prompt (recursive-edit)))
 	    (when (and result prompt-history
+		       (stringp result)
 		       (not (string= result ""))
 		       (or (zerop (ring-size prompt-history))
 			   (not (equal (get-from-ring prompt-history)
@@ -277,9 +278,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 		 (mapcar 'buffer-name buffer-list)))
 
 (defun prompt-validate-buffer (name)
-  (if (equal name "")
-      t
-    (get-buffer name)))
+  (and (get-buffer name) t))
 
 (defvar prompt-file-exclude '"\\.(o|jlc|x)$|~$|^#.*#$"
   "A regexp, if it matches the file being considered for completion, the file
@@ -304,7 +303,7 @@ is rejected.")
 		       files))))
 
 (defun prompt-validate-filename (name)
-  (file-exists-p name))
+  (and (file-exists-p name) t))
 
 (defun prompt-complete-directory (word)
   (setq word (expand-file-name word))
@@ -320,7 +319,7 @@ is rejected.")
 			     (directory-files path))))))
 
 (defun prompt-validate-directory (name)
-  (file-directory-p name))
+  (and (file-directory-p name) t))
 
 (defun prompt-abbreviate-filename (name)
   (let
