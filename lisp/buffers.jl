@@ -45,16 +45,11 @@ effect.")
   "Stream that `prin?' writes its output to by default")
 
 (defvar standard-input default-buffer
-  "Stream that `read' takes it's input from by default")
+  "Stream that `read' takes its input from by default")
 
 (defvar buffer-file-modtime (cons 0 0)
   "Holds the modification time of the file this buffer was loaded from")
 (make-variable-buffer-local 'buffer-file-modtime)
-
-(defvar mildly-special-buffer nil
-  "When a buffer's `special' attribute is set kill-buffer will only kill
-it totally if this variable is non-nil.")
-(make-variable-buffer-local 'mildly-special-buffer)
 
 (defvar kill-buffer-hook nil
   "Buffer-local hook called when the current buffer is killed.")
@@ -117,11 +112,14 @@ is non-nil it defines the view to display the buffer in."
     (set-current-buffer buffer)))
 
 (defun kill-buffer (buffer)
-  "Destroys BUFFER (can be an actual buffer or name of a buffer), first
-checks whether or not we're allowed to with the function `check-changes'.
-  If it can be deleted, all windows displaying this buffer are switched
-to the buffer at the head of the buffer-list, and BUFFER is removed
-from the buffer-list (if it was in it)."
+  "Remove BUFFER from the `buffer-list' variable of all views. If BUFFER
+is currently selected in a view, the next buffer in the view's `buffer-list'
+is selected.
+
+If BUFFER contains unsaved modifications to a file, confirmation by the
+user is required before anything is done.
+
+When called interactively, BUFFER is prompted for."
   (interactive "bBuffer to kill:")
   (cond
    ((bufferp buffer))
@@ -129,36 +127,53 @@ from the buffer-list (if it was in it)."
     (setq buffer (get-buffer buffer))))
   (when (and buffer (check-changes buffer))
     (call-hook 'kill-buffer-hook (list buffer))
-    (unless (and (buffer-special-p buffer)
-		 (null (with-buffer buffer mildly-special-buffer)))
-      (kill-mode buffer)
-      (destroy-buffer buffer))
-    (remove-buffer buffer)
-    t))
+    (mapc #'(lambda (w)
+	      (mapc #'(lambda (v)
+			(unless (minibuffer-view-p v)
+			  (with-view v
+			    (setq buffer-list (delq buffer buffer-list)))
+			  (when (eq (current-buffer v) buffer)
+			    (set-current-buffer (or (car buffer-list)
+						    default-buffer) v))))
+		    (window-view-list w)))
+	  window-list)))
+
+(defun add-buffer (buffer)
+  "Make sure that BUFFER is in the `buffer-list' of all open windows. It gets
+put at the end of the list if it's not already in a member."
+  (mapc #'(lambda (w)
+	    (mapc #'(lambda (v)
+		      (unless (minibuffer-view-p v)
+			(with-view v
+			  (unless (memq buffer buffer-list)
+			    (setq buffer-list (append buffer-list
+						      (cons buffer nil)))))))
+		  (window-view-list w)))
+	window-list))
 
 (defun bury-buffer (&optional buffer all-windows)
   "Puts BUFFER (or the currently displayed buffer) at the end of the current
 window's buffer-list then switch to the buffer at the head of the list.
 If ALL-WINDOWS is non-nil this is done in all windows (the same buffer
 will be buried in each window though)."
-  (interactive)
+  (interactive "\nP")
   (unless buffer
     (setq buffer (current-buffer)))
   (let
       ((list (if all-windows
 		 window-list
 	       (cons (current-window) nil))))
-    (while list
-      (with-window (car list)
-	(let
-	    ((old-list (copy-sequence buffer-list)))
-	  (setq buffer-list (nconc (delq buffer buffer-list)
-				   (cons buffer nil)))
-	  (set-current-buffer (car buffer-list))
-	  ;; It seems that buffer-list sometimes?
-	  (when (/= (length buffer-list) (length old-list))
-	    (error "buffer-list changed length!"))))
-      (setq list (cdr list)))))
+    (mapc #'(lambda (w)
+	      (mapc #'(lambda (v)
+			(unless (minibuffer-view-p v)
+			  (with-view v
+			    (setq buffer-list (nconc (delq buffer buffer-list)
+						     (cons buffer nil)))
+			    (set-current-buffer (car buffer-list)))))
+		    (if all-windows
+			(window-view-list w)
+		      (list (current-view)))))
+	  window-list)))
 
 (defun switch-to-buffer ()
   "Prompt the user for the name of a buffer, then display it."
@@ -171,27 +186,6 @@ will be buried in each window though)."
 				  nil
 				  default)))
     (goto-buffer buffer)))
-
-(defun rotate-buffers-forward ()
-  "Moves the buffer at the head of the buffer-list to be last in the list, the
-new head of the buffer-list is displayed in the current window."
-  (interactive)
-  (let
-      ((head (car buffer-list))
-	(end (nthcdr (1- (length buffer-list)) buffer-list)))
-    (rplacd end (cons head nil))
-    (setq buffer-list (cdr buffer-list))
-    (set-current-buffer (car buffer-list))))
-
-;(defun rotate-buffers-backward (&aux end)
-;  "(rotate-buffers-backward)
-;Moves the buffer at the end of the buffer-list to be first in the list, the
-;new head of the buffer-list is displayed in the current window."
-;  (setq
-;    end (nthcdr (- 2 (length buffer-list)) buffer-list)
-;    buffer-list (cons (last buffer-list) buffer-list))
-;  (rplacd end nil)
-;  (set-current-buffer (car buffer-list)))
 
 
 ;; Storing files in buffers
@@ -209,11 +203,20 @@ function is called to initialise the correct editing mode for the file.
 
 find-file always returns the buffer holding file NAME, or nil if no
 such buffer could be made."
-  (interactive "FFind file: ")
+  (interactive "FFind file:")
   (let
       ((buf (get-file-buffer name)))
-    (unless (or buf (setq buf (call-hook 'find-file-hook (list name) 'or)))
-      (when (setq buf (open-buffer (file-name-nondirectory name) t))
+    (if buf
+	;; Buffer already exists; check that it's up to date
+	(with-buffer buf
+	  (when (and (time-later-p (file-modtime name) buffer-file-modtime)
+		     (yes-or-no-p "File on disk has changed; revert buffer?"))
+	    ;; it's not, so reread it
+	    (revert-buffer)))
+      ;; No buffer exists
+      (unless (setq buf (call-hook 'find-file-hook (list name) 'or))
+	;; find-file-hook didn't; do keep going
+	(setq buf (open-buffer (file-name-nondirectory name) t))
 	(with-buffer buf
 	  (read-file-into-buffer name))))
     (unless dont-activate
@@ -391,10 +394,11 @@ the cursor position."
       (insert-file-contents name))))
 
 (defun check-changes (&optional buffer)
-  "Returns t if it is ok to kill BUFFER, or the current buffer. If unsaved
-changes have been made to it the user is asked whether they mind losing
-them."
+  "Returns t if it is ok to lose the current contents of BUFFER, or the
+current buffer. If unsaved changes have been made to it the user is asked
+whether they mind losing them."
   (or (not (buffer-modified-p buffer))
+      (string= (buffer-file-name buffer) "")
       (yes-or-no-p (format nil "OK to lose change(s) to buffer `%s'"
 			   (file-name-nondirectory (buffer-name buffer))))))
 
@@ -437,7 +441,8 @@ buffers exist on exit."
   (let
       ((unsaved-buffers (filter #'(lambda (b)
 				    (and (buffer-modified-p b)
-					 (not (buffer-special-p b))))
+					 (not (string= (buffer-file-name b)
+						       ""))))
 				buffer-list)))
     (if unsaved-buffers
 	(map-y-or-n-p #'(lambda (x)
@@ -450,7 +455,7 @@ buffers exist on exit."
   "If BUFFER has been modified, ask whether or not to save it. Returns t if
 the buffer is (now) in sync with the copy on disk."
   (or (not (buffer-modified-p buffer))
-      (and (not (buffer-special-p buffer))
+      (and (not (string= (buffer-file-name buffer) ""))
 	   (y-or-n-p (concat "Save buffer " (buffer-name buffer)))
 	   (save-file buffer))))
 
@@ -533,6 +538,7 @@ will have to agree to this)."
   "Exit the editor. Unless NO-QUERY is non-nil, ask the user whether or
 not to save any buffers with outstanding modifications. When NO-QUERY is
 numeric it's used as the exit status of the editor process.
+
 Immediately prior to exiting, calls `before-exit-hook'."
   (interactive "P")
   (when (or no-query
