@@ -39,20 +39,18 @@
   "Regular expression matching files under dired that should be marked for
 deletion by the `&' command.")
 
+(defvar dired-cursor-column 41)
+
 (defvar dired-functions '((select . dired-find-file)
 			  (delete . dired-delete)
 			  (print . dired-print)
 			  (list . dired-list)
 			  (on-quit . bury-buffer)
-			  (after-marking (lambda () (summary-next-item 1))))
+			  (after-marking (lambda () (summary-next-item 1)))
+			  (after-move . (lambda ()
+					  (goto-glyph
+					   (pos dired-cursor-column nil)))))
   "Function vector for Dired mode.")
-
-(add-hook 'find-file-hook #'(lambda (f)
-			      (when (file-directory-p f)
-				;; hack for hook conventions
-				(with-buffer (current-buffer)
-				  (dired f)
-				  (current-buffer)))))
 
 
 ;; Basics
