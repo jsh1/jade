@@ -1,3 +1,8 @@
+1999-06-04  John Harper  <john@dcs.warwick.ac.uk>
+
+	* extent.c, edit.c: don't take the address of nested functions,
+	since chrisg has made the stack non-exec at dcs
+
 1999-05-31  John Harper  <john@dcs.warwick.ac.uk>
 
 	* regjade.c: also implement the non-greedy operator variants
