@@ -848,18 +848,23 @@ key, the car the order to sort in, a positive or negative integer.")
 	    (unless (looking-at mail-message-start header-start)
 	      (error "Position isn't start of header: %s" header-start))
 	    (let
-		((end-of-hdrs (rm-message-body current)))
+		((end-of-hdrs (rm-message-body current))
+		 tem)
 	      ;; Just operate on the headers
 	      (restrict-buffer header-start end-of-hdrs)
 	      ;; First of all, move all visible headers after non-visible ones
 	      (setq visible-start (rm-coalesce-visible-headers))
 	      ;; Look for a header to highlight
-	      (when (re-search-forward mail-highlighted-headers
-				       header-start nil t)
-		(mark-block (match-start 1)
-			    (forward-char -1 (or (mail-unfold-header
-						  (match-start 1))
-						 (end-of-buffer)))))
+	      (delete-all-extents)
+	      (setq tem header-start)
+	      (while (re-search-forward mail-highlighted-headers tem nil t)
+		(when (looking-at "^[^:]+:[\t ]*" (match-start))
+		  (let
+		      ((end (match-end)))
+		    (setq tem (forward-char -1 (or (mail-unfold-header
+						    (match-end))
+						   (end-of-buffer))))
+		    (make-extent end tem (list 'face highlight-face)))))
 	      (unrestrict-buffer)
 	      (goto end-of-hdrs)
 	      (restrict-buffer visible-start (rm-message-end current))
