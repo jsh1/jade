@@ -703,7 +703,7 @@ to that between the lines specified by positions START and END.
 }
 
 _PR VALUE cmd_unrestrict_buffer(VALUE tx);
-DEFUN("unrestrict-buffer", cmd_unrestrict_buffer, subr_unrestrict_buffer, (VALUE tx), V_Subr1, DOC_unrestrict_buffer) /*
+DEFUN_INT("unrestrict-buffer", cmd_unrestrict_buffer, subr_unrestrict_buffer, (VALUE tx), V_Subr1, DOC_unrestrict_buffer, "") /*
 ::doc:unrestrict_buffer::
 unrestrict-buffer [BUFFER]
 
@@ -712,7 +712,10 @@ Remove any restriction on the parts of BUFFER that may be displayed.
 {
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
-    return make_lpos2(0, VTX(tx)->tx_LogicalStart);
+    VTX(tx)->tx_LogicalStart = 0;
+    VTX(tx)->tx_LogicalEnd = VTX(tx)->tx_NumLines;
+    VTX(tx)->tx_Flags |= TXFF_REFRESH_ALL;
+    return sym_t;
 }
 _PR VALUE cmd_restriction_start(VALUE tx);
 DEFUN("restriction-start", cmd_restriction_start, subr_restriction_start, (VALUE tx), V_Subr1, DOC_restriction_start) /*
