@@ -91,6 +91,9 @@ in TAG with.")
 ;; Base HREF
 (defvar html-decode-base nil)
 
+;; list of (anchor-name . position)
+(defvar html-decode-anchors nil)
+
 ;; Tags that don't require an end-tag
 (defvar html-decode-optional-close-tags '(p li dt dd))
 
@@ -159,6 +162,7 @@ of the document, currently only `title' and `base' keys are defined."
        (html-decode-pending-fill nil)
        (html-decode-title nil)
        (html-decode-base nil)
+       (html-decode-anchors nil)
        (html-decode-point (start-of-buffer source))
        (html-decode-source source)
        end tag)
@@ -183,7 +187,9 @@ of the document, currently only `title' and `base' keys are defined."
     (html-decode-add-pending 'line)
     (html-decode-output-pending dest)
     (nconc (and html-decode-title (list (cons 'title html-decode-title)))
-	   (and html-decode-base (list (cons 'base html-decode-base))))))
+	   (and html-decode-base (list (cons 'base html-decode-base)))
+	   (and html-decode-anchors
+		(list (cons 'anchors (nreverse html-decode-anchors)))))))
 
 
 ;; Low-level parsing
@@ -667,10 +673,16 @@ of the document, currently only `title' and `base' keys are defined."
   (html-decode-tag-with tag dest
       nil
     #'(lambda (name params dest start)
+	(when (assq 'name params)
+	  ;; an anchor, remember its name and position
+	  (setq html-decode-anchors
+		(cons (cons (cdr (assq 'name params)) start)
+		      html-decode-anchors)))
 	(with-buffer dest
 	  (make-extent start (cursor-pos)
-		       (list 'face (html-decode-elt-face 'link)
-			     'html-anchor-params params))))))
+		       (nconc (and (assq 'href params)
+				   (list 'face (html-decode-elt-face 'link)))
+			      (list 'html-anchor-params params)))))))
 
 (put 'h1 'html-decode-body-fun 'html-decode-header)
 (put 'h2 'html-decode-body-fun 'html-decode-header)
@@ -689,7 +701,7 @@ of the document, currently only `title' and `base' keys are defined."
 	(with-buffer dest
 	  (make-extent start (cursor-pos)
 		       (list 'face (html-decode-elt-face name)
-			     'html-params params)))
+			     'html-text-params params)))
 	(html-decode-add-pending 'paragraph))))
 
 (put 'em 'html-decode-body-fun 'html-decode-fragment)
@@ -715,7 +727,7 @@ of the document, currently only `title' and `base' keys are defined."
 	(with-buffer dest
 	  (make-extent start (cursor-pos)
 		       (list 'face (html-decode-elt-face name)
-			     'html-params params))))))
+			     'html-text-params params))))))
 
 (put 'pre 'html-decode-body-fun 'html-decode:pre)
 (defun html-decode:pre (tag dest)
