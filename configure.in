@@ -50,7 +50,7 @@ esac
 
 dnl make sure we can find libraries and headers under $prefix
 case "$prefix" in
-  /|/usr|/usr/local)
+  /|/usr|/usr/local|NONE)
     ;;
   *)
     LDFLAGS="${LDFLAGS} -L$prefix/lib"
@@ -84,7 +84,7 @@ windowsys=none
 AC_SUBST(windowsys)
 
 dnl Use GTK?
-use_gtk=yes
+use_gtk=no
 AC_ARG_ENABLE(gtk,
  [  --enable-gtk		  Use GTK for windowing purposes (default)
   --disable-gtk		  Use Xlib for windowing],
