@@ -243,7 +243,7 @@ send us messages.
 		    return(sym_t);
 		}
 	    }
-		signal_file_error(sym_nil);
+	    signal_file_error(sym_nil);
 	}
 	else
 	{
@@ -383,5 +383,5 @@ jade_kill(void)
 /*
 ;;;###autoload (autoload 'server-open-p "server-dl")
 ;;;###autoload (autoload 'server-open "server-dl" t)
-;;;###autoload (autoload 'server-reply "server-dl" t)
+;;;###autoload (autoload 'server-reply "server-dl")
 */
