@@ -115,13 +115,15 @@ line represents.")
 ;; non-nil it is used, otherwise summary-keymap is.
 ;;  The current end of the buffer is taken as the point from which
 ;; the menu should be displayed.
+;;  Note that a copy of the FUNCTIONS list is made, this allows easy
+;; modification by hooks, without changing anything in other buffers
 (defun summary-mode (name functions &optional keymap)
   "Summary Mode:\n
 This major mode provides a generic menu capability. It allows lists of
 items to be displayed and manipulated."
   (when major-mode-kill
     (funcall major-mode-kill))
-  (setq summary-functions functions
+  (setq summary-functions (copy-sequence functions)
 	summary-pending-ops nil
 	summary-first-line (start-of-line (end-of-buffer))
 	summary-actual-keymap (or keymap summary-keymap)
