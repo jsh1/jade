@@ -31,11 +31,11 @@
   "List of directories to search for info files if they can't be found as-is.")
 
 (defvar info-suffixes '(("" . nil)
-			(".gz" . gzip)
-			(".Z" . gzip))
-  "List of (SUFFIX . PACKAGE) combinations. When searching for an info
-file try each SUFFIX in turn. When one matches require PACKAGE to be
-loaded so that the file can be decoded (through the `read-file-hook').")
+			(".gz" . (auto-compression-mode t))
+			(".Z" . (auto-compression-mode t)))
+  "List of (SUFFIX . FORM) combinations. When searching for an info file try
+each SUFFIX in turn. When one matches evaluate FORM so that the file can be
+decoded (through the `read-file-hook').")
 
 (defvar info-keymap
   (bind-keys (make-keymap)
@@ -213,8 +213,8 @@ is split.")
 	      (when (file-exists-p (concat (car files) (car (car suffixes))))
 		(setq info-file-suffix (car (car suffixes)))
 		(when (cdr (car suffixes))
-		  ;; Load the uncompressor if necessary
-		  (require (cdr (car suffixes))))
+		  ;; Activate the uncompressor if necessary
+		  (eval (cdr (car suffixes))))
 		(throw 'foo (car files)))
 	      (setq suffixes (cdr suffixes)))
 	    (setq files (cdr files)))
