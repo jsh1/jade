@@ -78,12 +78,15 @@
     (let
 	((before nil)
 	 (after (apply 'nconc threads)))
+      (setq rm-current-msg-index 0)
       (while (not (eq (car after) rm-current-msg))
 	(setq after (prog1
 			(cdr after)
 		      (rplacd after before)
-		      (setq before after))))
-      (setq rm-before-msgs before
-	    rm-after-msgs after
+		      (setq before after))
+	      rm-current-msg-index (1+ rm-current-msg-index)))
+      (setq rm-before-msg-list before
+	    rm-after-msg-list (cdr after)
 	    rm-cached-msg-list 'invalid)
-      (rm-display-current-message))))
+      (rm-with-summary
+       (summary-update)))))
