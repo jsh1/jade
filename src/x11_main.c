@@ -438,6 +438,7 @@ x11_free_dpy_colors(struct x11_display *dpy)
 		*x = next;
 		break;
 	    }
+	    x = &((*x)->next);
 	}
     }
 }
