@@ -34,10 +34,6 @@ keybindings if there are any.")
 local mode.")
 (make-variable-buffer-local 'popup-local-menus)
 
-(defvar popup-extent-menus nil
-  "When non-nil, this variable defines the menus to display when the mouse
-is over an extent.")
-
 ;; Temporarily set to (VIEW . POS) defining where the mouse was when
 ;; the menu was popped.
 (defvar popup-menus-pos nil)
@@ -149,6 +145,7 @@ is over an extent.")
      ("List keybindings" describe-keymap)
      ("Describe key..." describe-key)
      ("Locate command..." where-is))))
+(make-variable-buffer-local 'popup-menus)
 
 (defun popup-menu ()
   (interactive)
@@ -158,19 +155,15 @@ is over an extent.")
   (let
       ((spec (or (and popup-menus-pos
 		      (posp (cdr popup-menus-pos))
-		      (condition-case nil
-			  (buffer-symbol-value 'popup-extent-menus
-					       (cdr popup-menus-pos)
-					       (current-buffer
-						(car popup-menus-pos)))
-			(void-value)))
-		 (condition-case nil
-		     (buffer-symbol-value 'popup-menus
-					  (cdr popup-menus-pos)
-					  (current-buffer
-					   (car popup-menus-pos)))
-		   (void-value
-		    (default-value 'popup-menus))))))
+		      (extent-get
+		       (get-extent (cdr popup-menus-pos)
+				   (current-buffer (car popup-menus-pos)))
+		       'popup-menus))
+		 (progn
+		   ;; when using the usual menus, don't warp the cursor
+		   ;; to the mouse position when dispatching a command
+		   (setq popup-menus-pos nil)
+		   popup-menus))))
     (when spec
       ;; This function should be defined by the window system
       (popup-menu-from-spec spec))))
