@@ -23,16 +23,12 @@
 (defvar summary-keymap (make-keylist)
   "Base keymap for modes deriving from summary.")
 (bind-keys summary-keymap
-  "n" 'summary-next-item
   "Ctrl-n" 'summary-next-item
   "Ctrl-f" 'summary-next-item
-  "Right" 'summary-next-item
   "Down" 'summary-next-item
   "TAB" 'summary-next-item
-  "p" 'summary-previous-item
   "Ctrl-p" 'summary-previous-item
   "Ctrl-b" 'summary-previous-item
-  "Left" 'summary-previous-item
   "Up" 'summary-previous-item
   "Meta-TAB" 'summary-previous-item
   "RET" 'summary-select-item
@@ -113,33 +109,46 @@ items to be displayed and manipulated."
 	(cons (list 'cdr (list 'assq func 'summary-functions))
 	      args)))
 
+;; Returns t when function FUNC exists for the current summary
+(defmacro summary-function-exists-p (func)
+  (list 'assq func 'summary-functions))
+
 (defmacro summary-get-item (index)
   "Return the item at position INDEX in the menu (from zero)."
   (list 'nth index 'summary-items))
 
 (defun summary-get-index (item)
   "Return the index in the menu at which ITEM is displayed."
-  (let
-      ((items summary-items)
-       (index 0))
-    (while (and items (not (equal (car items) item)))
-      (setq index (1+ index)
-	    items (cdr items)))
-    index))
+  (- (length summary-items) (length (memq item summary-items))))
+
+;;The following works as well. I'm not sure which will be fastest; I think
+;;the memq version -- there are byte codes for length and memq. But it
+;;does take 2N steps as opposed to M, (M = position of ITEM,
+;;N = length of list)...
+;;(let
+;;    ((items summary-items)
+;;     (index 0))
+;;  (while (and items (not (equal (car items) item)))
+;;    (setq index (1+ index)
+;;	    items (cdr items)))
+;;  index))
 
 (defun summary-current-index ()
   "Return the index of the item under the cursor."
   (let
       ((index (- (pos-line (cursor-pos)) (pos-line summary-first-line))))
-    (if (or (< index 0)
-	    (>= index (length summary-items)))
+    (if (< index 0)
 	(error "No item on this line")
       index)))
 
 (defmacro summary-current-item ()
   "Return the item under the cursor."
   '(summary-get-item (summary-current-index)))
-  
+
+(defun summary-set-current-item (item)
+  "Set ITEM to be the current one."
+  (summary-goto-item (summary-get-index item)))
+
 (defmacro summary-get-pending-ops (item)
   "Return the list of operations pending on ITEM."
   (list 'assq item 'summary-pending-ops))
@@ -175,7 +184,8 @@ items to be displayed and manipulated."
   "Redraw the menu, after rebuilding the list of items."
   (interactive)
   (let
-      ((inhibit-read-only t))
+      ((inhibit-read-only t)
+       (old-item (summary-current-item)))
     (delete-area summary-first-line (buffer-end))
     (setq summary-items (summary-dispatch 'list))
     (goto-char summary-first-line)
@@ -183,34 +193,45 @@ items to be displayed and manipulated."
 	((items summary-items))
       (while items
 	(summary-dispatch 'print (car items))
-	(setq items (cdr items)))
-      (summary-goto-item 0))))
+	(setq items (cdr items))
+	(when items
+	  (insert "\n")))
+      (summary-goto-item (if old-item
+			     (summary-get-index old-item)
+			   0)))))
 
 (defun summary-update-item (item)
   "Redraw the menu entry for ITEM."
   (let*
       ((inhibit-read-only t)
        (index (summary-get-index item)))
-    (goto-char summary-first-line)
-    (goto-next-line index)
-    (delete-area (cursor-pos) (next-line))
-    (summary-dispatch 'print item)))
+    (goto-char (pos 0 (+ (pos-line summary-first-line) index)))
+    (if (= (pos-line (cursor-pos)) (pos-line (buffer-end)))
+	(progn
+	  (delete-area (cursor-pos) (line-end))
+	  (summary-dispatch 'print item))
+      (delete-area (cursor-pos) (next-line))
+      (summary-dispatch 'print item)
+      (insert "\n"))))
 
 (defun summary-goto-item (index)
   "Move the cursor to the INDEX'th item (from zero) in the menu."
   (interactive "p")
-  (goto-char (pos 0 (+ (pos-line summary-first-line) index)))
-  (eval-hook 'summary-goto-item-hook index))
+  (unless (or (< index 0)
+	    (> index (- (pos-line (buffer-end))
+			(pos-line summary-first-line))))
+    (goto-char (pos 0 (+ (pos-line summary-first-line) index)))
+    (eval-hook 'summary-goto-item-hook index)))
 
 (defun summary-next-item (count)
   "Move the cursor to the next item."
   (interactive "p")
-  (goto-next-line count))
+  (summary-goto-item (+ (summary-current-index) count)))
 
 (defun summary-previous-item (count)
   "Move the cursor to the previous item."
   (interactive "p")
-  (goto-prev-line count))
+  (summary-goto-item (- (summary-current-index) count)))
 
 (defun summary-select-item ()
   "Select the current menu item."
