@@ -1,3 +1,9 @@
+2000-02-25  John Harper  <john@dcs.warwick.ac.uk>
+
+	* windows.jl, rm-summary.jl, rm-restrict.jl, html-decode.jl,
+	fill.jl, edit.jl, diff.jl, completion.jl, c-mode.jl: use
+	`quotient' instead of `/' where appropriate
+
 2000-02-19  John Harper  <john@dcs.warwick.ac.uk>
 
 	* find-autoloads.jl: default autoload file when prompting is in
