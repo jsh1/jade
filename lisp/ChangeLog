@@ -1,3 +1,24 @@
+2000-05-14  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gtk-prompt.jl: replace calls to gtk-main by calls to
+	recursive-edit
+
+	* help.jl: various changes to work with new lisp-doc module
+
+2000-04-30  John Harper  <john@dcs.warwick.ac.uk>
+
+	* sawmill-minor-mode.jl (sawmill-client-program): default value
+	is now `sawfish-client'
+
+	* lisp-mode.jl (do, define-record-type): more hinting
+
+	* cvs.jl (cvs-add-change-log-entries): expand the list of
+	filenames before passing them to add-change-log-entry
+
+	* add-log.jl (change-log-shorten-file): new function
+	(add-change-log-entry): print filenames relative to the
+	directory containing the log file
+
 2000-04-23  John Harper  <john@dcs.warwick.ac.uk>
 
 	* lisp-mode.jl: hint for fluid-let
