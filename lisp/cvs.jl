@@ -74,7 +74,7 @@ and hence hasn't been processed yet; or nil.")
 (defvar cvs-keymap
   (bind-keys (make-sparse-keymap summary-keymap)
     "a" 'cvs-add
-    "A" 'cvs-change-log-other-view
+    "A" 'cvs-add-change-log-entries
     "b" 'cvs-diff-backup
     "c" 'cvs-commit
     "C" 'cvs-commit-directory
@@ -676,6 +676,16 @@ files in the corresponding working directories."
 	(cvs-get-filenames-by-dir (cvs-command-get-files)))
   (cvs-update-if-summary))
 
+(defun cvs-add-change-log-entries ()
+  (interactive)
+  (let
+      ((files (cvs-get-filenames-by-dir (cvs-command-get-files))))
+    (goto-other-view)
+    (mapc #'(lambda (cell)
+	      (add-change-log-entry
+	       (expand-file-name "ChangeLog" (car cell)) (cdr cell)))
+	  files)))
+
 (defun cvs-diff-cvs ()
   "Display all differences between the currently selected CVS files and their
 corresponding revisions in the central repository."
@@ -760,3 +770,4 @@ works by deleting the local copy, before updating it from the repository."
   (interactive "@")
   (or (re-search-forward "^<<<<<<< ")
       (re-search-forward "^<<<<<<< " (start-of-buffer))))
+      
