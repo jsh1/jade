@@ -547,6 +547,7 @@ it look as though it has.
     {
 	tx->tx_ProperSaveChanges = tx->tx_Changes;
 	tx->tx_LastSaveChanges = tx->tx_Changes;
+	undo_record_unmodified(tx);
     }
     else
     {
