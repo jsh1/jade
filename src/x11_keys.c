@@ -23,15 +23,6 @@
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
 
-#ifdef SWAP_DELETE_KEYS
-# define XK_DELETE XK_BackSpace
-# define XK_BACKSPACE XK_Delete
-#else
-# define XK_DELETE XK_Delete
-# define XK_BACKSPACE XK_BackSpace
-#endif
-
-
 u_long esc_code = XK_Escape, esc_mods = EV_TYPE_KEYBD;
 
 static u_long
@@ -173,10 +164,10 @@ static struct key_def x11_codes[] = {
     { "Return",   EV_TYPE_KEYBD, XK_Return },
     { "ESC",      EV_TYPE_KEYBD, XK_Escape },
     { "Escape",   EV_TYPE_KEYBD, XK_Escape },
-    { "BS",       EV_TYPE_KEYBD, XK_BACKSPACE },
-    { "Backspace", EV_TYPE_KEYBD, XK_BACKSPACE },
-    { "DEL",      EV_TYPE_KEYBD, XK_DELETE },
-    { "Delete",   EV_TYPE_KEYBD, XK_DELETE },
+    { "BS",       EV_TYPE_KEYBD, XK_BackSpace },
+    { "Backspace", EV_TYPE_KEYBD, XK_BackSpace },
+    { "DEL",      EV_TYPE_KEYBD, XK_Delete },
+    { "Delete",   EV_TYPE_KEYBD, XK_Delete },
     { "Help",     EV_TYPE_KEYBD, XK_Help },
     { "Up",       EV_TYPE_KEYBD, XK_Up },
     { "Down",     EV_TYPE_KEYBD, XK_Down },
