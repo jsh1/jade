@@ -27,6 +27,12 @@
 (defvar cvs-program "cvs"
   "The name of the program used to execute CVS commands.")
 
+(defvar cvs-diff-command "diff -c '%s' '%s'"
+  "Format string defining shell command to run to compare a backup working
+file and the current version. Used by the `cvs-diff-backup' command. Two
+strings can be substituted (using `%s'), the original file, and the merged
+version containing the conflict markers.")
+
 (defvar cvs-option-alist '(("diff" . ("-c")))
   "Alist of (COMMAND-NAME . OPTION-LIST) defining extra command options to
 give to CVS commands.")
@@ -590,7 +596,7 @@ locally in an editor buffer, are reverted to their on-disk versions."
   (mapc #'(lambda (f)
 	    (when (memq (cvs-file-get-status f) '(updated conflict))
 	      (let
-		  ((b (get-file-buffer (cvs-file-get-filename f))))
+		  ((b (get-file-buffer (cvs-file-get-fullname f))))
 		(when b
 		  (revert-buffer b))))) cvs-file-list))
 
@@ -624,9 +630,52 @@ corresponding revisions in the central repository."
   (cvs-command nil "diff" (cvs-command-get-filenames) t)
   (cvs-show-output-buffer))
 
-(defun cvs-diff-backup ())
+(defun cvs-diff-backup ()
+  "Display the differences between the currently selected CVS file and its
+backup file (created by a merge with conflicts.)"
+  (interactive)
+  (save-some-buffers)
+  (let
+      ((working-file (cvs-command-get-filenames))
+       working-revision backup-file)
+    (unless (eq (cdr working-file) nil)
+      (message "[Ignoring all but the first file!]" t)
+      ;; Give them time to read the message..
+      (sleep-for 1))
+    (setq working-file (car working-file))
+    ;; I wanted to use cvs-get-working-revisions to find the revision
+    ;; number appended to the backup file; but it gets the merged rev.
+    ;; So do it the rude way..
+    (let*
+	((head (concat ".#" (file-name-nondirectory working-file) "."))
+	 (possibilities (filter #'(lambda (f)
+				    (string-head-eq f head))
+				(directory-files
+				 (file-name-directory working-file)))))
+      (unless possibilities
+	(error "Can't find backup file"))
+      (setq backup-file (concat (file-name-directory working-file)
+				(car possibilities))))
+    ;; Need a diff interface
+    (shell-command (format nil cvs-diff-command backup-file working-file))))
 
-(defun cvs-undo-modification ())
+(defun cvs-undo-modification ()
+  "Discard any local changes made to the currently selected CVS files. This
+works by deleting the local copy, before updating it from the repository."
+  (interactive)
+  (let
+      ((files (cvs-command-get-filenames)))
+    (map-y-or-n-p "Really lose changes to `%s'?" files 'delete-file)
+    ;; Remove any files that the user answered negatively to
+    (setq files (delete-if 'file-exists-p files))
+    (if (eq major-mode 'cvs-summary-mode)
+	(cvs-update-no-prompt)
+      (cvs-command nil "update" files))
+    (mapc #'(lambda (f)
+	      (let
+		  ((b (get-file-buffer f)))
+		(when b
+		  (revert-buffer b)))) files)))
 
 (defun cvs-next-conflict-marker ()
   "Find the next CVS conflict marker in the current buffer."
