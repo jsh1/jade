@@ -455,7 +455,7 @@ BUFFER, if such a file exists."
 is newer than NAME."
   (let
       ((recover-name (make-auto-save-name name)))
-    (> (file-modtime recover-name) (file-modtime name))))
+    (time-later-p (file-modtime recover-name) (file-modtime name))))
 
 (defun recover-file (&optional buffer)
   "Loads the auto-saved copy of the file stored in BUFFER into BUFFER
@@ -493,8 +493,8 @@ file it was loaded from."
   (goto (pos nil (1- line))))
 
 (defun file-newer-than-file-p (file1 file2)
-  "Returns t of FILE1 was modified more recently than FILE2."
-  (> (file-modtime file1) (file-modtime file2)))
+  "Returns t when FILE1 was modified more recently than FILE2."
+  (time-later-p (file-modtime file1) (file-modtime file2)))
 
 (defun save-some-buffers ()
   "Asks whether or not to save any modified buffers, returns t if no modified
