@@ -55,6 +55,7 @@
 (defvar summary-items nil
   "List of ITEMS relating the line-numbers of the menu to the item the
 line represents.")
+(make-variable-buffer-local 'summary-items)
 
 (defvar summary-pending-ops nil
   "Association list of operations to execute at a later date.
