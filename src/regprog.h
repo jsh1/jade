@@ -1,3 +1,9 @@
+/* regprog.h
+   $Id$ */
+
+#ifndef REGPROG_H
+#define REGPROG_H
+
 /*
  * Structure for regexp "program".  This is essentially a linear encoding of
  * a nondeterministic finite-state machine (aka syntax charts or "railroad
@@ -75,4 +81,4 @@
  * See regmagic.h for one further detail of program structure.
  */
 
-
+#endif /* REGPROG_H */
