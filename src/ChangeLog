@@ -1,3 +1,9 @@
+1999-12-01  John Harper  <john@dcs.warwick.ac.uk>
+
+	* extent.c (Fextent_set, Fmake_local_variable,
+	Fmake_variable_buffer_local): these now all make the variable
+	special as well as local
+
 1999-11-29  John Harper  <john@dcs.warwick.ac.uk>
 
 	* x11_windows.c, x11_misc.c, windows.c, views.c, undo.c,
