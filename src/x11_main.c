@@ -31,6 +31,7 @@
 # include <fcntl.h>
 #endif
 
+_PR struct x11_display *x11_get_display(char *display_name);
 _PR struct x11_display *x11_open_display(char *display_name);
 _PR void x11_close_display(struct x11_display *xdisplay);
 _PR void x11_close_all_displays(void);
@@ -112,6 +113,9 @@ sys_init(int argc, char **argv)
     }
     x11_argc = out_argc = argc;
     x11_argv = out_argv = argv;
+
+    if (display_name == 0)
+	display_name = getenv("DISPLAY");
 
     xdisplay = x11_open_display(display_name);
     if(xdisplay != 0)
@@ -330,51 +334,80 @@ use_options(struct x11_display *xdpy)
 /* Display management */
 
 struct x11_display *
+x11_get_display(char *display_name)
+{
+    struct x11_display *dpy = x11_display_list;
+    while (dpy != 0 && strcmp(display_name, dpy->name) != 0)
+	dpy = dpy->next;
+    return dpy;
+}
+
+struct x11_display *
 x11_open_display(char *display_name)
 {
-    bool is_first = (x11_display_list == 0);
-    Display *display = XOpenDisplay(display_name);
+    struct x11_display *xdisplay;
+    bool is_first;
+    Display *display;
+
+    if (display_name != 0)
+    {
+	xdisplay = x11_get_display(display_name);
+	if (xdisplay != 0)
+	    return xdisplay;
+    }
+
+    is_first = (x11_display_list == 0);
+    display = XOpenDisplay(display_name);
     if(display)
     {
-	struct x11_display *xdisplay = sys_alloc(sizeof(struct x11_display));
+	if (display_name == 0)
+	    display_name = DisplayString(display);
+	xdisplay = sys_alloc(sizeof(struct x11_display));
 	if(xdisplay != 0)
 	{
-	    /* Add at end of list, since some functions grab the
-	       display at the head of the list as the default. */
-	    struct x11_display **ptr = &x11_display_list;
-	    while(*ptr != 0)
-		ptr = &((*ptr)->next);
-	    *ptr = xdisplay;
-	    xdisplay->next = 0;
-
-	    xdisplay->window_count = 0;
-	    xdisplay->display = display;
-	    xdisplay->screen = DefaultScreen(display);
-
-	    sys_register_input_fd(ConnectionNumber(display),
-				  x11_handle_sync_input);
-
-	    if(is_first)
+	    xdisplay->name = sys_alloc(strlen(display_name) + 1);
+	    if (xdisplay->name != 0)
 	    {
-		get_resources(xdisplay);
-		get_options(&out_argc, &out_argv);
+		/* Add at end of list, since some functions grab the
+		   display at the head of the list as the default. */
+		struct x11_display **ptr = &x11_display_list;
+		while(*ptr != 0)
+		    ptr = &((*ptr)->next);
+		*ptr = xdisplay;
+		xdisplay->next = 0;
+
+		strcpy(xdisplay->name, display_name);
+		xdisplay->window_count = 0;
+		xdisplay->display = display;
+		xdisplay->screen = DefaultScreen(display);
+
+		sys_register_input_fd(ConnectionNumber(display),
+				      x11_handle_sync_input);
+
+		if(is_first)
+		{
+		    get_resources(xdisplay);
+		    get_options(&out_argc, &out_argv);
+		}
+
+		if(use_options(xdisplay))
+		{
+		    xdisplay->wm_delete_window
+			= XInternAtom(display, "WM_DELETE_WINDOW", False);
+		    xdisplay->jade_selection
+			= XInternAtom(display, "JADE_SELECTION", False);
+		    xdisplay->text_cursor
+			= XCreateFontCursor(display, XC_xterm);
+		    sys_recolor_cursor(mouse_cursor_face);
+		    xdisplay->meta_mod = x11_find_meta(xdisplay);
+
+		    if(x11_opt_sync)
+			XSynchronize(xdisplay->display, True);
+
+		    return xdisplay;
+		}
 	    }
-
-	    if(use_options(xdisplay))
-	    {
-		xdisplay->wm_delete_window
-		    = XInternAtom(display, "WM_DELETE_WINDOW", False);
-		xdisplay->jade_selection
-		    = XInternAtom(display, "JADE_SELECTION", False);
-		xdisplay->text_cursor = XCreateFontCursor(display, XC_xterm);
-		sys_recolor_cursor(mouse_cursor_face);
-		xdisplay->meta_mod = x11_find_meta(xdisplay);
-
-		if(x11_opt_sync)
-		    XSynchronize(xdisplay->display, True);
-
-		return xdisplay;
-	    }
+	    sys_free(xdisplay);
 	}
 	XCloseDisplay(display);
     }
