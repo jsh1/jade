@@ -27,7 +27,6 @@
 
 (require 'rep.regexp)
 (require 'rep.system)
-(require 'rep.io.streams)
 (require 'rep.io.files)
 (require 'rep.io.processes)
 
