@@ -175,7 +175,7 @@ eval_lisp_form(int sock_fd, char *form)
 	}
 	result[len] = 0;
 	if(!opt_quiet)
-	    printf("%s\n => %s\n", form, result);
+	    puts(result);
     }
     else
 	printf("%s\n---> error\n", form);
@@ -193,7 +193,12 @@ where OPTIONS are any of:\n
 	-f FUNCTION	Call Lisp function FUNCTION on the server
 	-e FORM		Evaluate Lisp form FORM on the server
 	-x DISPLAY	Connect the server to X11 display DISPLAY
-	-X		Connect to $DISPLAY\n", prog_name);
+	-X		Connect to $DISPLAY
+	-		Read lines of input until EOF, evaluating each
+			 one as it is read
+	--		Read forms from standard input until EOF, evaluating
+			 the whole lot in one go (inside a progn)\n",
+	    prog_name);
 }
 		
 int
@@ -263,6 +268,58 @@ main(int argc, char *argv[])
 		    }
 		    break;
 		}
+
+	    case 0:
+		do {
+		    if(isatty(0))
+			printf("jade%% "), fflush(stdout);
+		    if(fgets(buf, sizeof(buf), stdin) == 0)
+			result = 10;
+		    else
+			result = eval_lisp_form(sock_fd, buf);
+		} while(result == 0);
+		argc--; argv++;
+		break;
+
+	    case '-':
+		{
+		    int bufsiz = 1024, bufuse = 0;
+		    char *input_buf = malloc(bufsiz);
+		    if(input_buf == 0)
+		    {
+			perror("malloc");
+			result = 10;
+			break;
+		    }
+		    strcpy(input_buf, "(progn ");
+		    bufuse = 7;
+
+		    while(fgets(buf, sizeof(buf), stdin) != 0)
+		    {
+			int len = strlen(buf);
+			if(bufuse + len + 1 >= bufsiz)
+			{
+			    bufsiz *= 2;
+			    input_buf = realloc(buf, bufsiz);
+			    if(input_buf == 0)
+			    {
+				perror("realloc");
+				result = 10;
+				break;
+			    }
+			}
+			memcpy(input_buf + bufuse, buf, len);
+			bufuse += len;
+		    }
+		    if(input_buf != 0)
+		    {
+			input_buf[bufuse] = ')';
+			input_buf[bufuse+1] = 0;
+			result = eval_lisp_form(sock_fd, input_buf);
+			free(input_buf);
+		    }
+		}
+		break;
 
 	    case '?': case 'h':
 		usage(prog_name);
