@@ -877,7 +877,6 @@ exit occurring (as long as the original buffer wasn't killed)."
 
 (defvar mouse-select-pos nil)
 (defvar mouse-dragging nil)
-(defvar mouse-dragging-words nil)
 
 (defun mouse-pos ()
   "Return the position of the character underneath the mouse pointer in
@@ -885,12 +884,13 @@ the current view. Returns nil if no such character can be found."
   (interactive "@")
   (let
       ((pos (raw-mouse-pos)))
-    (when (and pos (setq pos (translate-pos-to-view pos)))
+    (when (and pos (setq pos (translate-pos-to-view pos)) (posp pos))
       (display-to-char-pos pos))))
 
 (defun goto-mouse ()
   "Move the cursor to the view and position under the mouse pointer, returns
-the position."
+the position, or nil if no position, or t if in the status line of the
+current view."
   (interactive)
   (let*
       ((raw-pos (raw-mouse-pos))
@@ -899,42 +899,54 @@ the position."
       (unless (eq (current-view) mouse-view)
 	(set-current-view mouse-view))
       (setq raw-pos (translate-pos-to-view raw-pos))
-      (when raw-pos
-	(goto (display-to-char-pos raw-pos))))))
+      (if (posp raw-pos)
+	  (goto (display-to-char-pos raw-pos))
+	raw-pos))))
  
 (defun mouse-select ()
   (interactive)
   (let
       ((pos (goto-mouse)))
-    (when pos
-      (setq mouse-select-pos pos
-	    mouse-dragging nil
-	    mouse-dragging-words nil)
-      (block-kill))))
+    (if (eq pos t)
+	(setq mouse-select-pos 'status
+	      mouse-dragging 'view)
+      (when pos
+	(setq mouse-select-pos pos
+	      mouse-dragging nil)
+	(block-kill)))))
 
 (defun mouse-double-select ()
   (interactive)
-  (setq mouse-dragging-words t))
+  (unless mouse-dragging
+    (setq mouse-dragging 'words)))
 
 (defun mouse-select-drag ()
-  (let
-      ((pos (mouse-pos)))
-    (when mouse-dragging-words
-      (setq pos (forward-word (if (> pos mouse-select-pos) 1 -1) pos)))
-    (goto pos)
-    (if (equal pos mouse-select-pos)
-	(block-kill)
-      (setq mouse-dragging pos)
-      (block-kill)
-      (block-start (if mouse-dragging-words
-		       (if (>= pos mouse-select-pos)
-			   (or (word-start mouse-select-pos)
-			       mouse-select-pos)
-			 (if (in-word-p mouse-select-pos)
-			     (forward-word 1 mouse-select-pos)
-			   mouse-select-pos))
-		     mouse-select-pos))
-      (block-end pos))))
+  (if (eq mouse-dragging 'view)
+      ;; Resize the current view
+      (let
+	  ((new-height (- (pos-line (raw-mouse-pos))
+			  (pos-line (view-position)))))
+	(set-view-dimensions nil nil new-height))
+    ;; Mark a block
+    (let
+	((pos (mouse-pos)))
+      (when (posp pos)
+	(when (eq mouse-dragging 'words)
+	  (setq pos (forward-word (if (> pos mouse-select-pos) 1 -1) pos)))
+	(goto pos)
+	(if (equal pos mouse-select-pos)
+	    (block-kill)
+	  (setq mouse-dragging (or mouse-dragging t))
+	  (block-kill)
+	  (block-start (if (eq mouse-dragging 'words)
+			   (if (>= pos mouse-select-pos)
+			       (or (word-start mouse-select-pos)
+				   mouse-select-pos)
+			     (if (in-word-p mouse-select-pos)
+				 (forward-word 1 mouse-select-pos)
+			       mouse-select-pos))
+			 mouse-select-pos))
+	  (block-end pos))))))
 
 (defun mouse-select-drag-block ()
   (interactive)
