@@ -121,17 +121,17 @@
       (cons pos (match-end)))
      ((= char ?\")
       ;; A string
-      (unless (re-search-forward "[^\\]\"" (forward-char 1 pos))
+      (unless (re-search-forward "[^\\]\"" pos)
 	(error "Unterminated string in list, %s" pos))
       (cons pos (match-end)))
      ((= char ?\()
       ;; A comment
-      (unless (re-search-forward "[^\\]\\)" (forward-char 1 pos))
+      (unless (re-search-forward "[^\\]\\)" pos)
 	(error "Unterminated comment in list, %s" pos))
       (cons pos (match-end)))
      ((= char ?\<)
       ;; An address spec
-      (unless (re-search-forward "[^\\]>" (forward-char 1 pos))
+      (unless (re-search-forward "[^\\]>" pos)
 	(error "Unterminated address in list, %s" pos))
       (cons pos (match-end)))
      ((= char ?,)
