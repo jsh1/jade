@@ -21,6 +21,14 @@
 (require 'maildefs)
 (provide 'mail-headers)
 
+(defvar mail-timezone-alist
+  '(("UT" . 0) ("GMT" . 0)
+    ("EST" . -300) ("EDT" . -240)
+    ("CST" . -360) ("CDT" . -300)
+    ("MST" . -420) ("MDT" . -360)
+    ("PST" . -480) ("PDT" . -420))
+  "Alist of (TIMEZONE . MINUTES-DIFFERENCE).")
+
 
 ;; General parsing. Most of these functions don't follow RFC-822 to the
 ;; letter; instead they try to act pragmatically---accepting most forms
@@ -53,11 +61,12 @@
     (cons mail-addr real-name)))
 
 ;; Parse the date header at position POINT in STRING, returns vector
-;; [DAY-ABBREV DAY MONTH-ABBREV MONTH YEAR HOUR MINUTE SECOND TZ-STRING]
+;; [DAY-ABBREV DAY MONTH-ABBREV MONTH YEAR HOUR MINUTE SECOND TZ-STRING TIME_T]
 (defun mail-parse-date (string &optional point)
   (unless point (setq point 0))
   (let
-      (day-abbrev day month-abbrev month year hour minute second timezone)
+      (day-abbrev day month-abbrev month year
+       hour minute second timezone time_t tem)
     (when (string-looking-at "[\t ]*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[\t ]*,[\t ]*"
 			     string point t)
       (setq day-abbrev (substring string (match-start 1) (match-end 1)))
@@ -88,10 +97,45 @@
 		     0
 		   (read-from-string (substring string (1+ (match-start 3))
 						(match-end 3))))
-	  timezone (substring string (match-start 4) (match-end 4))))
+	  timezone (substring string (match-start 4) (match-end 4)))
+      (if (setq tem (assoc timezone mail-timezone-alist))
+	  (setq timezone (cdr tem))
+	;; Try +-HHMM
+	(if (string-looking-at "[+-]([0-9][0-9])([0-9][0-9])" timezone)
+	    (setq timezone (* (if (= (aref timezone 0) ?+) 1 -1)
+			      (+ (* 60 (read-from-string
+					(substring timezone
+						   (match-start 1)
+						   (match-end 1))))
+				 (read-from-string
+				  (substring timezone
+					     (match-start 2)
+					     (match-end 2))))))
+	  ;; whatever..
+	  (setq timezone 0))))
+    ;; Use Gauss' algorithm (?) to find seconds since 1970
+    ;; This subroutine is copied from my VMM operating system,
+    ;; which was in turn copied from Linux
+    (let
+	((g-month (- month 2))
+	 (g-year year))
+      (when (>= 0 (- g-month 2))
+	;; Put feb last since it has leap day
+	(setq g-month (+ month 12)
+	      g-year (1- year)))
+      ;; (DAYS . SECONDS)
+      (setq time_t (cons (+ (- (/ g-year 4)
+			       (/ g-year 100))
+			    (/ g-year 400)
+			    (/ (* 367 g-month) 12)
+			    day
+			    (* g-year 365)
+			    -719499)
+			 (+ second (* 60 (+ minute
+					    (- timezone)
+					    (* 60 hour)))))))
     (vector day-abbrev day month-abbrev month
-	    year hour minute second timezone)))
-
+	    year hour minute second timezone time_t)))
 
 ;; Constants defining date structure fields
 (defconst mail-date-day-abbrev 0)
@@ -103,6 +147,7 @@
 (defconst mail-date-minute 6)
 (defconst mail-date-second 7)
 (defconst mail-date-timezone 8)
+(defconst mail-date-epoch-time 9)
 
 
 ;; Parsing groups and lists
@@ -277,3 +322,10 @@
     (concat addr " \(" (mail-quote-phrase name) "\)"))
    (t
     addr)))
+
+;; For a string from the Subject: header of a message, strip off any re:
+;; prefixes, and return the string naming the _actual_ subject
+(defun mail-get-actual-subject (string)
+  (if (and string (string-match mail-re-regexp string nil t))
+      (substring string (match-end))
+    string))
