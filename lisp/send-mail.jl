@@ -118,6 +118,7 @@ being sent."
     "Ctrl-f" '(next-keymap-path '(send-mail-c-f-keymap))
     "Ctrl-t" 'send-mail-go-text
     "Ctrl-w" 'send-mail-signature
+    "Ctrl-m" '(next-keymap-path '(mime-encode-keymap))
     "Ctrl-y" 'mail-yank-original
     "Ctrl-q" 'mail-fill-yanked-message))
 
