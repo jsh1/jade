@@ -943,16 +943,18 @@ the summary buffer.")
 		      (delete-view v)))
 		(nthcdr 2 orig)))))
     (condition-case nil
-	(if (eq mail-display-summary 'bottom)
-	    ;; Summary at bottom
-	    (progn
-	      (setq mail-view (prog1
-				  summary-view
-				(setq summary-view mail-view)))
-	      (set-view-dimensions mail-view nil (- (cdr (window-dimensions))
-						    mail-summary-lines
-						    3)))
-	  (set-view-dimensions summary-view nil mail-summary-lines))
+	(let*
+	    ((total-lines (cdr (window-dimensions)))
+	     (summary-lines (/ (* (- total-lines 3)
+				  mail-summary-percent) 100)))
+	  (if (eq mail-display-summary 'bottom)
+	      ;; Summary at bottom
+	      (progn
+		(setq mail-view (prog1 summary-view
+				  (setq summary-view mail-view)))
+		(set-view-dimensions mail-view nil
+				     (- total-lines summary-lines 3)))
+	    (set-view-dimensions summary-view nil summary-lines)))
       ;; In case there's not enough room
       (window-error))
     (set-current-view summary-view)
