@@ -302,6 +302,8 @@ x11_open_display(char *display_name)
 			    &back);
 		XRecolorCursor(display, xdisplay->text_cursor, &fore, &back);
 
+		xdisplay->meta_mod = x11_find_meta(xdisplay);
+
 		if(x11_opt_sync)
 		    XSynchronize(xdisplay->display, True);
 
