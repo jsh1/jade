@@ -79,6 +79,9 @@ in TAG with.")
 (defvar html-decode-echo-unknown-tags nil
   "When non-nil, print all unknown tags encountered to stderr.")
 
+(defvar html-decode-echo-warnings t
+  "When non-nil, print warnings about badly written HTML to stderr.")
+
 
 ;; Global variables
 
@@ -115,6 +118,12 @@ in TAG with.")
 ;; Stack of (EXIT-FUNC ENV-ALIST TAG-SYMBOL PARAM-ALIST DATA...)
 (defvar html-decode-stack nil)
 
+;; Position in input after current item
+(defvar html-decode-point nil)
+
+;; Source buffer
+(defvar html-decode-source nil)
+
 ;; Could be nil, space, line, paragraph, list. In order of importance,
 ;; i.e. paragraph overrides line, but line overrides space.
 (defvar html-decode-pending nil)
@@ -149,19 +158,21 @@ of the document, currently only `title' and `base' keys are defined."
        (html-decode-pending nil)
        (html-decode-pending-fill nil)
        (html-decode-title nil)
-       (point (start-of-buffer source))
+       (html-decode-point (start-of-buffer source))
+       (html-decode-source source)
        end tag)
-    (while (< point (end-of-buffer source))
-      (setq end (or (char-search-forward ?< point source)
+    (while (< html-decode-point (end-of-buffer source))
+      (setq end (or (char-search-forward ?< html-decode-point source)
 		    (end-of-buffer source)))
-      (when (> end point)
+      (when (> end html-decode-point)
 	;; Found the next tag, output everything from POINT to END
 	;; using the current style.
-	(funcall html-decode-display point end source dest)
-	(setq point end))
+	(funcall html-decode-display
+		 (prog1 html-decode-point (setq html-decode-point end))
+		 end source dest))
       ;; Then decode the command
-      (setq tag (html-decode-tag point source))
-      (setq point (car tag))
+      (setq tag (html-decode-tag html-decode-point source))
+      (setq html-decode-point (car tag))
       (setq tag (cdr tag))
       (funcall (or (get (car tag) html-decode-callback)
 		   'html-decode-unknown-tag)
@@ -340,33 +351,44 @@ of the document, currently only `title' and `base' keys are defined."
     (setq html-decode-stack (cons (list* exit-func env symbol params dest data)
 				  html-decode-stack))))
 
+(defun html-decode-close-frame (frame tag dest)
+  ;; If leaving this level would cause the fill style to
+  ;; be lost, and the tag is a block tag, then justify
+  ;; the line now
+  (when (and html-decode-pending-fill
+	     (assq 'html-decode-fill (nth 1 frame))
+	     (memq (car tag) html-decode-block-tags))
+    (with-buffer dest
+      (let
+	  ((old (glyph-to-char-pos (indent-pos))))
+	(html-decode-justify-line html-decode-fill)
+	(html-decode-patch-starts old (glyph-to-char-pos (indent-pos)))
+	(setq html-decode-pending-fill nil))))
+  ;; restore the environment
+  (mapc #'(lambda (pair)
+	    (set (car pair) (cdr pair))) (nth 1 frame))
+  ;; then call the exit function
+  (and (car frame)
+       (apply (car frame) (nthcdr 2 frame))))
+
 ;; Pop all environments back to the first tag of type TAG
 (defun html-decode-pop-env (tag dest)
   (let
-      (item done)
-  (while (and (car html-decode-stack) (not done))
-    (setq item (car html-decode-stack))
-    (setq html-decode-stack (cdr html-decode-stack))
-    (when (eq (nth 2 item) (car tag))
-      (setq done t))
-    ;; If leaving this level would cause the fill style to
-    ;; be lost, and the tag is a block tag, then justify
-    ;; the line now
-    (when (and html-decode-pending-fill
-	       (assq 'html-decode-fill (nth 1 item))
-	       (memq (car tag) html-decode-block-tags))
-      (with-buffer dest
-	(let
-	    ((old (glyph-to-char-pos (indent-pos))))
-	  (html-decode-justify-line html-decode-fill)
-	  (html-decode-patch-starts old (glyph-to-char-pos (indent-pos)))
-	  (setq html-decode-pending-fill nil))))
-    ;; restore the environment
-    (mapc #'(lambda (pair)
-	      (set (car pair) (cdr pair))) (nth 1 item))
-    ;; then call the exit function
-    (and (car item)
-	 (apply (car item) (nthcdr 2 item))))))
+      (item)
+    (when (and (not (memq (car tag) html-decode-optional-close-tags))
+	       (memq (nth 2 (car html-decode-stack))
+		     html-decode-optional-close-tags))
+      ;; Close the trailing optional tags
+      (html-decode-pop-optional tag dest))
+    (if (not (eq (car tag) (nth 2 (car html-decode-stack))))
+	(and html-decode-echo-warnings
+	     (format (stderr-file)
+		     "warning: badly nested HTML: %s, %s, %s, %s\n"
+		     html-decode-source html-decode-point
+		     (car tag) (nth 2 (car html-decode-stack))))
+      (setq item (car html-decode-stack))
+      (setq html-decode-stack (cdr html-decode-stack))
+      (html-decode-close-frame item tag dest))))
 
 ;; Are we entering or leaving TAG
 (defmacro html-decode-tag-entering-p (tag)
@@ -391,18 +413,18 @@ of the document, currently only `title' and `base' keys are defined."
 ;; tag of the same type as TAG
 (defun html-decode-pop-optional (tag dest)
   (let
-      ((stack html-decode-stack))
+      ((frame (car html-decode-stack)))
     ;; Is there a contiguous sequence of optional close tags
     ;; between the top of the stack and the first level of
     ;; type TAG
-    (catch 'exit
-      (while (and stack
-		  (memq (nth 1 (car stack)) html-decode-optional-close-tags))
-	(when (eq (nth 1 (car stack)) (car tag))
-	  ;; yes, this is the node. pop back to it
-	  (html-decode-pop-env tag dest)
-	  (throw 'exit t))
-	(setq stack (cdr stack))))))
+    (catch 'foo
+      (while (and html-decode-stack
+		  (memq (nth 2 frame) html-decode-optional-close-tags))
+	(setq html-decode-stack (cdr html-decode-stack))
+	(when (eq (nth 2 frame) (car tag))
+	  (throw 'foo t))
+	(html-decode-close-frame frame tag dest)
+	(setq frame (car html-decode-stack))))))
 
 ;; Return the face to be used for a tag of type NAME
 (defmacro html-decode-elt-face (name)
@@ -561,6 +583,19 @@ of the document, currently only `title' and `base' keys are defined."
 	(setq html-decode-callback 'html-decode-body-fun)
 	(setq html-decode-display 'html-decode-run))
     (html-decode-pop-env tag dest)))
+
+(put 'frameset 'html-decode-global-fun 'html-decode:frameset)
+(put 'frameset 'html-decode-html-fun 'html-decode:frameset)
+(put 'frameset 'html-decode-frameset-fun 'html-decode:frameset)
+(defun html-decode:frameset (tag dest)
+  (if (html-decode-tag-entering-p tag)
+      (progn
+	(html-decode-add-env 'html-decode-callback)
+	(html-decode-push-env tag dest)
+	(setq html-decode-callback 'html-decode-frameset-fun)
+	(html-decode-add-pending 'paragraph))
+    (html-decode-pop-env tag dest)
+    (html-decode-add-pending 'paragraph)))
 
 
 ;; Tags in head section
@@ -760,3 +795,27 @@ of the document, currently only `title' and `base' keys are defined."
 	(html-decode-add-pending 'line)
 	(setq html-decode-list-pending (car tag)))
     nil))
+
+(put 'script 'html-decode-body-fun 'html-decode:script)
+(defun html-decode:script (tag dest)
+  (if (search-forward "</script>" html-decode-point html-decode-source t)
+      (setq html-decode-point (match-end))
+    (error "<SCRIPT> doesn't end: %s, %s"
+	   html-decode-source html-decode-point)))
+
+
+;; Tags in frameset section
+
+(put 'frame 'html-decode-frameset-fun 'html-decode:frame)
+(defun html-decode:frame (tag dest)
+  (when (html-decode-tag-entering-p tag)
+    (let*
+	((name (cdr (assq 'name (nthcdr 2 tag))))
+	 (url (cdr (assq 'src (nthcdr 2 tag))))
+	 (handle (format nil "  Frame: %s" (or name url))))
+      (html-decode-add-pending 'line)
+      (html-decode-insert handle dest)
+      (html-decode-add-pending 'line))))
+
+(put 'noframes 'html-decode-frameset-fun 'html-decode:body)
+(put 'noframes 'html-decode-body-fun 'html-decode:body)
