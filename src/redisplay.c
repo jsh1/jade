@@ -81,7 +81,7 @@ alloc_glyph_buf(int cols, int rows)
 		   + sizeof(u_long) * rows
 		   + sizeof(glyph_code) * rows * cols
 		   + sizeof(glyph_attr) * rows * cols);
-    glyph_buf *g = malloc(size);
+    glyph_buf *g = sys_alloc(size);
     if(g == 0)
 	abort();
     else
@@ -112,7 +112,7 @@ alloc_glyph_buf(int cols, int rows)
 void
 free_glyph_buf(glyph_buf *gb)
 {
-    free(gb);
+    sys_free(gb);
 }
 
 /* Compute and return the hash code of line ROW in buffer G. */
