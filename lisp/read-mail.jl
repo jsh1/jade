@@ -124,7 +124,7 @@ the next prompt.")
   (when (and (boundp 'rm-summary-mail-buffer) rm-summary-mail-buffer)
     ;; In summary
     (let
-	((mail-view (rm-find-view rm-summary-mail-buffer)))
+	((mail-view (get-buffer-view rm-summary-mail-buffer)))
       (set-current-view mail-view)))
   (if (or (file-name-absolute-p folder)
 	  (file-exists-p (expand-file-name folder)))
@@ -778,7 +778,7 @@ the summary buffer.")
 ;; FORMS should be as small as poss. since it's expanded twice.
 (defmacro rm-with-summary (&rest forms)
   (list 'let
-	'((view (rm-find-view rm-summary-buffer)))
+	'((view (get-buffer-view rm-summary-buffer)))
 	(list 'if 'view
 	      (cons 'with-view (cons 'view forms))
 	      (cons 'with-buffer (cons 'rm-summary-buffer forms)))))
@@ -787,7 +787,7 @@ the summary buffer.")
 ;; and executes FORMS.
 (defmacro rm-with-folder (&rest forms)
   (list 'let
-	'((view (rm-find-view rm-summary-mail-buffer)))
+	'((view (get-buffer-view rm-summary-mail-buffer)))
 	(list 'if 'view
 	      (cons 'with-view (cons 'view forms))
 	      (cons 'with-buffer (cons 'rm-summary-mail-buffer forms)))))
@@ -797,7 +797,7 @@ the summary buffer.")
 (defmacro rm-in-folder (&rest forms)
   (cons 'progn
 	(cons '(let
-		   ((view (rm-find-view rm-summary-mail-buffer)))
+		   ((view (get-buffer-view rm-summary-mail-buffer)))
 		 (if view
 		     (set-current-view view)
 		   (goto-buffer rm-summary-mail-buffer)))
@@ -814,17 +814,10 @@ the summary buffer.")
       (with-buffer rm-summary-buffer
 	(setq rm-summary-mail-buffer mail-buf
 	      summary-move-after-marking rm-move-after-deleting
-	      summary-activate-after-marking t)
+	      summary-activate-after-marking t
+	      truncate-lines t)
 	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
 	(setq major-mode 'rm-summary-mode)))))
-
-;; Find a view in the current window displaying BUFFER, or nil.
-(defun rm-find-view (buffer)
-  (let
-      ((list (window-view-list)))
-    (while (and list (not (eq (current-buffer (car list)) buffer)))
-      (setq list (cdr list)))
-    (car list)))
 
 
 ;; Summary mechanics
@@ -832,20 +825,54 @@ the summary buffer.")
 (defun rm-summary (&optional dont-update)
   "Display a summary of all messages in a separate view."
   (interactive)
-  (let
-      ((view (rm-find-view rm-summary-buffer)))
-    (unless view
-      (setq view (other-view mail-summary-lines))
-      (goto-buffer rm-summary-buffer view))
-    (set-current-view view)
-    (unless dont-update
-      (summary-update)
-      (rm-summary-update-current))))
+  (rm-configure-views rm-summary-buffer (current-buffer))
+  (unless dont-update
+    (summary-update)
+    (rm-summary-update-current)))
 
 (defun rm-summary-mode ()
   "Mail Summary Mode:\n
 Major mode for displaying a summary of a mail folder. See read-mail-mode
 documentation for command list.")
+
+;; Configure the window to display the summary in one view, and the
+;; mail buffer in the other. Return the view displaying the mail buffer
+;; SUMMARY-BUFFER and MAIL-BUFFER are the buffers to display in the two
+;; views
+(defun rm-configure-views (summary-buffer mail-buffer)
+  (let
+      (mail-view summary-view)
+    (if (= (window-view-count) 2)
+	;; Single view + minibuf
+	(setq summary-view (current-view)
+	      mail-view (open-view))
+      (let
+	  ((orig (window-view-list)))
+	(setq summary-view (car orig)
+	      mail-view (nth 1 orig))
+	(when (> (window-view-count) 3)
+	  (mapc #'(lambda (v)
+		    (unless (minibuffer-view-p v)
+		      (close-view v)))
+		(nthcdr 2 orig)))))
+    (condition-case nil
+	(if (eq mail-display-summary 'bottom)
+	    ;; Summary at bottom
+	    (progn
+	      (setq mail-view (prog1
+				  summary-view
+				(setq summary-view mail-view)))
+	      (set-view-dimensions mail-view nil (- (cdr (window-dimensions))
+						    mail-summary-lines
+						    3)))
+	  (set-view-dimensions summary-view nil mail-summary-lines))
+      ;; In case there's not enough room
+      (window-error))
+    (set-current-view summary-view)
+    (goto-buffer summary-buffer)
+    (with-view mail-view
+      (goto-buffer mail-buffer))
+    mail-view))
 
 (defun rm-summary-list ()
   (rm-with-folder
@@ -870,7 +897,7 @@ documentation for command list.")
 	    (or (rm-get-msg-field item rm-msg-day) "")
 	    (or (rm-get-msg-field item rm-msg-month) "")
 	    (or (rm-get-msg-field item rm-msg-year) ""))
-    (indent-to 22)
+    (indent-to 20)
     (insert (or (rm-get-msg-field item rm-msg-from-name)
 		(rm-get-msg-field item rm-msg-from-addr)
 		""))
@@ -879,11 +906,8 @@ documentation for command list.")
     (insert (or (rm-get-msg-field item rm-msg-subject) ""))))
 
 (defun rm-summary-select-item (item)
-  (let
-      ((mail-buf rm-summary-mail-buffer))
-    (with-view (other-view t)
-      (goto-buffer mail-buf)
-      (rm-display-message item))))
+  (with-view (rm-configure-views (current-buffer) rm-summary-mail-buffer)
+    (rm-display-message item)))
 
 (defun rm-summary-current-item ()
   (with-buffer rm-summary-mail-buffer
@@ -894,11 +918,9 @@ documentation for command list.")
 
 (defun rm-summary-execute-end ()
   (let
-      ((del-msgs rm-summary-msgs-to-delete)
-       (mail-buf rm-summary-mail-buffer))
+      ((del-msgs rm-summary-msgs-to-delete))
     (setq rm-summary-msgs-to-delete nil)
-    (with-view (other-view t)
-      (goto-buffer mail-buf)
+    (with-view (rm-configure-views (current-buffer) rm-summary-mail-buffer)
       (rm-delete-messages del-msgs)
       ;; After this function returns "summary-update" is called
       (rm-display-current-message t))))
@@ -1039,7 +1061,7 @@ automatically."
 buffer will not be deleted, so it may be saved later."
   (interactive)
   (let
-      ((summary-view (rm-find-view rm-summary-buffer)))
+      ((summary-view (get-buffer-view rm-summary-buffer)))
     (unless already-saved
       (rm-update-flags))
     (when summary-view
