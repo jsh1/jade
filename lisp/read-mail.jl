@@ -104,6 +104,9 @@ of each rule is ignored.")
 a mailbox file. The rules are expected to have side-effects, the value
 of each rule is ignored.")
 
+(defvar rm-uniquify-messages t
+  "When non-nil, don't display duplicate messages (by id) in folders.")
+
 
 ;; Variables
 
@@ -457,7 +460,8 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; list of any messages matching
 (defun rm-prune-messages (message-lists folder)
   (let
-      ((rule (rm-get-folder-field folder rm-folder-rule)))
+      ((rule (rm-get-folder-field folder rm-folder-rule))
+       msgs)
     (if rule
 	(progn
 	  (require 'rm-restrict)
@@ -466,9 +470,25 @@ key, the car the order to sort in, a positive or negative integer.")
 	    (mapc #'(lambda (msgs)
 		      (setq bits (cons (rm-filter-by-rule msgs rule) bits)))
 		  message-lists)
-	    (apply 'nconc bits)))
+	    (setq msgs (apply 'nconc bits))))
       ;; Can't use append to join lists since that doesn't clone the last one
-      (apply 'nconc (mapcar 'copy-sequence message-lists)))))
+      (setq msgs (apply 'nconc (mapcar 'copy-sequence message-lists))))
+    (when rm-uniquify-messages
+      (let
+	  ((list msgs)
+	   id tem)
+	;; Now remove duplicates
+	(while list
+	  (setq id (rm-get-message-id (car list)))
+	  (when (setq tem (catch 'foo
+			    (mapc #'(lambda (m)
+				      (when (string= id (rm-get-message-id m))
+					(throw 'foo m))) (cdr list))
+			    nil))
+	    ;; this message has a duplicate
+	    (rplacd list (delq tem (cdr list))))
+	  (setq list (cdr list)))))
+    msgs))
 
 ;; Return the folder being displayed in the current view
 (defun rm-current-folder ()
