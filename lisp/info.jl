@@ -56,7 +56,7 @@ decoded (through the `read-file-hook').")
     "7" 'info-menu-nth
     "8" 'info-menu-nth
     "9" 'info-menu-nth
-    "b" 'goto-start-of-buffer
+    "b" 'start-of-buffer
     "d" '(info "(dir)Top")
     "f" 'info-follow-ref
     "h" '(info "(info)Help")
@@ -317,7 +317,7 @@ is split.")
       (make-extent (match-start 1) tem (list 'face info-xref-face)))
     (when (re-search-forward "^\\* menu:" (start-of-buffer) nil t)
       (setq tem (match-end))
-      (while (re-search-forward "^\\*[\t ]+([^:.\n]+)" tem)
+      (while (re-search-forward "^\\*[\t ]+([^:\n]+)" tem)
 	(setq tem (match-end 1))
 	(make-extent (match-start 1) tem (list 'face info-menu-face))))))
 
