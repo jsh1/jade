@@ -70,17 +70,23 @@ when set to the symbol `invalid'.")
   "SPC" 'next-screen
   "BS" 'prev-screen
   "h" 'rm-summary
-  "d" 'rm-mark-message-deletion
-  "Ctrl-d" 'rm-mark-message-deletion
-  "DEL" 'rm-mark-message-deletion
-  "x" 'rm-execute
-  "#" 'rm-execute
-  "g" 'rm-get-mail-command
+  "d" '(rm-with-summary (summary-mark-delete))
+  "Ctrl-d" '(rm-with-summary (summary-mark-delete))
+  "DEL" '(rm-with-summary (summary-mark-delete))
+  "x" '(rm-with-summary (rm-execute))
+  "#" '(rm-with-summary (rm-execute))
+  "g" 'rm-get-mail
   "q" 'rm-save-and-quit
-  "v" 'read-mail-folder)
+  "v" 'read-mail-folder
+  "r" 'rm-reply
+  "R" '(rm-reply t)
+  "f" 'rm-followup
+  "F" '(rm-followup t)
+  "z" 'rm-forward)
+  
 
 
-;;;; User-visible interface
+;;;; Entry points
 
 ;;;###autoload
 (defun read-mail ()
@@ -190,7 +196,7 @@ Major mode for viewing mail folders. Commands include:\n
   (list 'memq flag (list 'rm-get-msg-field msg 'rm-msg-flags)))
 
 
-;; Local functions
+;; Message structures and list manipulation
 
 ;; Twiddle the message lists so that the next message is current
 (defmacro rm-move-forwards ()
@@ -205,6 +211,19 @@ Major mode for viewing mail folders. Commands include:\n
 	 rm-current-msg (car rm-before-msg-list)
 	 rm-before-msg-list (cdr rm-before-msg-list)
 	 rm-current-msg-index (1- rm-current-msg-index)))
+
+;; Make MSG the current message, rejigging the message lists as necessary
+;; Doesn't fix the variables defining some of the positions in the current
+;; message.
+(defun rm-make-message-current (msg)
+  (unless (eq msg rm-current-msg)
+    (if (memq msg rm-after-msg-list)
+	;; Move forwards
+	(while (not (eq rm-current-msg msg))
+	  (rm-move-forwards))
+      ;; Move backwards
+      (while (not (eq rm-current-msg msg))
+	(rm-move-backwards)))))
 
 ;; Create the lists of messages. The buffer should be unrestricted when
 ;; calling this. Returns the current message.
@@ -302,6 +321,12 @@ Major mode for viewing mail folders. Commands include:\n
     (unrestrict-buffer)
     msg))
 
+;; Returns t if POS is the start of a message. Munges the regexp history
+(defun rm-message-start-p (pos)
+  (and (regexp-match-line mail-message-start pos nil t)
+       (or (equal pos (buffer-start))
+	   (regexp-match-line "^$" (prev-line 1 (match-start))))))
+
 ;; Returns the position of the start of the last line in the current message.
 ;; Works no matter what the restriction is set to.
 (defun rm-current-message-end ()
@@ -309,6 +334,9 @@ Major mode for viewing mail folders. Commands include:\n
       (prev-line 1 (copy-pos (mark-pos (rm-get-msg-field
 					(car rm-after-msg-list) rm-msg-mark))))
     (buffer-end nil t)))
+
+
+;; Displaying messages
 
 ;; Display the current message
 (defun rm-display-current-message ()
@@ -338,19 +366,6 @@ Major mode for viewing mail folders. Commands include:\n
     ;; Fix the summary buffer if it exists
     (rm-with-summary
      (rm-summary-update-current)))
-
-;; Make MSG the current message, rejigging the message lists as necessary
-;; Doesn't fix the variables defining some of the positions in the current
-;; message.
-(defun rm-make-message-current (msg)
-  (unless (eq msg rm-current-msg)
-    (if (memq msg rm-after-msg-list)
-	;; Move forwards
-	(while (not (eq rm-current-msg msg))
-	  (rm-move-forwards))
-      ;; Move backwards
-      (while (not (eq rm-current-msg msg))
-	(rm-move-backwards)))))
 
 ;; Display an arbitrary MSG
 (defun rm-display-message (msg)
@@ -409,11 +424,8 @@ Major mode for viewing mail folders. Commands include:\n
 		     rm-current-msg-visible-start)
 		   rm-current-msg-end))
 
-;; Returns t if POS is the start of a message. Munges the regexp history
-(defun rm-message-start-p (pos)
-  (and (regexp-match-line mail-message-start pos nil t)
-       (or (equal pos (buffer-start))
-	   (regexp-match-line "^$" (prev-line 1 (match-start))))))
+
+;; Deleting messages
 
 ;; Delete the current message. Unless GO-BACKWARDS-P is t the next
 ;; message is displayed (unless there is no next message). NO-REDISPLAY-P
@@ -521,8 +533,17 @@ Major mode for viewing mail folders. Commands include:\n
 		 start pos msgs)
 	      (while rm-after-msg-list
 		(rm-move-forwards))
-	      (goto-buffer-end)
-	      (insert "\n\n")
+	      ;; Ensure that there's a blank line at the end of the buffer
+	      (if (equal (buffer-end) (buffer-start))
+		  (goto-buffer-end)
+		(if (find-prev-regexp "^.+\n" (buffer-end))
+		    (progn
+		      (goto-char (match-end))
+		      (unless (looking-at "^\n")
+			(insert "\n"))
+		      (goto-buffer-end))
+		  (goto-buffer-end)
+		  (insert "\n\n")))
 	      (setq start (cursor-pos))
 	      (insert-file tofile)
 	      (error-protect
@@ -561,6 +582,7 @@ Major mode for viewing mail folders. Commands include:\n
 ;; Try and get new mail for the current folder. Returns the number of
 ;; messages actually read
 (defun rm-get-mail ()
+  (interactive)
   (let
       ((inboxes (mail-find-inboxes (buffer-file-name)))
        (old-msg rm-current-msg)
@@ -596,13 +618,18 @@ Major mode for viewing mail folders. Commands include:\n
 
 (defvar rm-summary-keymap (copy-sequence summary-keymap))
 (bind-keys rm-summary-keymap
-  "n" 'rm-next-message
-  "p" 'rm-previous-message
+  "n" '(rm-with-folder (rm-next-message))
+  "p" '(rm-with-folder (rm-previous-message))
   "SPC" 'summary-select-item
-  "t" 'rm-toggle-all-headers
-  "g" 'rm-get-mail-command
-  "q" 'rm-save-and-quit
-  "v" 'read-mail-folder)
+  "t" '(rm-with-folder (rm-toggle-all-headers))
+  "g" '(rm-with-folder (rm-get-mail-command))
+  "q" '(rm-with-folder (rm-save-and-quit))
+  "v" '(rm-with-folder (read-mail-folder))
+  "r" '(rm-in-folder (rm-reply))
+  "R" '(rm-in-folder (rm-reply t))
+  "f" '(rm-in-folder (rm-followup))
+  "F" '(rm-in-folder (rm-followup t))
+  "z" '(rm-in-folder (rm-forward)))
 
 (defvar rm-summary-functions '((select . rm-summary-select-item)
 			       (list . rm-summary-list)
@@ -624,6 +651,9 @@ Major mode for viewing mail folders. Commands include:\n
 the summary buffer.")
 (make-variable-buffer-local 'rm-summary-msgs-to-delete)
 
+
+;; Macros for switching between the summary and mail views
+
 ;; When called from a folder buffer, will execute FORMS in the summary
 ;; buffer. If a view of the summary exists will be in that. Note that
 ;; FORMS should be as small as poss. since it's expanded twice.
@@ -643,17 +673,16 @@ the summary buffer.")
 	      (cons 'with-view (cons 'view forms))
 	      (cons 'with-buffer (cons 'rm-summary-mail-buffer forms)))))
 
-;; Execute FORMS in the summary
-(defmacro rm-always-with-summary (&rest forms)
-  (list 'if 'rm-summary-mail-buffer
-	(cons 'progn forms)
-	(cons 'rm-with-summary forms)))
-
-;; Execute FORMS in the folder
-(defmacro rm-always-with-folder (&rest forms)
-  (list 'if 'rm-summary-mail-buffer
-	(cons 'rm-with-folder forms)
-	(cons 'progn forms)))
+;; Switch to the buffer containing the folder and execute FORMS. Don't
+;; switch back afterwards
+(defmacro rm-in-folder (&rest forms)
+  (cons 'progn
+	(cons '(let
+		   ((view (rm-find-view rm-summary-mail-buffer)))
+		 (if view
+		     (set-current-view view)
+		   (goto-buffer rm-summary-mail-buffer)))
+	      forms)))
 
 ;; Create a summary buffer for the current buffer, and return it. Installs
 ;; it in rm-summary-buffer as well.
@@ -666,8 +695,7 @@ the summary buffer.")
       (with-buffer rm-summary-buffer
 	(setq rm-summary-mail-buffer mail-buf)
 	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
-	(setq major-mode 'rm-summary-mode
-	      mildly-special-buffer t)))))
+	(setq major-mode 'rm-summary-mode)))))
 
 ;; Find a view in the current window displaying BUFFER, or nil.
 (defun rm-find-view (buffer)
@@ -676,6 +704,9 @@ the summary buffer.")
     (while (and list (not (eq (current-buffer (car list)) buffer)))
       (setq list (cdr list)))
     (car list)))
+
+
+;; Summary mechanics
 
 (defun rm-summary (&optional dont-update)
   "Display a summary of all messages in a separate view."
@@ -759,38 +790,36 @@ Major mode for displaying a summary of a mail folder.")
     (summary-update)))
 
 
-;; Commands
+;; Commands, these must only be called from the folder buffer, *not*
+;; from the summary.
 
 (defun rm-next-message ()
   "Display the next message in the current mail folder."
   (interactive)
-  (rm-always-with-folder
-   (unless rm-after-msg-list
-     (error "No more messages"))
-   (rm-move-forwards)
-   (rm-display-current-message)))
+  (unless rm-after-msg-list
+    (error "No more messages"))
+  (rm-move-forwards)
+  (rm-display-current-message))
 
 (defun rm-previous-message ()
   "Display the previous message in the current mail folder."
   (interactive)
-  (rm-always-with-folder
-   (unless rm-before-msg-list
-     (error "No previous message"))
-   (rm-move-backwards)
-   (rm-display-current-message)))
+  (unless rm-before-msg-list
+    (error "No previous message"))
+  (rm-move-backwards)
+  (rm-display-current-message))
 
 (defun rm-toggle-all-headers ()
   "Toggles between showing invisible headers and not showing them for the
 current message."
   (interactive)
-  (rm-always-with-folder
-   (rm-restrict-to-message (equal (restriction-start)
-				  rm-current-msg-visible-start))
-   ;; When expanding the restriction ensure that the new text is visible
-   ;; now. Otherwise it can look as though nothing happened.
-   (when (equal (restriction-start)
-		(mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark)))
-     (goto-char (buffer-start)))))
+  (rm-restrict-to-message (equal (restriction-start)
+				 rm-current-msg-visible-start))
+  ;; When expanding the restriction ensure that the new text is visible
+  ;; now. Otherwise it can look as though nothing happened.
+  (when (equal (restriction-start)
+	       (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark)))
+    (goto-char (buffer-start))))
 
 (defun rm-mark-message-deletion ()
   "Marks that the current message should be deleted."
@@ -798,46 +827,33 @@ current message."
   (rm-with-summary
    (summary-mark-delete)))
 
-(defun rm-execute ()
-  "Executes all marked actions."
-  (interactive)
-  (rm-with-summary
-   (summary-execute)))
-
-(defun rm-get-mail-command ()
-  "Attempt to collect new mail from spool files for the current folder."
-  (interactive)
-  (rm-always-with-folder
-   (rm-get-mail)))
-
 (defun rm-save-and-quit ()
   "Quit from the mail reading subsystem. The current folder will be saved
 automatically."
   (interactive)
-  (rm-always-with-folder
-   (let
-       ((buffer (current-buffer)))
-     (when (save-file)
-       (rm-quit-no-save)
-       (kill-buffer buffer)))))
+  (let
+      ((buffer (current-buffer)))
+    (when (save-file)
+      (rm-quit-no-save)
+      (kill-buffer buffer))))
 
 (defun rm-quit-no-save ()
   "Quit from the mail reading subsystem without saving the current folder. The
 buffer will not be deleted, so it may be saved later."
   (interactive)
-  (rm-always-with-folder
-   (let
-       ((summary-view (rm-find-view rm-summary-buffer)))
-     (when summary-view
-       (close-view summary-view))
-     (kill-buffer rm-summary-buffer)
-     (setq rm-current-msg nil
-	   rm-before-msg-list nil
-	   rm-after-msg-list nil
-	   rm-cached-msg-list nil
-	   rm-current-msg-index nil
-	   rm-summary-buffer nil)
-     (when (buffer-modified-p)
-       (message (concat  "Folder " (buffer-name)
-			 " contains unsaved changes!")))
-     (bury-buffer (current-buffer)))))
+  (let
+      ((summary-view (rm-find-view rm-summary-buffer)))
+    (when summary-view
+      (close-view summary-view))
+    (kill-buffer rm-summary-buffer)
+    (destroy-buffer rm-summary-buffer)
+    (setq rm-current-msg nil
+	  rm-before-msg-list nil
+	  rm-after-msg-list nil
+	  rm-cached-msg-list nil
+	  rm-current-msg-index nil
+	  rm-summary-buffer nil)
+    (when (buffer-modified-p)
+      (message (concat  "Folder " (buffer-name)
+			" contains unsaved changes!")))
+    (bury-buffer (current-buffer))))
