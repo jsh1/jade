@@ -64,7 +64,7 @@
 						(throw 'exit (cdr cell))))))
 		  buttons)
 	    (gtk-widget-show-all window)
-	    (gtk-main))
+	    (recursive-edit))
 	(gtk-widget-destroy window)))))
 
 (defun gtk-prompt-for-string (&optional title start)
@@ -106,7 +106,7 @@
 						     (throw 'exit nil)))
 	    (gtk-widget-show-all window)
 	    (gtk-widget-grab-focus entry)
-	    (gtk-main))
+	    (recursive-edit))
 	(gtk-widget-destroy window)))))
 
 (defun gtk-prompt-from-list-activate (combo dont-validate)
@@ -157,7 +157,7 @@
 	    (gtk-signal-connect button "clicked" #'(lambda ()
 						     (throw 'exit nil)))
 	    (gtk-widget-show-all window)
-	    (gtk-main))
+	    (recursive-edit))
 	(gtk-widget-destroy window)))))
 
 (defun gtk-prompt-for-file (&optional title initial default predicate)
@@ -184,7 +184,7 @@
 			   (throw 'got (gtk-file-selection-get-filename fs))))
 		      (gtk-widget-show fs)
 		      (while t
-			(setq file (catch 'got (gtk-main)))
+			(setq file (catch 'got (recursive-edit)))
 			(if (or (null predicate)
 				(funcall predicate file))
 			    (throw 'exit file)
