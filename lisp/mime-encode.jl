@@ -171,13 +171,15 @@
   (mime-encode-params (cdr content-disp))
   (insert "\n"))
 
-(defun mime-encode-stream (encoding input)
+(defun mime-encode-stream (encoding input &optional output)
+  (unless output
+    (setq output (current-buffer)))
   (let
       ((cell (assq encoding mime-xfer-encodings-alist)))
     (if (null cell)
 	;; No encoding method, copy verbatim
-	(copy-stream input (current-buffer))
-      (funcall (nth 1 cell) input (current-buffer)))))
+	(copy-stream input output)
+      (funcall (nth 1 cell) input output))))
 
 (defun mime-encode-make-boundary ()
   (let
