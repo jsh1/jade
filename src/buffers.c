@@ -679,6 +679,69 @@ Returns t if ARG is a buffer.
     return(sym_nil);
 }
 
+_PR VALUE cmd_restrict_buffer(VALUE lstart, VALUE lend, VALUE tx);
+DEFUN_INT("restrict-buffer", cmd_restrict_buffer, subr_restrict_buffer, (VALUE lstart, VALUE lend, VALUE tx), V_Subr3, DOC_restrict_buffer, "m\nM") /*
+::doc:restrict_buffer::
+restrict-buffer START END [BUFFER]
+
+Limits the portion of BUFFER (or the current buffer) that may be displayed
+to that between the lines specified by positions START and END.
+::end:: */
+{
+    DECLARE1(lstart, POSP);
+    DECLARE2(lend, POSP);
+    if(!BUFFERP(tx))
+	tx = VAL(curr_vw->vw_Tx);
+    if(check_section(VTX(tx), &VPOS(lstart), &VPOS(lend)))
+    {
+	VTX(tx)->tx_LogicalStart = VPOS(lstart).pos_Line;
+	VTX(tx)->tx_LogicalEnd = VPOS(lend).pos_Line;
+	VTX(tx)->tx_Flags |= TXFF_REFRESH_ALL;
+	return sym_t;
+    }
+    return sym_nil;
+}
+
+_PR VALUE cmd_unrestrict_buffer(VALUE tx);
+DEFUN("unrestrict-buffer", cmd_unrestrict_buffer, subr_unrestrict_buffer, (VALUE tx), V_Subr1, DOC_unrestrict_buffer) /*
+::doc:unrestrict_buffer::
+unrestrict-buffer [BUFFER]
+
+Remove any restriction on the parts of BUFFER that may be displayed.
+::end:: */
+{
+    if(!BUFFERP(tx))
+	tx = VAL(curr_vw->vw_Tx);
+    return make_lpos2(0, VTX(tx)->tx_LogicalStart);
+}
+_PR VALUE cmd_restriction_start(VALUE tx);
+DEFUN("restriction-start", cmd_restriction_start, subr_restriction_start, (VALUE tx), V_Subr1, DOC_restriction_start) /*
+::doc:restriction_start::
+restriction-start [BUFFER]
+
+Return the position of the first character that may be displayed in BUFFER
+(or the current buffer).
+::end:: */
+{
+    if(!BUFFERP(tx))
+	tx = VAL(curr_vw->vw_Tx);
+    return make_lpos2(0, VTX(tx)->tx_LogicalStart);
+}
+
+_PR VALUE cmd_restriction_end(VALUE tx);
+DEFUN("restriction-end", cmd_restriction_end, subr_restriction_end, (VALUE tx), V_Subr1, DOC_restriction_end) /*
+::doc:restriction_end::
+restriction-end [BUFFER]
+
+Return the position of the last character that may be displayed in BUFFER
+(or the current buffer).
+::end:: */
+{
+    if(!BUFFERP(tx))
+	tx = VAL(curr_vw->vw_Tx);
+    return make_lpos2(0, VTX(tx)->tx_LogicalEnd);
+}
+
 _PR VALUE var_auto_save_interval(VALUE);
 DEFUN("auto-save-interval", var_auto_save_interval, subr_auto_save_interval, (VALUE val), V_Var, DOC_auto_save_interval) /*
 ::doc:auto_save_interval::
@@ -1124,6 +1187,10 @@ buffers_init(void)
     ADD_SUBR(subr_line_length);
     ADD_SUBR(subr_with_buffer);
     ADD_SUBR(subr_bufferp);
+    ADD_SUBR(subr_restrict_buffer);
+    ADD_SUBR(subr_unrestrict_buffer);
+    ADD_SUBR(subr_restriction_start);
+    ADD_SUBR(subr_restriction_end);
     ADD_SUBR(subr_auto_save_interval);
     ADD_SUBR(subr_last_save_changes);
     ADD_SUBR(subr_last_user_save_changes);
