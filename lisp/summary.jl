@@ -358,17 +358,35 @@ non-nil it should be a list containing the operations which may be performed."
     (summary-maybe-dispatch 'execute-end))
   (summary-update))
 
-(defun summary-mark-delete (&optional item)
-  "Mark that ITEM, or the current item, should be deleted."
-  (interactive)
-  (if (assq 'delete summary-functions)
-      (summary-add-pending-op (or item (summary-current-item)) 'delete)
-    (error "No delete operation in the menu.")))
+(defun summary-mark-item (op &optional item count)
+  "Add operation OP to ITEM (or the current item) for future use. If ITEM
+is nil and COUNT is a number, mark COUNT items starting with the current
+item."
+  (interactive (list 'mark nil (prefix-numeric-argument current-prefix-arg)))
+  (if item
+      ;; Told explicitly to mark _this_ item
+      (summary-add-pending-op item op)
+    ;; Mark COUNT items from the current. If COUNT is negative mark
+    ;; backwards
+    (let
+	((start (summary-current-index)))
+      (if count
+	  (when (< count 0)
+	    (setq count (- count)
+		  start (max (1+ (- start count)) 0)))
+	(setq count 1))
+      (setq item (nthcdr start summary-items))
+      (while (and (> count 0) item)
+	(summary-add-pending-op (car item) op)
+	(setq item (cdr item)
+	      count (1- count))))))
 
-(defun summary-mark-item (&optional item)
-  "Mark ITEM (or the current item) for future use."
-  (interactive)
-  (summary-add-pending-op (or item (summary-current-item)) 'mark))
+(defun summary-mark-delete (&optional item count)
+  "Mark that ITEM, or the current item, should be deleted."
+  (interactive "\np")
+  (if (assq 'delete summary-functions)
+      (summary-mark-item 'delete item count)
+    (error "No delete operation in this summary")))
 
 (defun summary-map-marked-items (function &optional preserve-marks)
   "Map FUNCTION over all marked items in the current buffer. Unless
