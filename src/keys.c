@@ -29,7 +29,7 @@
 
 #define KEYTAB_SIZE 127
 
-_PR VALUE usekey(void *, u_long, u_long, bool);
+_PR VALUE eval_input_event(void *, u_long, u_long);
 _PR bool print_event_prefix(void);
 _PR void keys_init(void);
 
@@ -159,11 +159,10 @@ lookup_binding(u_long code, u_long mods)
     return LISP_NULL;
 }
 
-/* Process the event CODE+MODS, CURS-STATE is TRUE if the cursor is drawn.
-   OS-INPUT-MSG is the raw input event from the window-system, this is
-   only used to cook a string from.  */
+/* Process the event CODE+MODS. OS-INPUT-MSG is the raw input event
+   from the window-system, this is only used to cook a string from.  */
 VALUE
-usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
+eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 {
     VALUE result = sym_nil;
     event_buf[event_index++] = code;
@@ -192,32 +191,16 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 	current_event[0] = code;
 	current_event[1] = mods;
 	current_os_event = OSInputMsg;
-#if 0
-	reset_message(curr_win);
-#endif
 	cmd = lookup_binding(code, mods);
 	if(cmd)
-	{
-	    if(cursState)
-	    {
-		cursor(vw, CURS_OFF);
-		cursState = FALSE;
-	    }
 	    result = cmd_call_command(cmd, sym_nil);
-	}
 	else if(inmulti)
 	    beep(vw);
 	else
 	{
-	    if(cursState)
-	    {
-		cursor(vw, CURS_OFF);
-		cursState = FALSE;
-	    }
 	    result = cmd_call_hook(sym_unbound_key_hook, sym_nil, sym_nil);
-	    if(result && !NILP(result))
-		;
-	    else if(result && (mods & EV_TYPE_KEYBD) && OSInputMsg)
+	    if(result != LISP_NULL && NILP(result)
+	       && (mods & EV_TYPE_KEYBD) && OSInputMsg)
 	    {
 		u_char buff[256];
 		int len;
@@ -279,10 +262,6 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 		print_prefix = FALSE;
 	    }
 	}
-	curr_vw->vw_Flags |= VWFF_REFRESH_STATUS;
-	refresh_world();
-	if(!cursState)
-	    cursor(curr_vw, CURS_ON);
     }
     if(NILP(next_keymap_path) && !pending_meta)
 	event_index = 0;
