@@ -336,16 +336,15 @@ for. When called interactively, spell-check the current block."
   (let
       ((out "")
        (point 0))
-    (when (string-looking-at (concat ?\( ispell-word-re "\)\\+") word point)
+    (when (string-looking-at "([^+-]+)\\+" word point)
       ;; [prefix+]
       (setq out (substring word (match-start 1) (match-end 1)))
       (setq point (match-end)))
-    (when (string-looking-at (concat ?\( ispell-word-re "\)([+-]|$)")
-			     word point)
+    (when (string-looking-at "([^+-]+)([+-]|$)" word point)
       ;; root
       (setq out (concat out (substring word (match-start 1) (match-end 1))))
       (setq point (match-end 1)))
-    (while (string-looking-at (concat "-\(" ispell-word-re "\)") word point)
+    (while (string-looking-at "-([^+-]+)" word point)
       ;; [-prefix] | [-suffix]
       (let
 	  ((tem (quote-regexp (substring word (match-start 1) (match-end 1)))))
@@ -355,7 +354,7 @@ for. When called interactively, spell-check the current block."
 	  (setq out (substring out 0 (match-start))))
 	 ((string-match (concat ?^ tem) out)
 	  (setq out (substring out (match-end)))))))
-    (when (string-looking-at (concat "\\+\(" ispell-word-re "\)") word point)
+    (when (string-looking-at "\\+([^+-]+)" word point)
       (setq out (concat out (substring word (match-start 1) (match-end 1)))))
     out))
 
