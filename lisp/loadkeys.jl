@@ -175,6 +175,7 @@
   "Ctrl-b"	'buffer-summary
   "Ctrl-c"	'save-and-quit
   "Ctrl-f"	'find-file
+  "Ctrl-Meta-f"	'find-url
   "Ctrl-l"	'downcase-area
   "Ctrl-o"	'delete-blank-lines
   "Ctrl-p"	'mark-page
