@@ -414,6 +414,8 @@ update_status_buffer(VW *vw)
 {
     TX *tx = vw->vw_Tx;
     u_char *block;
+    bool restriction = (tx->tx_LogicalStart != 0)
+			|| (tx->tx_LogicalEnd != tx->tx_NumLines);
 
     if(vw->vw_Flags & VWFF_MINIBUF
        || vw->vw_Flags & VWFF_CUSTOM_STATUS)
@@ -430,7 +432,7 @@ update_status_buffer(VW *vw)
 	block = "";
 
     calc_cursor_offset(vw);
-    sprintf(vw->vw_StatusBuf, "%s%s %c%s%s%c (%ld,%ld) %ld %s %s",
+    sprintf(vw->vw_StatusBuf, "%s%s %c%s%s%c %c%ld,%ld%c %ld %s %s",
 	    VSTR(tx->tx_BufferName),
 	    ((tx->tx_Changes != tx->tx_ProperSaveChanges)
 	     && (!(tx->tx_Flags & TXFF_SPECIAL)))
@@ -439,8 +441,10 @@ update_status_buffer(VW *vw)
 	    (tx->tx_ModeName ? (char *)VSTR(tx->tx_ModeName) : "generic"),
 	    VSTR(tx->tx_MinorModeNameString),
 	    (recurse_depth ? ']' : ')'),
+	    restriction ? '[' : '(',
 	    vw->vw_LastCursorOffset + 1,
 	    vw->vw_CursorPos.pos_Line + 1,
+	    restriction ? ']' : ')',
 	    tx->tx_NumLines,
 	    tx->tx_NumLines != 1 ? "lines" : "line",
 	    block);
