@@ -53,7 +53,7 @@ when showing a mail message.")
 that matches will actually be highlighted. Whatever is left in the first
 match buffer is actually highlighted.")
 
-(defvar mail-folder-dir (expand-file-name "~/Mail")
+(defvar mail-folder-dir (expand-file-name "~/Mail/")
   "The directory in which mail folders are stored by default.")
 
 (defvar mail-default-folder "INBOX"
@@ -180,5 +180,5 @@ include any parenthesised expressions!")
 ;; Prompt for the name of a mail folder
 (defun prompt-for-folder (title &optional default)
   (prompt-for-file title nil
-		   (or default (file-name-directory default)) default
-		   mail-prompt-history))
+		   (and default (file-name-directory default))
+		   default mail-prompt-history))
