@@ -157,7 +157,7 @@ arg TO specifies who to send it to."
 				       folder rm-folder-summary)
 				  (rm-with-summary folder
 				    (summary-update-item message))))
-			    (list (current-buffer) message))))
+			    (list folder message))))
     (insert "----- begin forwarded message -----\n")
     (setq start (cursor-pos))
     (goto (insert (with-buffer (mark-file (rm-get-msg-field message
