@@ -122,10 +122,10 @@ and POS. When called interactively, POS is bound to the cursor position."
      (when has-prefix
        (fill-insert-prefix line-start))
      (setq line-start (forward-line 1 line-start)
-	   goal-column (1- (if has-prefix
-			       (- fill-column
-				  (fill-get-prefix-width line-start))
-			     fill-column)))))
+	   goal (1- (if has-prefix
+			(- fill-column
+			   (fill-get-prefix-width line-start))
+		      fill-column)))))
 ;;;###autoload
 (defun fill-area (start end)
   "Fills from START to END."
@@ -134,7 +134,7 @@ and POS. When called interactively, POS is bound to the cursor position."
       ((has-prefix (fill-has-prefix-p))
        (line-start (start-of-line start))
        (seen-non-blank nil)
-       goal-column line-end g-line-end)
+       goal line-end g-line-end)
 
     ;; Make end into a mark so that it preserves its logical position
     (setq end (make-mark end))
@@ -157,10 +157,10 @@ and POS. When called interactively, POS is bound to the cursor position."
 
     ;; Find the column we're aiming at in the first line
     (setq line-start (start-of-line start)
-	  goal-column (1- (if has-prefix
-			      (- fill-column
-				 (fill-get-prefix-width line-start))
-			    fill-column)))
+	  goal (1- (if has-prefix
+		       (- fill-column
+			  (fill-get-prefix-width line-start))
+		     fill-column)))
 
     ;; Loop over all lines in the area
     (while (< line-start (mark-pos end))
@@ -170,13 +170,12 @@ and POS. When called interactively, POS is bound to the cursor position."
 
       ;; Check the current length against the goal column
       (cond
-       ((> (pos-col g-line-end) goal-column)
+       ((> (pos-col g-line-end) goal)
 	;; The current line is too long
 	(let
 	    ((p (re-search-backward fill-break-re
 				      (glyph-to-char-pos
-				       (pos goal-column
-					    (pos-line line-start))))))
+				       (pos goal (pos-line line-start))))))
 	  (when (and pos (/= (pos-col p) 0))
 	    (when (= (get-char p) ?\ )
 	      (delete-area p (forward-char 1 p)))
@@ -185,11 +184,11 @@ and POS. When called interactively, POS is bound to the cursor position."
 	  (fill-area-next-line)))
 
        ((and (/= (pos-col g-line-end) 0)
-	     (< (pos-col g-line-end) goal-column)
+	     (< (pos-col g-line-end) goal)
 	     (< (pos-line line-start) (pos-line (mark-pos end))))
 	;; The current line may be too short
 	(let*
-	    ((space (- goal-column (pos-col g-line-end) 1))
+	    ((space (- goal (pos-col g-line-end) 1))
 	     (move-start (forward-line 1 line-start))
 	     (move-end (min (glyph-to-char-pos (pos space
 						    (pos-line move-start)))
