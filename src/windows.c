@@ -490,10 +490,16 @@ reinstall the original window as the current one.
 	    GCVAL gcv_oldwin;
 	    curr_win = VWIN(res);
 	    curr_vw = curr_win->w_CurrVW;
+
 	    PUSHGC(gcv_oldwin, oldwin);
 	    res = cmd_progn(VCDR(args));
 	    POPGC;
-	    curr_win = VWIN(oldwin);
+
+	    if(VWIN(oldwin)->w_Window != WINDOW_NIL)
+	    {
+		curr_win = VWIN(oldwin);
+		curr_vw = curr_win->w_CurrVW;
+	    }
 	}
 	else
 	    res = signal_arg_error(res, 1);
