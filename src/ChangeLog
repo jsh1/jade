@@ -1,3 +1,7 @@
+1999-03-18  John Harper  <john@dcs.warwick.ac.uk>
+
+	* server-dl.c (rep_dl_init): return Qt
+
 1999-03-11  John Harper  <john@dcs.warwick.ac.uk>
 
 	* faces.c (face_prin): fix snprintf switch
