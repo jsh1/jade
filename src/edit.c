@@ -158,12 +158,14 @@ resize_line_list(TX *tx, long change, long where)
 	    if(change > 0)
 	    {
 		MOV_LL(newlines, tx->tx_Lines, where);
-		MOV_LL(newlines + where + change, tx->tx_Lines + where, tx->tx_NumLines - where);
+		MOV_LL(newlines + where + change, tx->tx_Lines + where,
+		       tx->tx_NumLines - where);
 	    }
 	    else
 	    {
 		MOV_LL(newlines, tx->tx_Lines, where);
-		MOV_LL(newlines + where, tx->tx_Lines + where - change, tx->tx_NumLines - where + change);
+		MOV_LL(newlines + where, tx->tx_Lines + where - change,
+		       tx->tx_NumLines - where + change);
 		kill_some_lines(tx, where, -change);
 	    }
 	    FREE_LL(tx->tx_Lines);
@@ -435,7 +437,7 @@ split_line(TX *tx, POS *pos)
 static bool
 join_lines(TX *tx, POS *pos)
 {
-    if((pos->pos_Line + 1) < tx->tx_NumLines)
+    if((pos->pos_Line + 1) < tx->tx_LogicalEnd)
     {
 	LINE *line1 = tx->tx_Lines + pos->pos_Line;
 	LINE *line2 = line1 + 1;
@@ -443,12 +445,9 @@ join_lines(TX *tx, POS *pos)
 	u_char *newstr = str_alloc(newlen);
 	if(newstr)
 	{
-#if 1
             memcpy(newstr, line1->ln_Line, line1->ln_Strlen - 1);
-            memcpy(newstr + (line1->ln_Strlen - 1), line2->ln_Line, line2->ln_Strlen);
-#else
-	    stpcpy(stpcpy(newstr, line1->ln_Line), line2->ln_Line);
-#endif
+            memcpy(newstr + (line1->ln_Strlen - 1), line2->ln_Line,
+		   line2->ln_Strlen);
 	    resize_line_list(tx, -1, pos->pos_Line);
 	    line1 = tx->tx_Lines + pos->pos_Line;
 	    if(line1->ln_Line)
@@ -469,7 +468,7 @@ join_lines(TX *tx, POS *pos)
 bool
 pad_pos(TX *tx, POS *pos)
 {
-    if(pos->pos_Line < tx->tx_NumLines)
+    if(pos->pos_Line < tx->tx_LogicalEnd)
     {
 	LINE *line = tx->tx_Lines + pos->pos_Line;
 	if(line->ln_Strlen < (pos->pos_Col + 1))
@@ -516,7 +515,7 @@ void
 order_pos(POS *start, POS *end)
 {
     if(((start->pos_Line == end->pos_Line) && (start->pos_Col > end->pos_Col))
-     || (start->pos_Line > end->pos_Line))
+       || (start->pos_Line > end->pos_Line))
     {
 	POS temp;
 	temp = *start;
@@ -529,10 +528,10 @@ bool
 check_section(TX *tx, POS *start, POS *end)
 {
     order_pos(start, end);
-    if((start->pos_Line >= tx->tx_NumLines)
-       || (end->pos_Line >= tx->tx_NumLines)
-       || (start->pos_Line < 0)
-       || (end->pos_Line < 0))
+    if((start->pos_Line >= tx->tx_LogicalEnd)
+       || (end->pos_Line >= tx->tx_LogicalEnd)
+       || (start->pos_Line < tx->tx_LogicalStart)
+       || (end->pos_Line < tx->tx_LogicalStart))
 	return(FALSE);
     if(start->pos_Col >= tx->tx_Lines[start->pos_Line].ln_Strlen)
 	start->pos_Col = tx->tx_Lines[start->pos_Line].ln_Strlen - 1;
@@ -544,10 +543,10 @@ check_section(TX *tx, POS *start, POS *end)
 void
 check_pos(TX *tx, POS *pos)
 {
-    if(pos->pos_Line >= tx->tx_NumLines)
-	pos->pos_Line = tx->tx_NumLines - 1;
-    else if(pos->pos_Line < 0)
-	pos->pos_Line = 0;
+    if(pos->pos_Line >= tx->tx_LogicalEnd)
+	pos->pos_Line = tx->tx_LogicalEnd - 1;
+    else if(pos->pos_Line < tx->tx_LogicalStart)
+	pos->pos_Line = tx->tx_LogicalStart;
     if(pos->pos_Col >= tx->tx_Lines[pos->pos_Line].ln_Strlen)
 	pos->pos_Col = tx->tx_Lines[pos->pos_Line].ln_Strlen - 1;
 }
@@ -555,7 +554,8 @@ check_pos(TX *tx, POS *pos)
 bool
 check_line(TX *tx, POS *pos)
 {
-    if((pos->pos_Line >= tx->tx_NumLines) || (pos->pos_Line < 0)
+    if((pos->pos_Line >= tx->tx_LogicalEnd)
+       || (pos->pos_Line < tx->tx_LogicalStart)
        || (pos->pos_Col < 0))
 	return(FALSE);
     return(TRUE);
