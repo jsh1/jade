@@ -22,7 +22,7 @@ include ../Makedefs
 
 top_srcdir=@top_srcdir@
 srcdir=@srcdir@
-VPATH=@top_srcdir@/lib-src:@top_srcdir@/src:.
+VPATH=@top_srcdir@/lib-src:@top_srcdir@/src:@top_srcdir@/malloc-src:.
 
 DYN_SRCS = server-dl.c
 DYN_OBJS = $(DYN_SRCS:.c=.$(dynsuffix))
@@ -31,7 +31,16 @@ JADE_SRCS = $(wildcard $(srcdir)/../src/*.c)
 
 INSTALL_FILES = $(addprefix @top_srcdir@/lib-src/, jademail)
 
-all : doc-strings.h jade_protos.h build.h $(DYN_OBJS) jadeclient
+
+all_targets := doc-strings.h jade_protos.h build.h $(DYN_OBJS) jadeclient
+ifeq ($(HAVE_GNU_MALLOC),0)
+ all_targets := $(all_targets) gnu-malloc
+endif
+
+all : $(all_targets)
+
+
+## Various meta-files
 
 jade_protos.h : stripproto $(JADE_SRCS)
 	./stripproto -o $@ $(patsubst stripproto,,$^)
@@ -41,6 +50,35 @@ doc-strings.h ../DOC : makedoc $(JADE_SRCS) $(DYN_SRCS)
 
 build.h : build-info
 	$< $(host_type)
+
+
+## GNU malloc targets, borrowed from malloc-src/Makefile
+
+gnu-malloc : libmalloc.a gmalloc.o
+
+gnu-gmalloc     := valloc.c malloc.c free.c cfree.c realloc.c calloc.c \
+		   morecore.c memalign.c
+gnu-malloc-srcs := valloc.c malloc.c free.c cfree.c realloc.c calloc.c \
+		   morecore.c memalign.c mcheck.c mtrace.c mstats.c ralloc.c \
+		   malloc-find.c
+gnu-malloc-objs := $(gnu-malloc-srcs:.c=.o)
+gnu-malloc-hdrs := malloc.h
+
+libmalloc.a : valloc.o malloc.o free.o 
+
+libmalloc.a : $(gnu-malloc-objs)
+	ar crv $@ $(gnu-malloc-objs)
+	ranlib $@
+
+$(gnu-malloc-objs) : $(gnu-malloc-hdrs)
+
+gmalloc.c: gmalloc-head.c $(gnu-malloc-hdrs) $(gnu-gmalloc)
+	cat $^ > $@-tmp
+	mv -f $@-tmp $@
+	chmod a-w $@
+
+
+## Other targets
 
 install : all installdirs
 	$(INSTALL_PROGRAM) jadeclient $(bindir)
@@ -56,9 +94,11 @@ uninstall : all
 
 clean :
 	rm -f *~ *.o jade_protos.h doc-strings.h ../DOC build.h core
+	rm -f $(gnu-malloc-objs) libmalloc.a gmalloc.o
 
 realclean : clean
 	rm -f .*.d makedoc stripproto Makefile
+	rm -f gmalloc.c
 
 $(DYN_OBJS) : %.$(dynsuffix) : %.c
 
