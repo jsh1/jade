@@ -107,7 +107,6 @@ handle_event(XEvent *xev)
 		{
 		    curr_vw = curr_win->w_CurrVW;
 		    /* Window switch */
-		    undo_distinct();
 		    cursor(oldwin->w_CurrVW, CURS_OFF);
 		}
 		else
@@ -128,7 +127,6 @@ handle_event(XEvent *xev)
 		cursor(ev_win->w_CurrVW, CURS_ON);
 		curr_win = ev_win;
 		curr_vw = curr_win->w_CurrVW;
-		undo_distinct();
 	    }
 	    break;
 
@@ -186,7 +184,6 @@ handle_event(XEvent *xev)
 		{
 		    curr_vw = curr_win->w_CurrVW;
 		    cursor(oldwin->w_CurrVW, CURS_OFF);
-		    undo_distinct();
 		}
 		reset_message(ev_win);
 		result = usekey(xev, code, mods, (ev_win == oldwin));
@@ -204,6 +201,7 @@ handle_event(XEvent *xev)
 	    x11_lose_selection(&xev->xselectionclear);
 	    break;
 	}
+	undo_end_of_command();
     }
     return(result);
 }
@@ -360,6 +358,7 @@ event_loop(void)
 	{
 	    curr_vw->vw_Flags |= VWFF_REFRESH_STATUS;
 	    refresh_world_curs();
+	    undo_end_of_command();
 	}
     }
 end:

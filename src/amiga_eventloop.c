@@ -54,7 +54,6 @@ handle_event(struct IntuiMessage *imsg)
 	    {
 		cursor(oldvw, CURS_OFF);
 		cursor(ev_vw, CURS_ON);
-		undo_distinct();
 		curr_vw = ev_vw;
 	    }
 	    break;
@@ -84,16 +83,12 @@ handle_event(struct IntuiMessage *imsg)
 	    {
 		curr_vw = ev_vw;
 		if(oldvw != ev_vw)
-		{
 		    cursor(oldvw, CURS_OFF);
-		    undo_distinct();
-		}
 		result = usekey(imsg, code, mods, (ev_vw == oldvw));
 	    }
 	    break;
 	case IDCMP_CLOSEWINDOW:
 	    curr_vw = ev_vw;
-	    undo_distinct();
 	    cursor(oldvw, CURS_OFF);
 	    result = cmd_eval_hook2(MKSTR("window-closed-hook"), sym_nil);
 	    if(curr_vw)
@@ -106,10 +101,7 @@ handle_event(struct IntuiMessage *imsg)
 	    curr_vw = ev_vw;
 	    reset_message(ev_vw);
 	    if(ev_vw == oldvw)
-	    {
 		cursor(curr_vw, CURS_OFF);
-		undo_distinct();
-	    }
 	    result = evalmenu(imsg->Code, imsg->Qualifier);
 	    break;
 #ifndef NOSCRLBAR
@@ -130,6 +122,7 @@ handle_event(struct IntuiMessage *imsg)
 	    break;
 #endif
 	}
+	undo_end_of_command();
     }
     return(result);
 }
