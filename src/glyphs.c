@@ -211,14 +211,14 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    tem.col = 0;
 	    tem.row = char_row;
 	    extent = find_extent(vw->vw_Tx->tx_GlobalExtent, &tem);
-	    start_visible_extent (w, extent, 0, glyph_row);
+	    start_visible_extent (vw, extent, 0, glyph_row);
 
 	    extent_delta = 0;
 	    for(xc = extent, x = xc->parent; x != 0; xc = x, x = x->parent)
 	    {
 		x->tem = xc->right_sibling;
 		extent_delta += x->start.row;
-		start_visible_extent (w, x, 0, glyph_row);
+		start_visible_extent (vw, x, 0, glyph_row);
 	    }
 	    extent->tem = extent->first_child;
 
@@ -301,13 +301,13 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		       && (cc) == VCOL(vw->vw_BlockS))
 		    {
 			block_active = TRUE;
-			attr = merge_faces(w, extent, block_active, FALSE);
+			attr = merge_faces(vw, extent, block_active, FALSE);
 		    }
 		    if(block_active && block_end
 		       && (cc) == VCOL(vw->vw_BlockE))
 		    {
 			block_active = FALSE;
-			attr = merge_faces(w, extent, block_active, FALSE);
+			attr = merge_faces(vw, extent, block_active, FALSE);
 		    }
 		}
 		else if(block_row)
@@ -316,12 +316,12 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		    if((gc) == block_start)
 		    {
 			block_active = TRUE;
-			attr = merge_faces(w, extent, block_active, FALSE);
+			attr = merge_faces(vw, extent, block_active, FALSE);
 		    }
 		    else if((gc) == block_end)
 		    {
 			block_active = FALSE;
-			attr = merge_faces(w, extent, block_active, FALSE);
+			attr = merge_faces(vw, extent, block_active, FALSE);
 		    }
 		}
 	    }
@@ -333,7 +333,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		*attrs++ = attr;
 		if(cursor_row && char_col == cursor_col)
 		{
-		    attrs[-1] = merge_faces(w, extent, block_active, TRUE);
+		    attrs[-1] = merge_faces(vw, extent, block_active, TRUE);
 		    cursor_row = FALSE;
 		}
 	    }
@@ -361,13 +361,13 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 			    extent_delta += extent->start.row;
 			    extent = extent->tem;
 			    extent->tem = extent->first_child;
-			    start_visible_extent (w, extent,
+			    start_visible_extent (vw, extent,
 						  real_glyph_col, glyph_row);
 			}
 			else if(extent->parent != 0)
 			{
 			    /* Move back up one level. */
-			    end_visible_extent (w, extent,
+			    end_visible_extent (vw, extent,
 						real_glyph_col, glyph_row);
 			    extent->parent->tem = extent->right_sibling;
 			    extent = extent->parent;
@@ -387,7 +387,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		} while(extent != old);
 		if(extent != orig)
 		{
-		    attr = merge_faces(w, extent, block_active, FALSE);
+		    attr = merge_faces(vw, extent, block_active, FALSE);
 
 		    /* Reload the glyph table for the new extent. */
 		    glyph_tab = Fbuffer_symbol_value(Qglyph_table,
@@ -443,7 +443,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		}
 	    }
 
-	    attr = merge_faces(w, extent, block_active, FALSE);
+	    attr = merge_faces(vw, extent, block_active, FALSE);
 
 	    /* Start output. Two versions, dependent on whether
 	       we wrap or truncate long lines. */
@@ -561,7 +561,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	   XXX end of the previous line. */
 	while (extent != 0)
 	{
-	    end_visible_extent (w, extent, 0, glyph_row);
+	    end_visible_extent (vw, extent, 0, glyph_row);
 	    extent = extent->parent;
 	}
 
