@@ -1,0 +1,769 @@
+\input texinfo  @c -*-Texinfo-*-
+@setfilename jade.info
+@settitle Jade Manual
+@footnotestyle end
+
+@set EDITION 1.4
+@set VERSION 3.3
+@set UPDATED 23 October 1994
+@set UPDATE-MONTH October 1994
+
+@ifinfo
+@noindent
+START-INFO-DIR-ENTRY@*
+* Jade: (jade).			An editor for X11 and AmigaDOS@*
+END-INFO-DIR-ENTRY
+
+This is Edition @value{EDITION}, last updated @value{UPDATED},
+of @cite{The Jade Manual}, for Jade, Version @value{VERSION}.
+
+Jade is a text editor for X11 (on Unix) and the Amiga.
+
+Copyright 1993, 1994 John Harper.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+@ignore
+Permission is granted to process this file through TeX and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
+@end ignore
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the entire
+resulting derived work is distributed under the terms of a permission
+notice identical to this one.
+@end ifinfo
+
+@titlepage
+@title Jade
+@subtitle A text editor for X11 and AmigaDOS
+@subtitle Edition @value{EDITION}
+@subtitle @value{UPDATE-MONTH}
+@author John Harper
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1993, 1994 John Harper.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the entire
+resulting derived work is distributed under the terms of a permission
+notice identical to this one.
+@end titlepage
+
+@ifinfo
+@node Top, Copying, (dir), (dir)
+@top Jade
+
+Jade is a highly flexible Emacs-style text editor for X11 (on Unix)
+and AmigaDOS.
+
+This is Edition @value{EDITION} of its documentation,
+last updated @value{UPDATED} for Jade version @value{VERSION}.
+
+@menu
+* Copying::                     Distribution conditions
+* Introduction::                Brief introduction to Jade
+* News::                        New features in this release
+
+* Systems Supported::           The operating systems Jade supports
+* Editor Concepts::             Some ideas you should understand
+* Key Names::                   How keys are described in this manual
+
+* Starting Jade::               How to start the editor
+* Using Jade::                  Instructions for using the editor
+* Programming Jade::            How to extend Jade --- its Lisp system
+
+* Reporting Bugs::              How to contact me
+
+* Function Index::              Menu of all documented functions
+* Variable Index::              All variables which have been mentioned
+* Key Index::                   Menu of all key bindings
+* Concept Index::               Main index, references to all sections
+@end menu
+@end ifinfo
+
+@node Copying, Introduction, Top, Top
+@chapter Copying
+@cindex Copying
+@cindex Distribution conditions
+@cindex Licence
+
+Jade is distributed under the terms of the GNU General Public License, this
+basically means that you can give it to anyone for any price as long as
+full source code is included. For the actual legalese see the file
+@file{COPYING} in the distribution. I reserve the right to use a different
+licence in future releases.
+
+The only parts of Jade which are not my own work are the regexp code, this
+is by Henry Spencer (though I have made some small modifications) and is
+distributed under his conditions, and the ARexx interface in the Amiga
+version which is based on @code{MinRexx} by Radical Eye Software.
+
+Be aware that there is absolutely NO WARRANTY for this program, you use
+it at your own risk. Obviously I hope there are no bugs, but I make no
+promises regarding the reliability of this software.
+
+@node Introduction, News, Copying, Top
+@chapter Introduction
+@cindex Introduction
+
+Jade is a text editor primarily designed for programmers. It is easily
+customised through a Lisp-style extension language and can be tailored to
+the user's own requirements.
+
+Jade is designed to run under a graphical windowing system, systems currently
+supported are the Commodore Amiga and the X Window System version 11
+(but only under Unix).
+
+It is the successor to the editor @code{Jed 2.10} which I released for the
+Amiga in early 1993. I have decided to rename it now that I have made an
+X11 version since there is already an editor called @code{Jed} available
+(there is no connection between the two, I haven't even looked at the other
+one). ``Jade'' is an anagram of ``A Jed'', if you want an acronym you could
+use ``Just Another Damn Editor'', if you can think of anything better please
+tell me.
+
+Jade is compatible with GNU Emacs in terms of key presses and command names
+to a certain extent but it is not intended as a simple copy of Emacs (indeed,
+when I started this I had never actually used Emacs!). I have tried to take
+my favourite aspects of all the editors I have used as well as adding features
+that I have not found elsewhere. Consequently, it is very much the editor
+that @emph{I} want --- you may not find it so appealing.
+
+@node News, Systems Supported, Introduction, Top
+@cindex News
+@cindex Changes since the last release
+
+@include news.texi
+
+@node Systems Supported, Editor Concepts, News, Top
+@chapter Requirements
+@cindex Requirements
+
+Jade will only run on certain operating systems, this chapter details just
+what it needs as well as some notes relevant to each system.
+
+@section Amiga Jade
+
+The only real requirement for Jade running on an Amiga is that it must
+run an operating system revision of at least V37 (thats V2.04) and
+have about 300K free memory available.
+
+It also needs more stack than the average Amiga application. For normal use
+20K should be okay. If you want to use the Lisp compiler 50K would be a
+better bet.
+
+It assumes that its directory is pointed to by the @file{JADE:} assignment.
+This means that the main Lisp files are stored in @file{JADE:lisp/} and the
+file of doc-strings is @file{JADE:DOC}.
+
+@section X11 Jade
+
+Jade will only run on version 11 of X, it has absolutely no support for
+character terminals or different windowing systems. As long as it compiles
+it should work on your system.
+
+One problem you might find is that the Backspace and Delete keys don't
+work properly. As far as I have been able to find out, most X terminals
+map both the @key{Backspace} (normally at the top-right of the alpha-keyboard)
+and the @key{Delete} (normally somewhere above the cursor keys) keys to the
+@code{Delete} keysym. Obviously, since I want these keys to have different
+effects @footnote{@key{Backspace} should rub out the key before the cursor
+and @key{Delete} should delete the character under the cursor} this is no
+good. What I decided to do about this was two things,
+
+@enumerate
+@item
+Use @code{xmodmap} to map the @key{Delete} key to the @code{Backspace}
+keysym. This may sound backwards but most programs seem to use the
+@code{Delete} keysym as what I call @code{Backspace} so mapping as I
+described doesn't break this.
+
+To do this, I have the following in my @file{.Xmodmap} file
+
+@example
+keycode 107 = Backspace
+@end example
+
+@noindent
+Note that the @code{107} is the @key{Delete} key's key code on @emph{my}
+keyboard, your keyboard may, and probably will, be different.
+
+@item
+In the function which binds descriptions of key presses to Lisp forms, swap
+the meanings of the @code{Backspace} and @code{Delete} keysyms.
+@end enumerate
+
+This means that everything works okay! You can bind to @key{Delete} key
+and it will work properly.
+
+@node Editor Concepts, Key Names, Systems Supported, Top
+@chapter Editor Concepts
+@cindex Editor concepts
+@cindex Concepts, editor
+
+Before I describe the editor in detail there are several concepts which you
+should be familiar with. Some will be explained in more detail later.
+
+@table @dfn
+@item buffer
+@cindex Buffer
+Buffers are used by the editor to store the text that you are editing.
+Broadly speaking, each buffer holds the contents of one text-file loaded
+into the editor (it is not necessary for each buffer to be associated with
+a file, some buffers exist for other purposes for example the @samp{*jade*}
+buffer is used to interact with the Lisp system).
+
+@item current buffer
+@cindex Current buffer
+@cindex Buffer, current
+The buffer being edited in the current window (see below), most editor
+commands work on this buffer unless told otherwise.
+
+@item window
+@cindex Window
+Corresponds to a window in the window-system. Each window can display one
+buffer at a single time (although a buffer may be displayed in more than
+one window at once).
+
+@item current window
+@cindex Current window
+@cindex Window, current
+Jade always keeps track of which one of its windows is active. It is called
+the current window. Whenever you type a key or press a mouse button in one
+of Jade's windows, that window automatically becomes the current window.
+Amongst other things, all messages from the editor are displayed in the
+status line of the current window.
+
+@item cursor
+@cindex Cursor
+The cursor marks your current position in the current buffer (see above),
+when you type something it is inserted into the buffer between the cursor and
+the character preceding it (unless you type a command).
+
+@item status line
+One line in a window is devoted to displaying messages from the editor,
+@ref{Using Windows}.
+
+@item Lisp
+@cindex Lisp
+The programming language which Jade uses, although the internals of the
+editor are written in C, all commands are written in a dialect of Lisp
+(even if the command only calls a C function). Jade contains an interpreter,
+compiler and debugger for this language. @xref{Programming Jade}.
+
+@item variable
+@cindex Variable
+Variables are used to store Lisp values, each variable has a unique name.
+Note that unlike many programming languages variables in Lisp are @emph{not}
+typed, the data values themselves have a type associated with them.
+
+@item form
+@cindex Form
+A form is a single Lisp expression. For example, all of these are forms:
+
+@lisp
+foo
+42
+"hello"
+(setq foo 200)
+@end lisp
+
+@item command
+@cindex Command
+A command is a sequence of Lisp forms which may be called interactively (i.e.
+from the keyboard). It may be a key sequence (such as @kbd{Ctrl-x Ctrl-f}) or
+a Lisp function to evaluate (such as @code{find-file}).
+
+@item regular expression
+@cindex Regular expression, definition
+A regular expression is a string which is used to match against other strings.
+It has a special syntax which allows you to form a kind of template against
+which the other strings can be matched. They are used extensively by the
+editor, but you --- the user --- will mainly encounter them when searching
+and replacing strings in buffers.
+@end table
+
+@node Key Names, Starting Jade, Editor Concepts, Top
+@chapter Key Names
+@cindex Key names
+
+In this manual I have adopted a consistent notation for all key presses,
+since most editor commands are invoked via a typed key sequence it is
+very important that you can decipher this notation.
+
+Note that the term @samp{input event} (or @samp{event}) and the term
+@samp{key press} have been used interchangeably throughout this manual.
+A @samp{key press} may mean a mouse event, they don't always come from
+the keyboard.
+
+Every key press has a set of @dfn{modifiers}; these are the keys such as
+``Shift'' or ``Control'' which don't actually produce a character when
+typed, they only effect the rest of the keyboard. Each key, then, can have
+one or more modifiers.
+
+The name of an event consists of zero or more hyphen-separated modifier
+names, followed by a hyphen and the name of the actual event.
+
+Some commands are triggered by more than one of these key presses;
+press each key (or do whatever is necessary to precipitate the
+input event) in turn to invoke the command.
+
+Note that the case of modifiers is not important, however some of the keys
+@emph{are}, so you should always specify them in their correct case.
+
+@menu
+* Modifiers::                   Names of modifier keys
+* Keys::                        Names of actual keys
+* Example Keys::                Some examples and what they mean
+@end menu
+
+@node Modifiers, Keys, , Key Names
+@section Modifiers
+@cindex Modifiers
+@cindex Key names, modifiers
+
+@table @dfn
+@item Shift
+@itemx SFT
+The shift key.
+
+@item Ctrl
+@itemx CTL
+The control key, or its equivalent.
+
+@item Meta
+This depends on the window-system, on X11 it is the ``Mod1'' modifier,
+on the Amiga the ``Alt'' key. When the @code{meta-sends-esc} variable
+is non-nil the Meta modifier is treated specially,
+
+@defvar meta-sends-esc
+When non-nil, any Meta-modified key presses are expanded into a sequence of
+two key presses, @key{ESC} and the pressed key minus its Meta modifier.
+For example typing @kbd{Meta-f} would expand to @kbd{@key{ESC} f}. This
+feature is provided for compatibility with GNU Emacs.
+
+What this really means is that when the option is enabled (it is by default)
+you can either type the key sequence @kbd{@key{ESC} X} or the sequence
+@kbd{Meta-X} (where @key{Meta} is your keyboard's meta key) to invoke a
+command described as @kbd{Meta-X}.
+@end defvar
+
+@item LMB
+The left mouse button.
+
+@item MMB
+The middle mouse button.
+
+@item RMB
+The right mouse button.
+@end table
+
+As well as these, there are also some others, @dfn{Mod1} to @dfn{Mod5}
+represent the X11 modifiers of the same name. @dfn{Button1} to @dfn{Button5}
+also correspond to their X11 counterparts (@key{Button1} to @key{Button3} are
+@key{LMB} to @key{RMB}). For Amiga users, @dfn{Amiga} corresponds to the
+@key{Amiga} key (this is the same as @key{Mod2}).
+
+@node Keys, Example Keys, Modifiers, Key Names
+@section Keys
+@cindex Keys
+@cindex Key names, keys
+
+As far as possible each single character key-definition corresponds to
+where that character is on the keyboard (@key{a} is @samp{a}, etc@dots{}).
+
+When using an Amiga this should be true for @emph{all} keys since the Amiga's
+``keymap.library'' makes it easy to look up what key a character belongs to.
+However, this is not so easy on X11. All of the standard ASCII character set
+should be okay, but the more esoteric characters may have to be specified by
+the names of their X11 keysym (without the @samp{XK_} prefix). Look in the
+<X11/keysymdef.h> include file for all keysyms, for example @samp{XK_question}
+would have to be used for @samp{?} if the editor didn't treat it, and many
+others, specially.
+
+Some keys which don't follow this pattern are
+
+@table @dfn
+@item SPC
+@itemx Space
+The space bar.
+
+@item TAB
+The tab key.
+
+@item RET
+@itemx Return
+The return key.
+
+@item ESC
+@itemx Escape
+The escape key.
+
+@item BS
+@itemx Backspace
+The backspace key.
+
+@item DEL
+@itemx Delete
+The delete key.
+
+@item Help
+The help key, not all keyboards have this.
+
+@item Up
+The cursor up key.
+
+@item Down
+The cursor down key
+
+@item Left
+The cursor left key.
+
+@item Right
+The cursor right key.
+
+@item KP_Enter
+@itemx KP_Multiply
+@itemx KP_Divide
+@itemx KP_Minus
+@itemx KP_Add
+@itemx KP_Decimal
+@itemx KP_@var{n}
+Keys on the numeric keypad. For @key{KP_@var{n}}, @var{n} is a digit.
+
+@item Click1
+Single clicking a mouse button.
+
+@item Click2
+Double clicking a mouse button.
+
+@item Off
+Releasing a mouse button.
+
+@item Move
+Moving the mouse. This doesn't work on X11 yet.
+@end table
+
+@node Example Keys, , Keys, Key Names
+@section Example Keys
+@cindex Example key names
+@cindex Key names, examples
+
+Some examples of proper key names are,
+
+@table @kbd
+@item Ctrl-x
+Hold down Control, type @key{x}.
+
+@item Meta-Shift-RET
+Hold down Meta and Shift, then type the Return key, or alternatively,
+type the Escape key then hold down Shift and type Return.
+
+@item LMB-Click1
+Click the left mouse button once.
+
+@item Ctrl-RMB-Click1
+Hold down Ctrl then click the right mouse button once.
+@end table
+
+@node Starting Jade, Using Jade, Key Names, Top
+@chapter Starting Jade
+@cindex Starting jade
+
+This chapter describes Jade's initialisation process. This includes how to start
+it, what options it will accept and what it actually does after being
+started.
+
+@menu
+* Invocation::                  How to start the editor
+* Startup Options::             Arguments specified on the command line
+* Startup Procedure::           What happens on startup
+@end menu
+
+@node Invocation, Startup Options, , Starting Jade
+@section Invocation
+@cindex Invocation
+
+Since Jade supports two vastly different operating systems they both need to
+be covered separately.
+
+@subsection Amiga
+The normal way to start Jade on the Amiga is to type its name at the Shell (or
+CLI) together with any options (@pxref{Startup Options}) you want. Note that
+these options are in the traditional Unix style, a dash followed by the option
+name and any arguments, not the standard AmigaDOS method.
+
+It is also possible to invoke the editor from the Workbench, simply double
+clicking on its icon will cause Jade to open its initial window. Unfortunately
+there is no support for passing arguments via Tool Types, nor is there any
+way to create icons with saved files. This is largely due to the fact that I
+rarely use the Workbench --- if enough people complain about this I will
+probably fix it. Jade doesn't have an icon yet, you'll have to make one
+yourself.
+
+@subsection X11
+Jade should be started like most other Unix programs, type its name and any
+arguments to a shell. It must be able to connect to an X server (preferably
+the one controlling your terminal), the @samp{-display} option can be used
+if needed.
+
+@node Startup Options, Startup Procedure, Invocation, Starting Jade
+@section Startup Options
+@cindex Startup options
+@cindex Options, startup
+@cindex Arguments, startup
+
+The acceptable options can be split into three classes. Note that they
+must be specified on the command line in order of their class. This means
+that, for example, the @samp{-rc} option must be after the @samp{-font}
+option.
+
+So, the general usage pattern is
+
+@example
+jade [@var{system-dependent-options}] [@var{standard-options}] [@var{lisp-options}]
+@end example
+
+Note that the @var{lisp-options} may include files to be loaded.
+
+@enumerate
+@item
+System dependent options.
+
+@itemize @bullet
+@item
+Options for the Amiga system.
+
+@table @samp
+@item -pubscreen @var{screen-name}
+Defines the name of the public screen on which the first window is opened. By
+default (or if @var{screen-name} doesn't exits) the @code{Workbench} screen
+is used.
+
+@item -font @var{font-string}
+Defines the font used in the first window. @var{font-string} is the font to
+use, it is the name of the font (for example, @samp{topaz.font}), followed by
+a hyphen and the point size to use. For example, a @var{font-string} of
+@samp{topaz.font-8} gives 8-point topaz. This is the default.
+
+@item -stack @var{stack-size}
+When this argument is given Jade allocates a new stack. @var{stack-size}
+is a decimal number defining the size (in bytes) of the new stack.
+
+If this argument is not given Jade simply uses the stack that AmigaDOS
+gave it.
+@end table
+
+@item
+Options for X11.
+
+There are two types of options to the X11 version of the editor, those
+specified on the command line and those defined in the resource database (i.e.
+in your @file{.Xdefaults} file). Resources are looked for under two names,
+firstly the name under which the editor was invoked (normally @code{jade}), if
+this fails it tries again with the name @code{Jade}. Naturally, options
+specified on the command line override those in the resource database.
+
+@c options are left asis so that the <RESOURCE> bits are out of quotes
+@table @asis
+@item @samp{-display @var{display-name}}
+Defines the name of the X display to open, by default the contents of
+the environment variable @code{DISPLAY}. It is a string of the form
+@samp{@var{host-name}:@var{number}.@var{screen-number}}.
+
+@item @samp{-name @var{name}}
+The name to use when looking up resource values, this replaces the base name of
+the executable (normally @code{jade}).
+
+@item @samp{-geometry @var{geom-spec}}
+Specifies where to place the first window on the screen. This is a standard
+X style geometry specification.
+
+@item @samp{-fg @var{foreground-colour}}
+@itemx Resource: @samp{fg: @var{foreground-colour}}
+The colour of the window's foreground (i.e. the text).
+
+@item @samp{-bg @var{background-colour}}
+@itemx Resource: @samp{bg: @var{background-colour}}
+The background colour of the window.
+
+@item @samp{-font @var{font-name}}
+@itemx Resource: @samp{font: @var{font-name}}
+The name of the font used for all text in the initial window.
+@end table
+@end itemize
+
+@item
+Standard options.
+
+@table @samp
+@item -rc @var{lisp-file}
+Load the Lisp script @var{lisp-file} instead of the normal initialisation
+script (@file{init}). Warning: the editor depends heavily on the normal
+file, if you change this without due care the editor could be unusable --- no
+keys will be bound and many standard functions won't exist.
+
+@item -v
+Print the version and revision numbers of this copy of the editor then quit.
+
+@item -log-msgs
+This option makes all messages which are displayed in the status line also
+be written to the standard error stream. This is sometimes useful for
+debugging purposes.
+@end table
+
+@item
+All other options are passed to the Lisp initialisation process in the variable
+@code{command-line-args}, these are available to any Lisp packages loaded
+in the initialisation script. Any left after that are scanned for the following
+options,
+
+@table @samp
+@item -f @var{function}
+Call the Lisp function @var{function}.
+
+@item -l @var{file}
+Load the Lisp file @var{file}.
+
+@item -q
+Quit cleanly.
+
+@item @var{file}
+Load the file of text @var{file} into a new buffer.
+@end table
+@end enumerate
+
+An example command line for starting Jade from a Unix shell could be
+
+@example
+$ jade -fg white -bg black -log-msgs foo.c bar.jl
+@end example
+
+This means white text, black background, save messages and load the files
+@file{foo.c} and @file{bar.jl}.
+
+@node Startup Procedure, , Startup Options, Starting Jade
+@section Startup Procedure
+@cindex Startup procedure
+@cindex Initialisation procedure
+
+This is a description of what happens when the editor initialises itself.
+
+@enumerate
+@item
+Firstly lots of internal data structures are created, memory pools, symbols and
+their symbol-table (including all the primitive Lisp functions).
+
+@item
+The window-system is initialised (parse the system-dependent options, and
+the xrdb resources if in X).
+
+@item
+Parse the standard options.
+
+@item
+Create the initial window and the first buffer to display in it (this is the
+buffer called @samp{*jade*}).
+
+@item
+Load the initialisation script, this is either the Lisp file called @file{init}
+or whatever was given to the @samp{-rc} command line option.
+
+Some selected highlights of what the standard file does are,
+
+@itemize @bullet
+@item
+Load lots of Lisp files, some notable ones are
+
+@table @file
+@item autoload
+Initialise the autoload stubs.
+
+@item loadkeys
+Creates the standard keymaps and key bindings.
+@end table
+
+@item
+Try to find the user's personal startup file, this is normally the file
+@file{.jaderc} in their home directory @footnote{The Amiga has no notion
+of a user's home directory, Jade uses the contents of the environment
+variable @code{HOME}, or if this doesn't exist the @file{SYS:} assignment.}.
+
+@item
+Load any files which were specified on the command line.
+@end itemize
+
+@item
+Start the top-level recursive edit, this doesn't exit until the editor does.
+@end enumerate
+
+@node Using Jade, Programming Jade, Starting Jade, Top
+@include user.texi
+
+@node Programming Jade, Reporting Bugs, Using Jade, Top
+@include programmer.texi
+
+@node Reporting Bugs, Function Index, Programming Jade, Top
+@chapter Reporting Bugs
+@cindex Reporting bugs
+@cindex Bugs, reporting
+@cindex Email, my address
+
+If you think you've found a bug in Jade I want to know about it, there is
+a list of problems that I am aware of in the @file{src/BUGS} file, if yours
+appears in there tell me anyway to make me fix it.
+
+When submitting bug reports I need to know as much as possible, both about
+the problem and the circumstances in which it occurs. In general, send
+me as much information as possible, even if you think it's probably
+irrelevant.
+
+If you can, contact me via email, my address is @code{jsh@@ukc.ac.uk}.
+If you don't get a reply within about a week it's probably a university
+vacation --- this means that I won't get your message for a while; if it's
+important try my postal address, this is,
+
+@example
+John Harper
+91 Springdale Road
+Broadstone
+Dorset
+BH18 9BW
+England
+@end example
+
+As well as bugs I'm interested in any comments you have about the editor,
+even if you just tell me you hate it (as long as you say @emph{why} you
+hate it!).
+
+@node Function Index, Variable Index, Reporting Bugs, Top
+@unnumbered Function Index
+
+@printindex fn
+
+@node Variable Index, Key Index, Function Index, Top
+@unnumbered Variable Index
+
+@printindex vr
+
+@node Key Index, Concept Index, Variable Index, Top
+@unnumbered Key Index
+
+@printindex ky
+
+@node Concept Index, , Key Index, Top
+@unnumbered Concept Index
+
+@printindex cp
+
+@contents
+@bye

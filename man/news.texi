@@ -1,0 +1,169 @@
+@c -*-Texinfo-*-
+
+@chapter News
+
+This lists the major changes to Jade and which release they occurred
+in. For more explicit history information see the @file{ChangeLog} files
+scattered throughout the source directories.
+
+@section Version 3.3
+
+@itemize @bullet
+@item
+New command bound to @kbd{Meta-=} to count the number of words in a block
+of text.
+
+@item
+More fixes to the C language parsing functions.
+
+@item
+Fill mode now binds @kbd{RET} to check if the current line needs to be
+broken or not, as well as the @kbd{SPC} key.
+
+@item
+The @code{compile} command now treats the @code{compile-command} and
+@code{compile-default-command} more sensibly --- it always prompts for
+a command (even when @code{compile-command} is non-@code{nil}) and
+only ever sets @code{compile-command}.
+
+@item
+The `jadeclient' thing works again under Unix; I forgot to update one
+file when I changed another :-(
+
+@item
+The garbage collector once more prints a message while it's working.
+
+@item
+Autoloaded files have a message displayed while they're being loaded.
+
+@item
+The @kbd{.} command in asm-mode has been removed.
+
+@item
+GDB mode works once more.
+
+@item
+The Lisp compiler checks for some simple errors and produces warnings,
+note that the checks it performs are @emph{extremely} minimal.
+
+@item
+Fill mode works properly with lines that contain TAB characters.
+
+@item
+The buffer-menu formats the mode list properly.
+@end itemize
+
+@section Version 3.2
+
+@itemize @bullet
+@item
+The programmer's manual has finally been written.
+
+@item
+Undo; devote as much memory as you want to keep track of all modifications
+to a buffer which can then be wound back.
+
+@item
+Arguments can be given to commands as they're invoked.
+
+@item
+Buffer menu for interactive buffer manipulation.
+
+@item
+An Emacs-style local variables section can be embedded in a file;
+replaces the naff @samp{::jade-code::} thing.
+
+@item
+@kbd{Ctrl-k} (@code{kill-line}) works at last.
+
+@item
+Now possible to interrupt jade while it's working (i.e. to let you kill
+infinite loops).
+
+@item
+The Help system now has commands to list key bindings, display
+what is bound to any key sequence.
+
+@item
+Use of the Latin-1 character set is now controlled by the
+minor mode @code{latin-1-mode}.
+
+@item
+Can load and save compressed (compress or gzip) files into/out of buffers
+transparently when running on Unix.
+
+@item
+Transposing commands; @code{transpose-chars}, @code{transpose-words},
+@code{transpose-exps}. Bound to @kbd{Ctrl-t}, @kbd{Meta-t} and
+@kbd{Ctrl-Meta-t} respectively.
+
+@item
+Can now run a shell in an editor buffer, very basic (no completion) but
+it works okay.
+
+@item
+Support for using gdb through the shell interface, the current frame's
+source code is highlighted in a separate window.
+
+@item
+@kbd{Ctrl-z} moves to @kbd{Ctrl-W} so that @kbd{Ctrl-z} can (de)iconify the
+current window.
+
+@item
+Some programs written for the previous incarnation will need
+to be altered; all will have to be recompiled.
+@end itemize
+
+@section Version 3.1
+
+@itemize @bullet
+@item
+Now properly supports characters which print as more than one character
+(i.e. proper tabs, @samp{^L}, @samp{\123}, etc@dots{}). In general any
+character can print as any sequence of up to four character-images.
+
+@item
+Doesn't expand tabs to spaces anymore, this means that loading and saving of
+largish files is noticeably quicker.
+
+@item
+Files containing NUL characters can be edited (more or less) successfully.
+Some commands (notably the regexp matcher) still don't like these
+characters but, in the main, binary files can be edited successfully.
+
+@item
+Searching and replacing has changed, it's easier to use now and replacing
+globally is built in.
+
+@item
+Many improvements to the Info viewer, not least, the dir file doesn't have
+to have a tag-table anymore.
+
+@item
+Client editing. This lets you load files into a running editor from a
+shell. For example, if your mailer runs an editor on the message you're
+writing you can use the client to edit the message in a Jade that you are
+running.
+
+@item
+The buffer prompt's completion is now controllable by the mouse as well as
+the keyboard. Click the right button to complete the current word.
+Double-clicking the left mouse button on one of the lines under the
+@samp{::Completions::} line selects that completion.
+
+@item
+@code{text-mode} and @code{indented-text-mode} major-modes for editing
+English language (as opposed to programming languages).
+
+@item
+Minor-modes. These provide small variations to the major-modes. For example,
+@code{overwrite-mode} makes typed keys overwrite whatever's under the cursor.
+Also included is a minor mode to do auto-filling (word wrap).
+
+@item
+On Unix, a tilde (@samp{~}) in a filename is handled properly in most cases
+
+@item
+It is now possible to Meta qualify a key press and it will pretend that you
+pressed @key{ESC} then the un-Meta'd key.
+@end itemize

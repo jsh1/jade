@@ -1,0 +1,73 @@
+TITLE
+
+	Jade
+
+VERSION
+
+	3.2
+
+AUTHOR
+
+	John Harper <jsh@ukc.ac.uk>
+
+DESCRIPTION
+
+	A programmer's text editor, it is fully configurable with
+	its own Lisp-style programming language (includes interpreter,
+	compiler and debugger).
+
+	All keybindings/mouse-buttons/menus are configurable, with
+	the Lisp files included in the distribution it emulates a
+	subset of GNU Emacs.
+
+	Jade supports the Amiga and Unix/X11 systems, full source
+	is provided for both, a binary distribution is available
+	for the Amiga.
+
+NEW FEATURES
+
+	The programmer's manual has been written.
+
+	Undo command; devote as you want to keeping track of all
+	modifications to a buffer.
+
+	Now understands Emacs-style local variables sections embedded
+	in files.
+
+	Miscellaneous bug fixes and new minor features.
+
+SPECIAL REQUIREMENTS
+
+	Version 2.04 or greater of the Amiga OS, or version 11
+	of the X Window System.
+
+HOST NAME
+
+	Aminet.
+
+DIRECTORY
+
+	/pub/aminet/util/edit/
+
+FILE NAMES
+
+	jade-3.2-amiga.lha (363610 bytes)
+		Amiga executable, AmigaGuide formatted documentation
+		and pre-compiled Lisp files. This is the minimum that
+		you need to install Jade on an Amiga.
+
+	jade-3.2.lha (715771 bytes)
+		Full source code; this includes all C, Lisp and Texinfo
+		source files, plus a copy of the manual in Info format.
+
+		Note that both Amiga and X11 sources are included in the
+		same archive.
+
+PRICE
+
+	Free.
+
+DISTRIBUTABILITY
+
+	Copyright (c) 1993, 1994 John Harper.
+	GNU Public License.

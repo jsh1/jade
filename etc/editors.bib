@@ -1,0 +1,569 @@
+%%% editors.bib -- Text editor related references
+% Most of these came from http://liinwww.ira.uka.de/bibliography/
+% a few I entered myself.
+
+
+%% Longest common subsequence papers
+
+@Article{Aho:1976:BCL,
+  author =       "A. V. Aho and D. S. Hirschberg and J. D. Ullman",
+  title =        "Bounds on the Complexity of the Longest Common
+                 Subsequence Problem",
+  journal =      "Journal of the ACM",
+  volume =       "23",
+  number =       "1",
+  pages =        "1--12",
+  month =        jan,
+  year =         "1976",
+  CODEN =        "JACOAH",
+  ISSN =         "0004-5411",
+  bibdate =      "Wed Jan 15 18:12:53 MST 1997",
+  abstract =     "The problem of finding a longest common subsequence of
+                 two strings is discussed. This problem arises in data
+                 processing applications such as comparing two files and
+                 in genetic applications such as studying molecular
+                 evolution. The difficulty of computing a longest common
+                 subsequence of two strings is examined using the
+                 decision tree model of computation, in which vertices
+                 represent ``equal --- unequal'' comparisons. It is
+                 shown that unless a bound on the total number of
+                 distinct symbols is assumed, every solution to the
+                 problem can consume an amount of time that is
+                 proportional to the product of the lengths of the two
+                 strings. A general lower bound as a function of the
+                 ratio of alphabet size to string length is derived. The
+                 case where comparisons between symbols of the same
+                 string are forbidden is also considered and it is shown
+                 that this problem is of linear complexity for a
+                 two-symbol alphabet and quadratic for an alphabet of
+                 three or more symbols.",
+  acknowledgement = ack-nhfb,
+  classification = "723",
+  journalabr =   "J Assoc Comput Mach",
+  keywords =     "computer metatheory; computer programming ---
+                 Subroutines",
+}
+
+@TechReport{UWARWICK:CS-RR-268,
+  author =       "M. S. Paterson and Vlado Dancik",
+  title =        "Longest Common Subsequences",
+  number =       "CS-RR-268",
+  year =         "1994",
+  month =        may,
+  type =         "Research Report",
+  URL =          "http://www.dcs.warwick.ac.uk/pub/reports/rr/268.html",
+  institution =  "Department of Computer Science, University of
+                 Warwick",
+  address =      "Coventry, UK",
+  note =         "This report has been published, and is not available
+                 online; a citation of the published version is
+                 available in BiBTeX format (citation.bib) by anonymous
+                 FTP from
+                 ftp://ftp.dcs.warwick.ac.uk/pub/reports/rr/268/",
+  abstract =     "The length of a longest common subsequence (LLCS) of
+                 two or more strings is a useful measure of their
+                 similarity. The LLCS of a pair of strings is related to
+                 the `edit distance', or number of
+                 mutations/errors/editing steps required in passing from
+                 one string to the other. In this talk, we explore some
+                 of the combinatorial properties of the sub- and
+                 super-sequence relations, survey various algorithms for
+                 computing the LLCS, and introduce some results on the
+                 expected LLCS for pairs of random strings.",
+}
+
+@Article{Paterson:1994:LCS,
+  author =       "M. Paterson and V. Dancik",
+  title =        "Longest Common Subsequences",
+  journal =      "Lecture Notes in Computer Science",
+  volume =       "841",
+  pages =        "127--??",
+  year =         "1994",
+  CODEN =        "LNCSD9",
+  ISSN =         "0302-9743",
+  bibdate =      "Mon May 13 11:52:14 MDT 1996",
+  acknowledgement = ack-nhfb,
+}
+
+@Article{Hunt:1977:FAC,
+  author =       "James W. Hunt and Thomas G. Szymanski",
+  title =        "A Fast Algorithm for Computing Longest Common
+                 Subsequences",
+  journal =      "Communications of the ACM",
+  volume =       "20",
+  number =       "5",
+  pages =        "350--353",
+  month =        may,
+  year =         "1977",
+  CODEN =        "CACMA2",
+  ISSN =         "0001-0782",
+  MRclass =      "68A10 (68A20)",
+  MRnumber =     "55 9596",
+  mrreviewer =   "C. L. Liu",
+  bibdate =      "Tue Jan 06 09:48:29 1998",
+  abstract =     "Previously published algorithms for handling the
+                 longest common subsequence of two sequence of length n
+                 have had a best-case running time of O(n//2). An
+                 algorithm for this problem is presented which has a
+                 running time O((r plus n) log n), where r is the total
+                 number of ordered pairs of positions at which the two
+                 sequences match. Thus in the worst case the algorithm
+                 has a running time of O(n**2 log n).",
+  acknowledgement = ack-nhfb,
+  classcodes =   "C4240 (Programming and algorithm theory)",
+  classification = "723",
+  corpsource =   "Stanford Univ., Stanford, CA, USA",
+  journalabr =   "Commun ACM",
+  keywords =     "algorithm theory; computer programming ---
+                 Subroutines; data processing; fast algorithm; file
+                 searching; longest common subsequences; two sequences",
+  treatment =    "T Theoretical or Mathematical",
+}
+
+@Article{Hirschberg:1975:LSA,
+  author =       "D. S. Hirschberg",
+  title =        "A Linear Space Algorithm for Computing Maximal Common
+                 Subsequences",
+  journal =      cacm,
+  volume =       "18",
+  number =       "6",
+  year =         "1975",
+  month =        jun,
+  pages =        "341--343",
+}
+
+@Article{Hirschberg77,
+  author =       "D. S. Hirschberg",
+  title =        "Algorithms for the longest common subsequence
+                 problem.",
+  journal =      "Jrnl. A.C.M.",
+  volume =       "24",
+  number =       "4",
+  pages =        "664--675",
+  year =         "1977",
+  keywords =     "longest common subsequence, LCS, LCSS, string,
+                 strings, sequence, similarity, homology, alignment,
+                 approximate match, matching, algorithm",
+  abstract =     "two algorithms, fast for similar (and dissimilar)
+                 strings. (i) O(pn+nlogn) time where p=$|$LCS$|$ (ii)
+                 O(p(m+1-p)logn) uses contours. coined term
+                 candidates.",
+}
+
+
+%% Editors and redisplay
+
+@InProceedings{Gosling:1981:RA,
+  author =       "J. Gosling",
+  title =        "A redisplay algorithm",
+  editor =       "P. Abrahams",
+  booktitle =    "Text manipulation: Proceedings of the {ACM}
+                 {SIGPLAN\slash SIGOA} symposium ({Portland, OR}, {June}
+                 8--10, 1981)",
+  publisher =    "ACM Press",
+  address =      "New York, NY, USA",
+  year =         "1981",
+  ISBN =         "0-89791-043-5, 0-89791-050-8",
+  pages =        "123--129",
+  year =         "1981",
+  bibdate =      "Mon Nov 13 08:20:33 1995",
+  acknowledgement = ack-nhfb,
+  keywords =     "algorithms; performance; theory",
+  subject =      "B.4.2 Hardware, INPUT/OUTPUT AND DATA COMMUNICATIONS,
+                 Input/Output Devices, Data terminals and printers \\
+                 B.4.2 Hardware, INPUT/OUTPUT AND DATA COMMUNICATIONS,
+                 Input/Output Devices, Image display",
+}
+
+@Book{Miller:1987:STS,
+  author =       "Webb Miller",
+  title =        "A Software Tools Sampler",
+  year =         "1987",
+  publisher =    "Prentice-Hall, Inc.",
+  address =      "Englewood Cliffs, New Jersey",
+  annote =       "Chapter 3 covers file comparison (similar to
+                 Miller:1985:FCP), while Chapter 5 goes through an
+                 implementation of a simple screen editor.",
+}
+
+@Article{Miller:1988:SRR,
+  author =       "Webb Miller and Eugene W. Myers",
+  title =        "A Simple Row-replacement Method",
+  journal =      "Soft\-ware\emdash Prac\-tice and Experience",
+  volume =       "18",
+  number =       "7",
+  pages =        "597--611",
+  month =        jul,
+  year =         "1988",
+  CODEN =        "SPEXBL",
+  ISSN =         "0038-0644",
+  bibdate =      "Sat May 31 13:36:16 MDT 1997",
+  acknowledgement = ack-nhfb,
+}
+
+@Article{Myers:1989:RRA,
+  author =       "E. W. Myers and W. Miller",
+  title =        "Row replacement algorithms for screen editors",
+  journal =      toplas,
+  volume =       "11",
+  number =       "1",
+  pages =        "33--56",
+  month =        jan,
+  year =         "1989",
+  keywords =     "LCS, similarity, homology, string comparison,
+                 alignment, diff, edit distance, linear, cost",
+  abstract =     "costs for n-char operation a+b*n for constants a and b
+                 algorithm O(cost*(M+N)) time see also Ukkonen '83",
+}
+
+
+%% File comparison algorithms
+
+@Article{Miller:1985:FCP,
+  author =       "Webb Miller and Eugene W. Myers",
+  title =        "A File Comparison Program",
+  journal =      "Soft\-ware\emdash Prac\-tice and Experience",
+  volume =       "15",
+  number =       "11",
+  year =         "1985",
+  month =        nov,
+  pages =        "1025--1040",
+}
+
+@Article{Ukkonen:1983:OAS,
+  author =       "Ukkonen",
+  title =        "On Approximate String Matching",
+  journal =      "FCT: Fundamentals (or Foundations) of Computation
+                 Theory",
+  volume =       "4",
+  year =         "1983",
+}
+
+@Article{Wyk:1989:LPA,
+  author =       "Christopher J. Van Wyk and Donald C. Lindsay",
+  title =        "Literate Programming: {A} File Difference Program",
+  journal =      "Communications of the Association for Computing
+                 Machinery",
+  volume =       "32",
+  number =       "6",
+  pages =        "740--755",
+  month =        jun,
+  year =         "1989",
+  coden =        "CACMA2",
+  ISSN =         "0001-0782",
+  bibdate =      "Wed Jan 17 11:52:58 1996",
+  note =         "See review \cite{Thimbleby:1989:RDC}.",
+}
+
+@Article{Thimbleby:1989:RDC,
+  author =       "Harold Thimbleby",
+  title =        "A Review of {Donald C. Lindsay}'s Text File Difference
+                 Utility, {\em diff}",
+  journal =      "Communications of the Association for Computing
+                 Machinery",
+  volume =       "32",
+  number =       "6",
+  pages =        "756--755",
+  month =        jun,
+  year =         "1989",
+  CODEN =        "CACMA2",
+  ISSN =         "0001-0782",
+  bibdate =      "Wed Jan 17 11:53:00 1996",
+  note =         "See \cite{Wyk:1989:LPA}.",
+}
+
+@Article{Anandan80,
+  author =       "P. Anandan and D. W. Embley and G. Nagy",
+  title =        "An Application of File-Comparison Algorithms to the
+                 Study of Program Editors",
+  journal =      "International Journal of Man-Machine Studies",
+  volume =       "13",
+  number =       "2",
+  pages =        "201--211",
+  year =         "1980",
+  copyright =    "(c) Copyright 1980 Academic Press",
+  abstract =     "Program editing is considered in terms of a
+                 file-comparison model that formalizes the
+                 transformation of an imperfect version of a program
+                 text into an improved version by means of editing
+                 operations. With some enhancement, existing
+                 file-comparison algorithms can produce the information
+                 required for the model. These enhancements include the
+                 introduction of logical levels in files, selection of a
+                 corresponding element among alternatives, and the
+                 detection and analysis of similarity. An algorithm that
+                 incorporates these modifications is described.
+                 Illustrative of the use of the file-comparison model, a
+                 high-level editing sequence for a particular text
+                 editor and a particular editing task is automatically
+                 produced and is found to be comparable to typical
+                 user-produced editing sequences. Potential applications
+                 of the file-comparison model to the study of program
+                 editors are outlined.",
+}
+
+@Article{Steppe:1987:FCA,
+  author =       "Tom Steppe",
+  title =        "File Comparison Algorithms",
+  journal =      "Dr. Dobb's Journal of Software Tools",
+  volume =       "12",
+  number =       "9",
+  pages =        "28--??",
+  month =        sep,
+  year =         "1987",
+  CODEN =        "DDJOEB",
+  ISSN =         "0888-3076",
+  bibdate =      "Thu Jan 9 09:35:43 MST 1997",
+  acknowledgement = ack-nhfb,
+  classification = "723",
+  journalabr =   "Dr Dobb's J Software Tools",
+  keywords =     "computer programming --- Algorithms; computer
+                 programs; data processing; delta files; differences;
+                 file comparison algorithms; File Organization; matches;
+                 source code files",
+  pagecount =    "12 p between p 28 and 60",
+}
+
+@TechReport{Harrison88,
+  author =       "Harrison and Notkin",
+  title =        "Benchmarking File Differencing Algorithms",
+  institution =  "University of Washington",
+  number =       "88-06-03",
+  year =         "1988",
+}
+
+
+%% Misc stuff from "Software--Practice and Experience"
+
+@Article{Kiong:1992:ISE,
+  author =       "Derek Kiong and Jim Welsh",
+  title =        "Incremental Semantic Evaluation in Language-based
+                 Editors",
+  journal =      "Soft\-ware\emdash Prac\-tice and Experience",
+  volume =       "22",
+  number =       "2",
+  pages =        "111--135",
+  month =        feb,
+  year =         "1992",
+  coden =        "SPEXBL",
+  ISSN =         "0038-0644",
+  bibdate =      "Sat May 31 13:36:16 MDT 1997",
+  acknowledgement = ack-nhfb,
+}
+
+@Article{Pike87,
+  author =       "R. Pike",
+  title =        "The Text Editor sam",
+  pages =        "813--845",
+  journal =      "Software Practice and Experience",
+  volume =       "17",
+  number =       "11",
+  month =        nov,
+  year =         "1987",
+  abstract =     "sam is an interactive multi-file text editor intended
+                 for bitmap displays. A textual command language
+                 supplements the mouse-driven, cut-and-paste interface
+                 to make complex or repetitive editing tasks easy to
+                 specify. The language is characterized by the
+                 composition of regular expressions to describe the
+                 structure of the text being modified. The treatment of
+                 files as a database, with changes logged as atomic
+                 transactions, guides the implementation and makes a
+                 general {"}undo{"} mechanism straightforward. sam is
+                 implemented as two processes connected by a
+                 low-bandwidth stream, one process handling the display
+                 and the other the editing algorithms. Therefore it can
+                 run with the display process in a bitmap terminal and
+                 the editor on a local host, with both processes on a
+                 bitmap-equipped host, or with the display process in
+                 the terminal and the editor in a remote host. By
+                 suppressing the display process, it can even run
+                 without a bitmap terminal.",
+}
+
+@Article{Dudinsky:1985:SSR,
+  author =       "Frank J. Dudinsky and Richard C. Holt and Safwat G.
+                 Zaky",
+  title =        "{SRE}: {A} Syntax Recognizing Editor",
+  journal =      "Soft\-ware\emdash Prac\-tice and Experience",
+  volume =       "15",
+  number =       "5",
+  pages =        "489--497",
+  month =        may,
+  year =         "1985",
+  coden =        "SPEXBL",
+  ISSN =         "0038-0644",
+  bibdate =      "Sat May 31 13:36:16 MDT 1997",
+  acknowledgement = ack-nhfb,
+}
+
+@Article{Allison:1983:SDP,
+  author =       "Lloyd Allison",
+  title =        "Syntax Directed Program Editing",
+  journal =      "Soft\-ware\emdash Prac\-tice and Experience",
+  volume =       "13",
+  number =       "5",
+  pages =        "453--465",
+  month =        may,
+  year =         "1983",
+  coden =        "SPEXBL",
+  ISSN =         "0038-0644",
+  bibdate =      "Sat May 31 13:36:16 MDT 1997",
+  acknowledgement = ack-nhfb,
+  keywords =     "design; documentation; languages",
+  review =       "ACM CR 40886",
+  subject =      "D.2.3 Software, SOFTWARE ENGINEERING, Coding, Program
+                 editors \\ D.3.1 Software, PROGRAMMING LANGUAGES,
+                 Formal Definitions and Theory, Syntax \\ I.7.1
+                 Computing Methodologies, TEXT PROCESSING, Text Editing,
+                 Languages",
+}
+
+@Article{Davies:1982:SST,
+  author =       "D. J. M. Davies",
+  title =        "String Searching in Text Editors",
+  journal =      "Soft\-ware\emdash Prac\-tice and Experience",
+  volume =       "12",
+  number =       "8",
+  pages =        "709--717",
+  month =        aug,
+  year =         "1982",
+  coden =        "SPEXBL",
+  ISSN =         "0038-0644",
+  bibdate =      "Sat May 31 13:36:16 MDT 1997",
+  acknowledgement = ack-nhfb,
+  keywords =     "algorithms",
+  review =       "ACM CR 40357",
+  subject =      "F.2.2 Theory of Computation, ANALYSIS OF ALGORITHMS
+                 AND PROBLEM COMPLEXITY, Nonnumerical Algorithms and
+                 Problems, Sorting and searching \\ I.7 Computing
+                 Methodologies, TEXT PROCESSING, Text Editing",
+}
+
+@Article{MacLean:1981:CVP,
+  author =       "M. A. MacLean and J. E. L. Peck",
+  title =        "{CHEF}: a Versatile Portable Text Editor",
+  journal =      "Soft\-ware\emdash Prac\-tice and Experience",
+  volume =       "11",
+  number =       "5",
+  pages =        "467--477",
+  month =        may,
+  year =         "1981",
+  coden =        "SPEXBL",
+  ISSN =         "0038-0644",
+  bibdate =      "Sat May 31 13:36:16 MDT 1997",
+  acknowledgement = ack-nhfb,
+  review =       "ACM CR 39047",
+  subject =      "D.4 Software, OPERATING SYSTEMS, Miscellaneous \\ I.7
+                 Computing Methodologies, TEXT PROCESSING, Text Editing
+                 \\ I.7.1 Computing Methodologies, TEXT PROCESSING, Text
+                 Editing, CHEF",
+}
+
+@Article{Charlton:1981:ETP,
+  author =       "C. C. Charlton and P. H. Leng",
+  title =        "Editors: Two for the Price of One",
+  journal =      "Soft\-ware\emdash Prac\-tice and Experience",
+  volume =       "11",
+  number =       "2",
+  pages =        "195--202",
+  month =        feb,
+  year =         "1981",
+  coden =        "SPEXBL",
+  ISSN =         "0038-0644",
+  bibdate =      "Sat May 31 13:36:16 MDT 1997",
+  acknowledgement = ack-nhfb,
+}
+
+@Article{Peck:1981:CPE,
+  author =       "J. E. L. Peck and M. A. Maclean",
+  title =        "The Construction of a Portable Editor",
+  journal =      "Soft\-ware\emdash Prac\-tice and Experience",
+  volume =       "11",
+  number =       "5",
+  pages =        "479--489",
+  month =        may,
+  year =         "1981",
+  coden =        "SPEXBL",
+  ISSN =         "0038-0644",
+  bibdate =      "Sat May 31 13:36:16 MDT 1997",
+  acknowledgement = ack-nhfb,
+}
+
+%% Stuff from Dr Dobb's journal
+
+@Article{Nicholson:1982:BIT,
+  author =       "Leonard K. Nicholson",
+  title =        "Background Information on Text Editors",
+  journal =      "Dr. Dobb's Journal of Software Tools",
+  volume =       "7",
+  number =       "2",
+  pages =        "55--??",
+  month =        feb,
+  year =         "1982",
+  CODEN =        "DDJOEB",
+  ISSN =         "1044-789X",
+  bibdate =      "Mon Sep 2 09:09:39 MDT 1996",
+  acknowledgement = ack-nhfb,
+}
+
+@Article{McWorter:1983:MAT,
+  author =       "William A. {McWorter, Jr.}",
+  title =        "{McWORDER} --- {A} Tiny Text Editor",
+  journal =      "Dr. Dobb's Journal of Software Tools",
+  volume =       "8",
+  number =       "8",
+  pages =        "36, 38--40, 42",
+  month =        aug,
+  year =         "1983",
+  CODEN =        "DDJOEB",
+  ISSN =         "1044-789X",
+  bibdate =      "Thu Jan 9 09:35:43 MST 1997",
+  acknowledgement = ack-nhfb,
+  classification = "723",
+  journalabr =   "Dr Dobb's J",
+  keywords =     "computer programs; computers, microprocessor ---
+                 Applications; data processing --- Word Processing; text
+                 editor",
+}
+
+@Article{Thomas:1987:TEM,
+  author =       "Levi Thomas and Nicholas Turner",
+  title =        "Text Editors: In Matters of Taste \ldots{}",
+  journal =      "Dr. Dobb's Journal of Software Tools",
+  volume =       "12",
+  number =       "2",
+  pages =        "16--??",
+  month =        feb,
+  year =         "1987",
+  CODEN =        "DDJOEB",
+  ISSN =         "1044-789X",
+  bibdate =      "Mon Sep 2 09:09:39 MDT 1996",
+  acknowledgement = ack-nhfb,
+  xxnote =       "??Check author order??",
+}
+
+@Article{Valdes:1993:TEA,
+  author =       "Ray Vald{\'e}s",
+  title =        "Text Editors: Algorithms and Architectures",
+  journal =      "Dr. Dobb's Journal of Software Tools",
+  volume =       "18",
+  number =       "4",
+  pages =        "38, 40, 42--43, 80",
+  month =        apr,
+  year =         "1993",
+  CODEN =        "DDJOEB",
+  ISSN =         "1044-789X",
+  bibdate =      "Tue Sep 03 09:15:39 1996",
+  abstract =     "From Stallman's GnuEmacs to Microsoft's Word, text
+                 editors are one of the most taken-for-granted, yet most
+                 often used, applications around. When done right,
+                 however, the choice of core algorithms and how they're
+                 implemented in the overall architecture can make the
+                 difference between a good editor and a great one.",
+  acknowledgement = ack-nhfb,
+  affiliation =  "Rayval, San Mateo, CA, USA",
+  classification = "C6130D (Document processing techniques)",
+  keywords =     "Text editors",
+  thesaurus =    "Text editing; Word processing",
+}

@@ -1,0 +1,4 @@
+#!/bin/sh
+# explode-doc -- make the DOC file easier to read
+
+awk 'BEGIN { RS="\f" } { print $0, "\n\f" }' DOC

@@ -1,0 +1,3277 @@
+@c The User's Manual -*-Texinfo-*-
+
+@chapter Using Jade
+@cindex Using Jade
+@cindex Jade, using
+
+This chapter of the manual is meant to teach you to @emph{use} the editor,
+because of this I have attempted to reduce references to the Lisp
+extension language to an absolute minimum.
+
+@menu
+* Invoking Commands::           How to use the commands and key-sequences
+                                  described in this manual.
+* Command Arguments::           Many commands can be modified by prefixing
+                                  them with a numeric argument
+
+* The Help System::             Online help facilities
+
+* Loading and Saving Files::    Manipulating files
+* Editing Buffers::             Simple editing commands
+* Moving Around Buffers::       Commands for moving the cursor
+* Undo::                        Go back in time
+
+* Editing Units::               Characters, words, lines, etc@dots{}
+* Cutting And Pasting::         How to insert text from the clipboard
+* Using Blocks::                Highlighting regions to manipulate
+* Killing::                     Deleting text for later insertion
+* Searching and Replacing::     Searching the buffer for a regexp
+
+* Editing Modes::               Editing different types of files
+* Minor Modes::                 Small alterations to editing modes
+
+* Using Buffers::               Selecting & deleting buffers
+* Using Windows::               Opening new windows
+* Using the Prompt::            Entering strings and completion
+* Using Marks::                 Recording positions in files
+
+* Interrupting Jade::           Breaking out of commands
+* Recursive Editing::           Editing within a command
+* Character Images::            How to get a Latin1 character set
+* Client Editing::              Using Jade from other programs
+* Compiling Programs::          Help for developing programs
+* Info Mode::                   Reading Info files with Jade
+* Shell::                       Using a shell inside a buffer
+* Simple Customisation::        Configuring Jade
+@end menu
+
+@node Invoking Commands, Command Arguments, , Using Jade
+@section Invoking Commands
+@cindex Invoking commands
+@cindex Commands, invoking
+
+Throughout this manual I have documented the key sequences you have to
+enter to make the editor perform a certain action. In fact, the key
+sequences are mapped to @dfn{commands} when they are typed and it is
+the @emph{command} which performs the action.
+
+Commands are simply pieces of Lisp code, usually with a unique name
+associated with that command. If you know the name of a command it is
+possible to invoke it using the @kbd{Meta-x} key sequence; simply
+type @kbd{Meta-x @var{command} @key{RET}} where @var{command} is the
+name of the command you wish to invoke.
+
+@table @kbd
+@item Meta-x
+@kindex Meta-x
+Prompt for the name of a command (completion is available) then invoke
+it.
+@end table
+
+For the sake of simplicity I have often referred to key sequences as
+commands; what I actually mean is that the key sequence is bound to
+the command. For example the key sequence @kbd{Ctrl-x Ctrl-f} opens
+a file, in fact the key sequence @kbd{Ctrl-x Ctrl-f} is bound to the
+command @code{find-file}, this Lisp function actually loads the file.
+
+More detailed information about commands is available in the programmer's
+manual, see @ref{Programming Jade}.
+
+@node Command Arguments, The Help System, Invoking Commands, Using Jade
+@section Command Arguments
+@cindex Command arguments
+@cindex Prefix arguments, using
+
+The actions of many commands can be altered by giving them a numeric
+argument, this argument is entered immediately prior to invoking the
+command (they are technically called prefix arguments).
+
+Each argument is built using a number of special key sequences,
+
+@table @asis
+@item @kbd{Meta-0} to @kbd{Meta-9}
+@kindex Meta-0
+@kindex Meta-1
+@kindex Meta-2
+@kindex Meta-3
+@kindex Meta-4
+@kindex Meta-5
+@kindex Meta-6
+@kindex Meta-7
+@kindex Meta-8
+@kindex Meta-9
+Append a digit to the end of the current prefix argument. Use a sequence
+of these keys to build up a decimal number. For example typing
+@kbd{Meta-1 Meta-0 Meta-0} creates an argument of 100 for the following
+command.
+
+@item @kbd{Meta--}
+@kindex Meta--
+(That's @kbd{Meta-minus}.) Negates the value of current argument, if the
+command is invoked after a single @kbd{Meta--} prefix the actual argument
+is -1.
+
+@item @kbd{Ctrl-u}
+@kindex Ctrl-u
+Successive @kbd{Ctrl-u} key presses multiply the argument by 4 each time.
+Note that any existing argument entered by the numeric or minus commands
+(described above) is discarded with the first @kbd{Ctrl-u}.
+@end table
+
+@node The Help System, Loading and Saving Files, Command Arguments, Using Jade
+@section The Help System
+@cindex Help system
+@cindex Help, starting
+
+@kindex Ctrl-h
+@kindex @key{HELP}
+To invoke the help system type the key sequence @kbd{Ctrl-h} or if your
+keyboard has it the @kbd{@key{HELP}} key.
+
+A prompt will be displayed in the status line showing you which keys
+you can press next to enter one of the main options of the help system
+explained below. Alternatively, you can type either @kbd{Ctrl-h} or
+@kbd{@key{HELP}} again to display some text telling you more about the
+help system and how to use it.
+
+The help system is exited after successfully invoking one of the commands
+described below or typing anything which is not a recognised command to
+the help system.
+
+@table @kbd
+@item a
+@kindex Ctrl-h a
+@kindex @key{HELP} a
+To list all function names matching @var{regexp}, type
+@kbd{a @var{regexp} @key{RET}} when in the help system.
+
+@item b
+@kindex Ctrl-h b
+@kindex @key{HELP} b
+Prints all key bindings and their associated commands which are installed
+in the current buffer.
+
+@item e
+@kindex Ctrl-h e
+@kindex @key{HELP} e
+Similarly to the @kbd{a} command, to list all variable names matching
+@var{regexp}, type @kbd{e @var{regexp} @key{RET}} when in the help system.
+
+@item f
+@kindex Ctrl-h f
+@kindex @key{HELP} f
+Displays the online documentation for a function. After invoking this
+option type the name of the function.
+
+@item h
+@kindex Ctrl-h h
+@kindex @key{HELP} h
+Shows some helpful text describing how to use the help system.
+
+@item i
+@kindex Ctrl-h i
+@kindex @key{HELP} i
+Enters the Info viewer. This allows you to browse through files written
+in the Info hypertext format. For more information see @ref{Info Mode},
+for more information on Info files in general see @ref{Top,Info,,info}.
+
+@item k
+@kindex Ctrl-h k
+@kindex @key{HELP} k
+Displays the command (with its documentation) for a key sequence. After
+typing @kbd{Ctrl-h k} enter the key sequence you want documented as if
+you were going to invoke the command.
+
+@item m
+@kindex Ctrl-h m
+@kindex @key{HELP} m
+Display the documentation for the current major mode.
+
+@item v
+@kindex Ctrl-h v
+@kindex @key{HELP} v
+Displays the online documentation and current value of a variable. Type
+the name of the variable after invoking this option.
+@end table
+
+@node Loading and Saving Files, Editing Buffers, The Help System, Using Jade
+@section Loading and Saving Files
+@cindex Loading files
+@cindex Saving files
+@cindex Files, loading and loading
+
+Since @code{Jade} is a text editor its main function is to edit files of text.
+This means that you must be able to read the text contained in a file into
+one of the editor's buffers, then save it back to disk when you have finished
+editing it. That is what this section deals with.
+
+@menu
+* Commands To Load Files::      Key sequences to load files
+* Commands To Save Files::      How to save a buffer
+* File Variables::              Local variables defined in files
+* Backup Files::                Making backups
+* Auto-Saving Files::           Files can be saved periodically
+* Accessing Compressed Files::  Reading and writing gzipped files
+* Other File Commands::         How to delete, rename or copy files
+@end menu
+
+@node Commands To Load Files, Commands To Save Files,  , Loading and Saving Files
+@subsection Commands To Load Files
+@cindex Commands to load files
+
+There are several commands used to load files into buffers, these are,
+
+@table @kbd
+@item Ctrl-x Ctrl-f
+@kindex Ctrl-x Ctrl-f
+Prompts for the name of a file (using file-completion) and display the buffer
+containing that file. If the file has not already been loaded it will be read
+into a new buffer.
+
+@item Ctrl-x Ctrl-v
+@kindex Ctrl-x Ctrl-v
+Prompts for the name of a file, the current buffer is killed and the buffer
+in which the prompted-for file is being edited is displayed. As in
+@code{find-file} it will be read into a new buffer if it is not already in
+memory.
+
+@item Ctrl-x Ctrl-r
+@kindex Ctrl-x Ctrl-r
+Similar to @code{find-file} except that the buffer is marked as being
+read-only. This means that no modifications can be made to the buffer.
+
+@item Ctrl-x i
+@kindex Ctrl-x i
+Prompts for a file, then inserts it into the current buffer at the cursor
+position.
+@end table
+
+You can use the prompt's completion feature to expand abbreviated filenames
+typed to the prompt, for more information see @ref{The Buffer Prompt}.
+
+@node Commands To Save Files, File Variables, Commands To Load Files, Loading and Saving Files
+@subsection Commands To Save Files
+@cindex Commands to save files
+
+These are the commands used to save buffers and the key sequences associated
+with them,
+
+@table @kbd
+@item Ctrl-x Ctrl-s
+@kindex Ctrl-x Ctrl-s
+Saves the current buffer to the file that it is associated with (this is
+either the file that it was loaded from or something else set by the
+function @code{set-file-name}). If no modifications have been made to the
+file since it was loaded it won't be saved (a message will be displayed
+warning you of this).
+
+@item Ctrl-x Ctrl-w
+@kindex Ctrl-x Ctrl-w
+Prompts for a name to save the file as. The file associated with this buffer
+is renamed and the file is saved as its new name.
+
+@item Ctrl-x s
+@kindex Ctrl-x s
+For each buffer which has been modified since it was loaded, ask the user
+if it should be saved or not. If so, the command @code{save-file} is used to
+save the file
+@end table
+
+@node File Variables, Backup Files, Commands To Save Files, Loading and Saving Files
+@subsection File Variables
+@cindex File variables
+@cindex Local variables defined in files
+@cindex Buffer-local variables defined in files
+
+It is often useful to define `local' values of certain variables which
+only come into effect when a particular file is being edited. Jade allows
+you to include a special section in a file which, when the file is loaded,
+is used to give the variables specified buffer-local values. (For more
+information about buffer-local variables see @ref{Buffer-Local Variables}.)
+
+The special section must be somewhere in the last twenty lines of a file,
+and must be formatted as in the following example,
+
+@example
+XXX Local Variables: YYY
+XXX @var{variable}:@var{value} YYY
+@dots{}
+XXX End: YYY
+@end example
+
+@noindent
+That is, the string @samp{Local Variables:} followed by as many lines
+defining local values as necessary then the string @samp{End:}. The two
+strings @samp{XXX} and @samp{YYY} may be anything (even nothing!) as long
+as they are the same on each line. They are normally used to put the
+local variable section into a comment in a source file.
+
+For example, in a Texinfo source file the following piece of text at the
+bottom of the file would set the column at which lines are broken to
+74 (note that @samp{@@c} introduces a comment in Texinfo).
+
+@example
+@@c Local Variables:
+@@c fill-column:74
+@@c End:
+@end example
+
+Two pseudo-variables which can be set using a local variables section
+are @samp{mode} and @samp{eval}. Setting the @samp{mode} variable actually
+defines the major mode to use with the file (@pxref{Editing Modes}) while
+setting @samp{eval} actually evaluates the Lisp form @var{VALUE} then
+discards its value.
+
+For example,
+
+@example
+/* Local Variables: */
+/* mode:C */
+/* eval:(message "How pointless!") */
+/* End: */
+@end example
+
+@noindent
+This Forces the file to be edited with the C mode and displays a
+pointless message. Note that no variables called @code{mode} or
+@code{eval} are actually set.
+
+Several variables are used to control how the local variables feature
+works.
+
+@defvar enable-local-variables
+Defines how to process the @samp{Local Variables:} section of a file:
+@code{nil} means to ignore it, @code{t} means process it as normal and
+anything else means that each variable being set has to be confirmed by
+the user. Its default value it @code{t}.
+@end defvar
+
+@defvar enable-local-eval
+This variable defines how the pseudo-variable @samp{eval} is treated in
+a local variables list, it works in the same way as the
+@code{enable-local-variables} variable does. Its default value
+is @code{maybe}, making each form be confirmed before being evaluated.
+@end defvar
+
+@defvar local-variable-lines
+Defines how many lines at the bottom of a file are scanned for the
+@samp{Local Variables:} marker, by default it is 20.
+@end defvar
+
+Note that this feature is compatible with GNU Emacs, and since I have
+tried to keep the names of variables compatible as well, there should
+be few problems.
+
+@node Backup Files, Auto-Saving Files, File Variables, Loading and Saving Files
+@subsection Backup Files
+@cindex Backup files
+@cindex Files, backups
+
+The editor can optionally preserve the previous contents of a file when
+it is about to be overwritten by the saving of a buffer. It does this by
+renaming the old file, @file{foo} as @file{foo~} (the original name plus
+a tilde appended to it) before it is obliterated.
+
+@defvar make-backup-files
+This variable controls whether or not backups are made of files about to
+overwritten by the function @code{write-buffer} (i.e. the commands
+@code{save-file} and @code{save-file-as}). When non-nil the old instance
+of the file is renamed so that it has a tilde appended to its old name.
+@end defvar
+
+@defvar backup-by-copying
+When non-nil all backups are made by copying the original file instead of
+renaming it as the backup file. This is slower but less destructive.
+@end defvar
+
+@defvar else-backup-by-copying
+If @code{backup-by-copying} is @code{nil} and renaming the original
+file would not be a good idea (i.e. it might break a link or something)
+and this variable is non-@code{nil} the backup will be made by copying
+the original file.
+@end defvar
+
+@node Auto-Saving Files, Accessing Compressed Files, Backup Files, Loading and Saving Files
+@subsection Auto-Saving Files
+@cindex Auto-saving files
+@cindex Files, auto-saving
+
+Jade is able to save snapshots of a buffer's contents at set time intervals.
+When this time interval expires and the buffer has been modified since it
+was last (auto-) saved to disk (and the editor is idle) the buffer is saved
+to a special file (usually the base component of the file's name surrounded
+by @samp{#} characters in the file's directory).
+
+@defvar auto-save-p
+When non-nil this makes the function @code{open-file} (and therefore the
+commands @code{find-file}, etc) flag that the file it just read should be
+auto saved regularly.
+@end defvar
+
+@defvar default-auto-save-interval
+This is the default number of seconds between each auto save. This
+variable is only referenced when each file is opened.
+
+Its standard value is 120 seconds.
+@end defvar
+
+@defvar auto-save-interval
+This buffer-local variable controls the number of seconds between each
+auto-save of the buffer it belongs to. A value of zero means never auto-save.
+@end defvar
+
+When the buffer is saved properly (i.e. with @code{save-file} and friends) its
+auto-save file is deleted. Note that this doesn't happen when you kill a buffer
+and an auto-save file exists (in case you didn't mean to kill the buffer).
+
+To recover an auto-saved file (i.e. after an editor crash or something!)
+use the command @code{recover-file}.
+
+@table @kbd
+@item Meta-x recover-file
+@kindex Meta-x recover-file
+Loads the auto-saved copy of the file stored in this buffer overwriting
+its current contents (if any changes are to be lost you will have to agree
+to losing them).
+@end table
+
+@node Accessing Compressed Files, Other File Commands, Auto-Saving Files, Loading and Saving Files
+@subsection Accessing Compressed Files
+@cindex Accessing compressed files
+@cindex Compressed files, accessing
+@cindex Gzip
+
+Jade contains basic support for reading, inserting and writing buffers
+which have been compressed using the @code{gzip} or @code{compress}
+compression programs. When this feature is enabled such files are
+transparently decompressed when loaded into the buffer and compressed
+when saved back to a file.
+
+Unfortunately this doesn't work on Amigas yet. To install it the Lisp form,
+
+@lisp
+(require 'gzip)
+@end lisp
+
+@noindent
+should be in your @file{.jaderc} file (or you can do this by hand
+in the @code{*jade*} buffer if you want).
+
+After the @code{gzip} package has been installed any files loaded
+into buffers whose filename end in @samp{.gz} or @samp{.Z} are
+uncompressed, this suffix is stripped when searching for a major mode
+to install in the buffer but otherwise the buffer's filename is left
+intact.
+
+Any buffer saved whose filename ends in one of the above suffixes
+is automatically compressed (@samp{.gz} is compressed by @code{gzip},
+@samp{.Z} by @code{compress}).
+
+@node Other File Commands, , Accessing Compressed Files, Loading and Saving Files
+@subsection Other File Commands
+@cindex Other file commands
+@cindex Files, commands
+
+@table @kbd
+@item Meta-x delete-file @key{RET} @var{file-name} @key{RET}
+Deletes the file called @var{file-name}.
+
+@item Meta-x rename-file @key{RET} @var{source} @key{RET} @var{dest} @key{RET}
+Renames the file called @var{source} as the file @var{dest}.
+
+@item Meta-x copy-file @key{RET} @var{source} @key{RET} @var{dest} @key{RET}
+Makes a copy of the file called @var{source} as the file @var{dest}.
+@end table
+
+@node Editing Buffers, Moving Around Buffers, Loading and Saving Files, Using Jade
+@section Editing Buffers
+@cindex Editing buffers
+@cindex Buffers, editing
+
+The majority of keys when typed will simply insert themselves into the buffer
+(this is not always true but it's a good assumption) since they have not
+been bound. Typically this includes all normal characters (i.e. alphanumeric,
+punctuation, etc) as well as any of the more obtuse key-sequences which have
+not been bound to a function (@kbd{Ctrl-l} is one of the more useful of these).
+
+The behaviour of the @key{TAB} key is different to many other editors --- it
+doesn't insert anything (unless a specific editing mode has bound it to
+something else, like @code{c-mode} for example), generally it just moves the
+cursor to the next tab stop. This is partly because Jade doesn't use ``proper''
+tabs and partly because it makes it easier to move around a line (because the
+key sequence @kbd{Shift-@key{TAB}} moves to the previous tab stop).
+
+Some miscellaneous editing commands follow.
+
+@table @kbd
+@item @key{RET}
+@kindex @key{RET}
+This generally splits the line into two at the position of the cursor, some
+editing modes may provide an option which automatically indents the line
+after it's split.
+
+@item @key{Backspace}
+Deletes the character before the cursor.
+
+@item @key{DEL}
+@itemx Ctrl-d
+Deletes the character under the cursor.
+
+@item Shift-@key{Backspace}
+Kills the characters between the start of the line and the cursor.
+@xref{Killing}.
+
+@item Shift-@key{DEL}
+Kills the characters from the cursor to the end of the line.
+
+@item Ctrl-@key{DEL}
+Kills the whole line.
+
+@item Ctrl-o
+Splits the line in two at the cursor, but leaves the cursor in its original
+position.
+
+@item Meta-d
+@itemx Meta-@key{DEL}
+Kills from the cursor to the end of the current word.
+
+@item Ctrl-k
+@kindex Ctrl-k
+Kills from the cursor to the end of the line, or if the cursor is at the
+end of the line from the cursor to the start of the next line. Each
+successive @kbd{Ctrl-k} appends to the text in the kill buffer.
+
+@item Meta-l
+Makes the characters from the cursor to the end of the word lower case.
+
+@item Meta-u
+Upper cases the characters from the cursor to the end of the word.
+
+@item Meta-c
+Capitalises the characters from the cursor to the end of the word, this
+means make the first character upper case and the rest lower.
+
+@item Meta-@key{Backspace}
+Kills from the cursor to the beginning of the word.
+@end table
+
+@node Moving Around Buffers, Undo, Editing Buffers, Using Jade
+@section Moving Around Buffers
+@cindex Moving around buffers
+@cindex Buffers, moving around
+
+Here is a selection of the most commonly used commands which move the
+cursor around the current buffer.
+
+@table @kbd
+@item @key{Up}
+@itemx Ctrl-p
+Move one line up.
+
+@item @key{Down}
+@itemx Ctrl-n
+Move one line down.
+
+@item @key{Left}
+Move one column to the left, stopping at the first column.
+
+@item Ctrl-b
+Move to the previous character, at the beginning of the line moves to the
+end of the previous line.
+
+@item @key{Right}
+Move one column to the right. This keeps moving past the end of the line.
+
+@item Ctrl-f
+Move to the next character, at the end of a line moves to the start of the
+next line.
+
+@item Shift-@key{Up}
+@kindex Shift-@key{Up}
+Move to the first line in the buffer.
+
+@item Shift-@key{Down}
+@kindex Shift-@key{Down}
+Move to the last line in the buffer.
+
+@item Meta-<
+@kindex Meta-<
+Move to the first character in the buffer.
+
+@item Meta->
+@kindex Meta->
+Move to the last character in the buffer.
+
+@item Shift-@key{Left}
+@item Ctrl-a
+Move to the beginning of the current line.
+
+@item Shift-@key{Right}
+@item Ctrl-e
+Move to the last character in the current line.
+
+@item Ctrl-@key{Up}
+@kindex Ctrl-@key{Up}
+@item Meta-v
+@kindex Meta-v
+Move to the previous screen of text.
+
+@item Ctrl-@key{Down}
+@kindex Ctrl-@key{Down}
+@item Ctrl-v
+@kindex Ctrl-v
+Move to the next screen of text.
+
+@item Meta-@key{Left}
+@item Meta-b
+Move to the previous word.
+
+@item Meta-@key{Right}
+@item Meta-f
+Move to the next word.
+
+@item Meta-@key{Up}
+@item Meta-[
+Move to the start of the previous paragraph.
+
+@item Meta-@key{Down}
+@item Meta-]
+Move to the start of the next paragraph.
+
+@item @key{TAB}
+@kindex @key{TAB}
+@item Meta-i
+@kindex Meta-i
+Insert a tab character, indenting the cursor to the next tab position.
+
+Note that some editing modes redefine @key{TAB} to make it indent the
+current line to its correct depth.
+
+@item Shift-@key{TAB}
+@kindex Shift-@key{TAB}
+Move to the position of the previous tab.
+
+@item Ctrl-@key{TAB}
+@kindex Ctrl-@key{TAB}
+Move to the position of the next tab.
+
+@item Meta-j
+@kindex Meta-j
+Prompt for a line number and go to it.
+
+@item Meta-m
+@kindex Meta-m
+Move to the first non-space character in the current line.
+@end table
+
+@node Undo, Editing Units, Moving Around Buffers, Using Jade
+@section Undo
+@cindex Undo
+@cindex Changes, undoing
+
+Jade makes it very easy to undo changes to a buffer, this is very useful
+when you realise that actually, @emph{that wasn't} the part of the file
+you wanted to delete!
+
+Basically to undo the last command type either @kbd{Ctrl-_} or @kbd{Ctrl-x u}.
+If the last thing you did was to type some text into the buffer all the
+consecutively-typed characters count as one command.
+
+To undo more than one command, simply type more than one @kbd{Ctrl-_} (or
+@kbd{Ctrl-x u}) consecutively; this will progressively work its way
+back through the buffer's history. The first non-undo command cancels this
+effect, so if you undo too far back invoke a command which doesn't modify
+the buffer, then undo whatever you undid.
+
+@table @kbd
+@item Ctrl-_
+@kindex Ctrl-_
+@itemx Ctrl-x u
+@kindex Ctrl-x u
+Undo the previous command, or the last block of consecutively typed characters.
+Successive undo commands work backwards though the undo-history until a
+non-undo command is invoked.
+@end table
+
+The exact amount of undo-information kept for each buffer is controlled
+by the @code{max-undo-size} variable. This defines the maximum number of
+bytes which may be devoted to undo-information in a single buffer, the
+default is 10000. No matter what this is set to, the last command is
+@emph{always} recoverable.
+
+@defvar max-undo-size
+The maximum memory which may be devoted to recording undo-information in
+each buffer.
+@end defvar
+
+@node Editing Units, Cutting And Pasting, Undo, Using Jade
+@section Editing Units
+@cindex Editing units
+
+To make it easier to remember which key sequences do what Jade provides
+a number of commands which are similar to one another but operate on
+different @dfn{units} in the buffer. These related-commands are bound
+to the same key but with a different prefix or modifier. For example
+@kbd{Ctrl-f} moves forward one character while @kbd{Meta-f} moves
+forward one word.
+
+@menu
+* Editing Characters::          Commands operating on characters,
+* Editing Words::               words,
+* Editing Expressions::         expressions,
+* Editing Lines::               and lines.
+@end menu
+
+@node Editing Characters, Editing Words, , Editing Units
+@subsection Editing Characters
+@cindex Editing characters
+@cindex Characters, editing
+
+These are the commands which operate on characters. Note that when an
+argument (@pxref{Command Arguments}) is given to one of these commands
+it actually operates on @emph{number} of characters. For example,
+if you want to delete the next 5 characters starting at the cursor type
+@kbd{Meta-5 Ctrl-d}.
+
+@table @kbd
+@item Ctrl-f
+@kindex Ctrl-f
+Move forward one character.
+
+@item Ctrl-b
+@kindex Ctrl-b
+Move back one character.
+
+@item @key{Right}
+@kindex @key{Right}
+Move one character to the right, when the end of the line is encountered
+it's ignored and the cursor keeps moving to the right.
+
+@item @key{Left}
+@kindex @key{Left}
+Move one character to the left, stops when the beginning of the line is
+reached.
+
+@item Ctrl-d
+@kindex Ctrl-d
+@itemx @key{DEL}
+@kindex @key{DEL}
+Deletes the character beneath the cursor.
+
+@item @key{Backspace}
+@kindex @key{Backspace}
+Deletes the character before the cursor.
+
+@item Ctrl-t
+@kindex Ctrl-t
+Transposes the character before the cursor with the one under the
+cursor. When given an argument the character before the cursor is
+dragged forward over that many characters.
+
+@item Meta-@key{SPC}
+@kindex Meta-@key{SPC}
+Delete all white space characters surrounding the cursor leaving a single
+space in their place. If a prefix argument is given that many spaces
+are left.
+
+@item Meta-\
+@kindex Meta-\
+Delete all white space characters surrounding the cursor. This is
+equivalent to the key sequence @kbd{Meta-0 Meta-@key{SPC}}.
+@end table
+
+@node Editing Words, Editing Expressions, Editing Characters, Editing Units
+@subsection Editing Words
+@cindex Editing words
+@cindex Words, editing
+
+The following commands operate on words. When given a prefix argument
+they operate on that number of words all in one go.
+
+The syntax of a word depends largely on the major mode being used to
+edit the buffer with, see @ref{Editing Modes}.
+
+@table @kbd
+@item Meta-f
+@kindex Meta-f
+@itemx Meta-@key{Right}
+@kindex Meta-@key{Right}
+Move forward one word.
+
+@item Meta-b
+@kindex Meta-b
+@itemx Meta-@key{Left}
+@kindex Meta-@key{Left}
+Move back one word.
+
+@item Meta-d
+@kindex Meta-d
+@itemx Meta-@key{DEL}
+@kindex Meta-@key{DEL}
+Kills characters from the cursor to the start of the next word.
+@xref{Killing}.
+
+@item Meta-@key{Backspace}
+@kindex Meta-@key{Backspace}
+Kills characters from the start of the previous word to the cursor
+position.
+
+@item Meta-t
+@kindex Meta-t
+Transpose words: the word before the cursor is dragged over the following
+word. An argument means to drag the word over that number of words.
+
+@item Meta-u
+@kindex Meta-u
+Convert the characters from the cursor to the start of the next word to
+upper-case.
+
+@item Meta-l
+@kindex Meta-l
+Similar to @kbd{Meta-u} but converts to lower-case.
+
+@item Meta-c
+@kindex Meta-c
+Capitalise the word beginning at the cursor position. What happens is that
+the next alphabetic character is converted to upper-case then the rest
+of the word is converted to lower-case. Note that an argument to this
+command currently has no effect.
+@end table
+
+@node Editing Expressions, Editing Lines, Editing Words, Editing Units
+@subsection Editing Expressions
+@cindex Editing expressions
+@cindex Expressions, editing
+
+Expressions are used when editing programming languages; the editing
+mode for a particular programming language defines the syntax of an
+expression element in that language. In other editing modes an
+expression is defined as a single word.
+
+These commands use prefix arguments in the normal manner.
+
+@table @kbd
+@item Ctrl-Meta-f
+@kindex Ctrl-Meta-f
+Move forward over one expression element.
+
+@item Ctrl-Meta-b
+@kindex Ctrl-Meta-b
+Move backwards over one expression.
+
+@item Ctrl-Meta-k
+@kindex Ctrl-Meta-k
+Kills the following expression, starting from the current cursor position.
+A negative argument means kill backwards. @xref{Killing}.
+
+@item Ctrl-Meta-t
+@kindex Ctrl-Meta-t
+Transpose the previous expression with the following one. An argument
+means to drag the previous one over that many expressions.
+@end table
+
+@node Editing Lines, , Editing Expressions, Editing Units
+@subsection Editing Lines
+@cindex Editing lines
+@cindex Lines, editing
+
+These commands all operate on one or more lines of text. Most use a
+prefix argument (if entered) to define how many lines to move or operate
+on.
+
+@table @kbd
+@item Ctrl-n
+@kindex Ctrl-n
+@itemx @key{Down}
+@kindex @key{Down}
+Move down one line.
+
+@item Ctrl-p
+@kindex Ctrl-p
+@itemx @key{Up}
+@kindex @key{Up}
+Move to the previous line.
+
+@item Ctrl-a
+@kindex Ctrl-a
+@itemx Shift-@key{Left}
+@kindex Shift-@key{Left}
+Move to the beginning of the current line.
+
+@item Ctrl-e
+@kindex Ctrl-e
+@itemx Shift-@key{Right}
+@kindex Shift-@key{Right}
+Move to the end of the current line.
+
+@item Meta-j
+@kindex Meta-j
+Prompts for the number of a line to jump to. If a prefix argument was
+entered that defines the line number.
+
+@item Ctrl-@key{DEL}
+@kindex Ctrl-@key{DEL}
+Kill the current line. @xref{Killing}.
+
+@item Shift-@key{DEL}
+@kindex Shift-@key{DEL}
+Kill from the cursor to the end of the current line.
+
+@item Shift-@key{Backspace}
+@kindex Shift-@key{Backspace}
+Kill from the cursor to the beginning of the line.
+
+@item Ctrl-k
+@kindex Ctrl-k
+If the cursor is not at the end of the line kill the text from the cursor
+to the end of the line, else kill from the end of the line to the start of
+the next line.
+
+If this command is given an argument it kills that number of @emph{whole}
+lines, either backwards or forwards from the cursor, depending on
+whether or not the argument is negative or positive. An argument of
+zero kills from the cursor to the start of the current line.
+
+@item Ctrl-o
+@kindex Ctrl-o
+Create a blank new line, leaving the cursor in its original position. A
+prefix argument says to create that many blank lines.
+@end table
+
+@node Cutting And Pasting, Using Blocks, Editing Units, Using Jade
+@section Cutting And Pasting
+@cindex Cutting and pasting
+@cindex Pasting text
+@cindex Deleting text
+@cindex Copying text
+
+One of the main functions of any editor is to allow you to move around chunks
+of text, Jade makes this very easy.
+
+Generally, to paste down some text you have to get the text to be inserted
+into the window-system's clipboard @footnote{When using an Amiga, unit zero
+of the @code{clipboard.device} is used. For X11, the first cut-buffer.}. If the
+text you wish to paste is in one of the editor's buffers Jade has a number of
+commands for doing this, this is sometimes referred to as @dfn{killing} the
+text. For details of how to kill a piece of text see @ref{Killing}.
+
+If the text to be pasted is in the same buffer as the position to which you
+want to copy it there is an easier way than putting it into the clipboard. For
+more details see @ref{Commands on Blocks} and the command @kbd{Ctrl-i}.
+
+Once the text to be pasted is in the clipboard there are two commands which
+can be used to insert it into the buffer before the cursor,
+
+@table @kbd
+@item Ctrl-y
+@kindex Ctrl-y
+Inserts text into the buffer before the cursor. The text inserted is either
+the current contents of the kill buffer, or the block marked in this window,
+if one exists.
+
+@item Ctrl-Y
+@kindex Ctrl-Y
+This is a variant of @kbd{Ctrl-y}, it treats the string that it is pasting
+as a ``rectangle'' of text. That is, each successive line in the string
+(each separated by a newline character) is inserted on successive lines in
+the buffer but at the same column position. For more details see
+@ref{Rectangular Blocks} and the function @code{insert-rect}.
+@end table
+
+@node Using Blocks, Killing, Cutting And Pasting, Using Jade
+@section Using Blocks
+@cindex Using blocks
+@cindex Blocks, using
+
+A @dfn{block} is a section of a buffer, you mark it by specifying its
+edges (i.e. the first and last characters). This part of the buffer can then
+have various things done to it, for example insert it somewhere else.
+
+Each window can only have a single block marked at any one time, it will
+be displayed in the reverse of normal text (i.e. white on black, not black
+on white).
+
+@menu
+* Marking Blocks::              Commands to define the current block
+* Commands on Blocks::          How to work with blocks
+* Rectangular Blocks::          Columns of text as blocks
+@end menu
+
+@node Marking Blocks, Commands on Blocks, , Using Blocks
+@subsection Marking Blocks
+@cindex Marking blocks
+@cindex Blocks, marking
+
+To mark a block you must specify its outermost points, note that the
+text marked by the block ends one character before the marked position (this
+is so that it easy to mark whole lines).
+
+Rectangular blocks are a bit different for more information,
+see @ref{Rectangular Blocks}.
+
+Note also that block marks shrink and grow as text is deleted and inserted
+inside them, similar to what normal marks do.
+
+These are the commands used to mark a block,
+
+@table @kbd
+@item Ctrl-m
+@kindex Ctrl-m
+@itemx Ctrl-SPC
+@kindex Ctrl-SPC
+If a block is currently marked in this window it will unmark it. Otherwise
+it will either mark the beginning or end of the block depending on whether
+or not a block has previously been partially marked.
+
+The normal method for marking a few characters is to first make sure that
+no block is currently marked (the status line displays the status of the
+block marks, a `b' means that one end of a block has been marked and a `B'
+means that both ends of a block are marked in which case it will be
+highlighted somewhere in the buffer) then press @kbd{Ctrl-m} at one end,
+move the cursor to the opposite end and press @kbd{Ctrl-m} again.
+
+@ignore
+@item Meta-m
+@kindex Meta-m
+Set the beginning of the block to the current cursor position.
+
+@item Meta-M
+@kindex Meta-M
+Set the end of the block.
+@end ignore
+
+@item Ctrl-x h
+@kindex Ctrl-x h
+Mark the whole of the buffer.
+
+@item Meta-@@
+@kindex Meta-@@
+Mark the current word.
+
+@item Meta-h
+@kindex Meta-h
+Mark the current paragraph.
+@end table
+
+Another method for marking a block is to use the mouse, double clicking the
+left mouse button on a character has the same effect as moving to that
+character and typing @kbd{Ctrl-m}. Similarly, clicking the left mouse button
+while pressing the @key{SHIFT} key clears a marked block.
+
+@node Commands on Blocks, Rectangular Blocks, Marking Blocks, Using Blocks
+@subsection Commands on Blocks
+@cindex Commands on blocks
+@cindex Blocks, commands
+
+@table @kbd
+@item Ctrl-i
+@kindex Ctrl-i
+Inserts the block marked in this window, at the cursor position, then unmarks
+the block.
+
+@item Ctrl-w
+@kindex Ctrl-w
+Kills the contents of the marked block, for information about killing
+see @ref{Killing}.
+
+@item Meta-w
+@kindex Meta-w
+Similar to @kbd{Ctrl-w} except that the text is not actually deleted,
+just stored for later recall.
+
+@item Ctrl-W
+@kindex Ctrl-W
+Deletes the text in the currently marked block.
+
+@item Ctrl-x Ctrl-l
+@kindex Ctrl-x Ctrl-l
+Makes all alpha characters in the current block lower case.
+
+@item Ctrl-x Ctrl-u
+@kindex Ctrl-x Ctrl-u
+Makes all characters in the block upper case.
+@end table
+
+@node Rectangular Blocks, , Commands on Blocks, Using Blocks
+@subsection Rectangular Blocks
+@cindex Rectangular blocks
+@cindex Columnar blocks
+@cindex Blocks, rectangular
+
+Normally blocks are thought of sequentially from their first to last
+characters. It is also possible to mark rectangular blocks, the block marks
+being thought of as the opposite corners of the rectangle.
+
+The commands which operate on blocks automatically check whether the
+current block is a rectangle; if so they change their function accordingly.
+For example, the @kbd{Ctrl-i} command (@code{insert-block}) understands
+that rectangular blocks have to be inserted in a different manner to
+normal, sequential, blocks.
+
+@table @kbd
+@item Ctrl-M
+@kindex Ctrl-M
+Toggle between marking sequential and rectangular blocks, each window has
+its own value of this attribute (i.e. one window can be marking rectangles
+while the rest don't).
+
+@item Ctrl-Y
+@kindex Ctrl-Y
+Similar to @kbd{Ctrl-y} except that the string inserted is treated as a
+rectangle --- newline characters don't get inserted, instead the next line
+is inserted in the next line in the buffer at the same column as that inserted
+into the previous line. For more details see the function @code{insert-rect}.
+@end table
+
+At present there is a problem with changing the case of a rectangular block
+with @kbd{Ctrl-x Ctrl-l} or @kbd{Ctrl-x Ctrl-u}, they treat it as a sequential
+block. This will be fixed soon.
+
+@node Killing, Searching and Replacing, Using Blocks, Using Jade
+@section Killing
+@cindex Killing
+@cindex Text, killing
+
+@dfn{Killing} is the general method for deleting a piece of text so
+that it can later be re-inserted into a buffer. Each time you kill
+some text it is stored in the window-system's clipboard (see @pxref{Cutting
+And Pasting}) where it can be accessed by Jade or other programs.
+
+The text copied by successive kill commands are concatenated together,
+this makes it easy to incrementally save text a piece at a time.
+
+The main commands for killing are as follows, they are only described
+in brief since their full descriptions are in other parts of the manual.
+
+@table @kbd
+@item Ctrl-w
+@kindex Ctrl-w
+Kill the current block. @xref{Using Blocks}.
+
+@item Meta-w
+@kindex Meta-w
+Kill the current block without actually deleting it from the buffer.
+
+@item Ctrl-k
+@kindex Ctrl-k
+Kills the current line. @xref{Editing Lines}.
+
+@item Meta-d
+@kindex Meta-d
+Kill the word starting from the cursor. @xref{Editing Words}.
+
+@item Meta-@key{Backspace}
+@kindex Meta-@key{Backspace}
+Kills from the cursor to the beginning of the current word.
+
+@item Ctrl-Meta-k
+@kindex Ctrl-Meta-k
+Kill the expression following the cursor. @xref{Editing Expressions}.
+@end table
+
+@node Searching and Replacing, Editing Modes, Killing, Using Jade
+@section Searching and Replacing
+@cindex Searching and replacing
+@cindex Buffers, searching and replacing
+@cindex Replace, search and
+
+It is very easy to search any of Jade's buffers for a specific string, the
+standard search command will search the current buffer for a specified
+regular expression.
+
+Once you have found an occurrence of the string you are looking for it is
+then possible to replace it with something else.
+
+@menu
+* Regular Expressions::         The syntax of regular expressions
+* Incremental Search::          How to search for regexps
+* Global Replace::              Replacing all occurrences of a regexp
+* Query Replace::               Interactively replacing regexps
+@end menu
+
+@node Regular Expressions, Incremental Search, , Searching and Replacing
+@subsection Regular Expressions
+@cindex Regular expressions
+@cindex Regexps
+
+Jade uses the regexp(3) package by Henry Spencer, with some modifications
+that I have added. It comes with this heading:
+
+@quotation
+Copyright (c) 1986 by University of Toronto.@*
+Written by Henry Spencer.  Not derived from licensed software.
+
+Permission is granted to anyone to use this software for any
+purpose on any computer system, and to redistribute it freely,
+subject to the following restrictions:
+
+@enumerate
+@item
+The author is not responsible for the consequences of use of
+this software, no matter how awful, even if they arise
+from defects in it.
+
+@item
+The origin of this software must not be misrepresented, either
+by explicit claim or by omission.
+
+@item
+Altered versions must be plainly marked as such, and must not
+be misrepresented as being the original software.
+@end enumerate
+@end quotation
+
+The syntax of a regular expression (or regexp) is as follows (this is quoted
+from the regexp(3) manual page):
+
+@quotation
+A regular expression is zero or more @dfn{branches}, separated by
+@samp{|}. It matches anything that matches one of the branches.
+
+A branch is zero or more @dfn{pieces}, concatenated. It matches a
+match for the first, followed by a match for the second, etc.
+
+A piece is an @dfn{atom} possibly followed by @samp{*}, @samp{+},
+or @samp{?}.
+An atom followed by @samp{*} matches a sequence of 0 or more
+matches of the atom. An atom followed by @samp{+} matches a
+sequence of 1 or more matches of the atom. An atom followed
+by @samp{?} matches a match of the atom, or the null string.
+
+An atom is a regular expression in parentheses (matching a
+match for the regular expression), a @dfn{range} (see below), @samp{.}
+(matching any single character), @samp{^} (matching the null
+string at the beginning of the input string), @samp{$} (matching
+the null string at the end of the input string), a @samp{\} followed
+by a single character (matching that character), or a
+single character with no other significance (matching that
+character).
+
+A @dfn{range} is a sequence of characters enclosed in @samp{[]}. It
+normally matches any single character from the sequence. If
+the sequence begins with @samp{^}, it matches any single character
+@emph{not} from the rest of the sequence. If two characters in
+the sequence are separated by @samp{-}, this is shorthand for the
+full list of ASCII characters between them (e.g. @samp{[0-9]}
+matches any decimal digit). To include a literal @samp{]} in the
+sequence, make it the first character (following a possible
+@samp{^}). To include a literal @samp{-}, make it the first or last
+character.
+@end quotation
+
+Some example legal regular expressions could be:
+
+@table @samp
+@item ab*a+b
+Matches an @samp{a} followed by zero or more @samp{b} characters, followed by
+one or more @samp{a} characters, followed by a @samp{b}. For example,
+@samp{aaab}, @samp{abbbab}, etc@dots{}
+
+@item (one|two)_three
+Matches @samp{one_three} or @samp{two_three}.
+
+@item ^cmd_[0-9]+
+Matches @samp{cmd_} followed by one or more digits, it must start at the
+beginning of the line.
+@end table
+
+As well as being matched against, regexps also provide a means of
+``remembering'' portions of the string that they match. The first nine
+parenthesised expressions that are matched and the whole match are recorded
+so that they can be used later.
+
+The main use for this is in the command to replace a previously found regexp
+with the Lisp functions @code{regexp-expand}, @code{regexp-expand-line} and
+@code{replace-regexp}. The string which is given as the template (i.e. the
+string that replaces the matched string) is expanded inserting these recorded
+strings where asked to.
+
+Each occurrence of @samp{\@var{C}} in the template is a candidate for
+expansion. C can be one of:
+
+@table @asis
+@item @samp{&}
+@itemx @samp{0}
+Replaces the whole substring matched by the regular expression.
+
+@item @samp{1} to @samp{9}
+The numbered parenthesised expression.
+
+@item @samp{\}
+The character @samp{\}.
+@end table
+
+For example, if a regexp of @samp{:([0-9]+):} matches a line @samp{foo:123:bar},
+the expansion template @samp{x_\1} would produce @samp{x_123}.
+
+@node Incremental Search, Global Replace, Regular Expressions, Searching and Replacing
+@subsection Incremental Search
+@cindex Incremental search
+@cindex Search, incremental
+
+Jade's main command for searching buffers is an Emacs-style incremental
+search (or @dfn{isearch}). This is a subsystem of the editor which lets you
+interactively search for regular expressions in a buffer.
+
+@table @kbd
+@item Ctrl-s
+@kindex Ctrl-s
+Start an incremental search, initially searching forwards through the buffer.
+
+@item Ctrl-r
+@kindex Ctrl-r
+Similar to @kbd{Ctrl-s} except that searching is initially in the backwards
+direction.
+@end table
+
+When you are in an isearch the general idea is to type in a regular
+expression and see what it matches in the buffer. As more characters are
+added to the string being searched for the cursor indicates strings which
+match. To backtrack your steps (i.e. the characters you have typed) the
+backspace key is used.
+
+The special commands which are available when isearching are,
+
+@table @kbd
+@item Ctrl-s
+Search forwards for another occurrence of the search regexp. This can also
+be used to wrap around to the start of the buffer if no more matches exist
+between the cursor and the end of the buffer.
+
+@item Ctrl-r
+Search backwards for the regexp.
+
+@item Ctrl-g
+@kindex Ctrl-g
+Cancels the isearch. If the search is currently failing (the string you've
+typed doesn't match anything) characters are deleted from the regexp until
+either a match is found or the original cursor position is reached. If the
+search is not failing the cursor is returned to its original position and
+the isearch is exited.
+
+@item Ctrl-w
+@kindex Ctrl-w
+Copies the word under the cursor to the regexp being searched for.
+
+@item Ctrl-y
+@kindex Ctrl-y
+The rest of the current line is appended to the regexp being searched for.
+
+@item Ctrl-q
+@kindex Ctrl-q
+The next character typed is appended to the regexp no matter what it is,
+this can be used to enter control characters. Note that currently you can't
+search for newline characters.
+
+@item @key{RET}
+@kindex @key{RET}
+@itemx @key{ESC}
+@kindex @key{ESC}
+Accept the cursor's current position, the isearch is exited leaving the
+cursor as it is.
+
+@item @key{Backspace}
+@kindex @key{Backspace}
+Moves back up the stack which represents the current isearch, i.e. deletes
+characters from the search regexp or moves the cursor through the positions
+it had to reach its current position.
+@end table
+
+Any other keys are appended to the regular expression being searched for.
+
+@node Global Replace, Query Replace, Incremental Search, Searching and Replacing
+@subsection Global Replace
+@cindex Global replace
+@cindex Replace, global
+
+@table @kbd
+@item Meta-x replace-all @key{RET} @var{regexp} @key{RET} @var{template}
+For all occurrences of the regular expression @var{regexp} replace it with
+the string obtained by expanding @var{template}. For details of how the
+@var{template} works see @ref{Regular Expressions}.
+@end table
+
+@node Query Replace, , Global Replace, Searching and Replacing
+@subsection Query Replace
+@cindex Query replace
+@cindex Replace, query
+
+The @code{query-replace} function provides an interactive method of
+replacing strings in a buffer which match a specific regular expression.
+
+For each occurrence found you, the user, have a number of options; for
+example, you could replace this occurrence with a prespecified template.
+
+@table @kbd
+@item Meta-% @var{regexp} @key{RET} @var{template} @key{RET}
+@kindex Meta-%
+Invoke a query-replace, for all occurrences of the regular expression,
+@var{regexp} you will be prompted for what you want to do with it. Usually
+this will be to replace it with the expansion provided by the template
+(see @pxref{Regular Expressions}) @var{template}.
+@end table
+
+Special commands which come into effect each time the query-replace finds a
+match are,
+
+@table @kbd
+@item @key{SPC}
+@kindex @key{SPC}
+@itemx y
+@kindex y
+Replace this occurrence with the expansion of @var{template} and search for
+the next match.
+
+@item @key{Backspace}
+@kindex @key{Backspace}
+@itemx n
+@kindex n
+Ignore this match and search for the next.
+
+@item ,
+@kindex ,
+Replace this occurrence, then wait for another command.
+
+@item @key{RET}
+@kindex @key{RET}
+@itemx @key{ESC}
+@kindex @key{ESC}
+@itemx q
+@kindex q
+Exit this query-replace.
+
+@item .
+@kindex .
+Replace this occurrence then exit.
+
+@item !
+@kindex !
+Replace the current match and all the rest between here and the end of the
+buffer.
+
+@item ^
+@kindex ^
+Retrace your steps through each match which has been found.
+
+@item Ctrl-r
+@kindex Ctrl-r
+Enter a recursive-edit, this is allows you to edit this match by hand. When
+you exit the recursive-edit (with the @kbd{Ctrl-Meta-c} command) the
+next match is searched for.
+
+@item Ctrl-w
+@kindex Ctrl-w
+Delete the current match, then enter a recursive-edit, as in the
+@kbd{Ctrl-r} command.
+@end table
+
+@node Editing Modes, Minor Modes, Searching and Replacing, Using Jade
+@section Editing Modes
+@cindex Editing modes
+@cindex Modes, editing
+
+Modes are used to tailor the editor to the @emph{type} of the file being
+edited in a buffer. They are normally a file of Lisp which installs the
+buffer-local key bindings and variables which are needed for that type of
+file.
+
+For example, C-mode is a mode used to edit C source code, its main function
+is to try to indent each line to its correct position automatically.
+
+The name of the mode active in the current buffer is displayed in the
+status line, inside the square brackets.
+
+At present there are only a small number of modes available. It is fairly
+straightforward to write a mode for other classes of file though.
+@xref{Writing Modes}.
+
+@kindex Meta-;
+Most of the modes for editing programming languages use the command
+@kbd{Meta-;} to insert a comment place-holder, the cursor is moved to
+where you should type the body of the comment.
+
+@menu
+* Invoking a Mode::             How editing modes are invoked on a buffer
+* Generic mode::                The foundations which all modes build from
+
+  --- Modes for editing programming languages ---
+
+* C mode::                      Mode for C source code
+* Lisp mode::                   Mode for Lisp
+* Asm mode::                    For generic assembler source
+
+  --- Modes for natural language ---
+
+* Text mode::                   For normal language-based text
+* Indented-Text mode::          Variant of Text-mode
+* Texinfo mode::                Mode for editing Texinfo source
+@end menu
+
+@node Invoking a Mode, Generic mode, , Editing Modes
+@subsection Invoking a Mode
+@cindex Invoking a mode
+@cindex Editing modes, invoking
+@cindex Modes, invoking
+
+When a new file is loaded the function @code{init-mode} tries to find the
+mode that it should be edited with. If it is successful the mode will be
+automatically invoked.
+
+It is also possible to install a mode manually, simply invoke the command
+which is the name of the mode. For example to install the `C mode' in
+a buffer type @kbd{Meta-x c-mode}.
+
+@node Generic mode, C mode, Invoking a Mode, Editing Modes
+@subsection Generic mode
+@cindex Generic mode
+
+This is not a mode as such since there is no Lisp code associated with it.
+When no mode is being used to edit the buffer, it is said to use the
+``Generic'' mode.
+
+This is the base from which all other modes build, it consists of all the
+standard key bindings. Words are defined as one or more alphanumeric
+characters, paragraphs are separated by a single blank line.
+
+@node C mode, Lisp mode, Generic mode, Editing Modes
+@subsection C mode
+@cindex C mode
+
+@code{c-mode} is used for editing C source code files. Any files which end in
+@samp{.c} or @samp{.h} are automatically edited in this mode.
+
+It's one and only function is to try and indent lines to their correct depth,
+it doesn't always get it right but it works fairly well. The keys that it
+rebinds to achieve this are,
+
+It also defines the syntax of an expression in the C language for use
+with the expression commands, see @ref{Editing Expressions}.
+
+@table @kbd
+@item @key{TAB}
+@kindex @key{TAB}
+Indents the current line to what the editor thinks is the correct position.
+
+@item @{
+@kindex @{
+@itemx @}
+@kindex @}
+@itemx :
+@kindex :
+These keys are handled specially since the indentation of the line that they
+are inserted on may have to be adjusted.
+
+@item Ctrl-Meta-\
+@kindex Ctrl-Meta-\
+Indents all lines which are marked by the current block.
+@end table
+
+@deffn Command c-mode
+Editing mode for C source code. Automatically used for files ending in
+@samp{.c} or @samp{.h}.
+@end deffn
+
+@defvr Hook c-mode-hook
+This hook is called by @code{c-mode} each time the mode is invoked.
+@end defvr
+
+@defvar c-mode-tab
+Size of tab stops used by @code{c-mode}.
+@end defvar
+
+@defvar c-mode-auto-indent
+When non-nil @kbd{@key{RET}} will indent the line after splitting it.
+@end defvar
+
+@node Lisp mode, Asm mode, C mode, Editing Modes
+@subsection Lisp mode
+@cindex Lisp mode
+
+@code{lisp-mode} is used to edit files of Lisp intended to be read by the
+editor. Its main function is to manage the indentation of Lisp expressions
+for you. Each form is regarded as an expression by the commands which
+operate on expressions, see @ref{Editing Expressions}.
+
+There is also support for using a buffer as a simple shell-interface to the
+editor's Lisp subsystem.
+
+The method used for indenting lines of Lisp is fairly straightforward,
+the first symbol in the expression containing this line is found.
+This symbol's @code{lisp-indent} property is then used to decide which
+indentation method to apply to this line. It can be one of the following,
+
+@table @asis
+@item @code{nil}
+The standard method (also used if the symbol doesn't have a @code{lisp-indent}
+property).
+
+If the first argument to the function is on the same line as the name
+of the function then subsequent lines are placed under the first argument.
+Otherwise, the following lines are indented to the same depth as the
+function name.
+
+For example,
+
+@lisp
+(setq foo 20
+      bar 1000)
+
+(setq
+ foo 20
+ bar 1000)
+@end lisp
+
+@item @code{defun}
+This method is used for all functions (or special-forms, macros) whose name
+begins with `def' and any lambda-expressions.
+
+All arguments to the function are indented @code{lisp-body-indent} columns
+from the start of the expression.
+
+For example,
+
+@lisp
+(defun foo (bar)
+  "A test"
+  (let
+      ((foo bar))
+    ...
+@end lisp
+
+@item A number, @var{n}
+The first @var{n} arguments to the function are indented twice the value
+of @code{lisp-body-indent}, the remaining arguments are indented by
+@code{lisp-body-indent}.
+
+For example the special-form @code{if} has a @code{lisp-indent} property of 2,
+
+@lisp
+(if condition
+    t-expression
+  nil-expressions...)
+@end lisp
+@end table
+
+Special commands for Lisp mode are,
+
+@table @kbd
+@item Ctrl-j
+@kindex Ctrl-j
+Evaluates the expression preceding the cursor, prints the value on the next
+line. This is designed to be used like a shell, you type a Lisp expression,
+press @kbd{Ctrl-j} and Jade prints the value for you.
+
+@item @key{TAB}
+@kindex @key{TAB}
+Indents the current line.
+
+@item Ctrl-Meta-\
+@kindex Ctrl-Meta-\
+Indents all lines which are marked by the current block.
+
+@item Ctrl-Meta-x
+@kindex Ctrl-Meta-x
+Evaluates the expression before the cursor, prints it's value in the status
+line.
+@end table
+
+@deffn Command lisp-mode
+Editing mode for Jade's Lisp. Automatically invoked for files ending in
+@samp{.jl}.
+@end deffn
+
+@defvr Hook lisp-mode-hook
+This hook is evaluated each time @code{lisp-mode} is invoked.
+@end defvr
+
+@defvar lisp-body-indent
+The number of characters which the body of a form is indented by,
+the default value is 2.
+@end defvar
+
+@node Asm mode, Text mode, Lisp mode, Editing Modes
+@subsection Asm mode
+@cindex Asm mode
+
+A basic mode for editing assembler source files with, provides automatic
+indentation of labels and instructions.
+
+The special commands are,
+
+@table @kbd
+@item @key{RET}
+@kindex @key{RET}
+Breaks the line as normal, if @code{asm-indent} is non-nil a tab
+characters is inserted as well.
+
+@item :
+@kindex :
+Deletes all indentation from the start of the current line, then inserts
+the string @samp{:\t} to move to the next tab stop. This is used to enter
+labels.
+
+@item .
+@kindex .
+If the line is not empty, all indentation is deleted from the start of the
+line. A dot (@samp{.}) is then inserted.
+@end table
+
+@deffn Command asm-mode
+Major mode for generic assembler source files.
+@end deffn
+
+@defvr Hook asm-mode-hook
+The hook which is called when @code{asm-mode} is entered.
+@end defvr
+
+@defvar asm-indent
+When this variable is non-nil the @key{RET} key inserts the string
+@samp{\n\t} instead of just @samp{\n}. This indents the cursor to
+the first tab stop of the new line.
+@end defvar
+
+@defvar asm-comment
+This variable defines the string which denotes the start of a comment in
+the assembler that you are using. By default this is @samp{;}.
+@end defvar
+
+@node Text mode, Indented-Text mode, Asm mode, Editing Modes
+@subsection Text mode
+@cindex Text mode
+
+This is the most basic mode for editing English-style text in. The main
+difference over @code{generic-mode} and is that words are allowed to
+contain underscores and there are some extra commands,
+
+@table @kbd
+@item Meta-s
+@kindex Meta-s
+Centres the current line. The position of the @code{fill-column} is used
+to calculate the centre of the line. For more information on the
+@code{fill-column} variable see @ref{Fill mode}.
+
+@item Meta-S
+@kindex Meta-S
+Centres the current paragraph.
+@end table
+
+@deffn Command text-mode
+Major mode for editing English text.
+@end deffn
+
+@defvr Hook text-mode-hook
+Evaluated when @code{text-mode} is invoked. Variants of @code{text-mode}
+also use this hook.
+@end defvr
+
+@node Indented-Text mode, Texinfo mode, Text mode, Editing Modes
+@subsection Indented-Text mode
+@cindex Indented-Text mode
+
+This is a variant of @code{text-mode}, see @ref{Text mode}. It's only
+difference is in the way the @key{TAB} key is handled --- tab stops are
+calculated from the previous non-empty line. Each transition from a
+sequence of one or more spaces to a non-space character is used as a tab
+stop. If there are none of these to the right of the cursor normal the
+standard tabbing command is used.
+
+@deffn Command indented-text-mode
+Variant of @code{text-mode}.
+@end deffn
+
+@defvr Hook indented-text-mode-hook
+Evaluated when @code{indented-text-mode} is invoked. The hook
+@code{text-mode-hook} is also evaluated (before this one).
+@end defvr
+
+@node Texinfo mode, , Indented-Text mode, Editing Modes
+@subsection Texinfo mode
+@cindex Texinfo mode
+
+@code{texinfo-mode} is used to edit Texinfo source files, it is automatically
+selected for files ending in @samp{.texi} or @samp{.texinfo}. It provides
+a few basic key bindings to take some of the tedium out of editing these files.
+
+Paragraphs are separated by the regexp @samp{^@@node}, i.e. each node is a
+separate paragraph.
+
+The special commands are,
+
+@table @kbd
+@item @key{TAB}
+@kindex @key{TAB}
+Inserts as many spaces as are needed to move the cursor to the next tab
+position. The reason tab characters aren't used is that @TeX{} doesn't agree
+with them.
+
+@item Ctrl-c Ctrl-c c
+@kindex Ctrl-c Ctrl-c c
+Insert the string @samp{@@code@{@}}, positioning the cursor between the braces.
+
+@item Ctrl-c Ctrl-c d
+@kindex Ctrl-c Ctrl-c d
+Insert the string @samp{@@dfn@{@}}, positioning the cursor between the braces.
+
+@item Ctrl-c Ctrl-c e
+@kindex Ctrl-c Ctrl-c e
+Inserts the string @samp{@@end}.
+
+@item Ctrl-c Ctrl-c f
+@kindex Ctrl-c Ctrl-c f
+Inserts the string @samp{@@file@{@}}, the cursor is put between the braces.
+
+@item Ctrl-c Ctrl-c i
+@kindex Ctrl-c Ctrl-c i
+Inserts the string @samp{@@item}.
+
+@item Ctrl-c Ctrl-c l
+@kindex Ctrl-c Ctrl-c l
+Inserts the string @samp{@@lisp\n}.
+
+@item Ctrl-c Ctrl-c m
+@kindex Ctrl-c Ctrl-c m
+Inserts the string @samp{@@menu\n}.
+
+@item Ctrl-c Ctrl-c Ctrl-m
+@kindex Ctrl-c Ctrl-c Ctrl-m
+Prompts for the name of a node and makes a menu-item for it.
+
+@item Ctrl-c Ctrl-c n
+@kindex Ctrl-c Ctrl-c n
+Prompts for each part of a node definition (name, next, prev, up) and inserts
+the @samp{@@node @dots{}} string needed.
+
+@item Ctrl-c Ctrl-c s
+@kindex Ctrl-c Ctrl-c s
+Inserts the string @samp{@@samp@{@}} and puts the cursor between the braces.
+
+@item Ctrl-c Ctrl-c v
+@kindex Ctrl-c Ctrl-c v
+Inserts the string @samp{@@var@{@}}, the cursor is put between the braces.
+
+@item Ctrl-c Ctrl-c @{
+@kindex Ctrl-c Ctrl-c @{
+Inserts a pair of braces with the cursor between them.
+
+@item Ctrl-c Ctrl-c @}
+@kindex Ctrl-c Ctrl-c @}
+@itemx Ctrl-c Ctrl-c ]
+@kindex Ctrl-c Ctrl-c ]
+Moves the cursor to the character after the next closing brace.
+@end table
+
+@deffn Command texinfo-mode
+Major mode for editing Texinfo source files.
+@end deffn
+
+@defvr Hook texinfo-mode-hook
+Evaluated when @code{texinfo-mode} is invoked. The hook @code{text-mode-hook}
+is evaluated first.
+@end defvr
+
+@node Minor Modes, Using Buffers, Editing Modes, Using Jade
+@section Minor Modes
+@cindex Minor modes
+@cindex Modes, minor
+
+The editing modes described in the previous section were ``Major modes'', 
+each mode was designed for a particular class of file. Minor modes work on
+top of the major modes, each minor mode provides a single extra feature for
+editing the buffer they are used in. For example @code{overwrite-mode} is a
+minor mode which makes any keys you type overwrite the character beneath
+the cursor, instead of inserting themselves before the cursor.
+
+The names of the minor modes currently active in the current buffer are
+displayed in the status line, to the right of the name of the major mode.
+
+@menu
+* Overwrite mode::              Typed characters overwrite the character
+                                  beneath them.
+* Fill mode::                   Automatically break long lines as they
+                                  are typed.
+* Auto-Save mode::              How to disable auto-saving of a buffer.
+* Latin-1 mode::                Displaying European characters.
+@end menu
+
+@node Overwrite mode, Fill mode, , Minor Modes
+@subsection Overwrite mode
+@cindex Overwrite mode
+@cindex Minor modes, overwrite
+
+When enabled, characters typed replace the existing character under the
+cursor instead of just moving it to the right.
+
+The command to toggle this mode on and off is @kbd{Meta-x overwrite-mode}.
+
+@deffn Command overwrite-mode
+Toggles overwriting character insertion in the current buffer.
+@end deffn
+
+@node Fill mode, Auto-Save mode, Overwrite mode, Minor Modes
+@subsection Fill mode
+@cindex Fill mode
+@cindex Minor modes, fill
+
+Filling splits lines so that they aren't longer than a certain number of 
+characters. The @code{fill-mode} checks if you have passed this threshold
+when you type the @key{SPC} or @kbd{RET} key. Any words passed the
+threshold get moved to the next line.
+
+@table @kbd
+@item Ctrl-x f
+@kindex Ctrl-x f
+Sets the @code{fill-column} variable (see below) to the cursor's current 
+column position.
+@end table
+
+@deffn Command fill-mode
+Toggles the auto-filling minor mode.
+@end deffn
+
+@defvar fill-column
+The maximum number of characters allowed in a single line. This is used by
+the filling and centring functions.
+@end defvar
+
+@node Auto-Save mode, Latin-1 mode, Fill mode, Minor Modes
+@subsection Auto-Save mode
+@cindex Auto-save mode
+@cindex Minor modes, auto-save
+
+This is not really a minor mode but it obeys the same calling conventions
+(i.e. calling its function toggles its action).
+
+@deffn Command auto-save-mode
+Toggles whether or not the current buffer is regularly saved to a temporary
+file.
+@end deffn
+
+For more details about auto-saving see @ref{Auto-Saving Files}.
+
+@node Latin-1 mode, , Auto-Save mode, Minor Modes
+@subsection Latin-1 mode
+@cindex Latin-1 mode
+@cindex Minor modes, Latin-1
+@cindex Character set, Latin-1
+
+This minor mode toggles the display of characters in the Latin-1 character
+set, by default these characters are displayed as octal escape sequences.
+
+This only works properly if the font that you are using defines glyphs
+for these characters!
+
+@deffn Command latin-1-mode
+Toggles the display of characters in the Latin-1 character set. This is
+a @emph{global} setting.
+@end deffn
+
+For more information about what is displayed for each character see
+@ref{Character Images}.
+
+@node Using Buffers, Using Windows, Minor Modes, Using Jade
+@section Using Buffers
+@cindex Using buffers
+@cindex Buffers, using
+
+As you have probably realised, buffers are probably the most important
+part of the editor. Each file that is being edited must be stored in a
+buffer. They are not restricted to editing files though, all buffers
+are regarded as simply being a list of lines which can be displayed in
+a window and modified as needed.
+
+This means that they are very flexible, for example, the Lisp debugger
+uses a buffer for its user interface, the Info reader uses two buffers
+-- one to display the current node, the other to store the file's tag
+table (never displayed, just used to look up the position of nodes).
+
+Each buffer has a name, generally buffers which contain proper files use the
+base part of the filename, while buffers which don't correspond to files
+use a word which starts and ends with asterisks (i.e. @samp{*jade*}).
+
+Each window can display one buffer at any one time. There is no restriction
+on the number of windows which may display the same buffer at once.
+
+@menu
+* Displaying Buffers::          How to make a window display a buffer
+* Deleting Buffers::            Killing unwanted buffers
+* Other Buffer Commands::       General buffer manipulation
+* The Buffer Menu::             Interactive buffer manipulation
+@end menu
+
+@node Displaying Buffers, Deleting Buffers, , Using Buffers
+@subsection Displaying Buffers
+@cindex Displaying buffers
+@cindex Buffers, displaying
+
+There are two main commands for switching to a different buffer,
+
+@table @kbd
+@item Ctrl-x b
+@kindex Ctrl-x b
+Prompt for the name of a buffer and display it in the current window.
+
+@item Ctrl-x 4 b
+@kindex Ctrl-x 4 b
+In a different window (opens a new window if there is currently only one)
+prompt for the name of a buffer and display it in that window.
+@end table
+
+Both commands are very similar, the @kbd{Ctrl-x 4 b} variant simply
+invokes a command to switch to a different window before calling the
+@kbd{Ctrl-x b} command.
+
+When typing the name of the new buffer you can use the prompt's completion
+mechanism to expand abbreviations (see @pxref{The Buffer Prompt}). If you
+just press @key{RET} with an empty prompt the default choice will be used.
+This will be the the buffer that was being shown in this window before the
+current buffer was selected (its name is displayed in the prompt's title).
+
+The @kbd{Ctrl-x Ctrl-f} command and its variants also switch buffers since
+they look for an existing copy of the file in a buffer before loading it
+from disk, see @ref{Commands To Load Files}.
+
+@node Deleting Buffers, Other Buffer Commands, Displaying Buffers, Using Buffers
+@subsection Deleting Buffers
+@cindex Deleting buffers
+@cindex Buffers, deleting
+
+There is no real need to delete buffers, those that haven't been used for
+a while just hang around at the end of the list. If you're short on memory
+though it can help to kill some of the unused buffers which you have
+accumulated.
+
+The command to kill a buffer is,
+
+@table @kbd
+@item Ctrl-x k
+@kindex Ctrl-x k
+Prompts for the name of a buffer (with completion) then deletes that
+buffer (if the buffer contains unsaved modifications you are asked if you
+really want to lose them). It is removed from all window's buffer-lists
+and any window which is displaying it is switched to another buffer
+(the next in its list).
+
+Any marks which point to the buffer are made ``non-resident'' (that is, they
+point to the name of the file in the buffer) and the buffer is discarded.
+@end table
+
+@node Other Buffer Commands, The Buffer Menu, Deleting Buffers, Using Buffers
+@subsection Other Buffer Commands
+@cindex Other buffer commands
+@cindex Buffers, other commands
+
+@table @kbd
+@item Meta-x rotate-buffers-forward
+Rotates the current window's list of buffers.
+
+@item Meta-x revert-buffer
+Restores the contents of the current buffer to the contents of the file that
+it was loaded from, if an auto-save file exists you are asked if you want
+to revert to that instead.
+
+@item Ctrl-x s
+Ask whether to save any buffers which contain unsaved modifications.
+@xref{Commands To Save Files}.
+
+@item Ctrl-x Ctrl-q
+@kindex Ctrl-x Ctrl-q
+Toggle the buffers read-only flag.
+
+@item Meta-x clear-buffer
+Deletes the contents of the current buffer. Beware, you @emph{won't} be warned
+if you're about to lose any unsaved modifications!
+@end table
+
+@node The Buffer Menu, , Other Buffer Commands, Using Buffers
+@subsection The Buffer Menu
+@cindex Buffer menu
+
+The buffer menu presents you with a list of all the buffers accessible
+from the current window in most-recently-used order. You are then able
+to manipulate the buffer list using several simple commands.
+
+@table @kbd
+@item Ctrl-x Ctrl-b
+@kindex Ctrl-x Ctrl-b
+Enters the buffer menu; the buffer @samp{*Buffer Menu*} is selected and
+a list of available buffers is printed in it.
+@end table
+
+The following example shows how the buffer list is printed.
+
+@example
+   MR   Name            Mode            File
+   --   ----            ----            ----
+    -   *Buffer Menu*   Buffer Menu
+   +    user.texi       Texinfo         man/user.texi
+        *jade*          Lisp
+@end example
+
+@noindent
+The column headed @samp{M} shows whether the buffer has been modified
+since it was last saved and the column @samp{R} shows whether or not
+the buffer is read-only. The other columns should be self-explanatory.
+
+When the @samp{*Buffer Menu*} buffer is selected the following commands
+are available. When a single buffer is to be manipulated by a command,
+the buffer described by the line which the cursor is on is chosen.
+
+@table @kbd
+@item d
+@kindex d
+Mark the buffer for deletion and move to the next buffer. A @samp{D} is
+displayed in the first column of a line if that buffer is marked for
+deletion.
+
+@item s
+@kindex s
+@itemx Ctrl-s
+@kindex Ctrl-s
+Mark the buffer to be saved then move to the next buffer in the list. A
+@samp{S} in the second column of a line denotes a buffer which has been
+marked to be saved.
+
+@item x
+@kindex x
+Execute previously-marked saves and deletions.
+
+@item u
+@kindex u
+Unmark the current line (i.e. clear any @samp{D} or @samp{S} markers)
+then move to the next entry in the buffer list.
+
+@item ~
+@kindex ~
+Toggle the modified flag of the current line's buffer, then move down.
+
+@item %
+@kindex %
+@itemx -
+@kindex -
+Toggle the read-only status of the current line's buffer, then move to
+the next entry.
+
+@item 1
+@kindex 1
+@itemx @key{RET}
+@kindex @key{RET}
+Select the current line's buffer in this window.
+
+@item o
+@kindex o
+Select the current line's buffer in the other window.
+
+@item Ctrl-f
+@kindex Ctrl-f
+@itemx @key{TAB}
+@kindex @key{TAB}
+Move to the next line in the buffer list.
+
+@item Ctrl-b
+@kindex Ctrl-b
+Move to the previous line in the buffer list.
+
+@item Ctrl-l
+@kindex Ctrl-l
+Redraw the buffer list, incorporating any changes made to the available
+buffers.
+
+@item q
+@kindex q
+Quit the buffer menu.
+@end table
+
+@node Using Windows, Using the Prompt, Using Buffers, Using Jade
+@section Using Windows
+@cindex Using windows
+@cindex Windows, using
+
+Windows have two main functions: to display the contents of buffers (but only
+one buffer at a time) and to collect input from you, the user.
+
+The editor @emph{must} have at least one window open at all times, when
+you close the last window Jade will exit, there is no limit to the number
+of windows which you may have open at once.
+
+Each window is split into two parts, they are
+
+@table @dfn
+@item The Main Display Area
+This is the largest part of the window, it is where the buffer that this
+window is displaying is drawn.
+
+@item The Status Line
+A single line of text associated with the window, under X11 this is the
+area of the beneath the horizontal line at the bottom of the window, on
+the Amiga it is the title of the window. The status line is normally
+used to display information about this window and what it is displaying,
+it has this format,
+
+@example
+@var{buffer-name} (@var{mode-names}) (@var{col},@var{row}) @var{n} line(s) [@var{flags}]
+@end example
+
+@noindent
+Where the individual parts mean,
+
+@table @var
+@item buffer-name
+The name of the buffer being edited, it can have either a @samp{+} or a @samp{-}
+appended to it, a plus means the buffer has been modified since it was saved,
+a minus means that the buffer is read-only.
+
+@item mode-names
+This tells you which editing modes are being used by this buffer, the first
+word is the name of the major mode, any subsequent words correspond to the
+names of the minor modes for this buffer. If this section is surrounded by
+square brackets @samp{[@dots{}]} instead of parentheses it means that you
+are currently in a recursive edit, for example, inside the Lisp debugger.
+
+@item col
+The column that the cursor is at.
+
+@item row
+The row number of the cursor.
+
+@item n
+The number of lines in this buffer
+
+@item flags
+General one-character flags related to the status of the window and its buffer.
+@end table
+@end table
+
+Each window maintains a list of all buffers which are available for
+displaying, this is kept in order, from the most recently used to the
+least. This list (called @code{buffer-list}) is used by some of the buffer
+manipulation commands when they are working out which buffer should be
+displayed.
+
+@menu
+* Creating Windows::            Opening a new window
+* Killing Windows::             How to close windows
+* Other Window Commands::       General window manipulation
+@end menu
+
+@node Creating Windows, Killing Windows, , Using Windows
+@subsection Creating Windows
+@cindex Creating windows
+@cindex Windows, creating
+
+@table @kbd
+@item Ctrl-x 2
+@kindex Ctrl-x 2
+Opens a new window, it will have the most of the attributes that the current
+window does, things like: size, buffer, font, etc@dots{} If you are using
+X11 you will probably have to use your mouse to select its position, depending
+on the window manager you use, on the Amiga it will be created at the same
+position as the current window.
+
+@item Ctrl-x 4 Ctrl-f
+@kindex Ctrl-x 4 Ctrl-f
+@itemx Ctrl-x 4 f
+@kindex Ctrl-x 4 f
+In a different window, one will be created if only one window is open, find
+a file, for more details see @ref{Commands To Load Files}.
+
+@item Ctrl-x 4 a
+@kindex Ctrl-x 4 a
+In a different window add an entry to a change-log file. @xref{Keeping
+ChangeLogs}.
+
+@item Ctrl-x 4 b
+@kindex Ctrl-x 4 b
+In a different window, choose a buffer to display, similar to the @kbd{Ctrl-x b}
+command. @xref{Displaying Buffers}.
+
+@item Ctrl-x 4 h
+@kindex Ctrl-x 4 h
+Enter the help system in a different window. @xref{The Help System}.
+
+@item Ctrl-x 4 i
+@kindex Ctrl-x 4 i
+Enter the Info browser in a different window. @xref{Info Mode}.
+
+@item Ctrl-x 4 `
+@kindex Ctrl-x 4 `
+Display the next error (or whatever) in the @code{*compilation*} buffer in
+a different window. @xref{Finding Errors}.
+@end table
+
+@kindex Ctrl-x 5 f
+@kindex Ctrl-x 5 Ctrl-f
+@kindex Ctrl-x 5 a
+@kindex Ctrl-x 5 b
+@kindex Ctrl-x 5 h
+@kindex Ctrl-x 5 i
+@kindex Ctrl-x 5 `
+Note that for each @kbd{Ctrl-x 4} command there is a corresponding
+@kbd{Ctrl-x 5} command. Instead of using a different window to the current
+one, a new window is opened for each @kbd{Ctrl-x 5} command typed.
+
+@node Killing Windows, Other Window Commands, Creating Windows, Using Windows
+@subsection Killing Windows
+@cindex Killing windows
+@cindex Windows, killing
+
+@table @kbd
+@item Ctrl-x 0
+@kindex Ctrl-x 0
+Close the current window, if it is the last window that the editor has open
+it will exit (after asking you if you wish to lose any unsaved modifications
+to buffers).
+
+@item Ctrl-x 1
+@kindex Ctrl-x 1
+Close all windows except the current one.
+@end table
+
+@node Other Window Commands, , Killing Windows, Using Windows
+@subsection Other Window Commands
+@cindex Other window commands
+@cindex Windows, other commands
+@cindex Commands, window
+
+@table @kbd
+@item Ctrl-x o
+@kindex Ctrl-x o
+Activate the next window of the editor's. Under X11 this involves warping
+the mouse-pointer to the top left corner of the newly activated window.
+
+@cindex Font, selecting
+@item Meta-x set-font
+Choose a font to use in the current window. This command prompts for the
+name of the font then installs it in the window. Font names are the same
+as for the shell argument @samp{-font} (@pxref{Startup Options}).
+@end table
+
+@node Using the Prompt, Using Marks, Using Windows, Using Jade
+@section Using the Prompt
+@cindex Using the prompt
+@cindex Prompt, using
+
+There are two different styles of prompt that the editor uses when it
+wants you to enter a string.
+
+@menu
+* The Simple Prompt::           The prompt at the bottom of the window
+* The Buffer Prompt::           Prompt with its own buffer and completion
+@end menu
+
+@node The Simple Prompt, The Buffer Prompt, , Using the Prompt
+@subsection The Simple Prompt
+@cindex Simple prompt
+@cindex Prompt, simple
+
+The simplest prompt uses the the bottom-most line in the window, it prints
+the prompt's title on the left hand side, you should type your response
+and then press the @key{RET} key. This prompt is very primitive, the only
+special commands that it has are,
+
+@table @kbd
+@item @key{Backspace}
+Delete the previous character.
+
+@item @key{Up}
+@itemx @key{Down}
+Replace the contents of the prompt with the last string entered. When you
+type @kbd{@key{Up}} or @kbd{@key{Down}} again the original contents are
+restored.
+
+@item @key{ESC}
+Cancel the prompt.
+@end table
+
+@noindent
+All other keys are simply printed in the prompt --- whatever they are.
+
+@node The Buffer Prompt, , The Simple Prompt, Using the Prompt
+@subsection The Buffer Prompt
+@cindex Buffer prompt
+@cindex Prompt, buffer
+
+This type of prompt is more sophisticated. It creates a new buffer for
+you to type your response into (called @code{*prompt*}), the title of the
+prompt is displayed in the buffer's first line.
+
+Normally you type the answer to the prompt into the buffer and then
+press the @key{RET} key. All normal editor commands are available while
+you are using the prompt, you can switch buffers, load new files, whatever
+you like.
+
+Another advantage of this type of prompt is that it supports @dfn{completion},
+this allows you to type the beginning of your response then press the
+@key{TAB} key. What you have typed will be matched against the list of
+responses that the editor has (i.e. when being prompted for the name of a
+file it will be matched against all available files), if a unique match
+is found your response will be completed to that match.
+
+If several potential completions are found, these will be displayed after
+the line @code{::Completions::} in the buffer and your response will only
+be completed as far as the potential completions are similar. For example,
+if you enter @samp{fo} then press @key{TAB} and files called @file{foo} and
+@file{foobar} exist, the contents of the prompt will become @samp{foo}.
+
+Completion is provided for many different things, some are: files, buffers,
+symbols, functions, variables, Info nodes, etc@dots{}
+
+The special commands for this type of prompt are,
+
+@table @kbd
+@item @key{TAB}
+@kindex @key{TAB}
+@itemx @key{RMB}-@key{CLICK1}
+@kindex @key{RMB}-@key{CLICK1}
+Complete the contents of the prompt. If more than one potential completion
+exists they are printed in the buffer.
+
+@item @key{RET}
+@kindex @key{RET}
+@itemx @key{LMB}-@key{CLICK2}
+@kindex @key{LMB}-@key{CLICK2}
+Enter the result of this prompt. If you invoke this command while the cursor is
+on a printed potential completion (those under the @code{::Completions::}
+line) the whole line will be entered. Otherwise, just the text to the left
+of the cursor is entered.
+
+@item Meta-?
+@kindex Meta-?
+Print all possible completions of the current prompt but do not try to actually
+change the contents of the prompt.
+
+@item Ctrl-g
+@kindex Ctrl-g
+Cancel the prompt.
+@end table
+
+@node Using Marks, Interrupting Jade, Using the Prompt, Using Jade
+@section Using Marks
+@cindex Using marks
+@cindex Marks, using
+
+Marks are used to record a position in a file, as the file's buffer is modified
+so does the position that the mark points to --- a mark will keep pointing
+at the same character no matter what happens (unless the character is deleted!).
+
+The other good thing about marks is that they point to files @emph{not}
+buffers. This means that you can set a mark in a buffer, delete the buffer
+and then move to the position of the mark, the file will be reloaded and
+the cursor will point at the original character.
+
+Normally there are three user-accessible marks @footnote{There is no reason why
+you can't have more, the editor sets no limitation on the number of marks
+available. This is just how I have set the editor up.} and one special
+@code{auto-mark} which is used, amongst other things, to record the ``previous''
+position of the cursor, allowing you to retrace your last major step.
+
+The commands available on marks are,
+
+@table @kbd
+@item @key{F1}
+@kindex @key{F1}
+@itemx @key{F2}
+@kindex @key{F2}
+@itemx @key{F3}
+@kindex @key{F3}
+Move to the mark #1, #2 or #3, depending on which function key is pressed
+(@key{F1} means mark #1, etc@dots{}). If the file pointed to is not in
+memory it will be loaded into a new buffer.
+
+@item Shift-@key{F1}
+@kindex Shift-@key{F1}
+@itemx Shift-@key{F2}
+@kindex Shift-@key{F2}
+@itemx Shift-@key{F3}
+@kindex Shift-@key{F3}
+Set the position of mark #1, #2 or #3, depending on the function key.
+
+@item Ctrl-x Ctrl-x
+@kindex Ctrl-x Ctrl-x
+Swap the positions of the cursor and the @code{auto-mark}.
+
+@item Ctrl-@@
+@kindex Ctrl-@@
+Set the position of the @code{auto-mark}.
+@end table
+
+@node Interrupting Jade, Recursive Editing, Using Marks, Using Jade
+@section Interrupting Jade
+@cindex Interrupting Jade
+@cindex Breaking out of loops
+
+It is often useful to be able to tell Jade to quit whatever it is
+doing and wait for more commands; this is called @dfn{interrupting}
+Jade. When the editor receives an interrupt signal it will abort
+what it is doing and rewind itself back to the inner-most recursive
+edit (see @pxref{Recursive Editing}).
+
+The interrupt signal differs with the operating system being used,
+
+@itemize @bullet
+@item
+Under Unix the @code{SIGINT} signal is used, this can be sent via
+the @code{intr} character (get the editor into the foreground of the
+shell it was started from and type @kbd{Ctrl-c} in the shell's terminal),
+or directly through the @code{kill} shell command. For example, look at
+the following shell session extract,
+
+@example
+/var/src/jade/man$ ps
+  PID TT STAT  TIME COMMAND
+   60  1 SW    0:02 (xinit)
+   87  1 S     0:08 fvwm
+  127 p0 S     0:00 /bin/bash
+  155 p0 S     0:04 jade
+  156 p1 S     0:00 /bin/bash
+  159 p1 R     0:00 ps
+/var/src/jade/man$ kill -INT 155
+@end example
+
+@noindent
+First the @code{ps} command is used to find the Jade process' pid (155),
+then the @code{kill} command is used to send the @code{INT} signal
+to this process.
+
+@item
+The @kbd{Ctrl-c} signal is also used on Amigas, either type this in
+the console window that Jade was launched from or use the @code{break}
+(or possibly @code{breaktask}) command to send the signal.
+@end itemize
+
+@node Recursive Editing, Character Images, Interrupting Jade, Using Jade
+@section Recursive Editing
+@cindex Recursive editing
+
+Recursive editing is the act of editing a file while the current
+command is still being evaluated. For example, when using the
+@code{query-replace} command (@kbd{Meta-%}) the @kbd{Ctrl-r} command
+enters a recursive edit to let you edit the buffer, even though you
+are still doing a query-replace (which will be resumed when the recursive
+edit finishes).
+
+As the name suggests a recursive edit calls the editor's main command
+loop recursively from within a command. Any number of recursive
+edits may be stacked up and then unwound back to the top-level of
+the editor.
+
+When a recursive edit is in progress the name of the mode being used to
+edit the buffer is shown in @emph{square brackets}, not parentheses as
+in the top-level instance.
+
+The commands for manipulating recursive edits are as follows,
+
+@table @kbd
+@item Ctrl-]
+@kindex Ctrl-]
+@itemx Ctrl-Meta-c
+@kindex Ctrl-Meta-c
+Exit the innermost recursive edit, this has no effect at the top-level.
+
+@item Meta-x top-level
+Return to the outermost edit --- the top-level. This is useful when
+you get ``lost'' inside a sequence of recursive edits.
+
+@item Meta-x recursive-edit
+Enter a new recursive edit; this command is usually best avoided to
+save confusion.
+@end table
+
+In general, recursive editing is rarely used except in unavoidable
+circumstances (i.e. in the Lisp debugger).
+
+@node Character Images, Client Editing, Recursive Editing, Using Jade
+@section Character Images
+@cindex Character images
+@cindex Latin1 character set
+
+In general any character can be mapped to any sequence of up to four character
+sized images (called glyphs) when it is drawn into a window. The TAB character
+is a notable exception; it expands to as many spaces as are needed to fill
+up to the next tab stop.
+
+By default, the editor is set up to display the following,
+
+@table @asis
+@item 0 to 31
+A caret (@samp{^}) followed by the ASCII value of the character exclusive-or'd
+with 0x40, i.e. @samp{^@@} to @samp{^_}.
+
+@item 32 to 126
+Printed literally, this includes all ``normal'' characters and punctuation.
+
+@item 127
+@samp{^?}
+
+@item 128 to 255
+Represented by the octal escape sequence (i.e. @samp{\200}) for that
+character's numeric value.
+@end table
+
+If you want to edit files containing characters in the @code{Latin1} character
+set (numerically, from 160 to 255) you can put the following in your
+@file{.jaderc} file,
+
+@lisp
+(latin-1-mode)
+@end lisp
+
+@noindent
+this will redefine the necessary characters.
+
+If you want more details about this sort of thing see @ref{Glyph Tables}.
+
+@node Client Editing, Compiling Programs, Character Images, Using Jade
+@section Client Editing
+@cindex Client editing
+@cindex Server, Jade as a
+
+Normally you will only have one instance of Jade executing at a single
+time. Often though, another program will want you to edit a file, for
+example when you are composing a mail message. There is normally a way
+to specify which editor you want to use, for example the @code{EDITOR}
+environment variable.
+
+If you were to ask to edit the file in @code{jade} an @emph{additional}
+process executing Jade would be started, totally separate from the
+original. It is possible to use the original instance.
+
+Firstly Jade must be set up to listen for clients wanting files edited,
+this is done with the @code{server-open} command. You can either put
+this in your @file{.jaderc} file (with a line like @samp{(server-open)})
+or call it manually with the command @kbd{Meta-x server-open}.
+
+Only one instance of Jade may be a server at once. If you know that
+there is no other Jade running but it still won't let you open a
+server, and you are running on Unix, look for a dead socket called
+@file{~/.Jade_rendezvous} and delete it if necessary.
+
+Once the editor is listening for client messages the separate program
+@code{jadeclient} may be used to load files into the server from an
+external source. The format of @code{jadeclient} invocation is,
+
+@example
+jadeclient [+@var{line-number}] @var{file-name} @dots{}
+@end example
+
+@noindent
+When invoked, it will ask the server to edit each @var{file-name} (initially
+positioned at line @var{line-number}) in turn, exiting only after each
+file has finished being edited.
+
+If when the @code{jadeclient} program is invoked their is no server open
+(i.e. either Jade is not running or you haven't used the @code{server-open}
+function) a message @samp{Jade not running, waiting...} will be printed
+and @code{jadeclient} will sit waiting for you to open a Jade server.
+
+So, simply get the program you want to use Jade to use the @code{jadeclient}
+program as its editor. For example, I use @code{mh} to handle my electronic
+mail; in my @file{~/.mh_profile} file I have the line,
+
+@example
+Editor: jadeclient
+@end example
+
+@noindent
+to tell it that I want to edit my mail in Jade.
+
+The one special command for client/server editing is,
+
+@table @kbd
+@item Ctrl-x #
+@kindex Ctrl-x #
+If the file being edited in the current buffer is a client file, tell the
+client program which loaded it that it has finished being edited. The
+actual buffer is @emph{not} deleted.
+@end table
+
+It is also possible to finish editing a client file by simple deleting its
+buffer in the normal way (@kbd{Ctrl-x k}), @ref{Deleting Buffers}.
+
+@node Compiling Programs, Info Mode, Client Editing, Using Jade
+@section Compiling Programs
+@cindex Compiling programs
+
+Jade has a number of features to help you develop programs, foremost is the
+ability to run a compilation inside one of the editor's buffers. Unfortunately,
+this is only possible when using the Unix operating system at the present.
+
+Once the compilation has finished you can then step through each error
+produced.
+
+@menu
+* Running a Compilation::       Launching a compilation process
+* Finding Errors::              Stepping through compile errors
+* Debugging Programs::          Using GDB in an editor buffer
+* Using Grep::                  Searching files for a regexp
+* Keeping ChangeLogs::          Simple recording of file revisions
+@end menu
+
+@node Running a Compilation, Finding Errors, , Compiling Programs
+@subsection Running a Compilation
+@cindex Running a compilation
+@cindex Compilation, running
+@cindex Programs, running
+
+The command to run a shell command in a buffer is,
+
+@table @kbd
+@item Meta-x compile
+Prompts you for the command to execute, with a default of the last command
+you ran (starts as @samp{make}). A shell process is created which runs
+asynchronously to the editor in the same directory as the current buffer's
+file was loaded from. The buffer @code{*compilation*} is selected and this
+is where all output from the program is printed.
+@end table
+
+When the process finishes running a message is printed in the
+@code{*compilation*} buffer telling you its exit-code.
+
+Only one process may be run with the @code{compile} function at once.
+
+This command is not available on the Amiga version yet.
+
+@defvar compile-command
+This buffer-local variable defines the value of the prompt you are given
+upon running the @code{compile} command. It is often useful to embed the
+command needed to compile a file in the `Local Variables:' section of that
+file, @xref{File Variables}.
+
+For example, the following piece of text placed at the end of the file
+@file{foo.c} would set @code{compile-command} appropriately.
+
+@example
+/*
+ * Local Variables:
+ * compile-command:"gcc -g -O2 -Wall -o foo foo.c"
+ * End:
+ */
+@end example
+@end defvar
+
+@defvar compile-default-command
+The value of this variable defines the value of the @code{compile-command}
+variable when it is undefined. Jade originally defines this as @samp{make}.
+@end defvar
+
+@node Finding Errors, Debugging Programs, Running a Compilation, Compiling Programs
+@subsection Finding Errors
+@cindex Finding errors
+@cindex Compilation, finding errors
+
+When you have compiled something with the @kbd{Meta-x compile} command
+it is possible to step through each of the errors that it produces. To do
+this use the command,
+
+@table @kbd
+@item Ctrl-x `
+@kindex Ctrl-x `
+Displays the next error in the @code{*compilation*} buffer. The file that
+is in is loaded (if necessary) and the line with the error is found.
+@end table
+
+If you edit a file which has errors in it, then try to find the next error
+(which is in the same file) everything will still work. The positions of
+errors are updated as the buffers are modified.
+
+The only exception to this is when you invoke the @code{next-error} function
+while the @code{*compilation*} buffer is still being written to. If more
+errors are produced in a file which has been modified since the compilation
+started it is likely that the positions will get out of sync.
+
+By default, the @code{next-error} function understands the type of error
+output that @code{gcc} produces. This is of the form,
+
+@example
+@var{file}:@var{line-number}:@var{description}
+@end example
+
+It is possible to use other formats though, the variables which control this
+are,
+
+@defvar compile-error-regexp
+Regular expression to match a line containing an error. For @code{gcc} this
+is @samp{^(.*):([0-9]+):(.+)}.
+@end defvar
+
+@defvar compile-file-expand
+Expansion template to produce the name of the file with the error, using
+@code{compile-error-regexp} and the line containing the error. By default
+this is @samp{\1}.
+@end defvar
+
+@defvar compile-line-expand
+Similar to @code{compile-file-expand} except that it expands to a string
+defining the number of the line with the error. By default, @samp{\2}.
+@end defvar
+
+@defvar compile-error-expand
+Similar to @code{compile-file-expand}, but produces the description of the
+error. By default, @samp{\3}.
+@end defvar
+
+@node Debugging Programs, Using Grep, Finding Errors, Compiling Programs
+@subsection Debugging Programs
+@cindex Debugging programs
+@cindex GDB, running
+@cindex Programs, debugging
+
+Jade allows you to run the GDB debugger in a buffer. Some of the advantages
+of this over the usual terminal based interaction are,
+
+@itemize @bullet
+@item
+The current position of the target program (its @dfn{frame}) is highlighted;
+the source file is displayed in a separate window with the current
+frame marked (in the same way that a block is marked).
+
+@item
+You are able to set and delete breakpoints simply by putting the cursor
+on the line you wish the target to stop at and typing an editor command.
+@end itemize
+
+To start a gdb subprocess use the @kbd{Meta-x gdb} command, you
+will be asked to enter the name of the program to debug then gdb will
+be started in a new buffer (called @samp{*gdb*} or similar). You are
+then able to type commands into the buffer, they will be sent to gdb
+each time you type the @key{RET} key.
+
+The commands for controlling the gdb subprocess are as follows (the
+@kbd{Ctrl-c} prefixed commands are only available within the
+@code{*gdb*} buffer whereas the @kbd{Ctrl-x Ctrl-a} variations are
+accessible globally so that they can be invoked from within the target's
+source files),
+
+@table @kbd
+@item Ctrl-c Ctrl-n
+@kindex Ctrl-c Ctrl-n
+@itemx Ctrl-x Ctrl-a Ctrl-n
+@kindex Ctrl-x Ctrl-a Ctrl-n
+Continue execution to the next source line, this is the gdb command
+@code{next}.
+
+@item Ctrl-c Ctrl-s
+@kindex Ctrl-c Ctrl-s
+@itemx Ctrl-x Ctrl-a Ctrl-s
+@kindex Ctrl-x Ctrl-a Ctrl-s
+Continue execution until a different source line is reached, this is
+the gdb command @code{step}.
+
+@item Ctrl-c Ctrl-f
+@kindex Ctrl-c Ctrl-f
+@itemx Ctrl-x Ctrl-a Ctrl-f
+@kindex Ctrl-x Ctrl-a Ctrl-f
+Continue running until the current stack frame exits, the @code{finish}
+command.
+
+@item Ctrl-c Ctrl-r
+@kindex Ctrl-c Ctrl-r
+@itemx Ctrl-x Ctrl-a Ctrl-r
+@kindex Ctrl-x Ctrl-a Ctrl-r
+Resume execution until a breakpoint is reached or the target exits.
+
+@item Ctrl-c Ctrl-<
+@kindex Ctrl-c Ctrl-<
+@itemx Ctrl-x Ctrl-a Ctrl-<
+@kindex Ctrl-x Ctrl-a Ctrl-<
+Display the stack frame above the current one.
+
+@item Ctrl-c Ctrl->
+@kindex Ctrl-c Ctrl->
+@itemx Ctrl-x Ctrl-a Ctrl->
+@kindex Ctrl-x Ctrl-a Ctrl->
+Display the stack frame under the current one.
+
+@item Ctrl-c Ctrl-b
+@kindex Ctrl-c Ctrl-b
+@itemx Ctrl-x Ctrl-a Ctrl-b
+@kindex Ctrl-x Ctrl-a Ctrl-b
+Set a breakpoint at the current source line, if the @code{*gdb*} buffer
+is active the line selected is where the program last stopped.
+
+@item Ctrl-c Ctrl-t
+@kindex Ctrl-c Ctrl-t
+@itemx Ctrl-x Ctrl-a Ctrl-t
+@kindex Ctrl-x Ctrl-a Ctrl-t
+Set a temporary breakpoint at the current source line.
+
+@item Ctrl-c Ctrl-d
+@kindex Ctrl-c Ctrl-d
+@itemx Ctrl-x Ctrl-a Ctrl-d
+@kindex Ctrl-x Ctrl-a Ctrl-d
+Remove all breakpoints which are set at the current source line.
+
+@item Ctrl-c Ctrl-l
+@kindex Ctrl-c Ctrl-l
+@itemx Ctrl-x Ctrl-a Ctrl-l
+@kindex Ctrl-x Ctrl-a Ctrl-l
+Redisplay the current frame, centring it in its window.
+@end table
+
+For a summary of these commands type @kbd{Ctrl-h m} in the @code{*gdb*}
+buffer.
+
+Since the gdb process runs on top of the Shell mode the bindings from
+that mode are also available.
+
+There is no limit to the number of gdb processes you may run at once,
+each will get its own buffer. When a gdb command is invoked in a buffer
+which doesn't have a gdb subprocess (i.e. a source file's buffer) the
+command will be sent to the gdb process which either was last sent a
+command, or last made the editor display a new frame. Hopefully this
+will work fairly intuitively.
+
+@node Using Grep, Keeping ChangeLogs, Debugging Programs, Compiling Programs
+@subsection Using Grep
+@cindex Using grep
+@cindex Grep, using
+
+It is often very useful to grep through a set of files looking for a
+regular expression, this is what the @code{grep} command does. With Jade
+it is possible to run an external @code{grep} program in the
+@code{*compilation*} buffer. This then enables you to step through each
+grep hit using the @kbd{Ctrl-x `} command, @ref{Finding Errors}.
+
+The commands to use grep are,
+
+@table @kbd
+@item Meta-x grep
+Prompt for a string of arguments to give @code{grep}, you do not need to
+provide the name of the program, or the @samp{-n} switch, this is done
+automatically. The shell will do any filename-globbing on the arguments
+so it is advisable to surround the regular expression with single quotes.
+
+Note that the regular expression syntax will be different to that which
+Jade uses. Also this command won't work on an Amiga.
+
+@item Meta-x grep-buffer
+This command provides a method for scanning the current buffer for all
+lines matching a regular expression (which you are prompted for). It is
+written entirely in Lisp --- this means that the normal regular expression
+syntax is needed and it will work on an Amiga.
+@end table
+
+@node Keeping ChangeLogs
+@subsection Keeping ChangeLogs
+@cindex Keeping ChangeLogs
+@cindex ChangeLogs, keeping
+
+A ChangeLog is a file (usually called @file{ChangeLog}) which keeps
+a log of all changes you have made to the files in its directory. For
+example, the @file{src/ChangeLog} file for Jade keeps a list of changes
+made to the editor's source code.
+
+There is no magic involved, you simply use a command to add a new entry
+to a directory's log after modifying a file in that directory. You then
+have to enter a summary of the changes that you made.
+
+The command to do this is,
+
+@table @kbd
+@item Meta-a
+@kindex Meta-a
+Prompts for the name of a directory then lets you type a description of
+the changes you have made.
+@end table
+
+If you enter more than one change in the same day (and from the same host)
+the same heading will be used. The heading consists of the time and date,
+your name, your login and the name of the host you're on. @footnote{On the
+Amiga there is no way to get these details. So, Jade looks for some
+environment variables, @code{USERNAME} for the login name, @code{HOSTNAME}
+for the name of the host and @code{REALNAME} for your actual name.}
+
+@node Info Mode, Shell, Compiling Programs, Using Jade
+@subsection Info Mode
+@cindex Info mode
+@cindex Info browser
+
+Despite the name of this section there is actually no such thing as the
+@code{info-mode}. The Lisp file @file{info.jl} is what this section
+documents --- it is a set of Lisp functions which make a buffer (the
+@samp{*Info*} buffer) into a simple browser for Info files@footnote{@code{Info}
+is the GNU way of creating hypertext documents, for more information see
+@ref{Top,Info,,info}.}.
+
+To invoke it type @kbd{Ctrl-h i}, the @samp{*Info*} buffer will be selected
+showing the @samp{(dir)} node (the root of the Info documentation tree).
+
+When in the @samp{*Info*} buffer the following key bindings are available.
+
+@table @kbd
+@item @key{SPC}
+@kindex @key{SPC}
+Displays the next page of the current node.
+
+@item @key{Backspace}
+@kindex @key{Backspace}
+Displays the previous page.
+
+@item 1
+@kindex 1
+Move to the specified menu-item (@kbd{1} means the first, etc) in the
+menu in this node. The keys @kbd{1} to @kbd{9} work in this way.
+
+@item b
+@kindex b
+Move to the beginning of the current node.
+
+@item d
+@kindex d
+Display the directory node (@samp{(dir)}) of the Info documentation tree.
+
+@item f
+@kindex f
+Follow a reference, the one under the cursor if one exists.
+
+@item g
+@kindex g
+Prompt for the name of a node and try to display it.
+
+@item h
+@kindex h
+Display the Info tutorial node (@samp{(info)Help}).
+
+@item l
+@kindex l
+Go back to the last node that was displayed before this one.
+
+@item m
+@kindex m
+Prompts for a menu-item (the one on the same line as the cursor is the
+default) and display the node it points to.
+
+@item n
+@kindex n
+Display the next node.
+
+@item p
+@kindex p
+Display the previous node.
+
+@item u
+@kindex u
+Display the node ``above'' this one.
+
+@item v
+@kindex v
+Prompts for the name of an Info file, then displays this file's root
+node.
+
+@item q
+@kindex q
+Quit the Info browser.
+
+@item ?
+@kindex ?
+Display a piece of text describing all commands available in Info mode.
+
+@item RET
+@kindex RET
+Go to the link (menu item or xref) described on the current line.
+
+@item LMB-Click2
+@kindex LMB-Click2
+Go to the link you double clicked on.
+
+@item TAB
+@kindex TAB
+Put the cursor on the next link in this node.
+
+@item Meta-TAB
+@kindex Meta-TAB
+Put the cursor on the previous link.
+@end table
+
+This mode has a number of disadvantages over the other Info browsers
+available (i.e. the stand-alone @code{info} program, or Emacs' Info viewer):
+
+@itemize @bullet
+@item
+It depends wholly on being able to find a tag table in the Info file, if
+it can't it will simply load the whole file into the buffer.
+
+@item
+There is no support for the @code{*} node name.
+
+@item
+Seems not to work 100% with files formatted by Emacs, @code{makeinfo}
+formatted files work properly though.
+
+@item
+No editing of nodes.
+@end itemize
+
+Of course, its main advantage is that it runs in Jade!
+
+@node Shell, Simple Customisation, Info Mode, Using Jade
+@section Shell
+@cindex Shell
+@cindex Shell mode
+
+When running on a Unix-style operating system Jade allows you to run a
+shell subprocess in a buffer (usually the @samp{*shell*} buffer). Each
+line you type in the buffer is sent to the shell and the output from
+the shell is displayed in the buffer.
+
+@table @kbd
+@item Meta-x shell
+Start a new shell subprocess running in a buffer called @samp{*shell*}.
+
+If a buffer @samp{*shell*} already exists a new buffer with a unique
+name will be opened (i.e. @samp{*shell*<2>}).
+
+The working directory of the shell subprocess will be the directory
+which the contents of the current buffer was read from.
+
+This command won't work on Amigas!
+@end table
+
+Each @samp{*shell*} buffer installs the major mode @code{shell-mode}.
+This provides the following commands.
+
+@table @kbd
+@item Ctrl-a
+@kindex Ctrl-a
+Move the cursor to the beginning of the current line, @emph{after} the
+prompt which the shell printed (if one exists).
+
+@item Ctrl-d
+@kindex Ctrl-d
+If the cursor is at the end of the buffer send the shell process the
+@code{eof} character (@samp{^D}) (signifying the end of the file).
+Otherwise delete the character under the cursor.
+
+@item @key{RET}
+@kindex @key{RET}
+Send the current line to the shell (minus any prompt at the beginning
+of the line). If the cursor is not on the last line of the buffer (i.e.
+the most recent prompt) the current line is copied to the end of the
+buffer before being sent.
+
+@item Ctrl-c Ctrl-n
+@kindex Ctrl-c Ctrl-n
+Move the cursor to the next prompt in the buffer.
+
+@item Ctrl-c Ctrl-p
+@kindex Ctrl-c Ctrl-p
+Move to the previous prompt.
+
+@item Ctrl-c Ctrl-c
+@kindex Ctrl-c Ctrl-c
+Send the @code{intr} character (@samp{^C}) to the shell process.
+
+@item Ctrl-c Ctrl-d
+@kindex Ctrl-c Ctrl-d
+Send the @code{eof} character (@samp{^D}) to the shell.
+
+@item Ctrl-c Ctrl-z
+@kindex Ctrl-c Ctrl-z
+Send the @code{susp} character (@samp{^Z}) to the shell.
+
+@item Ctrl-c Ctrl-\
+@kindex Ctrl-c Ctrl-\
+Send the @code{quit} character (@samp{^\}) to the shell.
+@end table
+
+@defvr Hook shell-mode-hook
+This hook is evaluated by the Shell mode after it has initialised
+itself (and started its subprocess).
+@end defvr
+
+The following variables customise the actions of the Shell mode.
+
+@defvar shell-file-name
+This variable defines the file name of the shell to run. Its default
+value is either the value of the environment variable @code{SHELL} or
+if that doesn't exist the file @file{/bin/sh}.
+@end defvar
+
+@defvar shell-whole-line
+When this variable's value is non-@code{nil} the @key{RET} command always
+sends the whole of the current line (minus any prompt) even when the
+cursor is not at the end of the line. Otherwise only the part of the
+line before the cursor is sent.
+
+The default value of this variable is @code{t}.
+@end defvar
+
+@defvar shell-prompt-regexp
+This buffer-local variable defines the regular expression used to match
+the prompt printed by the shell each time it waits for you to enter a
+shell command. By default it has the value @samp{^[^]#$%>)]*[]#$%>)] *}
+but this may be incorrect if you have modified your shell's prompt.
+@end defvar
+
+@node Simple Customisation, , Shell, Using Jade
+@section Simple Customisation
+@cindex Simple customisation
+@cindex Customisation, simple
+
+The best way to tailor the editor to your own requirements is with your
+personal startup file. This is called @file{.jaderc} in your home directory
+@footnote{On the Amiga, your home directory is defined as the contents of the
+environment variable @code{HOME}.}, it is a file of Lisp forms evaluated
+when Jade initialises itself.
+
+Usually, setting the values of variables in your startup file is enough
+to configure Jade how you want, the Lisp function to set a variable is called
+@code{setq}, it's first argument is the name of the variable, it's second the
+value you wish to set it to. This value will usually be one of the following
+data types,
+
+@table @code
+@item "xyz"
+A string @samp{xyz}.
+
+@item 123
+@itemx 0173
+@itemx 0x7b
+A number, all of the above have the value 123 (in decimal, octal and
+hexadecimal).
+
+@item nil
+@itemx t
+A boolean value, @code{nil} means false, or not true. @code{t} is the
+opposite (in fact, any value not @code{nil} is true).
+@end table
+
+My @file{.jaderc} file looks something like this (note that semicolons
+introduce comments),
+
+@lisp
+;;;; .jaderc -*-Lisp-*-
+
+;; Size of tabs for Lisp source is 2
+(setq lisp-body-indent 2)
+
+;; When on an Amiga, flag that I don't want pull down menus
+(when (amiga-p)
+  (setq amiga-no-menus t))
+
+;; When editing English-text use auto-filling
+(add-hook 'text-mode-hook 'fill-mode-on)
+
+;; -with a maximum of 74 characters in a line
+(setq fill-column 74)
+
+;; Start the edit server
+(server-open)
+@end lisp
+
+Most simple customisations can be achieved by simply giving a variable
+a new value. Use the @code{setq} special form to do this (a special
+form is a type of function) as in the examples above. If you wish to
+set variables interactively use the @code{set} command:
+
+@example
+@kbd{Meta-x set @key{RET} @var{variable-name} @key{RET} @var{new-value} @key{RET}}.
+@end example
+
+The @code{add-hook} function adds a function (in this case @code{fill-mode-on})
+to be called when the specified hook (in this case @code{text-mode-hook})
+is evaluated. The single-quote before the names means that the names are
+passed as constants; @emph{not} their values. If you don't quite understand
+what I'm talking about don't worry.
+
+For full documentation of Jade's programming language see
+@ref{Programming Jade}.
