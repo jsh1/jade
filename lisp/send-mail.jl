@@ -279,7 +279,6 @@ Major mode for composing and sending mail messages. Local bindings are:\n
       (setq tem (mail-delete-header (match-start))))
 
     ;; Handle any FCC fields
-    ;; TODO: make sure that ^From is changed to >From
     (setq tem (start-of-buffer))
     (while (and tem
 		(re-search-forward "^FCC[\t ]*:[\t ]*([^\t\n\f ]+)" tem nil t))
@@ -287,16 +286,30 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 	  ((filename (copy-area (match-start 1) (match-end 1)))
 	   file)
 	(setq tem (mail-delete-header (match-start)))
-	(unwind-protect
-	    (progn
-	      (setq file (open-file filename 'append))
-	      (unless (zerop (file-size filename))
-		(write file "\n\n"))
-	      ;; Need timezone as well
-	      (format file "From %s %s\n" (user-login-name)
-		      (current-time-string))
-	      (write-buffer-contents file))
-	  (close-file file))))
+	(let
+	    ((header-end (restriction-end))
+	     tem quoted-froms)
+	  ;; Mangle all ^From_ strings to >From_
+	  (unrestrict-buffer)
+	  (setq tem (start-of-buffer))
+	  (while (re-search-forward "^From " tem)
+	    (setq quoted-froms (cons (match-start) quoted-froms))
+	    (insert ">" (match-start))
+	    (setq tem (match-end)))
+	  (unwind-protect
+	      (progn
+		(setq file (open-file filename 'append))
+		(unless (zerop (file-size filename))
+		  (write file "\n\n"))
+		;; Need timezone as well
+		(format file "From %s %s\n" (user-login-name)
+			(current-time-string))
+		(write-buffer-contents file))
+	    (close-file file)
+	    ;; Undo any ^From_ mangling
+	    (mapc #'(lambda (p)
+		      (delete-area p (forward-char 1 p))) quoted-froms)
+	    (restrict-buffer (start-of-buffer) header-end)))))
 
     ;; Handle Resent-X headers. Build a list of addresses the message
     ;; should be sent to and specify them on the command line, instead of
