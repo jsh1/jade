@@ -177,10 +177,12 @@
   "Ctrl-c"	'save-and-quit
   "Ctrl-f"	'find-file
   "Ctrl-l"	'downcase-area
+  "Ctrl-o"	'delete-blank-lines
   "Ctrl-p"	'mark-page
   "Ctrl-q"	'toggle-buffer-read-only
   "Ctrl-r"	'find-file-read-only
   "Ctrl-s"	'save-file
+  "Ctrl-t"	'transpose-lines
   "Ctrl-u"	'upcase-area
   "Ctrl-v"	'find-alternate-file
   "Ctrl-w"	'save-file-as
