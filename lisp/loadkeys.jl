@@ -126,6 +126,7 @@
   "Ctrl-o"	'open-line
   "Ctrl-p"	'goto-prev-line
   "Ctrl-q"	'(setq next-keymap-path t)
+  "Meta-q"	'fill-paragraph
   "Ctrl-r"	'isearch-backward
   "Ctrl-s"	'isearch-forward
   "Ctrl-t"	'transpose-chars
