@@ -63,6 +63,7 @@
   '(("Follow link" html-display-select)
     ("Follow link in other view" html-display-select-other-view)
     ("Follow link in other window" html-display-select-other-window)
+    ("Follow link externally" html-display-select-externally)
     ("Describe link" html-display-describe-link)))
 
 ;;;###autoload
@@ -195,7 +196,7 @@
 
 ;; Selecting links
 
-(defun html-display-select (&optional in-other-view)
+(defun html-display-select (&optional in-other-view externally)
   (interactive "P")
   (let*
       ((e (html-display-current-link))
@@ -214,7 +215,7 @@
 	   (setq href (concat (or base (error "No known URL base")) href))))
     (when in-other-view
       (goto-other-view))
-    (find-url href)))
+    (find-url href externally)))
 
 (defun html-display-mouse-select (&optional in-other-view)
   (interactive "P")
@@ -233,6 +234,10 @@
       ;; XXX why is this required?!
       (goto p)
       (html-display-select))))
+
+(defun html-display-select-externally ()
+  (interactive)
+  (html-display-select nil t))
 
 (defun html-display-describe-link ()
   (interactive)
