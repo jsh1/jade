@@ -882,9 +882,16 @@ of the document, currently only `title' and `base' keys are defined."
 (defun html-decode:script (tag dest)
   (if (search-forward "</script>" html-decode-point html-decode-source t)
       (setq html-decode-point (match-end))
-    (error "<SCRIPT> doesn't end: %s, %s"
+    (error "<script> doesn't end: %s, %s"
 	   html-decode-source html-decode-point)))
 (put 'script 'html-decode-fun html-decode:script)
+
+(defun html-decode:style (tag dest)
+  (if (search-forward "</style>" html-decode-point html-decode-source t)
+      (setq html-decode-point (match-end))
+    (error "<style> doesn't end: %s, %s"
+           html-decode-source html-decode-point)))
+(put 'style 'html-decode-fun html-decode:style)
 
 
 ;; Tags in frameset section
