@@ -23,6 +23,22 @@
 
 /* #define STRMEM_STATS */
 
+/* difference in size between each bucket */
+#define GRAIN	      8
+
+/* allocations > this go to malloc() */
+#define MAXBUCKETSIZE 128
+
+#define NUMBUCKETS    (MAXBUCKETSIZE / GRAIN)
+
+/* Each MemBlock should be around 2K */
+#define MBLOCKSIZE    (2044 - sizeof(MemBlock))
+
+/* for lisp.h: everything returned by sm_alloc() is aligned to a four
+   byte boundary. */
+#define STRMEM_ALIGNMENT 4
+
+
 /* The lowest level, each allocated piece of memory is one of
    these. The pointer returned from sm_alloc() points to the mc_Mem
    union. */
@@ -30,10 +46,8 @@ typedef struct _MemChunk {
     /* This next union is a bit of a kludge. The problem is that I
        need some way of tracking MEMCHUNKs allocated straight from
        malloc() (so I can do garbage collection, etc) without wasting
-       a lot of memory. For my own reasons you can't call sm_free() on
-       one of these blocks. But since I only use this technique on
-       Lisp memory (which is never freed except by the GC which is
-       weird) everything is ok.  */
+       a lot of memory. This is only done when sm_UseMallocChain is
+       set. If so, don't ever call sm_free(). */
     union mc_header {
 	struct _MemChunk *next;
 	int		 blktype;
@@ -52,6 +66,7 @@ typedef struct _MemChunk {
 #define MCHNK_SIZE(chunksiz) \
     ((chunksiz) + OFFSETOF(MemChunk, mc_Mem))
 
+
 /* A group of chunks for allocation purposes. */
 typedef struct {
     struct MinNode  mbl_Node;
@@ -61,6 +76,7 @@ typedef struct {
 #define MBLK_SIZE(chunksiz, numchunks) \
     ((MCHNK_SIZE(chunksiz) * (numchunks)) + sizeof(MemBlock))
 
+
 /* Represents each bucket of similarly sized allocations. */
 typedef struct {
     /* List of allocated blocks. */
@@ -69,45 +85,29 @@ typedef struct {
     /* Free chunks. */
     MemChunk	   *mbu_FreeList;
 
-    /* Number of free operations since last scan for free blocks.  */
+    /* Number of free chunks in this bucket's free list.  */
     int		    mbu_FreeCount;
 } MemBucket;
 
-/* difference in size between each bucket */
-#define GRAIN	      8
-
-/* allocations > this go to malloc() */
-#define MAXBUCKETSIZE 128
-
-#define NUMBUCKETS    (MAXBUCKETSIZE / GRAIN)
-
-/* Each MemBlock should be around 2K */
-#define MBLOCKSIZE    (2044 - sizeof(MemBlock))
-
-/* for lisp.h: everything returned by sm_alloc() is aligned to a four
-   byte boundary. */
-#define STRMEM_ALIGNMENT 4
-
+
 /* The top-level structure. */
 typedef struct {
-    /* The bucket list. The last one is used to record malloc'd chunks
-       for allocations > MAXBUCKETSIZE */
+    /* The bucket list.  */
     MemBucket	    sm_MemBuckets[NUMBUCKETS];
 
     /* The number of chunks to allocated per contiguous block, for
        the different bucket sizes. */
     int		    sm_ChunksPerBlock[NUMBUCKETS];
 
-    /* This next number defines the number of sm_frees() which have to
-       be called on memory from a particular bucket before that bucket
-       is scanned for totally free blocks (any found are released to
-       system). 
-       The actual number is (FREESBEFOREFLUSH * ChunksPerBlock[bucket]).  */
-    char	    sm_FreesBeforeFlush;
+    /* This next number defines the number of free chunks in the
+       bucket that must exists before that bucket is scanned for
+       totally free blocks (any found are released to the system). 
+       The actual number is (FreesBeforeFlush * ChunksPerBlock[bucket]).  */
+    int		    sm_FreesBeforeFlush;
 
     /* Whether or not to use sm_MallocChain to chain all malloc() MemChunks
        together. If using this don't call sm_free().  */
-    char	    sm_UseMallocChain;
+    int		    sm_UseMallocChain;
     MemChunk	   *sm_MallocChain;
 
 #ifdef STRMEM_STATS
@@ -117,6 +117,7 @@ typedef struct {
 #endif
 } StrMem;
 
+
 extern int     sm_init(StrMem *);
 extern void    sm_kill(StrMem *);
 extern void   *sm_alloc(StrMem *, int);
@@ -130,4 +131,4 @@ extern void    sm_flush(StrMem *);
 #define str_dup(s)    sm_strdup(&main_strmem, s)
 #define str_free(s)   sm_free(&main_strmem, s)
 
-#endif
+#endif /* _STRINGMEM_H */
