@@ -50,15 +50,14 @@ message formatting characters are available.")
 	       (rm-get-from msg)
 	       (rm-get-sender msg)))
        (cc (if followup-p
-	       ;; Only include addresses not in the To or BCC headers
+	       ;; Only include addresses not in the TO
 	       (filter #'(lambda (addr)
 			   (catch 'foo
 			     (mapc #'(lambda (addr2)
 				       (and (mail-compare-addresses addr addr2)
 					    (throw 'foo nil)))
-				   (if mail-self-blind
-				       (cons user-mail-address to)
-				     to))
+				   ;; also include the user's address
+				   (cons user-mail-address to))
 			     t)) (rm-get-recipients msg))))
        (msg-id (rm-get-msg-header msg "Message-Id"))
        (references (append (rm-get-msg-header msg "References" t t)
@@ -66,16 +65,13 @@ message formatting characters are available.")
     (when subject
       (setq subject (concat mail-reply-prefix
 			    (mail-get-actual-subject subject))))
-    (mail-setup nil subject msg-id nil references
-		(list (cons #'(lambda (f m)
-				(rm-message-put m 'replied t))
-			    (list folder msg))))
-    (when to
-      (send-mail-go-to)
-      (mail-insert-address-list to))
-    (when cc
-      (send-mail-go-cc)
-      (mail-insert-address-list cc))
+    (let
+	((fun (lambda (cell)
+		(mail-format-address (car cell) (cdr cell)))))
+      (mail-setup (mapcar fun to) subject msg-id (mapcar fun cc) references
+		  (list (cons #'(lambda (f m)
+				  (rm-message-put m 'replied t))
+			      (list folder msg)))))
     (if to
 	(send-mail-go-text)
       (send-mail-go-to))
