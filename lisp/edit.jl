@@ -871,29 +871,46 @@ the same."
 (defmacro save-restriction (&rest forms)
   "Evaluate FORMS, restoring the original buffer restriction when they
 finish (as long as the original buffer still exists)."
-  `(let
-       (_s_r_start_ _s_r_end_)
-     (when (buffer-restricted-p)
-       (setq _s_r_start_ (make-mark (restriction-start))
-	     _s_r_end_ (make-mark (restriction-end))))
-     (unwind-protect
-	 (progn ,@forms)
-       (if (and _s_r_start_ (mark-resident-p _s_r_start_))
-	   (restrict-buffer (mark-pos _s_r_start_)
-			    (mark-pos _s_r_end_)
-			    (mark-file _s_r_start_))
-	 (unrestrict-buffer)))))
+  (let
+      ((start (gensym))
+       (end (gensym)))
+    `(let
+	 (,start ,end)
+       (when (buffer-restricted-p)
+	 (setq ,start (make-mark (restriction-start))
+	       ,end (make-mark (restriction-end))))
+       (unwind-protect
+	   (progn ,@forms)
+	 (if (and ,start (mark-resident-p ,start))
+	     (restrict-buffer (mark-pos ,start)
+			      (mark-pos ,end)
+			      (mark-file ,start))
+	   (unrestrict-buffer))))))
       
 (defmacro save-excursion (&rest forms)
   "Evaluate FORMS, ensuring that the original current buffer and the original
 position in this buffer are restored afterwards, even in case of a non-local
 exit occurring (as long as the original buffer wasn't killed)."
-  `(let
-       ((_s_c_mark_ (make-mark)))
-     (unwind-protect
-	 (progn ,@forms)
-       (when (mark-resident-p _s_c_mark_)
-	 (goto-mark _s_c_mark_ t)))))
+  (let
+      ((mark (gensym)))
+    `(let
+	 ((,mark (make-mark)))
+       (unwind-protect
+	   (progn ,@forms)
+	 (when (mark-resident-p ,mark)
+	   (goto-mark ,mark t))))))
+
+(defmacro map-extents-at (function &optional position buffer)
+  "Call (FUNCTION EXTENT) for all extents containing location POSITION in
+BUFFER (defaulting to the current position in the current buffer), working
+from the innermost outwards."
+  (let
+      ((e (gensym)))
+    `(let
+	 ((,e (get-extent ,position ,buffer)))
+       (while ,e
+	 (funcall ,function ,e)
+	 (setq ,e (extent-parent ,e))))))
 
 
 ;; Mouse dragging etc
