@@ -392,6 +392,8 @@ delete_section(TX *tx, POS *startPos, POS *endPos)
 	    join_lines(tx, startPos);
 	}
 	flag_deletion(tx, &orig, &oend);
+	*startPos = orig;
+	*endPos = oend;
     }
     return(TRUE);
 }
