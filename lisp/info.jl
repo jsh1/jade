@@ -551,7 +551,7 @@ commands are,\n
 		  ((bit (copy-area pos (find-next-regexp "[\t ]*$" pos))))
 		(unless (equal bit "")
 		  (setq ref-title (cons ?\  (cons bit ref-title)))))
-	      (setq pos (find-next-regexp "[^\t ]" (match-end)))
+	      (setq pos (find-next-regexp "[^\n\t ]" (match-end)))
 	      (unless pos
 		(signal 'info-error '("Malformed reference"))))
 	    (setq ref-title (apply 'concat (nreverse (cons (copy-area pos end)
@@ -569,7 +569,7 @@ commands are,\n
 								 pos))))
 			(unless (equal bit "")
 			  (setq ref-node (cons ?\  (cons bit ref-node))))
-			(setq pos (find-next-regexp "[^\t ]" (match-end))))
+			(setq pos (find-next-regexp "[^\n\t ]" (match-end))))
 		      (unless pos
 			(signal 'info-error '("Malformed reference"))))
 		    (setq ref-node (apply 'concat (nreverse (cons (copy-area
