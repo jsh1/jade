@@ -109,9 +109,6 @@ General programming tasks:
    the singular. But then again, there's no reason why individual files
    can't be accessed through the generic vc
 
- - Implement an HTML-view mode that renders HTML in one buffer into
-   another buffer for viewing
-
 
 X11 tasks:
 ==========

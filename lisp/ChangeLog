@@ -1,3 +1,31 @@
+1999-03-08  John Harper  <john@dcs.warwick.ac.uk>
+
+	* edit.jl (blinking-insert): new function, enabled by the
+	`blink-matching-paren' variable
+	* c-mode.jl (c-close-brace): call blinking-insert
+
+	* tags.jl (find-tag): don't strip the directory portion of the
+	filename, how brain-damaged!
+
+1999-03-07  John Harper  <john@dcs.warwick.ac.uk>
+
+	* replace.jl (query-replace): the value returned by this
+	function signifies how the search was terminated: `rest' means
+	that the `!' command was given, t if it finished due to a lack
+	of matches, or nil if it was explicitly stopped.
+
+	* find-autoloads.jl (add-autoloads, remove-autoloads): these
+	commands now take the name of the autoload file as an argument
+
+	* tags.jl (tags-query-replace): new command
+
+	* jade.jl: use get-command-line-option
+
+1999-03-06  John Harper  <john@dcs.warwick.ac.uk>
+
+	* tags.jl (tags-search, tags-loop-continue): new commands
+	* loadkeys.jl: bound tags-loop-continue to M-,
+
 1999-02-28  John Harper  <john@dcs.warwick.ac.uk>
 
         * MAJOR CHANGES: separated all LISP interpreter specific parts

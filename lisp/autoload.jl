@@ -137,6 +137,8 @@
 (autoload 'list-bookmarks "bookmarks" t)
 (autoload 'visit-tag-table "tags" t)
 (autoload 'find-tag "tags" t)
+(autoload 'tags-search "tags" t)
+(autoload 'tags-query-replace "tags" t)
 (autoload 'dired "dired" t)
 (autoload 'dired-mode "dired")
 (load "dired-hooks")
