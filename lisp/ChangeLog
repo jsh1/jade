@@ -1,3 +1,11 @@
+2000-08-01  John Harper  <john@dcs.warwick.ac.uk>
+
+	* html-decode.jl (html-decode): bug fix for () no longer a
+	symbol
+
+	* mime-base64.jl (mime-encode-base64): don't use 077 octal
+	syntax
+
 2000-07-31  John Harper  <john@dcs.warwick.ac.uk>
 
 	* sawmill-minor-mode.jl: hack so not to require sawfish.client
