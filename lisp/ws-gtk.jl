@@ -25,8 +25,9 @@
     (gtk-jade-lose-selection 'xa-primary)))
 
 ;; Called after killing some text
-;(defun gtk-jade-after-kill-function ()
-;  (gtk-jade-set-selection 'xa-primary (killed-string)))
+(defun gtk-jade-after-kill-function ()
+  ;; destroy the selection
+  (gtk-jade-set-selection 'xa-primary nil))
 
 ;; Supplies the yanked string if selection is active
 (defun gtk-jade-pre-yank-function ()     
@@ -34,7 +35,7 @@
     (gtk-jade-get-selection 'xa-primary)))
 
 (add-hook 'block-status-hook 'gtk-jade-block-status-function)
-;(add-hook 'after-kill-hook 'gtk-jade-after-kill-function)
+(add-hook 'after-kill-hook 'gtk-jade-after-kill-function)
 (add-hook 'pre-yank-hook 'gtk-jade-pre-yank-function)
 
 (autoload 'popup-menu-from-spec "gtk-menu" t)
