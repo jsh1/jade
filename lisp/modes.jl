@@ -146,6 +146,7 @@ named in the buffer-local variable `major-mode' or finds a mode in
   1. The word specified on the first line of the buffer surrounded by
      `-*-...-*-' (ie, -*-texinfo-*-)
   2. The name of the file being edited in the buffer"
+  (interactive)
   (unless major-mode
     (setq major-mode
 	  (get-auto-mode (or (and (looking-at ".*-\\*- *([^ ]+) *-\\*-"
