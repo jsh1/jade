@@ -238,6 +238,15 @@ external mmencode program, otherwise handle locally.")
       (funcall (nth 2 tem)
 	       (cons src-buffer (start-of-buffer src-buffer)) output))))
 
+(defun mime-decode-string (encoding source output)
+  (let
+      ((tem (assq encoding mime-xfer-encodings-alist)))
+    (if (null tem)
+	;; Just copy verbatim
+	(write output source)
+      ;; apply the decoder
+      (funcall (nth 2 tem) (make-string-input-stream source) output))))
+
 ;; Decode from the start of SRC-BUFFER to the cursor in the current buffer.
 ;; CONTENT-TYPE is the parsed content type of the message. CONTENT-XFER-ENC
 ;; likewise for the encoding.
