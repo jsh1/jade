@@ -352,7 +352,11 @@ Major mode for viewing mail folders. Commands include:\n
 			  (copy-area (match-start 1) (match-end 1)))
 	(rm-set-msg-field msg rm-msg-zone
 			  (copy-area (match-start 4) (match-end 4)))))
+    (when (find-next-regexp "^X-Jade-Flags-v1[\t ]*:[\t ]*" start nil t)
+      (rm-set-msg-field msg rm-msg-flags
+			(read (cons (current-buffer) (match-end)))))
     (when (find-next-regexp "^Replied[\t ]*:" start nil t)
+      ;; MH annotates replied messages like this
       (rm-set-flag msg 'replied))
     (unrestrict-buffer)
     msg))
@@ -370,6 +374,36 @@ Major mode for viewing mail folders. Commands include:\n
       (prev-line 1 (copy-pos (mark-pos (rm-get-msg-field
 					(car rm-after-msg-list) rm-msg-mark))))
     (buffer-end nil t)))
+
+;; Updates the flags embedded in the message headers. Leaves the buffer
+;; unrestricted.
+(defun rm-update-flags ()
+  (let
+      ((msg-lists (list rm-before-msg-list
+			(cons rm-current-msg nil)
+			rm-after-msg-list))
+       (inhibit-read-only t)
+       list msg start)
+    (while msg-lists
+      (setq list (car msg-lists)
+	    msg-lists (cdr msg-lists))
+      (while list
+	(when (setq msg (car list))
+	  (setq start (mark-pos (rm-get-msg-field msg rm-msg-mark)))
+	  (unrestrict-buffer)
+	  (when (find-next-regexp "^$" start)
+	    (restrict-buffer start (match-end)))
+	  (if (find-next-regexp "^X-Jade-Flags-v1[\t ]*:[\t ]*(.*)$"
+				start nil t)
+	      (progn
+		(setq start (match-start 1))
+		(delete-area (match-start 1) (match-end 1)))
+	    (setq start (prev-char 1 (insert "X-Jade-Flags-v1: \n"
+					     (mail-unfold-header start)))))
+	  (prin1 (rm-get-msg-field msg rm-msg-flags)
+		 (cons (current-buffer) start)))
+	(setq list (cdr list))))
+    (unrestrict-buffer)))
 
 
 ;; Displaying messages
@@ -391,6 +425,9 @@ Major mode for viewing mail folders. Commands include:\n
 	  (restrict-buffer header-start end-of-hdrs)
 	  ;; First of all, move all visible headers after non-visible ones
 	  (setq rm-current-msg-visible-start (rm-coalesce-visible-headers))
+	  ;; Look for a header to highlight
+	  (when (find-next-regexp mail-highlighted-headers header-start nil t)
+	    (mark-block (match-start 1) (match-end 1)))
 	  (unrestrict-buffer)
 	  (setq rm-current-msg-end (rm-current-message-end))
 	  (goto-char end-of-hdrs)
@@ -950,16 +987,19 @@ automatically."
   (interactive)
   (let
       ((buffer (current-buffer)))
+    (rm-update-flags)
     (when (save-file)
-      (rm-quit-no-save)
+      (rm-quit-no-save t)
       (kill-buffer buffer))))
 
-(defun rm-quit-no-save ()
+(defun rm-quit-no-save (&optional already-saved)
   "Quit from the mail reading subsystem without saving the current folder. The
 buffer will not be deleted, so it may be saved later."
   (interactive)
   (let
       ((summary-view (rm-find-view rm-summary-buffer)))
+    (unless already-saved
+      (rm-update-flags))
     (when summary-view
       (close-view summary-view))
     (kill-buffer rm-summary-buffer)
