@@ -25,6 +25,10 @@
 (defvar rm-delete-after-output t
   "When t messages are marked for deletion after being saved to other files.")
 
+(defvar rm-auto-archive-alist nil
+  "List of (RULE . MAILBOX-NAME) used to associate messages with mailboxes
+while auto-archiving.")
+
 
 ;;;; Code
 
@@ -34,37 +38,40 @@
 ;; Append MSG (a message structure), ending at position END, to the mailbox
 ;; DEST, either a buffer or a file-stream
 (defun rm-output-message (msg dest)
-  (let*
-      ((end (rm-message-end msg))
-       (text (copy-area (mark-pos (rm-get-msg-field msg rm-msg-mark)) end
-			(mark-file (rm-get-msg-field msg rm-msg-mark)))))
-    (cond
-     ((bufferp dest)
-      ;; DEST is a buffer. Append to that.
-      (with-buffer dest
-	(when (eq major-mode 'read-mail-mode)
-	  (error "Can't append to buffers in read-mail-mode!"))
-	(save-restriction
-	  (unrestrict-buffer)
-	  (save-excursion
-	    (goto (end-of-buffer))
-	    (unless (zerop (1- (buffer-length)))
-	      (insert "\n"))
-	    (let
-		((ins-start (cursor-pos))
-		 ;; Don't override read-only in normal buffers
-		 (inhibit-read-only (eq major-mode 'read-mail-mode)))
-	      (insert text))))))
-     ((filep dest)
-      ;; DEST is a file. Append to it
-      (unless (zerop (file-size (file-binding dest)))
-	;; The file isn't empty, so ensure there's a blank
-	;; line separating messages
-	(write dest ?\n))
-      (write dest text)))
-    (rm-set-flag msg 'filed)
-    (when rm-delete-after-output
-      (rm-set-flag msg 'deleted))))
+  (with-buffer (mark-file (rm-get-msg-field msg rm-msg-mark))
+    (save-restriction)
+    (unrestrict-buffer)
+    (let*
+	((end (rm-message-end msg))
+	 (text (copy-area (mark-pos (rm-get-msg-field msg rm-msg-mark)) end)))
+      (cond
+       ((bufferp dest)
+	;; DEST is a buffer. Append to that.
+	(with-buffer dest
+	  (when (eq major-mode 'read-mail-mode)
+	    ;; XXX re-enable this
+	    (error "Can't append to buffers in read-mail-mode!"))
+	  (save-restriction
+	    (unrestrict-buffer)
+	    (save-excursion
+	      (goto (end-of-buffer))
+	      (unless (zerop (1- (buffer-length)))
+		(insert "\n"))
+	      (let
+		  ((ins-start (cursor-pos))
+		   ;; Don't override read-only in normal buffers
+		   (inhibit-read-only (eq major-mode 'read-mail-mode)))
+		(insert text))))))
+       ((filep dest)
+	;; DEST is a file. Append to it
+	(unless (zerop (file-size (file-binding dest)))
+	  ;; The file isn't empty, so ensure there's a blank
+	  ;; line separating messages
+	  (write dest ?\n))
+	(write dest text)))
+      (rm-set-flag msg 'filed)
+      (when rm-delete-after-output
+	(rm-set-flag msg 'deleted)))))
 
 ;;;###autoload
 (defun rm-output (count dest)
@@ -80,16 +87,54 @@ otherwise write straight to the folder's file."
 		       (rm-get-folder-field folder rm-folder-after-list))))
     (unless (car msg-list)
       (error "No current message"))
-    (save-restriction
-      (unrestrict-buffer)
-      (let
-	  ((real-dest (or (get-file-buffer dest)
-			  (open-file dest 'append))))
-	(unwind-protect
-	    (while (and (> count 0) msg-list)
-	      (rm-output-message (car msg-list) real-dest)
-	      (setq count (1- count)
-		    msg-list (cdr msg-list)))
-	  (when (filep real-dest)
-	    (close-file real-dest)))))
-    (rm-redisplay-folder folder)))
+    (let
+	((real-dest (or (get-file-buffer dest)
+			(open-file dest 'append))))
+      (unwind-protect
+	  (while (and (> count 0) msg-list)
+	    (rm-output-message (car msg-list) real-dest)
+	    (setq count (1- count)
+		  msg-list (cdr msg-list)))
+	(when (filep real-dest)
+	  (close-file real-dest)))))
+  (rm-redisplay-folder folder))
+
+;;;###autoload
+(defun rm-auto-archive-folder (folder)
+  "Auto-archive any messages in FOLDER matching a rule in the variable
+`rm-auto-archive-alist'."
+  (interactive (list (rm-current-folder) current-prefix-arg))
+  (rm-map-messages
+   #'(lambda (m)
+       (catch 'saved
+	 (mapc #'(lambda (cell)
+		   (when (rm-apply-rule (car cell) m)
+		     (let
+			 ((dest (or (get-file-buffer (cdr cell))
+				    (open-file (cdr cell) 'append))))
+		       (unwind-protect
+			   (rm-output-message m dest)
+			 (when (filep dest)
+			   (close-file dest))))
+		     (throw 'saved t)))
+	       rm-auto-archive-alist)))
+   folder)
+  (rm-redisplay-folder folder))
+
+;;;###autoload
+(defun rm-archive-folder (folder rule mailbox)
+  "Archive all messages in FOLDER matching RULE to the mailbox called MAILBOX."
+  (interactive (list (rm-current-folder)
+		     (rm-prompt-for-rule "Rule to archive by:")
+		     (rm-prompt-for-folder "Archive to mailbox:")))
+  (let
+      ((dest (or (get-file-buffer (cdr cell))
+		 (open-file (cdr cell) 'append))))
+    (unwind-protect
+	(rm-map-messages #'(lambda (m)
+			     (when (rm-apply-rule rule m)
+			       (rm-output-message m dest)))
+			 folder)
+      (when (filep dest)
+	(close-file dest))))
+  (rm-redisplay-folder folder))
