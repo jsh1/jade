@@ -278,9 +278,9 @@ refresh_block(VW *vw, VALUE start, VALUE end)
 	    {
 		Pos *dr_regions[4];
 		int dr_count, j;
+		COPY_VPOS(&tstart, start); COPY_VPOS(&tend, end);
 		dr_count = sub_regions(regions[i*2], regions[i*2+1],
 				       &tstart, &tend, dr_regions);
-		COPY_VPOS(&tstart, start); COPY_VPOS(&tend, end);
 		for(j = 0; j < dr_count; j++)
 		    redraw_region(vw, dr_regions[j*2], dr_regions[j*2+1]);
 	    }
