@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+_PR void update_window_dimensions(WIN *w);
 _PR void messagen(u_char *, int);
 _PR void message(u_char *);
 _PR void messagef(u_char *, ...);
@@ -117,8 +118,10 @@ active window.
 	    {
 		window_count++;
 		sys_update_dimensions(w);
+		update_window_dimensions(w);
 		/* First the main view.. */
-		if(make_view(NULL, w, VTX(tx), 0, FALSE))
+		if(w->w_Content != 0 && w->w_NewContent != 0
+		   && make_view(NULL, w, VTX(tx), 0, FALSE))
 		{
 		    /* ..then the minibuffer view. */
 		    if(make_view(NULL, w, NULL, 0, TRUE))
@@ -135,6 +138,10 @@ active window.
 		    }
 		    kill_all_views(w);
 		}
+		if(w->w_NewContent)
+		    free_glyph_buf(w->w_NewContent);
+		if(w->w_Content)
+		    free_glyph_buf(w->w_Content);
 		sys_kill_window(w);
 	    }
 	    sys_unset_font(w);
@@ -158,6 +165,9 @@ memory are flushed and jade will exit.
     kill_all_views(w);
     sys_kill_window(w);
     sys_unset_font(w);
+    free_glyph_buf(w->w_NewContent);
+    free_glyph_buf(w->w_Content);
+    w->w_NewContent = w->w_Content = NULL;
     window_count--;
     /* This flags that this window is dead.  */
     w->w_Window = WINDOW_NIL;
@@ -191,6 +201,27 @@ memory are flushed and jade will exit.
 	return LISP_NULL;
     }
     return(VAL(curr_win));
+}
+
+void
+update_window_dimensions(WIN *w)
+{
+    long new_width = w->w_WidthPix / w->w_FontX;
+    long new_height = w->w_HeightPix / w->w_FontY;
+    if(new_width != w->w_MaxX || new_height != w->w_MaxY)
+    {
+	if(w->w_Content)
+	    free_glyph_buf(w->w_Content);
+	if(w->w_NewContent)
+	    free_glyph_buf(w->w_NewContent);
+	w->w_Content = alloc_glyph_buf(new_width, new_height);
+	w->w_NewContent = alloc_glyph_buf(new_width, new_height);
+	if(!w->w_Content || !w->w_NewContent)
+	    abort();			/* TODO: this is evil */
+	w->w_MaxX = new_width;
+	w->w_MaxY = new_height;
+	update_views_dimensions(w);
+    }
 }
 
 _PR VALUE cmd_sleep_window(VALUE win);
@@ -268,7 +299,6 @@ messagen(u_char *title, int length)
 	w->w_Message = str_dupn(title, length);
 	w->w_MessageLen = length;
 	w->w_Flags |= WINFF_MESSAGE;
-	w->w_MiniBuf->vw_Flags |= VWFF_FORCE_REFRESH;
     }
 }
 
@@ -298,7 +328,6 @@ messagef(u_char *fmt, ...)
 	w->w_Message = str_dupn(fmtbuff, len);
 	w->w_MessageLen = len;
 	w->w_Flags |= WINFF_MESSAGE;
-	w->w_MiniBuf->vw_Flags |= VWFF_FORCE_REFRESH;
     }
 }
 
@@ -312,7 +341,6 @@ no_message(WIN *w)
 	w->w_Message = NULL;
 	w->w_MessageLen = 0;
 	w->w_Flags &= ~WINFF_MESSAGE;
-	w->w_MiniBuf->vw_Flags |= VWFF_FORCE_REFRESH;
     }
 }
 
@@ -322,7 +350,6 @@ reset_message(WIN *w)
     if(w->w_Flags & WINFF_MESSAGE)
     {
 	w->w_Flags &= ~WINFF_MESSAGE;
-	w->w_MiniBuf->vw_Flags |= VWFF_FORCE_REFRESH;
     }
 }
 
@@ -379,12 +406,6 @@ restore_message(WIN *w, u_char *old_msg, u_long old_msg_len)
 	w->w_Message = old_msg;
 	w->w_MessageLen = old_msg_len;
 	w->w_Flags |= WINFF_MESSAGE;
-#if 0
-	w->w_MiniBuf->vw_Flags |= VWFF_FORCE_REFRESH;
-#else
-	refresh_message(w);
-	cmd_flush_output();
-#endif
     }
 }
 
@@ -400,10 +421,7 @@ window is next refreshed unless DISPLAY-NOW is non-nil.
     DECLARE1(string, STRINGP);
     message(VSTR(string));
     if(!NILP(now))
-    {
-	refresh_message(curr_win);
-	cmd_flush_output();
-    }
+	cmd_redisplay(sym_nil);
     return(string);
 }
 
