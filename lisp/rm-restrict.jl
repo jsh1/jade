@@ -39,9 +39,9 @@
 ;;	  (and (recently-from-jsh)
 ;;	       (recipient "djke@dcs")))
 ;;
-;; As can be seen, complex structures can be created (the `and', `or',
-;; and `not' boolean operators work as normal), with rules calling
-;; sub-rules (possibly with parameters).
+;; As can be seen, complex structures can be created (the standard
+;; conditional operators work as normal), with rules calling sub-rules
+;; (possibly with parameters).
 ;;
 ;; Speed of matching is achieved in two ways: (1) some of the primitive
 ;; rules expand inline to the code needed to do the matching, and (2),
@@ -63,14 +63,37 @@
 ;;	(lines NUMBER)
 ;;	(attribute FLAG-SYMBOL)
 ;;	(body REGEXP)
-;;
-;;  Date syntax:
+;; 
+;; Date syntax:
 ;;
 ;;	last (week|fortnight|month|year)
 ;;	N (day|week|fortnight|month|year)s? ago
 ;;	yesterday
 ;;	DD Month YYYY HH:MM:SS TZTZ	(all parts optional)
-
+;;
+;; Also have (put PROP VALUE) and (get PROP VALUE) to allow arbitrary
+;; properties to be stored in messages. Note that (attribute FOO) is
+;; equivalent to (get FOO).
+;;
+;; For example, (put deleted t) marks the message as being deleted.
+;;
+;; Also note that the `score' sorting rule allows a simple form of
+;; message scoring to be implemented. Just write a rule that sets the
+;; `score' attribute of each message to a numeric value, then add the
+;; rule to the `rm-after-parse-rules' list, e.g.
+;;
+;;	(defrule scorer ()
+;;	  (put score 0)
+;;	  (when (sender "@dcs")
+;;	    (put score (+ (get score) 5)))
+;;	  (when (sender "djke@dcs")
+;;	    (put score (+ (get score) 25)))
+;;	  (when (sender "grn@dcs")
+;;	    (put score (+ (get score) 50))))
+;;	(setq rm-after-parse-rules (cons 'scorer rm-after-parse-rules))
+;;
+;; Finally note that the `summary-face' property of each message
+;; allows the face of the message's summary line to be customized.
 
 
 ;; Configuration
@@ -88,10 +111,10 @@
 ;; Entry points
 
 ;;;###autoload
-(defmacro defrule (name args body)
+(defmacro defrule (name args &rest body)
   "Define a rule for restricting the set of messages considered. The new rule
 is called NAME (a symbol), it takes the lambda list of arguments ARGS, and
-is defined by the single form BODY.
+is defined by the forms BODY.
 
 For example, to define a rule accepting only messages sent by me (that's
 `john@dcs.warwick.ac.uk') the following would suffice:
@@ -102,7 +125,9 @@ For example, to define a rule accepting only messages sent by me (that's
       ((symbol (rm-rule-symbol name)))
     `(progn
        (put ',name 'rm-rule-function ',symbol)
-       (defun ,symbol ,args ,(rm-make-rule-body body)))))
+       (defun ,symbol ,args ,(rm-make-rule-body (if (= (length body) 1)
+						    (car body)
+						  (cons 'progn body)))))))
 (put 'defrule 'lisp-indent 'defun)
 
 ;;;###autoload
@@ -143,17 +168,21 @@ contain its definition as a function."
   (if (listp input)
       (let
 	  ((function (car input)))
-	(if (symbolp function)
-	    (let
-		((compiler (get function 'rm-rule-compiler)))
-	      (if compiler
-		  (macroexpand (funcall compiler input))
-		(cons (or (get function 'rm-rule-function)
-			  (error "Unknown operator in rule: %s" function))
-		      (mapcar #'(lambda (x)
-				  (macroexpand (rm-make-rule-body x)))
-			      (cdr input)))))
-	  input))
+	(cond
+	 ((symbolp function)
+	  (let
+	      ((compiler (get function 'rm-rule-compiler)))
+	    (if compiler
+		(macroexpand (funcall compiler input))
+	      (cons (or (get function 'rm-rule-function)
+			(error "Unknown operator in rule: %s" function))
+		    (mapcar #'(lambda (x)
+				(macroexpand (rm-make-rule-body x)))
+			    (cdr input))))))
+	 ((listp function)
+	  (mapcar 'rm-make-rule-body input))
+	 (t
+	  input)))
     input))
 
 ;; Filter the list MESSAGES, by RULE
@@ -185,6 +214,26 @@ contain its definition as a function."
 (put 'and 'rm-rule-function 'and)
 (put 'or 'rm-rule-function 'or)
 (put 'not 'rm-rule-function 'not)
+(put 'if 'rm-rule-function 'if)
+(put 'cond 'rm-rule-function 'cond)
+(put 'unless 'rm-rule-function 'unless)
+(put 'when 'rm-rule-function 'when)
+(put 'progn 'rm-rule-function 'progn)
+(put 'prog1 'rm-rule-function 'prog1)
+(put 'prog2 'rm-rule-function 'prog2)
+(put '1+ 'rm-rule-function '1+)
+(put '1- 'rm-rule-function '1-)
+(put '+ 'rm-rule-function '+)
+(put '- 'rm-rule-function '-)
+(put '* 'rm-rule-function '*)
+(put '/ 'rm-rule-function '/)
+(put '= 'rm-rule-function '=)
+(put '> 'rm-rule-function '>)
+(put '< 'rm-rule-function '<)
+(put '<= 'rm-rule-function '>=)
+(put '>= 'rm-rule-function '<=)
+(put 'max 'rm-rule-function 'max)
+(put 'min 'rm-rule-function 'min)
 
 ;; (header HEADER-REGEXP CONTENTS-REGEXP)
 (put 'header 'rm-rule-function 'rm-rule:header)
@@ -281,11 +330,6 @@ contain its definition as a function."
 (defmacro rm-rule:lines (lines)
   `(> (rm-get-msg-field rm-rule-message rm-msg-total-lines) ,lines))
 
-;; (attribute FLAG-SYMBOL)
-(put 'attribute 'rm-rule-function 'rm-rule:attribute)
-(defmacro rm-rule:attribute (attr)
-  `(memq ',attr (rm-get-msg-field rm-rule-message rm-msg-flags)))
-
 ;; (body REGEXP)
 (put 'body 'rm-rule-function 'rm-rule:body)
 (defun rm-rule:body (regexp)
@@ -295,6 +339,18 @@ contain its definition as a function."
       (restrict-buffer (rm-message-body rm-rule-message)
 		       (rm-message-end rm-rule-message))
       (re-search-forward regexp (start-of-buffer) nil rm-rule-fold-case))))
+
+;; (put PROP VALUE)
+(put 'put 'rm-rule-function 'rm-rule:put)
+(defmacro rm-rule:put (prop value)
+  `(rm-message-put rm-rule-message ',prop ,value)) 
+
+;; (get PROP)
+;; (attribute PROP)
+(put 'get 'rm-rule-function 'rm-rule:get)
+(put 'attribute 'rm-rule-function 'rm-rule:get)
+(defmacro rm-rule:get (prop)
+  `(rm-message-get rm-rule-message ',prop))
 
 
 ;; More intuitive date parsing
