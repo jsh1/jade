@@ -29,6 +29,10 @@
   you lose
 #endif
 
+/* The last event received which had a timestamp, was at this time. */
+_PR Time x11_last_event_time;
+Time x11_last_event_time;
+
 _PR VALUE event_loop(void);
 
 static VALUE
@@ -123,11 +127,17 @@ handle_event(XEvent *xev)
 	    /* Swallow any pending motion events as well. */
 	    while(XCheckMaskEvent(x11_display, ButtonMotionMask, xev))
 		;
-	    /* FALL THROUGH */
+	    x11_last_event_time = xev->xmotion.time;
+	    goto do_command;
 
 	case ButtonPress:
 	case ButtonRelease:
+	    x11_last_event_time = xev->xbutton.time;
+	    goto do_command;
+
 	case KeyPress:
+	    x11_last_event_time = xev->xkey.time;
+	do_command:
 	    code = mods = 0;
 	    translate_event(&code, &mods, xev);
 	    if(mods & EV_TYPE_MASK)
@@ -145,11 +155,13 @@ handle_event(XEvent *xev)
 	    break;
 
 	case SelectionRequest:
+	    x11_last_event_time = xev->xselectionrequest.time;
 	    x11_convert_selection(&xev->xselectionrequest);
 	    break;
 
 	case SelectionClear:
-	    x11_lose_selection(xev->xselectionclear.selection);
+	    x11_last_event_time = xev->xselectionclear.time;
+	    x11_lose_selection(&xev->xselectionclear);
 	    break;
 	}
     }
