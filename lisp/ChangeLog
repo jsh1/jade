@@ -7,6 +7,11 @@
 	* mime-decode.jl (mmencode-program): use `mimencode' instead of
 	`mmencode'
 
+2000-01-22  John Harper  <john@dcs.warwick.ac.uk>
+
+	* tex-mode.jl: require tex-shell at compile-time, we set one of
+	its variables
+
 2000-01-07  John Harper  <john@dcs.warwick.ac.uk>
 
 	* debug.jl, summary.jl (debug-mode, summary-mode): set

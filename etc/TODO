@@ -6,8 +6,6 @@ TODO list for Jade
 Bugs are marked !, things that should be done soon are marked +,
 and more long-term ideas are marked -
 
-Last modified: March 1, 1999
-
 
 Outstanding bugs
 ================
@@ -103,8 +101,6 @@ General programming tasks:
 
 GTK tasks:
 ==========
-
- + Are there still bugs in the selection handling?
 
  - Scroll bars in views?
 

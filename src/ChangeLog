@@ -1,3 +1,9 @@
+2000-01-22  John Harper  <john@dcs.warwick.ac.uk>
+
+	* extent.c: added heavyweight linkage debugging code
+	(try_to_coalesce): when coalescing copy across the frag pointer
+	from the absorbed frag
+
 1999-12-31  John Harper  <john@dcs.warwick.ac.uk>
 
 	* commands.c (Fcall_command): accept closures as possible
