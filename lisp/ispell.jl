@@ -44,7 +44,7 @@ i.e. a single word.")
 (unless ispell-misspelt-face
   (setq ispell-misspelt-face (make-face "ispell-misspelt"))
   (set-face-attribute ispell-misspelt-face 'underline t)
-  (set-face-attribute ispell-misspelt-face 'foreground "darkred"))
+  (set-face-attribute ispell-misspelt-face 'foreground "#700000"))
 
 (defvar ispell-echo-output nil
   "Use for debugging only.")
@@ -186,9 +186,9 @@ i.e. a single word.")
     (let
 	(word-start word-end word)
       (setq word-start (re-search-forward ispell-word-re start))
-      (if word-start
+      (if (and word-start
+	       (< (setq word-end (match-end)) end))
 	  (progn
-	    (setq word-end (match-end))
 	    (ispell-start-process)
 	    (setq word (copy-area word-start word-end))
 	    (write ispell-process word)
@@ -209,7 +209,7 @@ i.e. a single word.")
 		(setq start (funcall function word response
 				     word-start word-end))
 		(ispell-read-line)))))
-	;; Can't find end of word
+	;; Can't find word
 	(setq start end)))))
 
 ;;;###autoload
@@ -382,17 +382,36 @@ for. When called interactively, spell-check the current block."
 		       (setq extents (cons e extents)))) start end)
     (mapc 'delete-extent extents)))
 
+;; Returns the end of the checked region
 ;;;###autoload
-(defun ispell-highlight-misspellings (start end)
+(defun ispell-highlight-misspellings (start end &optional abort-on-input)
   (interactive (if (blockp)
 		   (list (block-start) (block-end))
 		 (list (start-of-buffer) (end-of-buffer))))
-  (ispell-delete-highlights start end)
-  (ispell-region-1 #'(lambda (word response wstart wend)
-		       (make-extent
-			wstart wend (list 'face ispell-misspelt-face))
-		       wend)
-		   start end))
+  (let
+      ((failure-fun #'(lambda (word response wstart wend)
+			(make-extent
+			 wstart wend (list 'face ispell-misspelt-face))
+			wend)))
+    (if (not abort-on-input)
+	;; Just scan the whole thing in one chunk
+	(progn
+	  (ispell-delete-highlights start end)
+	  (ispell-region-1 failure-fun start end)
+	  end)
+      ;; Scan a line at a time, checking if input is pending
+      (catch 'abort
+	(while (< start end)
+	  (let
+	      ((this-end (end-of-line start)))
+	    (ispell-delete-highlights start this-end)
+	    (ispell-region-1 failure-fun start this-end)
+	    (setq start (forward-char 1 this-end)))
+	  (unless (sit-for 0)
+	    ;; Returns nil when the timeout didn't complete, i.e. if
+	    ;; any input arrived
+	    (throw 'abort start)))
+	end))))
 
 (defun ispell-idle-function ()
   (when ispell-minor-mode-last-scan
@@ -405,7 +424,7 @@ for. When called interactively, spell-check the current block."
 	  ;; Rescan entirely
 	  (progn
 	    (ispell-delete-highlights (start-of-buffer) (end-of-buffer))
-	    (ispell-highlight-misspellings start end)
+	    (setq end (ispell-highlight-misspellings start end t))
 	    (aset ispell-minor-mode-last-scan 0 (buffer-changes))
 	    (aset ispell-minor-mode-last-scan 1 start)
 	    (aset ispell-minor-mode-last-scan 2 end))
@@ -418,13 +437,13 @@ for. When called interactively, spell-check the current block."
 	   ((< start old-start)
 	    ;; Extend upwards to start
 	    (setq end (min end old-start))
-	    (ispell-highlight-misspellings start end)
+	    (setq end (ispell-highlight-misspellings start end t))
 	    (aset ispell-minor-mode-last-scan 1 start)
 	    (aset ispell-minor-mode-last-scan 2 end))
 	   ((> end old-end)
 	    ;; Extend downwards to end
 	    (setq start (max start old-end))
-	    (ispell-highlight-misspellings start end)
+	    (setq end (ispell-highlight-misspellings start end t))
 	    (aset ispell-minor-mode-last-scan 1 start)
 	    (aset ispell-minor-mode-last-scan 2 end))))))))
 
