@@ -39,6 +39,8 @@
   "DEL" 'summary-mark-delete
   "q" 'summary-quit
   "u" 'summary-unmark-item
+  "U" 'summary-unmark-all
+  "m" 'summary-mark-item
   "LMB-Click2" 'summary-select-item)
 
 
@@ -103,6 +105,12 @@ line represents.")
 (defvar summary-first-line nil
   "Position of first entry in the menu.")
 (make-variable-buffer-local 'summary-first-line)
+
+(defvar summary-assoc-item-function 'assq
+  "Should be either assq or assoc, used for comparing items with their
+alists. Normally assq will be best, in some case (items are strings)
+assoc is needed.")
+(make-variable-buffer-local 'summary-assoc-item-function)
 
 (defvar summary-actual-keymap nil)
 (make-variable-buffer-local 'summary-actual-keymap)
@@ -210,7 +218,7 @@ items to be displayed and manipulated."
 
 (defmacro summary-get-pending-ops (item)
   "Return the list of operations pending on ITEM."
-  (list 'assq item 'summary-pending-ops))
+  (list 'funcall 'summary-assoc-item-function item 'summary-pending-ops))
 
 (defun summary-add-pending-op (item op)
   "Add OP to the list of operations to call on ITEM at a later date."
@@ -241,6 +249,12 @@ items to be displayed and manipulated."
       (setq summary-pending-ops (delq ops summary-pending-ops))
       (summary-maybe-dispatch 'after-marking item)
       (summary-update-item item))))
+
+(defun summary-unmark-all ()
+  "Discard all pending operations."
+  (interactive)
+  (setq summary-pending-ops nil)
+  (summary-update))
 
 (defun summary-update ()
   "Redraw the menu, after rebuilding the list of items. Loses the current
@@ -323,11 +337,20 @@ non-nil it should be a list containing the operations which may be performed."
     (while ops
       (let
 	  ((item (car (car ops)))
-	   (funcs (cdr (car ops))))
+	   (funcs (cdr (car ops)))
+	   (kept '()))
 	(while funcs
-	  (when (or (null types) (memq (car funcs) types))
-	    (summary-dispatch (car funcs) item))
-	  (setq funcs (cdr funcs))))
+	  (if (and (or (null types) (memq (car funcs) types))
+		   (not (eq (car funcs) 'mark)))
+	      (progn
+		(summary-dispatch (car funcs) item)
+		(when (eq (car funcs) 'delete)
+		  (setq kept nil)))	    
+	    (setq kept (cons (car funcs) kept)))
+	  (setq funcs (cdr funcs)))
+	(when kept
+	  (setq summary-pending-ops (cons (cons item kept)
+					  summary-pending-ops))))
       (setq ops (cdr ops)))
     ;; Send a `execute-end' command when it's defined. This
     ;; lets the underlying system end caching and perform the
@@ -341,6 +364,26 @@ non-nil it should be a list containing the operations which may be performed."
   (if (assq 'delete summary-functions)
       (summary-add-pending-op (or item (summary-current-item)) 'delete)
     (error "No delete operation in the menu.")))
+
+(defun summary-mark-item (&optional item)
+  "Mark ITEM (or the current item) for future use."
+  (interactive)
+  (summary-add-pending-op (or item (summary-current-item)) 'mark))
+
+(defun summary-map-marked-items (function &optional preserve-marks)
+  "Map FUNCTION over all marked items in the current buffer. Unless
+PRESERVE-MARKS is t, all marks are unset. FUNCTION is called as
+(FUNCTION MARKED-ITEM)."
+  (mapc #'(lambda (o)
+	    (when (memq 'mark (cdr o))
+	      (unless preserve-marks
+		(rplacd o (delq 'mark (cdr o))))
+	      (funcall function (car o))))
+	summary-pending-ops))
+
+(defun summary-item-marked-p (item)
+  "Returns t if ITEM is marked for future use."
+  (memq 'mark (cdr (summary-get-pending-ops item))))
 
 (defun summary-quit ()
   "Leave the summary buffer."
