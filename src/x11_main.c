@@ -362,18 +362,12 @@ x11_open_display(char *display_name)
 
 	    if(use_options(xdisplay))
 	    {
-		XColor fore, back;
 		xdisplay->wm_delete_window
 		    = XInternAtom(display, "WM_DELETE_WINDOW", False);
 		xdisplay->jade_selection
 		    = XInternAtom(display, "JADE_SELECTION", False);
 		xdisplay->text_cursor = XCreateFontCursor(display, XC_xterm);
-		fore.pixel = BlackPixel(xdisplay->display, xdisplay->screen);
-		back.pixel = WhitePixel(xdisplay->display, xdisplay->screen);
-		XQueryColor(display, xdisplay->colormap, &fore);
-		XQueryColor(display, xdisplay->colormap, &back);
-		XRecolorCursor(display, xdisplay->text_cursor, &fore, &back);
-
+		sys_recolor_cursor(mouse_cursor_face);
 		xdisplay->meta_mod = x11_find_meta(xdisplay);
 
 		if(x11_opt_sync)
