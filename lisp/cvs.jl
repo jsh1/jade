@@ -87,7 +87,7 @@ and hence hasn't been processed yet; or nil.")
     "G" 'cvs-update
     "i" 'cvs-ignore
     "l" 'cvs-log
-    "o" 'cvs-summary-select-other-view
+    "o" 'cvs-find-file-other-view
     "p" 'cvs-update-pwd
     "P" 'cvs-update-parent
     "r" 'cvs-remove
@@ -459,18 +459,20 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
       (cvs-update (cvs-file-get-fullname item))
     (find-file (cvs-file-get-fullname item))))
 
-(defun cvs-summary-select-other-view ()
+(defun cvs-find-file-other-view ()
+  (interactive)
+  (cvs-find-file t))
+
+(defun cvs-find-file (&optional in-other-view)
+  "Open the selected files in the `*cvs*' summary."
   (interactive)
   (let
-      ((file (expand-file-name (cvs-file-get-fullname
-				(summary-current-item)))))
-    (goto-other-view)
-    (find-file file)))
-
-(defun cvs-find-file ()
-  "Open the file under the cursor in the `*cvs*' summary."
-  (interactive)
-  (find-file (cvs-file-get-fullname (summary-current-item))))
+      ((files (cvs-command-get-filenames))
+       (root default-directory))
+    (when in-other-view
+      (goto-other-view))
+    (mapc #'(lambda (f)
+	      (find-file (expand-file-name f root))) files)))
 
 (defun cvs-summary-clean ()
   "Remove all uninteresting files from the CVS summary. This includes
