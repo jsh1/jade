@@ -77,12 +77,7 @@ _PR VALUE check_pos(TX *, VALUE);
 _PR bool check_line(TX *, VALUE);
 _PR long section_length(TX *, VALUE, VALUE);
 _PR void copy_section(TX *, VALUE, VALUE, u_char *);
-_PR bool pos_in_block(VW *, long, long);
-_PR bool cursor_in_block(VW *);
-_PR bool page_in_block(VW *);
-_PR short line_in_block(VW *, long);
 _PR void order_block(VW *);
-_PR void set_block_refresh(VW *);
 _PR bool read_only(TX *);
 
 /* Makes buffer TX empty (null string in first line) */
@@ -689,103 +684,7 @@ copy_section(TX *tx, VALUE startPos, VALUE endPos, u_char *buff)
     }
 }
 
-/* returns TRUE if the specified position is inside a block */
-bool
-pos_in_block(VW *vw, long col, long line)
-{
-    if((vw->vw_BlockStatus)
-       || (line < VROW(vw->vw_BlockS))
-       || (line > VROW(vw->vw_BlockE)))
-	return FALSE;
-    if(vw->vw_Flags & VWFF_RECTBLOCKS)
-    {
-	long start_col = glyph_col(vw->vw_Tx, VCOL(vw->vw_BlockS),
-				   VROW(vw->vw_BlockS));
-
-	long end_col = glyph_col(vw->vw_Tx, VCOL(vw->vw_BlockE),
-				 VROW(vw->vw_BlockE));
-	col = glyph_col(vw->vw_Tx, col, line);
-	if(start_col < end_col)
-	{
-	    if((col < start_col) || (col >= end_col))
-		return FALSE;
-	}
-	else
-	{
-	    if((col < end_col) || (col >= start_col))
-		return FALSE;
-	}
-    }
-    else
-    {
-	if(((line == VROW(vw->vw_BlockS)) && (col < VCOL(vw->vw_BlockS)))
-	  || ((line == VROW(vw->vw_BlockE)) && (col >= VCOL(vw->vw_BlockE))))
-	return FALSE;
-    }
-    return TRUE;
-}
-
-bool
-cursor_in_block(VW *vw)
-{
-    return(pos_in_block(vw, VCOL(vw->vw_CursorPos), VROW(vw->vw_CursorPos)));
-}
-
-
-bool
-page_in_block(VW *vw)
-{
-    if((vw->vw_BlockStatus)
-      || ((VROW(vw->vw_BlockE) + 1) < VROW(vw->vw_DisplayOrigin))
-      || (VROW(vw->vw_BlockS) > VROW(vw->vw_DisplayOrigin) + vw->vw_MaxY))
-	return(FALSE);
-    return(TRUE);
-}
-
-/*
- * these returns,
- *
- *	0   line not in block
- *	1   whole line in block
- *	2   start of line in block
- *	3   end of line in block
- *	4   middle of line in block
- *
- * note:
- *  this isn't very intelligent (but it works :-).
- *
- * now handles rectangular blocks (VWFF_RECTBLOCKS)
- */
-short
-line_in_block(VW *vw, long line)
-{
-    bool startin = FALSE;
-    bool endin = FALSE;
-
-    if((vw->vw_BlockStatus)
-      || (line < VROW(vw->vw_BlockS))
-      || (line > VROW(vw->vw_BlockE)))
-	return 0;
-    if(vw->vw_Flags & VWFF_RECTBLOCKS)
-	return 4;
-    if(line == VROW(vw->vw_BlockE))
-	startin = TRUE;
-    if(line == VROW(vw->vw_BlockS))
-	endin = TRUE;
-    if(startin)
-    {
-	if(endin)
-	    return 4;
-	return 2;
-    }
-    if(endin)
-	return 3;
-    return 1;
-}
-
-/*
- * makes sure that the marked block is valid
- */
+/* makes sure that the marked block is valid */
 void
 order_block(VW *vw)
 {
@@ -800,15 +699,6 @@ order_block(VW *vw)
 	    vw->vw_BlockS = tem;
 	}
     }
-}
-
-/*
- * Set up the refresh flags to refresh the block in the most efficient manner.
- */
-void
-set_block_refresh(VW *vw)
-{
-    vw->vw_Flags |= VWFF_REFRESH_BLOCK;
 }
 
 bool
