@@ -21,8 +21,6 @@
 (require 'prompt)
 (require 'gtk)
 
-(defvar gtk-prompt-position 'mouse)
-
 (defvar gtk-prompt-enable 'mouse)
 
 (defvar gtk-prompt-old-y-or-n-p y-or-n-p)
@@ -46,7 +44,6 @@
     (catch 'exit
       (unwind-protect
 	  (progn
-	    (gtk-window-position window gtk-prompt-position)
 	    (gtk-container-border-width window 6)
 	    (gtk-signal-connect window "delete_event"
 				#'(lambda ()
@@ -79,7 +76,6 @@
     (catch 'exit
       (unwind-protect
 	  (progn
-	    (gtk-window-position window gtk-prompt-position)
 	    (gtk-container-border-width window 6)
 	    (gtk-signal-connect window "delete_event" #'(lambda ()
 							  (throw 'exit nil)))
@@ -129,7 +125,6 @@
     (catch 'exit
       (unwind-protect
 	  (progn
-	    (gtk-window-position window gtk-prompt-position)
 	    (gtk-container-border-width window 6)
 	    (gtk-signal-connect window "delete_event" #'(lambda ()
 							  (throw 'exit nil)))
@@ -171,7 +166,6 @@
 		      (if initial
 			  (gtk-file-selection-set-filename fs initial)
 			(gtk-file-selection-set-filename fs default-directory))
-		      (gtk-window-position fs gtk-prompt-position)
 		      (gtk-signal-connect (gtk-file-selection-cancel-button fs)
 					  "clicked"
 					  #'(lambda () (throw 'exit nil)))
