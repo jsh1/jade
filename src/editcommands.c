@@ -113,7 +113,7 @@ character after the end of the inserted text.
 }
 
 _PR VALUE cmd_delete_area(VALUE start, VALUE end, VALUE buff);
-DEFUN("delete-area", cmd_delete_area, subr_delete_area, (VALUE lstart, VALUE lend, VALUE buff), V_Subr3, DOC_delete_area) /*
+DEFUN_INT("delete-area", cmd_delete_area, subr_delete_area, (VALUE lstart, VALUE lend, VALUE buff), V_Subr3, DOC_delete_area, "-m\nM") /*
 ::doc:delete_area::
 delete-area START-POS END-POS [BUFFER]
 
