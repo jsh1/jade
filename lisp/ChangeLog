@@ -1,3 +1,15 @@
+1999-03-30  John Harper  <john@dcs.warwick.ac.uk>
+
+	* sh-mode.jl (sh-indent-line): handle function definitions
+
+	* buffers.jl (save-file-as): handle the case where saving the
+	file would overwrite another loaded buffer
+
+	* cvs.jl (cvs-undo-modification): fix the bug in the callback
+
+	* help.jl (describe-mode): only run substitute-command-keys if
+	the doc string isn't nil
+
 1999-03-28  John Harper  <john@dcs.warwick.ac.uk>
 
 	* add-log.jl (changelog-mode): require 'text-mode so the keymap

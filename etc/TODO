@@ -12,6 +12,9 @@ Last modified: March 1, 1999
 Outstanding bugs
 ================
 
+ ! Compiling a function with only a doc-string doesn't seem to add the
+   doc-string to the database (cf. cvs-summary-mode)
+
  ! Reverse isearch doesn't update its position if a longer match
    appears as a result of more characters being added to the regexp
 
@@ -26,10 +29,6 @@ Outstanding bugs
    entered extent, but the uncached_string_glyph_length and char_col
    functions don't. Fixing this might mean changing the extent cache
    architecture
-
- ! If save-file-as is given the name of a file already loaded into the
-   editor (in a different buffer), we'll end up with _two_ files of the
-   same name loaded.
 
 
 General programming tasks:
@@ -101,17 +100,16 @@ General programming tasks:
    can't be accessed through the generic vc
 
 
+GTK tasks:
+==========
+
+ - Scroll bars in views?
+
+
 X11 tasks:
 ==========
 
- - Scroll bars, menus. Would it be possible to enable use of GTK at
-   compile time? Is it possible to handle multiple displays? I don't
-   think so, but that's not a huge loss..
-
-   What would be truly great would be to code a gtk jade_frame widget
-   that is basically what we have at the moment--the grid of characters
-   with paned views, then write a gtk Lisp binding. This would give
-   total control
+ - Scroll bars, menus.
 
  - `Fuzzy' colour allocation; if a colour can't be allocated find the
    nearest match 
