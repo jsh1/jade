@@ -396,6 +396,18 @@ show all messages.")
 			    1
 			  0)) rm-open-folders)))
 
+(defun rm-add-messages (buffer msgs)
+  (unrestrict-buffer)
+  (when msgs
+    (with-buffer buffer
+      (unless (eq rm-buffer-messages 'invalid)
+       (setq rm-buffer-messages (nconc rm-buffer-messages msgs))))
+    (mapc #'(lambda (cell)
+             (when (memq buffer (rm-get-folder-field
+                                 (cdr cell) rm-folder-boxes))
+               (rm-rebuild-folder (cdr cell))))
+         rm-open-folders)))
+
 
 ;; Internal message structure
 
