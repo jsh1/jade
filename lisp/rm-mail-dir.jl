@@ -32,10 +32,16 @@
 ;; This function is added to read-mail.jl's read-mail-display-message-hook
 (defun rm-mail-dir-scanner (rm-message)
   (let
-      ((addr (rm-get-msg-field rm-message rm-msg-from-addr))
-       (name (rm-get-msg-field rm-message rm-msg-from-name)))
-    (when (and addr name)
-      (mail-dir-scan-function addr name)))
+      ((from (rm-get-senders rm-message))
+       (to (rm-get-recipients rm-message)))
+    (while from
+      (when (and (consp from) (car (car from)) (cdr (car from)))
+	(mail-dir-scan-function (car (car from)) (cdr (car from))))
+      (setq from (cdr from)))
+    (while to
+      (when (and (consp from) (car (car to)) (cdr (car to)))
+	(mail-dir-scan-function (car (car to)) (cdr (car to))))
+      (setq to (cdr to))))
   t)
 (add-hook 'read-mail-display-message-hook 'rm-mail-dir-scanner)
 
