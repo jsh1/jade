@@ -44,8 +44,7 @@
 (provide 'sm-mail-dir)
 
 (bind-keys send-mail-c-keymap
-  "Ctrl-a" 'insert-mail-address-and-name
-  "a" 'insert-mail-alias
+  "Ctrl-a" 'insert-mail-item
   "Ctrl-x" 'expand-mail-aliases)
 
 ;;;###autoload
@@ -75,10 +74,10 @@ message being composed."
 	    (item addr)
 	  (while (setq item (mail-parse-group (cursor-pos)))
 	    (setq addr (apply 'concat (car item)))
-	    (if (assoc addr mail-alias-alist)
+	    (if (mail-dir-alias-p addr)
 		(progn
 		  (delete-area (cursor-pos) (cdr item))
-		  (insert-mail-alias addr))
+		  (insert-mail-item addr))
 	      (goto (cdr item)))
 	    (when (looking-at "[\t\n ]*,[\t\n ]*")
 	      (goto (match-end)))))))))
