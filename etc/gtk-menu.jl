@@ -68,4 +68,5 @@
     menu))
 
 (defun popup-menu-from-spec (spec)
-  (gtk-menu-popup-interp (gtk-jade-create-menu spec) nil nil 0 0))
+  (gtk-menu-popup-interp (gtk-jade-create-menu spec)
+			 nil nil 0 (gtk-last-timestamp)))
