@@ -47,7 +47,6 @@ inserted in place of the format directive. These characters include:
 	w	The day of the week, as a 3-character string
 	f	The address of the first sender
 	F	The name of address of the first sender
-	i	Indent to column ARG (i.e. %20i => indent to column 20)
 	m	The abbreviated month name of the date
 	M	The numeric month of the message's date
 	n	The index of the message in the folder
@@ -1185,17 +1184,20 @@ the summary buffer.")
 (defun rm-next-page ()
   "Display the next page in the current message."
   (interactive)
-  (if (>= (cursor-pos) (end-of-buffer))
-      (when rm-auto-next-message
-	(rm-next-undeleted-message))
-    (next-screen)))
+  (let
+      ((char (display-to-char-pos (pos 0 (1- (cdr (view-dimensions)))))))
+    (if (or (not char) (>= char (end-of-buffer)))
+	(when rm-auto-next-message
+	  (rm-next-undeleted-message))
+      (next-screen))))
 
 (defun rm-previous-page ()
   "Display the previous page in the current message."
   (interactive)
-  (if (<= (cursor-pos) (start-of-buffer))
+  (if (<= (display-to-char-pos (pos 0 0)) (start-of-buffer))
       (when rm-auto-next-message
-	(rm-previous-message))
+	(rm-previous-message)
+	(goto (end-of-buffer)))
     (prev-screen)))
 
 (defun rm-toggle-all-headers ()
