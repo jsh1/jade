@@ -1,3 +1,7 @@
+1999-11-29  John Harper  <john@dcs.warwick.ac.uk>
+
+	* help.jl: updated for unified namespace doc functions
+
 1999-11-26  John Harper  <john@dcs.warwick.ac.uk>
 
 	* yacc-mode.jl, ws-x11.jl, ws-gtk.jl, windows.jl, text-mode.jl,

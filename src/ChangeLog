@@ -1,3 +1,11 @@
+1999-11-29  John Harper  <john@dcs.warwick.ac.uk>
+
+	* x11_windows.c, x11_misc.c, windows.c, views.c, undo.c,
+	server-dl.c, redisplay.c, movement.c, misc.c, main.c, keys.c,
+	gtk_select.c, gtk_jade.c, glyphs.c, find.c, files.c, faces.c,
+	extent.c, editcommands.c, commands.c, buffers.c: changed
+	embedded doc strings
+
 1999-11-26  John Harper  <john@dcs.warwick.ac.uk>
 
 	* windows.c, server-dl.c, keys.c, commands.c, buffers.c:
