@@ -46,6 +46,9 @@ Any `%s' substrings will be replaced by the name of the url.")
 (defvar wget-program "wget"
   "Name of program used to invoke Wget.")
 
+(defvar find-url-asynchronously t
+  "When non-nil URL's are loaded asynchronously where possible.")
+
 ;; Functions
 
 ;;;###autoload
@@ -71,11 +74,22 @@ to view URL."
     (message "Calling external browser..." t)
     (shell-command (apply 'format nil find-url-external-command args))))
 
+(defun find-url-magic-buffer (url)
+  (when (or (string-match "\\.html?$" (buffer-file-name))
+	    (search-forward "<html>" nil nil t))
+    ;; Assume buffer contains HTML, decode it and delete
+    ;; the original buffer
+    (let
+	((buffer (current-buffer)))
+      (html-display buffer url nil)
+      (kill-buffer buffer))))
+
 (defun find-url-file (url)
   "Decode URL assuming that it locates a local file, then find this file in
 a buffer."
-  (when (string-match "^(file:/)?(/localhost|)(.*)$" url nil t)
-    (find-file (expand-last-match "\\3"))))
+  (when (string-match "^file:(.*)$" url nil t)
+    (find-file (expand-last-match "\\1"))
+    (find-url-magic-buffer url)))
 
 (defun find-url-telnet (url)
   "Decode a telnet URL, and invoke the telnet package."
@@ -108,20 +122,13 @@ a buffer."
 	(remote-ftp-add-passwd user host passwd))
       ;; XXX What if the method of retrieving files from HOST isn't FTP?
       (find-file (concat ?/ (if (string= user "") "anonymous" user)
-			 ?@ host ?: file)))))
+			 ?@ host ?: file))
+      (find-url-magic-buffer url))))
 
-(defun find-url-http (url)
+(defun find-url-http-loaded (process url view output errors)
   (require 'mail-headers)
-  (let*
-      ((buffer (open-buffer "*wget-output*"))
-       (errors (or (get-buffer "*wget-errors*")
-		   (make-buffer "*wget-errors*")))
-       (process (make-process buffer)))
-    (set-process-error-stream process errors)
-    (clear-buffer buffer)
-    (clear-buffer errors)
-    (message (format nil "wget %s..." url) t)
-    (if (zerop (call-process process nil wget-program "-s" "-O" "-" url))
+  (unless (process-in-use-p process)
+    (if (zerop (process-exit-value process))
 	;; Success
 	(let
 	    (content-type)
@@ -131,19 +138,44 @@ a buffer."
 	  (and (re-search-forward "^Location:[ \t]*([^ \t]+)"
 				  (start-of-buffer errors) errors t)
 	       (setq url (expand-last-match "\\1")))
-	  (with-buffer buffer
+	  (with-buffer output
 	    (setq content-type (mail-get-header "content-type"))
 	    (and (re-search-forward "^[ \t]*\n" (start-of-buffer))
 		 (restrict-buffer (match-end) (end-of-buffer))))
 	  (cond
 	   ((string-match "html" content-type nil t)
-	    (message "Parsing HTML..." t)
-	    (html-display buffer url)
-	    (message "Parsing HTML...done" t))
+	    ;; prevent html-display switching views on us
+	    (with-view (current-view)
+	      (message "Parsing HTML..." t)
+	      (html-display output url view)
+	      (message "Parsing HTML...done" t)))
 	   (t
 	    ;; XXX needs completing
-	    (goto-buffer buffer))))
+	    (with-view view
+	      (goto-buffer output)))))
       ;; Failure
-      (with-view (other-view)
+      (with-view view
 	(goto-buffer errors))
       (error "Wget returned non-zero!"))))
+	       
+(defun find-url-http (url)
+  (let*
+      ((buffer (open-buffer "*wget-output*"))
+       (errors (or (get-buffer "*wget-errors*")
+		   (make-buffer "*wget-errors*")))
+       (process (make-process (cons buffer t)))
+       (args (list wget-program "-s" "-O" "-" url)))
+    (set-process-error-stream process (cons errors t))
+    (clear-buffer buffer)
+    (clear-buffer errors)
+    (message (format nil "wget %s..." url) t)
+    (if find-url-asynchronously
+	(progn
+	  (set-process-function process `(lambda (p)
+					   (find-url-http-loaded
+					    p ,url ,(current-view)
+					    ,buffer ,errors)))
+	  (or (apply 'start-process process args)
+	      (error "Can't start wget")))
+      (apply 'call-process process nil args)
+      (find-url-http-loaded process url (current-view) buffer errors))))
