@@ -70,6 +70,7 @@
 			    rm-message-count 1
 			    rm-current-msg-index 0
 			    rm-cached-msg-list 'invalid)
+		      (call-hook 'rm-after-import-hook)
 		      (rm-display-current-message))))))))))
      ((filep dest)
       ;; DEST is a file. Append to it
