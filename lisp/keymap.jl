@@ -109,6 +109,18 @@ in effect."
 		    (rplaca k newdef))) keymap))
 
 
+;; Adding bindings to a feature that may not yet be loaded
+
+;;;###autoload
+(defmacro lazy-bind-keys (feature keymap &rest bindings)
+  "Install the list of BINDINGS in KEYMAP, assuming that KEYMAP is available
+once FEATURE has been provided. If FEATURE has not yet been loaded, arrange
+for the bindings to be installed if and when it is."
+  `(if (featurep ',feature)
+       (bind-keys ,keymap ,@bindings)
+     (eval-after-load ,(symbol-name feature) '(bind-keys ,keymap ,@bindings))))
+
+
 ;; Printing keymaps
 
 ;;;###autoload
