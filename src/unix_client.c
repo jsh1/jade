@@ -190,7 +190,6 @@ main(int argc, char *argv[])
 {
     char *prog_name = argv[0];
     int sock_fd;
-    u_long linenum = 1;
     u_long result = 0;
 
     argc--; argv++;
@@ -244,24 +243,21 @@ main(int argc, char *argv[])
 	    }
 	    argc--; argv++;
 	}
-	else if(argc >= 1 && **argv == '+')	/* +LINE-NUMBER */
-	{
-#ifdef HAVE_STRTOL
-	    linenum = strtol(argv[0], NULL, 0);
-#else
-	    linenum = atol(argv[0]);
-#endif
-	    if(linenum <= 0)
-		linenum = 1;
-	    argc--; argv++;
-	}
 	else if(argc > 0)
 	{
+	    u_long linenum = 1;
+	    if(argc >= 1 && **argv == '+')	/* +LINE-NUMBER */
+	    {
+#ifdef HAVE_STRTOL
+		linenum = strtol(argv[0], NULL, 0) - 1;
+#else
+		linenum = atol(argv[0]) - 1;
+#endif
+		if(linenum <= 0)
+		    linenum = 1;
+		argc--; argv++;
+	    }
 	    result = find_file(sock_fd, *argv, linenum);
-	    linenum = 1;
-	    /* a short pause is nice. */
-	    if(argc > 0)
-		sleep(1);
 	    argc--; argv++;
 	}
     }
