@@ -34,6 +34,7 @@ _PR void translate_event(u_long *, u_long *, struct IntuiMessage *);
 _PR int  cook_key(struct IntuiMessage *, u_char *, int);
 _PR bool lookup_event(u_long *, u_long *, u_char *);
 _PR bool lookup_event_name(u_char *, u_long, u_long);
+_PR u_long sys_find_meta(void);
 
 _PR u_long esc_code, esc_mods;
 u_long esc_code = 0x45, esc_mods = EV_TYPE_KEYBD;
@@ -165,7 +166,7 @@ static const KeyDesc KeyDescr[] =
     { "Ctrl",     EV_MOD_CTRL, 0 },
     { "Control",  EV_MOD_CTRL, 0 },
     { "CTL",      EV_MOD_CTRL, 0 },
-    { "Meta",     EV_MOD_META, 0 },
+    { "Meta",     EV_MOD_FAKE_META, 0 },
     { "Mod1",     EV_MOD_MOD1, 0 },
     { "Mod2",     EV_MOD_MOD2, 0 },
     { "Amiga",    EV_MOD_MOD2, 0 },
@@ -270,7 +271,10 @@ lookup_event(u_long *code, u_long *mods, u_char *desc)
 	{
 	    if(!stricmp(kd->kd_Name, buff))
 	    {
-		*mods |= kd->kd_Mods;
+		if(kd->kd_Mods & EV_MOD_FAKE_META)
+		    *mods |= (kd->kd_Mods & ~EV_MOD_FAKE_META) | ev_mod_meta;
+		else
+		    *mods |= kd->kd_Mods;
 		*code |= kd->kd_Code;
 		if(*mods & EV_TYPE_MASK)
 		    goto end;
@@ -306,10 +310,13 @@ bool
 lookup_event_name(u_char *buf, u_long code, u_long mods)
 {
     /* First resolve all modifiers */
-    u_long tmp_mods = mods & EV_MOD_MASK;
+    u_long tmp_mods;
     const KeyDesc *kd = KeyDescr;
     struct InputEvent ie;
     short actual;
+    if(mods & ev_mod_meta)
+	mods = (mods & ~ev_mod_meta) | EV_MOD_FAKE_META;
+    tmp_mods = mods & EV_MOD_MASK;
     while(kd->kd_Name && (tmp_mods != 0))
     {
 	if((tmp_mods & kd->kd_Mods) != 0)
@@ -350,4 +357,10 @@ lookup_event_name(u_char *buf, u_long code, u_long mods)
 	return(FALSE);
     buf[actual] = 0;
     return(TRUE);
+}
+
+u_long
+sys_find_meta(void)
+{
+    return EV_MOD_ALT;
 }
