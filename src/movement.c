@@ -773,7 +773,8 @@ the buffer in the current window.
 	if(VPOS(pos).pos_Line < curr_vw->vw_Tx->tx_LogicalStart
 	   || VPOS(pos).pos_Line >= curr_vw->vw_Tx->tx_LogicalEnd)
 	    return sym_nil;
-	VPOS(pos).pos_Col = char_col(curr_vw->vw_Tx, VPOS(pos).pos_Col,
+	VPOS(pos).pos_Col = char_col(curr_vw->vw_Tx,
+				     VPOS(pos).pos_Col + curr_vw->vw_StartCol,
 				     VPOS(pos).pos_Line);
 	return(pos);
     }
