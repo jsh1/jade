@@ -34,6 +34,7 @@ libexecdir=@libexecdir@
 localstatedir=@localstatedir@
 mandir=@mandir@
 sharedstatedir=@sharedstatedir@
+host_type=@host@
 
 jadedir=@jadedir@
 lispdir=@lispdir@
@@ -66,7 +67,7 @@ doc-strings.h : makedoc $(JADE_SRCS)
 	[ -r ../DOC ] || cp DOC-bare ../DOC
 
 build.h : build-info
-	$<
+	$< $(host_type)
 
 stripproto : stripproto.c
 	$(CC) $(LDFLAGS) -o $@ $^ $(EXTRA_LIBS)
