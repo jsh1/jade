@@ -18,69 +18,105 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+;; TODO:
+;;	Makes no attempt to [de]compress remote files. This could
+;;	be done by copying to-from the local fs, or whatever..
+
 (provide 'gzip)
 
-;;; Simple hooks to read and write compressed (compress or gzip) files.
-;;; Do `(require 'gzip)' to load and install it. Any files whose name
-;;; ends in `.gz' or `.Z' will be (de-)compressed as necessary.
+
+;; Configuration:
 
-;;; TO-DO:
-;;; * Info should work with compressed files
-;;; * able to specify what suffixes run what (de)compressors
+(defvar auto-compression-alist
+  '(("\\.g?z$" ("gunzip" "-c") ("gzip" "-c"))
+    ("\\.Z$" ("uncompress" "-c") ("compress" "-c")))
+  "List of (FILE-REGEXP DECOMPRESS-COMMAND COMPRESS-COMMAND) where
+DECOMPRESS-COMMAND and COMPRESS-COMMAND are lists of strings, the command
+names followed by their argument lists, such that they uncompress or compress
+their standard input to their standard output.")
+
+(defvar auto-compression-mode nil
+  "When t, files whose suffixes match `compression-file-alist' are
+automatically uncompressed when loaded, and recompressed when saved.")
+
+
+;; Entry point
+
+;;;###autoload
+(defun auto-compression-mode (&optional force-active)
+  "Toggle automatic decompression and compression of files whose suffixes
+match well-known suffixes."
+  (interactive "P")
+  (setq auto-compression-mode (or force-active (not auto-compression-mode)))
+  (message (if auto-compression-mode
+	       "Auto compression enabled"
+	     "Auto compression disabled")))
+
+
+;; Hooks
+
+;; Find the (REGEXP DECOMPRESSOR COMPRESSOR) rule for FILE-NAME. If FILE-NAME
+;; isn't a local file, don't bother looking
+(defun gzip-file-rule (file-name)
+  (when (and auto-compression-mode
+	     (local-file-name file-name))
+    (assoc-regexp file-name auto-compression-alist)))
 
 ;; Uncompress FILE-NAME into the current buffer
-(defun gzip-uncompress (file-name)
+(defun gzip-uncompress (file-name rule)
   (when (file-exists-p file-name)
     (let
 	((proc (make-process (current-buffer))))
       (message (concat "Uncompressing `" file-name "'") t)
-      ;; gunzip can do .Z files as well
-      (unless (zerop (call-process proc nil "gunzip" "-c" file-name))
-	(signal 'file-error (list "Can't gunzip file" file-name))))))
+      (unless (zerop (apply 'call-process proc file-name (nth 1 rule)))
+	(signal 'file-error (list "Can't uncompress file" file-name))))))
     
 ;; In the read-file-hook
 (defun gzip-read-file (file-name buffer)
-  (when (string-match "\\.(gz|Z)$" file-name)
-    ;; gzipped file, decompress it into the buffer
-    (let
-	((old-pos (cursor-pos)))
-      (with-buffer buffer
-	(gzip-uncompress file-name)
-	(goto old-pos)
-	(setq buffer-file-modtime (file-modtime file-name))
-	(set-buffer-file-name buffer file-name))
-      t)))
+  (let
+      ((rule (gzip-file-rule file-name)))
+    (when rule
+      (let
+	  ((old-pos (cursor-pos)))
+	(with-buffer buffer
+	  (gzip-uncompress file-name rule)
+	  (goto old-pos)
+	  (setq buffer-file-modtime (file-modtime file-name))
+	  (set-buffer-file-name buffer file-name))
+	t))))
 
 ;; In insert-file-hook
 (defun gzip-insert-file (file-name)
-  (when (string-match "\\.(gz|Z)$" file-name)
-    ;; compressed file
-    (gzip-uncompress file-name)))
+  (let
+      ((rule (gzip-file-rule file-name)))
+    (when rule
+      (gzip-uncompress file-name rule))))
 
 ;; In write-file-hook
 (defun gzip-write-file (file-name buffer)
-  (when (string-match "\\.(gz|Z)$" file-name)
-    (let
-	((modes (when (file-exists-p file-name) (file-modes file-name)))
-	 (tmp-name (make-temp-name))
-	 (compressor (if (string-match "\\.Z$" file-name) "compress" "gzip"))
-	 dst-file proc)
-      (backup-file file-name)
-      (when (and (with-buffer buffer
-		   (write-buffer-contents tmp-name))
-		 (setq dst-file (open-file file-name 'write)))
-	(unwind-protect
-	    (progn
-	      (setq proc (make-process dst-file))
-	      (message (concat "Compressing `" file-name "'... ") t)
-	      (when (/= (call-process proc nil compressor "-c" tmp-name) 0)
-		(signal 'file-error (list "Can't compress file"
-					  tmp-name compressor))))
-	  (close-file dst-file)
-	  (delete-file tmp-name))
-	(when modes
-	  (set-file-modes file-name modes))
-	t))))
+  (let
+      ((rule (gzip-file-rule file-name)))
+    (when rule
+      (let
+	  ((modes (when (file-exists-p file-name) (file-modes file-name)))
+	   (tmp-name (make-temp-name))
+	   dst-file proc)
+	(backup-file file-name)
+	(when (and (with-buffer buffer
+		     (write-buffer-contents tmp-name))
+		   (setq dst-file (open-file file-name 'write)))
+	  (unwind-protect
+	      (progn
+		(setq proc (make-process dst-file))
+		(message (concat "Compressing `" file-name "'... ") t)
+		(when (/= (apply 'call-process proc tmp-name (nth 1 rule)) 0)
+		  (signal 'file-error
+			  (list "Can't compress file" tmp-name))))
+	    (close-file dst-file)
+	    (delete-file tmp-name))
+	  (when modes
+	    (set-file-modes file-name modes))
+	  t)))))
 
 (add-hook 'read-file-hook 'gzip-read-file)
 (add-hook 'insert-file-hook 'gzip-insert-file)
