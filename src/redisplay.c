@@ -652,6 +652,9 @@ redisplay_message(WIN *w)
     memcpy(GLYPH_BUF_CODES(w->w_NewContent, w->w_MaxY - 1),
 	   GLYPH_BUF_CODES(w->w_Content, w->w_MaxY - 1),
 	   w->w_MaxX);
+    memcpy(GLYPH_BUF_ATTRS(w->w_NewContent, w->w_MaxY - 1),
+	   GLYPH_BUF_ATTRS(w->w_Content, w->w_MaxY - 1),
+	   w->w_MaxX);
 
     make_message_glyphs(w->w_Content, w);
     redisplay_do_draw(w, w->w_NewContent, w->w_Content, w->w_MaxY);
