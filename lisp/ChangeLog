@@ -1,3 +1,28 @@
+1999-04-23  John Harper  <john@dcs.warwick.ac.uk>
+
+	* windows.jl (active-face): face that will normally be put in
+	the mouse-face property to signal "clickable" text
+	* mime-decode.jl, ispell.jl, info.jl, html-display.jl: add
+	mouse-face properties where appropriate
+
+	* info.jl (info-goto-link): find links correctly
+
+1999-04-19  John Harper  <john@dcs.warwick.ac.uk>
+
+	* mime-decode.jl (mime-decode-force-inlining): new variable
+
+	* rm-urls.jl: new file, hooks into the rm-display-message-hook
+	to highlight parts of messages that look as though they are
+	URLs (giving the extent the standard HTML link properties)
+
+1999-04-18  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gdb.jl (gdb): the argument string may now contain any gdb
+	command-line arguments, not just the name of the binary
+
+	* prompt.jl (prompt-for-string): complete filenames in this
+	prompt
+
 1999-04-06  John Harper  <john@dcs.warwick.ac.uk>
 
 	* buffers.jl (save-file): optional arg FORCE, says to always

@@ -12,6 +12,9 @@ Last modified: March 1, 1999
 Outstanding bugs
 ================
 
+ ! GTK jade doesn't always realize when all windows have been closed,
+   and it should thus exit
+
  ! Area positions marking current selection don't change with the
    buffer contents
 
@@ -37,7 +40,7 @@ Outstanding bugs
 General programming tasks:
 ==========================
 
- + Add mouse-face and mouse-keymap extent properties
+ + Add mouse-keymap extent property?
 
  + Allow redisplay to be preempted by input becoming available (test
    where in the redisplay algorithms though, in the diff, or the
@@ -59,9 +62,6 @@ General programming tasks:
    Also store things like message id of last message sent/received to
    this person (all message id's ever sent/received?), what else..?
 
- + Make swap-del-bs a runtime option, not compile time (or just get rid
-   of it altogether?)
-
  - Mail reader extensions
 
    Allow sorting by more than one predicate. i.e. ``if scores are
@@ -71,6 +71,11 @@ General programming tasks:
    change. E.g. if the rule sets the summary-face depending on whether
    the message is unread or not, when the message becomes read we want
    the face to return to normal
+
+   Better rule handling. Anonymous rules? Use messages as templates for
+   creating new rules--i.e. sender, subject, etc.. Have a menu of all
+   available rules. Function to describe a pre-defined rule
+   (pretty-printing)
 
  - Syntax highlighting
 

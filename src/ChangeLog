@@ -1,3 +1,27 @@
+1999-04-23  John Harper  <john@dcs.warwick.ac.uk>
+
+	* edit.h (struct visible_extent): structure to track which
+	extents are visible in each window
+	(WIN): added w_VisibleExtents and w_MouseExtent fields
+
+	* extent.c (start_visible_extent, end_visible_extent,
+	free_visible_extents, find_visible_extent, update_mouse_extent,
+	mark_visible_extents): new functions
+
+	* faces.c (merge_faces): if the extent is under the mouse, add
+	the mouse-face property if present
+
+	* glyphs.c (make_window_glyphs): update the list of visible
+	extents in the window
+
+	* x11_main.c, x11_windows.c, gtk_jade.c: ask for all pointer
+	motion events, not just when a button is pressed. Use this to
+	update the mouse extent in the window
+
+	* keys.h (EV_MOD_BUTTON_MASK): all button modifier bits
+
+	* windows.c (window_mark_active): call mark_visible_extents
+
 1999-03-27  John Harper  <john@dcs.warwick.ac.uk>
 
 	* gtk_jade.c (Fmake_window_on_display): fake this function (GDK
