@@ -445,6 +445,17 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
   (interactive)
   (find-file (cvs-file-get-fullname (summary-current-item))))
 
+(defun cvs-summary-clean ()
+  "Remove all uninteresting files from the CVS summary. This includes
+anything whose status is `unchanged' or `updated'."
+  (interactive)
+  (setq cvs-file-list (delete-if #'(lambda (f)
+				     (memq (cvs-file-get-status f)
+					   '(unchanged updated)))
+				 cvs-file-list))
+  (when (eq major-mode 'cvs-summary-mode)
+    (summary-update)))
+
 
 ;; CVS commands
 
