@@ -177,23 +177,27 @@
 ;; mail-fill-column. Unless NO-COMMAS is t, each item is separated by
 ;; a comma
 (defun mail-insert-list (lst &optional no-commas)
-  (let
-      ((initial-indent (if (looking-at
+  (let*
+      ((at-bol t)
+       (initial-indent (if (looking-at
 			    (concat mail-header-name " *") (start-of-line))
 			   ;; Get indent from start of header body
 			   (pos-col (char-to-glyph-pos (match-end)))
 			 ;; Get from current indentation
-			 (pos-col (indent-pos)))))
+			 (pos-col (indent-pos))
+			 (setq at-bol nil))))
     (while lst
-      (when (> (+ (length (car lst))
-		  (pos-col (char-to-glyph-pos (cursor-pos))))
-	       mail-fill-column)
-      (insert "\n")
-      (indent-to initial-indent))
+      (when (and (not at-bol)
+		 (> (+ (length (car lst))
+		       (pos-col (char-to-glyph-pos (cursor-pos))))
+		    mail-fill-column))
+	(insert "\n")
+	(indent-to initial-indent))
+      (setq at-bol nil)
       (insert (car lst))
-      (when (and (not no-commas) (cdr lst))
-	(insert ", "))
-      (setq lst (cdr lst)))))
+      (setq lst (cdr lst))
+      (when lst
+	(insert (if no-commas " " ", "))))))
 
 ;; Return a quoted version of phrase STRING if necessary (i.e. if it
 ;; contains any specials or CTLs
