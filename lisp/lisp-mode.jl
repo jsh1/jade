@@ -310,10 +310,12 @@ in the status line."
 (put 'save-excursion 'lisp-indent 0)
 (put 'case 'lisp-indent 1)
 (put 'define 'lisp-indent 1)
+(put 'do 'lisp-indent 2)
 
 (put 'define-structure 'lisp-indent '3)
 (put 'define-interface 'lisp-indent '1)
 (put 'structure 'lisp-indent '2)
+(put 'define-record-type 'lisp-indent 'defun)
 
 ;; Now lisp-mode is loaded we may as well make the *jade* buffer use it
 (with-buffer default-buffer
