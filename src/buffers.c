@@ -21,6 +21,7 @@
 #include "jade.h"
 #include <lib/jade_protos.h>
 
+#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -846,7 +847,7 @@ make_marks_resident(VALUE newtx)
     non_resident_mark_chain = NULL;
     while(mk != LISP_NULL)
     {
-	Lisp_Mark *nxt = VMARK(mk)->next;
+	VALUE nxt = VAL(VMARK(mk)->next);
 	
 	if(STRINGP(VTX(newtx)->tx_CanonicalFileName)
 	    && strcmp(VSTR(VTX(newtx)->tx_CanonicalFileName),
@@ -862,7 +863,7 @@ make_marks_resident(VALUE newtx)
 	    VMARK(mk)->next = non_resident_mark_chain;
 	    non_resident_mark_chain = VMARK(mk);
 	}
-	VMARK(mk) = nxt;
+	mk = nxt;
     }
 }
 
@@ -1089,14 +1090,14 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
     }
     if(BUFFERP(file))
     {
-	VMARK(mark)->file = file;
-	VMARK(mark)->canon_file = sym_nil;
 	if(VMARK(mark)->file != file)
 	{
 	    unchain_mark(VMARK(mark));
 	    VMARK(mark)->next = VTX(file)->tx_MarkChain;
 	    VTX(file)->tx_MarkChain = VMARK(mark);
 	}
+	VMARK(mark)->file = file;
+	VMARK(mark)->canon_file = sym_nil;
     }
     else if(STRINGP(file))
     {
@@ -1105,17 +1106,17 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
 	PUSHGC(gc_file, file);
 	tem = cmd_canonical_file_name(file);
 	POPGC; POPGC;
-	VMARK(mark)->file = file;
-	if(tem && STRINGP(tem))
-	    VMARK(mark)->canon_file = tem;
-	else
-	    VMARK(mark)->canon_file = file;
 	if(!MARK_RESIDENT_P(VMARK(mark)))
 	{
 	    unchain_mark(VMARK(mark));
 	    VMARK(mark)->next = non_resident_mark_chain;
 	    non_resident_mark_chain = VMARK(mark);
 	}
+	VMARK(mark)->file = file;
+	if(tem && STRINGP(tem))
+	    VMARK(mark)->canon_file = tem;
+	else
+	    VMARK(mark)->canon_file = file;
     }
     return VMARK(mark)->file;
 }
