@@ -50,3 +50,26 @@
 			(quote-regexp user-mail-address)
 			">")
 		old-header))
+
+;;;###autoload
+(defun changelog-mode ()
+  "Major mode for editing ChangeLogs."
+  (interactive)
+  (when major-mode-kill
+    (funcall major-mode-kill (current-buffer)))
+  (setq mode-name "ChangeLog"
+	major-mode 'changelog-mode
+	major-mode-kill 'changelog-mode-kill
+	keymap-path (cons 'text-mode-indent-keymap
+			  (cons 'text-mode-keymap keymap-path))
+	fill-prefix "\t"
+	fill-prefix-width tab-size)
+  (eval-hook 'text-mode-hook)
+  (eval-hook 'changelog-mode-hook))
+
+(defun changelog-mode-kill ()
+  (setq mode-name nil
+	keymap-path (delq 'text-mode-keymap 
+			  (delq 'text-mode-indent-keymap keymap-path))
+	major-mode nil
+	major-mode-kill nil))
