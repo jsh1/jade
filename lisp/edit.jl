@@ -643,13 +643,23 @@ its original position."
     (set-buffer-read-only nil (not (buffer-read-only-p)))))
 
 (defun delete-blank-lines ()
-  "Delete all blank lines surrounding the line the cursor is on."
+  "Delete all but the bottom-most of the blank lines surrounding the cursor.
+If the cursor isn't actually on a series of blank lines, the next series
+is found and deleted. If the cursor is on a single blank line, the line is
+deleted."
   (interactive)
-  (when (regexp-match-line "^[\t ]*$")
-    (while (regexp-match-line "^[\t ]*$" (prev-line))
-      (delete-area (line-start (prev-line)) (line-start))))
-  (while (regexp-match-line "^[\t ]*$" (next-line))
-    (delete-area (line-end) (line-end (next-line)))))
+  (unless (empty-line-p)
+    (if (find-next-regexp "^[\t ]*$")
+	(goto-char (match-end))
+      (error "End of buffer")))
+  (let
+      ((start (or (and (find-prev-regexp "^.*[^\t\n ].*\n")
+		       (match-end))
+		  (buffer-start)))
+       (end (or (find-next-regexp "^[\t ]*\n.*[^\t\n ].*$") (buffer-end))))
+    (delete-area start (if (equal start end)
+			   (next-line 1 end)
+			 end))))
 
 
 ;; Some macros
