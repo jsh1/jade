@@ -47,9 +47,6 @@ give to CVS commands.")
   "Buffer used for output from CVS commands.")
 (set-buffer-special cvs-output-buffer t)
 
-(defvar cvs-process (make-process)
-  "Process object used to run CVS commands.")
-
 (defvar cvs-update-char-map '((?U . updated)
 			      (?A . added)
 			      (?R . removed)
@@ -58,13 +55,18 @@ give to CVS commands.")
 			      (?? . unknown))
   "Alist mapping `cvs update' status characters to cvs-mode status tags.")
   
-(defvar cvs-file-list 'invalid
-  "The list of known CVS file structures, or the symbol `invalid' designating
-that the list needs to be rebuilt.")
+(defvar cvs-file-list nil
+  "The list of known CVS file structures.")
 
 (defvar cvs-update-pending nil
   "Previous output from `cvs update' that didn't end in a newline character
 and hence hasn't been processed yet; or nil.")
+
+(defvar cvs-update-in-progress nil
+  "Non-nil when a `cvs update' process is running asynchronously.")
+
+(defvar cvs-update-file-list nil
+  "Used by the `cvs update' filter to build the new list.")
 
 (defvar cvs-keymap (copy-sequence summary-keymap))
 (bind-keys cvs-keymap
@@ -100,7 +102,8 @@ and hence hasn't been processed yet; or nil.")
 				(after-move . (lambda ()
 						(goto-glyph
 						 (pos cvs-cursor-column nil))))
-				(list . cvs-summary-list)
+				(list . (lambda ()
+					  cvs-file-list))
 				(after-marking . (lambda ()
 						   (summary-next-item 1)))
 				(select . cvs-summary-select)
@@ -114,6 +117,13 @@ and hence hasn't been processed yet; or nil.")
   "The function called as (FUNCTION MESSAGE) when a CVS callback buffer has
 been completed.")
 (make-variable-buffer-local 'cvs-callback-function)
+
+;; Extra cvs-command parameters
+(defvar cvs-command-ignore-errors nil)
+(defvar cvs-command-output-stream nil)
+(defvar cvs-command-directory nil)
+(defvar cvs-command-dont-clear-output nil)
+(defvar cvs-command-async nil)
 
 
 ;; CVS support functions
@@ -173,14 +183,14 @@ that each of the FILENAMES contains no directory specifiers."
 	;; Found a status line
 	(let
 	    ((name (expand-last-match "\\1")))
-	  (setq cvs-file-list (cons (cvs-make-file-struct
-				     (directory-file-name
-				      (file-name-directory name))
-				     (file-name-nondirectory name)
-				     name
-				     (cdr (assq (aref out point)
-						cvs-update-char-map)))
-				    cvs-file-list)))
+	  (setq cvs-update-file-list (cons (cvs-make-file-struct
+					    (directory-file-name
+					     (file-name-directory name))
+					    (file-name-nondirectory name)
+					    name
+					    (cdr (assq (aref out point)
+						       cvs-update-char-map)))
+					   cvs-update-file-list)))
 	(setq point (match-end)))
        ((string-match "\n" out point)
 	;; Something else. Display it
@@ -192,48 +202,90 @@ that each of the FILENAMES contains no directory specifiers."
 	(unless (= point (length out))
 	  (setq cvs-update-pending (substring out point))))))))
 
-(defun cvs-update-file-list ()
-  "Rebuild the `cvs-file-list' by calling `cvs update' and parsing its output.
-Returns the new value of the list."
-  (save-some-buffers)
-  (setq cvs-file-list nil)
-  (cvs-command '() "update" '() t 'cvs-update-filter nil t)
-  (setq cvs-update-pending nil
-	cvs-file-list (nreverse cvs-file-list)))
+(defun cvs-error-if-updating ()
+  (and cvs-update-in-progress
+       (error "CVS update in progress")))
 
-(defun cvs-command (cvs-opts command command-opts
-		    &optional ignore-errors output-stream directory
-		    dont-clear-output)
+(defun cvs-update-file-list ()
+  "Rebuild the `cvs-file-list' by calling `cvs update' and parsing its output."
+  (cvs-error-if-updating)
+  (save-some-buffers)
+  (setq cvs-update-file-list nil)
+  (let
+      ((cvs-command-ignore-errors t)
+       (cvs-command-output-stream 'cvs-update-filter)
+       (cvs-command-dont-clear-output t)
+       (cvs-command-async
+	#'(lambda ()
+	    (let
+		((cvs-buf (get-buffer "*cvs*")))
+	      (setq cvs-update-pending nil
+		    cvs-file-list (nreverse cvs-update-file-list)
+		    cvs-update-in-progress nil)
+	      (with-buffer cvs-buf
+		(summary-update))
+	      (unless (eq major-mode 'cvs-summary-mode)
+		(with-view (other-view)
+		  (goto-buffer cvs-buf)
+		  (shrink-view-if-larger-than-buffer)))
+	      (message "cvs update finished")))))
+    (setq cvs-update-in-progress (cvs-command '() "update" '()))))
+
+(defun cvs-command (cvs-opts command command-opts)
   "Execute a CVS command, something like `cvs CVS-OPTS COMMAND COMMAND-OPTS'.
-Unless IGNORE-ERRORS is non-nil, an error will be signalled if the command
-returns anything less than total success.
+If cvs-command-async is nil, the command is executed synchronously, i.e.
+this function won't return until the command has completed. If
+cvs-command-async is non-nil, the command will be executed asynchronously;
+if cvs-command-async is a function, it will be called when the process
+terminates.
+
+Unless cvs-command-ignore-errors is non-nil, an error will be signalled if the
+command returns anything less than total success.
 
 All output (both stdout and stderr) from the command will be directed to
-OUTPUT-STREAM of the `*cvs-output*' buffer if this is undefined. The command
-will be run in the directory DIRECTORY, or the `default-directory' of the
-`*cvs*' buffer, if DIRECTORY is undefined.
+cvs-command-output-stream of the `*cvs-output*' buffer if this is undefined.
+The command will be run in the directory cvs-command-directory, or the
+`default-directory' of the `*cvs*' buffer, if nil.
 
-Finally, unless the DONT-CLEAR-OUTPUT parameter is non-nil, the
+Finally, unless the cvs-command-dont-clear-output parameter is non-nil, the
 `*cvs-output*' buffer will be cleared before the command is invoked."
-  (unless dont-clear-output
+  (unless cvs-command-dont-clear-output
     (clear-buffer cvs-output-buffer))
   (let
       ((arg-list (append cvs-opts (and cvs-cvsroot (list "-d" cvs-cvsroot))
 			 (list command)
-			 (cdr (assoc command cvs-option-alist)) command-opts)))
-    (set-process-dir cvs-process (or directory
-				     (with-buffer (get-buffer "*cvs*")
-				       default-directory)))
-    (set-process-output-stream cvs-process (or output-stream
-					       cvs-output-buffer))
-    (set-process-error-stream cvs-process (or output-stream
-					      cvs-output-buffer))
-    (message (format nil "Calling CVS: %s..." arg-list) t)
-    (unless (or (zerop (apply 'call-process cvs-process
-			      nil cvs-program arg-list))
-		 ignore-errors)
-      (error "CVS returned non-zero")))
-  (write t " done"))
+			 (cdr (assoc command cvs-option-alist)) command-opts))
+       (process (make-process (or cvs-command-output-stream cvs-output-buffer)
+			      (and (functionp cvs-command-async)
+				   cvs-command-async)
+			      (or cvs-command-directory
+				  (with-buffer (get-buffer "*cvs*")
+				    default-directory)))))
+    (message (format nil "%sing CVS: %s..."
+		     (if cvs-command-async "Start" "Call") arg-list) t)
+    (unless (or (if cvs-command-async
+		    (apply 'start-process process cvs-program arg-list)
+		  (zerop (apply 'call-process process nil
+				cvs-program arg-list)))
+		cvs-command-ignore-errors)
+      (error "whilst running cvs"))))
+
+(defun cvs-kill-processes (&optional force)
+  "Interrupt all active CVS processes (after confirmation). If FORCE is non-nil
+don't ask for confirmation and kill instead of interrupting."
+  (interactive)
+  (let
+      ((processes (filter #'(lambda (p)
+			      (string= (process-prog p) cvs-program))
+			  (active-processes))))
+    (if processes
+	(if force
+	    (mapc 'kill-process processes)
+	  (map-y-or-n-p #'(lambda (p)
+			    (format nil "Really interrupt `cvs %s'?"
+				    (process-args p)))
+			processes 'interrupt-process))
+      (message "[No CVS processes active]"))))
 
 (defun cvs-show-output-buffer (&optional activate)
   "Ensure that the `*cvs-output*' buffer is visible in the current window,
@@ -307,21 +359,20 @@ When called interactively, DIRECTORY is prompted for."
   (let
       ((buffer (open-buffer "*cvs*"))
        (inhibit-read-only t))
-    (goto-buffer buffer)
-    (if (and (eq major-mode 'cvs-summary-mode)
-	     (file-name= default-directory directory))
-	;; The *cvs* buffer is already set up for this directory
-	;; Just update it.
-	(progn
-	  (setq cvs-file-list 'invalid)
-	  (summary-update))
-      (clear-buffer)
-      (kill-all-local-variables)
-      (format buffer "[CVS] %s:\n\n" directory)
-      (setq default-directory directory
-	    cvs-file-list 'invalid)
-      (summary-mode "CVS" cvs-summary-functions cvs-keymap)
-      (setq major-mode 'cvs-summary-mode))))
+    (with-buffer buffer
+      (if (and (eq major-mode 'cvs-summary-mode)
+	       (file-name= default-directory directory))
+	  ;; The *cvs* buffer is already set up for this directory
+	  ;; Just update it.
+	  (cvs-update-file-list)
+	(clear-buffer)
+	(kill-all-local-variables)
+	(format buffer "[CVS] %s:\n\n" directory)
+	(setq default-directory directory
+	      cvs-file-list nil)
+	(summary-mode "CVS" cvs-summary-functions cvs-keymap)
+	(setq major-mode 'cvs-summary-mode)
+	(cvs-update-file-list)))))
 
 (defun cvs-update-no-prompt ()
   "Run `cvs-update' *without* prompting for a directory."
@@ -411,13 +462,7 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
 (defun cvs-update-if-summary ()
   "If the current buffer is the `*cvs*' summary buffer, call `cvs-update'."
   (when (eq major-mode 'cvs-summary-mode)
-    (setq cvs-file-list 'invalid)
-    (summary-update)))
-
-(defun cvs-summary-list ()
-  (if (eq cvs-file-list 'invalid)
-      (cvs-update-file-list)
-    cvs-file-list))
+    (cvs-update-file-list)))
 
 (defun cvs-summary-print (item)
   (let
@@ -449,6 +494,7 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
   "Remove all uninteresting files from the CVS summary. This includes
 anything whose status is `unchanged' or `updated'."
   (interactive)
+  (cvs-error-if-updating)
   (setq cvs-file-list (delete-if #'(lambda (f)
 				     (memq (cvs-file-get-status f)
 					   '(unchanged updated)))
@@ -465,12 +511,14 @@ anything whose status is `unchanged' or `updated'."
 (defun cvs-command-get-files ()
   "Return a list of CVS file structures corresponding to the files to be
 operated on by the current CVS mode command."
+  (cvs-error-if-updating)
   (if (eq major-mode 'cvs-summary-mode)
       ;; In the summary buffer, either all marked files, or if none
       ;; are marked, the ARG files under the cursor. This code
       ;; should be in summary.jl
       (or (filter #'(lambda (x)
-		      (memq 'mark (summary-get-pending-ops x))) cvs-file-list)
+		      (memq 'mark (summary-get-pending-ops x)))
+		  cvs-file-list)
 	  (let
 	      ((arg (prefix-numeric-argument current-prefix-arg))
 	       (current (summary-current-index)))
@@ -480,8 +528,8 @@ operated on by the current CVS mode command."
 		(setq current (+ current arg 1)
 		      arg (- arg))
 		(when (< current 0)
-		(setq arg (+ arg current)
-		      current 0)))
+		  (setq arg (+ arg current)
+			current 0)))
 	      (let
 		  ((in (nthcdr current summary-items))
 		   (out nil))
@@ -510,14 +558,18 @@ by the current CVS mode command."
 (defun cvs-log ()
   "Displays the CVS logs of all selected files."
   (interactive)
-  (cvs-command nil "log" (cvs-command-get-filenames))
-  (cvs-show-output-buffer))
+  (let
+      ((cvs-command-async #'(lambda ()
+			      (cvs-show-output-buffer))))
+    (cvs-command nil "log" (cvs-command-get-filenames))))
 
 (defun cvs-status ()
   "Displays the CVS status of all selected files."
   (interactive)
-  (cvs-command nil "status" (cvs-command-get-filenames))
-  (cvs-show-output-buffer))
+  (let
+      ((cvs-command-async #'(lambda ()
+			      (cvs-show-output-buffer))))
+    (cvs-command nil "status" (cvs-command-get-filenames))))
 
 (defun cvs-add ()
   "Prompts for a log message, then adds each selected file to CVS using this
@@ -536,8 +588,11 @@ cvs-commit after calling this command for that."
       ((dir-files (cvs-get-filenames-by-dir files)))
     (clear-buffer cvs-output-buffer)
     (mapc #'(lambda (cell)
-	      (cvs-command nil "add" (list* "-m" message (cdr cell))
-			   nil nil (car cell) t)) dir-files)
+	      (let
+		  ((cvs-command-directory (car cell))
+		   (cvs-command-dont-clear-output t))
+		(cvs-command nil "add" (list* "-m" message (cdr cell)))))
+	  dir-files)
     (cvs-show-output-buffer)
     (cvs-update-if-summary)))
 
@@ -577,33 +632,39 @@ If a prefix argument is given, the directory to commit in is prompted for."
    `(lambda (m)
       (cvs-commit-callback '(,directory) m))))
 
-(defun cvs-commit-callback (filenames message)
+(defun cvs-commit-callback (cvs-commit-filenames message)
   (save-some-buffers)
-  (cvs-command nil "commit" (list* "-m" message filenames))
-  ;; Revert all loaded files (in case of keyword substitutions, etc.)
-  (mapc #'(lambda (f)
-	    (if (file-directory-p f)
-		;; Try to revert _anything_ under directory F
-		(let
-		    ((canon-f (canonical-file-name f)))
-		  (mapc #'(lambda (b)
-			    (when (and (not (buffer-special-p b))
-				       (string-head-eq (canonical-file-name
-							(buffer-file-name))
-						       canon-f))
-			      (revert-buffer b))) buffer-list))
-	      ;; A normal file
-	      (let
-		  ((b (get-file-buffer f)))
-		(when b
-		  (revert-buffer b)))) filenames))
-  (cvs-show-output-buffer)
-  (cvs-update-if-summary))
+  (let
+      ((cvs-command-async
+	#'(lambda ()
+	    ;; Revert all loaded files (in case of keyword substitutions, etc.)
+	    (mapc #'(lambda (f)
+		      (if (file-directory-p f)
+			  ;; Try to revert _anything_ under directory F
+			  (let
+			      ((canon-f (canonical-file-name f)))
+			    (mapc #'(lambda (b)
+				      (when (and (not (buffer-special-p b))
+						 (string-head-eq
+						  (canonical-file-name
+						   (buffer-file-name))
+						  canon-f))
+					    (revert-buffer b))) buffer-list))
+			;; A normal file
+			(let
+			    ((b (get-file-buffer f)))
+			  (when b
+				(revert-buffer b))))
+		      cvs-commit-filenames))
+	    (cvs-show-output-buffer)
+	    (cvs-update-if-summary))))
+    (cvs-command nil "commit" (list* "-m" message cvs-commit-filenames))))
 
 (defun cvs-revert ()
   "Any CVS files whose status is `updated' or `conflict', and who are cached
 locally in an editor buffer, are reverted to their on-disk versions."
   (interactive)
+  (cvs-error-if-updating)
   (mapc #'(lambda (f)
 	    (when (memq (cvs-file-get-status f) '(updated conflict))
 	      (let
@@ -638,8 +699,11 @@ files in the corresponding working directories."
 corresponding revisions in the central repository."
   (interactive)
   (save-some-buffers)
-  (cvs-command nil "diff" (cvs-command-get-filenames) t)
-  (cvs-show-output-buffer))
+  (let
+      ((cvs-command-ignore-errors t)
+       (cvs-command-async #'(lambda ()
+			      (cvs-show-output-buffer))))
+    (cvs-command nil "diff" (cvs-command-get-filenames))))
 
 (defun cvs-diff-backup ()
   "Display the differences between the currently selected CVS file and its
