@@ -974,6 +974,16 @@ the current view. Returns nil if no such character can be found."
     (when (and pos (setq pos (translate-pos-to-view pos)) (posp pos))
       (display-to-char-pos pos))))
 
+(defun mouse-view-pos ()
+  "Return (VIEW . POS) defining the character position of the mouse, or nil."
+  (let*
+      ((pos (raw-mouse-pos))
+       (mouse-view (find-view-by-pos pos)))
+    (when mouse-view
+      (setq pos (translate-pos-to-view pos mouse-view))
+      (when (posp pos)
+	(cons mouse-view (display-to-char-pos pos mouse-view))))))
+
 (defun goto-mouse ()
   "Move the cursor to the view and position under the mouse pointer, returns
 the position, or nil if no position, or t if in the status line of the
