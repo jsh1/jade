@@ -144,9 +144,9 @@ Type \\[mds-edit-commit] to finalise the edits. The full list of local keybindin
     (setq mode-name "Mail-Dir-Edit")
     ;; Copied from lisp-mode
     (setq mode-comment-header ";"
-	  mode-indent-line 'lisp-indent-line
-	  mode-forward-exp 'lisp-forward-sexp
-	  mode-backward-exp 'lisp-backward-sexp
+	  mode-indent-line lisp-indent-line
+	  mode-forward-exp lisp-forward-sexp
+	  mode-backward-exp lisp-backward-sexp
 	  mode-symbol-regexp "[^][()?'`,@\"#; \t\f\n]+")
     (setq mds-edit-item (md-get-field item ':name))
     (unless mds-edit-item
