@@ -583,15 +583,10 @@ non-nil, absolutely everything is refreshed, not just what changed.
 ::end:: */
 {
     WIN *w;
-    VW *vw;
 
 #ifdef DEBUG
     fprintf(stderr, "Entering redisplay..\n");
 #endif
-
-    for(vw = view_chain; vw != 0; vw = vw->vw_Next)
-	if(vw->vw_Win != 0)
-	    resync_xy(vw);
 
     for(w = win_chain; w != 0; w = w->w_Next)
     {
