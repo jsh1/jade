@@ -755,11 +755,7 @@ works by deleting the local copy, before updating it from the repository."
     (if (cvs-buffer-p)
 	(cvs-update-no-prompt)
       (cvs-command nil "update" files))
-    (mapc #'(lambda (f)
-	      (let
-		  ((b (get-file-buffer f)))
-		(when b
-		  (revert-buffer b)))) files)))
+    (cvs-revert-filenames files)))
 
 (defun cvs-next-conflict-marker ()
   "Find the next CVS conflict marker in the current buffer."
