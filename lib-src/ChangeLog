@@ -1,0 +1,28 @@
+Fri Apr 17 14:28:13 1998  John Harper  <john@dcs.warwick.ac.uk>
+
+	* alloca.a: new file, the (mostly) portable public-domain
+	implementation of alloca by D A Gwyn
+
+	* realpath.c: new file, grabbed from GNU libc 2.06, the
+	stdlib/canonicalize.c file with some minor alterations
+
+Wed Apr  1 01:14:46 1998  John Harper  <john@dcs.warwick.ac.uk>
+
+	* build-info: accept host type argument
+
+	* Makefile.in: pass host type to build-info
+
+Thu Mar 19 15:20:52 1998  John Harper  <john@dcs.warwick.ac.uk>
+
+	* jademail: new shell script to use jadeclient to launch the
+	mail reader
+
+Thu Feb 19 22:34:58 1998  John Harper  <john@dcs.warwick.ac.uk>
+
+	* memcmp.c: moved here from the src directory
+
+Thu Feb 12 18:33:36 1998  John Harper  <john@dcs.warwick.ac.uk>
+
+	* New directory. Moved some files from the src directory to
+	here, build tools and non-core programs. Should really move the
+	editor client here as well
