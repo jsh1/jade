@@ -64,6 +64,7 @@ static int redisplay_max_d = 0;
 
 _PR glyph_buf *alloc_glyph_buf(int cols, int rows);
 _PR void free_glyph_buf(glyph_buf *gb);
+_PR void copy_glyph_buf(glyph_buf *dst, glyph_buf *src);
 _PR void garbage_glyphs(WIN *w, int x, int y, int width, int height);
 _PR void redisplay_message(WIN *w);
 _PR void redisplay_init(void);
@@ -113,6 +114,14 @@ void
 free_glyph_buf(glyph_buf *gb)
 {
     sys_free(gb);
+}
+
+void
+copy_glyph_buf(glyph_buf *dst, glyph_buf *src)
+{
+    memcpy(dst->codes[0], src->codes[0],
+	   (sizeof(glyph_code) + sizeof(glyph_attr)) * dst->rows * dst->cols);
+    memcpy(dst->hashes, src->hashes, sizeof(u_long) * dst->rows);
 }
 
 /* Compute and return the hash code of line ROW in buffer G. */
@@ -666,11 +675,15 @@ non-nil, absolutely everything is refreshed, not just what changed.
 		/* Must redraw this window. The easiest way to do this
 		   is to just garbage the entire contents */
 		garbage_glyphs(w, 0, 0, w->w_MaxX, w->w_MaxY);
-		w->w_Flags &= ~WINFF_FORCE_REFRESH;
+		w->w_Flags &= ~(WINFF_FORCE_REFRESH | WINFF_PRESERVING);
 	    }
 
-	    make_window_glyphs(w->w_NewContent, w);
-	    hash_glyph_buf(w->w_NewContent);
+	    if((w->w_Flags & WINFF_PRESERVING) == 0)
+	    {
+		make_window_glyphs(w->w_NewContent, w);
+		hash_glyph_buf(w->w_NewContent);
+	    }
+
 	    if(!patch_display(w, w->w_Content, w->w_NewContent))
 	    {
 		/* MAX-D was exceeded. Draw all lines manually. */
@@ -683,6 +696,7 @@ non-nil, absolutely everything is refreshed, not just what changed.
 	    tem = w->w_NewContent;
 	    w->w_NewContent = w->w_Content;
 	    w->w_Content = tem;
+	    w->w_Flags &= ~WINFF_PRESERVING;
 
 	    /* See if we should update the window name */
 	    if(w->w_CurrVW->vw_Tx->tx_StatusId != 0
