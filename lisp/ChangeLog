@@ -1,3 +1,8 @@
+2000-08-18  John Harper  <john@dcs.warwick.ac.uk>
+
+	* sawmill-minor-mode.jl (sawmill-autoload-finder): updated for
+	new define-command interface
+
 2000-08-16  John Harper  <john@dcs.warwick.ac.uk>
 
 	* windows.jl, thesaurus.jl, text-mode.jl, texinfo-mode.jl,

@@ -61,8 +61,9 @@
 	  (funcall line-fun form)
 	  (setq count (1+ count))
 	  (message form t))
+	(setq p (forward-line 1 p))
 	(catch 'next
-	  (while (setq p (forward-line 1 p))
+	  (while (and p (looking-at "^[ \t]*\\(" p buf))
 	    (setq form nil)
 	    (cond ((and (looking-at "^[ \t]*\\(def(un|macro|subst|var) " p buf)
 			(setq form (read (cons buf p)))
@@ -80,7 +81,12 @@
 		  (t (throw 'next)))
 	    (when (and form (funcall line-fun form))
 	      (setq count (1+ count))
-	      (message form t)))))
+	      (message form t))
+	    (with-buffer buf
+	      (let ((end (lisp-forward-sexp 1 p)))
+		(if end
+		    (setq p (re-search-forward "^" end))
+		  (setq p nil)))))))
       count)))
 
 ;;;###autoload
