@@ -86,7 +86,7 @@ sys_init(int argc, char **argv)
     int i;
     struct x11_display *xdisplay;
 
-    prog_name = file_part(argv[0]);
+    prog_name = argv[0];
     def_font_str = VAL(&def_font_str_data);
 
     for(i = 1; i < argc; i++)
@@ -241,7 +241,10 @@ use_options(struct x11_display *xdisplay)
     if(!XParseColor(xdisplay->display, cmap, hl_str, &tmpc))
 	fprintf(stderr, "error: invalid hl colour\n");
     else if(!XAllocColor(xdisplay->display, cmap, &tmpc))
+    {
 	fprintf(stderr, "error: can't allocate hl colour\n");
+	xdisplay->high_pixel = xdisplay->fore_pixel;
+    }
     else
 	xdisplay->high_pixel = tmpc.pixel;
 
@@ -273,11 +276,7 @@ x11_open_display(char *display_name)
 	    xdisplay->display = display;
 	    xdisplay->screen = DefaultScreen(display);
 
-	    register_input_fd(ConnectionNumber(display), x11_handle_input);
-#ifdef HAVE_UNIX
-	    /* close-on-exec = TRUE	 */
-	    fcntl(ConnectionNumber(display), F_SETFD, 1);
-#endif /* HAVE_UNIX */
+	    sys_register_input_fd(ConnectionNumber(display), x11_handle_input);
 
 	    if(is_first)
 	    {
@@ -332,7 +331,7 @@ x11_close_display(struct x11_display *xdisplay)
 	    ptr = &((*ptr)->next);
 	}
     }
-    deregister_input_fd(ConnectionNumber(xdisplay->display));
+    sys_deregister_input_fd(ConnectionNumber(xdisplay->display));
     XCloseDisplay(xdisplay->display);
     str_free(xdisplay);
 }

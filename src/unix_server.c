@@ -77,7 +77,7 @@ server_handle_request(int fd)
 	call_lisp2(sym_server_find_file, val, MAKE_INT(tem));
 	/* Block any more input on this fd until we've replied to
 	   the original message. */
-	deregister_input_fd(fd);
+	sys_deregister_input_fd(fd);
 	break;
 
     case req_eval:
@@ -117,7 +117,7 @@ server_handle_request(int fd)
 
     case req_end_of_session:
     disconnect:
-	deregister_input_fd(fd);
+	sys_deregister_input_fd(fd);
 	close(fd);
     }
 }
@@ -128,12 +128,9 @@ server_accept_connection(int unused_fd)
     int confd = accept(socket_fd, NULL, NULL);
     if(confd >= 0)
     {
-	/* lose this on exec() */
-	fcntl(confd, F_SETFD, 1);
-
 	/* Once upon a time, I started reading commands here. I think
 	   it's cleaner to just register CONFD as an input source */
-	register_input_fd(confd, server_handle_request);
+	sys_register_input_fd(confd, server_handle_request);
     }
 }
 
@@ -163,12 +160,16 @@ send us messages.
 ::end:: */
 {
     VALUE name;
+    GC_root gc_name;
     if(socket_fd >= 0)
 	return(sym_t);
-    name = cmd_expand_file_name(VAL(&unexp_name), sym_nil);
+    name = cmd_local_file_name(VAL(&unexp_name));
     if(name && STRINGP(name))
     {
-	VALUE tmp = cmd_file_exists_p(name);
+	VALUE tmp;
+	PUSHGC(gc_name, name);
+	tmp = cmd_file_exists_p(name);
+	POPGC;
 	if(!tmp || !NILP(tmp))
 	{
 	    message("A server is already open.");
@@ -185,11 +186,8 @@ send us messages.
 	    {
 		if(listen(socket_fd, 5) == 0)
 		{
-		    /* lose this on exec() */
-		    fcntl(socket_fd, F_SETFD, 1);
-		    fcntl(socket_fd, F_SETFL, O_NONBLOCK);
-
-		    register_input_fd(socket_fd, server_accept_connection);
+		    unix_set_fd_nonblocking(socket_fd);
+		    sys_register_input_fd(socket_fd, server_accept_connection);
 
 		    socket_name = name;
 		    return(sym_t);
@@ -219,7 +217,7 @@ Stops listening for client messages.
 {
     if(socket_fd > 0)
     {
-	deregister_input_fd(socket_fd);
+	sys_deregister_input_fd(socket_fd);
 	close(socket_fd);
 	socket_fd = -1;
 	unlink(VSTR(socket_name));
@@ -238,18 +236,30 @@ RETURN-CODE is the optional result for the client, by default it is zero
 which denotes no errors. Returns nil if the file doesn't have a client.
 ::end:: */
 {
-    VALUE res = sym_nil;
-    VALUE tmp = client_list;
+    VALUE res = sym_nil, tmp;
+
     if(BUFFERP(file))
-	file = VTX(file)->tx_FileName;
+	file = VTX(file)->tx_CanonicalFileName;
     else if(!STRINGP(file))
-	file = curr_vw->vw_Tx->tx_FileName;
+	file = curr_vw->vw_Tx->tx_CanonicalFileName;
+    else
+    {
+	GC_root gc_rc;
+	PUSHGC(gc_rc, rc);
+	file = cmd_canonical_file_name(file);
+	POPGC;
+	if(!file || !STRINGP(file))
+	    return LISP_NULL;
+    }
+
+    tmp = client_list;
     client_list = sym_nil;
     while(CONSP(tmp))
     {
 	register VALUE car = VCAR(tmp);
 	VALUE next = VCDR(tmp);
-	if(STRINGP(VCAR(car)) && same_files(VSTR(file), VSTR(VCAR(car))))
+	if(STRINGP(VCAR(car))
+	   && strcmp(VSTR(file), VSTR(VCAR(car))) == 0)
 	{
 	    /* Send the result to our client. */
 	    int con_fd = VINT(VCDR(car));
@@ -259,7 +269,7 @@ which denotes no errors. Returns nil if the file doesn't have a client.
 	    else
 		res = sym_t;
 	    /* We can handle input on this fd again now. */
-	    register_input_fd(con_fd, server_handle_request);
+	    sys_register_input_fd(con_fd, server_handle_request);
 	}
 	else
 	{
@@ -268,7 +278,8 @@ which denotes no errors. Returns nil if the file doesn't have a client.
 	}
 	tmp = next;
     }
-    return(res);
+
+    return res;
 }
 
 void
