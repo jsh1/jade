@@ -1328,6 +1328,91 @@ adjust_extents_join_rows(Lisp_Extent *x, long col, long row)
 }
 
 
+/* Handling the visible-extents list. */
+
+void
+start_visible_extent (WIN *w, Lisp_Extent *e, long start_col, long start_row)
+{
+    struct visible_extent *x = rep_alloc (sizeof (struct visible_extent));
+    x->next = w->w_VisibleExtents;
+    w->w_VisibleExtents = x;
+    x->extent = e;
+    x->start_col = start_col;
+    x->start_row = start_row;
+}
+
+void
+end_visible_extent (WIN *w, Lisp_Extent *e, long end_col, long end_row)
+{
+    struct visible_extent *x = w->w_VisibleExtents;
+    while (x != 0 && x->extent != e)
+	x = x->next;
+    assert (x != 0);
+    x->end_col = end_col;
+    x->end_row = end_row;
+}
+
+void
+free_visible_extents (WIN *w)
+{
+    struct visible_extent *x = w->w_VisibleExtents;
+    w->w_VisibleExtents = 0;
+    while (x != 0)
+    {
+	struct visible_extent *next = x->next;
+	rep_free (x);
+	x = next;
+    }
+}
+
+struct visible_extent *
+find_visible_extent (WIN *w, long col, long row)
+{
+    struct visible_extent *x = w->w_VisibleExtents;
+    struct visible_extent *ret = 0;
+    while (x != 0)
+    {
+	if ((row > x->start_row && row < x->end_row)
+	    || (x->start_row == x->end_row
+		&& row == x->start_row
+		&& col >= x->start_col
+		&& col < x->end_col)
+	    || (x->start_row != x->end_row
+		&& ((row == x->start_row && col >= x->start_col)
+		    || (row == x->end_row && col < x->end_col))))
+	{
+	    /* Try to ensure we find the innermost extent */
+	    if (ret == 0 || x->extent->parent == ret->extent)
+		ret = x;
+	}
+	x = x->next;
+    }
+    return ret;
+}
+
+bool
+update_mouse_extent (WIN *w, long mouse_col, long mouse_row)
+{
+    struct visible_extent *x = find_visible_extent (w, mouse_col, mouse_row);
+    Lisp_Extent *old = w->w_MouseExtent;
+    w->w_MouseExtent = (x == 0) ? 0 : x->extent;
+    return w->w_MouseExtent != old;
+}
+
+void
+mark_visible_extents (WIN *w)
+{
+    struct visible_extent *x = w->w_VisibleExtents;
+    while (x != 0)
+    {
+	rep_MARKVAL (rep_VAL (x->extent));
+	x = x->next;
+    }
+    if (w->w_MouseExtent != 0)
+	rep_MARKVAL (rep_VAL (w->w_MouseExtent));
+}
+
+
 /* Misc. stuff */
 
 static void
