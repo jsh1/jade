@@ -42,6 +42,11 @@ static gint gtk_jade_expose (GtkWidget *widget, GdkEventExpose *event);
 static gint gtk_jade_input_event (GtkWidget *widget, GdkEvent *event);
 static gint gtk_jade_enter_notify (GtkWidget *widget, GdkEventCrossing *event);
 static gint gtk_jade_leave_notify (GtkWidget *widget, GdkEventCrossing *event);
+static void gtk_jade_drag_data_received (GtkWidget *widget,
+					 GdkDragContext *context,
+					 gint x, gint y,
+					 GtkSelectionData *selection_data,
+					 guint info, guint time, void *data);
 
 static GtkWidgetClass *parent_class = 0;
 
@@ -65,6 +70,8 @@ widget as its single argument. Any function in the hook trying to add
 the widget to a container should actually add the top-level widget, not
 the argument itself.
 ::end:: */
+
+DEFSYM (dnd_drop_uri_list, "dnd-drop-uri-list");
 
 
 /* GtkJade widget mechanics */
@@ -205,6 +212,9 @@ gtk_jade_get_size (GtkJade *jade, gint *widthp, gint *heightp)
 GtkWidget *
 gtk_jade_new (WIN *win, int width, int height)
 {
+    static GtkTargetEntry drag_types[] = { { "text/uri-list", 0, 0 } };
+    static gint n_drag_types = sizeof (drag_types) / sizeof (drag_types [0]);
+
     GtkJade *jade;
     repv hook;
     jade = gtk_type_new (gtk_jade_get_type ());
@@ -220,6 +230,14 @@ gtk_jade_new (WIN *win, int width, int height)
 	jade->width = width;
 	jade->height = height;
     }
+
+    /* this is copied from gedit */
+    gtk_drag_dest_set (GTK_WIDGET (jade),
+		       GTK_DEST_DEFAULT_ALL,
+		       drag_types, n_drag_types,
+		       GDK_ACTION_COPY);
+    gtk_signal_connect (GTK_OBJECT (jade), "drag_data_received",
+			GTK_SIGNAL_FUNC (gtk_jade_drag_data_received), 0);
 
     hook = Fsymbol_value (Qgtk_jade_new_hook, Qt);
     if (hook && rep_CONSP (hook))
@@ -476,6 +494,44 @@ gtk_jade_leave_notify (GtkWidget *widget, GdkEventCrossing *event)
 
     return FALSE;
 }
+
+static void
+gtk_jade_drag_data_received (GtkWidget *widget, GdkDragContext *context,
+			     gint x, gint y, GtkSelectionData *selection_data,
+			     guint info, guint time, void *unused)
+{
+    repv list = Qnil, pos;
+    GtkJade *jade;
+    char *data;
+
+    g_return_if_fail (widget != NULL);
+    g_return_if_fail (GTK_IS_JADE (widget));
+    jade = GTK_JADE (widget);
+
+    pos = make_pos ((x - jade->win->w_LeftPix) / jade->win->w_FontX,
+		    (y - jade->win->w_TopPix) / jade->win->w_FontY);
+
+    data = (char *)selection_data->data;
+
+    /* DATA is a sequence of URI's, each terminated by a \r\n */
+    while (*data != 0)
+    {
+	char *end = data + strcspn (data, "\r\n");
+	if (end == data)
+	    end = data + strlen (data);
+	list = Fcons (rep_string_dupn (data, end - data), list);
+	data = end + strspn (end, "\r\n");
+    }
+
+    rep_funcall (Qdnd_drop_uri_list,
+		 Fcons (Freverse (list),
+			Fcons (rep_VAL (jade->win),
+			       Fcons (pos, Qnil))),
+		 rep_FALSE);
+
+    GTK_JADE_CALLBACK_POSTFIX;
+}
+
 
 
 /* Low level drawing */
@@ -864,6 +920,7 @@ sys_windows_init(void)
     rep_ADD_SUBR (Sflush_output);
     rep_ADD_SUBR (Smake_window_on_display);
     rep_INTERN (gtk_jade_new_hook);
+    rep_INTERN (dnd_drop_uri_list);
 #if 0
     rep_test_int_fun = gtk_jade_handle_async_input;
 #endif
