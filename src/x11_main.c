@@ -74,6 +74,7 @@ static char *display_name = NULL;
 static char *geom_str = "80x24";
 static int x11_opt_sync = 0;
 static char *prog_name;
+static char *visual_name;
 
 _PR bool x11_opt_reverse_video;
 bool x11_opt_reverse_video = FALSE;
@@ -154,6 +155,9 @@ get_resources(struct x11_display *xdisplay)
     if((s = XGetDefault(xdisplay->display, prog_name, "font"))
        || (s = XGetDefault(xdisplay->display, "Jade", "Font")))
 	def_font_str = string_dup(s);
+    if((s = XGetDefault(xdisplay->display, prog_name, "visual"))
+       || (s = XGetDefault(xdisplay->display, "Jade", "Visual")))
+	visual_name = s;
     if((s = XGetDefault(xdisplay->display, prog_name, "reverseVideo"))
        || (s = XGetDefault(xdisplay->display, "Jade", "ReverseVideo")))
 	x11_opt_reverse_video = (strcasecmp(s, "true") == 0);
@@ -167,6 +171,7 @@ sys_usage(void)
 	  "    -display DISPLAY-NAME\n"
 	  "    -name NAME\n"
 	  "    -geometry WINDOW-GEOMETRY\n"
+	  "    -visual VISUAL-NAME\n"
 	  "    -fg FOREGROUND-COLOUR\n"
 	  "    -bg BACKGROUND-COLOUR\n"
 	  "    -hl HIGHLIGHT-COLOUR\n"
@@ -200,6 +205,8 @@ get_options(int *argc_p, char ***argv_p)
 		;
 	    else if(!strcmp("-geometry", *argv))
 		geom_str = argv[1];
+	    else if(!strcmp("-visual", *argv))
+		visual_name = argv[1];
 	    else if(!strcmp("-fg", *argv))
 		default_fg_color = argv[1];
 	    else if(!strcmp("-bg", *argv))
@@ -227,8 +234,9 @@ get_options(int *argc_p, char ***argv_p)
 /* After parsing the command line and the resource database, use the
    information. */
 static bool
-use_options(struct x11_display *xdisplay)
+use_options(struct x11_display *xdpy)
 {
+    int id;
     int x, y, w, h;
     int gflgs = XParseGeometry(geom_str, &x, &y, &w, &h);
 
@@ -249,6 +257,70 @@ use_options(struct x11_display *xdisplay)
 	def_dims[1] = y;
     else
 	def_dims[1] = -1;
+
+    /* Pick a visual */
+    xdpy->visual = 0;
+    id = 0;
+    if(visual_name != 0)
+    {
+	if(!strcasecmp("StaticGray", visual_name))
+	    id = StaticGray;
+	else if(!strcasecmp("StaticColor", visual_name))
+	    id = StaticColor;
+	else if(!strcasecmp("TrueColor", visual_name))
+	    id = TrueColor;
+	else if(!strcasecmp("GrayScale", visual_name)
+		|| !strcasecmp("GreyScale", visual_name))
+	    id = GrayScale;
+	else if(!strcasecmp("PseudoColor", visual_name))
+	    id = PseudoColor;
+	else if(!strcasecmp("DirectColor", visual_name))
+	    id = DirectColor;
+    }
+    if(id != 0)
+    {
+	XVisualInfo in, *out;
+	int n_out;
+	in.class = id;
+	in.screen = xdpy->screen;
+	out = XGetVisualInfo(xdpy->display,
+			     VisualClassMask | VisualScreenMask,
+			     &in, &n_out);
+	if(out != 0)
+	{
+	    /* If more than one, choose the deepest? */
+	    int i, best;
+	    for(i = 0, best = 0; i < n_out; i++)
+	    {
+		if(out[i].depth > out[best].depth
+		   || (out[i].depth == out[best].depth
+		       && out[i].colormap_size > out[best].colormap_size))
+		{
+		    best = i;
+		}
+	    }
+	    if(best < n_out)
+	    {
+		xdpy->visual = out[best].visual;
+		xdpy->depth = out[best].depth;
+		xdpy->colormap
+		    = XCreateColormap(xdpy->display,
+				      DefaultRootWindow(xdpy->display),
+				      xdpy->visual, AllocNone);
+		if(xdpy->colormap == 0)
+		    xdpy->visual = 0; /* fall back to default below */
+	    }
+	    XFree(out);
+	}
+    }
+    if(xdpy->visual == 0)
+    {
+	if(visual_name != 0)
+	    fprintf(stderr, "warning: using default visual\n");
+	xdpy->visual = DefaultVisual(xdpy->display, xdpy->screen);
+	xdpy->depth = DefaultDepth(xdpy->display, xdpy->screen);
+	xdpy->colormap = DefaultColormap(xdpy->display, xdpy->screen);
+    }
 
     return TRUE;
 }
@@ -297,12 +369,8 @@ x11_open_display(char *display_name)
 		xdisplay->text_cursor = XCreateFontCursor(display, XC_xterm);
 		fore.pixel = BlackPixel(xdisplay->display, xdisplay->screen);
 		back.pixel = WhitePixel(xdisplay->display, xdisplay->screen);
-		XQueryColor(display,
-			    DefaultColormap(display, xdisplay->screen),
-			    &fore);
-		XQueryColor(display,
-			    DefaultColormap(display, xdisplay->screen),
-			    &back);
+		XQueryColor(display, xdisplay->colormap, &fore);
+		XQueryColor(display, xdisplay->colormap, &back);
 		XRecolorCursor(display, xdisplay->text_cursor, &fore, &back);
 
 		xdisplay->meta_mod = x11_find_meta(xdisplay);
@@ -338,6 +406,9 @@ x11_close_display(struct x11_display *xdisplay)
 	}
     }
     sys_deregister_input_fd(ConnectionNumber(xdisplay->display));
+    if(xdisplay->colormap != DefaultColormap(xdisplay->display,
+					     xdisplay->screen))
+	XFreeColormap(xdisplay->display, xdisplay->colormap);
     XCloseDisplay(xdisplay->display);
     str_free(xdisplay);
 }
@@ -361,10 +432,9 @@ x11_make_color_dpy(Lisp_Color *c, struct x11_display *dpy)
     if(cell != 0)
     {
 	XColor tem;
-	Colormap cmap = DefaultColormap(dpy->display, dpy->screen);
 	cell->next = c->color;
 	cell->dpy = dpy;
-	if(XAllocNamedColor(dpy->display, cmap,
+	if(XAllocNamedColor(dpy->display, dpy->colormap,
 			    VSTR(c->name), &cell->color, &tem) != 0)
 	{
 	    c->color = cell;
@@ -374,6 +444,7 @@ x11_make_color_dpy(Lisp_Color *c, struct x11_display *dpy)
 	cmd_signal(sym_error, list_2(VAL(&no_color), c->name));
 	return 0;
     }
+    mem_error();
     return 0;
 }
 
@@ -381,12 +452,10 @@ VALUE
 sys_make_color(Lisp_Color *c)
 {
     c->color = 0;
-    if(curr_vw != 0)
-    {
-	struct x11_display *dpy = WINDOW_XDPY(curr_vw->vw_Win);
-	return x11_make_color_dpy(c, dpy) ? VAL(c) : LISP_NULL;
-    }
-    return VAL(c);			/* lazy */
+    if(x11_display_list != 0)
+	return x11_make_color_dpy(c, x11_display_list) ? VAL(c) : LISP_NULL;
+    else
+	return VAL(c);			/* lazy */
 }
 
 struct x11_color *
@@ -410,9 +479,7 @@ sys_free_color(Lisp_Color *c)
     {
 	struct x11_color *next = x->next;
 	assert(next == 0);
-	XFreeColors(x->dpy->display, DefaultColormap(x->dpy->display,
-						     x->dpy->screen),
-		    &x->color.pixel, 1, 0);
+	XFreeColors(x->dpy->display, x->dpy->colormap, &x->color.pixel, 1, 0);
 	str_free(x);
 	x = next;
     }
@@ -431,8 +498,7 @@ x11_free_dpy_colors(struct x11_display *dpy)
 	    if((*x)->dpy == dpy)
 	    {
 		struct x11_color *next = (*x)->next;
-		XFreeColors(dpy->display, DefaultColormap(dpy->display,
-							  dpy->screen),
+		XFreeColors(dpy->display, dpy->colormap,
 			    &(*x)->color.pixel, 1, 0);
 		str_free(*x);
 		*x = next;
@@ -692,8 +758,11 @@ x11_handle_sync_input(int fd)
 void
 x11_handle_async_input(void)
 {
-    struct x11_display *dpy = WINDOW_XDPY(curr_win);
-    int fd = ConnectionNumber(dpy->display);
-    if(sys_poll_input(fd) && x11_handle_input(fd, FALSE))
-	cmd_redisplay(sym_nil);
+    if(!redisplay_lock)
+    {
+	struct x11_display *dpy = WINDOW_XDPY(curr_win);
+	int fd = ConnectionNumber(dpy->display);
+	if(sys_poll_input(fd) && x11_handle_input(fd, FALSE))
+	    cmd_redisplay(sym_nil);
+    }
 }
