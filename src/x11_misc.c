@@ -87,8 +87,9 @@ static struct selection_info {
     enum Sel_type type;
 } selection_info[2];
 
-static DEFSYM(xa_primary, "xa-primary");
-static DEFSYM(xa_secondary, "xa-secondary");
+_PR VALUE sym_xa_primary, sym_xa_secondary;
+DEFSYM(xa_primary, "xa-primary");
+DEFSYM(xa_secondary, "xa-secondary");
 
 DEFSTRING(no_atom, "No atom for symbol");
 

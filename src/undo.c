@@ -47,7 +47,8 @@ static TX *pending_deletion_tx;
 static bool in_undo;
 static TX *last_undid_tx;
 
-static DEFSYM(undo, "undo");
+_PR VALUE sym_undo;
+DEFSYM(undo, "undo");
 
 /* If not in an undo, this will re-combine the waiting_undo and
    tx_UndoList. */

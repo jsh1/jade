@@ -36,8 +36,9 @@ _PR void view_sweep(void);
 _PR void view_prin(VALUE, VALUE);
 _PR VW *make_view(VW *, WIN *, TX *, long, bool);
 
-static DEFSYM(make_view_hook, "make-view-hook");
-static DEFSYM(destroy_view_hook, "destroy-view-hook");
+_PR VALUE sym_make_view_hook, sym_destroy_view_hook;
+DEFSYM(make_view_hook, "make-view-hook");
+DEFSYM(destroy_view_hook, "destroy-view-hook");
 
 static void set_scroll_steps(VW *vw);
 static void recalc_pixel_measures(WIN *w);

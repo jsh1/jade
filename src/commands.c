@@ -26,26 +26,28 @@
 _PR void commands_init(void);
 
 /* Symbols of the Lisp functions called to get input. */
-static VALUE sym_prompt_for_function, sym_prompt_for_buffer,
-    sym_prompt_for_char, sym_prompt_for_command, sym_prompt_for_directory,
-    sym_prompt_for_file, sym_prompt_for_number, sym_prompt_for_string,
-    sym_prompt_for_symbol, sym_prompt_for_variable, sym_prompt_for_lisp,
-    sym_read_event;
+_PR VALUE sym_prompt_for_function, sym_prompt_for_buffer;
+_PR VALUE sym_prompt_for_char, sym_prompt_for_command;
+_PR VALUE sym_prompt_for_directory, sym_prompt_for_file;
+_PR VALUE sym_prompt_for_number, sym_prompt_for_string;
+_PR VALUE sym_prompt_for_symbol, sym_prompt_for_variable;
+_PR VALUE sym_prompt_for_lisp, sym_read_event;
 
-static DEFSYM(prompt_for_function, "prompt-for-function");
-static DEFSYM(prompt_for_buffer, "prompt-for-buffer");
-static DEFSYM(prompt_for_char, "prompt-for-char");
-static DEFSYM(prompt_for_command, "prompt-for-command");
-static DEFSYM(prompt_for_directory, "prompt-for-directory");
-static DEFSYM(prompt_for_file, "prompt-for-file");
-static DEFSYM(prompt_for_number, "prompt-for-number");
-static DEFSYM(prompt_for_string, "prompt-for-string");
-static DEFSYM(prompt_for_symbol, "prompt-for-symbol");
-static DEFSYM(prompt_for_variable, "prompt-for-variable");
-static DEFSYM(prompt_for_lisp, "prompt-for-lisp");
-static DEFSYM(read_event, "read-event");
+DEFSYM(prompt_for_function, "prompt-for-function");
+DEFSYM(prompt_for_buffer, "prompt-for-buffer");
+DEFSYM(prompt_for_char, "prompt-for-char");
+DEFSYM(prompt_for_command, "prompt-for-command");
+DEFSYM(prompt_for_directory, "prompt-for-directory");
+DEFSYM(prompt_for_file, "prompt-for-file");
+DEFSYM(prompt_for_number, "prompt-for-number");
+DEFSYM(prompt_for_string, "prompt-for-string");
+DEFSYM(prompt_for_symbol, "prompt-for-symbol");
+DEFSYM(prompt_for_variable, "prompt-for-variable");
+DEFSYM(prompt_for_lisp, "prompt-for-lisp");
+DEFSYM(read_event, "read-event");
 
-static DEFSYM(interactive, "interactive");
+_PR VALUE sym_interactive;
+DEFSYM(interactive, "interactive");
 DEFSTRING(err_interactive, "Bad interactive specification");
 
 /* Prefix argument for the next command and the current command. */
@@ -133,7 +135,7 @@ again:
 	if((VTYPE(fun) >= V_Subr0) && (VTYPE(fun) <= V_SubrN))
 	    spec = VSUBR(fun)->int_spec;
 	else if(COMPILEDP(fun))
-	    spec = VVECTI(fun, COMPILED_INTERACTIVE);
+	    spec = COMPILED_INTERACTIVE(fun);
 	else if(CONSP(fun))
 	{
 	    if(VCAR(fun) == sym_lambda)
@@ -525,7 +527,7 @@ Returns t if COMMAND may be called interactively.
     {
 	if((((VTYPE(cmd) >= V_Subr0) && (VTYPE(cmd) <= V_SubrN))
 	    && (VSUBR(cmd)->int_spec != LISP_NULL))
-	   || (COMPILEDP(cmd) && !NILP(VVECTI(cmd, COMPILED_INTERACTIVE))))
+	   || (COMPILEDP(cmd) && !NILP(COMPILED_INTERACTIVE(cmd))))
 	    return(sym_t);
 	else if(CONSP(cmd))
 	{

@@ -35,7 +35,8 @@ _PR void server_kill(void);
 /* List of (FILE-NAME . SOCK-FD) */
 static VALUE client_list;
 
-static DEFSYM(server_open_file, "server-open-file");
+_PR VALUE sym_server_open_file;
+DEFSYM(server_open_file, "server-open-file");
 
 /* fd of the socket which clients connect to, or zero. */
 static int socket_fd = -1;

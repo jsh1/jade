@@ -51,10 +51,12 @@ static bool print_prefix, printed_this_prefix;
 static u_long event_buf[EVENT_BUFSIZ]; /* one event = (code,mods) */
 static int event_index;
 
-static DEFSYM(keymap_path, "keymap-path");
-static DEFSYM(unbound_key_hook, "unbound-key-hook");
-static DEFSYM(esc_means_meta, "esc-means-meta");
-static DEFSYM(keymap, "keymap");
+_PR VALUE sym_keymap_path, sym_unbound_key_hook;
+_PR VALUE sym_esc_means_meta, sym_keymap;
+DEFSYM(keymap_path, "keymap-path");
+DEFSYM(unbound_key_hook, "unbound-key-hook");
+DEFSYM(esc_means_meta, "esc-means-meta");
+DEFSYM(keymap, "keymap");
 
 static VALUE next_keymap_path;
 

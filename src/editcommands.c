@@ -30,10 +30,12 @@
 
 _PR void edit_init(void);
 
-static DEFSYM(upcase_table, "upcase-table");
-static DEFSYM(downcase_table, "downcase-table");
-static DEFSYM(flatten_table, "flatten-table");
-static DEFSYM(block_status_hook, "block-status-hook");
+_PR VALUE sym_upcase_table, sym_downcase_table;
+_PR VALUE sym_flatten_table, sym_block_status_hook;
+DEFSYM(upcase_table, "upcase-table");
+DEFSYM(downcase_table, "downcase-table");
+DEFSYM(flatten_table, "flatten-table");
+DEFSYM(block_status_hook, "block-status-hook");
 
 _PR VALUE sym_inhibit_read_only;
 DEFSYM(inhibit_read_only, "inhibit-read-only");

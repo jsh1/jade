@@ -38,8 +38,9 @@ _PR void windows_kill(void);
 _PR void window_sweep(void);
 _PR void window_prin(VALUE, VALUE);
 
-static DEFSYM(make_window_hook, "make-window-hook");
-static DEFSYM(destroy_window_hook, "destroy-window-hook");
+_PR VALUE sym_make_window_hook, sym_destroy_window_hook;
+DEFSYM(make_window_hook, "make-window-hook");
+DEFSYM(destroy_window_hook, "destroy-window-hook");
 
 _PR VALUE sym_window_closed_hook;
 DEFSYM(window_closed_hook, "window-closed-hook");

@@ -47,7 +47,8 @@ _PR void buffers_kill(void);
 _PR TX *buffer_chain;
 TX *buffer_chain;
 
-static DEFSYM(auto_save_function, "auto-save-function");
+_PR VALUE sym_auto_save_function;
+DEFSYM(auto_save_function, "auto-save-function");
 
 _PR VALUE cmd_make_buffer_name(VALUE);
 DEFUN("make-buffer-name", cmd_make_buffer_name, subr_make_buffer_name, (VALUE rawName), V_Subr1, DOC_make_buffer_name) /*
