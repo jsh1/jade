@@ -25,8 +25,6 @@
 
 static long move_down_screens(long);
 static long move_up_screens(long);
-static bool prev_char(long, POS *, TX *);
-static bool next_char(long, POS *, TX *);
 static int find_matching_bracket(POS *, TX *, u_char esc);
 _PR void movement_init(void);
 
@@ -588,60 +586,6 @@ Move NUMBER (def: 1) tab stops to the right
     return(sym_nil);
 }
 
-static bool
-prev_char(long count, POS *pos, TX *tx)
-{
-    LINE *line = tx->tx_Lines + pos->pos_Line;
-    if(count < 0)
-	return(next_char(-count, pos, tx));
-    while(count > 0)
-    {
-	if(count <= pos->pos_Col)
-	{
-	    pos->pos_Col -= count;
-	    count = 0;
-	}
-	else
-	{
-	    count -= pos->pos_Col + 1; /* `+ 1' for the assumed '\n' */
-	    line--;
-	    pos->pos_Line--;
-	    if(pos->pos_Line < tx->tx_LogicalStart)
-		return(FALSE);
-	    pos->pos_Col = line->ln_Strlen - 1;
-	}
-    }
-    return(TRUE);
-}
-
-static bool
-next_char(long count, POS *pos, TX *tx)
-{
-    LINE *line = tx->tx_Lines + pos->pos_Line;
-    if(count < 0)
-	return(prev_char(-count, pos, tx));
-    if(pos->pos_Col >= line->ln_Strlen)
-	pos->pos_Col = line->ln_Strlen - 1;
-    while(count > 0)
-    {
-	if(count < (line->ln_Strlen - pos->pos_Col))
-	{
-	    pos->pos_Col += count;
-	    count = 0;
-	}
-	else
-	{
-	    count -= line->ln_Strlen - pos->pos_Col;
-	    pos->pos_Col = 0;
-	    pos->pos_Line++;
-	    line++;
-	    if(pos->pos_Line >= tx->tx_LogicalEnd)
-		return(FALSE);
-	}
-    }
-    return(TRUE);
-}
-
 _PR VALUE cmd_next_char(VALUE count, VALUE pos, VALUE tx);
 DEFUN("next-char", cmd_next_char, subr_next_char, (VALUE count, VALUE pos, VALUE tx), V_Subr3, DOC_next_char) /*
 ::doc:next_char::
@@ -660,7 +604,7 @@ Returns the position of the character COUNT (default: 1) characters after POS
 	if(!check_pos(VTX(tx), &VPOS(pos)))
 	    return NULL;
     }
-    if(next_char(NUMBERP(count) ? VNUM(count) : 1, &VPOS(pos), VTX(tx)))
+    if(forward_char(NUMBERP(count) ? VNUM(count) : 1, VTX(tx), &VPOS(pos)))
 	return(pos);
     return(sym_nil);
 }
@@ -675,7 +619,7 @@ Moves to the character COUNT characters after the cursor.
 {
     VW *vw = curr_vw;
     POS tmp = vw->vw_CursorPos;
-    if(next_char(NUMBERP(count) ? VNUM(count) : 1, &tmp, vw->vw_Tx))
+    if(forward_char(NUMBERP(count) ? VNUM(count) : 1, vw->vw_Tx, &tmp))
     {
 	vw->vw_CursorPos = tmp;
 	return(sym_t);
@@ -701,7 +645,7 @@ cursor). POS is altered.
 	if(!check_pos(VTX(tx), &VPOS(pos)))
 	    return NULL;
     }
-    if(prev_char(NUMBERP(count) ? VNUM(count) : 1, &VPOS(pos), VTX(tx)))
+    if(backward_char(NUMBERP(count) ? VNUM(count) : 1, VTX(tx), &VPOS(pos)))
 	return(pos);
     return(sym_nil);
 }
@@ -716,7 +660,7 @@ Moves to the character COUNT characters before the cursor.
 {
     VW *vw = curr_vw;
     POS tmp = vw->vw_CursorPos;
-    if(prev_char(NUMBERP(count) ? VNUM(count) : 1, &tmp, vw->vw_Tx))
+    if(backward_char(NUMBERP(count) ? VNUM(count) : 1, vw->vw_Tx, &tmp))
     {
 	vw->vw_CursorPos = tmp;
 	return(sym_t);
