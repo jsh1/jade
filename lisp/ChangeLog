@@ -1,3 +1,9 @@
+2000-07-24  John Harper  <john@dcs.warwick.ac.uk>
+
+	* sawmill-minor-mode.jl, find-autoloads.jl: autoload-finder
+	variable allows modes to customize autoload discovery and
+	formatting
+
 2000-07-05  John Harper  <john@dcs.warwick.ac.uk>
 
 	* fill.jl (fill-area): rename `goal-column' local-variable to

@@ -287,6 +287,7 @@ in the status line."
 (put 'unless 'lisp-indent 1)
 (put 'while 'lisp-indent 1)
 (put 'lambda 'lisp-indent 'defun)
+(put 'object 'lisp-indent 'defun)
 (put 'defun 'lisp-indent 'defun)
 (put 'defmacro 'lisp-indent 'defun)
 (put 'defsubst 'lisp-indent 'defun)

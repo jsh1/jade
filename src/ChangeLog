@@ -1,3 +1,11 @@
+2000-07-24  John Harper  <john@dcs.warwick.ac.uk>
+
+	* server-dl.c: don't use rep_dl_subrs
+
+2000-07-23  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gtk_main.c: require gui.gtk.gtk if rep_INTERFACE >= 10
+
 2000-05-30  John Harper  <john@dcs.warwick.ac.uk>
 
 	* commands.c (Finteractive): removed, unneeded
