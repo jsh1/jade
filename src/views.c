@@ -533,6 +533,11 @@ format_mode_string(char *fmt, VW *vw, char *buf, u_long buf_len)
 	    break;
 	}
 
+	case 'm':
+	    *buf++ = "-+<>"[vw->vw_BlockStatus+1];
+	    buf_len--;
+	    break;
+
 	case '(':			/* `(' if in top-level, else `[' */
 	    *buf++ = (recurse_depth == 0) ? '(' : '[';
 	    buf_len--;
