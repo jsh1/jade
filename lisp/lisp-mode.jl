@@ -20,7 +20,7 @@
 
 (provide 'lisp-mode)
 
-(defvar symbol-word-regexps ["[^][()?'\"#; ]" "[][()?'\"#; ]|$"])
+(defvar symbol-word-regexps ["[^][()?'`,@\"#; ]" "[][()?'`,@\"#; ]|$"])
 
 (defvar lisp-mode-keymap (make-keylist))
 (bind-keys lisp-mode-keymap
@@ -118,6 +118,8 @@ in the status line."
     ;; now any other whitespace
     (when (looking-at "[\t\f ]+" pos)
       (setq pos (match-end)))
+    (while (member (get-char pos) '(?' ?# ?` ?, ?@))
+      (setq pos (forward-char 1 pos)))
     (let
         ((c (get-char pos)))
       (cond
@@ -134,10 +136,6 @@ in the status line."
 	(unless (setq pos (find-matching-bracket pos))
 	  (error "Expression doesn't end!"))
 	(setq pos (forward-char 1 pos)))
-       ((member c '(?' ?#))
-	;; iterate one more time
-	(setq number (1+ number)
-	      pos (forward-char 1 pos)))
        ((member c '(?\) ?\]))
 	(error "End of containing sexp"))
        (t
@@ -188,10 +186,8 @@ in the status line."
 	  ;; a symbol?
 	 (unless (setq pos (re-search-backward "[^][\f\t\n ()'\"]+|^" pos))
 	   (error "Symbol doesn't start??"))))
-	(when (member (get-char (forward-char -1 pos)) '(?' ?#))
-	  (setq pos (forward-char -1 pos))
-	  (when (= (get-char (forward-char -1 pos)) ?#)
-	    (setq pos (forward-char -1 pos)))))
+	(while (member (get-char (forward-char -1 pos)) '(?' ?# ?` ?, ?@))
+	  (setq pos (forward-char -1 pos))))
       (setq number (1- number)))
     pos))
 
