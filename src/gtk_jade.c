@@ -23,6 +23,13 @@
 #include <string.h>
 #include <assert.h>
 
+#ifdef HAVE_X11
+  /* XXX Yet again I'm resorting to Xlib. */
+# include <gdk/gdkprivate.h>
+# include <X11/Xlib.h>
+# include <X11/keysym.h>
+#endif
+
 #define INPUT_EVENTS (GDK_BUTTON_PRESS_MASK		\
 		      | GDK_BUTTON_RELEASE_MASK		\
 		      | GDK_KEY_PRESS_MASK		\
@@ -907,6 +914,104 @@ DEFUN ("make-window-on-display", Fmake_window_on_display,
 }
 
 
+/* Asyncronous event handling. X11 specific. */
+
+#ifdef HAVE_X11
+static Bool
+async_event_pred (Display *dpy, XEvent *ev, XPointer arg)
+{
+    WIN *w;
+    for (w = win_chain; w != 0; w = w->w_Next)
+    {
+	if (w->w_Window && GTK_WIDGET_REALIZED (GTK_WIDGET (w->w_Window)))
+	{
+	    GdkWindowPrivate *pri = (GdkWindowPrivate *)w->w_Window->widget.window;
+	    if (pri->xwindow == ev->xexpose.window)
+		break;
+	}
+    }
+    if (w != 0)
+    {
+	*(WIN **)arg = w;
+	switch (ev->xany.type)
+	{
+	case Expose:
+	case GraphicsExpose:
+	    return True;
+
+	case KeyPress:
+	    if (ev->xkey.state == ControlMask)
+	    {
+		KeySym symbol = XKeycodeToKeysym (dpy, ev->xkey.keycode, 0);
+		if (symbol == XK_g)
+		{
+		    rep_throw_value = rep_int_cell;
+		    return True;
+		}
+	    }
+	    break;
+	}
+    }
+    /* This event has now been read, so select() wouldn't notice it.. */
+    rep_mark_input_pending (ConnectionNumber(dpy));
+    return False;
+}
+#endif
+
+static void
+gtk_jade_handle_async_input (void)
+{
+    bool need_redisplay = FALSE;
+    if (!redisplay_lock)
+    {
+#ifdef HAVE_X11
+	int fd = ConnectionNumber(gdk_display);
+	if(rep_poll_input(fd))
+	{
+	    WIN *ev_win;
+	    XEvent xev;
+	    if (XCheckIfEvent (gdk_display, &xev,
+			       &async_event_pred, (XPointer)&ev_win))
+	    {
+		switch (xev.type)
+		{
+		    int x, y, width, height;
+		    WIN *w;
+
+		case Expose:
+		case GraphicsExpose:
+		    x = (xev.xexpose.x - ev_win->w_LeftPix) / ev_win->w_FontX;
+		    y = (xev.xexpose.y - ev_win->w_TopPix) / ev_win->w_FontY;
+		    /* Why +2? It seems to be necessary.. */
+		    width = (xev.xexpose.width / ev_win->w_FontX) + 2;
+		    height = (xev.xexpose.height / ev_win->w_FontY) + 2;
+
+		    /* We're in the middle of doing something else,
+		       don't let the expose cause the current display
+		       state to be redrawn; preserve the window contents
+		       at the last redisplay */
+		    for(w = win_chain; w != 0; w = w->w_Next)
+		    {
+			if(!(w->w_Flags & WINFF_PRESERVING))
+			{
+			    copy_glyph_buf(w->w_NewContent, w->w_Content);
+			    w->w_Flags |= WINFF_PRESERVING;
+			}
+		    }
+
+		    garbage_glyphs(ev_win, x, y, width, height);
+		    if (xev.xexpose.count == 0)
+			need_redisplay = TRUE;
+		}
+	    }
+	}
+#endif /* HAVE_X11 */
+    }
+    if (need_redisplay)
+	Fredisplay (Qnil);
+}
+
+
 /* Initialisation */
 
 void
@@ -921,8 +1026,6 @@ sys_windows_init(void)
     rep_ADD_SUBR (Smake_window_on_display);
     rep_INTERN (gtk_jade_new_hook);
     rep_INTERN (dnd_drop_uri_list);
-#if 0
     rep_test_int_fun = gtk_jade_handle_async_input;
-#endif
     gtk_misc_init();
 }
