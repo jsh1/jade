@@ -317,9 +317,6 @@ event_loop(void)
 	}
 	else if(number == 0)
 	{
-#ifdef HAVE_SUBPROCESSES
-	    proc_on_idle();
-#endif
 	    /* A timeout; do one of:
 	         Remove messages in minibuffers
 		 Print the current key-prefix
