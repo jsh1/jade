@@ -426,6 +426,8 @@ update_status_buffer(VW *vw)
     u_char *block;
     bool restriction = (tx->tx_LogicalStart != 0)
 			|| (tx->tx_LogicalEnd != tx->tx_NumLines);
+    long lines = tx->tx_LogicalEnd - tx->tx_LogicalStart;
+    char *position, position_buf[5];
 
     if(vw->vw_Flags & VWFF_MINIBUF
        || vw->vw_Flags & VWFF_CUSTOM_STATUS)
@@ -441,8 +443,21 @@ update_status_buffer(VW *vw)
     else
 	block = "";
 
+    if(lines < vw->vw_MaxY)
+	position = "All";
+    else if(vw->vw_StartLine <= tx->tx_LogicalStart)
+	position = "Top";
+    else if(vw->vw_StartLine + vw->vw_MaxY >= tx->tx_LogicalEnd)
+	position = "Bottom";
+    else
+    {
+	sprintf(position_buf, "%ld%%",
+		((vw->vw_StartLine - tx->tx_LogicalStart) * 100) / lines);
+	position = position_buf;
+    }
+
     calc_cursor_offset(vw);
-    sprintf(vw->vw_StatusBuf, "%s%s %c%s%s%c %c%ld,%ld%c %ld %s %s",
+    sprintf(vw->vw_StatusBuf, "%s%s %c%s%s%c %c%ld,%ld%c %s of %ld %s %s",
 	    VSTR(tx->tx_BufferName),
 	    ((tx->tx_Changes != tx->tx_ProperSaveChanges)
 	     && (!(tx->tx_Flags & TXFF_SPECIAL)))
@@ -453,10 +468,10 @@ update_status_buffer(VW *vw)
 	    (recurse_depth ? ']' : ')'),
 	    restriction ? '[' : '(',
 	    vw->vw_LastCursorOffset + 1,
-	    vw->vw_CursorPos.pos_Line + 1,
+	    vw->vw_CursorPos.pos_Line - tx->tx_LogicalStart + 1,
 	    restriction ? ']' : ')',
-	    tx->tx_NumLines,
-	    tx->tx_NumLines != 1 ? "lines" : "line",
+	    position,
+	    lines, lines != 1 ? "lines" : "line",
 	    block);
 
     vw->vw_Flags |= VWFF_REFRESH_STATUS;
