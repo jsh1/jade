@@ -46,7 +46,7 @@
   (regexp-match (concat (regexp-quote (substring (current-time-string) 0 11))
 			".*  "
 			(regexp-quote (user-full-name))
-			"  \\("
+			"  <"
 			(regexp-quote user-mail-address)
-			"\\)")
+			">")
 		old-header))
