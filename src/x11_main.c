@@ -373,7 +373,6 @@ x11_async_event_pred(Display *dpy, XEvent *ev, XPointer arg)
     if(ev->xany.type == Expose
        || ev->xany.type == GraphicsExpose
        || ev->xany.type == MappingNotify
-       || ev->xany.type == ConfigureNotify
        || ev->xany.type == SelectionRequest
        || ev->xany.type == SelectionClear)
 	return True;
@@ -391,10 +390,11 @@ x11_async_event_pred(Display *dpy, XEvent *ev, XPointer arg)
     return False;
 }
 
-static void
+static bool
 x11_handle_input(int fd, bool synchronous)
 {
     struct x11_display *xdisplay = 0;
+    bool need_redisplay = FALSE;
 
     /* Read all events in the input queue. */
     while(throw_value == LISP_NULL)
@@ -457,8 +457,23 @@ x11_handle_input(int fd, bool synchronous)
 		    /* Why +2? It seems to be necessary.. */
 		    int width = (xev.xexpose.width / ev_win->w_FontX) + 2;
 		    int height = (xev.xexpose.height / ev_win->w_FontY) + 2;
+
+		    /* If we're in the middle of doing something else,
+		       don't let the expose cause the current display
+		       state to be redrawn; preserve the window contents
+		       at the last redisplay */
+		    if(!synchronous 
+		       && (ev_win->w_Flags & WINFF_PRESERVING) == 0)
+		    {
+			copy_glyph_buf(ev_win->w_NewContent,
+				       ev_win->w_Content);
+			ev_win->w_Flags |= WINFF_PRESERVING;
+		    }
+
 		    garbage_glyphs(ev_win, x, y, width, height);
 		}
+		if(xev.xexpose.count == 0)
+		    need_redisplay = TRUE;
 		break;
 
 	    case ConfigureNotify:
@@ -473,6 +488,7 @@ x11_handle_input(int fd, bool synchronous)
 					  xev.xconfigure.height);
 		    update_window_dimensions(ev_win);
 		}
+		need_redisplay = TRUE;
 		break;
 
 	    case ClientMessage:
@@ -485,6 +501,7 @@ x11_handle_input(int fd, bool synchronous)
 		    cmd_delete_window(sym_nil);
 		    xdisplay = 0;
 		}
+		need_redisplay = TRUE;
 		break;
 
 	    case FocusIn:
@@ -495,11 +512,13 @@ x11_handle_input(int fd, bool synchronous)
 		    curr_vw = curr_win->w_CurrVW;
 		}
 		undo_end_of_command();
+		need_redisplay = TRUE;
 		break;
 
 	    case FocusOut:
 		ev_win->w_WindowSys.ws_HasFocus = FALSE;
 		undo_end_of_command();
+		need_redisplay = TRUE;
 		break;
 
 	    case MotionNotify:
@@ -561,6 +580,7 @@ x11_handle_input(int fd, bool synchronous)
 		x11_current_event_win = NULL;
 		xdisplay = 0;
 		undo_end_of_command();
+		need_redisplay = TRUE;
 		break;
 
 	    case SelectionRequest:
@@ -575,6 +595,7 @@ x11_handle_input(int fd, bool synchronous)
 	    }
 	}
     }
+    return need_redisplay;
 }
 
 static void
@@ -588,9 +609,6 @@ x11_handle_async_input(void)
 {
     struct x11_display *dpy = WINDOW_XDPY(curr_win);
     int fd = ConnectionNumber(dpy->display);
-    if(sys_poll_input(fd))
-    {
-	x11_handle_input(fd, FALSE);
+    if(sys_poll_input(fd) && x11_handle_input(fd, FALSE))
 	cmd_redisplay(sym_nil);
-    }
 }
