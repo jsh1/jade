@@ -144,7 +144,7 @@ of SYMBOL is non-nil, KEYMAP is used to search for bindings.")
   "Meta-n"	'find-matching-bracket
   "Ctrl-o"	'open-line
   "Ctrl-p"	'previous-line
-  "Ctrl-q"	'(next-keymap-path nil)
+  "Ctrl-q"	'quoted-insert
   "Meta-q"	'fill-paragraph
   "Ctrl-r"	'isearch-backward
   "Meta-r"	'goto-view-line
