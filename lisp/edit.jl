@@ -208,6 +208,7 @@ backwards. If MOVEP is non-nil move the cursor to the position."
   (let*
       ((end (forward-page 1))
        (start (backward-page 1 end)))
+    (set-rect-blocks nil nil)
     (mark-block start end)))
 
 (defun restrict-to-page ()
@@ -282,16 +283,8 @@ the buffer."
   (kill-string (copy-block)))
 
 (defun mark-block (start end)
-  "Mark a block from START to END. This does an extra redraw if there's already
-a block marked to save lots of flicker."
-  (if (blockp)
-      (progn
-	(block-kill)
-	;; Cunning hack -- the refresh algorithm(?) doesn't like the block
-	;; killed then reset in one go, the whole screen is redraw :-( So
-	;; do two refreshes...
-	(refresh-all))
-    (block-kill))
+  "Mark a block from START to END."
+  (block-kill)
   (block-start start)
   (block-end end))
 
