@@ -172,6 +172,21 @@ the next line."
   (set-auto-mark)
   (goto (pos nil (1- line))))
 
+(defun goto-view-line (arg)
+  "Move the cursor to column zero of the line in the centre of the currently
+displayed view. If ARG is positive, the ARG'th row from the top of the view
+will be found, if ARG is negative rows from the bottom of the view are
+counted."
+  (interactive "P")
+  (goto (display-to-char-pos (pos 0 (if (null arg)
+					(/ (cdr (view-dimensions)) 2)
+				      (let
+					  ((line (prefix-numeric-argument
+						  arg)))
+					(if (< line 0)
+					    (+ (cdr (view-dimensions)) line)
+					  line)))))))
+
 
 ;; Words
 
