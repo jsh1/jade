@@ -916,7 +916,6 @@ the position."
   (setq mouse-dragging-words t))
 
 (defun mouse-select-drag ()
-  (interactive)
   (let
       ((pos (mouse-pos)))
     (when mouse-dragging-words
@@ -935,6 +934,16 @@ the position."
 			   mouse-select-pos))
 		     mouse-select-pos))
       (block-end pos))))
+
+(defun mouse-select-drag-block ()
+  (interactive)
+  (set-rect-blocks nil nil)
+  (mouse-select-drag))
+
+(defun mouse-select-drag-rect ()
+  (interactive)
+  (set-rect-blocks nil t)
+  (mouse-select-drag))
 
 (defun yank-to-mouse ()
   "Yanks to the position under the mouse cursor. The cursor is left at the
