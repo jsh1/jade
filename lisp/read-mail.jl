@@ -37,17 +37,50 @@ page past the limits of the current message.")
 
 (defvar rm-status-format "%b-%n/%N: %f"
   "A string defining the format of the text replacing the `Jade: BUFFER'
-text in the mail buffer's status line. The format conversions available
-are the same as those for the `rm-summary-format' variable.")
+text in the mail buffer's status line. See the `rm-format-alist' variable
+for the format conversions available.")
 
 (defvar rm-format-alist nil
   "An alist of (CHARACTER . FUNCTION) defining formatting directives for the
 rm-summary-format-string. The function is called as: (FUNCTION MESSAGE-
-STRUCTURE); it should return the string to be inserted (no newlines).")
+STRUCTURE); it should return the string to be inserted (no newlines).
+
+Each format directive consists of a percent character, an optional
+numeric argument, and a single character specifying what should be
+inserted in place of the format directive. These characters may include
+by default:
+
+	a	A 3-character attribute string, showing the status of
+		the message
+	b	The name of the buffer containing the folder
+	D	The numeric day of the month when the message was sent
+	w	The day of the week, as a 3-character string
+	f	The address of the first sender
+	F	The name of address of the first sender
+	m	The abbreviated month name of the date
+	M	The numeric month of the message's date
+	n	The index of the message in the folder
+	N	The total number of messages in the folder
+	l	The subject line
+	t	The hour and minute at which the message was sent
+	T	The hour, minute, and second of the date
+	%	Insert a percent character
+	r	The name of the first recipient of the message
+	Y	The numeric year of the sending date
+	z	The timezone, as a string")
 
 (defvar rm-saved-cache-tags '(sender-list recipient-list date-vector)
   "List of cache tags whose values should be saved in the headers of each
 message (to improve performance when the folder is next loaded).")
+
+(defvar rm-saved-flags '(deleted filed forwarded replied unread)
+  "Flags that will be saved in messages.")
+
+(defvar rm-status-alist '((deleted . " Deleted")
+			  (replied . " Replied")
+			  (forwarded . " Forwarded")
+			  (filed . " Filed"))
+  "Map message flags to status line strings.")
 
 (defvar rm-auto-rule-alist nil
   "List of (REGEXP . RULE). This list is only consulted when a mailbox is
@@ -59,9 +92,15 @@ REGEXP, then its restriction rule is initialised as RULE.")
 added to an otherwise empty folder. If the name of the mailbox matches
 REGEXP, then its sort key is initialised as KEY.")
 
-(defvar rm-auto-delete-rules nil
-  "A list of message restriction rules. Any received messages that match
-any of the rules named by this list are immediately marked for deletion.")
+(defvar rm-after-import-rules nil
+  "A list of message restriction rules. Called for all messages appended
+to a mailbox file. The rules are expected to have side-effects, the value
+of each rule is ignored.")
+
+(defvar rm-after-parse-rules nil
+  "A list of message restriction rules. Called for all messages read from
+a mailbox file. The rules are expected to have side-effects, the value
+of each rule is ignored.")
 
 
 ;; Variables
@@ -466,7 +505,7 @@ key, the car the order to sort in, a positive or negative integer.")
 (defconst rm-msg-mark 0)
 (defconst rm-msg-total-lines 1)
 (defconst rm-msg-header-lines 2)
-(defconst rm-msg-flags 3)
+(defconst rm-msg-plist 3)
 (defconst rm-msg-cache 4)
 (defconst rm-msg-struct-size 5)
 
@@ -480,37 +519,31 @@ key, the car the order to sort in, a positive or negative integer.")
 (defmacro rm-make-msg ()
   '(make-vector rm-msg-struct-size))
 
-;; Set FLAG in MSG
-(defun rm-set-flag (msg flag &optional undisplayed)
-  (unless (memq flag (rm-get-msg-field msg rm-msg-flags))
-    (rm-set-msg-field msg rm-msg-flags
-		      (cons flag (rm-get-msg-field msg rm-msg-flags)))
-    (unless undisplayed
+;; Set PROP in MSG to VALUE
+(defun rm-message-put (msg prop value &optional undisplayed)
+  (let
+      ((cell (assq prop (rm-get-msg-field msg rm-msg-plist)))
+       (modified t))
+    (if cell
+	(if (eq (cdr cell) value)
+	    (setq modified nil)
+	  (rplacd cell value))
+      (rm-set-msg-field msg rm-msg-plist
+			(cons (cons prop value)
+			      (rm-get-msg-field msg rm-msg-plist))))
+    (unless (or undisplayed (not modified))
       (rm-map-msg-folders #'(lambda (msg folder)
 			      (when (rm-get-folder-field
 				     folder rm-folder-summary)
 				(rm-invalidate-summary msg)
 				(rm-with-summary folder
 				  (summary-update-item msg))))
-			  msg))))
+			  msg))
+    value))
 
-;; Unset FLAG in MSG
-(defun rm-clear-flag (msg flag &optional undisplayed)
-  (when (memq flag (rm-get-msg-field msg rm-msg-flags))
-    (rm-set-msg-field msg rm-msg-flags
-		      (delq flag (rm-get-msg-field msg rm-msg-flags)))
-    (unless undisplayed
-      (rm-map-msg-folders #'(lambda (msg folder)
-			      (when (rm-get-folder-field
-				     folder rm-folder-summary)
-				(rm-invalidate-summary msg)
-				(rm-with-summary folder
-				  (summary-update-item msg))))
-			  msg))))
-
-;; Return t if FLAG is set in MSG
-(defmacro rm-test-flag (msg flag)
-  (list 'memq flag (list 'rm-get-msg-field msg rm-msg-flags)))
+;; Get PROP in MSG
+(defmacro rm-message-get (msg prop)
+  `(cdr (assq ,prop (rm-get-msg-field ,msg rm-msg-plist))))
 
 ;; Call (FUNCTION MSG FOLDER) for all FOLDERS containing MSG
 (defun rm-map-msg-folders (function msg)
@@ -653,12 +686,15 @@ key, the car the order to sort in, a positive or negative integer.")
     (rm-set-msg-field msg rm-msg-header-lines (- (pos-line (restriction-end))
 						 (pos-line start)))
     (when (setq pos (mail-find-header "^X-Jade-Flags-v1" start))
-      (rm-set-msg-field msg rm-msg-flags (read (cons (current-buffer) pos))))
+      (rm-set-msg-field msg rm-msg-plist
+			(mapcar #'(lambda (f)
+				    (cons f t))
+				(read (cons (current-buffer) pos)))))
     (when (setq pos (mail-find-header "^X-Jade-Cache-v1" start))
       (rm-set-msg-field msg rm-msg-cache (read (cons (current-buffer) pos))))
     (when (mail-find-header "Replied" start)
       ;; MH annotates replied messages like this
-      (rm-set-flag msg 'replied))
+      (rm-message-put msg 'replied t))
     (unrestrict-buffer)
     ;; Find the total number of lines in the message
     (if (null end)
@@ -672,6 +708,9 @@ key, the car the order to sort in, a positive or negative integer.")
 						    (pos-line pos)
 						  (buffer-length))
 						(pos-line start)))
+    (when rm-after-parse-rules
+      (mapc #'(lambda (r)
+		(rm-apply-rule r msg)) rm-after-parse-rules))
     msg))
 
 ;; Returns t if POS is the start of a message. Munges the regexp history
@@ -722,24 +761,32 @@ key, the car the order to sort in, a positive or negative integer.")
 			 (print-escape t)
 			 tem)
 		      ;; First put flags into X-Jade-Flags-v1 header
-		      (catch 'flags
-			(if (re-search-forward
-			     "^X-Jade-Flags-v1[\t ]*:[\t ]*(.*)$"
-			     start nil t)
-			    (progn
-			      (setq tem (match-start 1))
-			      (when (equal (read (cons (current-buffer) tem))
-					   (rm-get-msg-field msg rm-msg-flags))
-				;; don't bother
-				(throw 'flags nil))
-			      (delete-area (match-start 1) (match-end 1)))
-			  (setq tem (forward-char -1 (insert
-						      "X-Jade-Flags-v1: \n"
-						      (mail-unfold-header
-						       start)))
-				lines-added (1+ lines-added)))
-			(prin1 (rm-get-msg-field msg rm-msg-flags)
-			       (cons buffer tem)))
+		      (let
+			  ((flags
+			    (mapcar 'car
+				    (filter #'(lambda (cell)
+						(and (cdr cell)
+						     (memq (car cell)
+							   rm-saved-flags)))
+					    (rm-get-msg-field
+					     msg rm-msg-plist)))))
+			(catch 'flags
+			  (if (re-search-forward
+			       "^X-Jade-Flags-v1[\t ]*:[\t ]*(.*)$"
+			       start nil t)
+			      (progn
+				(setq tem (match-start 1))
+				(when (equal (read (cons (current-buffer) tem))
+					     flags)
+				  ;; don't bother
+				  (throw 'flags nil))
+				(delete-area (match-start 1) (match-end 1)))
+			    (setq tem (forward-char -1 (insert
+							"X-Jade-Flags-v1: \n"
+							(mail-unfold-header
+							 start)))
+				  lines-added (1+ lines-added)))
+			  (prin1 flags (cons buffer tem))))
 		      ;; Then selected cache items into X-Jade-Cache-v1 header
 		      (let
 			  ((cache-items
@@ -875,7 +922,7 @@ key, the car the order to sort in, a positive or negative integer.")
 	      (unrestrict-buffer)
 	      (goto end-of-hdrs)
 	      (restrict-buffer visible-start (rm-message-end current))
-	      (rm-clear-flag current 'unread)
+	      (rm-message-put current 'unread nil)
 	      (rm-fix-status-info current)
 	      ;; Called when the current restriction is about to be
 	      ;; displayed
@@ -895,8 +942,12 @@ key, the car the order to sort in, a positive or negative integer.")
 (defun rm-fix-status-info (message)
   (setq buffer-status-id (rm-cached-form message 'status-id
 			   (rm-format rm-status-format message)))
-  (setq mode-name (mapcar 'symbol-name
-			  (rm-get-msg-field message rm-msg-flags))))
+  (setq mode-name (apply 'concat
+			 (mapcar #'(lambda (cell)
+				     (and (cdr cell)
+					  (cdr (assq (car cell)
+						     rm-status-alist))))
+				 (rm-get-msg-field message rm-msg-plist)))))
 
 ;; Invalidate all cached status messages in FOLDER
 (defun rm-invalidate-status-cache (folder)
@@ -1110,10 +1161,11 @@ key, the car the order to sort in, a positive or negative integer.")
 	    (when (rm-message-start-p pos)
 	      (setq msgs (cons (rm-parse-message pos) msgs)
 		    count (1+ count))
-	      (rm-set-flag (car msgs) 'unread t)
-	      (when (and rm-auto-delete-rules
-			 (rm-apply-rules rm-auto-delete-rules (car msgs)))
-		(rm-set-flag (car msgs) 'deleted t)))
+	      (rm-message-put (car msgs) 'unread t t)
+	      (when rm-after-import-rules
+		(mapc #'(lambda (r)
+			  (rm-apply-rule r (car msgs)))
+		      rm-after-import-rules)))
 	    (setq pos (forward-line -1 pos)))
 	  (setq rm-buffer-messages (nconc rm-buffer-messages msgs))))
       (and keep-going count)))))
@@ -1202,20 +1254,20 @@ key, the car the order to sort in, a positive or negative integer.")
 	 (list
 	  (cons ?a #'(lambda (m)
 		       (concat (cond
-				((rm-test-flag m 'deleted) ?D)
-				((rm-test-flag m 'unread) ?U)
+				((rm-message-get m 'deleted) ?D)
+				((rm-message-get m 'unread) ?U)
 				(t ? ))
 			       (cond
-				((rm-test-flag m 'replied) ?R)
-				((rm-test-flag m 'forwarded) ?Z)
+				((rm-message-get m 'replied) ?R)
+				((rm-message-get m 'forwarded) ?Z)
 				(t ? ))
-			       (if (rm-test-flag m 'filed) ?F ?\ ))))
+			       (if (rm-message-get m 'filed) ?F ?\ ))))
 	  (cons ?A #'(lambda (m)
-		       (concat (if (rm-test-flag m 'unread) ?U ? )
-			       (if (rm-test-flag m 'deleted) ?D ? )
-			       (if (rm-test-flag m 'replied) ?R ? )
-			       (if (rm-test-flag m 'forwarded) ?Z ? )
-			       (if (rm-test-flag m 'filed) ?F ? ))))
+		       (concat (if (rm-message-get m 'unread) ?U ? )
+			       (if (rm-message-get m 'deleted) ?D ? )
+			       (if (rm-message-get m 'replied) ?R ? )
+			       (if (rm-message-get m 'forwarded) ?Z ? )
+			       (if (rm-message-get m 'filed) ?F ? ))))
 	  (cons ?b #'(lambda (m)
 		       (buffer-name (mark-file
 				     (rm-get-msg-field m rm-msg-mark)))))
@@ -1318,8 +1370,8 @@ key, the car the order to sort in, a positive or negative integer.")
 	(error "No more messages"))
       (rm-move-forwards folder)
       (when (or (not skip-deleted)
-		(not (rm-test-flag (rm-get-folder-field
-				    folder rm-folder-current-msg) 'deleted)))
+		(not (rm-message-get (rm-get-folder-field
+				      folder rm-folder-current-msg) 'deleted)))
 	(setq count (1- count))))
     (while (< count 0)
       (unless (rm-get-folder-field folder rm-folder-before-list)
@@ -1328,8 +1380,8 @@ key, the car the order to sort in, a positive or negative integer.")
 	(error "No previous message"))
       (rm-move-backwards folder)
       (when (or (not skip-deleted)
-		(not (rm-test-flag (rm-get-folder-field
-				    folder rm-folder-current-msg) 'deleted)))
+		(not (rm-message-get (rm-get-folder-field
+				      folder rm-folder-current-msg) 'deleted)))
 	(setq count (1+ count))))
     (rm-display-current-message folder)))
 
@@ -1387,7 +1439,7 @@ current message."
   (let*
       ((folder (rm-current-folder))
        (current (rm-get-folder-field folder rm-folder-current-msg)))
-    (rm-set-flag current 'deleted)
+    (rm-message-put current 'deleted t)
     (rm-fix-status-info current)
     (when (and rm-move-after-deleting
 	       (rm-get-folder-field folder rm-folder-after-list))
@@ -1401,7 +1453,7 @@ nonrecoverable."
       ((folder (rm-current-folder))
        (deletions nil))
     (rm-map-messages #'(lambda (m)
-			 (when (rm-test-flag m 'deleted)
+			 (when (rm-message-get m 'deleted)
 			   (setq deletions (cons m deletions)))) folder)
     (rm-delete-messages deletions)
     (rm-redisplay-folder folder)))
@@ -1412,7 +1464,7 @@ nonrecoverable."
   (let*
       ((folder (rm-current-folder))
        (current (rm-get-folder-field folder rm-folder-current-msg)))
-    (rm-clear-flag current 'deleted)
+    (rm-message-put current 'deleted nil)
     (rm-fix-status-info current)
     (when (and rm-move-after-deleting
 	       (rm-get-folder-field folder rm-folder-after-list))
@@ -1428,7 +1480,7 @@ ready for deletion."
        (kill-subject (rm-get-actual-subject current)))
     (rm-map-messages #'(lambda (m)
 			 (when (string= kill-subject (rm-get-actual-subject m))
-			   (rm-set-flag m 'deleted))) folder)))
+			   (rm-message-put m 'deleted t))) folder)))
 
 (defun rm-pipe-message (command &optional ignore-headers)
   "Pipes all of the current message through the shell command COMMAND (unless
