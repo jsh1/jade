@@ -374,9 +374,6 @@ first_buffer(void)
     if(tx)
     {
 	swap_buffers(curr_vw, tx);
-#ifndef NOSCRLBAR
-	sys_update_scroller(curr_vw);
-#endif
 	return(tx);
     }
     return(NULL);
