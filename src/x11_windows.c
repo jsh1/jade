@@ -26,7 +26,7 @@
 
 #define INPUT_EVENTS ButtonPressMask | ButtonReleaseMask | KeyPressMask \
 		     | ExposureMask | StructureNotifyMask | FocusChangeMask \
-		     | ButtonMotionMask | PointerMotionHintMask
+		     | PointerMotionMask | PointerMotionHintMask
 
 static XSizeHints size_hints;
 static XClassHint class_hints = { "jade", "Editor" };

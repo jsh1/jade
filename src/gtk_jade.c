@@ -29,7 +29,7 @@
 		      | GDK_EXPOSURE_MASK		\
 		      | GDK_ENTER_NOTIFY_MASK		\
 		      | GDK_LEAVE_NOTIFY_MASK 		\
-		      | GDK_BUTTON_MOTION_MASK		\
+		      | GDK_POINTER_MOTION_MASK		\
 		      | GDK_POINTER_MOTION_HINT_MASK)
 
 static void gtk_jade_class_init (GtkJadeClass *klass);
@@ -381,6 +381,7 @@ gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
 {
     GtkJade *jade;
     u_long code = 0, mods = 0;
+    bool redisplay = FALSE;
     g_return_val_if_fail (widget != NULL, FALSE);
     g_return_val_if_fail (GTK_IS_JADE (widget), FALSE);
     g_return_val_if_fail (event != NULL, FALSE);
@@ -388,13 +389,22 @@ gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
 
     switch (event->type)
     {
+	int x, y;
+
     case GDK_MOTION_NOTIFY:
 	gtk_jade_last_event_time = event->motion.time;
-	break;
+	gdk_window_get_pointer (widget->window, &x, &y, 0);
+	goto do_motion;
 
     case GDK_BUTTON_PRESS:
     case GDK_BUTTON_RELEASE:
 	gtk_jade_last_event_time = event->button.time;
+	x = event->button.x;
+	y = event->button.y;
+    do_motion:
+	x = (x - jade->win->w_LeftPix) / jade->win->w_FontX;
+	y = (y - jade->win->w_TopPix) / jade->win->w_FontY;
+	redisplay = update_mouse_extent (jade->win, x, y);
 	break;
 
     case GDK_KEY_PRESS:
@@ -405,7 +415,11 @@ gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
     }
 
     translate_event (&code, &mods, event);
-    if(mods & EV_TYPE_MASK)
+    if(mods & EV_TYPE_MASK
+       /* Don't pass modifier-less motion-events through */
+       && ((mods & EV_TYPE_MASK) != EV_TYPE_MOUSE
+	   || code != EV_CODE_MOUSE_MOVE
+	   || (mods & EV_MOD_BUTTON_MASK) != 0))
     {
 	if(curr_win != jade->win)
 	    curr_vw = jade->win->w_CurrVW;
@@ -416,8 +430,13 @@ gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
 	GTK_JADE_CALLBACK_POSTFIX;
 	return TRUE;
     }
-    else
-	return FALSE;
+    else if (redisplay)
+    {
+	Fredisplay (Qnil);
+	return TRUE;
+    }
+    
+    return FALSE;
 }
 
 static gint

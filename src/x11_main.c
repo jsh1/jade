@@ -577,6 +577,10 @@ x11_handle_input(int fd, bool synchronous)
 	ev_win = x11_find_window(xev.xany.window);
 	if(ev_win != NULL)
 	{
+	    int old_mouse_x = x11_current_mouse_x;
+	    int old_mouse_y = x11_current_mouse_y;
+	    WIN *old_mouse_win = x11_current_event_win;
+
 	    switch(xev.type)
 	    {
 		u_long code, mods;
@@ -714,20 +718,33 @@ x11_handle_input(int fd, bool synchronous)
 		x11_current_mouse_y
 		    = ((x11_current_mouse_y - ev_win->w_TopPix)
 		       / ev_win->w_FontY);
+		if (ev_win != old_mouse_win
+		    || old_mouse_x != x11_current_mouse_x
+		    || old_mouse_y != x11_current_mouse_y)
+		{
+		    need_redisplay = update_mouse_extent (ev_win,
+							  x11_current_mouse_x,
+							  x11_current_mouse_y);
+		}
+
 		code = mods = 0;
 		translate_event(&code, &mods, &xev, xdisplay);
-		if(mods & EV_TYPE_MASK)
+		if((mods & EV_TYPE_MASK)
+		   /* Don't pass modifier-less motion-events through */
+		   && ((mods & EV_TYPE_MASK) != EV_TYPE_MOUSE
+		       || code != EV_CODE_MOUSE_MOVE
+		       || (mods & EV_MOD_BUTTON_MASK) != 0))
 		{
 		    curr_win = ev_win;
 		    if(oldwin != ev_win)
 			curr_vw = curr_win->w_CurrVW;
 		    reset_message(ev_win);
 		    eval_input_event(&xev, code, mods);
+		    need_redisplay = TRUE;
 		}
 		x11_current_event_win = NULL;
 		xdisplay = 0;
 		undo_end_of_command();
-		need_redisplay = TRUE;
 		break;
 
 	    case SelectionRequest:
