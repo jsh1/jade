@@ -159,13 +159,31 @@ jade_symbols (void)
     rep_on_termination_fun = on_termination;
 }    
 
+static void
+usage (void)
+{
+    fputs ("\
+    --version    print version details\n\
+    --no-rc      don't load rc or site-init files\n\
+    -f FUNCTION  call the Lisp function FUNCTION\n\
+    -l FILE      load the file of Lisp forms called FILE\n\
+    -q           quit\n"
+          , stderr);
+}
+
 int
 main(int argc, char **argv)
 {
     int rc = 5;
 
     prog_name = *argv++; argc--;
-    rep_init (prog_name, &argc, &argv, 0, &sys_usage);
+    rep_init (prog_name, &argc, &argv, 0, usage);
+
+    if (rep_get_option ("--version", 0))
+    {
+       printf ("jade version %s\n", JADE_VERSION);
+       return 0;
+    }
 
     if (sys_init(prog_name))
     {
