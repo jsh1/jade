@@ -605,6 +605,38 @@ List of buffers in most-recently-used order. Each view has it's own.
     return(curr_vw->vw_BufferList);
 }
 
+_PR VALUE cmd_get_buffer_view(VALUE buffer, VALUE all_windows);
+DEFUN("get-buffer-view", cmd_get_buffer_view, subr_get_buffer_view,
+      (VALUE buffer, VALUE all_windows), V_Subr2, DOC_get_buffer_view) /*
+::doc:get_buffer_view::
+get-buffer-view BUFFER [ALL-WINDOWS]
+
+Return a view that is currently displaying BUFFER. 
+
+Searching progresses from the current view, through all views in the
+current window, then, if ALL-WINDOWS is non-nil, through all views of
+the next window and so on. If no view displaying BUFFER is found, nil
+is returned.
+::end:: */
+{
+    WIN *w = curr_win;
+    DECLARE1(buffer, BUFFERP);
+    do {
+	VW *vw = w->w_CurrVW;
+	do {
+	    if(vw->vw_Tx == VTX(buffer))
+		return VAL(vw);
+	    vw = vw->vw_NextView;
+	    if(vw == 0)
+		vw = w->w_ViewList;
+	} while(vw != w->w_CurrVW);
+	w = w->w_Next;
+	if(w == 0)
+	    w = win_chain;
+    } while(!NILP(all_windows) && w != curr_win);
+    return sym_nil;
+}
+
 _PR VALUE cmd_next_view(VALUE win, VALUE allp);
 DEFUN("next-view", cmd_next_view, subr_next_view, (VALUE win, VALUE allp), V_Subr2, DOC_next_view) /*
 ::doc:next_view::
@@ -969,6 +1001,7 @@ views_init(void)
     ADD_SUBR(subr_current_view);
     ADD_SUBR(subr_set_current_view);
     ADD_SUBR(subr_buffer_list);
+    ADD_SUBR(subr_get_buffer_view);
     ADD_SUBR(subr_next_view);
     ADD_SUBR(subr_previous_view);
     ADD_SUBR(subr_with_view);
