@@ -239,7 +239,7 @@ init-mode, the hook after-find-file-hook is dispatched."
 	    (read-file-contents file-name)
 	    (setq buffer-file-modtime (file-modtime file-name)))
 	(message "New file")))
-    (fix-local-variables)
+    (hack-local-variables)
     (set-buffer-modified buf nil)
     (when auto-save-p
       (setq auto-save-interval default-auto-save-interval))
@@ -252,10 +252,10 @@ init-mode, the hook after-find-file-hook is dispatched."
     (set-buffer-read-only buf (and (file-exists-p file-name)
 				   (not (file-writable-p file-name))))
     (call-hook 'after-read-file-hook (list buf))
-    (init-mode buf)))
+    (normal-mode)))
 
 ;; Scans the end of a file for any local-variable definitions
-(defun fix-local-variables ()
+(defun hack-local-variables ()
   (unless enable-local-variables
     (return))
   (let
