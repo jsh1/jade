@@ -976,8 +976,6 @@ async_event_pred (Display *dpy, XEvent *ev, XPointer arg)
 	    break;
 	}
     }
-    /* This event has now been read, so select() wouldn't notice it.. */
-    rep_mark_input_pending (ConnectionNumber(dpy));
     return False;
 }
 #endif
@@ -989,44 +987,40 @@ gtk_jade_handle_async_input (void)
     if (!redisplay_lock)
     {
 #ifdef HAVE_X11
-	int fd = ConnectionNumber(gdk_display);
-	if(rep_poll_input(fd))
+	WIN *ev_win;
+	XEvent xev;
+	if (XCheckIfEvent (gdk_display, &xev,
+			   &async_event_pred, (XPointer)&ev_win))
 	{
-	    WIN *ev_win;
-	    XEvent xev;
-	    if (XCheckIfEvent (gdk_display, &xev,
-			       &async_event_pred, (XPointer)&ev_win))
+	    switch (xev.type)
 	    {
-		switch (xev.type)
+		int x, y, width, height;
+		WIN *w;
+
+	    case Expose:
+	    case GraphicsExpose:
+		x = (xev.xexpose.x - ev_win->w_LeftPix) / ev_win->w_FontX;
+		y = (xev.xexpose.y - ev_win->w_TopPix) / ev_win->w_FontY;
+		/* Why +2? It seems to be necessary.. */
+		width = (xev.xexpose.width / ev_win->w_FontX) + 2;
+		height = (xev.xexpose.height / ev_win->w_FontY) + 2;
+
+		/* We're in the middle of doing something else,
+		   don't let the expose cause the current display
+		   state to be redrawn; preserve the window contents
+		   at the last redisplay */
+		for(w = win_chain; w != 0; w = w->w_Next)
 		{
-		    int x, y, width, height;
-		    WIN *w;
-
-		case Expose:
-		case GraphicsExpose:
-		    x = (xev.xexpose.x - ev_win->w_LeftPix) / ev_win->w_FontX;
-		    y = (xev.xexpose.y - ev_win->w_TopPix) / ev_win->w_FontY;
-		    /* Why +2? It seems to be necessary.. */
-		    width = (xev.xexpose.width / ev_win->w_FontX) + 2;
-		    height = (xev.xexpose.height / ev_win->w_FontY) + 2;
-
-		    /* We're in the middle of doing something else,
-		       don't let the expose cause the current display
-		       state to be redrawn; preserve the window contents
-		       at the last redisplay */
-		    for(w = win_chain; w != 0; w = w->w_Next)
+		    if(!(w->w_Flags & WINFF_PRESERVING))
 		    {
-			if(!(w->w_Flags & WINFF_PRESERVING))
-			{
-			    copy_glyph_buf(w->w_NewContent, w->w_Content);
-			    w->w_Flags |= WINFF_PRESERVING;
-			}
+			copy_glyph_buf(w->w_NewContent, w->w_Content);
+			w->w_Flags |= WINFF_PRESERVING;
 		    }
-
-		    garbage_glyphs(ev_win, x, y, width, height);
-		    if (xev.xexpose.count == 0)
-			need_redisplay = TRUE;
 		}
+
+		garbage_glyphs(ev_win, x, y, width, height);
+		if (xev.xexpose.count == 0)
+		    need_redisplay = TRUE;
 	    }
 	}
 #endif /* HAVE_X11 */
