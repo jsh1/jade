@@ -154,8 +154,10 @@ using one of the following to match against:
     (when (functionp major-mode)
       (funcall major-mode name))))
 
-(defun kill-mode (&optional buf)
-  "Destroy the mode being used to edit buffer BUF with."
+(defun fundamental-mode (&optional buf)
+  "Remove the major mode being used to edit buffer BUF (or the current
+buffer), the fundamental mode is used instead."
+  (interactive)
   (unless buf
     (setq buf (current-buffer)))
   (with-buffer buf
