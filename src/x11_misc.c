@@ -30,7 +30,7 @@ _PR VALUE read_clip(int);
 _PR void beep(VW *);
 
 _PR void x11_convert_selection(XSelectionRequestEvent *ev);
-_PR void x11_lose_selection(Atom selection);
+_PR void x11_lose_selection(XSelectionClearEvent *ev);
 _PR void x11_window_lose_selections(Window win);
 _PR void x11_misc_init(void);
 
@@ -78,6 +78,7 @@ enum Sel_type {
 
 static struct selection_info {
     Window owner;
+    Time birthdate;
     VALUE data;				/* either a string or a buffer */
     POS start, end;
     enum Sel_type type;
@@ -143,6 +144,7 @@ otherwise.
 	    /* We've now got the selection. */
 	    selection_info[selno].owner = curr_win->w_Window;
 	    selection_info[selno].type = type;
+	    selection_info[selno].birthdate = x11_last_event_time;
 	    if(type == Sel_area)
 	    {
 		selection_info[selno].data = buffer;
@@ -371,11 +373,15 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 }
 
 void
-x11_lose_selection(Atom selection)
+x11_lose_selection(XSelectionClearEvent *ev)
 {
-    int selno = selection_atom_to_index(selection);
-    selection_info[selno].owner = WINDOW_NIL;
-    selection_info[selno].data = sym_nil;
+    int selno = selection_atom_to_index(ev->selection);
+    if(ev->time != CurrentTime
+       && ev->time > selection_info[selno].birthdate)
+    {
+	selection_info[selno].owner = WINDOW_NIL;
+	selection_info[selno].data = sym_nil;
+    }
 }
 
 void
@@ -412,8 +418,10 @@ by Jade, relinquish ownership.
 	int selno = selection_atom_to_index(selection);
 	if(selection_info[selno].owner != WINDOW_NIL)
 	{
-	    XSetSelectionOwner(x11_display, selection, None, CurrentTime);
-	    x11_lose_selection(selection);
+	    XSetSelectionOwner(x11_display, selection, None,
+			       x11_last_event_time);
+	    selection_info[selno].owner = WINDOW_NIL;
+	    selection_info[selno].data = sym_nil;
 	    return sym_t;
 	}
 	return sym_nil;
