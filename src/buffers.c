@@ -19,7 +19,7 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
-#include "jade_protos.h"
+#include <lib/jade_protos.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -32,6 +32,7 @@ _PR TX *swap_buffers(VW *, TX *);
 _PR VALUE *get_tx_cursor_ptr(TX *tx);
 _PR VALUE get_tx_cursor(TX *);
 _PR int auto_save_buffers(bool);
+_PR void tx_kill_local_variables(TX *tx);
 
 _PR void make_marks_non_resident(TX *);
 _PR void mark_sweep(void);
@@ -898,6 +899,14 @@ Return a list of all allocated buffer objects.
 	tx = tx->tx_Next;
     }
     return cmd_nreverse(list);
+}
+
+void
+tx_kill_local_variables(TX *tx)
+{
+    tx->tx_ModeName = 0;
+    tx->tx_MinorModeNameList = sym_nil;
+    tx->tx_MinorModeNameString = null_string();
 }
 
 

@@ -1,5 +1,8 @@
 1998-07-03  John Harper  <john@dcs.warwick.ac.uk>
 
+	* server-dl.c: moved from src/unix_server.c
+	* jadeclient.c: moved from src/unix_client.c
+
 	* test-dl.c: new file, simple test of dynamic loading
 
 Fri May 22 18:15:13 1998  John Harper  <john@dcs.warwick.ac.uk>

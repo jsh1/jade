@@ -1,4 +1,4 @@
-/* unix_client.c -- client program to communicate with unix_server.c
+/* jadeclient.c -- client program to communicate with server-dl.c
    Copyright (C) 1993, 1994 John Harper <john@dcs.warwick.ac.uk>
    $Id$
 
@@ -24,6 +24,9 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
+
+#ifdef HAVE_UNIX
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -181,6 +184,8 @@ eval_lisp_form(int sock_fd, char *form)
 	printf("%s\n---> error\n", form);
     return 0;
 }
+
+#endif /* HAVE_UNIX */
 
 static void
 usage(char *prog_name)

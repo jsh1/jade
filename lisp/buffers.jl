@@ -436,6 +436,10 @@ be lost after confirmation from the user."
 	   (context (copy-area (pos 0 context-pre)
 			       (end-of-line (pos 0 context-post))))
 	   (window-line (pos-line (char-to-display-pos old-pos))))
+	(clear-buffer)
+	(when major-mode-kill
+	  (funcall major-mode-kill))
+	(kill-all-local-variables)
 	(read-file-into-buffer (buffer-file-name buffer))
 	;; Try to restore the cursor to it's original position
 	(goto (min old-pos (end-of-buffer)))

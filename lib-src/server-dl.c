@@ -1,4 +1,4 @@
-/* unix_server.c -- client/server file handling
+/* server-dl.c -- client/server file handling
    Copyright (C) 1994 John Harper <john@dcs.warwick.ac.uk>
    $Id$
 
@@ -24,6 +24,8 @@
 #include "jade.h"
 #include "jade_protos.h"
 
+#ifdef HAVE_UNIX
+
 #include <fcntl.h>
 #include <string.h>
 #include <sys/types.h>
@@ -37,13 +39,13 @@
 # include <unistd.h>
 #endif
 
-_PR void server_init(void);
-_PR void server_kill(void);
+_PR Lisp_XSubr *jade_subrs[];
+_PR void jade_init(VALUE file_name);
+_PR void jade_kill(void);
 
 /* List of (FILE-NAME . SOCK-FD) */
 static VALUE client_list;
 
-_PR VALUE sym_server_find_file;
 DEFSYM(server_find_file, "server-find-file");
 
 /* fd of the socket which clients connect to, or zero. */
@@ -182,8 +184,8 @@ server_accept_connection(int unused_fd)
     }
 }
 
-_PR VALUE cmd_server_open_p(void);
-DEFUN("server-open-p", cmd_server_open_p, subr_server_open_p, (void), V_Subr0, DOC_server_open_p) /*
+DEFUN("server-open-p", cmd_server_open_p, subr_server_open_p,
+      (void), V_Subr0, DOC_server_open_p) /*
 ::doc:server_open_p::
 server-open-p
 
@@ -198,8 +200,8 @@ t if the edit-server is open.
 DEFSTRING(unexp_name, "~/" JADE_SOCK_NAME);
 DEFSTRING(no_name, "Can't make socket name");
 
-_PR VALUE cmd_server_open(void);
-DEFUN_INT("server-open", cmd_server_open, subr_server_open, (void), V_Subr0, DOC_server_open, "") /*
+DEFUN_INT("server-open", cmd_server_open, subr_server_open,
+	  (void), V_Subr0, DOC_server_open, "") /*
 ::doc:server_open::
 server-open
 
@@ -255,8 +257,8 @@ send us messages.
     return LISP_NULL;
 }
 
-_PR VALUE cmd_server_close(void);
-DEFUN_INT("server-close", cmd_server_close, subr_server_close, (void), V_Subr0, DOC_server_close, "") /*
+DEFUN_INT("server-close", cmd_server_close, subr_server_close,
+	  (void), V_Subr0, DOC_server_close, "") /*
 ::doc:server_close::
 server-close
 
@@ -274,8 +276,8 @@ Stops listening for client messages.
     return(sym_t);
 }
 
-_PR VALUE cmd_server_reply(VALUE file, VALUE rc);
-DEFUN("server-reply", cmd_server_reply, subr_server_reply, (VALUE file, VALUE rc), V_Subr2, DOC_server_reply) /*
+DEFUN("server-reply", cmd_server_reply, subr_server_reply,
+      (VALUE file, VALUE rc), V_Subr2, DOC_server_reply) /*
 ::doc:server_reply::
 server-reply [FILE-NAME] [RETURN-CODE]
 
@@ -333,17 +335,24 @@ which denotes no errors. Returns nil if the file doesn't have a client.
     return res;
 }
 
+
+/* dl hooks */
+
+Lisp_XSubr *jade_subrs[] = {
+    &subr_server_open_p,
+    &subr_server_open,
+    &subr_server_close,
+    &subr_server_reply,
+    0
+};
+
 void
-server_init(void)
+jade_init(VALUE file_name)
 {
     client_list = sym_nil;
     mark_static(&client_list);
     mark_static(&socket_name);
     INTERN(server_find_file);
-    ADD_SUBR(subr_server_open_p);
-    ADD_SUBR_INT(subr_server_open);
-    ADD_SUBR_INT(subr_server_close);
-    ADD_SUBR(subr_server_reply);
 
 #ifdef DEBUG_SERVER
     db_unix_server = db_alloc(__FILE__, 4096);
@@ -351,7 +360,7 @@ server_init(void)
 }
 
 void
-server_kill(void)
+jade_kill(void)
 {
     /* clean up */
     VALUE tmp = client_list;
@@ -368,3 +377,11 @@ server_kill(void)
     client_list = sym_nil;
     cmd_server_close();
 }
+
+#endif /* HAVE_UNIX */
+
+/*
+;;;###autoload (autoload 'server-open-p "server-dl")
+;;;###autoload (autoload 'server-open "server-dl" t)
+;;;###autoload (autoload 'server-reply "server-dl" t)
+*/

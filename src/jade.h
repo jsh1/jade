@@ -21,7 +21,9 @@
 #ifndef _JADE_H
 #define _JADE_H
 
+#ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
 
 #include <sys/types.h>
 #include <stdio.h>
@@ -76,7 +78,7 @@ typedef char bool;
 #include "stringmem.h"
 #include "edit.h"
 #include "lisp.h"
-#include "doc-strings.h"
+#include <lib/doc-strings.h>
 #include "keys.h"
 #include "regexp.h"
 

@@ -18,69 +18,34 @@
 # along with Jade; see the file COPYING.  If not, write to
 # the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
-version=@version@
-SHELL=/bin/sh
+include ../Makedefs
 
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-datadir=@datadir@
 top_srcdir=@top_srcdir@
 srcdir=@srcdir@
-bindir=@bindir@
-includedir=@includedir@
-infodir=@infodir@
-libdir=@libdir@
-libexecdir=@libexecdir@
-localstatedir=@localstatedir@
-mandir=@mandir@
-sharedstatedir=@sharedstatedir@
-host_type=@host@
+VPATH=@top_srcdir@/lib-src:@top_srcdir@/src:.
 
-jadedir=@jadedir@
-lispdir=@lispdir@
-dumped_lisp_files=@dumped_lisp_files@
+DYN_SRCS = server-dl.c
+DYN_OBJS = $(DYN_SRCS:.c=.$(dynsuffix))
 
-CC=@CC@
-CPPFLAGS=@CPPFLAGS@
-CFLAGS=$(CPPFLAGS) @CFLAGS@ @X_CFLAGS@
-DL_CFLAGS=-fpic -shared
-LDFLAGS=@LDFLAGS@
-LIBS=@LIBS@
-X11LIBS=@X_PRE_LIBS@ -lX11 @X_LIBS@ @X_EXTRA_LIBS@
+JADE_SRCS = $(wildcard $(srcdir)/../src/*.c)
 
-# Add a colon to stop configure removing the entire directive
-VPATH = @top_srcdir@/lib-src:.
-
-JADE_SRCS = $(wildcard $(top_srcdir)/src/*.c)
-
-.c.o :
-	$(CC) -c $(CFLAGS) -DJADE -DJADE_DIR=$(jadedir) -I. -I.. -o $@ $<
-
-.c.so :
-	$(CC) -c $(CFLAGS) $(DL_CFLAGS) -DJADE -DJADE_DL \
-	  -I. -I.. -I$(top_srcdir)/src $@ $<
-
-.PHONY: clean realclean
-
-all : doc-strings.h jade_protos.h build.h
+all : doc-strings.h jade_protos.h build.h $(DYN_OBJS) jadeclient
 
 jade_protos.h : stripproto $(JADE_SRCS)
 	./stripproto -o $@ $(patsubst stripproto,,$^)
 
-doc-strings.h ../DOC : makedoc $(JADE_SRCS)
+doc-strings.h ../DOC : makedoc $(JADE_SRCS) $(DYN_SRCS)
 	./makedoc ../DOC doc-strings.h $(patsubst makedoc,,$^)
 
 build.h : build-info
 	$< $(host_type)
 
-stripproto : stripproto.c
-	$(CC) $(LDFLAGS) -o $@ $^ $(EXTRA_LIBS)
-
-makedoc : makedoc.c
-	$(CC) $(LDFLAGS) -o $@ $^ $(EXTRA_LIBS)
-
 clean :
 	rm -f *~ *.o jade_protos.h doc-strings.h ../DOC build.h core
 
 realclean : clean
-	rm -f makedoc stripproto Makefile
+	rm -f .*.d makedoc stripproto Makefile
+
+$(DYN_OBJS) : %.$(dynsuffix) : %.c
+
+include $(DYN_SRCS:%.c=.%.d .jadeclient.d)
