@@ -134,7 +134,7 @@ Commands defined by this mode are:\n
   "Indent the line at POS (or the cursor) assuming that it's C source code."
   (set-indent-pos (c-indent-pos pos)))
 
-;; Attempt to find the previous statement
+;; Attempt to find the previous statement. perl-mode also uses this
 (defun c-backward-stmt (pos &optional skip-blocks)
   (let
       (stmt-pos back-1-pos)
@@ -271,7 +271,8 @@ Commands defined by this mode are:\n
       (pos (pos-col exp-ind) (pos-line line-pos)))))
 
 
-;; Movement over C expressions
+;; Movement over C expressions. perl-mode also uses these functions
+;; (that's why they allow $ and @ characters in symbols)
 
 (defun c-forward-exp (&optional number pos)
   (unless number
@@ -321,9 +322,9 @@ Commands defined by this mode are:\n
 	  (error "End of containing expression"))
 	 (t
 	  ;; a symbol?
-	  (if (looking-at "[a-zA-Z0-9_]+" pos)
+	  (if (looking-at "[a-zA-Z0-9_$@]+" pos)
 	      (setq pos (match-end))
-	    (unless (setq pos (re-search-forward "[][a-zA-Z0-9_ \t\f(){}'\"]"
+	    (unless (setq pos (re-search-forward "[][$@a-zA-Z0-9_ \t\f(){}'\"]"
 						pos))
 	      (error "Can't classify expression"))
 	    (setq number (1+ number))))))
@@ -377,13 +378,13 @@ Commands defined by this mode are:\n
 	    (error "Start of containing expression"))
 	   (t
 	    ;; a symbol?
-	    (if (looking-at "[a-zA-Z0-9_]" pos)
-		(unless (setq pos (re-search-backward "(^#[\t ]*|)[a-zA-Z0-9_]+"
-						    pos))
+	    (if (looking-at "[$@a-zA-Z0-9_]" pos)
+		(unless (setq pos (re-search-backward
+				   "(^#[\t ]*|)[$@a-zA-Z0-9_]+" pos))
 		  (error "Can't classify expression"))
 	      ;; Assume that it's some extraneous piece of punctuation..
-;	      (unless (setq pos (re-search-backward "[][a-zA-Z0-9_ \t\f(){}'\"]"
-;						  pos))
+;	      (unless (setq pos (re-search-backward
+;				 "[][$@a-zA-Z0-9_ \t\f(){}'\"]" pos))
 ;		(error "Can't classify expression"))
 	      (setq number (1+ number)))))
 	  (when (member (get-char (forward-char -1 pos)) '(?! ?* ?- ?~))
@@ -424,9 +425,10 @@ START and END except for the last line."
       (setq pos (forward-line 1 pos)))
     (goto end)))
 
-;;;###autoload
 (defun c-insert-comment ()
   (interactive)
-  (find-comment-pos)
-  (insert "/*  */")
-  (goto (forward-char -3)))
+  (if (looking-at ".*(/\\* ?)" (start-of-line))
+      (goto (match-end 1))
+    (find-comment-pos)
+    (insert "/*  */")
+    (goto (forward-char -3))))
