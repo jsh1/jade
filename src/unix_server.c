@@ -130,11 +130,9 @@ send us messages.
 		    /* lose this on exec() */
 		    fcntl(socket_fd, F_SETFD, 1);
 		    fcntl(socket_fd, F_SETFL, O_NONBLOCK);
-#ifdef HAVE_X11
-		    /* for the x11 eventloop  */
-		    x11_fd_read_action[socket_fd] = server_accept_connection;
-		    FD_SET(socket_fd, &x11_fd_read_set);
-#endif
+
+		    register_input_fd(socket_fd, server_accept_connection);
+
 		    socket_name = name;
 		    return(sym_t);
 		}
@@ -164,10 +162,7 @@ Stops listening for client messages.
 {
     if(socket_fd > 0)
     {
-#ifdef HAVE_X11
-	x11_fd_read_action[socket_fd] = NULL;
-	FD_CLR(socket_fd, &x11_fd_read_set);
-#endif
+	deregister_input_fd(socket_fd);
 	close(socket_fd);
 	socket_fd = -1;
 	unlink(VSTR(socket_name));
