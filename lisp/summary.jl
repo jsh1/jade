@@ -88,6 +88,9 @@
 ;;   after-update
 ;;	Called after updating the buffer display
 ;;
+;;   with-extent EXTENT
+;;	Called each time a new extent is created for a summary item
+;;
 ;;   on-quit
 ;;	Called before quitting the summary
 ;;
@@ -291,12 +294,14 @@ highlight."
     (setq summary-items (summary-dispatch 'list))
     (goto summary-first-line)
     (let
-	((items summary-items))
+	((items summary-items)
+	 extent)
       (while items
 	(summary-dispatch 'print (car items))
-	(make-extent (start-of-line) (cursor-pos)
-		     (list 'mouse-face active-face
-			   'mouse-keymap summary-mouse-map))
+	(setq extent (make-extent (start-of-line) (cursor-pos)
+				  (list 'mouse-face active-face
+					'mouse-keymap summary-mouse-map)))
+	(summary-maybe-dispatch 'with-extent extent)
 	(setq items (cdr items))
 	(when items
 	  (insert "\n")))
