@@ -586,8 +586,8 @@ patch_display(WIN *w, glyph_buf *old_g, glyph_buf *new_g)
 	    new = (struct edit_script *) alloca(sizeof(struct edit_script));
 
 	    /* find a d on diagonal k */
-	    if(k == ORIGIN - d || k != ORIGIN + d
-	       && last_d[k+1] >= last_d[k-1])
+	    if(k == ORIGIN - d
+	       || (k != ORIGIN + d && last_d[k+1] >= last_d[k-1]))
 	    {
 		/* Moving down from the last d-1 on diagonal k+1
 		   puts you farther along diagonal k than does
