@@ -43,8 +43,8 @@
 each SUFFIX in turn. When one matches evaluate FORM so that the file can be
 decoded (through the `read-file-hook').")
 
-(defvar info-documentation-file "librep")
-(make-variable-buffer-local 'info-documentation-file)
+(defvar info-documentation-files '("librep"))
+(make-variable-buffer-local 'info-documentation-files)
 
 (defvar info-function-index-node "Function Index")
 (make-variable-buffer-local 'info-function-index-node)
@@ -653,13 +653,24 @@ local bindings are:\n
   (when menu-key
     (info-menu menu-key)))
 
+(defun info-index (info-files index-node key)
+  (when (stringp info-files)
+    (setq info-files (list info-files)))
+  (catch 'out
+    (mapc (lambda (f)
+	    (condition-case nil
+		(progn
+		  (info-visit-node f index-node key)
+		  (throw 'out t))
+	      (info-error))) info-files)
+    (signal 'info-error (list "Can't find index entry" key))))
+
 ;;;###autoload
 (defun info-describe-function (function)
   (interactive
    (list (prompt-for-string "Describe function:" (symbol-at-point))))
   (when function
-    (info-visit-node
-     info-documentation-file info-function-index-node function)
+    (info-index info-documentation-files info-function-index-node function)
     (when (re-search-forward (format nil "^ - .* %s" (quote-regexp function)))
       (goto (match-start)))))
 
@@ -668,7 +679,6 @@ local bindings are:\n
   (interactive
    (list (prompt-for-string "Describe variable:" (symbol-at-point))))
   (when function
-    (info-visit-node
-     info-documentation-file info-variable-index-node variable)
+    (info-index info-documentation-files info-variable-index-node variable)
     (when (re-search-forward (format nil "^ - .* %s" (quote-regexp variable)))
       (goto (match-start)))))
