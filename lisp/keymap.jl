@@ -64,22 +64,25 @@ binding, or nil if there was no prefix."
 ;; Map over a single list of keybindings
 (defun km-map-keylist (keylist function buffer)
   (mapc #'(lambda (k)
-	    (if (eq (car (car k)) 'next-keymap-path)
-		;; A prefix key
-		(let
-		    ((this-list (with-buffer buffer (eval (nth 1 (car k)))))
-		     (event-str (event-name (cdr k))))
-		  (when (listp this-list)
-		    ;; Another keymap-list, add it to the list of those waiting
-		    (let*
-			((new-str (concat km-prefix-string
-					  (if km-prefix-string ?\ )
-					  event-str))
-			 (new-list (mapcar #'(lambda (km)
-					       (cons km new-str)) this-list)))
-		      (setq km-keymap-list (append km-keymap-list new-list)))))
-	      ;; A normal binding
-	      (funcall function k km-prefix-string)))
+	    (cond
+	     ((eq k 'keymap))		;An inherited sparse keymap
+	     ((eq (car (car k)) 'next-keymap-path)
+	      ;; A prefix key
+	      (let
+		  ((this-list (with-buffer buffer (eval (nth 1 (car k)))))
+		   (event-str (event-name (cdr k))))
+		(when (listp this-list)
+		  ;; Another keymap-list, add it to the list of those waiting
+		  (let*
+		      ((new-str (concat km-prefix-string
+					(if km-prefix-string ?\ )
+					event-str))
+		       (new-list (mapcar #'(lambda (km)
+					     (cons km new-str)) this-list)))
+		    (setq km-keymap-list (append km-keymap-list new-list))))))
+	      (t
+	       ;; A normal binding
+	       (funcall function k km-prefix-string))))
 	keylist))
 
 

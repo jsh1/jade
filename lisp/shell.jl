@@ -71,22 +71,22 @@ written to. This is only consulted when the process is started.")
   "The process that the Shell mode created in the current buffer.")
 (make-variable-buffer-local 'shell-process)
 
-(defvar shell-keymap (make-keylist)
+(defvar shell-keymap
+  (bind-keys (make-sparse-keymap)
+    "Ctrl-a" 'shell-bol
+    "Ctrl-d" 'shell-del-or-eof
+    "RET" 'shell-enter-line)
   "Keymap for shell-mode.")
-(bind-keys shell-keymap
-  "Ctrl-a" 'shell-bol
-  "Ctrl-d" 'shell-del-or-eof
-  "RET" 'shell-enter-line)
 
-(defvar shell-ctrl-c-keymap (make-keylist)
+(defvar shell-ctrl-c-keymap
+  (bind-keys (make-sparse-keymap)
+    "Ctrl-c" 'shell-send-intr
+    "Ctrl-z" 'shell-send-susp
+    "Ctrl-d" 'shell-send-eof
+    "Ctrl-n" 'shell-next-prompt
+    "Ctrl-p" 'shell-prev-prompt
+    "Ctrl-\\" 'shell-send-quit)
   "Keymap for ctrl-c in shell-mode.")
-(bind-keys shell-ctrl-c-keymap
-  "Ctrl-c" 'shell-send-intr
-  "Ctrl-z" 'shell-send-susp
-  "Ctrl-d" 'shell-send-eof
-  "Ctrl-n" 'shell-next-prompt
-  "Ctrl-p" 'shell-prev-prompt
-  "Ctrl-\\" 'shell-send-quit)
 
 ;; Ensure that the termcap stuff is set up correctly
 (setenv "TERM" "jade")

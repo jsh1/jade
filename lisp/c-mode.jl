@@ -75,16 +75,16 @@ contain.")
 
 ;; Variables
 
-(defvar c-mode-keymap (make-keylist))
-(bind-keys c-mode-keymap
-  "{" 'c-open-brace
-  "}" 'c-close-brace
-  ":" 'c-colon
-  "TAB" 'indent-line)
+(defvar c-mode-keymap
+  (bind-keys (make-sparse-keymap)
+    "{" 'c-open-brace
+    "}" 'c-close-brace
+    ":" 'c-colon
+    "TAB" 'indent-line))
 
-(defvar c-mode-ctrl-c-keymap (make-keylist))
-(bind-keys c-mode-ctrl-c-keymap
-  "Ctrl-\\" 'c-backslash-area)
+(defvar c-mode-ctrl-c-keymap
+  (bind-keys (make-sparse-keymap)
+    "Ctrl-\\" 'c-backslash-area))
 
 
 ;; Code

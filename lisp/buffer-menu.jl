@@ -26,31 +26,31 @@
 (with-buffer bm-buffer
   (setq buffer-record-undo nil))
 
-(defvar bm-keymap (make-keylist))
-(bind-keys bm-keymap
-  "d" 'bm-toggle-deletion
-  "s" 'bm-toggle-save
-  "Ctrl-s" 'bm-toggle-save
-  "u" 'bm-unmark-line
-  "x" 'bm-execute
-  "1" 'bm-select-buffer-whole-window
-  "2" 'bm-select-buffer-two-views
-  "RET" 'bm-select-buffer
-  "f" 'bm-select-buffer
-  "q" 'bury-buffer
-  "~" 'bm-toggle-modified
-  "-" 'bm-toggle-read-only
-  "%" 'bm-toggle-read-only
-  "o" 'bm-select-buffer-other-view
-  "Ctrl-f" 'bm-next
-  "TAB" 'bm-next
-  "Ctrl-b" 'bm-prev
-  "Shift-TAB" 'bm-prev
-  "Meta-TAB" 'bm-prev
-  "Ctrl-l" 'bm-update
-  "LMB-Click1" '(goto (mouse-pos))
-  "LMB-Click2" 'bm-select-buffer
-  "LMB-Off" 'nop)
+(defvar bm-keymap
+  (bind-keys (make-sparse-keymap)
+    "d" 'bm-toggle-deletion
+    "s" 'bm-toggle-save
+    "Ctrl-s" 'bm-toggle-save
+    "u" 'bm-unmark-line
+    "x" 'bm-execute
+    "1" 'bm-select-buffer-whole-window
+    "2" 'bm-select-buffer-two-views
+    "RET" 'bm-select-buffer
+    "f" 'bm-select-buffer
+    "q" 'bury-buffer
+    "~" 'bm-toggle-modified
+    "-" 'bm-toggle-read-only
+    "%" 'bm-toggle-read-only
+    "o" 'bm-select-buffer-other-view
+    "Ctrl-f" 'bm-next
+    "TAB" 'bm-next
+    "Ctrl-b" 'bm-prev
+    "Shift-TAB" 'bm-prev
+    "Meta-TAB" 'bm-prev
+    "Ctrl-l" 'bm-update
+    "LMB-Click1" '(goto (mouse-pos))
+    "LMB-Click2" 'bm-select-buffer
+    "LMB-Off" 'nop))
 
 (defvar bm-pending-deletions '()
   "List of buffers marked for deletion.")

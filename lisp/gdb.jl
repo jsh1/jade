@@ -45,20 +45,29 @@ centred each time it changes.")
 (defvar gdb-delete-prompt nil)
 (make-variable-buffer-local 'gdb-delete-prompt)
 
-(defvar gdb-ctrl-c-keymap (copy-sequence shell-ctrl-c-keymap))
-(bind-keys gdb-ctrl-c-keymap
-  "Ctrl-n" '(gdb-command "next %d\n" (prefix-numeric-argument current-prefix-arg))
-  "Ctrl-s" '(gdb-command "step %d\n" (prefix-numeric-argument current-prefix-arg))
-  "Ctrl-i" '(gdb-command "stepi %d\n" (prefix-numeric-argument current-prefix-arg))
-  "Ctrl-I" '(gdb-command "nexti %d\n" (prefix-numeric-argument current-prefix-arg))
-  "Ctrl-f" '(gdb-command "finish\n")
-  "Ctrl-r" '(gdb-command "cont\n")
-  "Ctrl-<" '(gdb-command "up %d\n" (prefix-numeric-argument current-prefix-arg))
-  "Ctrl->" '(gdb-command "down %d\n" (prefix-numeric-argument current-prefix-arg))
-  "Ctrl-b" '(gdb-command "break %s:%d\n" (gdb-current-file) (gdb-current-line))
-  "Ctrl-t" '(gdb-command "tbreak %s:%d\n" (gdb-current-file) (gdb-current-line))
-  "Ctrl-d" '(gdb-command "clear %d\n" (gdb-current-line))
-  "Ctrl-l" 'gdb-redisplay-frame)
+(defvar gdb-ctrl-c-keymap
+  (bind-keys (make-sparse-keymap shell-ctrl-c-keymap)
+    "Ctrl-n" '(gdb-command "next %d\n"
+			   (prefix-numeric-argument current-prefix-arg))
+    "Ctrl-s" '(gdb-command "step %d\n"
+			   (prefix-numeric-argument current-prefix-arg))
+    "Ctrl-i" '(gdb-command "stepi %d\n"
+			   (prefix-numeric-argument current-prefix-arg))
+    "Ctrl-I" '(gdb-command "nexti %d\n"
+			   (prefix-numeric-argument current-prefix-arg))
+    "Ctrl-f" '(gdb-command "finish\n")
+    "Ctrl-r" '(gdb-command "cont\n")
+    "Ctrl-<" '(gdb-command "up %d\n"
+			   (prefix-numeric-argument current-prefix-arg))
+    "Ctrl->" '(gdb-command "down %d\n"
+			   (prefix-numeric-argument current-prefix-arg))
+    "Ctrl-b" '(gdb-command "break %s:%d\n"
+			   (gdb-current-file) (gdb-current-line))
+    "Ctrl-t" '(gdb-command "tbreak %s:%d\n"
+			   (gdb-current-file) (gdb-current-line))
+    "Ctrl-d" '(gdb-command "clear %d\n"
+			   (gdb-current-line))
+    "Ctrl-l" 'gdb-redisplay-frame))
 
 (bind-keys ctrl-x-keymap
   "Ctrl-a" '(next-keymap-path '(gdb-ctrl-c-keymap)))

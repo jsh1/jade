@@ -21,16 +21,16 @@
 (require 'summary)
 (provide 'buffer-summary)
 
-(defvar bs-keymap (copy-sequence summary-keymap))
-(bind-keys bs-keymap
-  "s" 'bs-mark-save
-  "Ctrl-s" 'bs-mark-save
-  "1" 'bs-select-whole-window
-  "2" 'bs-select-two-views
-  "o" 'bs-select-other-view
-  "f" 'summary-select-item
-  "~" 'bs-toggle-modified
-  "%" 'bs-toggle-read-only)
+(defvar bs-keymap
+  (bind-keys (make-sparse-keymap summary-keymap)
+    "s" 'bs-mark-save
+    "Ctrl-s" 'bs-mark-save
+    "1" 'bs-select-whole-window
+    "2" 'bs-select-two-views
+    "o" 'bs-select-other-view
+    "f" 'summary-select-item
+    "~" 'bs-toggle-modified
+    "%" 'bs-toggle-read-only))
 
 (defvar bs-functions '((select . bs-select-item)
 		       (delete . kill-buffer)

@@ -25,15 +25,15 @@
 (defvar mds-alias-buffer (make-buffer "*mail-aliases*"))
 (defvar mds-address-buffer (make-buffer "*mail-addresses*"))
 
-(defvar mds-keymap (copy-sequence summary-keymap))
-(bind-keys mds-keymap
-  "n" 'summary-next-item
-  "p" 'summary-next-item
-  "a" 'mds-add-item
-  "e" 'mds-edit-name
-  "b" 'mds-edit-body
-  "m" 'mds-compose-mail-to-item
-  "s" 'mds-sort-list)
+(defvar mds-keymap
+  (bind-keys (make-sparse-keymap summary-keymap)
+    "n" 'summary-next-item
+    "p" 'summary-next-item
+    "a" 'mds-add-item
+    "e" 'mds-edit-name
+    "b" 'mds-edit-body
+    "m" 'mds-compose-mail-to-item
+    "s" 'mds-sort-list))
 
 (defvar mds-alias-functions
   '((select . mds-compose-mail-to-item)

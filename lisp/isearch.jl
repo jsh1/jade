@@ -118,17 +118,17 @@ searching.")
 
 ;; Keymap
 
-(defvar isearch-keymap (make-keylist))
-(bind-keys isearch-keymap
-  "Ctrl-s"	'isearch-next-forward
-  "Ctrl-r"	'isearch-next-backward
-  "Ctrl-g"	'isearch-cancel
-  "Ctrl-q"	'(progn (next-keymap-path nil) (isearch-title))
-  "Ctrl-w"	'isearch-yank-word
-  "Ctrl-y"	'isearch-yank-line
-  "RET"		'isearch-accept
-  "ESC"		'isearch-accept
-  "BS"		'isearch-rubout)
+(defvar isearch-keymap
+  (bind-keys (make-sparse-keymap)
+    "Ctrl-s"	'isearch-next-forward
+    "Ctrl-r"	'isearch-next-backward
+    "Ctrl-g"	'isearch-cancel
+    "Ctrl-q"	'(progn (next-keymap-path nil) (isearch-title))
+    "Ctrl-w"	'isearch-yank-word
+    "Ctrl-y"	'isearch-yank-line
+    "RET"	'isearch-accept
+    "ESC"	'isearch-accept
+    "BS"	'isearch-rubout))
 
 
 ;; Display the status message, has to be done after each command

@@ -26,28 +26,28 @@ libraries.")
 
 (defvar help-buffer (open-buffer "*Help*"))
 
-(defvar help-keymap (make-keylist))
-(bind-keys help-keymap
-  "SPC" 'next-screen
-  "BS" 'prev-screen
-  "q" 'bury-buffer)
+(defvar help-keymap
+  (bind-keys (make-sparse-keymap)
+    "SPC" 'next-screen
+    "BS" 'prev-screen
+    "q" 'bury-buffer))
 
-(defvar help-prompt-keymap (make-keylist))
-(bind-keys help-prompt-keymap
-  "a" 'apropos-function
-  "b" 'describe-keymap
-  "e" 'apropos-variable
-  "f" 'describe-function
-  "h" 'help-help
-  "Ctrl-h" 'help-help
-  "i" 'info
-  "k" 'describe-key
-  "w" 'where-is
-  "m" 'describe-mode
-  "?" 'help-help
-  "v" 'describe-variable
-  "SPC" '(progn (next-screen) (help))
-  "BS" '(progn (prev-screen) (help)))
+(defvar help-prompt-keymap
+  (bind-keys (make-sparse-keymap)
+    "a" 'apropos-function
+    "b" 'describe-keymap
+    "e" 'apropos-variable
+    "f" 'describe-function
+    "h" 'help-help
+    "Ctrl-h" 'help-help
+    "i" 'info
+    "k" 'describe-key
+    "w" 'where-is
+    "m" 'describe-mode
+    "?" 'help-help
+    "v" 'describe-variable
+    "SPC" '(progn (next-screen) (help))
+    "BS" '(progn (prev-screen) (help))))
 
 (with-buffer help-buffer
   (setq keymap-path '(help-keymap global-keymap)

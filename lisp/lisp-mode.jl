@@ -22,11 +22,11 @@
 
 (defvar symbol-word-regexps ["[^][()?'`,@\"#; ]" "[][()?'`,@\"#; ]|$"])
 
-(defvar lisp-mode-keymap (make-keylist))
-(bind-keys lisp-mode-keymap
-  "Ctrl-j"	'eval-insert-sexp
-  "Meta-Ctrl-x"	'eval-print-sexp
-  "TAB"		'indent-line)
+(defvar lisp-mode-keymap
+  (bind-keys (make-sparse-keymap)
+    "Ctrl-j" 'eval-insert-sexp
+    "Meta-Ctrl-x" 'eval-print-sexp
+    "TAB" 'indent-line))
 
 ;;;###autoload
 (defun lisp-mode ()

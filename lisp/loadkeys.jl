@@ -18,26 +18,26 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
-(defvar global-keymap (make-keytab)
+(defvar global-keymap (make-keymap)
   "The root keymap.")
 
-(defvar ctrl-x-keymap (make-keytab)
+(defvar ctrl-x-keymap (make-keymap)
   "Default `Ctrl-x' keymap.")
 
-(defvar ctrl-x-4-keymap (make-keylist)
+(defvar ctrl-x-4-keymap (make-sparse-keymap)
   "Default `Ctrl-x 4' keymap.")
 
-(defvar ctrl-x-5-keymap (make-keylist)
+(defvar ctrl-x-5-keymap (make-sparse-keymap)
   "Default `Ctrl-x 5' keymap.")
 
-(defvar ctrl-x-n-keymap (make-keylist)
+(defvar ctrl-x-n-keymap (make-sparse-keymap)
   "Default `Ctrl-x n' keymap.")
 
 (defvar ctrl-c-keymap nil
   "Hook to hang major mode `Ctrl-c' keymap from.")
 (make-variable-buffer-local 'ctrl-c-keymap)
 
-(defvar user-keymap (make-keylist)
+(defvar user-keymap (make-sparse-keymap)
   "Keymap for user-defined bindings, hung from `Ctrl-c'.")
 
 (setq unbound-key-hook nil

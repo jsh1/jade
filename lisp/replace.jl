@@ -60,25 +60,25 @@ last change."
 
 ;;; Query replace
 
-(defvar query-replace-keymap (make-keylist))
-(bind-keys query-replace-keymap
-  "SPC" 'query-replace-replace
-  "y" 'query-replace-replace
-  "BS" 'query-replace-skip
-  "n" 'query-replace-skip
-  "," 'query-replace-replace-and-wait
-  "RET" 'query-replace-exit
-  "ESC" 'query-replace-exit
-  "q" 'query-replace-exit
-  "Ctrl-g" 'query-replace-exit
-  "." 'query-replace-once-only
-  "!" 'query-replace-rest
-  "^" 'query-replace-backtrack
-  "Ctrl-r" 'query-replace-edit
-  "Ctrl-w" '(progn (query-replace-delete) (query-replace-edit))
-  "?" 'query-replace-help
-  "HELP" 'query-replace-help
-  "Ctrl-h" 'query-replace-help)
+(defvar query-replace-keymap
+  (bind-keys (make-sparse-keymap)
+    "SPC" 'query-replace-replace
+    "y" 'query-replace-replace
+    "BS" 'query-replace-skip
+    "n" 'query-replace-skip
+    "," 'query-replace-replace-and-wait
+    "RET" 'query-replace-exit
+    "ESC" 'query-replace-exit
+    "q" 'query-replace-exit
+    "Ctrl-g" 'query-replace-exit
+    "." 'query-replace-once-only
+    "!" 'query-replace-rest
+    "^" 'query-replace-backtrack
+    "Ctrl-r" 'query-replace-edit
+    "Ctrl-w" '(progn (query-replace-delete) (query-replace-edit))
+    "?" 'query-replace-help
+    "HELP" 'query-replace-help
+    "Ctrl-h" 'query-replace-help))
 
 ;; Special vars
 (defvar query-replace-from nil)

@@ -120,36 +120,36 @@ when set to the symbol `invalid'.")
   "The buffer displaying the summary of this folder.")
 (make-variable-buffer-local 'rm-summary-buffer)
 
-(defvar rm-keymap (make-keylist)
+(defvar rm-keymap
+  (bind-keys (make-sparse-keymap)
+    "n" 'rm-next-undeleted-message
+    "p" 'rm-previous-undeleted-message
+    "N" 'rm-next-message
+    "P" 'rm-previous-message
+    "t" 'rm-toggle-all-headers
+    "SPC" 'rm-next-page
+    "BS" 'rm-previous-page
+    "h" 'rm-summary
+    "d" 'rm-mark-message-deletion
+    "Ctrl-d" 'rm-mark-message-deletion
+    "x" '(rm-with-summary (summary-execute))
+    "#" '(rm-with-summary (summary-execute))
+    "g" 'rm-get-mail
+    "k" 'rm-kill-subject
+    "q" 'rm-save-and-quit
+    "u" '(rm-with-summary (summary-unmark-item
+			   (with-buffer rm-summary-mail-buffer
+			     rm-current-msg)))
+    "v" 'read-mail-folder
+    "r" 'rm-reply
+    "R" '(rm-reply t)
+    "f" 'rm-followup
+    "F" '(rm-followup t)
+    "z" 'rm-forward
+    "*" 'rm-burst-message
+    "s" 'rm-output
+    "|" 'rm-pipe-message)
   "Keymap for reading mail")
-(bind-keys rm-keymap
-  "n" 'rm-next-undeleted-message
-  "p" 'rm-previous-undeleted-message
-  "N" 'rm-next-message
-  "P" 'rm-previous-message
-  "t" 'rm-toggle-all-headers
-  "SPC" 'rm-next-page
-  "BS" 'rm-previous-page
-  "h" 'rm-summary
-  "d" 'rm-mark-message-deletion
-  "Ctrl-d" 'rm-mark-message-deletion
-  "x" '(rm-with-summary (summary-execute))
-  "#" '(rm-with-summary (summary-execute))
-  "g" 'rm-get-mail
-  "k" 'rm-kill-subject
-  "q" 'rm-save-and-quit
-  "u" '(rm-with-summary (summary-unmark-item
-			 (with-buffer rm-summary-mail-buffer
-			   rm-current-msg)))
-  "v" 'read-mail-folder
-  "r" 'rm-reply
-  "R" '(rm-reply t)
-  "f" 'rm-followup
-  "F" '(rm-followup t)
-  "z" 'rm-forward
-  "*" 'rm-burst-message
-  "s" 'rm-output
-  "|" 'rm-pipe-message)
   
 (defvar rm-last-folder mail-folder-dir
   "File name of the most recently opened folder. Used as a default value for
@@ -821,27 +821,27 @@ Major mode for viewing mail folders. Commands include:\n
   (list 'rm-in-folder
 	(list 'call-command command 'current-prefix-arg)))
 
-(defvar rm-summary-keymap (copy-sequence summary-keymap))
-(bind-keys rm-summary-keymap
-  "n" '(rm-command-with-folder 'rm-next-undeleted-message)
-  "p" '(rm-command-with-folder 'rm-previous-undeleted-message)
-  "N" '(rm-command-with-folder 'rm-next-message)
-  "P" '(rm-command-with-folder 'rm-previous-message)
-  "SPC" '(rm-command-with-folder 'rm-next-page)
-  "BS" '(rm-command-with-folder 'rm-previous-page)
-  "t" '(rm-command-with-folder 'rm-toggle-all-headers)
-  "g" '(rm-command-with-folder 'rm-get-mail)
-  "k" '(rm-command-with-folder 'rm-kill-subject)
-  "q" '(rm-command-with-folder 'rm-save-and-quit)
-  "v" '(rm-command-with-folder 'read-mail-folder)
-  "r" '(rm-command-in-folder 'rm-reply)
-  "R" '(rm-command-in-folder '(rm-reply t))
-  "f" '(rm-command-in-folder 'rm-followup)
-  "F" '(rm-command-in-folder '(rm-followup t))
-  "z" '(rm-command-in-folder 'rm-forward)
-  "*" '(rm-command-with-folder 'rm-burst-message)
-  "s" '(rm-command-with-folder 'rm-output)
-  "|" '(rm-command-with-folder 'rm-pipe-message))
+(defvar rm-summary-keymap
+  (bind-keys (make-sparse-keymap summary-keymap)
+    "n" '(rm-command-with-folder 'rm-next-undeleted-message)
+    "p" '(rm-command-with-folder 'rm-previous-undeleted-message)
+    "N" '(rm-command-with-folder 'rm-next-message)
+    "P" '(rm-command-with-folder 'rm-previous-message)
+    "SPC" '(rm-command-with-folder 'rm-next-page)
+    "BS" '(rm-command-with-folder 'rm-previous-page)
+    "t" '(rm-command-with-folder 'rm-toggle-all-headers)
+    "g" '(rm-command-with-folder 'rm-get-mail)
+    "k" '(rm-command-with-folder 'rm-kill-subject)
+    "q" '(rm-command-with-folder 'rm-save-and-quit)
+    "v" '(rm-command-with-folder 'read-mail-folder)
+    "r" '(rm-command-in-folder 'rm-reply)
+    "R" '(rm-command-in-folder '(rm-reply t))
+    "f" '(rm-command-in-folder 'rm-followup)
+    "F" '(rm-command-in-folder '(rm-followup t))
+    "z" '(rm-command-in-folder 'rm-forward)
+    "*" '(rm-command-with-folder 'rm-burst-message)
+    "s" '(rm-command-with-folder 'rm-output)
+    "|" '(rm-command-with-folder 'rm-pipe-message)))
 
 (defvar rm-summary-functions '((select . rm-summary-select-item)
 			       (list . rm-summary-list)

@@ -26,11 +26,11 @@
 (defvar asm-comment ";"
   "Strings which denotes the start of a comment in asm-mode.")
 
-(defvar asm-keymap (make-keylist))
-(bind-keys asm-keymap
-  "RET" 'asm-ret
-  "Shift-RET" 'split-line
-  ":" 'asm-colon)
+(defvar asm-keymap
+  (bind-keys (make-sparse-keymap)
+    "RET" 'asm-ret
+    "Shift-RET" 'split-line
+    ":" 'asm-colon))
 
 ;;;###autoload
 (defun asm-mode ()

@@ -23,15 +23,15 @@
 
 ;; Basic text mode
 
-(defvar text-mode-keymap (make-keylist))
-(bind-keys text-mode-keymap
-  "Meta-s" 'center-line
-  "Meta-S" 'center-paragraph
-  "Meta-=" 'word-count-area)
+(defvar text-mode-keymap
+  (bind-keys (make-sparse-keymap)
+    "Meta-s" 'center-line
+    "Meta-S" 'center-paragraph
+    "Meta-=" 'word-count-area))
 
-(defvar text-mode-indent-keymap (make-keylist))
-(bind-keys text-mode-indent-keymap
-  "TAB" 'text-mode-indent-tab)
+(defvar text-mode-indent-keymap
+  (bind-keys (make-sparse-keymap)
+    "TAB" 'text-mode-indent-tab))
 
 (defun text-mode-init ()
   (setq major-mode-kill 'text-mode-kill

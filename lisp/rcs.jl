@@ -60,13 +60,26 @@ cause the new revision _not_ to be locked, only checked out. A successive
   "Ring buffer containing RCS history entries.")
 
 ;;;###autoload
-(defvar rcs-keymap (make-keylist)
+(defvar rcs-keymap
+  (bind-keys (make-sparse-keymap)
+    "i" 'rcs-register-buffer
+    "l" 'rcs-display-log
+    "u" 'rcs-revert-buffer
+    "=" 'rcs-compare-revisions
+    "~" 'rcs-view-revision
+    "b" 'rcs-set-default-branch)
   "Keymap containing RCS commands.")
 ;;;###autoload (bind-keys ctrl-x-keymap "v" '(next-keymap-path '(rcs-keymap)))
 
-(defvar rcs-callback-ctrl-c-keymap (make-keylist)
+(defvar rcs-callback-ctrl-c-keymap
+  (bind-keys (make-sparse-keymap)
+    "Ctrl-c" 'rcs-call-callback)
   "Keymap for Ctrl-C when entering text for a callback.")
-(defvar rcs-callback-keymap (make-keylist)
+
+(defvar rcs-callback-keymap
+  (bind-keys (make-sparse-keymap)
+    "Meta-p" 'rcs-down-history
+    "Meta-n" 'rcs-up-history)
   "Keymap for callback buffer.")
 
 (defvar rcs-current-info-string nil)
@@ -80,20 +93,6 @@ cause the new revision _not_ to be locked, only checked out. A successive
   "Local variable storing the revision number of buffer's controlled by RCS,
 as a string. May be nil if revision is unknown.")
 (make-variable-buffer-local 'rcs-revision)
-
-(bind-keys rcs-keymap
-  "i" 'rcs-register-buffer
-  "l" 'rcs-display-log
-  "u" 'rcs-revert-buffer
-  "=" 'rcs-compare-revisions
-  "~" 'rcs-view-revision
-  "b" 'rcs-set-default-branch)
-
-(bind-keys rcs-callback-ctrl-c-keymap
-  "Ctrl-c" 'rcs-call-callback)
-(bind-keys rcs-callback-keymap
-  "Meta-p" 'rcs-down-history
-  "Meta-n" 'rcs-up-history)
 
 (defvar rcs-callback-args nil
   "Arguments stored for when `Ctrl-c Ctrl-c' is typed in the callback buffer.

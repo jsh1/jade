@@ -54,10 +54,8 @@ subexpression should contain the name of the directory.")
 
 ;; Variables
 
-(defvar compile-keymap (make-keylist))
-
-(unless (boundp 'compile-buffer)
-  (bind-keys compile-keymap
+(defvar compile-keymap 
+  (bind-keys (make-sparse-keymap)
     "Ctrl-c" 'kill-compilation
     "Ctrl-z" 'stop-compilation
     "Ctrl-f" 'continue-compilation

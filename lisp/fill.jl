@@ -224,11 +224,11 @@ and POS. When called interactively, POS is bound to the cursor position."
 
 ;; Filling minor mode
 
-(defvar fill-mode-keymap (make-keylist)
+(defvar fill-mode-keymap
+  (bind-keys (make-sparse-keymap)
+    "SPC" 'fill-mode-spc
+    "RET" 'fill-mode-ret)
   "Keymap for fill-mode.")
-(bind-keys fill-mode-keymap
-  "SPC" 'fill-mode-spc
-  "RET" 'fill-mode-ret)
 
 ;;;###autoload
 (defun fill-mode ()

@@ -27,18 +27,18 @@
 (defvar completion-buffer-list '()
   "Stack of buffers used to display completion results.")
 
-(defvar prompt-keymap (make-keylist))
-(bind-keys prompt-keymap
-  "TAB"		'prompt-complete
-  "RET"		'prompt-enter-line
-  "LMB-CLICK2"	'prompt-select-completion
-  "RMB-CLICK1"	'prompt-complete
-  "Meta-?"	'prompt-list-completions
-  "Meta-/"	'prompt-list-completions
-  "Meta-n"	'prompt-next-history
-  "Meta-p"	'prompt-previous-history
-  "Ctrl-g"	'prompt-cancel)
-
+(defvar prompt-keymap
+  (bind-keys (make-sparse-keymap)
+    "TAB"	'prompt-complete
+    "RET"	'prompt-enter-line
+    "LMB-CLICK2" 'prompt-select-completion
+    "RMB-CLICK1" 'prompt-complete
+    "Meta-?"	'prompt-list-completions
+    "Meta-/"	'prompt-list-completions
+    "Meta-n"	'prompt-next-history
+    "Meta-p"	'prompt-previous-history
+    "Ctrl-g"	'prompt-cancel))
+  
 
 ;; Configuration variables
 
@@ -587,12 +587,12 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
       ((answer (prompt (concat question " (yes or no) "))))
     (string= "yes" answer)))
 
-(defvar y-or-n-keymap (make-keylist))
-(bind-keys y-or-n-keymap
-  "n" '(throw 'ask nil)
-  "BS" '(throw 'ask nil)
-  "y" '(throw 'ask t)
-  "SPC" '(throw 'ask t))
+(defvar y-or-n-keymap
+  (bind-keys (make-sparse-keymap)
+    "n" '(throw 'ask nil)
+    "BS" '(throw 'ask nil)
+    "y" '(throw 'ask t)
+    "SPC" '(throw 'ask t)))
 
 ;;;###autoload
 (defun y-or-n-p (question &optional keymap help-string)
@@ -619,10 +619,10 @@ string QUESTION, returns t for `y'."
 		    unbound-key-hook old-u-k-h))
 	    (return-prompt-buffer prompt-buffer)))))))
 
-(defvar map-y-or-n-keymap (copy-sequence y-or-n-keymap))
-(bind-keys map-y-or-n-keymap
-  "!" '(throw 'map 'all-t)
-  "q" '(throw 'map 'quit))
+(defvar map-y-or-n-keymap
+  (bind-keys (make-sparse-keymap y-or-n-keymap)
+    "!" '(throw 'map 'all-t)
+    "q" '(throw 'map 'quit)))
 
 ;;;###autoload
 (defun map-y-or-n-p (question inputs callback)

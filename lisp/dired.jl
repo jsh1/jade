@@ -24,26 +24,26 @@
 
 ;; Variables
 
-(defvar dired-keymap (copy-sequence summary-keymap))
-(bind-keys dired-keymap
-  "*" 'dired-mark-executables
-  "@" 'dired-mark-symlinks
-  "/" 'dired-mark-directories
-  "#" 'dired-delete-autosaves
-  "~" 'dired-delete-backups
-  "&" 'dired-delete-garbage
-  "%" '(next-keymap-path '(dired-%-keymap))
-  "f" 'dired-find-file
-  "o" 'dired-find-file-other-view
-  "Ctrl-o" 'dired-display-file
-  "g" 'summary-update
-  "C" 'dired-do-copy
-  "R" 'dired-do-rename)
+(defvar dired-keymap
+  (bind-keys (make-sparse-keymap summary-keymap)
+    "*" 'dired-mark-executables
+    "@" 'dired-mark-symlinks
+    "/" 'dired-mark-directories
+    "#" 'dired-delete-autosaves
+    "~" 'dired-delete-backups
+    "&" 'dired-delete-garbage
+    "%" '(next-keymap-path '(dired-%-keymap))
+    "f" 'dired-find-file
+    "o" 'dired-find-file-other-view
+    "Ctrl-o" 'dired-display-file
+    "g" 'summary-update
+    "C" 'dired-do-copy
+    "R" 'dired-do-rename))
 
-(defvar dired-%-keymap (make-keylist))
-(bind-keys dired-%-keymap
-  "d" 'dired-delete-by-regexp
-  "m" 'dired-mark-by-regexp)
+(defvar dired-%-keymap
+  (bind-keys (make-sparse-keymap)
+    "d" 'dired-delete-by-regexp
+    "m" 'dired-mark-by-regexp))
 
 (defvar dired-garbage-files "\\.(orig|rej|aux|log)$"
   "Regular expression matching files under dired that should be marked for

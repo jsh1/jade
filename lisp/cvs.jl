@@ -74,36 +74,36 @@ and hence hasn't been processed yet; or nil.")
   "Hook called after completing a cvs-update command.")
 
 ;;;###autoload
-(defvar cvs-keymap (copy-sequence summary-keymap))
-(bind-keys cvs-keymap
-  "a" 'cvs-add
-  "A" 'cvs-change-log-other-view
-  "b" 'cvs-diff-backup
-  "c" 'cvs-commit
-  "C" 'cvs-commit-directory
-  "d" 'cvs-diff-cvs
-  "f" 'cvs-find-file
-  "g" 'cvs-update-no-prompt
-  "G" 'cvs-update
-  "i" 'cvs-ignore
-  "l" 'cvs-log
-  "o" 'cvs-summary-select-other-view
-  "p" 'cvs-update-pwd
-  "P" 'cvs-update-parent
-  "r" 'cvs-remove
-  "R" 'cvs-revert
-  "s" 'cvs-status
-  "t" 'cvs-tag
-  "T" 'cvs-tag-directory
-  "%" 'cvs-summary-clean
-  "~" 'cvs-undo-modification
-  "`" 'cvs-next-conflict-marker)
+(defvar cvs-keymap
+  (bind-keys (make-sparse-keymap summary-keymap)
+    "a" 'cvs-add
+    "A" 'cvs-change-log-other-view
+    "b" 'cvs-diff-backup
+    "c" 'cvs-commit
+    "C" 'cvs-commit-directory
+    "d" 'cvs-diff-cvs
+    "f" 'cvs-find-file
+    "g" 'cvs-update-no-prompt
+    "G" 'cvs-update
+    "i" 'cvs-ignore
+    "l" 'cvs-log
+    "o" 'cvs-summary-select-other-view
+    "p" 'cvs-update-pwd
+    "P" 'cvs-update-parent
+    "r" 'cvs-remove
+    "R" 'cvs-revert
+    "s" 'cvs-status
+    "t" 'cvs-tag
+    "T" 'cvs-tag-directory
+    "%" 'cvs-summary-clean
+    "~" 'cvs-undo-modification
+    "`" 'cvs-next-conflict-marker))
 
 ;;;###autoload (bind-keys ctrl-x-keymap "c" '(next-keymap-path '(cvs-keymap)))
 
-(defvar cvs-callback-ctrl-c-keymap (make-keylist))
-(bind-keys cvs-callback-ctrl-c-keymap
-  "Ctrl-c" 'cvs-callback-finished)
+(defvar cvs-callback-ctrl-c-keymap
+  (bind-keys (make-sparse-keymap)
+    "Ctrl-c" 'cvs-callback-finished))
 
 (defvar cvs-summary-functions '((print . cvs-summary-print)
 				(after-move . (lambda ()

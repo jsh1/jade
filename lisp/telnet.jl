@@ -65,10 +65,9 @@ or nil.")
   "Non-nil when the session in this buffer is actually using rlogin.")
 (make-variable-buffer-local 'telnet-using-rlogin)
 
-(defvar telnet-keymap (copy-sequence shell-keymap))
-(unbind-keys telnet-keymap "RET")
-(bind-keys telnet-keymap
-  "RET" 'telnet-send-line)
+(defvar telnet-keymap
+  (bind-keys (make-sparse-keymap shell-keymap)
+    "RET" 'telnet-send-line))
 
 
 ;; Functions

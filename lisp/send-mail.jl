@@ -105,22 +105,23 @@ being sent."
 
 ;; Mail mode
 
-(defvar send-mail-c-keymap (make-keylist))
-(bind-keys send-mail-c-keymap
-  "Ctrl-c" 'send-mail-send-and-exit
-  "Ctrl-s" 'send-mail-send
-  "Ctrl-f" '(next-keymap-path '(send-mail-c-f-keymap))
-  "Ctrl-t" 'send-mail-go-text
-  "Ctrl-w" 'send-mail-signature
-  "Ctrl-y" 'mail-yank-original
-  "Ctrl-q" 'mail-fill-yanked-message)
-(defvar send-mail-c-f-keymap (make-keylist))
-(bind-keys send-mail-c-f-keymap
-  "Ctrl-t" 'send-mail-go-to
-  "Ctrl-s" 'send-mail-go-subject
-  "Ctrl-c" 'send-mail-go-cc
-  "Ctrl-b" 'send-mail-go-bcc
-  "Ctrl-f" 'send-mail-go-fcc)
+(defvar send-mail-c-keymap
+  (bind-keys (make-sparse-keymap)
+    "Ctrl-c" 'send-mail-send-and-exit
+    "Ctrl-s" 'send-mail-send
+    "Ctrl-f" '(next-keymap-path '(send-mail-c-f-keymap))
+    "Ctrl-t" 'send-mail-go-text
+    "Ctrl-w" 'send-mail-signature
+    "Ctrl-y" 'mail-yank-original
+    "Ctrl-q" 'mail-fill-yanked-message))
+
+(defvar send-mail-c-f-keymap
+  (bind-keys (make-sparse-keymap)
+    "Ctrl-t" 'send-mail-go-to
+    "Ctrl-s" 'send-mail-go-subject
+    "Ctrl-c" 'send-mail-go-cc
+    "Ctrl-b" 'send-mail-go-bcc
+    "Ctrl-f" 'send-mail-go-fcc))
 
 (defun send-mail-mode ()
   "Mail Mode:\n

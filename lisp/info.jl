@@ -37,7 +37,38 @@
 file try each SUFFIX in turn. When one matches require PACKAGE to be
 loaded so that the file can be decoded (through the `read-file-hook').")
 
-(defvar info-keymap (make-keytab)
+(defvar info-keymap
+  (bind-keys (make-keymap)
+    "SPC" 'next-screen
+    "BS" 'prev-screen
+    "1" 'info-menu-nth
+    "2" 'info-menu-nth
+    "3" 'info-menu-nth
+    "4" 'info-menu-nth
+    "5" 'info-menu-nth
+    "6" 'info-menu-nth
+    "7" 'info-menu-nth
+    "8" 'info-menu-nth
+    "9" 'info-menu-nth
+    "b" 'goto-start-of-buffer
+    "d" '(info "(dir)Top")
+    "f" 'info-follow-ref
+    "h" '(info "(info)Help")
+    "g" 'info-goto-node
+    "l" 'info-last
+    "m" 'info-menu
+    "n" 'info-next
+    "p" 'info-prev
+    "q" 'bury-buffer
+    "u" 'info-up
+    "v" 'info-visit-file
+    "?" 'describe-mode
+    "HELP" 'describe-mode
+    "RET" 'info-goto-link
+    "LMB-CLICK2" 'info-goto-link
+    "TAB" 'info-next-link
+    "Meta-TAB" 'info-prev-link
+    "Shift-TAB" 'info-prev-link)
   "Keymap for Info.")
 
 (defvar info-buffer (open-buffer "*Info*" t)
@@ -72,37 +103,6 @@ is split.")
 (unless info-initialised
   (setq info-initialised t)
   (put 'info-error 'error-message "Info")
-  (bind-keys info-keymap
-    "SPC" 'next-screen
-    "BS" 'prev-screen
-    "1" 'info-menu-nth
-    "2" 'info-menu-nth
-    "3" 'info-menu-nth
-    "4" 'info-menu-nth
-    "5" 'info-menu-nth
-    "6" 'info-menu-nth
-    "7" 'info-menu-nth
-    "8" 'info-menu-nth
-    "9" 'info-menu-nth
-    "b" 'goto-start-of-buffer
-    "d" '(info "(dir)Top")
-    "f" 'info-follow-ref
-    "h" '(info "(info)Help")
-    "g" 'info-goto-node
-    "l" 'info-last
-    "m" 'info-menu
-    "n" 'info-next
-    "p" 'info-prev
-    "q" 'bury-buffer
-    "u" 'info-up
-    "v" 'info-visit-file
-    "?" 'describe-mode
-    "HELP" 'describe-mode
-    "RET" 'info-goto-link
-    "LMB-CLICK2" 'info-goto-link
-    "TAB" 'info-next-link
-    "Meta-TAB" 'info-prev-link
-    "Shift-TAB" 'info-prev-link)
   (with-buffer info-buffer
     (setq keymap-path (cons 'info-keymap keymap-path)
 	  major-mode 'info-mode

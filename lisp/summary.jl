@@ -20,28 +20,28 @@
 
 (provide 'summary)
 
-(defvar summary-keymap (make-keylist)
+(defvar summary-keymap
+  (bind-keys (make-sparse-keymap)
+    "Ctrl-n" 'summary-next-item
+    "Ctrl-f" 'summary-next-item
+    "Down" 'summary-next-item
+    "TAB" 'summary-next-item
+    "Ctrl-p" 'summary-previous-item
+    "Ctrl-b" 'summary-previous-item
+    "Up" 'summary-previous-item
+    "Meta-TAB" 'summary-previous-item
+    "RET" 'summary-select-item
+    "Ctrl-l" 'summary-update
+    "x" 'summary-execute
+    "d" 'summary-mark-delete
+    "Ctrl-d" 'summary-mark-delete
+    "DEL" 'summary-mark-delete
+    "q" 'summary-quit
+    "u" 'summary-unmark-item
+    "U" 'summary-unmark-all
+    "m" 'summary-mark-item
+    "LMB-Click2" 'summary-select-item)
   "Base keymap for modes deriving from summary.")
-(bind-keys summary-keymap
-  "Ctrl-n" 'summary-next-item
-  "Ctrl-f" 'summary-next-item
-  "Down" 'summary-next-item
-  "TAB" 'summary-next-item
-  "Ctrl-p" 'summary-previous-item
-  "Ctrl-b" 'summary-previous-item
-  "Up" 'summary-previous-item
-  "Meta-TAB" 'summary-previous-item
-  "RET" 'summary-select-item
-  "Ctrl-l" 'summary-update
-  "x" 'summary-execute
-  "d" 'summary-mark-delete
-  "Ctrl-d" 'summary-mark-delete
-  "DEL" 'summary-mark-delete
-  "q" 'summary-quit
-  "u" 'summary-unmark-item
-  "U" 'summary-unmark-all
-  "m" 'summary-mark-item
-  "LMB-Click2" 'summary-select-item)
 
 
 ;; Local variables
