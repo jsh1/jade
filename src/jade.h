@@ -49,7 +49,9 @@ typedef char bool;
 #include "jade_subrs.h"
 
 /* Maximum/minimum macros. Don't use when X or Y have side-effects! */
+#undef MAX
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
+#undef MIN
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
 #define POS(x)   MAX(x, 0)
 
