@@ -28,6 +28,7 @@
 ;; Configuration
 
 (defvar find-url-alist '(("^file:" . find-url-file)
+			 ("^http:" . find-url-http)
 			 ("^ftp:" . find-url-ftp)
 			 ("^telnet:" . find-url-telnet)
 			 ("^mailto:" . find-url-mailto))
@@ -42,6 +43,8 @@ display them.")
   "Shell command used to direct an external web browser to load a http: url.
 Any `%s' substrings will be replaced by the name of the url.")
 
+(defvar wget-program "wget"
+  "Name of program used to invoke Wget.")
 
 ;; Functions
 
@@ -106,3 +109,41 @@ a buffer."
       ;; XXX What if the method of retrieving files from HOST isn't FTP?
       (find-file (concat ?/ (if (string= user "") "anonymous" user)
 			 ?@ host ?: file)))))
+
+(defun find-url-http (url)
+  (require 'mail-headers)
+  (let*
+      ((buffer (open-buffer "*wget-output*"))
+       (errors (or (get-buffer "*wget-errors*")
+		   (make-buffer "*wget-errors*")))
+       (process (make-process buffer)))
+    (set-process-error-stream process errors)
+    (clear-buffer buffer)
+    (clear-buffer errors)
+    (message (format nil "wget %s..." url) t)
+    (if (zerop (call-process process nil wget-program "-s" "-O" "-" url))
+	;; Success
+	(let
+	    (content-type)
+	  (message (format nil "wget %s...done" url))
+	  ;; Look in the error output to see if wget printed a `Location:'
+	  ;; message
+	  (and (re-search-forward "^Location:[ \t]*([^ \t]+)"
+				  (start-of-buffer errors) errors t)
+	       (setq url (expand-last-match "\\1")))
+	  (with-buffer buffer
+	    (setq content-type (mail-get-header "content-type"))
+	    (and (re-search-forward "^[ \t]*\n" (start-of-buffer))
+		 (restrict-buffer (match-end) (end-of-buffer))))
+	  (cond
+	   ((string-match "html" content-type nil t)
+	    (message "Parsing HTML..." t)
+	    (html-display buffer url)
+	    (message "Parsing HTML...done" t))
+	   (t
+	    ;; XXX needs completing
+	    (goto-buffer buffer))))
+      ;; Failure
+      (with-view (other-view)
+	(goto-buffer errors))
+      (error "Wget returned non-zero!"))))
