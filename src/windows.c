@@ -29,7 +29,6 @@ _PR void update_window_dimensions(WIN *w);
 _PR void messagen(u_char *, int);
 _PR void message(u_char *);
 _PR void messagef(u_char *, ...);
-_PR void no_message(WIN *);
 _PR void reset_message(WIN *);
 _PR bool remove_all_messages(bool from_idle_p);
 _PR bool save_message(WIN *, u_char **, u_long *);
@@ -334,19 +333,6 @@ messagef(u_char *fmt, ...)
 }
 
 void
-no_message(WIN *w)
-{
-    if(((w->w_Flags & WINFF_SLEEPING) == 0) && w->w_Message)
-    {
-	if(w->w_Message != NULL)
-	    str_free(w->w_Message);
-	w->w_Message = NULL;
-	w->w_MessageLen = 0;
-	w->w_Flags &= ~WINFF_MESSAGE;
-    }
-}
-
-void
 reset_message(WIN *w)
 {
     if(w->w_Flags & WINFF_MESSAGE)
@@ -388,13 +374,13 @@ save_message(WIN *w, u_char **old_msgp, u_long *old_msg_lenp)
 	*old_msg_lenp = w->w_MessageLen;
 	w->w_Message = NULL;
 	w->w_MessageLen = 0;
-	return(TRUE);
+	return TRUE;
     }
     else
     {
 	*old_msgp = NULL;
 	*old_msg_lenp = 0;
-	return(FALSE);
+	return FALSE;
     }
 }
 
