@@ -47,7 +47,8 @@ message formatting characters are available.")
        (subject (rm-get-subject message))
        (to (or (mapcar 'mail-parse-address
 		       (rm-get-msg-header message "Reply-To" t))
-	       (rm-get-senders message)))
+	       (rm-get-from message)
+	       (rm-get-sender message)))
        (cc (if followup-p
 	       ;; Only include addresses not in the To or BCC headers
 	       (filter #'(lambda (addr)
