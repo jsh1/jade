@@ -13,9 +13,6 @@ Outstanding bugs
  ! Area positions marking current selection don't change with the
    buffer contents
 
- ! Compiling a function with only a doc-string doesn't seem to add the
-   doc-string to the database (cf. cvs-summary-mode)
-
  ! Reverse isearch doesn't update its position if a longer match
    appears as a result of more characters being added to the regexp
 

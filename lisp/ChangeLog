@@ -1,3 +1,8 @@
+2000-03-04  John Harper  <john@dcs.warwick.ac.uk>
+
+	* replace.jl (replace-preserve-case): new variable, used by
+	replace-last-match
+
 2000-02-25  John Harper  <john@dcs.warwick.ac.uk>
 
 	* windows.jl, rm-summary.jl, rm-restrict.jl, html-decode.jl,
