@@ -42,11 +42,9 @@ loaded so that the file can be decoded (through the `read-file-hook').")
 
 (defvar info-buffer (open-buffer "*Info*" t)
   "Buffer in which Info nodes are displayed.")
-(set-buffer-special info-buffer t)
 
 (defvar info-tags-buffer (make-buffer "*Info tags*")
   "Buffer for storing the current Info file's tag table.")
-(set-buffer-special info-tags-buffer t)
 
 (defvar info-history '()
   "List of `(FILE NODE POS)' showing how we got to the current node.")

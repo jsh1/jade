@@ -111,7 +111,6 @@ define that event."
 	(insert (or title "Enter key: "))
 	(setq ev (catch 'read-event
 		   (recursive-edit)))))
-    (destroy-buffer temp-buffer)
     ev))
 
 ;;;###autoload

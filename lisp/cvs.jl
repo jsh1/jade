@@ -45,11 +45,9 @@ give to CVS commands.")
 
 (defvar cvs-buffer (open-buffer "*cvs*")
   "Buffer used to display CVS summaries.")
-(set-buffer-special cvs-buffer t)
 
 (defvar cvs-output-buffer (make-buffer "*cvs-output*")
   "Buffer used for output from CVS commands.")
-(set-buffer-special cvs-output-buffer t)
 
 (defvar cvs-update-char-map '((?U . updated)
 			      (?A . added)
@@ -319,10 +317,8 @@ entered in a new buffer, under the heading TITLE."
   (let
       ((buffer (open-buffer (concat "*cvs:" title ?*) t)))
     (goto-buffer buffer)
-    (set-buffer-special buffer t)
     (text-mode)
     (setq cvs-callback-function function
-	  mildly-special-buffer t
 	  ctrl-c-keymap cvs-callback-ctrl-c-keymap)))
 
 (defun cvs-callback-finished ()
@@ -650,7 +646,9 @@ If a prefix argument is given, the directory to commit in is prompted for."
 			  (let
 			      ((canon-f (canonical-file-name f)))
 			    (mapc #'(lambda (b)
-				      (when (and (not (buffer-special-p b))
+				      (when (and (not
+						  (string= (buffer-file-name b)
+							   ""))
 						 (string-head-eq
 						  (canonical-file-name
 						   (buffer-file-name))

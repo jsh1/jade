@@ -317,13 +317,10 @@ Major mode for composing and sending mail messages."
 	;; an exception
 	(with-view (other-view)
 	  (goto-buffer temp-buffer)
-	  (set-buffer-special temp-buffer t)
 	  (goto (start-of-buffer)))
 	(error "sendmail couldn't send message"))
       ;; No errors
       (if (boundp 'sendmail-debug)
 	  (with-view (other-view)
 	    (goto-buffer temp-buffer)
-	    (set-buffer-special temp-buffer t)
-	    (goto (start-of-buffer)))
-	(destroy-buffer temp-buffer)))))
+	    (goto (start-of-buffer)))))))

@@ -22,7 +22,6 @@
 
 
 (defvar bm-buffer (make-buffer "*Buffer Menu*"))
-(set-buffer-special bm-buffer t)
 (set-buffer-read-only bm-buffer t)
 (with-buffer bm-buffer
   (setq buffer-record-undo nil))

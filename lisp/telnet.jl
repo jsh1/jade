@@ -76,9 +76,7 @@ or nil.")
 ;; Initialise a telnet buffer. ARGS is the process arg list, DIR the
 ;; new value of default-directory
 (defun telnet-init (host arg dir use-rlogin)
-  (set-buffer-special nil t)
   (setq default-directory dir
-	mildly-special-buffer t
 	shell-program (if use-rlogin rlogin-program telnet-program)
 	telnet-using-rlogin use-rlogin
 	shell-prompt-regexp telnet-prompt-regexp

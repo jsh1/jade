@@ -142,7 +142,6 @@ items to be displayed and manipulated."
 	buffer-record-undo nil
 	buffer-undo-list nil)
   (set-buffer-read-only (current-buffer) t)
-  (set-buffer-special (current-buffer) t)
   (add-hook 'unbound-key-hook 'nop)
   (call-hook 'summary-mode-hook)
   (summary-update))

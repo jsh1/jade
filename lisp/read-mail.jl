@@ -709,7 +709,6 @@ Major mode for viewing mail folders. Commands include:\n
 			       (local-file-name inbox) tofile))
 	  ;; No errors
 	  (progn
-	    (destroy-buffer temp-buffer)
 	    (unrestrict-buffer)
 	    (let
 		((inhibit-read-only t)
@@ -1237,13 +1236,7 @@ buffer will not be deleted, so it may be saved later."
     (when summary-view
       (delete-view summary-view))
     (kill-buffer rm-summary-buffer)
-    (destroy-buffer rm-summary-buffer)
-    (setq rm-current-msg nil
-	  rm-before-msg-list nil
-	  rm-after-msg-list nil
-	  rm-cached-msg-list nil
-	  rm-current-msg-index nil
-	  rm-summary-buffer nil)
+    (kill-all-local-variables)
     (when (buffer-modified-p)
       (message (concat  "Folder " (buffer-name)
 			" contains unsaved changes!")))

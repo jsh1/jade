@@ -52,7 +52,6 @@ cause the new revision _not_ to be locked, only checked out. A successive
 
 (defvar rcs-output-buffer (make-buffer "*rcs*")
   "Buffer used for output from RCS commands.")
-(set-buffer-special rcs-output-buffer t)
 
 (defvar rcs-process (make-process rcs-output-buffer)
   "Process object used to run RCS commands.")
@@ -135,10 +134,8 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
     (if buffer
 	(goto-buffer buffer)
       (setq buffer (open-buffer buf-name))
-      (set-buffer-special buffer t)
       (goto-buffer buffer)
-      (setq mildly-special-buffer t
-	    keymap-path (cons rcs-callback-keymap keymap-path)))
+      (setq keymap-path (cons rcs-callback-keymap keymap-path)))
     (text-mode)
     (setq rcs-callback-args (list file buffer command options
 				  text-prefix reread-p)

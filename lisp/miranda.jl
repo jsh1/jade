@@ -44,9 +44,7 @@ mode `shell-mode'. ARG is a string to pass as a command line argument."
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
 	  (goto-buffer (open-buffer "*miranda*" t))
-	  (set-buffer-special nil t)
 	  (setq default-directory dir
-		mildly-special-buffer t
 		shell-program miranda-program
 		shell-prompt-regexp miranda-prompt
 		shell-program-args (and arg (list arg)))

@@ -20,8 +20,7 @@
 
 (provide 'help)
 
-(defvar help-buffer (make-buffer "*Help*"))
-(set-buffer-special help-buffer t)
+(defvar help-buffer (open-buffer "*Help*"))
 
 (defvar help-keymap (make-keylist))
 (bind-keys help-keymap

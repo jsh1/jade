@@ -90,8 +90,7 @@ subexpression should contain the name of the directory.")
 	(clear-buffer compile-buffer)
       (setq compile-buffer (open-buffer "*compilation*"))
       (with-buffer compile-buffer
-	(setq ctrl-c-keymap compile-keymap))
-      (set-buffer-special compile-buffer t))
+	(setq ctrl-c-keymap compile-keymap)))
     (with-buffer compile-buffer
       (setq default-directory original-dir)))
   (when compile-buffer
@@ -235,7 +234,7 @@ buffer in a form that `goto-next-error' understands."
 			current-dir)))
 	      (unless (and last-line (= line last-line)
 			   (file-name= file last-file))
-		(setq errors (cons (cons (make-mark (pos 0 line) file)
+		(setq errors (cons (cons (make-mark (pos 0 (1- line)) file)
 					 (pos-line pos))
 				   errors)
 		      last-line line

@@ -146,7 +146,6 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
        (prompt-history-index 0)
        (prompt-history-top nil)
        result)
-    (set-buffer-special prompt-buffer t)
     (unless (stringp prompt-title)
       (setq prompt-title "Enter string:"))
     (setq prompt-old-title-msg (set-status-message prompt-title

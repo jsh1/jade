@@ -241,8 +241,6 @@ last in the buffer the current command is copied to the end of the buffer."
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
 	  (goto-buffer (open-buffer "*shell*" t))
-	  (set-buffer-special nil t)
-	  (setq mildly-special-buffer t)
 	  (shell-mode))
       (goto-buffer buffer)
       (shell-start-process))))

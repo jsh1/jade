@@ -75,9 +75,7 @@ There is no limit to the number of gdb processes you may run at once."
     (unless (setq prog (local-file-name prog))
       (error "Can only debug local programs"))
     (if (or (not buffer) (with-buffer buffer shell-process))
-	(progn
-	  (setq buffer (open-buffer "*gdb*" t))
-	  (set-buffer-special buffer t))
+	(setq buffer (open-buffer "*gdb*" t))
       (clear-buffer buffer))
     (goto-buffer buffer)
     (kill-all-local-variables)
@@ -94,8 +92,7 @@ There is no limit to the number of gdb processes you may run at once."
 	  major-mode 'gdb-mode
 	  ctrl-c-keymap gdb-ctrl-c-keymap
 	  gdb-last-buffer buffer
-	  gdb-buffer-p t
-	  mildly-special-buffer t)
+	  gdb-buffer-p t)
     (call-hook 'gdb-hook)))
 
 (defun gdb-mode ()
