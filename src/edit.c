@@ -24,7 +24,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <malloc.h>
 #include <assert.h>
 
 #ifdef NEED_MEMORY_H
@@ -65,14 +64,17 @@
 #define ALLOC_LL(tx,n) \
     r_alloc((void **)&((tx)->tx_Lines), sizeof(LINE) * (n))
 
-/* Reallocate a buffer to contain N LINE structures. Returns null if
-   unsuccessful. */
-#define REALLOC_LL(tx,n) \
-    r_re_alloc((void **)&((tx)->tx_Lines), sizeof(LINE) * (n))
-
 /* Free one of the above in TX */
 #define FREE_LL(tx) \
     r_alloc_free((void **)&((tx)->tx_Lines))
+
+/* Reallocate a buffer to contain N LINE structures. Sets tx->tx_Lines to
+   null if unsuccessful (freeing the old buffer). */
+#define REALLOC_LL(tx,n)						    \
+    do {								    \
+	if(r_re_alloc((void **)&((tx)->tx_Lines), sizeof(LINE) * (n)) == 0) \
+	    FREE_LL(tx);						    \
+    } while(0)
 
 extern void *r_alloc(void **ptr, size_t size);
 extern void r_alloc_free(void **ptr);
@@ -80,17 +82,25 @@ extern void *r_re_alloc(void **ptr, size_t size);
 
 #else /* USE_R_ALLOC */
 
-/* Use standard malloc calls */
+/* Use standard allocation calls */
 
 #define ALLOC_LL(tx,n) \
     (tx->tx_Lines = sys_alloc(sizeof(LINE) * (n)))
 
-#define REALLOC_LL(tx,n) \
-    sys_realloc((tx)->tx_Lines, sizeof(LINE) * (n))
+#define FREE_LL(tx)				\
+    do {					\
+	sys_free((tx)->tx_Lines);		\
+	(tx)->tx_Lines = 0;			\
+    } while(0)
 
-/* Free one of the above in TX */
-#define FREE_LL(tx) \
-    sys_free((tx)->tx_Lines)
+#define REALLOC_LL(tx,n)						\
+    do {								\
+	LINE *tem = sys_realloc((tx)->tx_Lines, sizeof(LINE) * (n));	\
+	if(tem != 0)							\
+	    (tx)->tx_Lines = tem;					\
+	else								\
+	    FREE_LL((tx)->tx_Lines);					\
+    } while(0)
 
 #endif /* !USE_R_ALLOC */
 
@@ -156,7 +166,6 @@ kill_line_list(TX *tx)
 		FREE_LINE_BUF(tx, tx->tx_Lines[i].ln_Line);
 	}
 	FREE_LL(tx);
-	tx->tx_Lines = NULL;
 	tx->tx_NumLines = 0;
 	tx->tx_TotalLines = 0;
     }
@@ -202,12 +211,12 @@ resize_line_list(TX *tx, long change, long where)
        || (tx->tx_TotalLines - newsize) > MAX_SPARE_LINES)
     {
 	/* Only reallocate if there's not enough space in the array */
-	if(tx->tx_Lines != 0
-	   ? !REALLOC_LL(tx, newsize + ALLOC_SPARE_LINES)
-	   : !ALLOC_LL(tx, newsize + ALLOC_SPARE_LINES))
-	{
-	    return NULL;
-	}
+	if(tx->tx_Lines != 0)
+	    REALLOC_LL(tx, newsize + ALLOC_SPARE_LINES);
+	else
+	    ALLOC_LL(tx, newsize + ALLOC_SPARE_LINES);
+	if(tx->tx_Lines == 0)
+	    return 0;
 	tx->tx_TotalLines = newsize + ALLOC_SPARE_LINES;
     }
     if(change > 0)
