@@ -25,22 +25,31 @@
   "Hook called when an input event saying that a window should be closed
 is received.")
 
+;; Call this from the original window
+(defun setup-new-window (win &optional buffer)
+  (let
+      ((old-buf-list buffer-list))
+    (unless buffer
+      (setq buffer (current-buffer)))
+    (setq window-list (cons win window-list))
+    (with-window win
+      (setq buffer-list (cons buffer
+			      (delq buffer (copy-sequence old-buf-list))))
+      (set-current-buffer buffer win)))
+  win)
+
 (defun open-window (&optional buffer x y w h)
   "Creates a new window display BUFFER or the buffer that the current window is
 showing."
   (interactive)
-  (let
-      ((old-buf-list buffer-list)
-       win)
-    (unless buffer
-      (setq buffer (current-buffer)))
-    (when (setq win (make-window x y w h))
-      (setq window-list (cons win window-list))
-      (with-window win
-	(setq buffer-list (cons buffer (delq buffer
-					     (copy-sequence old-buf-list))))
-	(set-current-buffer buffer win))
-      win)))
+  (setup-new-window (make-window x y w h) buffer))
+
+(defun open-window-on-display (display &optional buffer)
+  "Create a new window on DISPLAY, optionally showing BUFFER."
+  (interactive "sDisplay:")
+  (unless (fboundp 'make-window-on-display)
+    (error "Multiple displays aren't supported by this window system"))
+  (setup-new-window (make-window-on-display display) buffer))
 
 (defun close-window (&optional win)
   "Close window WIN, or the current window."
