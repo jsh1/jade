@@ -18,14 +18,23 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
-;; Hook to call dired whenever someone tries to open a directory
-(defun dired-find-file-hook (f)
-  (when (file-directory-p f)
-    ;; hack for hook conventions
-    (with-buffer (current-buffer)
-      (dired f)
-      (current-buffer))))
+(defun dired-read-file-hook (filename buffer)
+  (when (file-directory-p filename)
+    (with-buffer buffer
+      (set-buffer-file-name buffer filename)
+      (setq buffer-file-modtime (file-modtime filename))
+      (dired-mode))))
 
-(add-hook 'find-file-hook 'dired-find-file-hook)
+(defun dired-write-file-hook (filename buffer)
+  (and (file-directory-p filename)
+       (error "Can't write to directories, %s" filename)))
+
+(defun dired-insert-file-hook (filename)
+  (and (file-directory-p filename)
+       (error "Can't insert directories, %s" filename)))
+
+(add-hook 'read-file-hook 'dired-read-file-hook)
+(add-hook 'write-file-hook 'dired-write-file-hook)
+(add-hook 'insert-file-hook 'dired-insert-file-hook)
 
 ;;;###autoload (load "dired-hooks")
