@@ -26,9 +26,12 @@
   "Regular expression which defines anything that is not in a word.")
 
 (defvar paragraph-separate "^[\t\f\n ]*\n"
-  "Regexp matching a paragraph-separating string. The character immediately
-following the matched text is taken as the start of the following
-paragraph.")
+  "Regular expression matching a paragraph-separating string, but not matching
+the start of a paragraph itself.")
+
+(defvar paragraph-start "^[\t\f\n ]*$"
+  "Regular expression matching the start of a paragraph. See also the variable
+`paragraph-separate'.")
 
 (defvar page-start "^\f"
   "Regular expression that matches the start of a page of text.")
@@ -36,6 +39,7 @@ paragraph.")
 (make-variable-buffer-local 'word-regexp)
 (make-variable-buffer-local 'word-not-regexp)
 (make-variable-buffer-local 'paragraph-separate)
+(make-variable-buffer-local 'paragraph-start)
 (make-variable-buffer-local 'page-start)
 
 (defvar toggle-read-only-function nil
@@ -302,37 +306,42 @@ interactively, the cursor is set to this position."
   (interactive "@p")
   (unless pos
     (setq pos (cursor-pos)))
-  ;; Positive arguments
-  (while (and (> count 0)
-	      (< pos (end-of-buffer)))
-    ;; Skip any lines at POS matching the separator
-    (while (and (< (pos-line pos) (buffer-length))
-		(looking-at paragraph-separate pos))
-      (setq pos (forward-line 1 pos)))
-    ;; Search for the next separator
-    (if (re-search-forward paragraph-separate (forward-char 1 pos))
-	(setq count (1- count)
-	      pos (if (zerop count) (match-start) (match-end)))
-      (setq pos (end-of-buffer)
+  (let
+      ((sep-or-start (concat ?\( paragraph-separate ?\| paragraph-start ?\) )))
+    ;; Positive arguments
+    (while (and (> count 0)
+		(< pos (end-of-buffer)))
+      ;; Skip any lines at POS matching the separator
+      (while (and (< (pos-line pos) (buffer-length))
+		  (looking-at paragraph-separate pos))
+	(setq pos (forward-line 1 pos)))
+      ;; Search for the next separator or start
+      (if (re-search-forward sep-or-start (forward-char 1 pos))
+	  (setq count (1- count)
+		pos (if (zerop count) (match-start) (match-end)))
+	(setq pos (end-of-buffer)
 	      count 0)))
-  ;; Negative arguments
-  (while (and (< count 0)
-	      (> pos (start-of-buffer)))
-    ;; Search for the previous separator
-    (if (re-search-backward paragraph-separate (backward-char 1 pos))
-	(progn
-	  ;; Check if we actually moved
-	  (unless (>= (match-end) pos)
-	    (setq count (1+ count)))
-	  (setq pos (if (zerop count) (match-end) (match-start)))
-	  ;; Skip lines above the current match, if they match
-	  ;; the separator as well, skip them
-	  (while (and (> (pos-line (match-start)) 0)
-		      (looking-at paragraph-separate
-				  (forward-line -1 (match-start))))
-	    (setq pos (if (zerop count) (match-end) (match-start)))))
-      (setq pos (start-of-buffer)
-	    count 0)))
+    ;; Negative arguments
+    (while (and (< count 0)
+		(> pos (start-of-buffer)))
+      ;; Skip any lines at POS matching the separator
+      (while (and (< (pos-line pos) (buffer-length))
+		  (looking-at paragraph-separate pos))
+	(setq pos (forward-line -1 pos)))
+      ;; Search for the previous paragraph
+      (if (re-search-backward sep-or-start (backward-char 1 pos))
+	  (let*
+	      ((start (match-start))
+	       (end (match-end))
+	       (separator-match (looking-at paragraph-separate start)))
+	    ;; Check if we actually moved
+	    (unless (>= (match-end) pos)
+	      (setq count (1+ count)))
+	    (setq pos (if (and (zerop count) separator-match)
+			  (match-end)
+			(match-start))))
+	(setq pos (start-of-buffer)
+	      count 0))))
   pos)
 
 (defun backward-paragraph (count &optional pos)
