@@ -35,7 +35,8 @@ character following the insertion."
 
 ;;;###autoload
 (defun replace-string (old new pos)
-  "Replace the string OLD beginning at position POS, by the string NEW."
+  "Replace the string OLD beginning at position POS, by the string NEW.
+Returns the position of the character following the insertion."
   (when (looking-at (quote-regexp old) pos)
     (delete-area (match-start) (match-end))
     (insert new (match-start))))
@@ -43,8 +44,9 @@ character following the insertion."
 ;;;###autoload
 (defun replace-all (from template)
   "Replace all occurrences of the regexp FROM with the expansion from TEMPLATE
-for that particular occurrence (see the `replace-regexp' function for details
-of what can be in TEMPLATE)."
+for that particular occurrence (see the `expand-last-match' function for
+details of what can be in TEMPLATE). Moves the cursor to the end of the
+last change."
   (interactive "sReplace regexp:\nsReplace regexp %s with:")
   (let
       (match)
@@ -65,6 +67,7 @@ of what can be in TEMPLATE)."
   "RET" 'query-replace-exit
   "ESC" 'query-replace-exit
   "q" 'query-replace-exit
+  "Ctrl-g" 'query-replace-exit
   "." 'query-replace-once-only
   "!" 'query-replace-rest
   "^" 'query-replace-backtrack
@@ -105,15 +108,12 @@ of what can be in TEMPLATE)."
 
 (defun query-replace-rest ()
   (interactive)
-  (goto (replace-regexp query-replace-from query-replace-to nil nil
-			     case-fold-search))
-  (let
-      (match)
-    (while (setq match (re-search-forward query-replace-from nil nil
-					 case-fold-search))
-      (goto (replace-last-match query-replace-to)))
-    (setq query-replace-alive nil)
-    (throw 'query-replace)))
+  (and (looking-at query-replace-from nil nil case-fold-search)
+       (goto (replace-last-match query-replace-to)))
+  (while (re-search-forward query-replace-from nil nil case-fold-search)
+    (goto (replace-last-match query-replace-to)))
+  (setq query-replace-alive nil)
+  (throw 'query-replace))
 
 (defun query-replace-edit ()
   (interactive)
@@ -161,7 +161,7 @@ type one of the following special commands,\n
   `.'                replace this occurrence then exit the query-replace
   `!'                replace all matches from here to the end of the buffer
   `^'                return to the previous match
-  `Ctrl-r'           enter a recursive edit (`ESC Ctrl-c' to exit)
+  `Ctrl-r'           enter a recursive edit (`Ctrl-Meta-c' to exit)
   `Ctrl-w'           delete the match, then enter a recursive edit
   `Ctrl-h'           show some help text"
   (interactive "sQuery replace regexp: \nsQuery replace regexp %s with: ")
@@ -180,7 +180,7 @@ type one of the following special commands,\n
 	(while (and query-replace-alive
 		    (setq match
 			  (re-search-forward query-replace-from nil
-					    nil case-fold-search)))
+					     nil case-fold-search)))
 	  (goto match)
 	  (setq query-replace-trace (cons match query-replace-trace))
 	  (catch 'query-replace
