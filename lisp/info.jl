@@ -181,7 +181,7 @@ is split.")
       (setq path (cdr path)))
     (unless read-dir
       (signal 'info-error '("Can't find `dir' file")))
-    (setq buffer-file-modtime 0
+    (setq buffer-file-modtime (cons 0 0)
 	  info-file-name "dir"
 	  info-node-name "Top"
 	  info-has-tags-p nil
@@ -251,7 +251,7 @@ is split.")
 	(info-read-dir)
       (setq filename (info-locate-file filename))
       (when (or (not (equal info-file-name filename))
-		(> (file-modtime filename) buffer-file-modtime))
+		(time-later-p (file-modtime filename) buffer-file-modtime))
 	(info-read-tags filename info-file-suffix)
 	(setq info-file-name filename))
       (if (not info-has-tags-p)
@@ -359,7 +359,7 @@ time that `info' has been called)."
     (info-remember)
     (info-find-node start-node))
    ((and (buffer-file-name) info-node-name)
-    (when (> (file-modtime (buffer-file-name)) buffer-file-modtime)
+    (when (time-later-p (file-modtime (buffer-file-name)) buffer-file-modtime)
       (info-find-node info-node-name)))
    (t
     (info-find-node "(dir)"))))
