@@ -144,7 +144,7 @@ using one of the following to match against:
   (with-buffer (unless buf (current-buffer))
     (unless major-mode
       (setq name (or name
-		     (and (looking-at "-\\*- *([^ ]+) *-\\*-" (start-of-buffer))
+		     (and (looking-at ".*-\\*- *([^ ]+) *-\\*-" (start-of-buffer))
 			  (expand-last-match "\\1"))
 		     mode-name
 		     (buffer-file-name buf)))
