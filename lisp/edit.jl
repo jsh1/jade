@@ -120,9 +120,35 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
 
 ;; Lines
 
+;; When moving up and down lines, the column that we are aiming for
+(defvar goal-column nil)
+
+;; The view that the goal-column refers to
+(defvar goal-view nil)
+
 (defun backward-line (&optional count pos)
+  "Return the position of the line COUNT lines below position POS. (defaults
+to one line from the cursor)."
   (interactive "@p")
   (forward-line (if count (- count) -1) pos))
+
+(defun next-line (count)
+  "Return the position of the line COUNT lines below the cursor, adjusting
+the column position to preserve the original position."
+  (interactive "@p")
+  (unless (and (eq last-command 'next-line)
+	       (eq goal-view (current-view)))
+    ;; Set new goal
+    (setq goal-column (pos-col (char-to-glyph-pos (cursor-pos)))
+	  goal-view (current-view)))
+  (setq this-command 'next-line)
+  (glyph-to-char-pos (pos goal-column (+ (pos-line (cursor-pos)) count))))
+
+(defun previous-line (count)
+  "Return the position of the line COUNT lines above the cursor, adjusting
+the column position to preserve the original position."
+  (interactive "@p")
+  (next-line (- count)))
 
 (defun split-line (&optional count pos)
   "Insert COUNT newline characters before position POS (or before the
