@@ -77,9 +77,7 @@ server_accept_connection(int unused_fd)
 			       client_list);
 	/* lose this on exec() */
 	fcntl(confd, F_SETFD, 1);
-	cursor(curr_vw, CURS_OFF);
 	call_lisp2(sym_server_open_file, filename, linenum);
-	cursor(curr_vw, CURS_ON);
     }
 }
 
