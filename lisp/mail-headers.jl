@@ -237,11 +237,16 @@
 ;; a comma
 (defun mail-insert-list (list &optional no-commas)
   (let
-      ((initial-indent (pos-col (char-to-glyph-pos))))
+      ((initial-indent (if (looking-at
+			    (concat mail-header-name " *") (start-of-line))
+			   ;; Get indent from start of header body
+			   (pos-col (char-to-glyph-pos (match-end)))
+			 ;; Get from current indentation
+			 (pos-col (indent-pos)))))
     (while list
       (when (> (+ (length (car list))
 		  (pos-col (char-to-glyph-pos (cursor-pos))))
-	     mail-fill-column)
+	       mail-fill-column)
       (insert "\n")
       (indent-to initial-indent))
       (insert (car list))
