@@ -20,6 +20,34 @@
 
 (provide 'c-mode)
 
+;; Commentary:
+;;
+;; This does not claim, or even attempt, to indent C correctly, it uses
+;; simple heuristics to do a naive but fairly decent job. The most blatant
+;; lossage is that it can't indent continued statements, for example:
+;;
+;;	x = y
+;;	+ z
+;;	+ a;
+;;
+;; instead of:
+;;
+;;	x = y
+;;	    + z
+;;	    + a;
+;;
+;; There is a solution however. Just ensure that expressions like this
+;; have some extra parentheses, e.g.:
+;;
+;;	x = (y
+;;	     + z
+;;	     + a);
+;;
+;; Other problems also undoubtedly exist.
+
+
+;; Configuration
+;;
 ;; Example settings:
 ;;                   BSD  GNU  K&R
 ;; c-body-indent      4    2    5
@@ -29,13 +57,23 @@
 
 (defvar c-body-indent 4
   "Indentation of code with respect to its containing block.")
+(make-variable-buffer-local 'c-body-indent)
+
 (defvar c-brace-indent -4
   "Extra indentation of braces relative to the body of the code they
 contain.")
+(make-variable-buffer-local 'c-brace-indent)
+
 (defvar c-case-indent -4
   "Extra indentation for case statements.")
+(make-variable-buffer-local 'c-case-indent)
+
 (defvar c-label-indent -4
   "Extra indentation for labels.")
+(make-variable-buffer-local 'c-label-indent)
+
+
+;; Variables
 
 (defvar c-mode-keymap (make-keylist))
 (bind-keys c-mode-keymap
@@ -48,6 +86,9 @@ contain.")
 (bind-keys c-mode-ctrl-c-keymap
   "Ctrl-\\" 'c-backslash-area)
 
+
+;; Code
+
 ;;;###autoload
 (defun c-mode ()
   "C Mode:\n
@@ -57,9 +98,7 @@ Special commands are,\n
   `{', `}', `:'			Insert the character then indent the line
   `TAB'				Indent the current line
   `Ctrl-c Ctrl-\\'		Aligns backslash characters at the end
-				of each line in the current block.
-  `ESC Ctrl-b'			Move backwards one expression.
-  `ESC Ctrl-f'			Move forward one expression."
+				of each line in the current block."
   (interactive)
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
@@ -108,11 +147,11 @@ Special commands are,\n
   (set-indent-pos (c-indent-pos pos)))
 
 ;; Attempt to find the previous statement
-(defun c-backward-stmt (pos)
+(defun c-backward-stmt (pos &optional skip-blocks)
   (let
       (stmt-pos back-1-pos)
     (condition-case nil
-	(while (setq pos (c-backward-exp 1 pos t))
+	(while (setq pos (c-backward-exp 1 pos (not skip-blocks)))
 	  (cond
 	   ((null back-1-pos)
 	    (setq back-1-pos pos))
@@ -128,7 +167,7 @@ Special commands are,\n
 (defun c-balance-ifs (pos &optional depth)
   (unless depth
     (setq depth 1))
-  (while (and (/= depth 0) (setq pos (c-backward-stmt pos)))
+  (while (and (/= depth 0) (setq pos (c-backward-stmt pos t)))
     (cond
      ((and (looking-at "else[\t ]*" pos)
 	   (not (looking-at "[\t ]*if[\t ]*\\(" (match-end))))
@@ -153,10 +192,12 @@ Special commands are,\n
       ;; Find the beginning of the expression to indent relative to
       (unless exp-pos
 	;; Start of the containing expression
-	(when (re-search-backward "[\{\(]" pos)
+	(when (re-search-backward "[\{\(\[]" pos)
 	  (setq exp-pos (match-start))))
       (setq exp-ind (char-to-glyph-pos exp-pos))
-      (unless (equal (indent-pos exp-pos) exp-ind)
+
+      (unless (or (equal (indent-pos exp-pos) exp-ind)
+		  (memq (get-char (forward-char -1 exp-pos)) '(?\( ?\{ ?\[)))
 	(when (and (looking-at "^[\t ]*([^][(){}\"'a-zA-Z0-9_\t ]+)"
 			       (start-of-line exp-pos))
 		   (< (match-start 1) exp-pos))
@@ -189,7 +230,7 @@ Special commands are,\n
 	    ((prev (c-backward-stmt exp-pos)))
 	  ;; *Need to loop here searching back to the correct level*
 	  (when (and prev (/= (pos-col prev) (pos-col exp-pos))
-		     (not (looking-at "case .*:|default[\t ]*:|.*;" prev)))
+		     (not (looking-at "case .*:|default[\t ]*:|[a-zA-Z_][a-zA-Z0-9_]+:|.*;" prev)))
 	    ;; A continuation?
 	    (when (and (looking-at "else[\t ]*" prev)
 		       (not (looking-at "[\t ]*if[\t ]*\\(" (match-end))))
@@ -210,8 +251,8 @@ Special commands are,\n
 
        ((looking-at "[a-zA-Z_][a-zA-Z0-9_]+:([\t ]|$)" exp-pos)
 	;; A goto label, indented back by c-label-indent
-	(unless (left-char c-label-indent exp-ind)
-	  (setq exp-ind (pos 0 (pos-line exp-pos))))))
+	(setq exp-ind (or (left-char c-label-indent exp-ind)
+			  (pos 0 (pos-line exp-pos))))))
 
       ;; Next, look at the contents of this line and see if it needs any
       ;; special treatment
