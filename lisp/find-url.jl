@@ -42,7 +42,7 @@ display them.")
   "The function to pass any urls to that aren't matched by find-url-alist.")
 
 (defvar find-url-external-command
-  "(netscape -remote 'openUrl(%s)' || netscape '%s') >/dev/null 2>&1 </dev/null &"
+  "( netscape -remote 'openUrl(%s)' || netscape '%s' ) &"
   "Shell command used to direct an external web browser to load a http: url.
 Any `%s' substrings will be replaced by the name of the url.")
 
@@ -66,15 +66,15 @@ non-nil, then the external viewer is invoked."
 		   ((arg current-prefix-arg))
 		 (list (prompt-for-string
 			"URL:" (and (blockp) (copy-block))) arg)))
-  (when call-external
-    (find-url-external url))
-  (catch 'foo
-    (mapc #'(lambda (cell)
-	      (when (string-match (car cell) url nil t)
-		(throw 'foo (funcall (cdr cell) url))))
-	  find-url-alist)
-    ;; Call default function
-    (funcall find-url-default url)))
+  (if call-external
+    (find-url-external url)
+    (catch 'foo
+      (mapc #'(lambda (cell)
+		(when (string-match (car cell) url nil t)
+		  (throw 'foo (funcall (cdr cell) url))))
+	    find-url-alist)
+      ;; Call default function
+      (funcall find-url-default url))))
 
 ;;;###autoload
 (defun find-file-as-url (filename)
@@ -93,7 +93,7 @@ to view URL."
     ;; An inifinite list of URLS to pass to format
     (rplacd args args)
     (message "Calling external browser..." t)
-    (shell-command (apply 'format nil find-url-external-command args))))
+    (system (apply 'format nil find-url-external-command args))))
 
 (defun find-url-magic-buffer (url)
   (when (or (string-match "\\.html?$" (buffer-file-name))
