@@ -502,7 +502,7 @@ update_status_buffer(VW *vw, char *status_buf, u_long buflen)
     }
     else
     {
-	len = sizeof("Fundamental");
+	len = sizeof("Fundamental") - 1;
 	len = MIN(len, buflen - (ptr - status_buf));
 	memcpy(ptr, "Fundamental", POS(len));
     }
