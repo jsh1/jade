@@ -64,7 +64,7 @@ functions that operate as filters on their argument streams.")
 
 (defface mime-highlight-face "Face to highlight MIME stubs."
   (set-face-attribute mime-highlight-face 'bold t)
-  (set-face-attribute mime-highlight-face 'underline t))
+  (set-face-attribute mime-highlight-face 'foreground "darkblue"))
 
 (defvar mmencode-program "mmencode"
   "AT&T mmencode program for MIME content encodings. Set to nil to handle
@@ -157,7 +157,7 @@ external mmencode program, otherwise handle locally.")
 			 ;; seems some mailers (sun dtmail) put the filename
 			 ;; in the content-type parameters!?
 			 (assq 'name (nthcdr 2 content-type))))))
-   (insert "(")
+   (insert "[[")
    (when content-disp
      (format (current-buffer) "%s: " (car content-disp)))
    (when filename
@@ -166,7 +166,7 @@ external mmencode program, otherwise handle locally.")
 ;  (when (nth 2 content-type)
 ;    (format (current-buffer) "params: %S " (nth 2 content-type)))
    (format (current-buffer) "(%s encoding)" content-xfer-enc)
-   (insert ")\n")
+   (insert "]]\n")
    (make-extent out-start (end-of-line out-start)
 		(list 'face mime-highlight-face
 		      'mouse-face active-face
