@@ -572,3 +572,12 @@ Immediately prior to exiting, calls `before-exit-hook'."
 	    (yes-or-no-p "Unsaved buffers exist; quit anyway?"))
     (call-hook 'before-exit-hook)
     (throw 'quit (if (numberp no-query) no-query 0))))
+
+(defun buffer-read-only-p (&optional buffer)
+  (condition-case nil
+      (buffer-symbol-value 'read-only (extent-root buffer) nil)
+    (error)))
+
+(defun set-buffer-read-only (buffer status)
+  (with-buffer (or buffer (current-buffer))
+    (setq read-only status)))
