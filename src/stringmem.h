@@ -43,19 +43,19 @@ typedef struct _MemChunk {
     union {
 	struct _MemChunk *nextfree;
 	u_char		 mem[0];
-    }		    mc_Mem;
+    }		    mc_Mem ALIGN_4;
 } MemChunk;
 
 #define MBT_FREE   -2		/* An unused chunk */
 #define MBT_MALLOC -1		/* A malloc'd chunk */
 
 #define MCHNK_SIZE(chunksiz) \
-    ((chunksiz) + (sizeof(union mc_header)))
+    ((chunksiz) + OFFSETOF(MemChunk, mc_Mem))
 
 /* A group of chunks for allocation purposes. */
 typedef struct {
     struct MinNode  mbl_Node;
-    MemChunk	    mbl_Chunks[0];
+    MemChunk	    mbl_Chunks[0] ALIGN_4;
 } MemBlock;
 
 #define MBLK_SIZE(chunksiz, numchunks) \
@@ -83,6 +83,10 @@ typedef struct {
 
 /* Each MemBlock should be around 2K */
 #define MBLOCKSIZE    (2044 - sizeof(MemBlock))
+
+/* for lisp.h: everything returned by sm_alloc() is aligned to a four
+   byte boundary. */
+#define STRMEM_ALIGNMENT 4
 
 /* The top-level structure. */
 typedef struct {
