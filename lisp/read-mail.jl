@@ -18,10 +18,12 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
-(require 'summary)
 (require 'maildefs)
 (require 'mail-headers)
 (provide 'read-mail)
+
+;; Suppress annoying compiler warnings
+(eval-when-compile (require 'rm-summary))
 
 
 ;; Configuration
@@ -33,41 +35,12 @@ page past the limits of the current message.")
 (defvar rm-move-after-deleting t
   "When t move to the next message after deleting the current message.")
 
-(defvar rm-summary-format "%a  %D %m  %-^16F  %l"
-  "A string defining the format of lines in mail summary buffers. It is
-copied verbatim except for formatting directives introduced by percent
-signs (%). Each directive consists of a percent character, an optional
-numeric argument, and a single character specifying what should be
-inserted in place of the format directive. These characters include:
-
-	a	A 3-character attribute string, showing the status of
-		the message
-	b	The name of the buffer containing the folder
-	D	The numeric day of the month when the message was sent
-	w	The day of the week, as a 3-character string
-	f	The address of the first sender
-	F	The name of address of the first sender
-	m	The abbreviated month name of the date
-	M	The numeric month of the message's date
-	n	The index of the message in the folder
-	N	The total number of messages in the folder
-	l	The subject line
-	t	The hour and minute at which the message was sent
-	T	The hour, minute, and second of the date
-	%	Insert a percent character
-	r	The name of the first recipient of the message
-	Y	The numeric year of the sending date
-	z	The timezone, as a string
-
-The list of formatting options can be extended by the variable
-`rm-summary-print-functions'.")
-
 (defvar rm-status-format "%b-%n/%N: %f"
   "A string defining the format of the text replacing the `Jade: BUFFER'
 text in the mail buffer's status line. The format conversions available
 are the same as those for the `rm-summary-format' variable.")
 
-(defvar rm-summary-format-alist nil
+(defvar rm-format-alist nil
   "An alist of (CHARACTER . FUNCTION) defining formatting directives for the
 rm-summary-format-string. The function is called as: (FUNCTION MESSAGE-
 STRUCTURE); it should return the string to be inserted (no newlines).")
@@ -117,7 +90,7 @@ when set to the symbol `invalid'.")
 (make-variable-buffer-local 'rm-cached-msg-list)
 
 (defvar rm-summary-buffer nil
-  "The buffer displaying the summary of this folder.")
+  "The buffer displaying the summary of this folder, or nil.")
 (make-variable-buffer-local 'rm-summary-buffer)
 
 (defvar rm-keymap
@@ -132,14 +105,12 @@ when set to the symbol `invalid'.")
     "h" 'rm-summary
     "d" 'rm-mark-message-deletion
     "Ctrl-d" 'rm-mark-message-deletion
-    "x" '(rm-with-summary (summary-execute))
-    "#" '(rm-with-summary (summary-execute))
+    "x" 'rm-expunge
+    "#" 'rm-expunge
     "g" 'rm-get-mail
     "k" 'rm-kill-subject
     "q" 'rm-save-and-quit
-    "u" '(rm-with-summary (summary-unmark-item
-			   (with-buffer rm-summary-mail-buffer
-			     rm-current-msg)))
+    "u" 'rm-unmark-message
     "v" 'read-mail-folder
     "r" 'rm-reply
     "R" '(rm-reply t)
@@ -198,7 +169,6 @@ Major mode for viewing mail folders. Local bindings are:\n
   (call-hook 'read-mail-mode-hook)
   ;; Build the message list and display the current message
   (rm-build-message-lists)
-  (rm-create-summary)
   (when (zerop (rm-get-mail))
     ;; No point doing this twice
     (rm-display-current-message))
@@ -216,7 +186,7 @@ Major mode for viewing mail folders. Local bindings are:\n
 ;; Internal message structure
 
 ;; FLAGS is a list of symbols, including replied, unread, filed,
-;; forwarded, anything else?
+;; forwarded, deleted, anything else?
 (defconst rm-msg-mark 0)
 (defconst rm-msg-total-lines 1)
 (defconst rm-msg-header-lines 2)
@@ -237,13 +207,15 @@ Major mode for viewing mail folders. Local bindings are:\n
   (unless (memq flag (rm-get-msg-field msg rm-msg-flags))
     (rm-set-msg-field msg rm-msg-flags
 		      (cons flag (rm-get-msg-field msg rm-msg-flags)))
-    (rm-invalidate-summary msg)))
+    (when rm-summary-buffer
+      (rm-invalidate-summary msg))))
 
 (defun rm-clear-flag (msg flag)
   (when (memq flag (rm-get-msg-field msg rm-msg-flags))
     (rm-set-msg-field msg rm-msg-flags
 		      (delq flag (rm-get-msg-field msg rm-msg-flags)))
-    (rm-invalidate-summary msg)))
+    (when rm-summary-buffer
+      (rm-invalidate-summary msg))))
 
 (defmacro rm-test-flag (msg flag)
   (list 'memq flag (list 'rm-get-msg-field msg rm-msg-flags)))
@@ -493,6 +465,14 @@ Major mode for viewing mail folders. Local bindings are:\n
   (rm-cached-form msg 'references
     (rm-get-msg-header msg "References" t t)))
 
+;; Map FUNCTION over all messages in the current folder
+(defun rm-map-messages (function)
+    (mapc #'(lambda (msg-list)
+	      (mapc function msg-list))
+	  (list rm-before-msg-list
+		(and rm-current-msg (list rm-current-msg))
+		rm-after-msg-list)))
+  
 
 ;; Displaying messages
 
@@ -527,7 +507,7 @@ Major mode for viewing mail folders. Local bindings are:\n
 	;; Called when the current restriction is about to be
 	;; displayed
 	(call-hook 'read-mail-display-message-hook (list rm-current-msg)))))
-  (unless no-summary-update
+  (unless (or (not rm-summary-buffer) no-summary-update)
     ;; Fix the summary buffer if it exists
     (rm-with-summary
      (rm-summary-update-current))))
@@ -537,27 +517,16 @@ Major mode for viewing mail folders. Local bindings are:\n
   (setq buffer-status-id (rm-cached-form rm-current-msg 'status-id
 			   (let
 			       ((arg-list (cons rm-current-msg nil))
-				(format-hooks-alist rm-summary-format-alist))
+				(format-hooks-alist rm-format-alist))
 			     (rplacd arg-list arg-list)
 			     (apply 'format nil rm-status-format arg-list))))
-  (let
-      ((stat (mapcar 'symbol-name (rm-get-msg-field rm-current-msg
-						    rm-msg-flags))))
-    (setq minor-mode-names (if (memq 'delete
-				     (with-buffer rm-summary-buffer
-				       (summary-get-pending-ops
-					(with-buffer rm-summary-mail-buffer
-					  rm-current-msg))))
-			       (cons "deleted" stat)
-			     stat))))
+  (setq minor-mode-names (mapcar 'symbol-name
+				 (rm-get-msg-field rm-current-msg
+						   rm-msg-flags))))
 
 (defun rm-invalidate-status-cache ()
-  (mapc #'(lambda (m)
-	    (rm-invalidate-tag m 'status-id)) rm-before-msg-list)
-  (when rm-current-msg
-    (rm-invalidate-tag rm-current-msg 'status-id))
-  (mapc #'(lambda (m)
-	    (rm-invalidate-tag m 'status-id)) rm-after-msg-list))
+  (rm-map-messages  #'(lambda (m)
+			(rm-invalidate-tag m 'status-id))))
 
 ;; Display an arbitrary MSG
 (defun rm-display-message (msg)
@@ -660,8 +629,6 @@ Major mode for viewing mail folders. Local bindings are:\n
   ;; Need to delete del-msgs in the most efficient order, to
   ;; minimise the amount of list thrashing. The current method
   ;; isn't that great.
-  ;; Having said that, it's a lot better than what could happen if we
-  ;; just deleted messages in the order thrown at us by summary-execute
   (let
       ((old-curr-msg rm-current-msg)
        skip-count)
@@ -812,65 +779,12 @@ Major mode for viewing mail folders. Local bindings are:\n
 	(format t "Spool file %s doesn't exist" this))
       (when (numberp this-ret)
         (format t "Got %d new messages" count)))
-    (rm-with-summary
-     (summary-update))
+    (when rm-summary-buffer
+      (rm-with-summary
+       (summary-update)))
     (rm-display-message old-msg)
     (call-hook 'rm-after-import-hook)
     count))
-
-
-;; Summary interface
-
-(defmacro rm-command-with-folder (command)
-  (list 'rm-with-folder
-	(list 'call-command command 'current-prefix-arg)))
-
-(defmacro rm-command-in-folder (command)
-  (list 'rm-in-folder
-	(list 'call-command command 'current-prefix-arg)))
-
-(defvar rm-summary-keymap
-  (bind-keys (make-sparse-keymap summary-keymap)
-    "n" '(rm-command-with-folder 'rm-next-undeleted-message)
-    "p" '(rm-command-with-folder 'rm-previous-undeleted-message)
-    "N" '(rm-command-with-folder 'rm-next-message)
-    "P" '(rm-command-with-folder 'rm-previous-message)
-    "SPC" '(rm-command-with-folder 'rm-next-page)
-    "BS" '(rm-command-with-folder 'rm-previous-page)
-    "t" '(rm-command-with-folder 'rm-toggle-all-headers)
-    "g" '(rm-command-with-folder 'rm-get-mail)
-    "k" '(rm-command-with-folder 'rm-kill-subject)
-    "q" '(rm-command-with-folder 'rm-save-and-quit)
-    "v" '(rm-command-with-folder 'read-mail-folder)
-    "r" '(rm-command-in-folder 'rm-reply)
-    "R" '(rm-command-in-folder '(rm-reply t))
-    "f" '(rm-command-in-folder 'rm-followup)
-    "F" '(rm-command-in-folder '(rm-followup t))
-    "z" '(rm-command-in-folder 'rm-forward)
-    "*" '(rm-command-with-folder 'rm-burst-message)
-    "s" '(rm-command-with-folder 'rm-output)
-    "Ctrl-t" '(rm-command-with-folder 'rm-toggle-threading)
-    "Ctrl-s" '(rm-command-with-folder 'rm-sort-folder)
-    "|" '(rm-command-with-folder 'rm-pipe-message)))
-
-(defvar rm-summary-functions '((select . rm-summary-select-item)
-			       (list . rm-summary-list)
-			       (print . rm-summary-print-item)
-			       (current . rm-summary-current-item)
-			       (delete . rm-summary-delete-item)
-			       (execute-end . rm-summary-execute-end)
-			       (after-marking . rm-summary-after-marking)
-			       (after-update . rm-summary-after-update))
-  "Function vector for summary-mode.")
-
-(defvar rm-summary-mail-buffer nil
-  "The buffer whose folder is being summarised.")
-(make-variable-buffer-local 'rm-summary-mail-buffer)
-
-(defvar rm-summary-msgs-to-delete nil
-  "List of messages to be deleted. Built up during the execute phase of
-the summary buffer.")
-(make-variable-buffer-local 'rm-summary-msgs-to-delete)
 
 
 ;; Macros for switching between the summary and mail views
@@ -905,96 +819,19 @@ the summary buffer.")
 		   (goto-buffer rm-summary-mail-buffer)))
 	      forms)))
 
-;; Create a summary buffer for the current buffer, and return it. Installs
-;; it in rm-summary-buffer as well.
-(defun rm-create-summary ()
-  (unless rm-summary-buffer
-    (setq rm-summary-buffer (make-buffer (concat "*summary of "
-						 (buffer-name) ?*)))
-    (let
-	((mail-buf (current-buffer)))
-      (with-buffer rm-summary-buffer
-	(setq rm-summary-mail-buffer mail-buf
-	      truncate-lines t)
-	(call-hook 'read-mail-summary-mode-hook)
-	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
-	(setq major-mode 'read-mail-mode)))))
-
 
-;; Summary mechanics
-
-(defun rm-summary (&optional dont-update)
-  "Display a summary of all messages in a separate view."
-  (interactive)
-  (rm-configure-views rm-summary-buffer (current-buffer))
-  (unless dont-update
-    (summary-update)
-    (rm-summary-update-current)))
-
-;; Configure the window to display the summary in one view, and the
-;; mail buffer in the other. Return the view displaying the mail buffer
-;; SUMMARY-BUFFER and MAIL-BUFFER are the buffers to display in the two
-;; views
-(defun rm-configure-views (summary-buffer mail-buffer)
-  (let
-      (mail-view summary-view)
-    (if (= (window-view-count) 2)
-	;; Single view + minibuf
-	(setq summary-view (current-view)
-	      mail-view (split-view))
-      (let
-	  ((orig (window-view-list)))
-	(setq summary-view (car orig)
-	      mail-view (nth 1 orig))
-	(when (> (window-view-count) 3)
-	  (mapc #'(lambda (v)
-		    (unless (minibuffer-view-p v)
-		      (delete-view v)))
-		(nthcdr 2 orig)))))
-    (condition-case nil
-	(let*
-	    ((total-lines (cdr (window-dimensions)))
-	     (summary-lines (/ (* (- total-lines 3)
-				  mail-summary-percent) 100)))
-	  (if (eq mail-display-summary 'bottom)
-	      ;; Summary at bottom
-	      (progn
-		(setq mail-view (prog1 summary-view
-				  (setq summary-view mail-view)))
-		(set-view-dimensions mail-view nil
-				     (- total-lines summary-lines 3)))
-	    (set-view-dimensions summary-view nil summary-lines)))
-      ;; In case there's not enough room
-      (window-error))
-    (set-current-view summary-view)
-    (goto-buffer summary-buffer)
-    (with-view mail-view
-      (goto-buffer mail-buffer))
-    mail-view))
-
-(defun rm-summary-list ()
-  (rm-with-folder
-   (if (eq rm-cached-msg-list 'invalid)
-       (setq rm-cached-msg-list
-	     (if rm-current-msg
-		 (nconc (reverse rm-before-msg-list)
-			(cons rm-current-msg
-			       (copy-sequence rm-after-msg-list)))
-	       '()))
-     rm-cached-msg-list)))
-
 ;; Add standard format conversions; they're appended in case the user
 ;; added some of their own. The progn is to ensure compilation; this is
 ;; also why the alist is built dynamically
 (progn
-  (setq rm-summary-format-alist
+  (setq rm-format-alist
 	(nconc
-	 rm-summary-format-alist
+	 rm-format-alist
 	 (list
 	  (cons ?a #'(lambda (m)
 		       (concat (cond
 				((rm-test-flag m 'unread) ?U)
-				((memq 'delete (summary-get-pending-ops m)) ?D)
+				((rm-test-flag m 'deleted) ?D)
 				(t ? ))
 			       (cond
 				((rm-test-flag m 'replied) ?R)
@@ -1070,83 +907,6 @@ the summary buffer.")
 			 (when date
 			   (aref date mail-date-timezone)))))))))
 			 
-(defun rm-summary-print-item (item)
-  ;; Cache the summary line with the summary buffer as the tag
-  (insert (rm-cached-form item (current-buffer)
-	    (let
-		((arg-list (cons item nil))
-		 (format-hooks-alist rm-summary-format-alist))
-	      ;; An infinite list of ITEMs
-	      (rplacd arg-list arg-list)
-	      (apply 'format nil rm-summary-format arg-list)))))
-
-;; Delete all cached summary lines for MSG
-(defun rm-invalidate-summary (msg)
-  (rm-set-msg-field msg rm-msg-cache
-		    (delete-if #'(lambda (x) (bufferp (car x)))
-			       (rm-get-msg-field msg rm-msg-cache))))
-
-;; Delete all cached summary lines
-(defun rm-invalidate-summary-cache ()
-  (mapc #'(lambda (l)
-	    (mapc 'rm-invalidate-summary l))
-	(list rm-before-msg-list
-	      (and rm-current-msg (list rm-current-msg))
-	      rm-after-msg-list)))
-
-(defun rm-summary-select-item (item)
-  (with-view (rm-configure-views (current-buffer) rm-summary-mail-buffer)
-    (rm-display-message item)))
-  
-(defun rm-summary-current-item ()
-  (with-buffer rm-summary-mail-buffer
-    rm-current-msg-index))
-
-(defun rm-summary-delete-item (item)
-  (setq rm-summary-msgs-to-delete (cons item rm-summary-msgs-to-delete)))
-
-(defun rm-summary-execute-end ()
-  (let
-      ((del-msgs rm-summary-msgs-to-delete))
-    (setq rm-summary-msgs-to-delete nil)
-    (with-view (rm-configure-views (current-buffer) rm-summary-mail-buffer)
-      (rm-delete-messages del-msgs)
-      ;; After this function returns "summary-update" is called
-      (rm-display-current-message t))))
-
-(defun rm-summary-update-current ()
-  (let
-      (msg index)
-    (with-buffer rm-summary-mail-buffer
-      (setq index rm-current-msg-index
-	    msg rm-current-msg))
-    (if msg
-	(progn
-	  (summary-update-item msg)
-	  (summary-goto-item index))
-      ;; No messages, call update to clear everything
-      (summary-update))))
-
-(defun rm-summary-after-marking (msg)
-  (rm-invalidate-summary msg)
-  (if (and (eq (with-buffer rm-summary-mail-buffer rm-current-msg) msg)
-	   rm-move-after-deleting)
-      (when (with-buffer rm-summary-mail-buffer rm-after-msg-list)
-	(rm-with-folder
-	 (rm-next-undeleted-message 1)))
-    (when (/= (summary-current-index)
-	      (with-buffer rm-summary-mail-buffer rm-message-count))
-      (summary-next-item 1))))
-
-(defun rm-summary-after-update ()
-  (let
-      (msg index)
-    (with-buffer rm-summary-mail-buffer
-      (setq msg rm-current-msg
-	    index rm-current-msg-index))
-    (when msg
-      (summary-highlight-index index))))
-
 
 ;; Commands, these must only be called from the folder buffer, *not*
 ;; from the summary.
@@ -1165,10 +925,7 @@ the summary buffer.")
 	(error "No more messages"))
       (rm-move-forwards)
       (when (or (not skip-deleted)
-		(not (memq 'delete (with-buffer rm-summary-buffer
-				     (summary-get-pending-ops
-				      (with-buffer rm-summary-mail-buffer
-					rm-current-msg))))))
+		(not (rm-test-flag rm-current-msg 'deleted)))
 	(setq count (1- count))))
     (while (< count 0)
       (unless rm-before-msg-list
@@ -1177,10 +934,7 @@ the summary buffer.")
 	(error "No previous message"))
       (rm-move-backwards)
       (when (or (not skip-deleted)
-		(not (memq 'delete (with-buffer rm-summary-buffer
-				     (summary-get-pending-ops
-				      (with-buffer rm-summary-mail-buffer
-					rm-current-msg))))))
+		(not (rm-test-flag rm-current-msg 'deleted)))
 	(setq count (1+ count)))))
   (rm-display-current-message))
 
@@ -1233,25 +987,53 @@ current message."
 (defun rm-mark-message-deletion ()
   "Marks that the current message should be deleted."
   (interactive)
-  (let
-      ((msg rm-current-msg))
+  (rm-set-flag rm-current-msg 'deleted)
+  (when rm-summary-buffer
     (rm-with-summary
-     (summary-mark-delete msg))
-    (rm-fix-status-info)))
+     (rm-summary-update-current)))
+  (rm-fix-status-info)
+  (when rm-move-after-deleting
+    (rm-next-message)))
+
+(defun rm-expunge ()
+  "Actually delete all messages that have been marked as unwanted. This is
+nonrecoverable."
+  (interactive)
+  (let
+      ((deletions nil))
+    (rm-map-messages #'(lambda (m)
+			 (when (rm-test-flag m 'deleted)
+			   (setq deletions (cons m deletions)))))
+    (rm-delete-messages deletions)
+    (when rm-summary-buffer
+      (rm-with-summary
+       (summary-update)))))
+
+(defun rm-unmark-message ()
+  "Unmarks the current message."
+  (interactive)
+  (rm-clear-flag rm-current-msg 'deleted)
+  (when rm-summary-buffer
+    (rm-with-summary
+     (rm-summary-update-current)))
+  (rm-fix-status-info)
+  (when rm-move-after-deleting
+    (rm-next-message)))
 
 (defun rm-kill-subject ()
   "Marks all messages with the same subject as the current message as being
 ready for deletion."
   (interactive)
   (let*
-      ((kill-subject (rm-get-subject rm-current-msg)))
-    (mapc #'(lambda (m)
-		    (when (string= kill-subject (rm-get-subject m))
-		      (with-buffer rm-summary-buffer
-			(summary-mark-delete m))))
-	  (append rm-before-msg-list
-		  (and rm-current-msg (list rm-current-msg))
-		  rm-after-msg-list))))
+      ((kill-subject (rm-get-actual-subject rm-current-msg)))
+    (rm-map-messages #'(lambda (m)
+			 (when (string= kill-subject (rm-get-actual-subject m))
+			   (rm-set-flag m 'deleted)
+			   (when rm-summary-buffer
+			     (rm-invalidate-summary m)))))
+    (when rm-summary-buffer
+      (rm-with-summary
+       (summary-update)))))
 
 (defun rm-pipe-message (command &optional ignore-headers)
   "Pipes all of the current message through the shell command COMMAND (unless
@@ -1283,12 +1065,14 @@ automatically."
 buffer will not be deleted, so it may be saved later."
   (interactive)
   (let
-      ((summary-view (get-buffer-view rm-summary-buffer)))
+      ((summary-view (and rm-summary-buffer
+			  (get-buffer-view rm-summary-buffer))))
     (unless already-saved
       (rm-update-flags))
     (when summary-view
       (delete-view summary-view))
-    (kill-buffer rm-summary-buffer)
+    (when rm-summary-buffer
+      (kill-buffer rm-summary-buffer))
     (kill-all-local-variables)
     (when (buffer-modified-p)
       (message (concat  "Folder " (buffer-name)
