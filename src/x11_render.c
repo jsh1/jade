@@ -31,32 +31,36 @@ redraw_exposed_area(WIN *w, u_int x1, u_int y1, u_int x2, u_int y2)
     for(vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
     {
 	POS start, end;
-	u_int this_y1, this_y2;
+	u_int first_row, last_row;
 	if(vw->vw_TopPix > y2)
-	    break;
-	if(vw->vw_BottomPix <= y1)
-	    continue;
-
-	if(vw->vw_Flags & VWFF_MINIBUF
-	   && w->w_Flags & WINFF_MESSAGE)
+	    return;
+	if(vw->vw_BottomPix > y1)
 	{
-	    redraw_message(w);
-	    break;
+	    if(vw->vw_Flags & VWFF_MINIBUF
+	       && w->w_Flags & WINFF_MESSAGE)
+	    {
+		redraw_message(w);
+		break;
+	    }
+
+	    first_row = ((vw->vw_TopPix > y1)
+			 ? 0
+			 : (y1 - vw->vw_TopPix) / w->w_FontY);
+	    last_row = ((vw->vw_BottomPix > y2)
+			? (y2 - vw->vw_TopPix) / w->w_FontY
+			: vw->vw_MaxY-1);
+
+	    start.pos_Col = (((x1 - vw->vw_LeftPix) / w->w_FontX)
+			     + vw->vw_StartCol);
+	    start.pos_Line = first_row + vw->vw_StartLine;
+	    end.pos_Col = ((((x2 - 1)- vw->vw_LeftPix) / w->w_FontX)
+			   + vw->vw_StartCol);
+	    end.pos_Line = last_row + vw->vw_StartLine;
+
+	    redraw_rect(vw, &start, &end, FALSE);
 	}
-
-	this_y1 = (vw->vw_TopPix > y1) ? vw->vw_TopPix : y1;
-	this_y2 = (vw->vw_BottomPix > y2) ? y2 : vw->vw_BottomPix;
-
-	start.pos_Col = ((x1 - vw->vw_LeftPix) / w->w_FontX) + vw->vw_StartCol;
-	start.pos_Line = ((this_y1 - vw->vw_TopPix) / w->w_FontY)
-	    + vw->vw_StartLine;
-	end.pos_Col = (((x2 - 1)- vw->vw_LeftPix) / w->w_FontX)
-	    + vw->vw_StartCol;
-	end.pos_Line = (((this_y2 - 1) - vw->vw_TopPix) / vw->vw_Win->w_FontY)
-	    + vw->vw_StartLine;
-
-	redraw_rect(vw, &start, &end, FALSE);
-	if(this_y2 < y2 && !(vw->vw_Flags & VWFF_MINIBUF))
+	if(!(vw->vw_Flags & VWFF_MINIBUF)
+	   && vw->vw_BottomPix < y2)
 	    redraw_status_buffer(vw);
     }
 }
