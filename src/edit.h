@@ -107,14 +107,11 @@ typedef struct _TX {
 /* No modifications to file */
 #define TXFF_RDONLY		(1 << (CELL8_TYPE_BITS + 0))
 
-/* No mod flag, buffer never killed. */
-#define TXFF_SPECIAL		(1 << (CELL8_TYPE_BITS + 1))
-
 /* No recording of undo information */
-#define TXFF_NO_UNDO		(1 << (CELL8_TYPE_BITS + 2))
+#define TXFF_NO_UNDO		(1 << (CELL8_TYPE_BITS + 1))
 
 /* don't wrap long lines */
-#define TXFF_DONT_WRAP_LINES	(1 << (CELL8_TYPE_BITS + 3))
+#define TXFF_DONT_WRAP_LINES	(1 << (CELL8_TYPE_BITS + 2))
 #define TX_WRAP_LINES_P(tx)	(((tx)->tx_Flags & TXFF_DONT_WRAP_LINES) == 0)
 
 /* Remnants from the old redisplay code */
