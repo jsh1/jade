@@ -1061,6 +1061,11 @@ updated as the file changes -- it will always point to the same character
 	mark_chain = VMARK(mk);
 	data_after_gc += sizeof(Lisp_Mark);
 	VMARK(mk)->pos = POSP(pos) ? pos : curr_vw->vw_CursorPos;
+
+	/* just so these are valid */
+	VMARK(mk)->file = VAL(curr_vw->vw_Tx);
+	VMARK(mk)->next = NULL;
+
 	if(STRINGP(buffer))
 	{
 	    VALUE tem;
