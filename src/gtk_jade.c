@@ -170,15 +170,6 @@ gtk_jade_set_font (GtkJade *jade)
     jade->win->w_FontX = gdk_text_width (font, "M", 1);
     jade->win->w_FontY = font->ascent + font->descent;
 
-    if (GTK_WIDGET_REALIZED (GTK_WIDGET (jade)))
-    {
-	int width = jade->win->w_MaxX * jade->win->w_FontX;
-	int height = jade->win->w_MaxY * jade->win->w_FontY;
-	gtk_widget_set_usize (GTK_WIDGET (jade), width, height);
-	jade->width = width;
-	jade->height = height;
-    }
-    
     /* Now for the bold font. It doesn't look as though GDK
        allows us to find the fully expanded name of the font? */
     {
@@ -207,6 +198,11 @@ gtk_jade_set_font (GtkJade *jade)
 	    /* XXX check for same size as jade->font.. */
 	}
     }
+    if (GTK_WIDGET_REALIZED (GTK_WIDGET (jade)))
+    {
+	sys_update_dimensions (jade->win);
+	update_window_dimensions (jade->win);
+    }
     return 1;
 }
 
@@ -232,17 +228,6 @@ gtk_jade_new (WIN *win, int width, int height)
 
     jade->win = win;
     gtk_jade_set_font (jade);
-
-    if (width > 0 && height > 0)
-    {
-	width *= win->w_FontX;
-	height *= win->w_FontY;
-#if 0
-	gtk_widget_set_usize (GTK_WIDGET (jade), width, height);
-#endif
-	jade->width = width;
-	jade->height = height;
-    }
 
     /* this is copied from gedit */
     gtk_drag_dest_set (GTK_WIDGET (jade),
@@ -352,8 +337,8 @@ gtk_jade_size_request (GtkWidget *widget,
     g_return_if_fail (GTK_IS_JADE (widget));
     jade = GTK_JADE (widget);
 
-    requisition->width = jade->width;
-    requisition->height = jade->height;
+    requisition->width = 4 * jade->win->w_FontX;
+    requisition->height = 4 * jade->win->w_FontY;
 }
 
 static void
@@ -771,10 +756,29 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 
     w->w_Window = GTK_JADE (gtk_jade_new (w, width, height));
     gtk_jade_add_selection_targets (w->w_Window);
+    gtk_jade_set_font (w->w_Window);
 
     if (frame != 0)
+    {
+	GdkGeometry hints;
 	gtk_container_add (GTK_CONTAINER (frame),
 			   gtk_widget_get_toplevel (GTK_WIDGET (w->w_Window)));
+	if (width > 0 && height > 0)
+	    gtk_window_set_default_size (GTK_WINDOW (frame),
+					 width * w->w_FontX + 4,
+					 height * w->w_FontY + 4);
+	hints.base_width = hints.base_height = 0;
+	hints.width_inc = w->w_FontX;
+	hints.height_inc = w->w_FontY;
+	hints.min_width = w->w_FontX * 4;
+	hints.min_height = w->w_FontY * 4;
+	gtk_window_set_geometry_hints (GTK_WINDOW (frame),
+				       GTK_WIDGET (w->w_Window),
+				       &hints,
+				       GDK_HINT_RESIZE_INC
+				       | GDK_HINT_MIN_SIZE
+				       | GDK_HINT_BASE_SIZE);
+    }
 
     if (!new_window_no_show)
 	gtk_widget_show_all (GTK_WIDGET (w->w_Window));
@@ -820,6 +824,7 @@ sys_set_font(WIN *w)
 	return 1;
     else
 	return gtk_jade_set_font (w->w_Window);
+	
 }
 
 void
