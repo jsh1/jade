@@ -76,11 +76,21 @@ typedef size_t SIZE;
 typedef void *POINTER;
 
 #include <unistd.h>
-#include <malloc.h>
 #include <string.h>
+#include <stdlib.h>
+#ifdef NEED_MEMORY_H
+#include <memory.h>
+#endif
 
 #define safe_bcopy(x, y, z) memmove (y, x, z)
 #define bzero(x, len) memset (x, 0, len)
+
+#ifdef DOUG_LEA_MALLOC
+#include <malloc.h>
+#else
+/* We're using GNU malloc */
+extern int __malloc_extra_blocks;
+#endif
 
 #endif	/* not emacs */
 
