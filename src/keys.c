@@ -30,6 +30,8 @@
 #define KEYTAB_SIZE 127
 
 _PR VALUE eval_input_event(void *, u_long, u_long);
+_PR bool lookup_event(u_long *, u_long *, u_char *);
+_PR bool lookup_event_name(u_char *, u_long, u_long);
 _PR bool print_event_prefix(void);
 _PR void keys_init(void);
 
@@ -314,6 +316,149 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
     return(result);
 }
 
+
+/* Translate text->event and vice versa */
+
+struct key_def {
+    const char *name;
+    u_long mods, code;
+};
+
+static struct key_def default_mods[] = {
+    { "S",	  EV_MOD_SHIFT },
+    { "Shift",    EV_MOD_SHIFT },
+    { "SFT",      EV_MOD_SHIFT },
+    { "C",        EV_MOD_CTRL },
+    { "Ctrl",     EV_MOD_CTRL },
+    { "Control",  EV_MOD_CTRL },
+    { "CTL",      EV_MOD_CTRL },
+    { "M",        EV_MOD_META },
+    { "Meta",     EV_MOD_META },
+    { "Mod1",     EV_MOD_MOD1 },
+    { "Mod2",     EV_MOD_MOD2 },
+    { "Mod3",     EV_MOD_MOD3 },
+    { "Mod4",     EV_MOD_MOD4 },
+    { "Button1",  EV_MOD_BUTTON1 },
+    { "Button2",  EV_MOD_BUTTON2 },
+    { "Button3",  EV_MOD_BUTTON3 },
+    { "Button4",  EV_MOD_BUTTON4 },
+    { "Button5",  EV_MOD_BUTTON5 },
+    { 0, 0 }
+};
+
+static struct key_def default_codes[] = {
+    { "Click1",   EV_TYPE_MOUSE, EV_CODE_MOUSE_CLICK1 },
+    { "Click2",   EV_TYPE_MOUSE, EV_CODE_MOUSE_CLICK2 },
+    { "Off",      EV_TYPE_MOUSE, EV_CODE_MOUSE_UP },
+    { "Move",     EV_TYPE_MOUSE, EV_CODE_MOUSE_MOVE },
+    { 0, 0 }
+};
+
+/* Puts the integers defining the event described in DESC into CODE
+   and MODS. */
+bool
+lookup_event(u_long *code, u_long *mods, u_char *desc)
+{
+    char *tem;
+    char buf[100];
+    *code = *mods = 0;
+
+    /* First handle all modifiers */
+    while(*desc && (tem = strchr(desc + 1, '-')) != 0)
+    {
+	struct key_def *x = default_mods;
+
+	memcpy(buf, desc, tem - (char *)desc);
+	buf[tem - (char *)desc] = 0;
+
+	while(x->name != 0)
+	{
+	    if(strcasecmp(buf, x->name) == 0)
+	    {
+		*mods |= x->mods;
+		break;
+	    }
+	    x++;
+	}
+	if(x->name == 0 && !sys_lookup_mod(buf, mods))
+	    goto error;
+
+	desc = tem + 1;
+    }
+
+    /* Then go for the code itself */
+    {
+	struct key_def *x = default_codes;
+	while(x->name != 0)
+	{
+	    if(strcasecmp(desc, x->name) == 0)
+	    {
+		*mods |= x->mods;
+		*code = x->code;
+		return TRUE;
+	    }
+	    x++;
+	}
+	if(sys_lookup_code(desc, code, mods))
+	    return TRUE;
+	else
+	    goto error;
+    }
+
+error:
+    cmd_signal(sym_bad_event_desc, LIST_1(string_dup(desc)));
+    return FALSE;
+}
+
+/* Constructs the name of the event defined by CODE and MODS in BUF.  */
+bool
+lookup_event_name(u_char *buf, u_long code, u_long mods)
+{
+    int i;
+    struct key_def *x;
+
+    char *end = buf;
+    *buf = 0;
+
+    if(mods & WINDOW_META(curr_win))
+	mods = (mods & ~WINDOW_META(curr_win)) | EV_MOD_META;
+
+    for(i = 2; i < 32; i++)		/* 2's a magic number? */
+    {
+	u_long mask = 1 << i;
+	if(mods & mask)
+	{
+	    x = default_mods;
+	    while(x->name != 0)
+	    {
+		if(x->mods == mask)
+		{
+		    end = stpcpy(end, x->name);
+		    break;
+		}
+		x++;
+	    }
+	    if(x->name == 0)
+		end = sys_lookup_mod_name(end, mask);
+	    end = stpcpy(end, "-");
+	}
+    }
+
+    x = default_codes;
+    while(x->name != 0)
+    {
+	if((mods & EV_TYPE_MASK) == x->mods && code == x->code)
+	{
+	    strcpy(end, x->name);
+	    return TRUE;
+	}
+	x++;
+    }
+    return sys_lookup_code_name(end, code, mods & EV_TYPE_MASK);
+}
+
+
+/* Lisp functions */
 _PR VALUE cmd_make_keymap(void);
 DEFUN("make-keymap", cmd_make_keymap, subr_make_keymap, (void), V_Subr0,
       DOC_make_keymap) /*
