@@ -76,10 +76,10 @@ character after the end of the inserted text.
 ::end:: */
 {
     DECLARE1(string, STRINGP);
-    if(!POSP(pos))
-	pos = curr_vw->vw_CursorPos;
     if(!BUFFERP(buff))
 	buff = VAL(curr_vw->vw_Tx);
+    if(!POSP(pos))
+	pos = get_tx_cursor(VTX(buff));
     if(pad_pos(VTX(buff), pos))
     {
 	pos = insert_string(VTX(buff), VSTR(string), STRING_LEN(string), pos);
