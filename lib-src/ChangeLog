@@ -1,3 +1,10 @@
+1999-01-31  John Harper  <john@dcs.warwick.ac.uk>
+
+	* jadeclient.c: new option `-w' prevents waiting for server if
+	it's not running. Detect `-?' option before waiting for server.
+	If a socket exists but we can't connect to it, delete it then
+	try again
+
 1998-12-02  John Harper  <john@dcs.warwick.ac.uk>
 
 	* server-dl.c (cmd_server_open): if the socket already exists,
