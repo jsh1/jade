@@ -27,6 +27,11 @@
   "Number of glyphs added to the width of the longest completion to find
 the column width when displaying completions.")
 
+(defvar completion-abbrev-function nil
+  "When non-nil a function that will be called on each string to be printed
+in the completion list; it should return an abbreviated version of this
+string if desirable.")
+
 ;; t when the view displaying this buffer was created specially
 (defvar completion-deletable-view nil)
 (make-variable-buffer-local 'completion-deletable-view)
@@ -69,8 +74,11 @@ the column width when displaying completions.")
 ;; Display a list of completions in a *completions* buffer in the
 ;; current window
 (defun completion-list (completions)
-  (when completion-sorted-lists
-    (setq completions (sort (copy-sequence completions))))
+  (setq completions (funcall (if completion-sorted-lists 'sort 'identity)
+			     (if completion-abbrev-function
+				 (mapcar completion-abbrev-function
+					 completions)
+			       (copy-sequence completions))))
   (let*
       ((max-width 0)
        column-width columns
@@ -100,3 +108,46 @@ the column width when displaying completions.")
 	(goto (start-of-buffer))
 	(when completion-deletable-view
 	  (shrink-view-if-larger-than-buffer))))))
+
+(defun completion-insert (completions word &optional only-display)
+  (let
+      ((count (length completions)))
+    (if (zerop count)
+	(progn
+	  (completion-remove-view)
+	  (message "[No completions!]"))
+      (if (and (not only-display) (= count 1))
+	  (progn
+	    (insert (substring (car completions) (length word)))
+	    (completion-remove-view)
+	    (message "[Unique completion]"))
+	(unless only-display
+	  (insert (substring (complete-string word completions)
+			     (length word))))
+	(completion-list completions)
+	(message (format nil "[%d completion(s)]" count))))))
+
+
+;; Completion commands
+
+(defun complete-from-buffer (&optional only-display)
+  "Complete the word before the cursor from all words in the current buffer."
+  (interactive)
+  (let*
+      ((word (copy-area (forward-exp -1) (cursor-pos)))
+       (point (start-of-buffer))
+       completions tem)
+    (while (search-forward word point)
+      (setq point (match-end))
+      (unless (equal point (cursor-pos))
+	(setq tem (copy-area (match-start)
+			     (forward-exp 1 (backward-exp 1 point))))
+	(unless (member tem completions)
+	  (setq completions (cons tem completions)))))
+    (completion-insert completions word only-display)))
+
+(defun show-buffer-completions ()
+  "Display all words in the current buffer matching the word immediately before
+the cursor."
+  (interactive)
+  (complete-from-buffer t))
