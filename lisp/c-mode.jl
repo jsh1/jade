@@ -58,7 +58,7 @@ Special commands are,\n
 	mode-backward-exp 'c-backward-exp
 	ctrl-c-keymap c-mode-ctrl-c-keymap
 	keymap-path (cons 'c-mode-keymap keymap-path))
-  (eval-hook 'c-mode-hook))
+  (call-hook 'c-mode-hook))
 
 (defun c-mode-kill ()
   (setq mode-name nil

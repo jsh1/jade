@@ -96,7 +96,8 @@ message in that all recipients of the original wil receive the reply."
 			    (not (rm-message-start-p end)))
 		  (setq end (forward-line 1 end)))
 		(copy-area start (or end (end-of-buffer))))))
-    (eval-hook 'mail-yank-hooks yank-begin (cursor-pos) rm-reply-message)))
+    (call-hook 'mail-yank-hooks
+	       (list yank-begin (cursor-pos) rm-reply-message) 'or)))
 
 (defun rm-default-yank-function (start end &optional msg)
   (when msg

@@ -94,7 +94,7 @@ There is no limit to the number of gdb processes you may run at once."
 	  gdb-last-buffer buffer
 	  gdb-buffer-p t
 	  mildly-special-buffer t)
-    (eval-hook 'gdb-hook)))
+    (call-hook 'gdb-hook)))
 
 (defun gdb-mode ()
   "Gdb Mode:\n

@@ -212,7 +212,7 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 		cursor(vw, CURS_OFF);
 		cursState = FALSE;
 	    }
-	    result = cmd_eval_hook2(sym_unbound_key_hook, sym_nil);
+	    result = cmd_call_hook(sym_unbound_key_hook, sym_nil, sym_nil);
 	    if(result && !NILP(result))
 		;
 	    else if(result && (mods & EV_TYPE_KEYBD) && OSInputMsg)
@@ -227,7 +227,8 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 			if(!read_only(vw->vw_Tx))
 			{
 			    VALUE old_undo_head = LISP_NULL;
-			    cmd_eval_hook2(sym_pre_command_hook, sym_nil);
+			    cmd_call_hook(sym_pre_command_hook,
+					  sym_nil, sym_nil);
 			    if(last_command == sym_t
 			       && CONSP(vw->vw_Tx->tx_UndoList)
 			       && NILP(VCAR(vw->vw_Tx->tx_UndoList)))
@@ -247,7 +248,8 @@ usekey(void *OSInputMsg, u_long code, u_long mods, bool cursState)
 				VCDR(old_undo_head) = vw->vw_Tx->tx_UndoList;
 				vw->vw_Tx->tx_UndoList = old_undo_head;
 			    }
-			    cmd_eval_hook2(sym_post_command_hook, sym_nil);
+			    cmd_call_hook(sym_post_command_hook,
+					  sym_nil, sym_nil);
 			    last_command = sym_t;
 			    result = sym_t;
 			}

@@ -46,7 +46,7 @@ Major mode for editing generic assembler source. Special commands are,\n
 	major-mode-kill 'asm-mode-kill
 	mode-comment-fun 'asm-insert-comment
 	keymap-path (cons 'asm-keymap keymap-path))
-  (eval-hook 'asm-mode-hook))
+  (call-hook 'asm-mode-hook))
 
 ;;;###autoload
 (defun asm-cpp-mode ()
@@ -62,8 +62,8 @@ it inserts."
 	major-mode-kill 'asm-mode-kill
 	mode-comment-fun 'c-insert-comment
 	keymap-path (cons 'asm-keymap keymap-path))
-  (eval-hook 'asm-mode-hook)
-  (eval-hook 'asm-cpp-mode-hook))
+  (call-hook 'asm-mode-hook)
+  (call-hook 'asm-cpp-mode-hook))
 
 (defun asm-mode-kill ()
   (setq mode-name nil

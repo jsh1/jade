@@ -111,7 +111,8 @@ handle_event(XEvent *xev)
 		}
 		else
 		    cursor(ev_win->w_CurrVW, CURS_OFF);
-		result = cmd_eval_hook2(sym_window_closed_hook, sym_nil);
+		result = cmd_call_hook(sym_window_closed_hook,
+				       sym_nil, sym_nil);
 		if(curr_win)
 		{
 		    refresh_world();
@@ -344,7 +345,7 @@ event_loop(void)
 		VALUE hook = cmd_symbol_value(sym_idle_hook, sym_t);
 		if(!VOIDP(hook) && !NILP(hook))
 		{
-		    cmd_eval_hook2(sym_idle_hook, sym_nil);
+		    cmd_call_hook(sym_idle_hook, sym_nil, sym_nil);
 		    refreshp = TRUE;
 		}
 	    }

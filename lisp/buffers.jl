@@ -122,7 +122,7 @@ from the buffer-list (if it was in it)."
    ((stringp buffer)
     (setq buffer (get-buffer buffer))))
   (when (and buffer (check-changes buffer))
-    (eval-hook 'kill-buffer-hook buffer)
+    (call-hook 'kill-buffer-hook (list buffer))
     (unless (and (buffer-special-p buffer)
 		 (null (with-buffer buffer mildly-special-buffer)))
       (kill-mode buffer)
@@ -216,7 +216,7 @@ else in the buffer. Everything will be set up as required."
   (interactive "fFile to read into buffer:")
   (let ((buf (current-buffer)))
     (clear-buffer)
-    (unless (eval-hook 'read-file-hook file-name buf)
+    (unless (call-hook 'read-file-hook (list file-name buf) 'or)
       (set-buffer-file-name buf file-name)
       (if (file-exists-p file-name)
 	  (progn
@@ -234,7 +234,7 @@ else in the buffer. Everything will be set up as required."
       (beep))
     (set-buffer-read-only buf (and (file-exists-p file-name)
 				   (not (file-writable-p file-name))))
-    (eval-hook 'open-file-hook buf)
+    (call-hook 'open-file-hook (list buf))
     (init-mode buf)))
 
 ;; Scans the end of a file for any local-variable definitions
@@ -322,7 +322,7 @@ may not exist after this function returns."
 that it is associated with."
   (unless (stringp name)
     (setq name (buffer-file-name buffer)))
-  (unless (eval-hook 'write-file-hook name buffer)
+  (unless (call-hook 'write-file-hook (list name buffer) 'or)
     (let
 	((modes (when (file-exists-p name) (file-modes name))))
       (backup-file name)
@@ -382,7 +382,7 @@ the cursor position."
   (unless (bufferp buffer)
     (setq buffer (current-buffer)))
   (with-buffer buffer
-    (unless (eval-hook 'insert-file-hook name)
+    (unless (call-hook 'insert-file-hook (list name) 'or)
       (insert (read-file name)))))
 
 (defun check-changes (&optional buffer)
@@ -447,7 +447,7 @@ name of the file stored in BUFFER."
   (refresh-all)
   (flush-output)
   (with-buffer buffer
-    (if (or (eval-hook 'auto-save-hook buffer)
+    (if (or (call-hook 'auto-save-hook (list buffer) 'or)
 	    (write-buffer (make-auto-save-name (buffer-file-name))))
 	(format t "done.")
       (error "Can't auto-save" buffer)
@@ -551,5 +551,5 @@ Immediately prior to exiting, calls `before-exit-hook'."
   (when (or no-query
 	    (save-some-buffers)
 	    (yes-or-no-p "Unsaved buffers exist; quit anyway?"))
-    (eval-hook 'before-exit-hook)
+    (call-hook 'before-exit-hook)
     (throw 'quit (if (numberp no-query) no-query 0))))

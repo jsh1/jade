@@ -90,7 +90,7 @@ Commands available are,\n
 	mode-name "Buffer Menu"
 	keymap-path (cons 'bm-keymap keymap-path))
   (add-hook 'unbound-key-hook 'bm-unbound-function)
-  (eval-hook 'buffer-menu-mode-hook))
+  (call-hook 'buffer-menu-mode-hook))
 
 (defun buffer-menu-kill ()
   (setq major-mode nil

@@ -64,8 +64,8 @@
 			  (cons 'text-mode-keymap keymap-path))
 	fill-prefix "\t"
 	fill-prefix-width tab-size)
-  (eval-hook 'text-mode-hook)
-  (eval-hook 'changelog-mode-hook))
+  (call-hook 'text-mode-hook)
+  (call-hook 'changelog-mode-hook))
 
 (defun changelog-mode-kill ()
   (setq mode-name nil

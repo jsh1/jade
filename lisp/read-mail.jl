@@ -168,7 +168,7 @@ Major mode for viewing mail folders. Commands include:\n
 	mode-comment-fun 'c-insert-comment
 	;;ctrl-c-keymap c-mode-ctrl-c-keymap
 	keymap-path (cons 'rm-keymap keymap-path))
-  (eval-hook 'read-mail-mode-hook)
+  (call-hook 'read-mail-mode-hook)
   ;; Build the message list and display the current message
   (rm-build-message-lists)
   (rm-create-summary)
@@ -436,7 +436,7 @@ Major mode for viewing mail folders. Commands include:\n
 	(rm-fix-status-info)
 	;; Called when the current restriction is about to be
 	;; displayed
-	(eval-hook 'read-mail-display-message-hook rm-current-msg))))
+	(call-hook 'read-mail-display-message-hook (list rm-current-msg)))))
   (unless no-summary-update
     ;; Fix the summary buffer if it exists
     (rm-with-summary
@@ -524,7 +524,7 @@ Major mode for viewing mail folders. Commands include:\n
   (unless rm-current-msg
     (error "No message to delete"))
   ;; When this hook returns t the message isn't deleted.
-  (unless (eval-hook 'read-mail-delete-message-hook rm-current-msg)
+  (unless (call-hook 'read-mail-delete-message-hook (list rm-current-msg) 'or)
     (let
 	((inhibit-read-only t)
 	 ;; Don't use rm-curr-msg-end, it may not be initialised.

@@ -39,7 +39,7 @@
 ;;;	    major-mode-kill 'lisp-mode-kill
 ;;;	    mode-comment-fun 'lisp-mode-insert-comment
 ;;;	    keymap-path (cons 'lisp-mode-keymap keymap-path))
-;;;   (eval-hook 'lisp-mode-hook)
+;;;   (call-hook 'lisp-mode-hook)
 ;;;
 ;;; The function to be called when the mode is removed should remove the
 ;;; effects of the above, for example:

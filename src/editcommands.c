@@ -193,8 +193,7 @@ block-toggle
 	    vw->vw_BlockStatus = 1;
 	    break;
     }
-    cmd_eval_hook2(sym_block_status_hook,
-		   vw->vw_BlockStatus == 0 ? sym_t : sym_nil);
+    cmd_call_hook(sym_block_status_hook, sym_nil, sym_nil);
     return(sym_t);
 }
 
@@ -230,8 +229,7 @@ it is used as the new position of the start of the block.
 		order_block(vw);
 		set_block_refresh(vw);
 		PUSHGC(gc_res, res);
-		cmd_eval_hook2(sym_block_status_hook,
-			       vw->vw_BlockStatus == 0 ? sym_t : sym_nil);
+		cmd_call_hook(sym_block_status_hook, sym_nil, sym_nil);
 		POPGC;
 		break;
 	    case -1:
@@ -277,8 +275,7 @@ it is used as the new position of the end of the block.
 		order_block(vw);
 		set_block_refresh(vw);
 		PUSHGC(gc_res, res);
-		cmd_eval_hook2(sym_block_status_hook,
-			       vw->vw_BlockStatus == 0 ? sym_t : sym_nil);
+		cmd_call_hook(sym_block_status_hook, sym_nil, sym_nil);
 		POPGC;
 		break;
 	    case -1:
@@ -305,8 +302,7 @@ Unmarks the block.
     {
 	set_block_refresh(vw);
 	vw->vw_BlockStatus = -1;
-	cmd_eval_hook2(sym_block_status_hook,
-		       vw->vw_BlockStatus == 0 ? sym_t : sym_nil);
+	cmd_call_hook(sym_block_status_hook, sym_nil, sym_nil);
     }
     return(sym_t);
 }

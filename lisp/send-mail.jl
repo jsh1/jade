@@ -126,8 +126,8 @@ Major mode for composing and sending mail messages."
 	ctrl-c-keymap send-mail-c-keymap)
   ;; Need to turn on autosaving and associate the buffer with a
   ;; temporary file...
-  (eval-hook 'text-mode-hook)
-  (eval-hook 'mail-setup-hook))
+  (call-hook 'text-mode-hook)
+  (call-hook 'mail-setup-hook))
 
 (defun send-mail-mode-kill ()
   (setq major-mode nil
@@ -208,7 +208,7 @@ Major mode for composing and sending mail messages."
     (unless (y-or-n-p "Really send this buffer as a mail message?")
       (error "Quit")))
   (message "Sending..." t)
-  (eval-hook 'mail-send-hook)
+  (call-hook 'mail-send-hook)
   (funcall mail-send-function)
   (format t "done")
   (set-buffer-read-only (current-buffer) t)

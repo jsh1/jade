@@ -113,7 +113,7 @@ Major mode for running a subprocess in a buffer. Special commands are,\n
 	major-mode 'shell-mode
 	major-mode-kill 'shell-mode-kill)
   (shell-start-process)
-  (eval-hook 'shell-mode-hook))
+  (call-hook 'shell-mode-hook))
 
 (defun shell-mode-kill ()
   (when shell-process

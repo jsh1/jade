@@ -154,7 +154,7 @@ memory are flushed and jade will exit.
 ::end:: */
 {
     WIN *w = WINDOWP(win) ? VWIN(win) : curr_win;
-    cmd_eval_hook2(sym_destroy_window_hook, VAL(w));
+    cmd_call_hook(sym_destroy_window_hook, LIST_1(VAL(w)), sym_nil);
     kill_all_views(w);
     sys_kill_window(w);
     sys_unset_font(w);

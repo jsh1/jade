@@ -60,7 +60,7 @@ VALUE this_command, last_command;
 Hook called before evaluating each command.
 ::end::
 ::doc:post_command_hook::
-Hook callled after evaluating each command.
+Hook called after evaluating each command.
 ::end:: */
 
 _PR VALUE sym_pre_command_hook, sym_post_command_hook;
@@ -202,7 +202,7 @@ any entered arg is given to the invoked COMMAND.
     prefix_arg = sym_nil;
     current_prefix_arg = cmd_arg;
 
-    cmd_eval_hook2(sym_pre_command_hook, cmd);
+    cmd_call_hook(sym_pre_command_hook, sym_nil, sym_nil);
 
     if(SYMBOLP(cmd) || (CONSP(cmd) && VCAR(cmd) == sym_lambda))
     {
@@ -402,7 +402,7 @@ any entered arg is given to the invoked COMMAND.
     else
 	res = cmd_eval(cmd);
  exit:
-    cmd_eval_hook2(sym_post_command_hook, cmd);
+    cmd_call_hook(sym_post_command_hook, sym_nil, sym_nil);
 
     last_command = this_command;
     this_command = sym_nil;

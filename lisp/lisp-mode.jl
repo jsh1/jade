@@ -52,7 +52,7 @@ Major mode for editing Lisp source. Special commands in this mode are,\n
 	mode-forward-exp 'lisp-forward-sexp
 	mode-backward-exp 'lisp-backward-sexp
 	keymap-path (cons 'lisp-mode-keymap keymap-path))
-  (eval-hook 'lisp-mode-hook)
+  (call-hook 'lisp-mode-hook)
   t)
 
 (defun lisp-mode-kill ()

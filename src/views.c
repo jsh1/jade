@@ -233,7 +233,7 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 		/* this doesn't always work as well as the above. */
 		swap_buffers(vw, tx);
 	    }
-	    cmd_eval_hook2(sym_make_view_hook, VAL(vw));
+	    cmd_call_hook(sym_make_view_hook, LIST_1(VAL(vw)), sym_nil);
 #ifndef NOSCRLBAR
 	    sys_update_scroller(vw);
 #endif
@@ -290,7 +290,7 @@ views (minibuffer and one other) in any window.
 	static DEFSTRING(mini_view, "Can't kill minibuffer view");
 	return cmd_signal(sym_window_error, list_2(VAL(mini_view), VAL(vw)));
     }
-    cmd_eval_hook2(sym_destroy_view_hook, VAL(vw));
+    cmd_call_hook(sym_destroy_view_hook, LIST_1(VAL(vw)), sym_nil);
     sys_kill_vw(vw);
     vw->vw_Tx = NULL;
     vw->vw_BufferList = sym_nil;

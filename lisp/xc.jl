@@ -30,7 +30,7 @@ contain.")
 (add-hook 'c-mode-hook #'(lambda ()
 			   (setq mode-indent-line 'xc-indent-line
 				 mode-name "XC")
-			   (eval-hook 'xc-mode-hook)
+			   (call-hook 'xc-mode-hook)
 			   nil))
 
 
