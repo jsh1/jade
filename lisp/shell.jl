@@ -114,12 +114,7 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
     (set-process-function shell-process nil)
     (set-process-output-stream shell-process nil)
     (kill-process shell-process nil)
-    (setq shell-process nil
-	  mode-name nil
-	  major-mode nil
-	  major-mode-kill nil
-	  keymap-path (delq 'shell-mode-keymap keymap-path)
-	  ctrl-c-keymap nil)))
+    (kill-all-local-variables)))
 
 
 ;; If a shell subprocess isn't running create one
