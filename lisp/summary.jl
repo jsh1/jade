@@ -270,7 +270,8 @@ highlight."
 	    (summary-dispatch 'print item))
 	(delete-area (cursor-pos) (next-line))
 	(summary-dispatch 'print item)
-	(insert "\n")))))
+	(insert "\n"))
+      (summary-maybe-dispatch 'after-update))))
 
 (defun summary-goto-item (index)
   "Move the cursor to the INDEX'th item (from zero) in the menu. Returns
