@@ -80,7 +80,7 @@ gtk-jade-set-selection SELECTION [ STRING | START END [BUFFER] ]
 Defines the selection whose name corresponds to the symbol SELECTION
 (either `xa-primary' or `xa-secondary'). The selection can be set to
 either an arbitrary piece of text if the second argument is a string,
-or to area of BUFFER betwee START and END if the second argument is a
+or to area of BUFFER between START and END if the second argument is a
 position.
 
 Returns t if the current selection is now what was requested, nil
@@ -92,21 +92,28 @@ otherwise.
 
     rep_DECLARE1(sel, rep_SYMBOLP);
 
-    if(rep_STRINGP(start))
-	type = Sel_string;
-    else
-    {
-	rep_DECLARE2(start, POSP);
-	rep_DECLARE3(end, POSP);
-	if(!BUFFERP(buffer))
-	    buffer = rep_VAL(curr_vw->vw_Tx);
-	type = Sel_area;
-    }
     selection = symbol_to_atom(sel);
     if(selection == GDK_SELECTION_PRIMARY
        || selection == GDK_SELECTION_SECONDARY)
     {
 	int selno = selection_atom_to_index(selection);
+
+	if (start == Qnil)
+	{
+	    gtk_selection_owner_set (0, selection, gtk_jade_last_event_time);
+	    return Qt;
+	}
+	else if(rep_STRINGP(start))
+	    type = Sel_string;
+	else
+	{
+	    rep_DECLARE2(start, POSP);
+	    rep_DECLARE3(end, POSP);
+	    if(!BUFFERP(buffer))
+		buffer = rep_VAL(curr_vw->vw_Tx);
+	    type = Sel_area;
+	}
+
 	if (gtk_selection_owner_set(GTK_WIDGET (curr_win->w_Window),
 				    selection,
 				    gtk_jade_last_event_time))

@@ -73,7 +73,7 @@ x11-set-selection SELECTION [ STRING | START END [BUFFER] ]
 Defines the X11 selection whose name corresponds to the symbol SELECTION
 (either `xa-primary' or `xa-secondary'). The selection can be set to
 either an arbitrary piece of text if the second argument is a string,
-or to area of BUFFER betwee START and END if the second argument is a
+or to area of BUFFER between START and END if the second argument is a
 position.
 
 Returns t if the current selection is now what was requested, nil
@@ -81,24 +81,32 @@ otherwise.
 ::end:: */
 {
     Atom selection;
-    enum Sel_type type;
 
     rep_DECLARE1(sel, rep_SYMBOLP);
 
-    if(rep_STRINGP(start))
-	type = Sel_string;
-    else
-    {
-	rep_DECLARE2(start, POSP);
-	rep_DECLARE3(end, POSP);
-	if(!BUFFERP(buffer))
-	    buffer = rep_VAL(curr_vw->vw_Tx);
-	type = Sel_area;
-    }
     selection = symbol_to_atom(sel);
     if(selection == XA_PRIMARY || selection == XA_SECONDARY)
     {
 	int selno = selection_atom_to_index(selection);
+	enum Sel_type type;
+
+	if (start == Qnil)
+	{
+	    XSetSelectionOwner (WINDOW_XDPY(curr_win)->display,
+				selection, None, CurrentTime);
+	    return Qt;
+	}
+	else if(rep_STRINGP(start))
+	    type = Sel_string;
+	else
+	{
+	    rep_DECLARE2(start, POSP);
+	    rep_DECLARE3(end, POSP);
+	    if(!BUFFERP(buffer))
+		buffer = rep_VAL(curr_vw->vw_Tx);
+	    type = Sel_area;
+	}
+
 	XSetSelectionOwner(WINDOW_XDPY(curr_win)->display,
 			   selection, curr_win->w_Window, CurrentTime);
 	if(XGetSelectionOwner(WINDOW_XDPY(curr_win)->display,
