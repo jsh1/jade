@@ -163,8 +163,9 @@ typedef struct _VW
 #define vw_StartCol vw_DisplayOrigin.pos_Col
 
     POS		    vw_BlockS, vw_BlockE;
+    POS		    vw_LastBlockS, vw_LastBlockE;
     /* 0=block marked, 1=start marked, 2=end marked, -1=none marked */
-    char	    vw_BlockStatus;
+    char	    vw_BlockStatus, vw_LastBlockStatus;
 
     int		    vw_MaxX, vw_MaxY;	/* COLS,ROWS of pane, not including
 					   status line at bottom */
