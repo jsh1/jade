@@ -318,7 +318,9 @@ the buffer respectively (ignoring the current restriction).
     if(!POSP(end))
 	end = cmd_end_of_buffer(tx, sym_t);
 
-    if(!check_section(VTX(tx), &start, &end))
+    /* Don't call check_section() since that looks at the restriction. */
+    if(POS_LESS_P(end, start) || VROW(start) < 0
+       || VROW(end) > VTX(tx)->tx_NumLines)
 	return(cmd_signal(sym_invalid_area, list_3(tx, start, end)));
 
     if(STRINGP(file))
@@ -327,21 +329,22 @@ the buffer respectively (ignoring the current restriction).
 	fh = fopen(VSTR(file), "w");
 	if(fh)
 	{
-	    long lineno = VROW(start), col = VCOL(start);
+	    long lineno = VROW(start);
 	    LINE *line = VTX(tx)->tx_Lines + lineno;
+	    long col = MIN(VCOL(start), line->ln_Strlen - 1);
 	    while(lineno <= VROW(end))
 	    {
 		int len = (((lineno == VROW(end))
 			    ? VCOL(end) : line->ln_Strlen - 1) - col);
-		if(fwrite(line->ln_Line + col, 1, len, fh) != len) 
+		if(len > 0 && fwrite(line->ln_Line + col, 1, len, fh) != len) 
 		{
 		    fclose(fh);
 		    goto file_error;
 		}
 		if(lineno != VROW(end))
 		    fputc('\n', fh);
-		lineno++;
 		col = 0;
+		lineno++;
 		line++;
 	    }
 	    fclose(fh);
@@ -356,13 +359,15 @@ the buffer respectively (ignoring the current restriction).
     else if(NILP(cmd_streamp(file)))
     {
 	/* file is a stream */
-	long lineno = VROW(start), col = VCOL(start);
+	long lineno = VROW(start);
 	LINE *line = VTX(tx)->tx_Lines + lineno;
+	long col = MIN(VCOL(start), line->ln_Strlen - 1);
 	while(lineno <= VROW(end))
 	{
 	    int len = (((lineno == VROW(end))
 			? VCOL(end) : line->ln_Strlen - 1) - col);
-	    if(stream_puts(file, line->ln_Line + col, len, FALSE) != len) 
+	    if(len > 0
+	       && stream_puts(file, line->ln_Line + col, len, FALSE) != len) 
 		goto stream_error;
 	    if(lineno != VROW(end))
 		stream_putc(file, '\n');
