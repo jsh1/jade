@@ -138,7 +138,7 @@ set so that it and the current view are roughly the same size."
 	((view (next-view))
 	 total desired)
       (when (minibuffer-view-p view)
-	(setq view (prev-view)))
+	(setq view (previous-view)))
       (unless (eq lines t)
 	(setq total (+ (cdr (view-dimensions))
 		       (cdr (view-dimensions view)))

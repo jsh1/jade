@@ -19,6 +19,7 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (provide 'info)
+(require 'prompt)
 
 ;;; Limitations:
 ;;; - No support for `*' node name.

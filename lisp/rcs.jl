@@ -64,6 +64,8 @@ cause the new revision _not_ to be locked, only checked out. A successive
   "Keymap for Ctrl-C when entering text for a callback.")
 (defvar rcs-callback-keymap (make-keylist)
   "Keymap for callback buffer.")
+
+(defvar rcs-current-info-string nil)
 (make-variable-buffer-local 'rcs-current-info-string)
 
 (defvar rcs-controlled-buffer nil
@@ -199,7 +201,7 @@ description entered. COUNT may be negative."
   (let
       ((revision-pos (re-search-forward
 		      "\\$((Header|Id): .*,v |Revision: )([0-9.]+) "
-		      (start-of-buffer) buffer nil)))
+		      (start-of-buffer))))
     (if revision-pos
 	(setq rcs-revision (copy-area (match-start 3) (match-end 3)))
       ;; Could run rlog -h FILE or something and look through

@@ -23,20 +23,15 @@
 
 ;; Variables
 
-(setq gcc-error-regexp "^(.*):([0-9]+):(.+)"
-      gcc-file-expand "\\1"
-      gcc-line-expand "\\2"
-      gcc-error-expand "\\3")
-
-(defvar compile-error-regexp gcc-error-regexp
+(defvar compile-error-regexp "^(.*):([0-9]+):(.+)"
   "String used to match error messages in compilation output.")
-(defvar compile-file-expand gcc-file-expand
+(defvar compile-file-expand "\\1"
   "Expansion template for the name of the file in an error matched by
 `compile-error-regexp'.")
-(defvar compile-line-expand gcc-line-expand
+(defvar compile-line-expand "\\2"
     "Expansion template for the line number of an error matched by
 `compile-error-regexp'.")
-(defvar compile-error-expand gcc-error-expand
+(defvar compile-error-expand "\\3"
     "Expansion template for the error description in an error matched by
 `compile-error-regexp'.")
 
@@ -54,7 +49,7 @@
 (defvar compile-proc nil)
 (defvar compile-errors nil "List of (ERROR-POS-MARK . ERROR-DESC-LINE)")
 (defvar compile-error-pos nil)
-(defvar compile-error-parsed-errors-p nil)
+(defvar compile-parsed-errors-p nil)
 (defvar compile-errors-exist-p nil)
 
 (defvar compile-command "make"

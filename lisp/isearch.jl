@@ -31,6 +31,14 @@ searching.")
 (defvar isearch-last-match nil
   "The last regexp successfully (i.e. entered with RET) found by isearch.")
 
+;; Special vars
+(defvar isearch-trace nil)
+(defvar isearch-forwards nil)
+(defvar isearch-failing nil)
+(defvar isearch-wrapped nil)
+(defvar isearch-initial-pos nil)
+(defvar isearch-re-error nil)
+
 
 ;;; Wrappers for some regexp functions to trap errors
 

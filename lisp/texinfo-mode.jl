@@ -20,29 +20,30 @@
 
 (provide 'texinfo-mode)
 
-(unless (boundp 'texinfo-keymap)
-  (setq texinfo-keymap (make-keylist)
-	texinfo-ctrl-c-keymap (make-keylist)
-	texinfo-ctrl-c-ctrl-c-keymap (make-keylist))
-  (bind-keys texinfo-keymap
-    "TAB" 'tab-with-spaces)
-  (bind-keys texinfo-ctrl-c-keymap
-    "Ctrl-c" '(setq next-keymap-path '(texinfo-ctrl-c-ctrl-c-keymap)))
-  (bind-keys texinfo-ctrl-c-ctrl-c-keymap
-    "c" '(texinfo-insert-braces "@code")
-    "d" '(texinfo-insert-braces "@dfn")
-    "e" 'texinfo-insert-@end
-    "f" '(texinfo-insert-braces "@file")
-    "i" '(texinfo-insert "@item")
-    "l" '(texinfo-insert "@lisp\n")
-    "m" '(texinfo-insert "@menu\n")
-    "Ctrl-m" 'texinfo-insert-menu-item
-    "n" 'texinfo-insert-@node
-    "s" '(texinfo-insert-braces "@samp")
-    "v" '(texinfo-insert-braces "@var")
-    "{" 'texinfo-insert-braces
-    "]" 'texinfo-move-over-braces
-    "}" 'texinfo-move-over-braces))
+(defvar texinfo-keymap (make-keylist))
+(bind-keys texinfo-keymap
+  "TAB" 'tab-with-spaces)
+
+(defvar texinfo-ctrl-c-keymap (make-keylist))
+(bind-keys texinfo-ctrl-c-keymap
+  "Ctrl-c" '(setq next-keymap-path '(texinfo-ctrl-c-ctrl-c-keymap)))
+
+(defvar texinfo-ctrl-c-ctrl-c-keymap (make-keylist))
+(bind-keys texinfo-ctrl-c-ctrl-c-keymap
+  "c" '(texinfo-insert-braces "@code")
+  "d" '(texinfo-insert-braces "@dfn")
+  "e" 'texinfo-insert-@end
+  "f" '(texinfo-insert-braces "@file")
+  "i" '(texinfo-insert "@item")
+  "l" '(texinfo-insert "@lisp\n")
+  "m" '(texinfo-insert "@menu\n")
+  "Ctrl-m" 'texinfo-insert-menu-item
+  "n" 'texinfo-insert-@node
+  "s" '(texinfo-insert-braces "@samp")
+  "v" '(texinfo-insert-braces "@var")
+  "{" 'texinfo-insert-braces
+  "]" 'texinfo-move-over-braces
+  "}" 'texinfo-move-over-braces)
 
 ;;;###autoload
 (defun texinfo-mode ()
@@ -136,7 +137,7 @@ Special commands available are,\n
       (progn
 	;; Surround n words with braces
 	(insert "{")
-	(forward-word (prefix-numeric-argument current-prefix-arg) nil t)
+	(goto (forward-word (prefix-numeric-argument current-prefix-arg)))
 	(insert "}"))
     (insert "{}")
     (goto (forward-char -1))))

@@ -25,6 +25,7 @@
 (make-variable-buffer-local 'case-fold-search)
 
 
+
 ;;;###autoload
 (defun replace-last-match (template)
   "Replace the whole of the most recently matched regular expression with
@@ -78,6 +79,13 @@ last change."
   "?" 'query-replace-help
   "HELP" 'query-replace-help
   "Ctrl-h" 'query-replace-help)
+
+;; Special vars
+(defvar query-replace-from nil)
+(defvar query-replace-to nil)
+(defvar query-replace-title nil)
+(defvar query-replace-trace nil)
+(defvar query-replace-old-kp nil)
 
 (defun query-replace-replace ()
   (interactive)

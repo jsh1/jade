@@ -24,6 +24,7 @@
 ;; Replying to messages
 
 ;; The message structure of the message being replied to.
+(defvar rm-reply-message nil)
 (make-variable-buffer-local 'rm-reply-message)
 
 ;; This matches most forms of "Re: SUBJECT" strings, leaving SUBJECT
@@ -38,7 +39,7 @@
   (let
       ((message rm-current-msg)
        (subject (rm-get-msg-field rm-current-msg rm-msg-subject))
-       to cc msg-id)
+       to cc msg-id references)
     (save-restriction
       ;; Need to look at *all* headers
       (restrict-buffer (mark-pos (rm-get-msg-field rm-current-msg rm-msg-mark))

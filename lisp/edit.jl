@@ -490,7 +490,7 @@ the buffer."
   "The first character of the COUNT'th next word is made upper-case, the
 rest lower-case."
   (interactive "p")
-  (forward-word (if (> count 0) (- count 1) count) nil t)
+  (goto (forward-word (if (> count 0) (- count 1) count) nil))
   (unless (in-word-p)
     (goto (re-search-forward word-regexp)))
   (translate-area (cursor-pos) (forward-char) upcase-table)
@@ -643,7 +643,7 @@ over the COUNT following items."
 	    end1 (funcall forward-item 1 start1)
 	    end2 (funcall forward-item 1 end1)
 	    start2 (funcall backward-item 1 end2))
-      (transpose-1)
+      (transpose-1 start1 end1 start2 end2)
       (setq count (1- count)))
     (while (< count 0)
       ;; go backwards
@@ -651,10 +651,10 @@ over the COUNT following items."
 	    end1 (funcall forward-item 1 start1)
 	    start2 (funcall backward-item 1 start1)
 	    end2 (funcall forward-item 1 start2))
-      (transpose-1)
+      (transpose-1 start1 end1 start2 end2)
       (setq count (1+ count)))))
 
-(defun transpose-1 ()
+(defun transpose-1 (start1 end1 start2 end2)
   (let
       (text1 text2)
     (if (< start2 start1)
@@ -709,9 +709,10 @@ over the COUNT following items."
   (unless str
     (setq str (current-event-string)))
   (when str
-    (setq len (length str))
-    (delete-area (cursor-pos) (forward-char len))
-    (insert str)))
+    (let
+	((len (length str)))
+      (delete-area (cursor-pos) (forward-char len))
+      (insert str))))
 
 
 ;; Miscellaneous editing commands

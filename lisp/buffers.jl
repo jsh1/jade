@@ -208,7 +208,7 @@ such buffer could be made."
       ((buf (get-file-buffer name)))
     (unless buf
       (when (setq buf (make-buffer (file-name-nondirectory name)))
-	(add-buffer buf buffer-list)
+	(add-buffer buf)
 	(with-buffer buf
 	  (read-file-into-buffer name))))
     (unless dont-activate

@@ -21,11 +21,14 @@
 (require 'help)
 (provide 'keymap)
 
+(defvar km-prefix-string nil)
+(defvar km-keymap-list nil)
+
 ;;;###autoload
 (defun print-keymap (&optional keymap-list buffer)
   "Prints a description of the installed keymaps in the current buffer."
-  (unless keymap-list
-    (setq keymap-list keymap-path))
+  (unless km-keymap-list
+    (setq km-keymap-list keymap-path))
   (unless buffer
     (setq buffer (current-buffer)))
   (insert "\nKey/Event")
@@ -35,11 +38,11 @@
   (insert "-------\n\n")
   (let
       (done-list)			; keymaps already printed
-    (while keymap-list
+    (while km-keymap-list
       (let
-	  ((keymap (car keymap-list))
+	  ((keymap (car km-keymap-list))
 	   km-prefix-string)
-	(setq keymap-list (cdr keymap-list))
+	(setq km-keymap-list (cdr km-keymap-list))
 	(when (and (not (keymapp keymap)) (consp keymap))
 	  (setq km-prefix-string (cdr keymap)
 		keymap (car keymap)))
@@ -60,7 +63,7 @@
 	      (km-print-list (cdr keymap)))))
 	  (insert "\n"))))))
 
-;; Print one keymap. This accesses the free variables `keymap-list' and
+;; Print one keymap. This accesses the free variables `km-keymap-list' and
 ;; `km-prefix-string' -- both in describe-keymap.
 (defun km-print-list (keymap)
   (let
@@ -82,7 +85,7 @@
 		 (new-list (mapcar #'(lambda (km)
 				       (cons km new-str))
 				   this-list)))
-	      (setq keymap-list (append keymap-list new-list))))))
+	      (setq km-keymap-list (append km-keymap-list new-list))))))
       (insert (concat km-prefix-string (if km-prefix-string ?\ )  event-str))
       (indent-to 24)
       (prin1 cmd (current-buffer))

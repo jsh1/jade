@@ -20,29 +20,30 @@
 
 (provide 'tex-mode)
 
-(unless (boundp 'tex-keymap)
-  (setq tex-keymap (make-keylist)
-	tex-ctrl-c-keymap (make-keylist)
-	tex-ctrl-c-ctrl-c-keymap (make-keylist))
-  (bind-keys tex-keymap
-    "TAB" 'tab-with-spaces)
-  (bind-keys tex-ctrl-c-keymap
-    "Ctrl-c" '(setq next-keymap-path '(tex-ctrl-c-ctrl-c-keymap)))
-  (bind-keys tex-ctrl-c-ctrl-c-keymap
-    "b" '(tex-insert-braces "begin")
-    "c" '(tex-insert-braces "cite")
-    "e" 'tex-insert-end
-    "i" '(tex-insert-braces "textit")
-    "l" '(tex-insert-braces "label")
-    "m" '(tex-insert-braces "emph")
-    "n" '(insert "\\noindent\n")
-    "r" '(tex-insert-braces "ref")
-    "s" '(tex-insert-braces "section")
-    "u" '(tex-insert-braces "subsection")
-    "t" '(tex-insert-braces "texttt")
-    "{" 'tex-insert-braces
-    "]" 'tex-move-over-braces
-    "}" 'tex-move-over-braces))
+(defvar tex-keymap (make-keylist))
+(bind-keys tex-keymap
+  "TAB" 'tab-with-spaces)
+
+(defvar tex-ctrl-c-keymap (make-keylist))
+(bind-keys tex-ctrl-c-keymap
+  "Ctrl-c" '(setq next-keymap-path '(tex-ctrl-c-ctrl-c-keymap)))
+
+(defvar tex-ctrl-c-ctrl-c-keymap (make-keylist))
+(bind-keys tex-ctrl-c-ctrl-c-keymap
+  "b" '(tex-insert-braces "begin")
+  "c" '(tex-insert-braces "cite")
+  "e" 'tex-insert-end
+  "i" '(tex-insert-braces "textit")
+  "l" '(tex-insert-braces "label")
+  "m" '(tex-insert-braces "emph")
+  "n" '(insert "\\noindent\n")
+  "r" '(tex-insert-braces "ref")
+  "s" '(tex-insert-braces "section")
+  "u" '(tex-insert-braces "subsection")
+  "t" '(tex-insert-braces "texttt")
+  "{" 'tex-insert-braces
+  "]" 'tex-move-over-braces
+  "}" 'tex-move-over-braces)
 
 ;;;###autoload
 (defun tex-mode ()
@@ -122,11 +123,11 @@ Special commands available are,\n
       (if (> count 0)
 	  (progn
 	    (insert (if command (concat ?\\ command ?\{) "\{"))
-	    (forward-word count nil t)
+	    (goto (forward-word count))
 	    (insert "\}"))
-	(forward-word count nil t)
+	(goto (forward-word count))
 	(insert (if command (concat ?\\ command ?\{) "\{"))
-	(forward-word (- count) nil t)
+	(goto (forward-word (- count)))
 	(insert "\}")))))
 
 (defun tex-move-over-braces ()

@@ -21,14 +21,13 @@
 (require 'ring)
 (provide 'prompt)
 
-(defvar prompt-keymap (make-keylist))
-
 (defvar prompt-buffer-list '()
   "Stack of buffers which can be used for prompts.")
 
 (defvar completion-buffer-list '()
   "Stack of buffers used to display completion results.")
 
+(defvar prompt-keymap (make-keylist))
 (bind-keys prompt-keymap
   "TAB"		'prompt-complete
   "RET"		'prompt-enter-line
@@ -71,11 +70,6 @@ case.")
 
 (defvar prompt-symbol-predicate nil
   "Predicate used when prompting for symbols.")
-
-(defvar amiga-use-file-req-p t
-  "*AMIGA ONLY*
-When non-nil the normal ASL file requester is used when file names are
-prompted for.")
 
 (defvar prompt-default-history (make-ring)
   "Catch-all history list for prompt.")
@@ -381,11 +375,6 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
   "A regexp, if it matches the file being considered for completion, the file
 is rejected.")
 
-;; Don't want .info files (WB icons) on Amigas, everywhere else they're okay
-;; though.
-(when (amiga-p)
-  (setq prompt-file-exclude (concat prompt-file-exclude "|\\.info$")))
-
 ;; Ignore the `.' and `..' directory entries in UNIX
 (when (unix-p)
   (setq prompt-file-exclude (concat prompt-file-exclude "|^\\.(\\.|)$")))
@@ -458,32 +447,19 @@ allowed to be entered."
     (setq prompt "Enter filename:"))
   (unless (stringp start)
     (setq start (file-name-directory (buffer-file-name))))
-  (if (and (amiga-p) amiga-use-file-req-p)
-      (if existing
-	  (let
-	      (file)
-	    (while (null file)
-	      (unless (setq file (file-req prompt start))
-		(return))
-	      (unless (file-exists-p file)
-		(beep)
-		(req "That file doesn't exist!" "Continue")
-		(setq file nil)))
-	    file)
-	(file-req prompt start))
-    (let*
-	((prompt-completion-function 'prompt-complete-filename)
-	 (prompt-validate-function (if existing
-				       'prompt-validate-filename
-				     nil))
-	 (prompt-word-regexps prompt-def-regexps)
-	 (prompt-history (or history-list prompt-file-history))
-	 (prompt-default-value default)
-	 (str (prompt prompt start)))
-      (when (and (string= str "") default)
-	(setq str default))
-      (when str
-	(expand-file-name str)))))
+  (let*
+      ((prompt-completion-function 'prompt-complete-filename)
+       (prompt-validate-function (if existing
+				     'prompt-validate-filename
+				   nil))
+       (prompt-word-regexps prompt-def-regexps)
+       (prompt-history (or history-list prompt-file-history))
+       (prompt-default-value default)
+       (str (prompt prompt start)))
+    (when (and (string= str "") default)
+      (setq str default))
+    (when str
+      (expand-file-name str))))
 
 ;;;###autoload
 (defun prompt-for-directory (&optional prompt existing start default)
