@@ -199,8 +199,8 @@ contain its definition as a function."
   (let
       ((fun (if (functionp rule)
 		rule
-	      (or (get rule 'rm-rule-function)
-		  (error "No rule called %s" rule)))))
+	      (symbol-value (or (get rule 'rm-rule-function)
+				(error "No rule called %s" rule))))))
     (filter #'(lambda (rm-rule-message)
 		(funcall fun)) messages)))
 
