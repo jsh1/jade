@@ -31,6 +31,7 @@
     "RET" 'html-display-select
     "Button1-Click2" 'html-display-select
     "Button2-Click1" 'goto-mouse
+    "Button2-Move" 'goto-mouse
     "Button2-Off" 'html-display-mouse-select
     "TAB" 'html-display-next-link
     "M-TAB" 'html-display-previous-link
@@ -99,8 +100,7 @@
 	    popup-local-menus html-display-menus)
       (map-extents #'(lambda (e)
 		       (when (html-display-extent-is-link-p e)
-			 (extent-set e 'popup-extent-menus
-				     html-display-link-menus)
+			 (extent-put e 'popup-menus html-display-link-menus)
 			 (extent-put e 'mouse-face active-face)))
 		   (start-of-buffer) (end-of-buffer))
       (call-hook 'html-display-hook))))

@@ -473,7 +473,7 @@ whole of the buffer (if no block)."
 				 (list 'face ispell-misspelt-face
 				       'mouse-face active-face))))
 			  (extent-set e 'ispell-misspelt t)
-			  (extent-set e 'popup-extent-menus ispell-minor-menus)
+			  (extent-put e 'popup-menus ispell-minor-menus)
 			  wend))))
     (if (not abort-on-input)
 	;; Just scan the whole thing in one chunk
