@@ -179,33 +179,44 @@ a buffer."
       (error "Wget returned non-zero!"))))
 	       
 (defun find-url-http (url)
-  (let*
-      ((buffer (make-buffer "*wget-output*"))
-       (errors (make-buffer "*wget-errors*"))
-       (process (make-process (cons buffer t)))
-       load-url anchor args)
+  (let
+      (load-url anchor buffer)
     (if (string-match "^(.*)#(.*)$" url)
 	(progn
 	  (setq load-url (expand-last-match "\\1"))
 	  (setq anchor (expand-last-match "\\2")))
       (setq load-url url))
-    (setq args (list wget-program "-s" "-O" "-" load-url))
-    (set-process-error-stream process (cons errors t))
-    (clear-buffer buffer)
-    (clear-buffer errors)
-    (message (format nil "wget %s..." url) t)
-    (if find-url-asynchronously
+    (when (fboundp 'html-display-find-url)
+      (setq buffer (html-display-find-url url)))
+    (if buffer
 	(progn
-	  (set-process-function process `(lambda (p)
-					   (find-url-http-loaded
-					    p ,load-url ,anchor ,(current-view)
-					    ,buffer ,errors)))
-	  (or (apply 'start-process process args)
-	      (error "Can't start wget"))
-	  (setq find-url-processes (cons (cons url process)
-					 find-url-processes)))
-      (apply 'call-process process nil args)
-      (find-url-http-loaded process url anchor (current-view) buffer errors))))
+	  (goto-buffer buffer)
+	  (when anchor
+	    (html-display-goto-anchor anchor)))
+      (setq buffer (make-buffer "*wget-output*"))
+      (let
+	  ((errors (make-buffer "*wget-errors*"))
+	   (process (make-process (cons buffer t)))
+	   args)
+	(setq args (list wget-program "-s" "-O" "-" load-url))
+	(set-process-error-stream process (cons errors t))
+	(clear-buffer buffer)
+	(clear-buffer errors)
+	(message (format nil "wget %s..." url) t)
+	(if find-url-asynchronously
+	    (progn
+	      (set-process-function process `(lambda (p)
+					       (find-url-http-loaded
+						p ,load-url ,anchor
+						,(current-view)
+						,buffer ,errors)))
+	      (or (apply 'start-process process args)
+		  (error "Can't start wget"))
+	      (setq find-url-processes (cons (cons url process)
+					     find-url-processes)))
+	  (apply 'call-process process nil args)
+	  (find-url-http-loaded process url anchor
+				(current-view) buffer errors))))))
 
 (defun find-url-abort (url &optional kill)
   "Terminate the asynchronous connection loading URL."
