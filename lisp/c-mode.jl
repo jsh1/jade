@@ -122,7 +122,8 @@ Commands defined by this mode are:\n
 (defun c-close-brace ()
   (interactive)
   (insert "}")
-  (indent-line))
+  (indent-line)
+  (blinking-insert))
 
 (defun c-colon ()
   (interactive)
