@@ -302,3 +302,21 @@ the next line is started."
     (while (< spos epos)
       (center-line spos)
       (forward-line 1 spos))))
+
+
+;; Miscellaneous
+
+;;;###autoload
+(defun unfill-paragraph (count)
+  "Change all newline characters with spaces in the COUNT paragraphs
+surrounding the cursor. When called interactively COUNT is taken from the
+prefix argument."
+  (interactive "p")
+  (let*
+      ((start (paragraph-edges count))
+       (end (make-mark (forward-char -1 (cdr start)))))
+    (setq start (car start))
+    (while (and (setq start (char-search-forward ?\n start))
+		(< start (mark-pos end)))
+      (delete-area start (forward-char 1 start))
+      (insert " " start))))
