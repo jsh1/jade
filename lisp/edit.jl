@@ -684,11 +684,19 @@ active after FORMS has been evaluated."
 
 (defun mouse-select ()
   (interactive)
-  (setq mouse-select-pos (mouse-pos)
-	mouse-dragging nil
-	mouse-dragging-objects nil)
-  (block-kill)
-  (goto-char mouse-select-pos))
+  (let*
+      ((raw-pos (raw-mouse-pos))
+       (mouse-view (find-view-by-pos raw-pos)))
+    (when mouse-view
+      (unless (eq (current-view) mouse-view)
+	(set-current-view mouse-view))
+      (setq raw-pos (translate-pos-to-view raw-pos))
+      (when raw-pos
+	(setq mouse-select-pos (glyph-to-char-pos raw-pos)
+	      mouse-dragging nil
+	      mouse-dragging-objects nil)
+	(block-kill)
+	(goto-char mouse-select-pos)))))
 
 (defun mouse-double-select ()
   (interactive)
