@@ -271,14 +271,14 @@ Major mode for composing and sending mail messages."
 	(setq tem (mail-delete-header (match-start)))
 	(unwind-protect
 	    (progn
-	      (setq file (open (expand-file-name filename) "a"))
+	      (setq file (open-file (expand-file-name filename) "a"))
 	      (unless (zerop (file-size filename))
 		(write file "\n\n"))
 	      ;; Need timezone as well
 	      (format file "From %s %s\n" (user-login-name)
 		      (current-time-string))
 	      (write-buffer file))
-	  (close file))))
+	  (close-file file))))
 
     ;; Handle Resent-X headers. Build a list of addresses the message
     ;; should be sent to and specify them on the command line, instead of

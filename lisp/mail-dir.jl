@@ -69,7 +69,7 @@ definitions will be added to any existing definitions."
 				      mail-directory-file)
 		     current-prefix-arg))
   (let
-      ((file-handle (open (expand-file-name file) "r"))
+      ((file-handle (open-file (expand-file-name file) "r"))
        form list tem)
     (if dont-merge
 	(setq mail-address-alist nil
@@ -98,7 +98,7 @@ definitions will be added to any existing definitions."
 			  (null (assoc (car (car form)) (symbol-value list))))
 		  (set list (cons (car form) (symbol-value list))))
 		(setq form (cdr form)))))
-	(close file-handle)))))
+	(close-file file-handle)))))
 
 ;; Output a LIST of objects to STREAM. Each object printed will be indented
 ;; by two spaces.
@@ -112,7 +112,7 @@ definitions will be added to any existing definitions."
   (interactive (list (prompt-for-file "File to save mail directory to"
 				      nil mail-directory-file)))
   (let
-      ((file-handle (open (expand-file-name file) "w"))
+      ((file-handle (open-file (expand-file-name file) "w"))
        list)
     (when file-handle
       (unwind-protect
@@ -124,7 +124,7 @@ definitions will be added to any existing definitions."
 	    (write file-handle "\)\n\n;; Alias list\n\(alias-alist")
 	    (mail-dir-output-list file-handle mail-alias-alist)
 	    (write file-handle "\)\n"))
-	(close file-handle))
+	(close-file file-handle))
       (setq mail-directory-modified nil))))
 
 

@@ -71,7 +71,7 @@
 	 dst-file proc)
       (backup-file file-name)
       (when (and (write-buffer tmp-name buffer)
-		 (setq dst-file (open file-name "wb")))
+		 (setq dst-file (open-file file-name "wb")))
 	(unwind-protect
 	    (progn
 	      (setq proc (make-process dst-file))
@@ -79,7 +79,7 @@
 	      (when (/= (call-process proc nil compressor "-c" tmp-name) 0)
 		(signal 'file-error (list "Can't compress file"
 					  tmp-name compressor))))
-	  (close dst-file)
+	  (close-file dst-file)
 	  (delete-file tmp-name))
 	(when modes
 	  (set-file-modes file-name modes))

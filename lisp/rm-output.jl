@@ -94,7 +94,7 @@ otherwise write straight to the folder's file."
       (unrestrict-buffer)
       (let
 	  ((real-dest (or (get-file-buffer dest)
-			  (open dest "a"))))
+			  (open-file dest "a"))))
 	(unwind-protect
 	    (while (and (> count 0) msg-list)
 	      (rm-output-message (car msg-list)
@@ -108,7 +108,7 @@ otherwise write straight to the folder's file."
 		    msg-list (cdr msg-list)))
 	  (cond
 	   ((filep real-dest)
-	    (close real-dest))
+	    (close-file real-dest))
 	   ((bufferp real-dest)
 	    (with-buffer real-dest
 	      (when (eq major-mode 'read-mail-mode)
