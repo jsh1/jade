@@ -24,7 +24,12 @@
 
 ;; Configuration
 
-(defvar user-mail-address (concat (user-login-name) ?\@ (system-name))
+(defvar mail-domain-name (if (string-match "^([^.]+\\.)[^.]+" (system-name))
+			     (substring (system-name) (match-end 1))
+			   (system-name))
+  "Mail domainname of the local site.")
+
+(defvar user-mail-address (concat (user-login-name) ?\@ mail-domain-name)
   "Address to put in From: headers of outgoing mail.")
 
 (defvar mail-address-style 'angles
