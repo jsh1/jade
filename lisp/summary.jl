@@ -59,6 +59,10 @@
 ;;   list
 ;;	Return a list of all current items
 ;;
+;;   current
+;;	Return the *index* in the list of all current items, of the
+;;	currently selected item (indexed from zero).
+;;
 ;;   execute-begin
 ;;	Called before executing pending actions
 ;;
@@ -239,8 +243,7 @@ items to be displayed and manipulated."
 highlight."
   (interactive)
   (let
-      ((inhibit-read-only t)
-       (old-item (summary-current-item)))
+      ((inhibit-read-only t))
     (block-kill)
     (delete-area summary-first-line (buffer-end))
     (setq summary-items (summary-dispatch 'list))
@@ -252,9 +255,7 @@ highlight."
 	(setq items (cdr items))
 	(when items
 	  (insert "\n")))
-      (summary-goto-item (if (and old-item (memq old-item summary-items))
-			     (summary-get-index old-item)
-			   0))
+      (summary-goto-item (or (summary-maybe-dispatch 'current) 0))
       (summary-maybe-dispatch 'after-update))))
 
 (defun summary-update-item (item)
