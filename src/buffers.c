@@ -33,13 +33,14 @@ _PR VALUE *get_tx_cursor_ptr(TX *tx);
 _PR VALUE get_tx_cursor(TX *);
 _PR int auto_save_buffers(bool);
 
-_PR void make_marks_resident(TX *);
 _PR void make_marks_non_resident(TX *);
 _PR void mark_sweep(void);
 _PR int mark_cmp(VALUE, VALUE);
 _PR void mark_prin(VALUE, VALUE);
 _PR void buffers_init(void);
 _PR void buffers_kill(void);
+
+static void make_marks_resident(VALUE newtx);
 
 /* Chain of all allocated TXs. */
 _PR TX *buffer_chain;
@@ -120,6 +121,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 		data_after_gc += sizeof(TX);
 
 		tx->tx_FileName = null_string();
+		tx->tx_CanonicalFileName = null_string();
 		tx->tx_MinorModeNameList = sym_nil;
 		tx->tx_MinorModeNameString = null_string();
 		tx->tx_SavedBlockStatus = -1;
@@ -158,6 +160,7 @@ non-resident.
     make_marks_non_resident(VTX(tx));
     clear_line_list(VTX(tx));
     VTX(tx)->tx_FileName = null_string();
+    VTX(tx)->tx_CanonicalFileName = null_string();
     VTX(tx)->tx_BufferName = null_string();
     VTX(tx)->tx_ModeName = LISP_NULL;
     VTX(tx)->tx_MinorModeNameList = sym_nil;
@@ -282,15 +285,26 @@ get-file-buffer NAME
 Scan all buffers for one containing the file NAME.
 ::end:: */
 {
-    TX *tx = buffer_chain;
+    VALUE tx;
+    GC_root gc_name;
     DECLARE1(name, STRINGP);
-    while(tx)
+
+    PUSHGC(gc_name, name);
+    name = cmd_canonical_file_name(name);
+    POPGC;
+    if(!name || !STRINGP(name))
+	return LISP_NULL;
+
+    tx = VAL(buffer_chain);
+    while(VTX(tx) != 0)
     {
-	if(same_files(VSTR(name), VSTR(tx->tx_FileName)))
-	    return(VAL(tx));
-	tx = tx->tx_Next;
+	if(STRING_LEN(VTX(tx)->tx_CanonicalFileName) == STRING_LEN(name)
+	   && memcmp(VSTR(VTX(tx)->tx_CanonicalFileName), VSTR(name),
+		     STRING_LEN(name)) == 0)
+	    return tx;
+	tx = VAL(VTX(tx)->tx_Next);
     }
-    return(sym_nil);
+    return sym_nil;
 }
 
 _PR VALUE cmd_get_buffer(VALUE);
@@ -439,13 +453,24 @@ set-buffer-file-name BUFFER NAME
 Set the name of the file being edited in BUFFER to NAME.
 ::end:: */
 {
+    VALUE canonical;
+    GC_root gc_tx, gc_name;
+
     DECLARE1(name, STRINGP);
     if(!BUFFERP(tx))
 	tx = VAL(curr_vw->vw_Tx);
+
+    PUSHGC(gc_tx, tx);
+    PUSHGC(gc_name, name);
+    canonical = cmd_canonical_file_name(name);
+    POPGC; POPGC;
+
     make_marks_non_resident(VTX(tx));
     VTX(tx)->tx_FileName = name;
-    make_marks_resident(VTX(tx));
-    return(name);
+    VTX(tx)->tx_CanonicalFileName
+	= (canonical && STRINGP(canonical)) ? canonical : name;
+    make_marks_resident(tx);
+    return VTX(tx)->tx_FileName;
 }
 
 _PR VALUE cmd_buffer_name(VALUE);
@@ -905,26 +930,28 @@ static Lisp_Mark *mark_chain;
 
 /* For all non-resident marks, see if any point to NEWTX, if so link them
    onto NEWTX's `tx_Marks' chain. */
-void
-make_marks_resident(TX *newtx)
+static void
+make_marks_resident(VALUE newtx)
 {
-    Lisp_Mark *nxt, *mk = non_resident_mark_chain;
+    VALUE mk = VAL(non_resident_mark_chain);
     non_resident_mark_chain = NULL;
-    while(mk != NULL)
+    while(mk != LISP_NULL)
     {
-	nxt = mk->next;
-	if(same_files(VSTR(newtx->tx_FileName), VSTR(mk->file)))
+	Lisp_Mark *nxt = VMARK(mk)->next;
+	
+	if(strcmp(VSTR(VTX(newtx)->tx_CanonicalFileName),
+		  VSTR(VMARK(mk)->file)) == 0)
 	{
-	    mk->file = VAL(newtx);
-	    mk->next = newtx->tx_MarkChain;
-	    newtx->tx_MarkChain = mk;
+	    VMARK(mk)->file = newtx;
+	    VMARK(mk)->next = VTX(newtx)->tx_MarkChain;
+	    VTX(newtx)->tx_MarkChain = VMARK(mk);
 	}
 	else
 	{
-	    mk->next = non_resident_mark_chain;
-	    non_resident_mark_chain = mk;
+	    VMARK(mk)->next = non_resident_mark_chain;
+	    non_resident_mark_chain = VMARK(mk);
 	}
-	mk = nxt;
+	VMARK(mk) = nxt;
     }
 }
 
@@ -938,7 +965,7 @@ make_marks_non_resident(TX *oldtx)
     while(mk != NULL)
     {
 	nxt = mk->next;
-	mk->file = oldtx->tx_FileName;
+	mk->file = oldtx->tx_CanonicalFileName;
 	mk->next = non_resident_mark_chain;
 	non_resident_mark_chain = mk;
 	mk = nxt;
@@ -992,26 +1019,19 @@ mark_sweep(void)
     }
 }
 
+/* Compare two marks. Note that non-resident marks are never compared
+   since we would have to call file-name= (and possibly invoke some
+   Lisp code, which isn't allowed). */
 int
 mark_cmp(VALUE v1, VALUE v2)
 {
     int rc = 1;
-    if(VTYPE(v1) == VTYPE(v2))
+    if(VTYPE(v1) == VTYPE(v2)
+       && MARK_RESIDENT_P(VMARK(v1)) && MARK_RESIDENT_P(VMARK(v2))
+       && VMARK(v1)->file == VMARK(v2)->file)
     {
-	u_char *name1, *name2;
-	if(MARK_RESIDENT_P(VMARK(v1)))
-	    name1 = VSTR(VTX(VMARK(v1)->file)->tx_FileName);
-	else
-	    name1 = VSTR(VMARK(v1)->file);
-	if(MARK_RESIDENT_P(VMARK(v2)))
-	    name2 = VSTR(VTX(VMARK(v2)->file)->tx_FileName);
-	else
-	    name2 = VSTR(VMARK(v2)->file);
-	if(same_files(name1, name2))
-	{
-	    if(!(rc = VROW(VMARK(v1)->pos) - VROW(VMARK(v2)->pos)))
-		rc = VCOL(VMARK(v1)->pos) - VROW(VMARK(v2)->pos);
-	}
+	if(!(rc = VROW(VMARK(v1)->pos) - VROW(VMARK(v2)->pos)))
+	    rc = VCOL(VMARK(v1)->pos) - VROW(VMARK(v2)->pos);
     }
     return rc;
 }
@@ -1050,35 +1070,49 @@ updated as the file changes -- it will always point to the same character
 (for as long as that character exists, anyway).
 ::end:: */
 {
-    Lisp_Mark *mk = ALLOC_OBJECT(sizeof(Lisp_Mark));
-    if(mk != NULL)
+    VALUE mk = VAL(ALLOC_OBJECT(sizeof(Lisp_Mark)));
+    if(mk != LISP_NULL)
     {
-	mk->car = V_Mark;
-	mk->next_alloc = mark_chain;
-	mark_chain = mk;
+	GC_root gc_mk, gc_buf;
+
+	VMARK(mk)->car = V_Mark;
+	VMARK(mk)->next_alloc = mark_chain;
+	mark_chain = VMARK(mk);
 	data_after_gc += sizeof(Lisp_Mark);
-	mk->pos = POSP(pos) ? pos : curr_vw->vw_CursorPos;
+	VMARK(mk)->pos = POSP(pos) ? pos : curr_vw->vw_CursorPos;
 	if(STRINGP(buffer))
 	{
-	    VALUE tem = cmd_get_file_buffer(buffer);
+	    VALUE tem;
+	    PUSHGC(gc_mk, mk);
+	    PUSHGC(gc_buf, buffer);
+	    tem = cmd_get_file_buffer(buffer);
+	    POPGC; POPGC;
 	    if(tem != LISP_NULL && BUFFERP(tem))
 		buffer = tem;
 	}
 	if(STRINGP(buffer))
 	{
-	    mk->file = buffer;
-	    mk->next = non_resident_mark_chain;
-	    non_resident_mark_chain = mk;
+	    VALUE tem;
+	    PUSHGC(gc_mk, mk);
+	    PUSHGC(gc_buf, buffer);
+	    tem = cmd_canonical_file_name(buffer);
+	    POPGC; POPGC;
+	    if(tem && STRINGP(tem))
+		VMARK(mk)->file = tem;
+	    else
+		VMARK(mk)->file = buffer;
+	    VMARK(mk)->next = non_resident_mark_chain;
+	    non_resident_mark_chain = VMARK(mk);
 	}
 	else
 	{
 	    if(!BUFFERP(buffer))
 		buffer = VAL(curr_vw->vw_Tx);
-	    mk->file = buffer;
-	    mk->next = VTX(buffer)->tx_MarkChain;
-	    VTX(buffer)->tx_MarkChain = mk;
+	    VMARK(mk)->file = buffer;
+	    VMARK(mk)->next = VTX(buffer)->tx_MarkChain;
+	    VTX(buffer)->tx_MarkChain = VMARK(mk);
 	}
-	return VAL(mk);
+	return mk;
     }
     return mem_error();
 }
@@ -1107,10 +1141,15 @@ set-mark-file MARK FILE
 Set the file pointed at by MARK to FILE, a buffer or a file name.
 ::end:: */
 {
+    GC_root gc_mark, gc_file;
     DECLARE1(mark, MARKP);
     if(STRINGP(file))
     {
-	VALUE tem = cmd_get_file_buffer(file);
+	VALUE tem;
+	PUSHGC(gc_mark, mark);
+	PUSHGC(gc_file, file);
+	tem = cmd_get_file_buffer(file);
+	POPGC; POPGC;
 	if(tem != LISP_NULL && BUFFERP(tem))
 	    file = tem;
     }
@@ -1125,6 +1164,13 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
     }
     else if(STRINGP(file))
     {
+	VALUE tem;
+	PUSHGC(gc_mark, mark);
+	PUSHGC(gc_file, file);
+	tem = cmd_canonical_file_name(file);
+	POPGC; POPGC;
+	if(tem && STRINGP(tem))
+	    file = tem;
 	if(!MARK_RESIDENT_P(VMARK(mark)))
 	{
 	    unchain_mark(VMARK(mark));

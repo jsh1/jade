@@ -54,10 +54,10 @@
 #define FREE_LINE_BUF(tx, p)  sm_free(&tx->tx_StringPool, p)
 
 /* Allocate a buffer to contain N LINE structures. */
-#define ALLOC_LL(n)   mymalloc(sizeof(LINE) * (n))
+#define ALLOC_LL(n)   sys_alloc(sizeof(LINE) * (n))
 
 /* Free one of the above */
-#define FREE_LL(l)    myfree(l)
+#define FREE_LL(l)    sys_free(l)
 
 _PR bool clear_line_list(TX *);
 _PR void kill_line_list(TX *);
