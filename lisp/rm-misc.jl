@@ -164,7 +164,8 @@ headers will be included."
       (insert "- " (match-start))
       (setq tem (end-of-line (match-start))))
     ;; Delete trailing blank lines
-    (when (looking-at "([\t ]*\n)+" (start-of-line (forward-line -1)))
+    (when (and (re-search-backward "^[^ \t\n]")
+	       (looking-at "([\t ]*\n)+" (forward-line 1 (match-start))))
       (delete-area (match-start) (match-end)))
     (insert "----- end forwarded message -----\n")
     (if (null to)
