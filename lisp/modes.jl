@@ -126,13 +126,18 @@ matches or is specified.")
 
 ;; Major mode handling
 
+(defun assoc-regexp (input alist &optional fold-case)
+  "Scan ALIST for an element whose car is a regular expression matching the
+string INPUT."
+  (catch 'return
+    (mapc #'(lambda (cell)
+	      (when (string-match (car cell) input nil fold-case)
+		(throw 'return cell))) alist)))
+
 (defun get-auto-mode (name)
   "Scan the alist `auto-mode-alist' for a mode whose regexp matches NAME,
 returning the initialisation function of that mode (a symbol) or nil."
-  (catch 'return
-    (mapc #'(lambda (cell)
-	      (when (string-match (car cell) name nil t)
-		(throw 'return (cdr cell)))) auto-mode-alist)))
+  (cdr (assoc-regexp name auto-mode-alist t)))
 
 (defun normal-mode ()
   "Initialise a major mode for the current buffer; either calls the function
