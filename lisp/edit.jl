@@ -139,7 +139,7 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
 (defun transpose-chars (count)
   "Move the character before the cursor COUNT characters forwards."
   (interactive "p")
-  (transpose-items 'forward-char 'backward-char count))
+  (transpose-items forward-char backward-char count))
 
 (defun backward-tab (&optional count p size)
   (interactive "@p")
@@ -325,7 +325,7 @@ If MOVE is t then the cursor is moved to the result."
 (defun transpose-words (count)
   "Move the word at (before) the cursor COUNT words forwards."
   (interactive "p")
-  (transpose-items 'forward-word 'backward-word count))
+  (transpose-items forward-word backward-word count))
 
 
 ;; Paragraphs
@@ -402,7 +402,7 @@ When MARK is t, the block marks are set to START and END."
 (defun transpose-paragraphs (count)
   "Move the paragrah at (before) the cursor COUNT paragraphs forwards."
   (interactive "p")
-  (transpose-items 'forward-paragraph 'backward-paragraph count))
+  (transpose-items forward-paragraph backward-paragraph count))
 
 
 ;; Page handling
@@ -734,7 +734,7 @@ over the COUNT following items."
 (defun transpose-lines (count)
   "Move the line under the cursor COUNT lines forwards."
   (interactive "p")
-  (transpose-items 'forward-line 'backward-line count))
+  (transpose-items forward-line backward-line count))
 
 
 (defun abort-recursive-edit (&optional ret-val)

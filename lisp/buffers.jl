@@ -503,7 +503,7 @@ buffers exist on exit."
 	(map-y-or-n-p #'(lambda (x)
 			  (format nil "Save file %s" (buffer-file-name x)))
 		      unsaved-buffers
-		      'save-file)
+		      save-file)
       (message "[No modified buffers]"))))
 
 (defun maybe-save-buffer (&optional buffer)

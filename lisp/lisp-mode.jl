@@ -93,10 +93,7 @@ in the status line."
 					     (and (boundp x)
 						  (functionp
 						   (symbol-value x))))
-					 (lambda (x)
-					   (and (boundp x)
-						(not (functionp
-						      (symbol-value x)))))))))
+					 boundp))))
     completions))
 
 

@@ -85,7 +85,7 @@ rune `;;;###autoload' to the `autoload.jl' file."
   (message (format nil "Found %d autoload definition(s)"
 		   (autoload-do-magic autoload-file
 				      (or buffer (current-buffer))
-				      'autoload-insert-entry))))
+				      autoload-insert-entry))))
 
 ;;;###autoload
 (defun remove-autoloads (autoload-file &optional buffer)
@@ -97,4 +97,4 @@ the string `;;;###autoload' from the `autoload.jl' file."
   (message (format nil "Removed %d autoload definition(s)"
 		   (autoload-do-magic autoload-file
 				      (or buffer (current-buffer))
-				      'autoload-remove-entry))))
+				      autoload-remove-entry))))

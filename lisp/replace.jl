@@ -128,7 +128,7 @@ last change."
 
 (defun query-replace-edit ()
   (interactive)
-  (remove-hook 'unbound-key-hook 'query-replace-unbound-key-fun)
+  (remove-hook 'unbound-key-hook query-replace-unbound-key-fun)
   (let
       ((buf (current-buffer))
        (esc-means-meta t)
@@ -198,7 +198,7 @@ type one of the following special commands,\n
 	    (message query-replace-title)
 	    (recursive-edit)))
       (with-buffer buf
-	(remove-hook 'unbound-key-hook 'query-replace-unbound-key-fun)))
+	(remove-hook 'unbound-key-hook query-replace-unbound-key-fun)))
     (message "Done.")
     ;; Returns `rest' if the `!' command was given, t if the cycle ended due
     ;; to lack of matches, nil otherwise

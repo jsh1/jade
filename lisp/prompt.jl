@@ -461,10 +461,7 @@ symbol must agree with it."
 ;;;###autoload
 (defun prompt-for-variable (&optional title start)
   "Prompt for a variable."
-  (prompt-for-symbol (or title "Enter name of variable:")
-		     (lambda (x)
-		       (and (boundp x)
-			    (not (functionp (symbol-value x))))) start))
+  (prompt-for-symbol (or title "Enter name of variable:") boundp start))
 
 ;;;###autoload
 (defun prompt-for-command (&optional title start)

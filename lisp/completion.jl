@@ -154,7 +154,8 @@ matching strings.")
 	  (setq completions (cons tem completions)))))
     completions))
 
-(setq completion-hooks (nconc completion-hooks (list complete-from-buffer)))
+(setq-default completion-hooks
+	      (nconc completion-hooks (list complete-from-buffer)))
 
 (defun complete-at-point (&optional only-display)
   "Complete the word immediately before the cursor. If ONLY-DISPLAY is non-nil,

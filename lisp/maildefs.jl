@@ -109,7 +109,7 @@ contents of the file specified by mail-signature-file.")
   "Hook called immediately prior to sending the mail message in the current
 buffer.")
 
-(defvar mail-send-function 'sendmail-send-message
+(defvar mail-send-function (lambda () (sendmail-send-message))
   "Function called when the mail message in the current buffer needs to
 be sent. Should throw an error when unsucessful.")
 
