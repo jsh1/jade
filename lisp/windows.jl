@@ -87,14 +87,18 @@ or if it is the symbol t the size of the other view won't be changed."
   "Cycles through the available views. If ALL-WINDOWS-P is t views in
 windows other than the current window are used when needed."
   (interactive "P")
-  (set-current-view (next-view nil all-windows-p) all-windows-p))
+  (let
+      ((view (next-view nil all-windows-p)))
+    (when (and (minibuffer-view-p view) (not (minibuffer-active-p view)))
+      (setq view (next-view view all-windows-p)))
+    (set-current-view view all-windows-p)))
 
 (defun scroll-next-view (&optional count)
   "Scroll the view following the current view in this window by COUNT
 screenfuls. When called interactively COUNT is taken from the prefix arg.
 Negative arguments scroll backwards."
   (interactive "p")
-  (with-view (next-view)
+  (with-view (other-view)
     (next-screen count)))
 
 (defun enlarge-view (&optional count)
@@ -105,14 +109,14 @@ argument."
   (unless count (setq count 1))
   (let*
       ((views (window-view-list))
-       (view-count (1- (window-view-count)))	;ignore minibuf
+       (view-count (window-view-count))
        (view-index (- view-count (1- (length (memq (current-view) views)))))
        view)
     (cond
-     ((= view-count 1)
+     ((= view-count 2)
       (error "Can't resize a single view"))
-     ((= view-index (1- view-count))
-      ;; Last view in window, expand the previous window negatively
+     ((>= view-index (- view-count 2))
+      ;; Last view in window or minibuffer, expand the previous view negatively
       (setq view (previous-view)
 	    count (- count)))
      (t
