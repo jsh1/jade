@@ -93,9 +93,10 @@ inherited from the current buffer."
        (old-def-dir default-directory))
     (unless buf
       (when (setq buf (make-buffer name))
-	(add-buffer buf)
 	(with-buffer buf
 	  (setq default-directory old-def-dir))))
+    (when buf
+      (add-buffer buf))
     buf))
 
 (defun goto-buffer (buffer &optional view)
