@@ -20,6 +20,9 @@
 
 (provide 'compile)
 
+
+;; Variables
+
 (setq gcc-error-regexp "^(.*):([0-9]+):(.+)"
       gcc-file-expand "\\1"
       gcc-line-expand "\\2"
@@ -55,16 +58,17 @@
 (defvar compile-error-parsed-errors-p nil)
 (defvar compile-errors-exist-p nil)
 
-(defvar compile-default-command "make"
-  "Default command which `(compile)' executes.")
-
-(defvar compile-command nil
-  "Buffer-local symbol which contains the command to compile this buffer. If
-nil or unbound use `compile-default-command'.")
-(make-variable-buffer-local 'compile-command)
+(defvar compile-command "make"
+  "The command to run from `M-x compile'.")
 
 (defvar compile-shell (unless (getenv "SHELL") "/bin/sh")
   "The filename of the shell to use to run the compilation in.")
+
+(defvar compile-last-grep "grep -n "
+  "The last string entered to the `M-x grep' command.")
+
+
+;; Compilation
 
 (defun compile-init ()
   (if compile-buffer
@@ -103,8 +107,7 @@ nil or unbound use `compile-default-command'.")
 
 ;;;###autoload
 (defun start-compile-command (command type-str)
-  "<UNIX-ONLY>
-Executes SHELL-COMMAND asynchronously in the directory containing the file
+  "Executes SHELL-COMMAND asynchronously in the directory containing the file
 being edited in the current buffer. Output from the process is sent to the
 `*compilation*' buffer. TYPE-STR is a string describing the type of messages
 the command may output (i.e. `errors' for a compilation)."
@@ -139,17 +142,56 @@ the command may output (i.e. `errors' for a compilation)."
     (continue-process compile-proc t)))
 
 ;;;###autoload
-(defun compile (&optional shell-command)
-  "<UNIX-ONLY>
-Runs the SHELL-COMMAND in the `*compilation*' buffer. If SHELL-COMMAND isn't
-given you will be prompted for a command."
-  (interactive)
-  (unless shell-command
-    (setq shell-command (prompt "Compile command: "
-				(or compile-command compile-default-command))))
-  (when shell-command
-    (setq compile-command shell-command)
-    (start-compile-command shell-command "errors")))
+(defun compile (command)
+  "Runs the COMMAND in the `*compilation*' buffer."
+  (interactive (list (prompt-for-string "Compile command:" compile-command)))
+  (setq compile-command command)
+  (start-compile-command command "errors"))
+
+
+;; Grepping
+
+;;;###autoload
+(defun grep (arg)
+  "Runs the shell command ARG (or the result of a prompt) and sends its
+output to the `*compilation*' buffer. The process may still be executing
+when this function returns."
+  (interactive (list (prompt-for-string "Run grep command:"
+					compile-last-grep)))
+  (when arg
+    (setq compile-last-grep arg)
+    ;; Concat "/dev/null /dev/null" To stop a null command (i.e. "grep")
+    ;; from hanging on standard input
+    (start-compile-command (concat arg " /dev/null /dev/null") "grep-hits")))
+
+(defvar grep-buffer-regexp nil
+  "Regular-expression which `grep-buffer' scans for")
+
+;;;###autoload
+(defun grep-buffer (&optional regexp)
+  "Scans the current buffer for all matches of REGEXP (or the contents of
+variable `grep-buffer-regexp'). All hits are displayed in the `*compilation*'
+buffer in a form that `goto-next-error' understands."
+  (interactive "sRegular expression")
+  (when regexp
+    (setq grep-buffer-regexp regexp))
+  (when (and grep-buffer-regexp (compile-init))
+    (let*
+	((scanpos (start-of-buffer))
+	 (number 0)
+	 (stream (cons compile-buffer t)))
+      (write stream ?\n)
+      (while (setq scanpos (re-search-forward grep-buffer-regexp scanpos))
+	(format stream "%s:%d:%s\n" (buffer-file-name) (pos-line scanpos)
+		(copy-area (start-of-line scanpos) (end-of-line scanpos)))
+	(setq number (+ number 1)
+	      scanpos (end-of-line scanpos)))
+      (goto-buffer compile-buffer)
+      (goto (start-of-buffer))
+      number)))
+
+
+;; Parsing compiler/grep output
 
 (defun compile-parse-errors ()
   ;; This can be called while the process is still running, one problem though,
@@ -208,42 +250,3 @@ given you will be prompted for a command."
 	(and (looking-at compile-error-regexp (pos 0 (cdr err)) compile-buffer)
 	     (message (expand-last-match compile-error-expand))))
       t))))
-
-;;;###autoload
-(defun grep (args-string)
-  "<UNIX-ONLY>
-Runs the `grep' program with ARGS-STRING (or the result of a prompt) and
-sends its output to the `*compilation*' buffer. The `grep' process may still
-be executing when this function returns."
-  (interactive "sGrep with args:")
-  (when args-string
-    (start-compile-command (concat "grep -n "
-				   args-string 
-				   " /dev/null /dev/null")
-			   "grep-hits")))
-
-(defvar grep-buffer-regexp nil
-  "Regular-expression which `grep-buffer' scans for")
-
-;;;###autoload
-(defun grep-buffer (&optional regexp)
-  "Scans the current buffer for all matches of REGEXP (or the contents of
-variable `grep-buffer-regexp'). All hits are displayed in the `*compilation*'
-buffer in a form that `goto-next-error' understands."
-  (interactive)
-  (when regexp
-    (setq grep-buffer-regexp regexp))
-  (when (and grep-buffer-regexp (compile-init))
-    (let*
-	((scanpos (start-of-buffer))
-	 (number 0)
-	 (stream (cons compile-buffer t)))
-      (write stream ?\n)
-      (while (setq scanpos (re-search-forward grep-buffer-regexp scanpos))
-	(format stream "%s:%d:%s\n" (buffer-file-name) (pos-line scanpos)
-		(copy-area (start-of-line scanpos) (end-of-line scanpos)))
-	(setq number (+ number 1)
-	      scanpos (end-of-line scanpos)))
-      (goto-buffer compile-buffer)
-      (goto (start-of-buffer))
-      number)))
