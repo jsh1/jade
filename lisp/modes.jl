@@ -70,23 +70,33 @@
 ;;; is disabled.
 
 
-(defvar mode-alist '(
-;;; ::mode-alist-start::
-  ("\\.(c|h)$|^c(|-mode)$" . c-mode)
-  ("\\.jl$|^.jaderc$|^lisp(|-mode)$" . lisp-mode)
-  ("\\.(te?xt|doc|article|letter)$" . text-mode)
-  ("^(text(|-mode)|(.*/|)draft)$" . text-mode)
-  ("^indented-text(|-mode)$" . indented-text-mode)
-  ("\\.[s]$|^asm(|-mode)$" . asm-mode)
-  ("\\.[S]$|^asm-cpp(|-mode)$" . asm-cpp-mode)
-  ("\\.texi(|nfo)|^texinfo(|-mode)$" . texinfo-mode)
-  ("\\.tex$|^(La)?TeX$" . tex-mode)
-  ("ChangeLog$" . changelog-mode)
-;;; ::mode-alist-end::
-  ) "List of all major modes which can be enabled by loading a file into
+;; Configuration
+
+(defvar auto-mode-alist
+  '(("\\.(c|h)$|^c(|-mode)$" . c-mode)
+    ("\\.jl$|^.jaderc$|^lisp(|-mode)$" . lisp-mode)
+    ("\\.(te?xt|doc|article|letter)$" . text-mode)
+    ("^(text(|-mode)|(.*/|)draft)$" . text-mode)
+    ("^indented-text(|-mode)$" . indented-text-mode)
+    ("\\.[s]$|^asm(|-mode)$" . asm-mode)
+    ("\\.[S]$|^asm-cpp(|-mode)$" . asm-cpp-mode)
+    ("\\.texi(|nfo)|^texinfo(|-mode)$" . texinfo-mode)
+    ("\\.tex$|^(La)?TeX$" . tex-mode)
+    ("ChangeLog$" . changelog-mode))
+  "List of all major modes which can be enabled by loading a file into
 a buffer. List is made of `(REGEXP . MODE)' cells; the REGEXP is matched
 against the mode specification (i.e. the filename), if it matches the
 function MODE is called to install the mode.")
+
+(defvar comment-column 41
+  "Buffer-local variable containing the canonical column number which
+comments should begin at. If the line extends past this column the next
+tab stop after the end of the line is used instead.")
+(make-variable-buffer-local 'comment-column)
+
+(defvar default-major-mode 'fundamental-mode
+  "The major mode that is installed in buffers for which no other mode either
+matches or is specified.")
 
 
 ;; Variables
@@ -98,12 +108,6 @@ function MODE is called to install the mode.")
 (defvar major-mode-kill nil
   "The function which should be called to remove the buffer's major mode.")
 (make-variable-buffer-local 'major-mode-kill)
-
-(defvar comment-column 41
-  "Buffer-local variable containing the canonical column number which
-comments should begin at. If the line extends past this column the next
-tab stop after the end of the line is used instead.")
-(make-variable-buffer-local 'comment-column)
 
 (make-variable-buffer-local 'mode-comment-fun)
 
@@ -122,47 +126,37 @@ tab stop after the end of the line is used instead.")
 
 ;; Major mode handling
 
-(defun get-mode (name)
-  "Scan the alist `mode-alist' for a mode whose regexp matches NAME,
+(defun get-auto-mode (name)
+  "Scan the alist `auto-mode-alist' for a mode whose regexp matches NAME,
 returning the initialisation function of that mode (a symbol) or nil."
-  (let*
-      ((list mode-alist)
-       (elt nil))
-    (while (setq elt (car list))
-      (when (string-match (car elt) name nil t)
-	(return (cdr elt)))
-      (setq list (cdr list)))))
+  (catch 'return
+    (mapc #'(lambda (cell)
+	      (when (string-match (car cell) name nil t)
+		(throw 'return (cdr cell)))) auto-mode-alist)))
 
-(defun init-mode (buf &optional name)
-  "Initialise a major mode for buffer BUF; either calls the function named
-in the buffer-local variable `major-mode' or finds a mode in `mode-alist'
-using one of the following to match against:
-  1. NAME
-  2. The word specified on the first line of the buffer surrounded by
+(defun normal-mode ()
+  "Initialise a major mode for the current buffer; either calls the function
+named in the buffer-local variable `major-mode' or finds a mode in
+`auto-mode-alist' using one of the following to match against:
+  1. The word specified on the first line of the buffer surrounded by
      `-*-...-*-' (ie, -*-texinfo-*-)
-  3. The value of the variable `mode-name'
-  4. The name of the file being edited in the buffer"
-  (with-buffer (unless buf (current-buffer))
-    (unless major-mode
-      (setq name (or name
-		     (and (looking-at ".*-\\*- *([^ ]+) *-\\*-"
-				      (start-of-buffer))
-			  (expand-last-match "\\1"))
-		     mode-name
-		     (buffer-file-name buf)))
-      (setq major-mode (get-mode name)))
-    (when (functionp major-mode)
-      (funcall major-mode name))))
+  2. The name of the file being edited in the buffer"
+  (unless major-mode
+    (setq major-mode
+	  (get-auto-mode (or (and (looking-at ".*-\\*- *([^ ]+) *-\\*-"
+					      (start-of-buffer))
+				  (expand-last-match "\\1"))
+			     (buffer-file-name)))))
+  (funcall (if (functionp major-mode)
+	       major-mode
+	     default-major-mode)))
 
-(defun fundamental-mode (&optional buf)
-  "Remove the major mode being used to edit buffer BUF (or the current
-buffer), the fundamental mode is used instead."
+(defun fundamental-mode ()
+  "Remove the major mode being used to edit the current buffer, the
+fundamental mode is used instead."
   (interactive)
-  (unless buf
-    (setq buf (current-buffer)))
-  (with-buffer buf
-    (when major-mode-kill
-      (funcall major-mode-kill buf))))
+  (when major-mode-kill
+    (funcall major-mode-kill)))
 
 
 ;; Minor-mode handling
