@@ -875,6 +875,24 @@ the buffer is created it is set to `Jade: BUFFER-NAME'.
 	return sym_nil;
 }
 
+_PR VALUE cmd_all_buffers(void);
+DEFUN("all-buffers", cmd_all_buffers, subr_all_buffers, (void), V_Subr0, DOC_all_buffers) /*
+::doc:all_buffers::
+all-buffers
+
+Return a list of all allocated buffer objects.
+::end:: */
+{
+    VALUE list = sym_nil;
+    TX *tx = buffer_chain;
+    while(tx != 0)
+    {
+	list = cmd_cons(VAL(tx), list);
+	tx = tx->tx_Next;
+    }
+    return cmd_nreverse(list);
+}
+
 
 /* Marks */
 
@@ -1228,6 +1246,7 @@ buffers_init(void)
     ADD_SUBR(subr_mode_name);
     ADD_SUBR(subr_minor_mode_names);
     ADD_SUBR(subr_buffer_status_id);
+    ADD_SUBR(subr_all_buffers);
     ADD_SUBR(subr_make_mark);
     ADD_SUBR(subr_set_mark_pos);
     ADD_SUBR(subr_set_mark_file);
