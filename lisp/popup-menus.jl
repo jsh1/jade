@@ -185,7 +185,7 @@ local mode.")
 (defun popup-menu-buffers-spec ()
   (nconc (mapcar #'(lambda (b)
 		     (list (buffer-name b) t #'(lambda () (goto-buffer b))))
-		 buffer-list)
+		 (buffer-list))
 	 (list nil '("List all buffers" buffer-summary))))
 
 (defun popup-menu-yank-spec ()

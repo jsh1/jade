@@ -147,10 +147,10 @@ items to be displayed and manipulated."
 	major-mode 'summary-mode
 	major-mode-kill summary-mode-kill
 	mode-name name
-	local-keymap summary-actual-keymap
-	buffer-record-undo nil
-	buffer-undo-list nil
-	truncate-lines t)
+	local-keymap summary-actual-keymap)
+  (set-buffer-undo-list nil)
+  (buffer-record-undo nil)
+  (truncate-lines t)
   (set-buffer-read-only (current-buffer) t)
   (add-hook 'unbound-key-hook nop)
   (call-hook 'summary-mode-hook)

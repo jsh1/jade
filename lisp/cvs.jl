@@ -662,7 +662,7 @@ files under that directory are also reverted."
 							(buffer-file-name))
 						       canon-f))
 			      (revert-buffer b)))
-			buffer-list))
+			(buffer-list)))
 	      ;; A normal file
 	      (let
 		  ((b (get-file-buffer f)))

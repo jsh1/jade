@@ -104,7 +104,7 @@ being sent."
 	(insert "\n"))
       (goto old)))
   (set-buffer-modified (current-buffer) nil)
-  (setq buffer-undo-list nil)
+  (set-buffer-undo-list nil)
   (send-mail-mode)
   (cond ((null to)
 	 (send-mail-go-to))
@@ -448,7 +448,7 @@ interactively the DONT-DELETE value is taken from the raw prefix argument."
   (send-mail-find-mail-buffer)
   (read-file-contents filename)
   (send-mail-insert-separator)
-  (setq buffer-undo-list nil)
+  (set-buffer-undo-list nil)
   (send-mail-mode)
   (unless dont-delete
     (delete-file filename)))

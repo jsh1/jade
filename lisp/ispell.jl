@@ -555,7 +555,7 @@ the cursor is placed in a misspelt word; they are,
 	    (with-buffer b
 	      (when ispell-minor-mode-last-scan
 		(aset ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
-	buffer-list))
+	(buffer-list)))
 
 ;; Return the string of the misspelt word under point, or nil
 (defun ispell-get-misspelt-word ()

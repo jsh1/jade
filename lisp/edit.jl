@@ -666,7 +666,7 @@ cursor position, then unmark the block."
 next string in the kill ring."
   (interactive "p")
   (if (and (or (eq last-command 'yank) (eq last-command 'yank-rectangle))
-	   buffer-record-undo)
+	   (buffer-record-undo))
       (progn
 	(setq yank-last-item (if yank-last-item
 				 (+ yank-last-item count)
@@ -680,7 +680,7 @@ next string in the kill ring."
 	;; this isn't done multiple yank-next's won't work. This
 	;; isn't great, since undoing the multiple yanks doesn't
 	;; work as you'd expect...
-	(setq buffer-undo-list nil)
+	(set-buffer-undo-list nil)
 	(goto yank-last-start)
 	(funcall (if (eq last-command 'yank) insert insert-rectangle)
 		 (killed-string yank-last-item))

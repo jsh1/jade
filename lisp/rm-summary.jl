@@ -164,10 +164,10 @@ for the list of formatting options available.")
       (setq buffer (make-buffer "*mail-summary*"))
       (with-buffer buffer
 	(setq rm-summary-folder folder
-	      truncate-lines t
-	      y-scroll-step-ratio 2
 	      mode-line-format '("----Mail summary: message %l %(%p%)%-")
 	      popup-menus rm-summary-popup-menus)
+	(y-scroll-step-ratio 2)
+	(truncate-lines t)
 	(call-hook 'rm-summary-mode-hook)
 	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
 	(setq major-mode 'read-mail-mode)))

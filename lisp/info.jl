@@ -328,8 +328,7 @@ is split.")
       (restrict-buffer (cursor-pos) p)
       (info-highlight-buffer))
     (setq info-node-name nodename)
-    (setq buffer-status-id
-	  (concat "Info: " ?( info-file-name ?) info-node-name))
+    (buffer-status-id (concat "Info: " ?( info-file-name ?) info-node-name))
     t))
 
 ;; Make some extents
@@ -403,14 +402,14 @@ time that `info' has been called)."
   (setq local-keymap 'info-keymap
 	major-mode 'info-mode
 	mode-name "Info"
-	buffer-record-undo nil
 	popup-local-menus info-popup-menus
 	auto-save-p nil)
+  (buffer-record-undo nil)
   (set-buffer-read-only nil t)
   (unless info-tags-buffer
     (setq info-tags-buffer (make-buffer "*Info-tags*"))
     (with-buffer info-tags-buffer
-      (setq buffer-record-undo nil)))
+      (buffer-record-undo nil)))
   (cond
    (start-node
     (info-remember)

@@ -71,7 +71,7 @@ Local bindings for this mode are,\n
 \\{bs-keymap}.")
 
 (defun bs-quit ()
-  (set-current-buffer (car buffer-list)))
+  (set-current-buffer (car (buffer-list))))
 
 (defun bs-print-item (item)
   (let
@@ -108,7 +108,7 @@ Local bindings for this mode are,\n
   (interactive)
   (let
       ((new-buf (summary-current-item))
-       (old-buf (car buffer-list))
+       (old-buf (car (buffer-list)))
        first-view second-view)
     (bs-quit)
     (if (< (window-view-count) 3)
@@ -152,7 +152,7 @@ Local bindings for this mode are,\n
 			 (cons 'delete kill-buffer)
 			 (cons 'print bs-print-item)
 			 (cons 'list (lambda ()
-				       (copy-sequence buffer-list)))
+				       (copy-sequence (buffer-list))))
 			 (cons 'save save-file)
 			 (cons 'after-marking (lambda ()
 						(summary-next-item 1)))

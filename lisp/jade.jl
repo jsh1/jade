@@ -67,7 +67,7 @@
 (format default-buffer ";; Jade %s, Copyright (C) 1993-1999 John Harper\n;; Jade comes with ABSOLUTELY NO WARRANTY; for details see the file COPYING\n\n"	jade-version)
 
 ;; Don't want it in the undo list
-(setq buffer-undo-list nil)
+(set-buffer-undo-list nil)
 (set-buffer-modified default-buffer nil)
 
 ;; Use all arguments which are left.

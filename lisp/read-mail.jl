@@ -1074,10 +1074,10 @@ key, the car the order to sort in, a positive or negative integer.")
   (let
       ((id (rm-cached-form msg 'status-id
 	     (rm-format rm-status-format msg))))
-    (setq buffer-status-id id)
+    (buffer-status-id id)
     (when (rm-get-folder-field folder rm-folder-summary)
       (rm-with-summary folder
-	(setq buffer-status-id id))))
+	(buffer-status-id id))))
   (setq mode-name (apply concat
 			 (mapcar #'(lambda (cell)
 				     (and (cdr cell)

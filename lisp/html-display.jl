@@ -120,7 +120,7 @@
       ((html-buffers (filter #'(lambda (b)
 				 (with-buffer b
 				   (eq major-mode 'html-display-mode)))
-			     buffer-list)))
+			     (buffer-list))))
     (mapc kill-buffer html-buffers)))
 
 (defun html-display-find-url (url)

@@ -67,7 +67,7 @@ with `enable-local-variables'.")
 searched for a `Local Variables:' section.")
 
 ;; Initialise the first window's buffer-list
-(setq buffer-list (list (current-buffer)))
+(set-buffer-list (list (current-buffer)))
 
 ;; Ensure that the buffer's default-directory is preserved
 (put 'default-directory 'permanent-local t)
@@ -111,7 +111,7 @@ is non-nil it defines the view to display the buffer in."
       (setq buffer (open-buffer buffer)))
     (unless (bufferp buffer)
       (signal 'bad-arg (list buffer 1)))
-    (setq buffer-list (cons buffer (delq buffer buffer-list)))
+    (set-buffer-list (cons buffer (delq buffer (buffer-list))))
     (set-current-buffer buffer)))
 
 (defun kill-buffer (buffer)
@@ -134,9 +134,9 @@ When called interactively, BUFFER is prompted for."
     (mapc #'(lambda (w)
 	      (mapc #'(lambda (v)
 			(with-view v
-			  (setq buffer-list (delq buffer buffer-list))
+			  (set-buffer-list (delq buffer (buffer-list)))
 			  (when (eq (current-buffer) buffer)
-			    (set-current-buffer (or (car buffer-list)
+			    (set-current-buffer (or (car (buffer-list))
 						    default-buffer)))))
 		    (window-view-list w)))
 	  (window-list))))
@@ -153,9 +153,9 @@ put at the end of the list if it's not already in a member."
 	    (mapc #'(lambda (v)
 		      (unless (minibuffer-view-p v)
 			(with-view v
-			  (unless (memq buffer buffer-list)
-			    (setq buffer-list (append buffer-list
-						      (cons buffer nil)))))))
+			  (unless (memq buffer (buffer-list))
+			    (set-buffer-list (append (buffer-list)
+						     (cons buffer nil)))))))
 		  (window-view-list w)))
 	(window-list)))
 
@@ -175,9 +175,9 @@ buried in each view though)."
 	      (mapc #'(lambda (v)
 			(unless (minibuffer-view-p v)
 			  (with-view v
-			    (setq buffer-list (nconc (delq buffer buffer-list)
-						     (cons buffer nil)))
-			    (set-current-buffer (car buffer-list)))))
+			    (set-buffer-list (nconc (delq buffer (buffer-list))
+						    (cons buffer nil)))
+			    (set-current-buffer (car (buffer-list))))))
 		    (if all-views
 			(window-view-list w)
 		      (list (current-view)))))
@@ -187,7 +187,7 @@ buried in each view though)."
   "Prompt the user for the name of a buffer, then display it."
   (interactive)
   (let*
-      ((default (or (nth 1 buffer-list) (current-buffer)))
+      ((default (or (nth 1 (buffer-list)) (current-buffer)))
        (buffer (prompt-for-buffer (concat "Switch to buffer (default: "
 					  (buffer-name default)
 					  "):")
@@ -270,9 +270,9 @@ normal-mode, the hook after-read-file-hook is dispatched."
     (hack-local-variables)
     (set-buffer-modified buf nil)
     (when auto-save-p
-      (setq auto-save-interval default-auto-save-interval))
-    (setq last-save-time (current-time)
-	  buffer-undo-list nil)
+      (auto-save-interval default-auto-save-interval))
+    (last-save-time (current-time))
+    (set-buffer-undo-list nil)
     (when (auto-save-file-newer-p file-name)
       (message "Warning: Auto-saved file is newer")
       (beep))
@@ -395,10 +395,10 @@ prefix-argument when the function is called interactively)."
 	  (error "Save aborted"))
 	(when (write-file buffer)
 	  (set-buffer-modified buffer nil)
-	  (setq last-save-time (current-time)
-		last-save-changes (buffer-changes)
-		last-user-save-changes (buffer-changes)
-		buffer-file-modtime (file-modtime name))
+	  (last-save-changes (buffer-changes))
+	  (last-user-save-changes (buffer-changes))
+	  (last-save-time (current-time))
+	  (setq buffer-file-modtime (file-modtime name))
 	  (delete-auto-save-file)
 	  (message (concat "Wrote file `" name ?\') t))))))
 
@@ -422,10 +422,10 @@ to reflect NAME. Also sets the modification count to zero."
     (set-buffer-name buffer (file-name-nondirectory name))
     (when (write-file buffer)
       (set-buffer-modified buffer nil)
-      (setq last-save-time (current-time)
-	    last-save-changes (buffer-changes)
-	    last-user-save-changes (buffer-changes)
-	    buffer-file-modtime (file-modtime name)
+      (last-save-changes (buffer-changes))
+      (last-user-save-changes (buffer-changes))
+      (last-save-time (current-time))
+      (setq buffer-file-modtime (file-modtime name)
 	    default-directory (file-name-directory name))
       (delete-auto-save-file)
       (message (concat "Wrote file `" name ?\') t))))
@@ -495,7 +495,7 @@ buffers exist on exit."
       ((unsaved-buffers (filter #'(lambda (b)
 				    (and (buffer-modified-p b)
 					 (buffer-file-name b)))
-				buffer-list)))
+				(buffer-list))))
     (if unsaved-buffers
 	(map-y-or-n-p #'(lambda (x)
 			  (format nil "Save file %s" (buffer-file-name x)))
@@ -553,12 +553,12 @@ is newer than NAME."
   "When this mode is enabled files are autosaved regularly if they've been
 modified."
   (interactive "P")
-  (if (or (/= auto-save-interval 0)
+  (if (or (/= (auto-save-interval) 0)
 	  disable)
       (progn
-	(setq auto-save-interval 0)
+	(auto-save-interval 0)
 	(message "Auto-save is now disabled in this buffer."))
-    (setq auto-save-interval default-auto-save-interval)
+    (auto-save-interval default-auto-save-interval)
     (message "Auto-save is now enabled for this buffer.")))
 
 (defun recover-file (&optional buffer)
@@ -574,7 +574,7 @@ will have to agree to this)."
       (with-buffer buffer
 	(read-file-contents recover-name)
 	(set-buffer-modified buffer t)
-	(setq last-save-time (current-time))
+	(last-save-time (current-time))
 	(message (concat "Using " recover-name " as "
 			 (buffer-file-name buffer)))))
     buffer))

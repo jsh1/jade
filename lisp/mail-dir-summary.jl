@@ -176,7 +176,7 @@ Type \\[mds-edit-commit] to finalise the edits. The full list of local keybindin
 		  (prin1 (cdr cell) buffer)
 		  (insert "\n")))) item)
     (set-buffer-modified nil nil)
-    (setq buffer-undo-list nil)
+    (set-buffer-undo-list nil)
     (message "Type `C-c C-c' to commit edits")))
 
 (defun mds-edit-commit ()

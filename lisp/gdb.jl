@@ -150,8 +150,8 @@ There is no limit to the number of gdb processes you may run at once."
 					   'x)))
 	  shell-callback-function (lambda () (gdb-callback)))
     (shell-mode)
-    (setq buffer-status-id (concat "GDB: " args)
-	  major-mode 'gdb-mode
+    (buffer-status-id (concat "GDB: " args))
+    (setq major-mode 'gdb-mode
 	  mode-name "GDB"
 	  local-ctrl-c-keymap gdb-ctrl-c-keymap
 	  gdb-last-buffer buffer
@@ -232,8 +232,8 @@ commands. There is no limit to the number of processes you may run at once."
 					   (current-buffer) 'x)))
 	  shell-callback-function (lambda () (gdb-callback)))
     (shell-mode)
-    (setq buffer-status-id (concat "PerlDB: " args)
-	  major-mode 'perldb-mode
+    (buffer-status-id (concat "PerlDB: " args))
+    (setq major-mode 'perldb-mode
 	  mode-name "PerlDB"
 	  local-ctrl-c-keymap gdb-ctrl-c-keymap
 	  gdb-last-buffer buffer

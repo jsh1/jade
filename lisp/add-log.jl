@@ -102,7 +102,7 @@ considered as referring to the same day.")
   (make-local-variable 'fill-prefix)
   (make-local-variable 'fill-prefix-width)
   (setq fill-prefix "\t"
-	fill-prefix-width tab-size)
+	fill-prefix-width (tab-size))
   (call-hook 'text-mode-hook)
   (call-hook 'changelog-mode-hook))
 

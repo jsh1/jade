@@ -145,13 +145,13 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	    (extent-set prompt-title-extent 'read-only t)
 	    (extent-set prompt-title-extent 'glyph-table glyph-table)
 	    (extent-put prompt-title-extent 'front-sticky t)
-	    (setq buffer-undo-list nil)
+	    (set-buffer-undo-list nil)
 	    (when prompt-glyph-table
 	      (setq glyph-table prompt-glyph-table))
 	    (when (stringp start)
 	      (insert start)
 	      ;; Make this a separate undo operation
-	      (setq buffer-undo-list (cons nil buffer-undo-list)))
+	      (set-buffer-undo-list (cons nil (buffer-undo-list))))
 	    (make-local-variable 'pre-command-hook)
 	    (setq local-keymap prompt-keymap)
 	    (call-hook 'before-prompt-hook)
@@ -275,7 +275,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 (defun prompt-complete-buffer (word)
   (delete-if-not #'(lambda (b)
 		     (string-head-eq b word))
-		 (mapcar buffer-name buffer-list)))
+		 (mapcar buffer-name (buffer-list))))
 
 (defun prompt-validate-buffer (name)
   (and (or (equal name "")
