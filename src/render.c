@@ -130,33 +130,38 @@ cursor(VW *vw, bool status)
 void
 draw_bit(VW *vw, int colour, u_char *str, int slen, long beg, long end)
 {
-    long startx = vw->vw_StartCol;
-    long endx = vw->vw_MaxX + startx + 1;
     long length;
-    if(end < startx)
-	return;
-    if(beg < startx)
-	beg = startx;
-    if(end > endx)
-	end = endx;
-    if((length = end - beg) <= 0)
-	return;
+    if(beg < vw->vw_StartCol)
+	beg = vw->vw_StartCol;
+    if(end > vw->vw_StartCol + vw->vw_MaxX + 1)
+	end = vw->vw_StartCol + vw->vw_MaxX + 1;
+    length = end - beg;
     slen -= beg;
-    if(slen <= 0)
-	return;
-    if(slen < length)
-	length = slen;
-    TEXT(vw, colour, str + beg, length);
+    if(slen > length)
+	slen = length;
+    if(end >= vw->vw_StartCol && slen > 0)
+	TEXT(vw, colour, str + beg, slen);
 }
 
 static void
 draw_block_line(VW *vw, long blockStartCol, long blockEndCol,
-		long drawEndCol, bool useBEC)
+		long drawEndCol, bool useBEC, bool useBSC)
 {
     int xend = (drawEndCol - vw->vw_StartCol) * vw->vw_Win->w_FontX;
     if(PEN_X(vw) < vw->vw_WidthPix)
     {
 	int rectblocks = vw->vw_Flags & VWFF_RECTBLOCKS;
+	if(!rectblocks && useBSC)
+	{
+	    int xblkstart = ((blockStartCol - vw->vw_StartCol)
+			     * vw->vw_Win->w_FontX);
+	    if(xblkstart < 0)
+		xblkstart = 0;
+	    if(xblkstart > vw->vw_WidthPix)
+		return;
+	    if(PEN_X(vw) < xblkstart)
+		MOVE(vw, xblkstart, PEN_Y(vw));
+	}
 	if(useBEC || rectblocks)
 	{
 	    int xblkend = (blockEndCol - vw->vw_StartCol)
@@ -197,7 +202,9 @@ draw_line(VW *vw, LINE *line, long lineNum)
     long glyphs = make_glyph_array(vw->vw_Tx, line->ln_Line, 0,
 				   line->ln_Strlen-1, glyph_buf,
 				   vw->vw_StartCol, vw->vw_MaxX);
-    if(vw->vw_BlockStatus != 0)
+    if(vw->vw_BlockStatus != 0
+       || (vw->vw_CursorPos.pos_Line < vw->vw_BlockS.pos_Line
+           && vw->vw_CursorPos.pos_Line > vw->vw_BlockE.pos_Line))
 	TEXT(vw, P_TEXT, glyph_buf, glyphs);
     else
     {
@@ -225,21 +232,21 @@ draw_line(VW *vw, LINE *line, long lineNum)
 	case 1: /* whole of line in block */
 	    TEXT(vw, P_BLOCK, glyph_buf, glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_StartCol + vw->vw_MaxX, FALSE);
+			    vw->vw_StartCol + vw->vw_MaxX, FALSE, FALSE);
 	    break;
 	case 2: /* start of line in block */
 	    draw_bit(vw, P_BLOCK, glyph_line, abs_glyphs, 0, block1col);
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, block1col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_StartCol + vw->vw_MaxX, TRUE);
+			    vw->vw_StartCol + vw->vw_MaxX, TRUE, FALSE);
 	    break;
 	case 3: /* end of line in block */
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, 0, block0col);
 	    draw_bit(vw, P_BLOCK, glyph_line, abs_glyphs, block0col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_StartCol + vw->vw_MaxX, FALSE);
+			    vw->vw_StartCol + vw->vw_MaxX, FALSE, TRUE);
 	    break;
 	case 4: /* middle of line in block */
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, 0, block0col);
@@ -248,7 +255,7 @@ draw_line(VW *vw, LINE *line, long lineNum)
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, block1col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_StartCol + vw->vw_MaxX, TRUE);
+			    vw->vw_StartCol + vw->vw_MaxX, TRUE, TRUE);
 	    break;
 	}
     }
@@ -267,7 +274,9 @@ draw_line_part(VW *vw, LINE *line, long lineNum, long xStart,
     long glyphs = make_glyph_array(vw->vw_Tx, src, glyph_xStart, srclen,
 				   glyph_buf, 0,
 				   (vw->vw_StartCol+vw->vw_MaxX)-glyph_xStart);
-    if(vw->vw_BlockStatus != 0)
+    if(vw->vw_BlockStatus != 0
+       || (vw->vw_CursorPos.pos_Line < vw->vw_BlockS.pos_Line
+           && vw->vw_CursorPos.pos_Line > vw->vw_BlockE.pos_Line))
 	TEXT(vw, P_TEXT, glyph_buf, glyphs);
     else
     {
@@ -295,7 +304,7 @@ draw_line_part(VW *vw, LINE *line, long lineNum, long xStart,
 	case 1: /* whole of line in block */
 	    TEXT(vw, P_BLOCK, glyph_buf, glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_MaxX + vw->vw_StartCol, FALSE);
+			    vw->vw_MaxX + vw->vw_StartCol, FALSE, FALSE);
 	    break;
 	case 2: /* start of line in block */
 	    if(glyph_xStart < block1col)
@@ -306,7 +315,7 @@ draw_line_part(VW *vw, LINE *line, long lineNum, long xStart,
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, block1col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_MaxX + vw->vw_StartCol, TRUE);
+			    vw->vw_MaxX + vw->vw_StartCol, TRUE, FALSE);
 	    break;
 	case 3: /* end of line in block */
 	    if(glyph_xStart < block0col)
@@ -317,7 +326,7 @@ draw_line_part(VW *vw, LINE *line, long lineNum, long xStart,
 	    draw_bit(vw, P_BLOCK, glyph_line, abs_glyphs, block0col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_MaxX + vw->vw_StartCol, FALSE);
+			    vw->vw_MaxX + vw->vw_StartCol, FALSE, TRUE);
 	    break;
 	case 4: /* middle of line in block */
 	    if(glyph_xStart < block0col)
@@ -333,7 +342,7 @@ draw_line_part(VW *vw, LINE *line, long lineNum, long xStart,
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, block1col,
 		     abs_glyphs);
 	    draw_block_line(vw, block0col, block1col,
-			    vw->vw_MaxX + vw->vw_StartCol, TRUE);
+			    vw->vw_MaxX + vw->vw_StartCol, TRUE, TRUE);
 	    break;
 	}
     }
@@ -355,7 +364,9 @@ draw_line_glyph_length(VW *vw, LINE *line, long lineNum, long xStart, long xEnd)
 	xEnd = (vw->vw_StartCol + vw->vw_MaxX);
     glyphs = make_glyph_array(vw->vw_Tx, line->ln_Line, 0, line->ln_Strlen-1,
 			      glyph_buf, xStart, xEnd - xStart);
-    if(vw->vw_BlockStatus != 0)
+    if(vw->vw_BlockStatus != 0
+       || (vw->vw_CursorPos.pos_Line < vw->vw_BlockS.pos_Line
+           && vw->vw_CursorPos.pos_Line > vw->vw_BlockE.pos_Line))
 	TEXT(vw, P_TEXT, glyph_buf, glyphs);
     else
     {
@@ -382,7 +393,7 @@ draw_line_glyph_length(VW *vw, LINE *line, long lineNum, long xStart, long xEnd)
 	    break;
 	case 1: /* whole of line in block */
 	    TEXT(vw, P_BLOCK, glyph_buf, glyphs);
-	    draw_block_line(vw, block0col, block1col, xEnd, FALSE);
+	    draw_block_line(vw, block0col, block1col, xEnd, FALSE, FALSE);
 	    break;
 	case 2: /* start of line in block */
 	    if(xStart < block1col)
@@ -392,7 +403,7 @@ draw_line_glyph_length(VW *vw, LINE *line, long lineNum, long xStart, long xEnd)
 		block1col = xStart;
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, block1col,
 		     abs_glyphs);
-	    draw_block_line(vw, block0col, block1col, xEnd, TRUE);
+	    draw_block_line(vw, block0col, block1col, xEnd, TRUE, FALSE);
 	    break;
 	case 3: /* end of line in block */
 	    if(xStart < block0col)
@@ -402,7 +413,7 @@ draw_line_glyph_length(VW *vw, LINE *line, long lineNum, long xStart, long xEnd)
 		block0col = xStart;
 	    draw_bit(vw, P_BLOCK, glyph_line, abs_glyphs, block0col,
 		     abs_glyphs);
-	    draw_block_line(vw, block0col, block1col, xEnd, FALSE);
+	    draw_block_line(vw, block0col, block1col, xEnd, FALSE, TRUE);
 	    break;
 	case 4: /* middle of line in block */
 	    if(xStart < block0col)
@@ -417,7 +428,7 @@ draw_line_glyph_length(VW *vw, LINE *line, long lineNum, long xStart, long xEnd)
 		block1col = block0col;
 	    draw_bit(vw, P_TEXT, glyph_line, abs_glyphs, block1col,
 		     abs_glyphs);
-	    draw_block_line(vw, block0col, block1col, xEnd, TRUE);
+	    draw_block_line(vw, block0col, block1col, xEnd, TRUE, TRUE);
 	    break;
 	}
     }
