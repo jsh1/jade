@@ -58,61 +58,81 @@
   (unless point (setq point 0))
   (let
       ((day-abbrev "")
-       (day 0)
+       (day -1)
        (month-abbrev "")
        (month 0)
-       (year 0)
+       (year -1)
        (hour 0)
        (minute 0)
        (second 0)
        (timezone 0)
        time_t tem)
-    (when (string-looking-at "[\t ]*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[\t ]*,[\t ]*"
-			     string point t)
-      (setq day-abbrev (substring string (match-start 1) (match-end 1)))
-      (setq point (match-end)))
-    (when (string-looking-at "[\t ]*([0-9]+)[\t ]+([A-Za-z]+)[\t ]+([0-9]+)[\t ]*"
-			     string point)
-      (setq day (read-from-string (substring string (match-start 1)
-					     (match-end 1)))
-	    month-abbrev (substring string (match-start 2) (match-end 2))
-	    month (cdr (assoc month-abbrev mail-month-alist))
-	    year (read-from-string (if (= (- (match-end 3) (match-start 3)) 2)
-				       ;; 2-digit year; concat a two 
-				       ;; digit prefix onto the front
-				       (concat mail-two-digit-year-prefix
-					       (substring string
-							  (match-start 3)
-							  (match-end 3)))
-				     (substring string (match-start 3)
-						(match-end 3)))))
-      (setq point (match-end)))
-    (when (string-looking-at "([0-9]+):([0-9]+)(:[0-9]+|)[\t ]*([A-Z]+|[+-][0-9]+)"
-		    string point)
-      (setq hour (read-from-string (substring string (match-start 1)
-					      (match-end 1)))
-	    minute (read-from-string (substring string (match-start 2)
-						(match-end 2)))
-	    second (if (equal (match-start 3) (match-end 3))
-		       0
-		     (read-from-string (substring string (1+ (match-start 3))
-						  (match-end 3))))
-	    timezone (substring string (match-start 4) (match-end 4)))
-      (if (setq tem (assoc timezone mail-timezone-alist))
-	  (setq timezone (cdr tem))
-	;; Try +-HHMM
-	(if (string-looking-at "[+-]([0-9][0-9])([0-9][0-9])" timezone)
-	    (setq timezone (* (if (= (aref timezone 0) ?+) 1 -1)
-			      (+ (* 60 (read-from-string
-					(substring timezone
-						   (match-start 1)
-						   (match-end 1))))
-				 (read-from-string
-				  (substring timezone
-					     (match-start 2)
-					     (match-end 2))))))
-	  ;; whatever..
-	  (setq timezone 0))))
+    (while (< point (length string))
+      (cond
+       ((string-looking-at "[\t ]*([0-9]+)([\t ]+|$)" string point)
+	;; Could be year or day of month
+	(set (if (< day 0) 'day 'year)
+	     (read-from-string
+	      (substring string (match-start 1) (match-end 1))))
+	(setq point (match-end)))
+
+       ((string-looking-at
+	 "[\t ]*([0-9]+):([0-9]+)(:[0-9]+)?[\t ]*([A-Z]+|[+-][0-9]+)?[\t ]*"
+	 string point)
+	;; Time spec.
+	(setq point (match-end))
+	(setq hour (read-from-string (substring string (match-start 1)
+						(match-end 1)))
+	      minute (read-from-string (substring string (match-start 2)
+						  (match-end 2)))
+	      second (if (equal (match-start 3) (match-end 3))
+			 0
+		       (read-from-string (substring string (1+ (match-start 3))
+						    (match-end 3))))
+	      timezone (if (equal (match-start 4) (match-end 4))
+			   "UT"
+			 (substring string (match-start 4) (match-end 4))))
+	(if (setq tem (assoc timezone mail-timezone-alist))
+	    (setq timezone (cdr tem))
+	  ;; Try +-HHMM
+	  (if (string-looking-at "[+-]([0-9][0-9])([0-9][0-9])" timezone)
+	      (setq timezone (* (if (= (aref timezone 0) ?+) 1 -1)
+				(+ (* 60 (read-from-string
+					  (substring timezone
+						     (match-start 1)
+						     (match-end 1))))
+				   (read-from-string
+				    (substring timezone
+					       (match-start 2)
+					       (match-end 2))))))
+	    ;; whatever..
+	    (setq timezone 0))))
+	
+       ((string-looking-at
+	 "[\t ]*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*[\t ]*,?[\t ]*"
+	 string point t)
+	;; Found day spec
+	(setq day-abbrev (substring string (match-start 1) (match-end 1)))
+	(setq point (match-end)))
+
+       ((string-looking-at
+	 "[\t ]*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\t ]*"
+	 string point t)
+	;; Month name
+	(setq month-abbrev (substring string (match-start 1) (match-end 1)))
+	(setq month (cdr (assoc month-abbrev mail-month-alist)))
+	(setq point (match-end)))
+
+       (t
+	;; Garbage in -- garbage out
+	(setq point (length string)))))
+
+    (when (< year 0)
+      (setq year (read-from-string (current-time-string nil "%Y"))))
+
+    (when (< day 0)
+      (setq day 0))
+
     ;; Use Gauss' algorithm (?) to find seconds since 1970
     ;; This subroutine is copied from my VMM operating system,
     ;; which was in turn copied from Linux
