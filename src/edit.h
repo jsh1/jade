@@ -186,6 +186,16 @@ struct cached_extent {
     u_long lru_clock;
 };
 
+/* Each window has a list of the extents that are in the current
+   contents of the window, and their positions in the character
+   grid of the window. */
+struct visible_extent {
+    struct visible_extent *next;
+    Lisp_Extent *extent;
+    long start_col, start_row;
+    long end_col, end_row;
+};
+
 
 /* colours */
 
@@ -373,6 +383,9 @@ typedef struct _WIN {
 
     W_WindowSys w_WindowSys;		/* Data for the window system */
     glyph_buf *w_Content, *w_NewContent; /* Data for redisplay */
+    struct visible_extent *w_VisibleExtents;
+    Lisp_Extent *w_MouseExtent;
+
     u_long w_LastClickMics;		/* Last mouse click event */
 
     u_char *w_Message;			/* non-null == msg in minibuffer */
