@@ -467,17 +467,12 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	{
 	    glyph_code *codes;
 	    glyph_attr *attrs;
-	    int len;
 
 	    glyph_row = vw->vw_FirstY + vw->vw_MaxY;
 	    codes = w->w_NewContent->codes[glyph_row];
 	    attrs = w->w_NewContent->attrs[glyph_row];
 
-	    update_status_buffer(vw);
-	    len = strlen(vw->vw_StatusBuf);
-	    memcpy(codes, vw->vw_StatusBuf, MIN(len, g->cols));
-	    if(len < g->cols)
-		memset(codes + len, ' ', g->cols - len);
+	    update_status_buffer(vw, codes, g->cols);
 	    memset(attrs, GA_Text_RV, g->cols);
 	    glyph_row++;
 	}
