@@ -47,7 +47,8 @@ the column width when displaying completions.")
       ;; No existing view has a *completions* buffer. Make one
       (let
 	  ((new-view (and (= (window-view-count) 2) (split-view))))
-	(with-view (or new-view (other-view))
+	(with-view (or new-view (nth (- (window-view-count) 2)
+				     (window-view-list)))
 	  (goto-buffer (make-buffer "*completions*"))
 	  (setq completion-deletable-view new-view)
 	  (current-view)))))
