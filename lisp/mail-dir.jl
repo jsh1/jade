@@ -83,20 +83,25 @@ definitions will be added to any existing definitions."
 		 ((null form))
 		 ((eq (car form) 'address-alist)
 		  ;; List of mail addresses
-		  (setq list 'mail-address-list))
+		  (if dont-merge
+		      (setq mail-address-list (cdr form))
+		    ;; FIXME: remove duplicates
+		    (setq mail-address-list (nconc (cdr form)
+						   mail-address-list))))
 		 ((eq (car form) 'alias-alist)
 		  ;; List of mail aliases
-		  (setq list 'mail-alias-alist))
+		  (if dont-merge
+		      (setq mail-alias-alist (cdr form))
+		    (mapc #'(lambda (alias)
+			      (setq mail-alias-alist
+				    (cons alias
+					  (delete-if #'(lambda (a)
+							 (string= (car alias)
+								  (car a)))
+						     mail-alias-alist))))
+			  (cdr form))))
 		 (t
-		  (error "Unknown item in mail directory: %s" (car form))))
-		(when list
-		  (setq form (nreverse (cdr form)))
-		  (while (consp form)
-		    (when (or dont-merge
-			      (null (assoc (car (car form))
-					   (symbol-value list))))
-		      (set list (cons (car form) (symbol-value list))))
-		    (setq form (cdr form)))))
+		  (error "Unknown item in mail directory: %s" (car form)))))
 	    (end-of-stream))
 	(close-file file-handle)))))
 
@@ -175,18 +180,19 @@ PRINT is t the expansion is also displayed in the message area."
       (format t "Alias %s expands to %s" alias (cdr body)))
     (cdr body)))
 
+;;;###autoload
 (defun insert-mail-alias (name)
   "Insert the expansion of alias NAME into the buffer."
   (interactive (list (prompt-for-mail-alias "Alias:")))
   (let
       ((alias (get-mail-alias name)))
-    (mail-insert-list (mapcar #'(lambda (item &aux pair)
-				  (setq pair (assoc item mail-address-list))
-				  (if pair
-				      (mail-format-address (car pair)
-							   (cdr pair))
-				    item))
-			      alias))))
+    (mail-insert-list
+     (mapcar #'(lambda (item)
+		 (let
+		     ((name (get-mail-name-from-address item)))
+		   (if name
+		       (mail-format-address item name)
+		     item))) alias))))
 
 
 ;; Low-level mail-address functions
@@ -199,9 +205,10 @@ PRINT is t the expansion is also displayed in the message area."
       ((cell (assq field record)))
     (if cell
 	(unless (member value (cdr cell))
-	  (rplacd cell (nconc (cdr cell) (list value))))
-      (setq record (nconc record (list (list field value)))))
-    (setq mail-directory-modified t)))
+	  (rplacd cell (nconc (cdr cell) (list value)))
+	  (setq mail-directory-modified t))
+      (setq record (nconc record (list (list field value))))
+      (setq mail-directory-modified t))))
 
 (defun md-delete-from-field (record field value)
   (let
