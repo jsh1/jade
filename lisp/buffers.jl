@@ -328,12 +328,16 @@ killed and one editing NAME is found."
   (kill-buffer (current-buffer))
   (find-file name))
 
+(defun make-backup-file-name (file-name)
+  "Returns the name of the file used to store the backup of FILE-NAME."
+  (concat file-name ?~))
+
 (defun backup-file (file-name)
   "If necessary make a backup of FILE-NAME. The file called FILE-NAME may or
 may not exist after this function returns."
   (when (and make-backup-files (file-regular-p name))
     (let
-	((backup-name (concat name ?~)))
+	((backup-name (make-backup-file-name name)))
       (if backup-by-copying
 	  (copy-file name backup-name)
 	(if (and (file-owner-p name)
