@@ -355,7 +355,8 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 ;; Various completion/validation functions
 
 (defun prompt-complete-symbol (word)
-  (mapcar 'symbol-name (apropos (concat ?^ word) prompt-symbol-predicate)))
+  (mapcar 'symbol-name (apropos (concat ?^ (regexp-quote word))
+				prompt-symbol-predicate)))
 
 (defun prompt-validate-symbol (name)
   (and (find-symbol name)
