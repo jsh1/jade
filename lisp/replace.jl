@@ -26,6 +26,21 @@
 
 
 ;;;###autoload
+(defun replace-last-match (template)
+  "Replace the whole of the most recently matched regular expression with
+the result of `(expand-last-match TEMPLATE)'. Returns the position of the
+character following the insertion."
+  (delete-area (match-start) (match-end))
+  (insert (expand-last-match template) (match-start)))
+
+;;;###autoload
+(defun replace-string (old new pos)
+  "Replace the string OLD beginning at position POS, by the string NEW."
+  (when (looking-at (quote-regexp old) pos)
+    (delete-area (match-start) (match-end))
+    (insert new (match-start))))
+
+;;;###autoload
 (defun replace-all (from template)
   "Replace all occurrences of the regexp FROM with the expansion from TEMPLATE
 for that particular occurrence (see the `replace-regexp' function for details
@@ -33,9 +48,9 @@ of what can be in TEMPLATE)."
   (interactive "sReplace regexp:\nsReplace regexp %s with:")
   (let
       (match)
-    (goto-buffer-start)
-    (while (setq match (find-next-regexp from nil nil case-fold-search))
-      (goto-char (replace-regexp from template match nil case-fold-search)))))
+    (goto (start-of-buffer))
+    (while (setq match (re-search-forward from nil nil case-fold-search))
+      (goto (replace-last-match template)))))
 
 
 ;;; Query replace
@@ -61,20 +76,20 @@ of what can be in TEMPLATE)."
 
 (defun query-replace-replace ()
   (interactive)
-  (goto-char (replace-regexp query-replace-from query-replace-to nil nil
-			     case-fold-search))
+  (when (looking-at query-replace-from nil nil case-fold-search)
+    (goto (replace-last-match query-replace-to)))
   (throw 'query-replace))
 
 (defun query-replace-skip ()
   (interactive)
   (when (looking-at query-replace-from nil nil case-fold-search)
-    (goto-char (match-end)))
+    (goto (match-end)))
   (throw 'query-replace))
 
 (defun query-replace-replace-and-wait ()
   (interactive)
-  (goto-char (replace-regexp query-replace-from query-replace-to nil nil
-			     case-fold-search))
+  (when (looking-at query-replace-from nil nil case-fold-search)
+    (goto (replace-last-match query-replace-to)))
   (message query-replace-title))
 
 (defun query-replace-exit ()
@@ -84,20 +99,19 @@ of what can be in TEMPLATE)."
 
 (defun query-replace-once-only ()
   (interactive)
-  (goto-char (replace-regexp query-replace-from query-replace-to nil nil
-			     case-fold-search))
+  (when (looking-at query-replace-from nil nil case-fold-search)
+    (goto (replace-last-match query-replace-to)))
   (query-replace-exit))
 
 (defun query-replace-rest ()
   (interactive)
-  (goto-char (replace-regexp query-replace-from query-replace-to nil nil
+  (goto (replace-regexp query-replace-from query-replace-to nil nil
 			     case-fold-search))
   (let
       (match)
-    (while (setq match (find-next-regexp query-replace-from nil nil
+    (while (setq match (re-search-forward query-replace-from nil nil
 					 case-fold-search))
-      (goto-char (replace-regexp query-replace-from query-replace-to match nil
-				 case-fold-search)))
+      (goto (replace-last-match query-replace-to)))
     (setq query-replace-alive nil)
     (throw 'query-replace)))
 
@@ -125,7 +139,7 @@ of what can be in TEMPLATE)."
   (if (cdr query-replace-trace)
       (progn
 	(setq query-replace-trace (cdr query-replace-trace))
-	(goto-char (car query-replace-trace)))
+	(goto (car query-replace-trace)))
     (beep))
   (message query-replace-title))
     
@@ -165,9 +179,9 @@ type one of the following special commands,\n
     (unwind-protect
 	(while (and query-replace-alive
 		    (setq match
-			  (find-next-regexp query-replace-from nil
+			  (re-search-forward query-replace-from nil
 					    nil case-fold-search)))
-	  (goto-char match)
+	  (goto match)
 	  (setq query-replace-trace (cons match query-replace-trace))
 	  (catch 'query-replace
 	    (message query-replace-title)
