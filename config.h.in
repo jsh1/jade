@@ -89,6 +89,9 @@
 # define NEED_MEMORY_H		/* backwards compatibility */
 #endif
 
+/* Define if <X11/Xft/Xft.h> exists */
+#undef HAVE_X11_XFT_XFT_H
+
 /* Define if you have the getcwd function.  */
 #undef HAVE_GETCWD
 

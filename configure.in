@@ -91,6 +91,23 @@ if test "${windowsys}" = "none"; then
   AC_MSG_ERROR([You need GTK or X11 to run Jade])
 fi
 
+if test "${windowsys}" = "X11"; then
+  _cppflags="${CPPFLAGS}"
+  CPPFLAGS="${CPPFLAGS} ${X_CFLAGS}"
+  XFT_LIBS=""
+  AC_SUBST(XFT_LIBS)
+  AC_ARG_WITH(xft,
+	      [ --with-xft            Try to use Xft for anti-aliased text], [],
+	      [ with_xft=no ])
+  if test "$with_xft" != "no"; then
+    AC_CHECK_LIB(Xft, XftDrawCreate,
+		 [XFT_LIBS="-lXft -lXrender"
+		 AC_CHECK_HEADERS(X11/Xft/Xft.h)],
+		 [], [$X_LIBS -lX11 -lXext])
+  fi
+  CPPFLAGS="${_cppflags}"
+fi
+
 dnl Check for Doug Lea's malloc in libc, otherwise compile dlmalloc.c
 doug_lea_malloc=yes
 AC_CHECK_FUNC(malloc_get_state, , doug_lea_malloc=no)
