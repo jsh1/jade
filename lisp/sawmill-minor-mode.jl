@@ -33,7 +33,9 @@
 		     "C-j" 'smm-eval-insert-sexp))
 
 (defun smm-eval (form &optional module)
-  (require 'sawfish.client)
+  ;; avoid requiring sawfish.client at compile-time
+  ((lambda (x) (require x)) 'sawfish.client)
+  (declare (bound sawfish-client-eval))
   (if (not module)
       (sawfish-client-eval form t)
     (sawfish-client-eval `(eval-in ',form ',module) t)))
