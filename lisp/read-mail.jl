@@ -54,6 +54,11 @@ message (to improve performance when the folder is next loaded).")
 added to an otherwise empty folder. If the name of the mailbox matches
 REGEXP, then its restriction rule is initialised as RULE.")
 
+(defvar rm-auto-sort-key-alist nil
+  "List of (REGEXP . KEY). This list is only consulted when a mailbox is
+added to an otherwise empty folder. If the name of the mailbox matches
+REGEXP, then its sort key is initialised as KEY.")
+
 (defvar rm-auto-delete-rules nil
   "A list of message restriction rules. Any received messages that match
 any of the rules named by this list are immediately marked for deletion.")
@@ -333,8 +338,11 @@ key, the car the order to sort in, a positive or negative integer.")
     (error "Null mailbox"))
   (unless (rm-get-folder-field folder rm-folder-current-msg)
     (let
-	((cell (assoc-regexp mailbox rm-auto-rule-alist)))
-      (rm-set-folder-field folder rm-folder-rule (cdr cell))))
+	(cell)
+      (setq cell (assoc-regexp mailbox rm-auto-rule-alist))
+      (rm-set-folder-field folder rm-folder-rule (cdr cell))
+      (setq cell (assoc-regexp mailbox rm-auto-sort-key-alist))
+      (rm-set-folder-field folder rm-folder-sort-key (cdr cell))))
   (rm-set-folder-field folder rm-folder-boxes
 		       (nconc (rm-get-folder-field folder rm-folder-boxes)
 			      (list mailbox)))
