@@ -71,6 +71,10 @@ static char    *regnext(char *);
      || (PROW(p) == regtx->tx_LogicalEnd - 1			\
 	 && PCOL(p) >= regtx->tx_Lines[PROW(p)].ln_Strlen - 1))
 
+#define START_OF_INPUT(p)					\
+    (PROW(p) < regtx->tx_LogicalStart				\
+     || (PROW(p) == regtx->tx_LogicalStart && PCOL(p) == 0))
+
 /*
  * - regexec_tx - search forwards for a regexp in a buffer sub-string
  *    START is preserved whatever.
@@ -458,6 +462,7 @@ regmatch(prog)
 	next = regnext(scan);
 
 	switch (OP(scan)) {
+	    char c;
 	case BOL:
 	    if (PCOL(&reginput) > 0)
 		return (0);
@@ -481,7 +486,6 @@ regmatch(prog)
 		if(regnocase)
 		{
 		    /* Inline the first character, for speed. */
-		    char c;
 		    if(END_OF_INPUT(&reginput))
 			return (0);
 		    c = INPUT_CHAR(&reginput);
@@ -644,6 +648,127 @@ regmatch(prog)
 		return (0);
 	    }
 	    break;
+	case NGSTAR:
+	case NGPLUS:{
+		register char	nextch;
+		register int	no;
+		Pos save;
+		register int	max;
+
+		/*
+		 * Lookahead to avoid useless match attempts when we know
+		 * what character comes next.
+		 */
+		nextch = '\0';
+		if (OP(next) == EXACTLY)
+		    nextch = *OPERAND(next);
+		if(regnocase)
+		    nextch = toupper(nextch);
+		no = (OP(scan) == STAR) ? 0 : 1;
+		save = reginput;
+		max = regrepeat(OPERAND(scan));
+		while (no <= max) {
+		    reginput = save;
+		    forward_char(no, regtx, &reginput);
+		    /* If it could work, try it. */
+		    if (nextch == '\0'
+			|| (!END_OF_INPUT(&reginput)
+			    && (regnocase ? TOUPPER_INPUT_CHAR(&reginput)
+				: INPUT_CHAR(&reginput)) == nextch))
+			if (regmatch(next))
+			    return (1);
+		    /* Couldn't or didn't -- move up. */
+		    no++;
+		}
+		return (0);
+	    }
+	    break;
+	case WORD:
+	    if (END_OF_INPUT (&reginput))
+		return 0;
+	    c = INPUT_CHAR(&reginput);
+	    if (c != '_' && !isalnum ((int)c))
+		return 0;
+	    forward_char (1, regtx, &reginput);
+	    break;
+	case NWORD:
+	    if (END_OF_INPUT (&reginput))
+		return 0;
+	    c = INPUT_CHAR(&reginput);
+	    if (c == '_' || isalnum ((int)c))
+		return 0;
+	    forward_char (1, regtx, &reginput);
+	    break;
+	case WSPC:
+	    if (END_OF_INPUT (&reginput))
+		return 0;
+	    c = INPUT_CHAR(&reginput);
+	    if (!isspace ((int)c))
+		return 0;
+	    forward_char (1, regtx, &reginput);
+	    break;
+	case NWSPC:
+	    if (END_OF_INPUT (&reginput))
+		return 0;
+	    c = INPUT_CHAR(&reginput);
+	    if (isspace ((int)c))
+		return 0;
+	    forward_char (1, regtx, &reginput);
+	    break;
+	case DIGI:
+	    if (END_OF_INPUT (&reginput))
+		return 0;
+	    c = INPUT_CHAR(&reginput);
+	    if (!isdigit ((int)c))
+		return 0;
+	    forward_char (1, regtx, &reginput);
+	    break;
+	case NDIGI:
+	    if (END_OF_INPUT (&reginput))
+		return 0;
+	    c = INPUT_CHAR(&reginput);
+	    if (isdigit ((int)c))
+		return 0;
+	    forward_char (1, regtx, &reginput);
+	    break;
+	case WEDGE:
+	    if (START_OF_INPUT (&reginput) || END_OF_INPUT (&reginput))
+		break;
+	    else
+	    {
+		Pos tem = reginput;
+		char c0, c1;
+		backward_char (1, regtx, &tem);
+		c0 = INPUT_CHAR (&reginput);
+		c1 = INPUT_CHAR (&tem);
+		if (((c0 == '_' || isalnum ((int)c0))
+		     && (c1 != '_' && !isalnum ((int)c1)))
+		    || ((c0 != '_' && !isalnum ((int)c0))
+			&& (c1 == '_' || isalnum ((int)c1))))
+		    break;
+	    }
+	    return 0;
+	case NWEDGE:
+	    if (START_OF_INPUT (&reginput) || END_OF_INPUT (&reginput))
+		c = 0;
+	    else
+	    {
+		Pos tem = reginput;
+		char c0, c1;
+		backward_char (1, regtx, &tem);
+		c0 = INPUT_CHAR (&reginput);
+		c1 = INPUT_CHAR (&tem);
+		if (((c0 == '_' || isalnum ((int)c0))
+		     && (c1 != '_' && !isalnum ((int)c1)))
+		    || ((c0 != '_' && !isalnum ((int)c0))
+			&& (c1 == '_' || isalnum ((int)c1))))
+		    c = 0;
+		else
+		    c = 1;
+	    }
+	    if (c == 0)
+		return 0;
+	    break;
 	case END:
 	    return (1);		/* Success! */
 	    break;
@@ -674,6 +799,7 @@ regrepeat(p)
     register int count = 0;
     Pos scan;
     register char *opnd;
+    char c;
 
     scan = reginput;
     opnd = OPERAND(p);
@@ -689,7 +815,6 @@ regrepeat(p)
 	if(regnocase)
 	{
 	    char uo = toupper(*opnd);
-	    char c;
 	    while(!END_OF_INPUT(&scan))
 	    {
 		c = INPUT_CHAR(&scan);
@@ -701,7 +826,6 @@ regrepeat(p)
 	}
 	else
 	{
-	    char c;
 	    while(!END_OF_INPUT(&scan))
 	    {
 		c = INPUT_CHAR(&scan);
@@ -712,28 +836,84 @@ regrepeat(p)
 	    }
 	}
 	break;
-    case ANYOF: {
-	    char c;
-	    while (!END_OF_INPUT(&scan))
-	    {
-		c = INPUT_CHAR(&scan);
-		if(strchr(opnd, c) == NULL)
-		    break;
-		count++;
-		forward_char(1, regtx, &scan);
-	    }
+    case ANYOF:
+	while (!END_OF_INPUT(&scan))
+	{
+	    c = INPUT_CHAR(&scan);
+	    if(strchr(opnd, c) == NULL)
+		break;
+	    count++;
+	    forward_char(1, regtx, &scan);
 	}
 	break;
-    case ANYBUT: {
-	    char c;
-	    while (!END_OF_INPUT(&scan))
-	    {
-		c = INPUT_CHAR(&scan);
-		if(strchr(opnd, c) != NULL)
-		    break;
-		count++;
-		forward_char(1, regtx, &scan);
-	    }
+    case ANYBUT:
+	while (!END_OF_INPUT(&scan))
+	{
+	    c = INPUT_CHAR(&scan);
+	    if(strchr(opnd, c) != NULL)
+		break;
+	    count++;
+	    forward_char(1, regtx, &scan);
+	}
+	break;
+    case WORD:
+	while (!END_OF_INPUT(&scan))
+	{
+	    c = INPUT_CHAR (&scan);
+	    if (c != '_' && !isalnum ((int)c))
+		break;
+	    count++;
+	    forward_char(1, regtx, &scan);
+	}
+	break;
+    case NWORD:
+	while (!END_OF_INPUT(&scan))
+	{
+	    c = INPUT_CHAR (&scan);
+	    if (c == '_' || isalnum ((int)c))
+		break;
+	    count++;
+	    forward_char(1, regtx, &scan);
+	}
+	break;
+    case WSPC:
+	while (!END_OF_INPUT(&scan))
+	{
+	    c = INPUT_CHAR (&scan);
+	    if (!isspace ((int)c))
+		break;
+	    count++;
+	    forward_char(1, regtx, &scan);
+	}
+	break;
+    case NWSPC:
+	while (!END_OF_INPUT(&scan))
+	{
+	    c = INPUT_CHAR (&scan);
+	    if (isspace ((int)c))
+		break;
+	    count++;
+	    forward_char(1, regtx, &scan);
+	}
+	break;
+    case DIGI:
+	while (!END_OF_INPUT(&scan))
+	{
+	    c = INPUT_CHAR (&scan);
+	    if (!isdigit ((int)c))
+		break;
+	    count++;
+	    forward_char(1, regtx, &scan);
+	}
+	break;
+    case NDIGI:
+	while (!END_OF_INPUT(&scan))
+	{
+	    c = INPUT_CHAR (&scan);
+	    if (isdigit ((int)c))
+		break;
+	    count++;
+	    forward_char(1, regtx, &scan);
 	}
 	break;
     default:			/* Oh dear.  Called inappropriately. */
