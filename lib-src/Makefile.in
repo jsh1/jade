@@ -62,9 +62,8 @@ all : doc-strings.h jade_protos.h build.h
 jade_protos.h : stripproto $(JADE_SRCS)
 	./stripproto -o $@ $(patsubst stripproto,,$^)
 
-doc-strings.h : makedoc $(JADE_SRCS)
-	./makedoc DOC-bare doc-strings.h $(patsubst makedoc,,$^)
-	[ -r ../DOC ] || cp DOC-bare ../DOC
+doc-strings.h ../DOC : makedoc $(JADE_SRCS)
+	./makedoc ../DOC doc-strings.h $(patsubst makedoc,,$^)
 
 build.h : build-info
 	$< $(host_type)
@@ -76,7 +75,7 @@ makedoc : makedoc.c
 	$(CC) $(LDFLAGS) -o $@ $^ $(EXTRA_LIBS)
 
 clean :
-	rm -f *~ *.o jade_protos.h doc-strings.h build.h core
+	rm -f *~ *.o jade_protos.h doc-strings.h ../DOC build.h core
 
 realclean : clean
-	rm -f DOC-bare makedoc stripproto Makefile
+	rm -f makedoc stripproto Makefile
