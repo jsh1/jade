@@ -747,7 +747,7 @@ Major mode for viewing mail folders. Commands include:\n
   "v" '(rm-command-with-folder 'read-mail-folder)
   "r" '(rm-command-in-folder 'rm-reply)
   "R" '(rm-command-in-folder '(rm-reply t))
-  "f" '(rm-command-in-folder rm-followup)
+  "f" '(rm-command-in-folder 'rm-followup)
   "F" '(rm-command-in-folder '(rm-followup t))
   "z" '(rm-command-in-folder 'rm-forward)
   "*" '(rm-command-with-folder 'rm-burst-message)
