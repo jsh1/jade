@@ -6,6 +6,46 @@ This lists the major changes to Jade and which release they occurred
 in. For more explicit history information see the @file{ChangeLog} files
 scattered throughout the source directories.
 
+@section Version 4.0
+Too many things to list individually. Edited highlights include:
+
+@itemize @bullet
+@item Separated the extension language (@code{librep}) from the editor
+
+@item Redisplay algorithms have been vastly improved to totally remove
+the ``flickery update'' problems. Also support for ``extents'',
+property lists and local variables for buffer regions (this includes
+the ability to give regions of a buffer their own major-mode)
+
+@item Support for using GTK as the underlying window-system (instead of
+raw Xlib). This adds a widget GtkJade, and a GTK Lisp binding. This
+allows arbitrary GTK user-interfaces to be created, with-or-without
+embedded editor windows
+
+@item A mail user agent written in Lisp, with MIME decoder and encoder
+
+@item A basic WWW browser; the mail reader also renders HTML
+
+@item RCS and CVS interfaces
+
+@item All file operations may now be redirected through Lisp code.
+Current uses include tilde home-directory substitution and access to
+remote files (using FTP or rcp)
+
+@item A simple Dired-like directory browser
+
+@item Ispell interface (interactive and asynchronous)
+
+@item TAGS files support
+
+@item Windows may be split vertically into several ``views'', also the
+minibuffer is now a normal buffer, with keybindings, etc
+
+@item New major modes: TeX, LaTeX, Perl, sh, Yacc
+
+@item Many low-level improvements
+@end itemize
+
 @section Version 3.3
 
 @itemize @bullet
