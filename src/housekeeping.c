@@ -58,6 +58,10 @@ adjust_marks_add_x(TX *tx, long addx, long xpos, long ypos)
 	    {
 		UPD(thisvw->vw_BlockS.pos_Col, thisvw->vw_BlockS.pos_Line);
 		UPD(thisvw->vw_BlockE.pos_Col, thisvw->vw_BlockE.pos_Line);
+		UPD(thisvw->vw_LastBlockS.pos_Col,
+		    thisvw->vw_LastBlockS.pos_Line);
+		UPD(thisvw->vw_LastBlockE.pos_Col,
+		    thisvw->vw_LastBlockE.pos_Line);
 	    }
 	}
     }
@@ -104,6 +108,10 @@ adjust_marks_sub_x(TX *tx, long subx, long xpos, long ypos)
 	    {
 		UPD(thisvw->vw_BlockS.pos_Col, thisvw->vw_BlockS.pos_Line);
 		UPD(thisvw->vw_BlockE.pos_Col, thisvw->vw_BlockE.pos_Line);
+		UPD(thisvw->vw_LastBlockS.pos_Col,
+		    thisvw->vw_LastBlockS.pos_Line);
+		UPD(thisvw->vw_LastBlockE.pos_Col,
+		    thisvw->vw_LastBlockE.pos_Line);
 	    }
 	}
     }
@@ -152,6 +160,8 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
 	    UPD(thisvw->vw_CursorPos.pos_Line);
 	    UPD(thisvw->vw_BlockS.pos_Line);
 	    UPD(thisvw->vw_BlockE.pos_Line);
+	    UPD(thisvw->vw_LastBlockS.pos_Line);
+	    UPD(thisvw->vw_LastBlockE.pos_Line);
 	    if(thisvw != curr_vw)
 	    {
 		UPD(thisvw->vw_StartLine);
@@ -223,11 +233,17 @@ adjust_marks_sub_y(TX *tx, long suby, long ypos)
 	    {
 		UPD(thisvw->vw_BlockS.pos_Line);
 		UPD(thisvw->vw_BlockE.pos_Line);
+		UPD(thisvw->vw_LastBlockS.pos_Line);
+		UPD(thisvw->vw_LastBlockE.pos_Line);
 	    }
             else
 	    {
                 UPD2(thisvw->vw_BlockS.pos_Col, thisvw->vw_BlockS.pos_Line);
                 UPD2(thisvw->vw_BlockE.pos_Col, thisvw->vw_BlockE.pos_Line);
+                UPD2(thisvw->vw_LastBlockS.pos_Col,
+		     thisvw->vw_LastBlockS.pos_Line);
+                UPD2(thisvw->vw_LastBlockE.pos_Col,
+		     thisvw->vw_LastBlockE.pos_Line);
 	    }
 	    if(thisvw != curr_vw)
 	    {
@@ -301,11 +317,17 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
 	    {
 		UPD(thisvw->vw_BlockS.pos_Line);
 		UPD(thisvw->vw_BlockE.pos_Line);
+		UPD(thisvw->vw_LastBlockS.pos_Line);
+		UPD(thisvw->vw_LastBlockE.pos_Line);
 	    }
             else
 	    {
                 UPD2(thisvw->vw_BlockS.pos_Col, thisvw->vw_BlockS.pos_Line);
                 UPD2(thisvw->vw_BlockE.pos_Col, thisvw->vw_BlockE.pos_Line);
+                UPD2(thisvw->vw_LastBlockS.pos_Col,
+		     thisvw->vw_LastBlockS.pos_Line);
+                UPD2(thisvw->vw_LastBlockE.pos_Col,
+		     thisvw->vw_LastBlockE.pos_Line);
 	    }
 	    if(thisvw != curr_vw)
 	    {
@@ -378,11 +400,17 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
 	    {
 		UPD(thisvw->vw_BlockS.pos_Line);
 		UPD(thisvw->vw_BlockE.pos_Line);
+		UPD(thisvw->vw_LastBlockS.pos_Line);
+		UPD(thisvw->vw_LastBlockE.pos_Line);
 	    }
             else
 	    {
                 UPD2(thisvw->vw_BlockS.pos_Col, thisvw->vw_BlockS.pos_Line);
                 UPD2(thisvw->vw_BlockE.pos_Col, thisvw->vw_BlockE.pos_Line);
+                UPD2(thisvw->vw_LastBlockS.pos_Col,
+		     thisvw->vw_LastBlockS.pos_Line);
+                UPD2(thisvw->vw_LastBlockE.pos_Col,
+		     thisvw->vw_LastBlockE.pos_Line);
 	    }
 	    if(thisvw != curr_vw)
 	    {
