@@ -56,6 +56,9 @@ DEFSYM(face, "face");
 _PR VALUE sym_default_face, sym_block_face, sym_modeline_face;
 _PR VALUE sym_highlight_face, sym_face;
 
+_PR VALUE mouse_cursor_face;
+VALUE mouse_cursor_face;
+
 char *default_fg_color = "black";
 char *default_bg_color = "#cdcdc1";
 char *default_block_color = "lightblue";
@@ -205,6 +208,8 @@ may be one of these symbols:
 	    /* TODO: this is highly suboptimal... */
 	    w->w_Flags |= WINFF_FORCE_REFRESH;
     }
+    if(face == mouse_cursor_face)
+	sys_recolor_cursor(face);
 
     return value;
 }
@@ -239,6 +244,21 @@ See `set-face-attribute' for the list of possible attributes.
 	return signal_arg_error(attr, 2);
 }
 
+_PR VALUE var_mouse_cursor_face(VALUE);
+DEFUN("mouse-cursor-face", var_mouse_cursor_face, subr_mouse_cursor_face,
+      (VALUE arg), V_Var, DOC_mouse_cursor_face) /*
+::doc:mouse_cursor_face::
+The face used to color the mouse cursor.
+::end:: */
+{
+    if(arg)
+    {
+	mouse_cursor_face = arg;
+	sys_recolor_cursor(arg);
+    }
+    return mouse_cursor_face;
+}
+    
 
 /* rendering with faces */
 
@@ -452,6 +472,8 @@ faces_init(void)
     ADD_SUBR(subr_make_face);
     ADD_SUBR(subr_set_face_attribute);
     ADD_SUBR(subr_face_attribute);
+    ADD_SUBR(subr_mouse_cursor_face);
+    mark_static(&mouse_cursor_face);
     ADD_SUBR(subr_get_color);
 
     INTERN(foreground);
@@ -479,6 +501,8 @@ faces_init(void)
 	cmd_set_face_attribute(face, sym_foreground, fg);
 	cmd_set_face_attribute(face, sym_background, bg);
 	VSYM(sym_default_face)->value = face;
+	mouse_cursor_face = face;
+	sys_recolor_cursor(mouse_cursor_face);
 
 	face = cmd_make_face(VSYM(sym_block_face)->name);
 	cmd_set_face_attribute(face, sym_background, bl);
