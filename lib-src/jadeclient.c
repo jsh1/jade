@@ -50,6 +50,7 @@
 #endif
 
 static int opt_quiet = 0;		/* dont't print results */
+static int opt_nowait = 0;
 
 /* copied from src/unix_main.c */
 static char *
@@ -111,10 +112,17 @@ connect_to_jade(void)
 		*end++ = '/';
 	    sprintf(end, JADE_SOCK_NAME, system_name());
 	    addr.sun_family = AF_UNIX;
+	again:
 	    if(access(addr.sun_path, F_OK) != 0)
 	    {
+		if (opt_nowait)
+		{
+		    fprintf(stderr, "server not running\n");
+		    exit (1);
+		}
+
 		/* Jade isn't running yet. hang around 'til it is... */
-		fprintf(stderr, "Jade not running, waiting...");
+		fprintf(stderr, "server not running, waiting...");
 		fflush(stderr);
 		do {
 		    sleep(1);
@@ -127,13 +135,19 @@ connect_to_jade(void)
 		return sock_fd;
 	    }
 	    else
-		perror("jadeclient:connect()");
+	    {
+		/* Assume we've found a stale socket. */
+		if (unlink(addr.sun_path) == 0)
+		    goto again;
+		perror ("unlink socket");
+		exit (10);
+	    }
 	}
 	else
-	    fprintf(stderr, "jadeclient: can't find your home dir\n");
+	    fprintf(stderr, "can't find your home dir\n");
     }
     else
-	perror("jadeclient:socket()");
+	perror("socket");
     return -1;
 }
 
@@ -238,6 +252,8 @@ usage(char *prog_name)
 {
     fprintf(stderr, "usage: %s OPTIONS...\n
 where OPTIONS are any of:\n
+	-w		Don't wait for server if not already running,
+			 return with exit code 1
 	[+LINE] FILE	Edit file FILE on the server, with the cursor
 			 at line number LINE optionally.
 	-q		Be quiet
@@ -260,12 +276,25 @@ main(int argc, char *argv[])
     u_long result = 0;
 
     argc--; argv++;
+
+    if (argc > 0 && strcmp(argv[0], "-w") == 0)
+    {
+	opt_nowait = 1;
+	argc--; argv++;
+    }
+
+    if (argc > 0 && strcmp(argv[0], "-?") == 0)
+    {
+	usage(prog_name);
+	argc--; argv++;
+    }
+
     if(argc == 0)
 	return 0;
 
     sock_fd = connect_to_jade();
     if(sock_fd == -1)
-	return 10;
+	return 1;
 
     while(result == 0 && argc > 0)
     {
