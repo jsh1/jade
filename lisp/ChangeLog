@@ -1,3 +1,8 @@
+2000-04-10  John Harper  <john@dcs.warwick.ac.uk>
+
+	* lisp-mode.jl (lisp-indent-pos): indentation hints for rep
+	structure forms
+
 2000-03-04  John Harper  <john@dcs.warwick.ac.uk>
 
 	* replace.jl (replace-preserve-case): new variable, used by
