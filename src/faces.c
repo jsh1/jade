@@ -284,8 +284,9 @@ get_merged_face(WIN *w, u_long car,
 /* Return the id of a face in W->w_MergedFaces that expresses the
    attributes of the positions within E. */
 int
-merge_faces(WIN *w, Lisp_Extent *e, int in_block, int on_cursor)
+merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
 {
+    WIN *w = vw->vw_Win;
     u_long car = 0;
     Lisp_Color *background = 0, *foreground = 0;
 
@@ -321,15 +322,15 @@ merge_faces(WIN *w, Lisp_Extent *e, int in_block, int on_cursor)
     for(x = e; x != 0; x = x->parent)
     {
 	repv face;
-	if (!mouse_extent && w->w_NumMouseExtents > 0)
+	if (!mouse_extent && vw->vw_NumMouseExtents > 0)
 	{
 	    Lisp_Extent *first = x;
 	    int i;
 	    while (first->frag_pred != 0)
 		first = first->frag_pred;
-	    for (i = 0; i < w->w_NumMouseExtents; i++)
+	    for (i = 0; i < vw->vw_NumMouseExtents; i++)
 	    {
-		if (first == w->w_MouseExtents[i])
+		if (first == vw->vw_MouseExtents[i])
 		{
 		    /* If an inner extent contains the mouse,
 		       then all parents of this extent also
