@@ -928,12 +928,16 @@ is from the beginning of the buffer.
 	pos = VPOS(vpos);
     else
 	pos = *get_tx_cursor(VTX(tx));
-    check_pos(VTX(tx), &pos);
-    line = VTX(tx)->tx_Lines;
-    for(offset = line_num = 0; line_num < pos.pos_Line; line++, line_num++)
-	offset += line->ln_Strlen; /* includes the theoretical '\n' */
-    offset += pos.pos_Col;
-    return(make_number(offset));
+    if(check_pos(VTX(tx), &pos))
+    {
+	line = VTX(tx)->tx_Lines;
+	for(offset = line_num = 0; line_num < pos.pos_Line; line++, line_num++)
+	    offset += line->ln_Strlen; /* includes the theoretical '\n' */
+	offset += pos.pos_Col;
+	return(make_number(offset));
+    }
+    else
+	return NULL;
 }
 
 _PR VALUE cmd_offset_to_pos(VALUE voffset, VALUE tx);

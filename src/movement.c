@@ -656,7 +656,10 @@ Returns the position of the character COUNT (default: 1) characters after POS
     if(!POSP(pos))
 	pos = make_lpos(get_tx_cursor(VTX(tx)));
     else
-	check_pos(VTX(tx), &VPOS(pos));
+    {
+	if(!check_pos(VTX(tx), &VPOS(pos)))
+	    return NULL;
+    }
     if(next_char(NUMBERP(count) ? VNUM(count) : 1, &VPOS(pos), VTX(tx)))
 	return(pos);
     return(sym_nil);
@@ -694,7 +697,10 @@ cursor). POS is altered.
     if(!POSP(pos))
 	pos = make_lpos(get_tx_cursor(VTX(tx)));
     else
-	check_pos(VTX(tx), &VPOS(pos));
+    {
+	if(!check_pos(VTX(tx), &VPOS(pos)))
+	    return NULL;
+    }
     if(prev_char(NUMBERP(count) ? VNUM(count) : 1, &VPOS(pos), VTX(tx)))
 	return(pos);
     return(sym_nil);
@@ -734,7 +740,10 @@ Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
     if(!POSP(pos))
 	pos = make_lpos(get_tx_cursor(VTX(tx)));
     else
-	check_pos(VTX(tx), &VPOS(pos));
+    {
+	if(!check_pos(VTX(tx), &VPOS(pos)))
+	    return NULL;
+    }
     if(NUMBERP(esc))
 	esc_char = VNUM(esc);
     else
