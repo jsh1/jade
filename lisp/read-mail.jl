@@ -141,9 +141,9 @@ of each rule is ignored.")
     "u" 'rm-unmark-message
     "U" 'rm-unmark-all-messages
     "r" 'rm-reply
-    "R" '(rm-reply t)
+    "R" '(rm-reply t nil current-prefix-arg)
     "f" 'rm-followup
-    "F" '(rm-followup t)
+    "F" '(rm-followup t current-prefix-arg)
     "z" 'rm-forward
     "*" 'rm-burst-message
     "s" 'rm-output
