@@ -282,6 +282,7 @@ in the status line."
 (put 'lambda 'lisp-indent 'defun)
 (put 'defun 'lisp-indent 'defun)
 (put 'defmacro 'lisp-indent 'defun)
+(put 'defsubst 'lisp-indent 'defun)
 (put 'defvar 'lisp-indent 'defun)
 (put 'defconst 'lisp-indent 'defun)
 (put 'progn 'lisp-indent 0)
