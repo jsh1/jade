@@ -35,8 +35,8 @@ WIN *x11_current_event_win;
 
 /* The mouse position of the current event, relative to the origin of
    the window that the event occurred in, measured in glyphs. */
-_PR POS x11_current_mouse_pos;
-POS x11_current_mouse_pos;
+_PR long x11_current_mouse_x, x11_current_mouse_y;
+long x11_current_mouse_x, x11_current_mouse_y;
 
 /* The last event received which had a timestamp, was at this time. */
 _PR Time x11_last_event_time;
@@ -148,8 +148,8 @@ handle_event(XEvent *xev)
 			     &tmpw, &tmpw, &tmp, &tmp,
 			     &x, &y, &tmp))
 	    {
-		x11_current_mouse_pos.pos_Col = x;
-		x11_current_mouse_pos.pos_Line = y;
+		x11_current_mouse_x = x;
+		x11_current_mouse_y = y;
 	    }
 	    goto do_command;
 	}
@@ -157,23 +157,23 @@ handle_event(XEvent *xev)
 	case ButtonPress:
 	case ButtonRelease:
 	    x11_last_event_time = xev->xbutton.time;
-	    x11_current_mouse_pos.pos_Col = xev->xbutton.x;
-	    x11_current_mouse_pos.pos_Line = xev->xbutton.y;
+	    x11_current_mouse_x = xev->xbutton.x;
+	    x11_current_mouse_y = xev->xbutton.y;
 	    goto do_command;
 
 	case KeyPress:
 	    x11_last_event_time = xev->xkey.time;
-	    x11_current_mouse_pos.pos_Col = xev->xkey.x;
-	    x11_current_mouse_pos.pos_Line = xev->xkey.y;
+	    x11_current_mouse_x = xev->xkey.x;
+	    x11_current_mouse_y = xev->xkey.y;
 	    /* FALL THROUGH */
 
 	do_command:
 	    x11_current_event_win = ev_win;
-	    x11_current_mouse_pos.pos_Col
-		= ((x11_current_mouse_pos.pos_Col - ev_win->w_LeftPix)
+	    x11_current_mouse_x
+		= ((x11_current_mouse_x - ev_win->w_LeftPix)
 		   / ev_win->w_FontX);
-	    x11_current_mouse_pos.pos_Line
-		= ((x11_current_mouse_pos.pos_Line - ev_win->w_TopPix)
+	    x11_current_mouse_y
+		= ((x11_current_mouse_y - ev_win->w_TopPix)
 		   / ev_win->w_FontY);
 	    code = mods = 0;
 	    translate_event(&code, &mods, xev);
@@ -256,6 +256,13 @@ event_loop(void)
 			handle_error(car, sym_nil);
 			result = sym_nil;
 		    }
+		    else if(car == sym_term_interrupt)
+		    {
+			if(recurse_depth == 0)
+			    /* Autosave all buffers */
+			    while(auto_save_buffers(TRUE) > 0) ;
+			goto end;
+		    }
 		    else if(car == sym_error)
 		    {
 			handle_error(VCAR(VCDR(tv)), VCDR(VCDR(tv)));
@@ -325,7 +332,7 @@ event_loop(void)
 		 Run the `idle-hook'  */
 	    if(remove_all_messages(TRUE)
 	       || print_event_prefix()
-	       || auto_save_buffers())
+	       || auto_save_buffers(FALSE))
 		refreshp = TRUE;
 	    else if(data_after_gc > idle_gc_threshold)
 	    {
@@ -347,7 +354,7 @@ event_loop(void)
 #endif /* HAVE_UNIX */
 
 #ifdef HAVE_SUBPROCESSES
-	if(proc_notification())
+	if(proc_periodically())
 	    refreshp = TRUE;
 #endif
 
