@@ -1,3 +1,17 @@
+1999-12-10  John Harper  <john@dcs.warwick.ac.uk>
+
+	* read-mail.jl (rm-get-msg-header): new optional arg DECODE;
+	whether to decode header before returning
+	(rm-get-from, rm-get-sender, rm-get-recipients,
+	rm-get-subject): decode headers
+
+	* mail-headers.jl (mail-decode-header): new function, does
+	RFC-2047 style decoding of strings
+	(mail-get-header): new optional arg DECODE, whether or not to
+	pass the results through mail-decode-header before returning
+
+	* mime-decode.jl (mime-decode-string): new function
+
 1999-12-07  John Harper  <john@dcs.warwick.ac.uk>
 
 	* windows.jl, send-mail.jl, rm-summary.jl, prompt.jl, debug.jl:
