@@ -49,6 +49,8 @@ Hook called whenever a view is deleted, called with the view as its sole
 argument.
 ::end:: */
 
+DEFSYM(mode_line_format, "mode-line-format");
+
 static void set_scroll_steps(VW *vw);
 static void recalc_measures(WIN *w);
 
@@ -452,131 +454,261 @@ update_views_dimensions(WIN *w)
     }
 }
 
-/* Reformat the status string of VW, and flag that it needs to be
-   redrawn. */
-void
-update_status_buffer(VW *vw, char *status_buf, u_long buflen)
+/* Expand format characters */
+static u_long
+format_mode_string(char *fmt, VW *vw, char *buf, u_long buf_len)
 {
     TX *tx = vw->vw_Tx;
-    bool restriction = (tx->tx_LogicalStart != 0)
-			|| (tx->tx_LogicalEnd != tx->tx_NumLines);
-    long lines = tx->tx_LogicalEnd - tx->tx_LogicalStart;
-    long glyph_col = get_cursor_column(vw);
-    char *ptr = status_buf;
-    size_t len;
-    VALUE tem;
+    while(*fmt && buf_len > 0)
+    {
+	while(buf_len > 0 && *fmt && *fmt != '%')
+	{
+	    *buf++ = *fmt++;
+	    buf_len--;
+	}
+	if(buf_len <= 0 || !*fmt)
+	    break;
+	fmt++;
+	switch(*fmt++)
+	{
+	    int len;
 
+	case 'b':			/* buffer-name */
+	case 'B':			/* buffer-status-id */
+	case 'f':			/* file-name */
+	{
+	    VALUE str = (fmt[-1] == 'b'
+			 ? tx->tx_BufferName
+			 : (fmt[-1] == 'B'
+			    ? tx->tx_StatusId : tx->tx_FileName));
+	    if(STRINGP(str))
+	    {
+		len = STRING_LEN(str);
+		len = MIN(len, buf_len);
+		memcpy(buf, VSTR(str), len);
+		buf += len; buf_len -= len;
+	    }
+	}
+	break;
+
+	case 'l':			/* line-number */
+	case 'L':			/* global line-number */
+	    len = sprintf(buf, "%ld", VROW(vw->vw_CursorPos) + 1
+			  - (fmt[-1] == 'l' ? tx->tx_LogicalStart : 0));
+	    buf += len; buf_len -= len;
+	    break;
+
+	case 'c':			/* column-number */
+	    len = sprintf(buf, "%ld", get_cursor_column(vw) + 1);
+	    buf += len; buf_len -= len;
+	    break;
+
+	case 'p':			/* `Top', `Bot', or `XX%' */
+	{
+	    char *position, position_buf[4];
+	    
+	    if(VROW(vw->vw_DisplayOrigin) <= tx->tx_LogicalStart)
+	    {
+		if(vw->vw_Flags & VWFF_AT_BOTTOM)
+		    position = "All";
+		else
+		    position = "Top";
+	    }
+	    else if(vw->vw_Flags & VWFF_AT_BOTTOM)
+		position = "Bot";
+	    else
+	    {
+		int percent = (((VROW(vw->vw_DisplayOrigin)
+				 - tx->tx_LogicalStart) * 100)
+			       / tx->tx_LogicalEnd - tx->tx_LogicalStart);
+		position_buf[0] = (percent / 10) + '0';
+		position_buf[1] = (percent % 10) + '0';
+		position_buf[2] = '%';
+		position_buf[3] = 0;
+		position = position_buf;
+	    }
+	    
+	    strcpy(buf, position);
+	    buf += 3; buf_len -= 3;
+	    break;
+	}
+
+	case '(':			/* `(' if in top-level, else `[' */
+	    *buf++ = (recurse_depth == 0) ? '(' : '[';
+	    buf_len--;
+	    break;
+
+	case ')':			/* similar to '(' */
+	    *buf++ = (recurse_depth == 0) ? ')' : ']';
+	    buf_len--;
+	    break;
+
+	case '[':			/* '[' if narrowed, else '(' */
+	case ']':			/* similar to '[' */
+	{
+	    bool restr = ((tx->tx_LogicalStart != 0)
+			  || (tx->tx_LogicalEnd != tx->tx_NumLines));
+	    *buf++ = (fmt[-1] == '['
+		      ? (restr ? '[' : '(') : (restr ? ']' : ')'));
+	    buf_len--;
+	    break;
+	}
+
+	case '*':			/* %, * or hyphen */
+	case '+':			/* *, % or hyphen */
+	{
+	    VALUE tem = cmd_buffer_symbol_value(sym_read_only,
+						vw->vw_CursorPos,
+						VAL(tx), sym_t);
+	    bool mod = tx->tx_Changes != tx->tx_ProperSaveChanges;
+	    if(mod && !NILP(tem))
+		*buf = (fmt[-1] == '*') ? '%' : '*';
+	    else if(mod)
+		*buf = '*';
+	    else if(!NILP(tem))
+		*buf = '%';
+	    else
+		*buf = '-';
+	    buf++; buf_len--;
+	    break;
+	}
+
+	case '-':			/* infinite dashes */
+	    memset(buf, '-', buf_len);
+	    buf += buf_len; buf_len = 0;
+	    break;
+
+	case '%':			/* percent character */
+	    *buf++ = '%'; buf_len--;
+	    break;
+	}
+    }
+
+    return buf_len;
+}
+
+static u_long
+format_mode_value(VALUE format, VW *vw, char *buf, u_long buf_len)
+{
+    TX *tx = vw->vw_Tx;
+
+    if(SYMBOLP(format))
+    {
+	VALUE tem = cmd_buffer_symbol_value(format, vw->vw_CursorPos,
+					    VAL(tx), sym_t);
+	if(VOIDP(tem))
+	    tem = cmd_default_value(format, sym_t);
+	if(STRINGP(tem))
+	{
+	    int len = STRING_LEN(tem);
+	    len = MIN(len, buf_len);
+	    memcpy(buf, VSTR(tem), len);
+	    buf += len; buf_len -= len;
+	    return buf_len;
+	}
+	else
+	    format = tem;
+    }
+
+    if(STRINGP(format))
+	return format_mode_string(VSTR(format), vw, buf, buf_len);
+
+    while(buf_len > 0 && CONSP(format))
+    {
+	VALUE item = VCAR(format);
+	format = VCDR(format);
+
+	if(STRINGP(item))
+	{
+	    u_long done = buf_len - format_mode_string(VSTR(item), vw,
+						       buf, buf_len);
+	    buf += done; buf_len -= done;
+	}
+	else if(SYMBOLP(item))
+	{
+	    VALUE tem = cmd_buffer_symbol_value(item, vw->vw_CursorPos,
+						VAL(tx), sym_t);
+	    if(VOIDP(tem))
+		tem = cmd_default_value(item, sym_t);
+	    if(STRINGP(tem))
+	    {
+		int len = STRING_LEN(tem);
+		len = MIN(len, buf_len);
+		memcpy(buf, VSTR(tem), len);
+		buf += len; buf_len -= len;
+	    }
+	    else
+	    {
+		u_long done = buf_len - format_mode_value(tem, vw,
+							  buf, buf_len);
+		buf += done; buf_len -= done;
+	    }
+	}
+	else if(CONSP(item))
+	{
+	    u_long done = 0;
+	    VALUE first = VCAR(item);
+	    if(STRINGP(first))
+		done = buf_len - format_mode_string(VSTR(first), vw,
+						    buf, buf_len);
+	    else if(SYMBOLP(first))
+	    {
+		VALUE tem = cmd_buffer_symbol_value(first, vw->vw_CursorPos,
+						    VAL(tx), sym_t);
+		if(VOIDP(tem))
+		    tem = cmd_default_value(first, sym_t);
+		if(!VOIDP(tem) && !NILP(tem))
+		{
+		    if(CONSP(VCDR(item)))
+			tem = VCAR(VCDR(item));
+		    else
+			tem = sym_nil;
+		}
+		else if(CONSP(VCDR(item)) && CONSP(VCDR(VCDR(item))))
+		    tem = VCAR(VCDR(VCDR(item)));
+		else
+		    tem = sym_nil;
+		if(tem != LISP_NULL && !NILP(tem))
+		    done = buf_len - format_mode_value(tem, vw, buf, buf_len);
+	    }
+	    buf += done; buf_len -= done;
+	}
+    }
+    return buf_len;
+}
+
+/* Reformat the status string of VW. */
+void
+update_status_buffer(VW *vw, char *buf, u_long buf_len)
+{
     if(vw->vw_Flags & VWFF_MINIBUF)
 	return;
     if(vw->vw_StatusOverride != LISP_NULL)
     {
-	len = STRING_LEN(vw->vw_StatusOverride);
-	memcpy(status_buf, VSTR(vw->vw_StatusOverride), MIN(len, buflen));
-	if(len < buflen)
-	    memset(status_buf + len, ' ', buflen - len);
+	int len = STRING_LEN(vw->vw_StatusOverride);
+	memcpy(buf, VSTR(vw->vw_StatusOverride), MIN(len, buf_len));
+	if(len < buf_len)
+	    memset(buf + len, ' ', buf_len - len);
 	return;
     }
-
-    *ptr++ = '-';
-
-    /* Block status character */
-    if(vw->vw_BlockStatus >= 0)
-    {
-	if(vw->vw_BlockStatus == 0)
-	    *ptr++ = 'B';
-	else
-	    *ptr++ = 'b';
-    }
-    else
-	*ptr++ = '-';
-
-    /* Read-only, modified status */
-    tem = cmd_buffer_symbol_value(sym_read_only, sym_nil, VAL(tx), sym_t);
-    if(!NILP(tem) && !VOIDP(tem))
-    {
-	*ptr++ = '%';
-	*ptr++ = (tx->tx_Changes != tx->tx_ProperSaveChanges) ? '*' : '%';
-    }
-    else if(tx->tx_Changes != tx->tx_ProperSaveChanges)
-    {
-	*ptr++ = '*';
-	*ptr++ = '*';
-    }
     else
     {
-	*ptr++ = '-';
-	*ptr++ = '-';
-    }
-    *ptr++ = '-';
-
-    if(STRINGP(tx->tx_StatusId))
-    {
-	len = STRING_LEN(tx->tx_StatusId);
-	len = MIN(len, buflen - (ptr - status_buf));
-	memcpy(ptr, VSTR(tx->tx_StatusId), POS(len));
-	ptr += len;
-	*ptr++ = ' ';
-    }
-
-    *ptr++ = (recurse_depth > 0) ? '[' : '(';
-    if(tx->tx_ModeName != LISP_NULL)
-    {
-	len = STRING_LEN(tx->tx_ModeName);
-	len = MIN(len, buflen - (ptr - status_buf));
-	memcpy(ptr, VSTR(tx->tx_ModeName), POS(len));
-    }
-    else
-    {
-	len = sizeof("Fundamental") - 1;
-	len = MIN(len, buflen - (ptr - status_buf));
-	memcpy(ptr, "Fundamental", POS(len));
-    }
-    ptr += POS(len);
-    len = STRING_LEN(tx->tx_MinorModeNameString);
-    len = MIN(len, buflen - (ptr - status_buf));
-    memcpy(ptr, VSTR(tx->tx_MinorModeNameString), POS(len));
-    ptr += POS(len);
-    *ptr++ = (recurse_depth > 0) ? ']' : ')';
-    *ptr++ = '-'; *ptr++ = '-';
-
-    {
-	char *position, position_buf[4];
-	char tem[64];
-	size_t len;
-	char *mptr;
-
-	if(VROW(vw->vw_DisplayOrigin) <= tx->tx_LogicalStart)
+	u_long done;
+	TX *tx = vw->vw_Tx;
+	VALUE format = cmd_buffer_symbol_value(sym_mode_line_format,
+					       vw->vw_CursorPos,
+					       VAL(tx), sym_t);
+	if(VOIDP(format))
 	{
-	    if(vw->vw_Flags & VWFF_AT_BOTTOM)
-		position = "All";
-	    else
-		position = "Top";
+	    format = cmd_default_value(sym_mode_line_format, sym_t);
+	    if(VOIDP(format))
+		return;
 	}
-	else if(vw->vw_Flags & VWFF_AT_BOTTOM)
-	    position = "Bot";
-	else
-	{
-	    int percent = ((VROW(vw->vw_DisplayOrigin)
-			    - tx->tx_LogicalStart) * 100) / lines;
-	    position_buf[0] = (percent / 10) + '0';
-	    position_buf[1] = (percent % 10) + '0';
-	    position_buf[2] = '%';
-	    position_buf[3] = 0;
-	    position = position_buf;
-	}
-#ifdef HAVE_SNPRINTF
-	snprintf(tem, sizeof(tem),
-#else
-	sprintf(tem,
-#endif
-		"-%c%ld,%ld%c--%s-", restriction ? '[' : '(',
-		glyph_col + 1, VROW(vw->vw_CursorPos)
-		- tx->tx_LogicalStart + 1, restriction ? ']' : ')', position);
-	len = strlen(tem);
-	mptr = status_buf + buflen - len;
-	memcpy(mptr, tem, len);
-	if(ptr < mptr)
-	    memset(ptr, '-', mptr - ptr);
+	
+	done = buf_len - format_mode_value(format, vw, buf, buf_len);
+	buf += done; buf_len -= done;
+	if(buf_len > 0)
+	    memset(buf, ' ', buf_len);
     }
 }
 
@@ -1134,6 +1266,7 @@ views_init(void)
     ADD_SUBR(subr_viewp);
     INTERN(split_view_hook); DOC(split_view_hook);
     INTERN(delete_view_hook); DOC(delete_view_hook);
+    INTERN(mode_line_format);
 }
 
 void
