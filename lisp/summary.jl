@@ -43,10 +43,45 @@
   "LMB-Click2" 'summary-select-item
   "LMB-Off" 'nop)
 
+
+;; Local variables
+
+;; TAGS include:
+;;
+;;   select ITEM
+;;	Called to select ITEM in an appropriate manner
+;;
+;;   delete ITEM
+;;	Delete ITEM (called from the execute phase)
+;;
+;;   print ITEM
+;;	Emit a one line summary of ITEM in the current buffer at the
+;;	cursor position
+;;
+;;   list
+;;	Return a list of all current items
+;;
+;;   execute-begin
+;;	Called before executing pending actions
+;;
+;;   execute-end
+;;	Called after executing pending actions
+;;
+;;   after-marking ITEM
+;;	Called after marking ITEM in some way
+;;
+;;   after-move INDEX
+;;	Called after moving the cursor to the item at position INDEX
+;;	in the most recently given list of items
+;;
+;;   on-quit
+;;	Called before quitting the summary
+;;
+;; Only the select, print and list actions are required to be defined. All
+;; others are optional.
 (defvar summary-functions nil
   "Association list of functions to call to achieve a certain operation,
-(TAG . FUNC). TAGS include: select, delete, print, list, execute-begin,
-execute-end.")
+(TAG . FUNC). See summary.jl for details.")
 (make-variable-buffer-local 'summary-functions)
 
 (defvar summary-items nil
@@ -67,6 +102,7 @@ line represents.")
 (make-variable-buffer-local 'summary-actual-keymap)
 
 
+;; Entry point
 
 ;; Call this to initialise a summary menu in the current buffer. NAME
 ;; is put in mode-name, FUNCTIONS in summary-functions. If KEYMAP is
@@ -113,6 +149,12 @@ items to be displayed and manipulated."
 ;; Returns t when function FUNC exists for the current summary
 (defmacro summary-function-exists-p (func)
   (list 'assq func 'summary-functions))
+
+;; Call the function FUNC with ARGS, only if it exists.
+(defmacro summary-maybe-dispatch (func &rest args)
+  (list 'and
+	(list 'summary-function-exists-p func)
+	(cons 'summary-dispatch (cons func args))))
 
 (defmacro summary-get-item (index)
   "Return the item at position INDEX in the menu (from zero)."
@@ -172,16 +214,15 @@ items to be displayed and manipulated."
 				      summary-pending-ops))
       (summary-update-item item))))
 
-(defun summary-unmark-item (item &optional move-after-p)
+(defun summary-unmark-item (item)
   "Discard all operations pending on ITEM."
   (interactive (list (summary-current-item) t))
   (let
       ((ops (summary-get-pending-ops item)))
     (when ops
       (setq summary-pending-ops (delq ops summary-pending-ops))
-      (summary-update-item item)))
-  (when move-after-p
-    (summary-next-item 1)))
+      (summary-update-item item))
+    (summary-maybe-dispatch 'after-marking item)))
 
 (defun summary-update ()
   "Redraw the menu, after rebuilding the list of items."
@@ -219,13 +260,15 @@ items to be displayed and manipulated."
 	(insert "\n")))))
 
 (defun summary-goto-item (index)
-  "Move the cursor to the INDEX'th item (from zero) in the menu."
+  "Move the cursor to the INDEX'th item (from zero) in the menu. Returns
+t when this item actually exists."
   (interactive "p")
   (unless (or (< index 0)
-	    (> index (- (pos-line (buffer-end))
+	      (> index (- (pos-line (buffer-end))
 			(pos-line summary-first-line))))
     (goto-char (pos 0 (+ (pos-line summary-first-line) index)))
-    (eval-hook 'summary-goto-item-hook index)))
+    (summary-maybe-dispatch 'after-move index)
+    t))
 
 (defun summary-next-item (count)
   "Move the cursor to the next item."
@@ -249,10 +292,9 @@ non-nil it should be a list containing the operations which may be performed."
   (let
       ((ops summary-pending-ops))
     (setq summary-pending-ops nil)
-    (when (summary-function-exists-p 'execute-start)
-      ;; Send a `execute-start' command when it's defined. This
-      ;; lets the underlying system start caching if it wants to.
-      (summary-dispatch 'execute-start ops))
+    ;; Send a `execute-start' command when it's defined. This
+    ;; lets the underlying system start caching if it wants to.
+    (summary-maybe-dispatch 'execute-start ops)
     ;; Now start executing the operations
     (while ops
       (let
@@ -263,25 +305,24 @@ non-nil it should be a list containing the operations which may be performed."
 	    (summary-dispatch (car funcs) item))
 	  (setq funcs (cdr funcs))))
       (setq ops (cdr ops)))
-    (when (summary-function-exists-p 'execute-end)
-      ;; Send a `execute-end' command when it's defined. This
-      ;; lets the underlying system end caching and perform the
-      ;; operations if necessary.
-      (summary-dispatch 'execute-end)))
-  (eval-hook 'summary-post-execute-hook)
+    ;; Send a `execute-end' command when it's defined. This
+    ;; lets the underlying system end caching and perform the
+    ;; operations if necessary.
+    (summary-maybe-dispatch 'execute-end))
   (summary-update))
 
 (defun summary-mark-delete ()
   "Mark that the current item should be deleted."
   (interactive)
   (if (assq 'delete summary-functions)
-      (progn
-	(summary-add-pending-op (summary-current-item) 'delete)
-	(summary-next-item 1))
+      (let
+	  ((item (summary-current-item)))
+	(summary-add-pending-op item 'delete)
+	(summary-maybe-dispatch 'after-marking item))
     (error "No delete operation in the menu.")))
 
 (defun summary-quit ()
   "Leave the summary buffer."
   (interactive)
   (bury-buffer (current-buffer))
-  (eval-hook 'summary-quit-hook))
+  (summary-maybe-dispatch 'on-quit))
