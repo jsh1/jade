@@ -83,7 +83,10 @@
       (signal 'file-error (list "Can't run RCS command"))))
   (format t "done")
   (when reread-buffer-p
-    (read-file-into-buffer file-name)))
+    (let
+	((old-pos (cursor-pos)))
+      (read-file-into-buffer file-name)
+      (goto-char old-pos))))
 
 ;; Switch to the buffer containing all RCS output
 (defun rcs-goto-buffer ()
