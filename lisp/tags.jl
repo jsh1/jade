@@ -118,7 +118,7 @@ move back to the previously found tag."
 	     ;; This also switches to buffer
 	     (buffer (or (find-file file)
 			 (error "Can't open file %S" file)))
-	     tag-line tag-line tag-name)
+	     tag-pos tag-line tag-name)
 	  (unless (looking-at "^(.+)\177((.+)\001|)([0-9]+)"
 			      (start-of-line start) tags-buffer)
 	    (error "Malformed tag line at %S" start))
