@@ -53,12 +53,17 @@
       (setq subject (concat mail-reply-prefix
 			    (substring subject (match-end)))))
     (mail-setup to subject msg-id cc nil
-		(cons #'(lambda (msg)
-			  (rm-set-flag msg 'replied))
-		      message))
+		(list (cons 'rm-reply-callback
+			    (list (current-buffer) message))))
     (setq rm-reply-message message)
     (when yankp
       (mail-yank-original))))
+
+(defun rm-reply-callback (buffer message)
+  (rm-set-flag message 'replied)
+  (with-buffer buffer
+    (rm-with-summary
+     (summary-update-item message))))
 
 ;;;###autoload
 (defun rm-followup (&optional yankp)
