@@ -59,6 +59,7 @@ typedef struct {
     GC			ws_GC_array[P_MAX];
     XFontStruct	       *ws_Font;
     int			ws_Width, ws_Height;
+    int			ws_HasFocus;
 } W_WindowSys;
 
 #define w_Window	w_WindowSys.ws_Window
@@ -66,6 +67,7 @@ typedef struct {
 
 #define WINDOW_XDPY(w)	((w)->w_WindowSys.ws_Display)
 #define WINDOW_META(w)  (WINDOW_XDPY(w)->meta_mod)
+#define WINDOW_HAS_FOCUS(w) ((w)->w_WindowSys.ws_HasFocus)
 
 #if 0
 typedef struct {
@@ -76,9 +78,10 @@ typedef struct {
 /* Macros for drawing operations. These are used in redisplay.c for
    system-independent rendering. */
 
-/* Draw LEN bytes of the string STR with pen PEN at glyph position (X,Y). */
-#define DRAW_GLYPHS(win, x, y, pen, str, len)				\
+/* Draw LEN bytes of the string STR with ATTR at glyph position (X,Y). */
+#define DRAW_GLYPHS(win, x, y, attr, str, len)				\
     do {								\
+	int pen = x11_attr_map[attr];					\
 	int xpix = (win)->w_LeftPix + (win)->w_FontX * (x);		\
 	int ypix = ((win)->w_TopPix + (win)->w_FontY * (y)		\
 		    + (win)->w_WindowSys.ws_Font->ascent);		\
@@ -88,10 +91,11 @@ typedef struct {
     } while(0)
 
 /* Fill LEN glyphs from (X,Y) with pen PEN. */
-#define FILL_GLYPHS(win, x, y, pen, len)				\
+#define FILL_GLYPHS(win, x, y, attr, len)				\
     do {								\
 	int xpix = (win)->w_LeftPix + (win)->w_FontX * (x);		\
 	int ypix = (win)->w_TopPix + (win)->w_FontY * (y);		\
+	int pen = x11_rattr_map[attr];					\
 	XFillRectangle(WINDOW_XDPY(win)->display, (win)->w_Window,	\
 		       (win)->w_WindowSys.ws_GC_array[pen],		\
 		       xpix, ypix,					\
@@ -123,5 +127,17 @@ typedef struct {
 		  (win)->w_WindowSys.ws_GC_array[P_TEXT],		\
 		  x1pix, y1pix, width, height, x2pix, y2pix);		\
     } while(0)
+
+#define DRAW_CURSOR_RECTANGLE(win, x, y, attr)				\
+    do {								\
+	int xpix = (win)->w_LeftPix + (win)->w_FontX * (x);		\
+	int ypix = (win)->w_TopPix + (win)->w_FontY * (y);		\
+	int pen = x11_attr_map[attr];					\
+	XDrawRectangle(WINDOW_XDPY(win)->display, (win)->w_Window,	\
+			 (win)->w_WindowSys.ws_GC_array[pen],		\
+			 xpix, ypix,					\
+			 (win)->w_FontX - 1, (win)->w_FontY - 1);	\
+    } while(0)
+	
 
 #endif /* _X11_WINDOWSYS_H */

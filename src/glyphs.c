@@ -203,7 +203,7 @@ static gl_cache_t gl_cache;
 	    /* check for cursor pos. */			\
 	    if(char_col == cursor_col)			\
 	    {						\
-		*attrs++ = cursor_attrs[attr];		\
+		*attrs++ = cursor_attrs[WINDOW_HAS_FOCUS(w)][attr];	\
 		cursor_row = FALSE;			\
 	    }						\
 	    else					\
@@ -217,8 +217,9 @@ void
 make_window_glyphs(glyph_buf *g, WIN *w)
 {
     /* Lookup table for changing an attribute to the cursor's equivalent. */
-    static const glyph_attr cursor_attrs[GA_MAX] =
-	{ GA_Text_RV, GA_Text, GA_Block_RV, GA_Block };
+    static const glyph_attr cursor_attrs[2][GA_MAX] =
+	{ { GA_Text_Rect, GA_Text_Rect_RV, GA_Block_Rect, GA_Block_Rect_RV },
+	  { GA_Text_RV, GA_Text, GA_Block_RV, GA_Block }, };
     static char spaces[] = "                                                 "
 "                                                                            ";
 
@@ -307,8 +308,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    long real_glyph_col = 0, glyph_col = 0, char_col = 0;
 
 	    /* Is the cursor in this row? */
-	    bool cursor_row = (vw->vw_Win == curr_win
-			       && vw == w->w_CurrVW
+	    bool cursor_row = (vw == w->w_CurrVW
 			       && VROW(vw->vw_CursorPos) == char_row);
 	    bool block_row = FALSE;
 	    attr = GA_Text;

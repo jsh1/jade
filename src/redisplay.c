@@ -238,8 +238,12 @@ redisplay_do_draw(WIN *w, glyph_buf *old_g, glyph_buf *new_g, int line)
     while(prefix < suffix)
     {
 	glyph_attr attr = new_attrs[prefix];
-	int end;
-	bool all_spaces = TRUE;
+	int end, len;
+	bool all_spaces = TRUE, draw_rect = FALSE;
+
+	static const int rattr_map[GA_MAX] =
+	    { GA_Text_Rect, GA_Text_Rect_RV, GA_Block_Rect, GA_Block_Rect_RV,
+	      GA_Text, GA_Text_RV, GA_Block, GA_Block_RV };
 
 	for(end = prefix; end < suffix; end++)
 	{
@@ -248,24 +252,26 @@ redisplay_do_draw(WIN *w, glyph_buf *old_g, glyph_buf *new_g, int line)
 	    if(all_spaces && new_codes[end] != ' ')
 		all_spaces = FALSE;
 	}
+	len = end - prefix;
 
 	assert(attr <= GA_MAX);
 
-	if(!all_spaces)
-	    DRAW_GLYPHS(w, prefix, line-1, attr,
-			new_codes + prefix, end - prefix);
-	else
+	if(len == 1 && attr >= GA_Text_Rect && attr <= GA_Block_Rect_RV)
 	{
-	    if(attr == GA_Text)
-		CLEAR_GLYPHS(w, prefix, line-1, end - prefix);
-	    else
-	    {
-		static int fill_pens[GA_MAX] = {
-		    P_TEXT_RV, P_TEXT, P_BLOCK_RV, P_BLOCK
-		};
-		FILL_GLYPHS(w, prefix, line-1, fill_pens[attr], end - prefix);
-	    }
+	    draw_rect = TRUE;
+	    attr = rattr_map[attr];
 	}
+
+	if(!all_spaces)
+	    DRAW_GLYPHS(w, prefix, line-1, attr, new_codes + prefix, len);
+	else if(attr == GA_Text)
+	    CLEAR_GLYPHS(w, prefix, line-1, len);
+	else
+	    FILL_GLYPHS(w, prefix, line-1, attr, len);
+
+	if(draw_rect)
+	    DRAW_CURSOR_RECTANGLE(w, prefix, line-1, rattr_map[attr]);
+
 	prefix = end;
     }
 }

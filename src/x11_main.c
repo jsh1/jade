@@ -77,6 +77,12 @@ DEFSTRING(def_font_str_data, DEFAULT_FONT);
 _PR VALUE def_font_str;
 VALUE def_font_str;
 
+_PR const int x11_attr_map[], x11_rattr_map[];
+const int x11_attr_map[GA_MAX] = { P_TEXT, P_TEXT_RV, P_BLOCK, P_BLOCK_RV,
+				   P_TEXT, P_TEXT_RV, P_BLOCK, P_BLOCK_RV };
+const int x11_rattr_map[GA_MAX] = { P_TEXT_RV, P_TEXT, P_BLOCK_RV, P_BLOCK,
+				    P_TEXT_RV, P_TEXT, P_BLOCK_RV, P_BLOCK };
+
 
 /* Resource/option management */
 
@@ -441,11 +447,16 @@ x11_handle_input(int fd)
 		break;
 
 	    case FocusIn:
+		ev_win->w_WindowSys.ws_HasFocus = TRUE;
 		if(ev_win != oldwin)
 		{
 		    curr_win = ev_win;
 		    curr_vw = curr_win->w_CurrVW;
 		}
+		break;
+
+	    case FocusOut:
+		ev_win->w_WindowSys.ws_HasFocus = FALSE;
 		break;
 
 	    case MotionNotify:
