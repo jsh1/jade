@@ -77,7 +77,17 @@ being sent."
   (when mail-default-reply-to
     (format (current-buffer) "Reply-to: %s\n" mail-default-reply-to))
   (when mail-self-blind
-    (format (current-buffer) "BCC: %s\n" user-mail-address))
+    (catch 'no-bcc
+      (when (stringp mail-self-blind)
+	;; a regexp, only bcc if no recipient addresses match mail-self-blind
+	(mapc (lambda (addr)
+		(when (string-match mail-self-blind
+				    (if (stringp addr) addr (car addr)))
+		  (throw 'no-bcc t)))
+	      (append (if (listp to) to (list to))
+		      (if (listp cc) cc (list cc)))))
+      ;; okay, so insert the bcc line
+      (format (current-buffer) "BCC: %s\n" user-mail-address)))
   (when mail-archive-file-name
     (format (current-buffer) "FCC: %s\n" mail-archive-file-name))
   (goto (send-mail-insert-separator))
