@@ -107,7 +107,8 @@ inline) to be saved or manipulated."
   "C-w" 'mime-save-part
   "TAB" 'mime-next-part
   "M-TAB" 'mime-previous-part
-  "D" 'rm-mime-display-markers)
+  "D" 'rm-mime-display-markers
+  "w" 'html-display-map)
 
 (lazy-bind-keys rm-summary rm-summary-keymap
   "D" '(rm-command-with-folder 'rm-mime-display-markers))
