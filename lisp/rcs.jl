@@ -50,12 +50,6 @@ cause the new revision _not_ to be locked, only checked out. A successive
 
 ;; Program variables
 
-(defvar rcs-output-buffer (make-buffer "*rcs*")
-  "Buffer used for output from RCS commands.")
-
-(defvar rcs-process (make-process rcs-output-buffer)
-  "Process object used to run RCS commands.")
-
 (defvar rcs-descr-ring (make-ring 16)
   "Ring buffer containing RCS history entries.")
 
@@ -111,30 +105,30 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
 ;; Run the RCS shell command COMMAND on FILE-NAME, using the list of
 ;; options OPTIONS. If REREAD-BUFFER is t the current buffer will
 ;; be reinitialised from FILE after the command completes.
+;; If DISPLAY-OUTPUT is non-nil, display output in a separate view
 (defun rcs-command (command file-name options &optional
-		    reread-buffer ignore-errors output-stream)
+		    reread-buffer ignore-errors output-stream display-output)
   (unless (setq file-name (local-file-name file-name))
     (error "Can only use RCS on local files"))
   (format t "Running RCS command: %s %s %s..." command file-name options)
-  (clear-buffer rcs-output-buffer)
-  (let
-      ((arg-list (append options (list file-name))))
-    (set-process-output-stream rcs-process
-			       (or output-stream rcs-output-buffer))
-    (set-process-error-stream rcs-process rcs-output-buffer)
-    (unless (or (zerop (apply 'call-process rcs-process nil command arg-list))
-		 ignore-errors)
-      (signal 'file-error (list "Can't run RCS command"))))
-  (format t "done")
-  (when reread-buffer
-    (revert-buffer (current-buffer) t)))
-
-;; Switch to the buffer containing all RCS output
-(defun rcs-goto-buffer ()
-  (with-view (other-view)
-    (goto-buffer rcs-output-buffer)
-    (goto (start-of-buffer))
-    (shrink-view-if-larger-than-buffer)))
+  (let*
+      ((buffer (open-buffer "*rcs-output*"))
+       (process (make-process buffer))
+       (arg-list (append options (list file-name))))
+    (clear-buffer buffer)
+    (when output-stream
+      (set-process-output-stream process output-stream))
+    (unless (or (zerop (apply 'call-process process nil command arg-list))
+		ignore-errors)
+      (signal 'file-error (list "Can't run RCS command")))
+    (format t "done")
+    (when reread-buffer
+      (revert-buffer (current-buffer) t))
+    (when display-output
+      (with-view (other-view)
+	(goto-buffer buffer)
+	(goto (start-of-buffer))
+	(shrink-view-if-larger-than-buffer)))))
 
 ;; Arrange for (rcs-command COMMAND FILE OPTIONS REREAD-P) to be called
 ;; later including a piece of text entered by the user. It will be added
@@ -363,8 +357,8 @@ naming the revision, or nil, in which case it will be prompted for."
 (defun rcs-display-log (file-name)
   "Displays the RCS log of FILE-NAME."
   (interactive (list (buffer-file-name)))
-  (rcs-command "rlog" file-name rcs-display-log-args nil)
-  (rcs-goto-buffer))
+  ;; Final t means to display output
+  (rcs-command "rlog" file-name rcs-display-log-args nil nil nil t))
 
 (defun rcs-compare-revisions (rev1 rev2)
   "Displays the differences between two revisions of the current buffer.
@@ -396,8 +390,7 @@ file with the working copy."
 			 (if (and rev2 (not (string= rev2 "")))
 			     (list (concat "-r" rev1) (concat "-r" rev2))
 			   (list (concat "-r" rev1))))
-		       '("-c")) nil t)
-  (rcs-goto-buffer))
+		       '("-c")) nil t nil t))
 
 ;; Called by toggle-buffer-read-only for the current buffer
 (defun rcs-toggle-read-only ()
