@@ -56,6 +56,11 @@ position.")
 (defvar kill-ring-size 8
   "Maximum number of strings stored in the kill ring at any one time.")
 
+(defvar mouse-yank-at-point t
+  "When this variable is non-nil, any yanks by the command `yank-to-mouse'
+will insert at the current cursor position, _without_ first moving the
+cursor to the position of the mouse pointer.")
+
 
 ;; Marks
 
@@ -973,5 +978,6 @@ current view."
   "Yanks to the position under the mouse cursor. The cursor is left at the
 end of the inserted text."
   (interactive)
-  (goto-mouse)
+  (unless mouse-yank-at-point
+    (goto-mouse))
   (yank))
