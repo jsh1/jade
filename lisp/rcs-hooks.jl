@@ -20,7 +20,18 @@
 
 (provide 'rcs-hooks)
 
+(defvar rcs-keymap (make-keylist)
+  "Keymap containing RCS commands.")
+
 (unless (boundp 'rcs-hooks-initialised)
+  (bind-keys rcs-keymap
+    "i" 'rcs-register-buffer
+    "l" 'rcs-display-log
+    "u" 'rcs-revert-buffer
+    "=" 'rcs-display-diffs
+    "~" 'rcs-view-revision)
+  (bind-keys ctrl-x-keymap
+    "v" '(setq next-keymap-path '(rcs-keymap)))
   (setq rcs-hooks-initialised t)
   (add-hook 'open-file-hook 'rcs-open-file-function))
 
