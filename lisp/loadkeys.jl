@@ -258,7 +258,8 @@ the key."
 		      ((eq current-prefix-arg '-)
 		       (- digit))
 		      (t
-		       digit)))))
+		       digit))
+	  this-command last-command)))
 
 (defun negative-arg (arg)
   "Negate the prefix-arg. Bound to `Meta--'. "
@@ -270,7 +271,8 @@ the key."
 		    ((eq arg '-)
 		     nil)
 		    (t
-		     '-))))
+		     '-))
+	this-command last-command))
 
 (defun universal-arg (arg)
   (interactive "P")
@@ -280,4 +282,5 @@ the key."
 		     (rplaca arg (* 4 (car arg)))
 		     arg)
 		    (t
-		     (cons 4 nil)))))
+		     (cons 4 nil)))
+	this-command last-command))
