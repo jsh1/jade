@@ -33,15 +33,21 @@
 (eval-when-compile (require 'rm-summary))
 
 ;; This function is added to read-mail.jl's read-mail-display-message-hook
-(defun rm-mail-dir-scanner (rm-message folder &optional all-addresses)
+(defun rm-mail-dir-scanner (rm-message folder &optional all-addresses force)
   (mapc #'(lambda (cell)
-	    (when (and (car cell) (cdr cell))
-	      (mail-dir-scan-function (car cell) (cdr cell))))
+	    (when (and (car cell) (or (cdr cell) force))
+	      (mail-dir-scan-function
+	       (car cell) (or (cdr cell)
+			      (prompt-for-mail-full-name
+			       (concat "Name of <" (car cell) ">:") t)))))
 	(rm-get-senders rm-message))
   (when all-addresses
     (mapc #'(lambda (cell)
-	      (when (and (car cell) (cdr cell))
-		(mail-dir-scan-function (car cell) (cdr cell))))
+	      (when (and (car cell) (or (cdr cell) force))
+		(mail-dir-scan-function
+		 (car cell) (or (cdr cell)
+				(prompt-for-mail-full-name
+				 (concat "Name of <" (car cell) ">:") t)))))
 	  (rm-get-recipients rm-message)))
   t)
 (add-hook 'rm-display-message-hook 'rm-mail-dir-scanner)
@@ -58,7 +64,7 @@ interactively a prefix argument denotes ALL-ADDRESSES."
        (folder (rm-current-folder))
        (messages (rm-command-items folder)))
     (mapc #'(lambda (m)
-	      (rm-mail-dir-scanner m folder all-addresses)) messages)))
+	      (rm-mail-dir-scanner m folder all-addresses t)) messages)))
 
 ;; Bind to read-mail keymap
 (bind-keys rm-keymap
