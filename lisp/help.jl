@@ -121,7 +121,9 @@ w   `where-is'
    (format standard-output "Apropos %s `%s':\n\n"
 	   (if all-functions "function" "command") regexp)
    (apropos-output (apropos regexp (if all-functions
-				       'boundp
+				       (lambda (s)
+					 (and (boundp s)
+					      (functionp (symbol-value s))))
 				     'commandp)) t)))
 
 (defun apropos-variable (regexp)
@@ -161,7 +163,7 @@ it leads to)."
   (interactive
    (list (prompt-for-variable "Describe variable:" (symbol-at-point))))
   (let
-      ((doc (documentation var t))
+      ((doc (documentation var))
        (old-buf (current-buffer)))
     (help-wrapper
      (describe-variable-1 var old-buf)
