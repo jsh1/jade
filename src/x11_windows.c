@@ -64,16 +64,6 @@ sys_unsleep_win(WIN *w)
 }
 
 void
-sys_new_vw(VW *vw)
-{
-}
-
-void
-sys_kill_vw(VW *vw)
-{
-}
-
-void
 sys_update_dimensions(WIN *w)
 {
     XWindowAttributes xwa;
@@ -470,43 +460,11 @@ sys_unset_font(WIN *w)
     }
 }
 
-DEFSTRING(no_font, "Can't open font");
-
-DEFUN_INT("set-font", Fset_font, Sset_font, (repv fontname, repv win), rep_Subr2, "sFont name: ") /*
-::doc:Sset-font::
-set-font FONT-NAME [WINDOW]
-
-FONT-NAME specifies the font to use in WINDOW (or the active one).
-Under X11 FONT-NAME is a standard font description, under AmigaDOS it is the
-name of the font followed by a dash and then the point size to use (for
-example "topaz.font-8" to get an 8-point topaz font).
-::end:: */
+bool
+sys_deleting_window_would_exit (WIN *w)
 {
-    repv oldfont;
-    rep_DECLARE1(fontname, rep_STRINGP);
-    if(!WINDOWP(win))
-	win = rep_VAL(curr_win);
-    oldfont = VWIN(win)->w_FontName;
-    VWIN(win)->w_FontName = fontname;
-    if(sys_set_font(VWIN(win)))
-    {
-	VWIN(win)->w_Flags |= WINFF_FORCE_REFRESH;
-#if 0
-	VWIN(win)->w_DeferRefresh++;
-#endif
-	return(Qt);
-    }
-    else
-    {
-	Fsignal(Qerror, rep_list_2(rep_VAL(&no_font), fontname));
-	VWIN(win)->w_FontName = oldfont;
-	return rep_NULL;
-    }
-}
-
-void
-sys_reset_sleep_titles(TX *tx)
-{
+    return (x11_display_list->next == 0
+	    && x11_display_list->window_count == 1);
 }
 
 /* Now this returns the glyph position in the window of the cursor;
@@ -580,7 +538,6 @@ When called interactively, DISPLAY-NAME is prompted for.
 void
 sys_windows_init(void)
 {
-    rep_ADD_SUBR_INT(Sset_font);
     rep_ADD_SUBR(Sflush_output);
     rep_ADD_SUBR_INT(Smake_window_on_display);
 
