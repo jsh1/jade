@@ -1,3 +1,9 @@
+2000-04-11  John Harper  <john@dcs.warwick.ac.uk>
+
+	* extent.c (Fextent_set, Fmake_local_variable,
+	Fmake_variable_buffer_local): if the symbol isn't already
+	special, call Fmake_variable_special () on it
+
 2000-04-10  John Harper  <john@dcs.warwick.ac.uk>
 
 	* files.c: define the file operation functions in the `rep'
