@@ -42,40 +42,36 @@
 		 (start-of-line (forward-line 1 (match-start))))))
 
 (defun autoload-do-magic (buf line-fun)
-  (let
-      (aload-buf)
-    (when (setq aload-buf (open-file (file-name-concat lisp-lib-dir
-						       "autoload.jl")))
-      (goto-buffer aload-buf)
-      (let
-	  ((pos (start-of-buffer))
-	   form
-	   (short-file-name (and (string-match "^(.+)\\.jl$"
-					       (file-name-nondirectory
-						(buffer-file-name buf)))
-				 (expand-last-match "\\1")))
-	   (count 0))
-	(while (setq pos (re-search-forward "^;;;###autoload[\t ]*(.*)$"
-					   pos buf))
-	  (setq form (expand-last-match "\\1"))
-	  (when (and form (not (equal "" form)))
-	    (funcall line-fun form)
+  (when (find-file (file-name-concat lisp-lib-dir "autoload.jl"))
+    (let
+	((pos (start-of-buffer))
+	 form
+	 (short-file-name (and (string-match "^(.+)\\.jl$"
+					     (file-name-nondirectory
+					      (buffer-file-name buf)))
+			       (expand-last-match "\\1")))
+	 (count 0))
+      (while (setq pos (re-search-forward "^;;;###autoload[\t ]*(.*)$"
+					  pos buf))
+	(setq form (expand-last-match "\\1"))
+	(when (and form (not (equal "" form)))
+	  (funcall line-fun form)
+	  (setq count (1+ count))
+	  (message form t))
+	(setq pos (forward-line 1 pos))
+	(when (and (looking-at "^\\(def(macro|un) " pos buf)
+		   (setq form (read (cons buf pos)))
+		   (memq (car form) '(defun defmacro)))
+	  (setq form (format nil (if (assq 'interactive form)
+				     ;; Can be called as a command
+				     "(autoload '%s %S t)"
+				   "(autoload '%s %S)")
+			     (nth 1 form)
+			     short-file-name))
+	  (when (funcall line-fun form)
 	    (setq count (1+ count))
-	    (message form t))
-	  (setq pos (forward-line 1 pos))
-	  (when (and (looking-at "^\\(def(macro|un) " pos buf)
-		     (setq form (read (cons buf pos)))
-		     (memq (car form) '(defun defmacro)))
-	    (setq form (format nil (if (assq 'interactive form)
-				       ;; Can be called as a command
-				       "(autoload '%s %S t)"
-				     "(autoload '%s %S)")
-			       (nth 1 form)
-			       short-file-name))
-	    (when (funcall line-fun form)
-	      (setq count (1+ count))
-	      (message form t))))
-	count))))
+	    (message form t))))
+      count)))
 
 ;;;###autoload
 (defun add-autoloads (&optional buffer)

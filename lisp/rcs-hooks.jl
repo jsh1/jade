@@ -33,7 +33,7 @@
   (bind-keys ctrl-x-keymap
     "v" '(setq next-keymap-path '(rcs-keymap)))
   (setq rcs-hooks-initialised t)
-  (add-hook 'open-file-hook 'rcs-open-file-function))
+  (add-hook 'find-file-hook 'rcs-find-file-function))
 
 ;; Returns t if FILE-NAME is under RCS control
 (defun rcs-file-p (file-name)
@@ -42,7 +42,7 @@
 		      (file-name-directory file-name) "RCS"
 		      (concat (file-name-nondirectory file-name) ",v")))))
 
-(defun rcs-open-file-function (buffer)
+(defun rcs-find-file-function (buffer)
   (when (rcs-file-p (buffer-file-name buffer))
     (require 'rcs)
     (rcs-init-file buffer)

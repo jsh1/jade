@@ -180,7 +180,7 @@ description entered. COUNT may be negative."
       ;; Can't find the id
       "?.?")))
 
-;; Called from the open-file-hook in rcs-hooks.jl
+;; Called from the find-file-hook in rcs-hooks.jl
 (defun rcs-init-file (buffer)
   ;; This file uses RCS. Try to find its revision number and it's
   ;; locked status, and put them into the minor mode name.
