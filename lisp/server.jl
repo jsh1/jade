@@ -44,7 +44,7 @@ into a new buffer and display it at line LINE-NUMBER."
      ((null server-open-window)
       (setq view (current-view)))
      (t
-      (setq view (current-view (open-window)))))
+      (setq view (current-view (make-window)))))
     (with-view view
       (goto-buffer buf)
       (goto (pos 0 line-number))

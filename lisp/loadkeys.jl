@@ -232,8 +232,8 @@
   "h"		'(in-new-window 'help)
   "i"		'(in-new-window 'info)
   "`"		'(in-new-window 'next-error)
-  "0"		'close-window
-  "2"		'open-window)
+  "0"		'delete-window
+  "2"		'make-window)
 
 (defun self-insert (event-string)
   "This function can be bound to a key to make it insert its usual character

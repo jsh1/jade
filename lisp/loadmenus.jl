@@ -23,7 +23,7 @@
   (set-menu
    '("Project"
      ("Open file... (C-x C-f)" find-file)
-     ("Open window (C-x 2)" open-window)
+     ("Open window (C-x 2)" make-window)
      ("Insert file... (C-x i)" insert-file)
      ()
      ("Save file (C-x C-s)" save-file)
@@ -37,7 +37,7 @@
      ("Toggle modified (M-~)" (set-buffer-modified nil nil))
      ("Close server file (Ctrl-x #)" server-close-file)
      ()
-     ("Close window (C-x 0)" close-window)
+     ("Close window (C-x 0)" delete-window)
      ("Close other windows (C-x 1)" close-other-windows)
      ()
      ("Quit (C-x C-c)" save-and-quit))
