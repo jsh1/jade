@@ -54,18 +54,16 @@
       (setq subject (concat mail-reply-prefix
 			    (substring subject (match-end)))))
     (mail-setup to subject msg-id cc nil
-		(list (cons 'rm-reply-callback
+		(list (cons #'(lambda (buffer message)
+				(rm-set-flag message 'replied)
+				(with-buffer buffer
+				  (rm-with-summary
+				   (summary-update-item message))))
 			    (list (current-buffer) message))))
     (setq rm-reply-message message)
     (when yankp
       (mail-yank-original))
     (set-buffer-modified (current-buffer) nil)))
-
-(defun rm-reply-callback (buffer message)
-  (rm-set-flag message 'replied)
-  (with-buffer buffer
-    (rm-with-summary
-     (summary-update-item message))))
 
 ;;;###autoload
 (defun rm-followup (&optional yankp)
@@ -135,9 +133,12 @@ it to. When ALL-HEADERS-P is non-nil non-visible headers will be included."
       ((subject (rm-get-msg-field rm-current-msg rm-msg-subject))
        (message rm-current-msg))
     (mail-setup to subject nil nil nil
-		(cons #'(lambda (msg)
-			  (rm-set-flag msg 'forwarded))
-		      message))
+		(list (cons #'(lambda (buffer message)
+				(rm-set-flag message 'forwarded)
+				(with-buffer buffer
+				  (rm-with-summary
+				   (summary-update-item message))))
+			    (list (current-buffer) message))))
     (insert "----- Begin Forwarded Message -----\n\n
 ----- End Forwarded Message -----\n")
     (goto-prev-line 2)
