@@ -88,6 +88,13 @@ a buffer. List is made of `(REGEXP . MODE)' cells; the REGEXP is matched
 against the mode specification (i.e. the filename), if it matches the
 function MODE is called to install the mode.")
 
+(defvar interpreter-mode-regexp "^#!"
+  "Regexp matching a string at the start of a file specifiying that the
+file is interpreted when executed.")
+
+(defvar interpreter-mode-alist '(("/bin/(bash|ksh|sh)" . sh-mode))
+  "List of (REGEXP . MAJOR-MODE) defining modes to use for interpreted files.")
+
 (defvar comment-column 41
   "Buffer-local variable containing the canonical column number which
 comments should begin at. If the line extends past this column the next
@@ -134,25 +141,22 @@ string INPUT."
 	      (when (string-match (car cell) input nil fold-case)
 		(throw 'return cell))) alist)))
 
-(defun get-auto-mode (name)
-  "Scan the alist `auto-mode-alist' for a mode whose regexp matches NAME,
-returning the initialisation function of that mode (a symbol) or nil."
-  (cdr (assoc-regexp name auto-mode-alist t)))
-
 (defun normal-mode ()
-  "Initialise a major mode for the current buffer; either calls the function
-named in the buffer-local variable `major-mode' or finds a mode in
-`auto-mode-alist' using one of the following to match against:
-  1. The word specified on the first line of the buffer surrounded by
-     `-*-...-*-' (ie, -*-texinfo-*-)
-  2. The name of the file being edited in the buffer"
+  "Initialise the standard major mode for the current buffer."
   (interactive)
   (unless major-mode
-    (setq major-mode
-	  (get-auto-mode (or (and (looking-at ".*-\\*- *([^ ]+) *-\\*-"
-					      (start-of-buffer))
-				  (expand-last-match "\\1"))
-			     (buffer-file-name)))))
+    (setq major-mode (or (and (looking-at ".*-\\*- *([^ ]+) *-\\*-"
+					  (start-of-buffer))
+			      (cdr (assoc-regexp (expand-last-match "\\1")
+						 auto-mode-alist t)))
+			 (and (looking-at interpreter-mode-regexp
+					  (start-of-buffer))
+			      (cdr (assoc-regexp
+				    (copy-area (start-of-buffer)
+					       (end-of-line (start-of-buffer)))
+				    interpreter-mode-alist t)))
+			 (cdr (assoc-regexp
+			       (buffer-file-name) auto-mode-alist t)))))
   (funcall (if (functionp major-mode)
 	       major-mode
 	     default-major-mode)))
@@ -231,7 +235,7 @@ END."
     (error "No method for indenting lines in this buffer"))
   (while (< start end)
     (funcall mode-indent-line start)
-    (forward-line 1 start)))
+    (setq start (forward-line 1 start))))
 
 (defvar newline-and-indent ()
   "(newline-and-indent)
