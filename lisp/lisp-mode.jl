@@ -272,6 +272,8 @@ in the status line."
 
 (put 'let 'lisp-indent 1)
 (put 'let* 'lisp-indent 1)
+(put 'flet 'lisp-indent 1)
+(put 'macrolet 'lisp-indent 1)
 (put 'if 'lisp-indent 2)
 (put 'when 'lisp-indent 1)
 (put 'unless 'lisp-indent 1)
