@@ -177,8 +177,9 @@ be shown before the second.")
 				      (funcall rm-pred (car x) (car y))))))
     ;; Ok, so we now have a list of THREADS, spit them out as the
     ;; list(s) of messages?
-    (rm-set-folder-field folder rm-folder-sort-key 'thread)
+    (rm-set-folder-field folder rm-folder-sort-key nil)	;no infinite regress
     (rm-install-messages folder (apply 'nconc threads))
+    (rm-set-folder-field folder rm-folder-sort-key 'thread)
     (unless no-redisplay
       (rm-redisplay-folder folder))
     (message "Threading folder...done" t)))

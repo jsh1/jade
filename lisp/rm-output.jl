@@ -96,8 +96,8 @@ otherwise write straight to the folder's file."
 	    (setq count (1- count)
 		  msg-list (cdr msg-list)))
 	(when (filep real-dest)
-	  (close-file real-dest)))))
-  (rm-redisplay-folder folder))
+	  (close-file real-dest))))
+    (rm-redisplay-folder folder)))
 
 ;;;###autoload
 (defun rm-auto-archive-folder (folder)
@@ -128,8 +128,8 @@ otherwise write straight to the folder's file."
 		     (rm-prompt-for-rule "Rule to archive by:")
 		     (rm-prompt-for-folder "Archive to mailbox:")))
   (let
-      ((dest (or (get-file-buffer (cdr cell))
-		 (open-file (cdr cell) 'append))))
+      ((dest (or (get-file-buffer mailbox)
+		 (open-file mailbox 'append))))
     (unwind-protect
 	(rm-map-messages #'(lambda (m)
 			     (when (rm-apply-rule rule m)
