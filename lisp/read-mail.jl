@@ -133,7 +133,6 @@ they're parsed.")
     "BS" 'rm-previous-page
     "h" 'rm-summarize
     "d" 'rm-mark-message-deletion
-    "Ctrl-d" 'rm-mark-message-deletion
     "x" 'rm-expunge
     "#" 'rm-expunge
     "g" 'rm-get-mail
@@ -792,6 +791,31 @@ key, the car the order to sort in, a positive or negative integer.")
       (mapc #'(lambda (r)
 		(rm-apply-rule r msg)) rm-after-parse-rules))
     msg))
+
+(defun rm-reparse-message (msg)
+  (with-buffer (mark-file (rm-get-msg-field msg rm-msg-mark))
+    (save-restriction
+      (unrestrict-buffer)
+      (let*
+	  ((start (mark-pos (rm-get-msg-field msg rm-msg-mark)))
+	   (end (re-search-forward "^$" start))
+	   p)
+	(rm-set-msg-field msg rm-msg-header-lines
+			  (- (pos-line (or end (end-of-buffer)))
+			     (pos-line start)))
+	;; Find the total number of lines in the message
+	(if (null end)
+	    (setq p (end-of-buffer))
+	  ;; Find the start of the next message
+	  (setq p (forward-line 1 start))
+	  (while (and p (setq p (re-search-forward mail-message-start p))
+		      (not (rm-message-start-p p)))
+	    (setq p (forward-line 1 p))))
+	(rm-set-msg-field msg rm-msg-total-lines (- (if p
+							(pos-line p)
+						      (buffer-length))
+						    (pos-line start)))
+	msg))))
 
 ;; Returns t if POS is the start of a message. Munges the regexp history
 (defun rm-message-start-p (p)
