@@ -140,6 +140,7 @@
   "Meta-u"	'upcase-word
   "Ctrl-v"	'next-screen
   "Meta-v"	'prev-screen
+  "Ctrl-Meta-v"	'scroll-next-view
   "Ctrl-w"	'kill-block
   "Ctrl-W"	'delete-block
   "Meta-w"	'copy-block-as-kill
