@@ -188,7 +188,7 @@ in the status line."
 	  ;; a symbol?
 	 (unless (setq pos (re-search-backward "[^][\f\t\n ()'\"]+|^" pos))
 	   (error "Symbol doesn't start??"))))
-	(when (= (get-char (forward-char -1 pos)) ?')
+	(when (member (get-char (forward-char -1 pos)) '(?' ?#))
 	  (setq pos (forward-char -1 pos))
 	  (when (= (get-char (forward-char -1 pos)) ?#)
 	    (setq pos (forward-char -1 pos)))))
