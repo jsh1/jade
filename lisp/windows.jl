@@ -188,34 +188,28 @@ it so that the buffer just fits the view."
 
 (defun add-buffer (buffer)
   "Make sure that BUFFER is in the `buffer-list' of all open windows. It gets
-put at the end of the list."
-  (let
-      ((win-list window-list))
-    (while (consp win-list)
-      (with-window (car win-list)
-	(let
-	    ((view-list (window-view-list)))
-	  (while (and (consp view-list)
-		      (not (minibuffer-view-p (car view-list))))
-	    (with-view (car view-list)
-	       (setq buffer-list (nconc (delq buffer buffer-list)
-					(cons buffer nil))))
-	    (setq view-list (cdr view-list)))))
-      (setq win-list (cdr win-list)))))
+put at the end of the list if it's not already in a member."
+  (mapc #'(lambda (w)
+	    (mapc #'(lambda (v)
+		      (unless (minibuffer-view-p v)
+			(with-view v
+			  (unless (memq buffer buffer-list)
+			    (setq buffer-list (append buffer-list
+						      (cons buffer nil)))))))
+		  (window-view-list w)))
+	window-list))
 
 (defun remove-buffer (buffer)
-  "Delete all references to BUFFER in any of the windows' `buffer-list'"
-  (let
-      ((win-list window-list))
-    (while (consp win-list)
-      (with-window (car win-list)
-	(let
-	    ((view-list (window-view-list)))
-	  (while (and (consp view-list)
-		      (not (minibuffer-view-p (car view-list))))
-	    (with-view (car view-list)
-	      (setq buffer-list (delq buffer buffer-list))
-	      (when (eq (current-buffer (car view-list)) buffer)
-		(set-current-buffer (car buffer-list) (car view-list))))
-	    (setq view-list (cdr view-list)))))
-      (setq win-list (cdr win-list)))))
+  "Delete all references to BUFFER in any of the views `buffer-list' variable.
+If any view is currently displaying BUFFER, it will be made to display the
+next buffer in its list."
+  (mapc #'(lambda (w)
+	    (mapc #'(lambda (v)
+		      (unless (minibuffer-view-p v)
+			(with-view v
+			  (setq buffer-list (delq buffer buffer-list)))
+			(when (eq (current-buffer v) buffer)
+			  (set-current-buffer (or (car buffer-list)
+						  default-buffer) v))))
+		  (window-view-list w)))
+	window-list))
