@@ -24,12 +24,17 @@
   "Regular expression which defines a character in a word.")
 (defvar word-not-regexp "[^a-zA-Z0-9]|$"
   "Regular expression which defines anything that is not in a word.")
+
 (defvar paragraph-regexp "^[\t ]*$"
   "Regular expression which matches a paragraph-separating piece of text.")
+
+(defvar page-regexp "^\f$"
+  "Regular expression that matches the start of a page of text.")
 
 (make-variable-buffer-local 'word-regexp)
 (make-variable-buffer-local 'word-not-regexp)
 (make-variable-buffer-local 'paragraph-regexp)
+(make-variable-buffer-local 'page-regexp)
 
 (defvar toggle-read-only-function nil
   "May contain function to call when toggling a buffer between read-only
@@ -157,6 +162,46 @@ set to this position."
       ((par (forward-paragraph)))
     (set-rect-blocks nil nil)
     (mark-block (backward-paragraph par) par)))
+
+
+;; Page handling
+
+(defun forward-page (&optional count)
+  "Move forward COUNT pages. If COUNT is negative, move backwards."
+  (interactive "p")
+  (unless count
+    (setq count 1))
+  (if (> count 0)
+      (progn
+	(when (looking-at page-regexp)
+	  (goto-char (match-end)))
+	(while (and (> count 0) (find-next-regexp page-regexp))
+	  (goto-char (match-end))
+	  (setq count (1- count))))
+    (when (looking-at page-regexp (line-start))
+      (goto-prev-line))
+    (while (and (< count 0) (find-prev-regexp page-regexp))
+      (goto-char (if (= count -1)
+		     (match-end)
+		   (prev-char 1 (match-start))))
+      (setq count (1+ count))))
+  (if (zerop count)
+      (cursor-pos)
+    (error (if (> count 0) "End of buffer" "Start of buffer"))))
+
+(defun backward-page (&optional count)
+  "Move backwards COUNT pages. If COUNT is negative, move forwards."
+  (interactive "p")
+  (forward-page (- (or count 1))))
+
+(defun mark-page ()
+  "Set the block to mark the current page of text."
+  (interactive)
+  (save-cursor
+    (let
+	((end (forward-page))
+	 (start (backward-page)))
+      (mark-block start end))))
 
 
 ;; Block handling
@@ -582,3 +627,12 @@ finish."
 	      (cons 'progn forms)
 	      '(restrict-buffer save-restriction-start save-restriction-end
 				save-restriction-buffer))))
+
+(defmacro save-cursor (&rest forms)
+  "Evaluate FORMS, ensuring that the initial position of the cursor in the
+current buffer is preserved. The behaviour is undefined if a new buffer is
+active after FORMS has been evaluated."
+  (list 'let '((save-cursor-pos (cursor-pos)))
+	(list 'unwind-protect
+	      (cons 'progn forms)
+	      '(goto-char save-cursor-pos))))
