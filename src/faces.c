@@ -30,7 +30,7 @@ _PR int get_face_id(WIN *w, Lisp_Face *f);
 _PR void mark_merged_faces(WIN *w);
 _PR void color_prin(VALUE strm, VALUE obj);
 _PR void color_sweep(void);
-_PR void faces_init(void);
+_PR bool faces_init(void);
 
 
 /* faces */
@@ -338,10 +338,9 @@ get_face_id(WIN *w, Lisp_Face *f)
 			   VCOLOR(f->background), VCOLOR(f->foreground));
 }
 
-void
-mark_merged_faces(WIN *w)
+static void
+mark_glyph_buf_faces(WIN *w, glyph_buf *g)
 {
-    glyph_buf *g = w->w_Content;
     int row, col;
     int id;
 
@@ -363,6 +362,13 @@ mark_merged_faces(WIN *w)
 	    MARKVAL(VAL(w->w_MergedFaces[id].foreground));
 	}
     }
+}
+
+void
+mark_merged_faces(WIN *w)
+{
+    mark_glyph_buf_faces(w, w->w_Content);
+    mark_glyph_buf_faces(w, w->w_NewContent);
 }
 
 
@@ -438,7 +444,7 @@ color_sweep(void)
 
 
 
-void
+bool
 faces_init(void)
 {
     VALUE face, fg, bg, bl, hl, ml;
@@ -467,21 +473,28 @@ faces_init(void)
     hl = cmd_get_color(string_dup(default_hl_color));
     ml = cmd_get_color(string_dup(default_ml_color));
 
-    face = cmd_make_face(VSYM(sym_default_face)->name);
-    cmd_set_face_attribute(face, sym_foreground, fg);
-    cmd_set_face_attribute(face, sym_background, bg);
-    VSYM(sym_default_face)->value = face;
+    if(fg && bg && bl && hl && ml)
+    {
+	face = cmd_make_face(VSYM(sym_default_face)->name);
+	cmd_set_face_attribute(face, sym_foreground, fg);
+	cmd_set_face_attribute(face, sym_background, bg);
+	VSYM(sym_default_face)->value = face;
 
-    face = cmd_make_face(VSYM(sym_block_face)->name);
-    cmd_set_face_attribute(face, sym_background, bl);
-    VSYM(sym_block_face)->value = face;
+	face = cmd_make_face(VSYM(sym_block_face)->name);
+	cmd_set_face_attribute(face, sym_background, bl);
+	VSYM(sym_block_face)->value = face;
 
-    face = cmd_make_face(VSYM(sym_modeline_face)->name);
-    cmd_set_face_attribute(face, sym_foreground, fg);
-    cmd_set_face_attribute(face, sym_background, ml);
-    VSYM(sym_modeline_face)->value = face;
+	face = cmd_make_face(VSYM(sym_modeline_face)->name);
+	cmd_set_face_attribute(face, sym_foreground, fg);
+	cmd_set_face_attribute(face, sym_background, ml);
+	VSYM(sym_modeline_face)->value = face;
 
-    face = cmd_make_face(VSYM(sym_highlight_face)->name);
-    cmd_set_face_attribute(face, sym_background, hl);
-    VSYM(sym_highlight_face)->value = face;
+	face = cmd_make_face(VSYM(sym_highlight_face)->name);
+	cmd_set_face_attribute(face, sym_background, hl);
+	VSYM(sym_highlight_face)->value = face;
+
+	return TRUE;
+    }
+    else
+	return FALSE;
 }
