@@ -150,4 +150,5 @@ Commands for this mode are,\n
 
 (defun bs-mark-save ()
   (interactive)
-  (summary-add-pending-op (summary-current-item) 'save))
+  (summary-add-pending-op (summary-current-item) 'save)
+  (summary-next-item 1))
