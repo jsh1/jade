@@ -78,6 +78,76 @@ for the list of formatting options available.")
     "@" '(rm-command-with-folder 'rm-null-rule)
     "|" '(rm-command-with-folder 'rm-pipe-message)))
 
+(defvar rm-summary-popup-menus
+  '(("Movement"
+     ("Next message" (lambda ()
+		       (rm-command-with-folder 'rm-next-undeleted-message)))
+     ("Previous message" (lambda ()
+			   (rm-command-with-folder
+			    'rm-previous-undeleted-message)))
+     ("Next page" (lambda ()
+		    (rm-command-with-folder 'rm-next-page)))
+     ("Previous page" (lambda ()
+			(rm-command-with-folder 'rm-previous-page))))
+    ("Dispose message"
+     ("Delete message" (lambda ()
+			 (rm-command-with-folder 'rm-mark-message-deletion)))
+     ("Unmark message" (lambda ()
+			 (rm-command-with-folder 'rm-unmark-message)))
+     ("Unmark all messages" (lambda ()
+			      (rm-command-with-folder
+			       'rm-unmark-all-messages)))
+     ()
+     ("Reply to message" (lambda ()
+			   (rm-command-in-folder 'rm-reply)))
+     ("Reply with quotation" (lambda ()
+			       (rm-command-in-folder '(rm-reply t))))
+     ("Followup message" (lambda ()
+			   (rm-command-in-folder 'rm-followup)))
+     ("Followup with quotation" (lambda ()
+				  (rm-command-in-folder '(rm-followup t))))
+     ("Forward message" (lambda ()
+			  (rm-command-in-folder 'rm-forward)))
+     ()
+     ("Burst digest message" (lambda ()
+			       (rm-command-with-folder 'rm-burst-message)))
+     ("Save message" (lambda ()
+		       (rm-command-with-folder 'rm-output)))
+     ("Pipe message" (lambda ()
+		       (rm-command-with-folder 'rm-pipe-message))))
+    ("Folder"
+     ("Add mailbox" (lambda ()
+		      (rm-command-with-folder 'rm-add-mailbox)))
+     ("Subtract mailbox" (lambda ()
+			   (rm-command-with-folder 'rm-subtract-mailbox)))
+     ("Replace all mailboxes" (lambda ()
+				(rm-command-with-folder
+				 'rm-replace-all-mailboxes)))
+     ()
+     ("Get new mail" (lambda ()
+		       (rm-command-with-folder 'rm-get-mail)))
+     ("Sort folder" (lambda ()
+		      (rm-command-with-folder 'rm-sort-folder)))
+     ("Toggle threading" (lambda ()
+			   (rm-command-with-folder 'rm-toggle-threading)))
+     ("Expunge deleted messages" (lambda ()
+				   (rm-command-with-folder 'rm-expunge)))
+     ("Archive folder" (lambda ()
+			 (rm-command-with-folder 'rm-archive-folder)))
+     ("Auto-archive folder" (lambda ()
+			      (rm-command-with-folder
+			       'rm-auto-archive-folder))))
+    ("Rules"
+     ("Define rule" define-rule)
+     ("Restrict by rule" (lambda ()
+			   (rm-command-with-folder 'rm-change-rule)))
+     ("Remove restriction" (lambda ()
+			     (rm-command-with-folder 'rm-null-rule))))
+    ()
+    ("Exit mail reader" (lambda ()
+			  (rm-command-with-folder 'rm-save-and-quit)))
+    ("Jade" . rm-find-global-menus)))
+
 (defvar rm-summary-functions '((select . rm-summary-select-item)
 			       (list . rm-summary-list)
 			       (print . rm-summary-print-item)
@@ -98,22 +168,26 @@ for the list of formatting options available.")
   "Display a summary of mail folder FOLDER in a separate view."
   (interactive (list (rm-current-folder)))
   (let
-      ((buffer (rm-get-folder-field folder rm-folder-summary)))
+      ((buffer (rm-get-folder-field folder rm-folder-summary))
+       mail-view)
     (unless buffer
       (setq buffer (make-buffer "*mail-summary*"))
       (with-buffer buffer
 	(setq rm-summary-folder folder
 	      truncate-lines t
 	      y-scroll-step-ratio 2
-	      mode-line-format '("----Mail summary: message %l %(%p%)%-"))
+	      mode-line-format '("----Mail summary: message %l %(%p%)%-")
+	      popup-menus rm-summary-popup-menus)
 	(call-hook 'rm-summary-mode-hook)
 	(summary-mode "Mail-Summary" rm-summary-functions rm-summary-keymap)
 	(setq major-mode 'read-mail-mode)))
     (rm-set-folder-field folder rm-folder-summary buffer)
-    (with-view (rm-configure-views buffer folder)
+    (setq mail-view (rm-configure-views buffer folder))
+    (with-view mail-view
       (rm-display-current-message folder))
     (unless dont-update
-      (summary-update))))
+      (summary-update))
+    (set-current-view mail-view)))
 
 (defun rm-kill-summary (folder)
   (let
@@ -244,8 +318,8 @@ for the list of formatting options available.")
 (defun rm-summary-select-item (item)
   (let
       ((folder rm-summary-folder))
-    (with-view (rm-configure-views (current-buffer) folder)
-      (rm-display-message folder item))))
+    (set-current-view (rm-configure-views (current-buffer) folder))
+    (rm-display-message folder item)))
   
 (defun rm-summary-current-item ()
   (rm-get-folder-field rm-summary-folder rm-folder-current-index))
