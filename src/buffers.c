@@ -1047,7 +1047,7 @@ mark_prin(VALUE strm, VALUE obj)
     else
     {
 	stream_putc(strm, '"');
-	stream_puts(strm, VSTR(VMARK(obj)->file), -1, TRUE);
+	stream_puts(strm, VPTR(VMARK(obj)->file), -1, TRUE);
 	stream_putc(strm, '"');
     }
     sprintf(tbuf, " #<pos %ld %ld>>",
