@@ -815,27 +815,28 @@ deleted."
 (defmacro save-restriction (&rest forms)
   "Evaluate FORMS, restoring the original buffer restriction when they
 finish (as long as the original buffer still exists)."
-  (` (let
-	 (_s_r_start_ _s_r_end_)
-       (when (buffer-restricted-p)
-	 (setq _s_r_start_ (make-mark (restriction-start))
-	       _s_r_end_ (make-mark (restriction-end))))
-       (unwind-protect
-	   (, (cons 'progn forms))
-	 (when (and _s_r_start_ (mark-resident-p _s_r_start_))
-	   (restrict-buffer (mark-pos _s_r_start_)
-			    (mark-pos _s_r_end_)
-			    (mark-file _s_r_start_)))))))
+  `(let
+       (_s_r_start_ _s_r_end_)
+     (when (buffer-restricted-p)
+       (setq _s_r_start_ (make-mark (restriction-start))
+	     _s_r_end_ (make-mark (restriction-end))))
+     (unwind-protect
+	 ,(cons 'progn forms)
+       (when (and _s_r_start_ (mark-resident-p _s_r_start_))
+	 (restrict-buffer (mark-pos _s_r_start_)
+			  (mark-pos _s_r_end_)
+			  (mark-file _s_r_start_))))))
       
-(defmacro save-cursor (&rest forms)
-  "Evaluate FORMS, ensuring that the initial position of the cursor in the
-current buffer is preserved (as long as the original buffer wasn't killed)."
-  (` (let
-	 ((_s_c_mark_ (make-mark)))
-       (unwind-protect
-	   (, (cons 'progn forms))
-	 (when (mark-resident-p _s_c_mark_)
-	   (goto-mark _s_c_mark_ t))))))
+(defmacro save-excursion (&rest forms)
+  "Evaluate FORMS, ensuring that the original current buffer and the original
+position in this buffer are restored afterwards, even in case of a non-local
+exit occurring (as long as the original buffer wasn't killed)."
+  `(let
+       ((_s_c_mark_ (make-mark)))
+     (unwind-protect
+	 ,(cons 'progn forms)
+       (when (mark-resident-p _s_c_mark_)
+	 (goto-mark _s_c_mark_ t)))))
 
 
 ;; Mouse dragging etc
