@@ -95,18 +95,18 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
 
 ;; Characters
 
-(defun backward-char (&optional count pos buf move)
-  (interactive "p\n\n\nt")
-  (forward-char (if count (- count) -1) pos buf move))
+(defun backward-char (&optional count pos buf)
+  (interactive "@p")
+  (forward-char (if count (- count) -1) pos buf))
 
 (defun transpose-chars (count)
   "Move the character before the cursor COUNT characters forwards."
   (interactive "p")
   (transpose-items 'forward-char 'backward-char count))
 
-(defun backward-tab (&optional count pos size move)
-  (interactive "p\n\n\nt")
-  (forward-tab (if count (- count) -1) pos size move))
+(defun backward-tab (&optional count pos size)
+  (interactive "@p")
+  (forward-tab (if count (- count) -1) pos size))
 
 (defmacro right-char (count pos)
   "Return the position COUNT characters to the right of POS."
@@ -120,9 +120,9 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
 
 ;; Lines
 
-(defun backward-line (&optional count pos move)
-  (interactive "p\n\nt")
-  (forward-line (if count (- count) -1) pos move))
+(defun backward-line (&optional count pos)
+  (interactive "@p")
+  (forward-line (if count (- count) -1) pos))
 
 (defun split-line (&optional count pos)
   "Insert COUNT newline characters before position POS (or before the
@@ -175,11 +175,11 @@ the next line."
 
 ;; Words
 
-(defun forward-word (&optional number pos move)
+(defun forward-word (&optional number pos)
   "Return the position of first character after the end of this word.
 NUMBER is the number of words to move, negative values mean go backwards.
 If MOVE is t then the cursor is moved to the result."
-  (interactive "p\n\nt")
+  (interactive "@p")
   (unless number
     (setq number 1))
   (unless pos (setq pos (cursor-pos)))
@@ -208,14 +208,12 @@ If MOVE is t then the cursor is moved to the result."
 	(unless (setq pos (re-search-forward word-not-regexp pos))
 	  (setq pos (end-of-buffer)))
 	(setq number (1- number)))))
-  (when move
-    (goto pos))
   pos)
 
-(defun backward-word (&optional number pos move)
-  "Basically `(forward-word -NUMBER POS MOVE)'"
-  (interactive "p\n\nt")
-  (forward-word (if number (- number) -1) pos move))
+(defun backward-word (&optional number pos)
+  "Basically `(forward-word -NUMBER POS)'"
+  (interactive "@p")
+  (forward-word (if number (- number) -1) pos))
 
 (defun kill-word (count)
   "Kills from the cursor to the end of the word."
@@ -229,6 +227,7 @@ If MOVE is t then the cursor is moved to the result."
 
 (defun word-start (&optional pos)
   "Returns the position of the start of *this* word."
+  (interactive "@")
   (when (looking-at word-regexp pos)
     (if (re-search-backward word-not-regexp pos)
 	(re-search-forward word-regexp (match-end))
@@ -253,10 +252,10 @@ If MOVE is t then the cursor is moved to the result."
 
 ;; Paragraphs
 
-(defun forward-paragraph (count &optional pos move)
-  "Return the end of the COUNT'th paragraph. If MOVE is t, or the function
-is called interactively, the cursor is set to this position."
-  (interactive "p\n\nt")
+(defun forward-paragraph (count &optional pos)
+  "Return the end of the COUNT'th paragraph. If the function is called
+interactively, the cursor is set to this position."
+  (interactive "@p")
   (unless pos
     (setq pos (cursor-pos)))
   ;; Positive arguments
@@ -290,15 +289,13 @@ is called interactively, the cursor is set to this position."
 	    (setq pos (if (zerop count) (match-end) (match-start)))))
       (setq pos (start-of-buffer)
 	    count 0)))
-  (if move
-      (goto pos)
-    pos))
+  pos)
 
-(defun backward-paragraph (count &optional pos move)
-  "Returns the start of the COUNT'th previous paragraph. If MOVE is t, or the
-function is called interactively, the cursor is set to this position."
-  (interactive "p\n\nt")
-  (forward-paragraph (- (or count 1)) pos move))
+(defun backward-paragraph (count &optional pos)
+  "Returns the start of the COUNT'th previous paragraph. If the function is
+called interactively, the cursor is set to this position."
+  (interactive "@p")
+  (forward-paragraph (- (or count 1)) pos))
 
 (defun paragraph-edges (count &optional pos mark)
   "Return (START . END), the positions defining the outermost characters of
@@ -330,10 +327,10 @@ When MARK is t, the block marks are set to START and END."
 
 ;; Page handling
 
-(defun forward-page (&optional count pos movep)
+(defun forward-page (&optional count pos)
   "Return the position COUNT pages forwards. If COUNT is negative, go
-backwards. If MOVEP is non-nil move the cursor to the position."
-  (interactive "p\n\nt")
+backwards. When called interactively the cursor is set to the position."
+  (interactive "@p")
   (unless count
     (setq count 1))
   (if (> count 0)
@@ -356,15 +353,12 @@ backwards. If MOVEP is non-nil move the cursor to the position."
     (when (= count -1)
       (setq pos (start-of-buffer)
 	    count 0)))
-  (if (zerop count)
-      (when movep (goto pos))
-    (error (if (> count 0) "End of buffer" "Start of buffer")))
   pos)
 
-(defun backward-page (&optional count pos movep)
-  "Basically (forward-page (- COUNT) POS MOVEP)."
-  (interactive "p\n\nt")
-  (forward-page (- (or count 1)) pos movep))
+(defun backward-page (&optional count pos)
+  "Basically (forward-page (- COUNT) POS)."
+  (interactive "@p")
+  (forward-page (- (or count 1)) pos))
 
 (defun mark-page ()
   "Set the block to mark the current page of text."
@@ -785,29 +779,17 @@ deleted."
       (funcall toggle-read-only-function)
     (set-buffer-read-only nil (not (buffer-read-only-p)))))
 
-(defun goto-start-of-buffer ()
-  "Move the cursor to the start of the current buffer."
-  (interactive)
-  (set-auto-mark)
-  (goto (start-of-buffer)))
-
-(defun goto-end-of-buffer ()
-  "Move the cursor to the end of the current buffer."
-  (interactive)
-  (set-auto-mark)
-  (goto (end-of-buffer)))
-
 (defun top-of-buffer ()
-  "Move the cursor to the first line in the current buffer."
-  (interactive)
-  (set-auto-mark)
-  (goto (pos nil (pos-line (start-of-buffer)))))
+  "Return the position of the first line in the buffer, leaving the column
+the same."
+  (interactive "!@")
+  (pos nil (pos-line (start-of-buffer))))
 
 (defun bottom-of-buffer ()
-  "Move the cursor to the last line in the current buffer."
-  (interactive)
-  (set-auto-mark)
-  (goto (pos nil (pos-line (end-of-buffer)))))
+  "Return the position of the last line in the buffer, leaving the column
+the same."
+  (interactive "!@")
+  (pos nil (pos-line (end-of-buffer))))
 
 
 ;; Some macros
@@ -821,7 +803,7 @@ finish (as long as the original buffer still exists)."
        (setq _s_r_start_ (make-mark (restriction-start))
 	     _s_r_end_ (make-mark (restriction-end))))
      (unwind-protect
-	 ,(cons 'progn forms)
+	 (progn ,@forms)
        (when (and _s_r_start_ (mark-resident-p _s_r_start_))
 	 (restrict-buffer (mark-pos _s_r_start_)
 			  (mark-pos _s_r_end_)
@@ -834,7 +816,7 @@ exit occurring (as long as the original buffer wasn't killed)."
   `(let
        ((_s_c_mark_ (make-mark)))
      (unwind-protect
-	 ,(cons 'progn forms)
+	 (progn ,@forms)
        (when (mark-resident-p _s_c_mark_)
 	 (goto-mark _s_c_mark_ t)))))
 
@@ -848,6 +830,7 @@ exit occurring (as long as the original buffer wasn't killed)."
 (defun mouse-pos ()
   "Return the position of the character underneath the mouse pointer in
 the current view. Returns nil if no such character can be found."
+  (interactive "@")
   (let
       ((pos (raw-mouse-pos)))
     (when (and pos (setq pos (translate-pos-to-view pos)))
