@@ -18,18 +18,19 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+;; TODO:
+;; + Also need "news:", "rlogin:", "wais:", "gopher:"...
+;;   see: http://www.w3.org/Addressing/URL/url-spec.txt
+;; + Doesn't handle %XX character encoding
+
 (provide 'find-url)
 
 ;; Configuration
 
-;; Need to implement find-url-ftp
-;; Also need "news:", "rlogin:", "wais:", "gopher:"...
-;; see: http://www.w3.org/Addressing/URL/url-spec.txt
-
 (defvar find-url-alist '(("^file:" . find-url-file)
 			 ("^ftp:" . find-url-ftp)
 			 ("^telnet:" . find-url-telnet)
-			 ("^mailto:" . find-mailto-url))
+			 ("^mailto:" . find-url-mailto))
   "Alist of (REGEXP . FUNC) matching URLs to the Lisp functions used to
 display them.")
 
@@ -37,7 +38,7 @@ display them.")
   "The function to pass any urls to that aren't matched by find-url-alist.")
 
 (defvar find-url-external-command
-  "netscape -remote 'openUrl(%s)' || netscape '%s' &"
+  "(netscape -remote 'openUrl(%s)' || netscape '%s') >/dev/null 2>&1 </dev/null &"
   "Shell command used to direct an external web browser to load a http: url.
 Any `%s' substrings will be replaced by the name of the url.")
 
@@ -70,12 +71,12 @@ to view URL."
 (defun find-url-file (url)
   "Decode URL assuming that it locates a local file, then find this file in
 a buffer."
-  (when (string-match "^(file:/|)(/localhost|)(.*)$" url nil t)
+  (when (string-match "^(file:/)?(/localhost|)(.*)$" url nil t)
     (find-file (expand-last-match "\\3"))))
 
 (defun find-url-telnet (url)
   "Decode a telnet URL, and invoke the telnet package."
-  (when (string-match "^(telnet://|)([^:]+)(:[0-9]+|)$" url nil t)
+  (when (string-match "^(telnet://)?([^:]+)(:[0-9]+|)$" url nil t)
     (let
 	((host (expand-last-match "\\2"))
 	 (port (if (= (match-start 3) (match-end 3))
@@ -84,9 +85,24 @@ a buffer."
 		  (substring url (1+ (match-start 3)) (match-end 3))))))
       (telnet host port))))
 
-(defun find-mailto-url (url)
+(defun find-url-mailto (url)
   "Decode a mailto url, and setup a mail message."
-  (when (string-match "^(mailto:|)(.*)$" url nil t)
+  (when (string-match "^(mailto:)?(.*)$" url nil t)
     (let
 	((addr (expand-last-match "\\2")))
       (mail-setup addr))))
+
+(defun find-url-ftp (url)
+  ;; XXX Doesn't handle ";type=<typecode>" appendage
+  (when (string-match "^ftp://(([^:@]+)(:([^@]+))?@)?([^/]+)/?" url)
+    (let
+	((user (expand-last-match "\\2"))
+	 (passwd (expand-last-match "\\4"))
+	 (host (expand-last-match "\\5"))
+	 (file (substring url (match-end))))
+      (when (and (not (string= user ""))
+		 (not (string= passwd "")))
+	(remote-ftp-add-passwd user host passwd))
+      ;; XXX What if the method of retrieving files from HOST isn't FTP?
+      (find-file (concat ?/ (if (string= user "") "anonymous" user)
+			 ?@ host ?: file)))))
