@@ -50,13 +50,17 @@ static XSizeHints size_hints;
 static XClassHint class_hints = { "jade", "Editor" };
 static XWMHints wm_hints;
 
+/* If non-null when opening a window, it's opened on this display */
+static struct x11_display *pending_display;
+
 /* Let the window-manager handle all iconifying... */
 int
 sys_sleep_win(WIN *w)
 {
     if((w->w_Flags & WINFF_SLEEPING) == 0)
     {
-	XIconifyWindow(x11_display, w->w_Window, x11_screen);
+	XIconifyWindow(WINDOW_XDPY(w)->display, w->w_Window,
+		       WINDOW_XDPY(w)->screen);
 	w->w_Flags |= WINFF_SLEEPING;
     }
     return(TRUE);
@@ -70,8 +74,8 @@ sys_unsleep_win(WIN *w)
 	/* Does this work?? */
 	wm_hints.flags |= StateHint;
 	wm_hints.initial_state = IconicState;
-	XSetWMHints(x11_display, w->w_Window, &wm_hints);
-	XMapWindow(x11_display, w->w_Window);
+	XSetWMHints(WINDOW_XDPY(w)->display, w->w_Window, &wm_hints);
+	XMapWindow(WINDOW_XDPY(w)->display, w->w_Window);
 	w->w_Flags &= ~WINFF_SLEEPING;
     }
     return(TRUE);
@@ -91,7 +95,7 @@ void
 sys_update_dimensions(WIN *w)
 {
     XWindowAttributes xwa;
-    XGetWindowAttributes(x11_display, w->w_Window, &xwa);
+    XGetWindowAttributes(WINDOW_XDPY(w)->display, w->w_Window, &xwa);
     x11_update_dimensions(w, xwa.width, xwa.height);
 }
 
@@ -109,14 +113,21 @@ x11_update_dimensions(WIN *w, int width, int height)
     }
 }
 
-/*
- * The only thing necessary in `vw' is the font stuff (I think)
- */
+/* The only thing necessary in `vw' is the font stuff (I think) */
 Window
 sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 {
     unsigned int x, y, width, height;
     Window win;
+    struct x11_display *dpy;
+
+    if(pending_display != 0)
+	dpy = pending_display;
+    else if(oldW != 0)
+	dpy = WINDOW_XDPY(oldW);
+    else
+	dpy = x11_display_list;
+
     size_hints.flags = 0;
     if(!useDefDims && oldW)
     {
@@ -158,45 +169,49 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	width = w->w_FontX * width;
 	height = (w->w_FontY * (height + 2));
     }
-    win = XCreateSimpleWindow(x11_display, DefaultRootWindow(x11_display),
+    win = XCreateSimpleWindow(dpy->display,
+			      DefaultRootWindow(dpy->display),
 			      x, y, width, height,
-			      1, x11_fore_pixel, x11_back_pixel);
+			      1, dpy->fore_pixel, dpy->back_pixel);
     if(win)
     {
 	XGCValues xgcv;
 	w->w_Window = win;
-	xgcv.foreground = x11_fore_pixel;
-	xgcv.background = x11_back_pixel;
+	WINDOW_XDPY(w) = dpy;
+	dpy->window_count++;
+
+	xgcv.foreground = dpy->fore_pixel;
+	xgcv.background = dpy->back_pixel;
 	xgcv.line_width = 1;
 	xgcv.font = w->w_WindowSys.ws_Font->fid;
-	w->w_WindowSys.ws_GC_array[P_TEXT] = XCreateGC(x11_display,
+	w->w_WindowSys.ws_GC_array[P_TEXT] = XCreateGC(dpy->display,
 						       w->w_Window,
 						       GCForeground
 						       | GCBackground
 						       | GCLineWidth
 						       | GCFont,
 						       &xgcv);
-	xgcv.foreground = x11_back_pixel;
-	xgcv.background = x11_fore_pixel;
-	w->w_WindowSys.ws_GC_array[P_TEXT_RV] = XCreateGC(x11_display,
+	xgcv.foreground = dpy->back_pixel;
+	xgcv.background = dpy->fore_pixel;
+	w->w_WindowSys.ws_GC_array[P_TEXT_RV] = XCreateGC(dpy->display,
 							  w->w_Window,
 							  GCForeground
 							  | GCBackground
 							  | GCLineWidth
 							  | GCFont,
 							  &xgcv);
-	xgcv.foreground = x11_fore_pixel;
-	xgcv.background = x11_high_pixel;
-	w->w_WindowSys.ws_GC_array[P_BLOCK] = XCreateGC(x11_display,
+	xgcv.foreground = dpy->fore_pixel;
+	xgcv.background = dpy->high_pixel;
+	w->w_WindowSys.ws_GC_array[P_BLOCK] = XCreateGC(dpy->display,
 							w->w_Window,
 							GCForeground
 							| GCBackground
 							| GCLineWidth
 							| GCFont,
 							&xgcv);
-	xgcv.foreground = x11_high_pixel;
-	xgcv.background = x11_fore_pixel;
-	w->w_WindowSys.ws_GC_array[P_BLOCK_RV] = XCreateGC(x11_display,
+	xgcv.foreground = dpy->high_pixel;
+	xgcv.background = dpy->fore_pixel;
+	w->w_WindowSys.ws_GC_array[P_BLOCK_RV] = XCreateGC(dpy->display,
 							   w->w_Window,
 							   GCForeground
 							   | GCBackground
@@ -217,39 +232,44 @@ sys_new_window(WIN *oldW, WIN *w, bool useDefDims)
 	wm_hints.flags = InputHint | StateHint;
 	wm_hints.input = True;
 	wm_hints.initial_state = NormalState;
-	XSetWMProperties(x11_display, win, NULL, NULL, x11_argv, x11_argc, &size_hints, &wm_hints, &class_hints);
-	XStoreName(x11_display, win, "Jade");
-	XSetWMProtocols(x11_display, win, &x11_wm_del_win, 1);
-	XSelectInput(x11_display, win, INPUT_EVENTS);
-	XMapWindow(x11_display, win);
-	XDefineCursor(x11_display, win, x11_text_cursor);
-	return(win);
+	XSetWMProperties(dpy->display, win, NULL, NULL,
+			 x11_argv, x11_argc, &size_hints, &wm_hints,
+			 &class_hints);
+	XStoreName(dpy->display, win, "Jade");
+	XSetWMProtocols(dpy->display, win, &dpy->wm_delete_window, 1);
+	XSelectInput(dpy->display, win, INPUT_EVENTS);
+	XMapWindow(dpy->display, win);
+	XDefineCursor(dpy->display, win, dpy->text_cursor);
+	return win;
     }
-    return(FALSE);
+    return FALSE;
 }
 
 void
 sys_kill_window(WIN *w)
 {
     int i;
-    x11_window_lose_selections(w->w_Window);
+    x11_window_lose_selections(w);
     for(i = 0; i < P_MAX; i++)
-	XFreeGC(x11_display, w->w_WindowSys.ws_GC_array[i]);
-    XDestroyWindow(x11_display, w->w_Window);
+	XFreeGC(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_GC_array[i]);
+    XDestroyWindow(WINDOW_XDPY(w)->display, w->w_Window);
+    if(--(WINDOW_XDPY(w)->window_count) == 0)
+	x11_close_display(WINDOW_XDPY(w));
+    WINDOW_XDPY(w) = 0;
 }
 
 void
 sys_activate_win(WIN *w)
 {
     /* Not sure about all this??  */
-    XRaiseWindow(x11_display, w->w_Window);
-    XWarpPointer(x11_display, None, w->w_Window, 0, 0, 0, 0, 1, 1);
+    XRaiseWindow(WINDOW_XDPY(w)->display, w->w_Window);
+    XWarpPointer(WINDOW_XDPY(w)->display, None, w->w_Window, 0, 0, 0, 0, 1, 1);
 }
 
 void
 sys_set_win_pos(WIN *win, long x, long y, long w, long h)
 {
-    XMoveResizeWindow(x11_display, win->w_Window,
+    XMoveResizeWindow(WINDOW_XDPY(win)->display, win->w_Window,
 		      (unsigned int)x, (unsigned int)y,
 		      (unsigned int)w, (unsigned int)h);
 }
@@ -271,11 +291,20 @@ int
 sys_set_font(WIN *w)
 {
     XFontStruct *font;
-    if((font = XLoadQueryFont(x11_display, VSTR(w->w_FontName)))
-       || (font = XLoadQueryFont(x11_display, DEFAULT_FONT)))
+
+    struct x11_display *dpy;
+    if(WINDOW_XDPY(w) != 0)
+	dpy = WINDOW_XDPY(w);
+    else if(pending_display != 0)
+	dpy = pending_display;
+    else
+	dpy = x11_display_list;
+
+    if((font = XLoadQueryFont(dpy->display, VSTR(w->w_FontName)))
+       || (font = XLoadQueryFont(dpy->display, DEFAULT_FONT)))
     {
 	if(w->w_WindowSys.ws_Font)
-	    XFreeFont(x11_display, w->w_WindowSys.ws_Font);
+	    XFreeFont(dpy->display, w->w_WindowSys.ws_Font);
 	w->w_WindowSys.ws_Font = font;
 	w->w_FontX = XTextWidth(font, "M", 1);
 	w->w_FontY = font->ascent + font->descent;
@@ -286,8 +315,8 @@ sys_set_font(WIN *w)
 	    width = w->w_MaxX * w->w_FontX;
 	    height = w->w_MaxY * w->w_FontY;
 	    for(i = 0; i < P_MAX; i++)
-		XSetFont(x11_display, w->w_WindowSys.ws_GC_array[i],
-			 font->fid);
+		XSetFont(dpy->display,
+			 w->w_WindowSys.ws_GC_array[i], font->fid);
 	    sys_update_dimensions(w);
 	    size_hints.width = width;
 	    size_hints.height = height;
@@ -300,23 +329,20 @@ sys_set_font(WIN *w)
 	    size_hints.min_height = size_hints.base_height
 				    + size_hints.height_inc;
 	    size_hints.flags = PResizeInc | PMinSize | PBaseSize;
-	    XSetWMNormalHints(x11_display, w->w_Window, &size_hints);
-	    XResizeWindow(x11_display, w->w_Window, width, height);
-#if 0
-	    w->w_DeferRefresh++;
-#endif
+	    XSetWMNormalHints(dpy->display, w->w_Window, &size_hints);
+	    XResizeWindow(dpy->display, w->w_Window, width, height);
 	}
-	return(TRUE);
+	return TRUE;
     }
-    return(FALSE);
+    return FALSE;
 }
 
 void
 sys_unset_font(WIN *w)
 {
-    if(w->w_WindowSys.ws_Font)
+    if(w->w_WindowSys.ws_Font && WINDOW_XDPY(w) != 0)
     {
-	XFreeFont(x11_display, w->w_WindowSys.ws_Font);
+	XFreeFont(WINDOW_XDPY(w)->display, w->w_WindowSys.ws_Font);
 	w->w_WindowSys.ws_Font = NULL;
     }
 }
@@ -371,7 +397,7 @@ sys_get_mouse_pos(WIN *w)
 	Window tmpw;
 	int tmp;
 	int x, y;
-	if(XQueryPointer(x11_display, w->w_Window,
+	if(XQueryPointer(WINDOW_XDPY(w)->display, w->w_Window,
 			 &tmpw, &tmpw, &tmp, &tmp,
 			 &x, &y, &tmp))
 	{
@@ -393,8 +419,40 @@ flush-output
 Forces any cached window output to be drawn. This is usually unnecessary.
 ::end:: */
 {
-    XFlush(x11_display);
-    return(sym_t);
+    struct x11_display *dpy = x11_display_list;
+    while(dpy != 0)
+    {
+	XFlush(dpy->display);
+	dpy = dpy->next;
+    }
+    return sym_t;
+}
+
+DEFSTRING(no_display, "Can't open display");
+_PR VALUE cmd_make_window_on_display(VALUE display);
+DEFUN("make-window-on-display", cmd_make_window_on_display,
+      subr_make_window_on_display, (VALUE display), V_Subr1,
+      DOC_make_window_on_display) /*
+::doc:make_window_on_display::
+make-window-on-display DISPLAY-NAME
+
+Create a new window, as with make-window, but opened on the X11 display
+called DISPLAY-NAME.
+::end:: */
+{
+    struct x11_display *xdisplay;
+    DECLARE1(display, STRINGP);
+    xdisplay = x11_open_display(VSTR(display));
+    if(xdisplay != 0)
+    {
+	VALUE win;
+	pending_display = xdisplay;
+	win = cmd_make_window(sym_nil, sym_nil, sym_nil, sym_nil);
+	pending_display = 0;
+	return win;
+    }
+    else
+	return cmd_signal(sym_window_error, LIST_2(VAL(&no_display), display));
 }
 
 void
@@ -402,6 +460,7 @@ sys_windows_init(void)
 {
     ADD_SUBR_INT(subr_set_font);
     ADD_SUBR(subr_flush_output);
+    ADD_SUBR(subr_make_window_on_display);
 
     x11_misc_init();
 }
