@@ -43,6 +43,10 @@ give to CVS commands.")
 
 ;; Variables
 
+(defvar cvs-buffer (open-buffer "*cvs*")
+  "Buffer used to display CVS summaries.")
+(set-buffer-special cvs-buffer t)
+
 (defvar cvs-output-buffer (make-buffer "*cvs-output*")
   "Buffer used for output from CVS commands.")
 (set-buffer-special cvs-output-buffer t)
@@ -217,19 +221,22 @@ that each of the FILENAMES contains no directory specifiers."
        (cvs-command-dont-clear-output t)
        (cvs-command-async
 	#'(lambda ()
-	    (let
-		((cvs-buf (get-buffer "*cvs*")))
-	      (setq cvs-update-pending nil
-		    cvs-file-list (nreverse cvs-update-file-list)
-		    cvs-update-in-progress nil)
-	      (with-buffer cvs-buf
-		(summary-update))
-	      (unless (eq major-mode 'cvs-summary-mode)
-		(with-view (other-view)
-		  (goto-buffer cvs-buf)
-		  (shrink-view-if-larger-than-buffer)))
-	      (message "cvs update finished")))))
-    (setq cvs-update-in-progress (cvs-command '() "update" '()))))
+	    (setq cvs-update-pending nil
+		  cvs-file-list (nreverse cvs-update-file-list)
+		  cvs-update-in-progress nil)
+	    (with-buffer cvs-buffer
+	      (summary-update)
+	      (remove-minor-mode 'cvs-update "Updating"))
+	    (unless (cvs-buffer-p)
+	      (with-view (other-view)
+		(goto-buffer cvs-buffer)
+		(shrink-view-if-larger-than-buffer)))
+	    (add-buffer cvs-buffer)
+	    (message "cvs update finished"))))
+    (setq cvs-update-in-progress (cvs-command '() "update" '()))
+    (when cvs-update-in-progress
+      (with-buffer cvs-buffer
+	(add-minor-mode 'cvs-update "Updating")))))
 
 (defun cvs-command (cvs-opts command command-opts)
   "Execute a CVS command, something like `cvs CVS-OPTS COMMAND COMMAND-OPTS'.
@@ -259,8 +266,7 @@ Finally, unless the cvs-command-dont-clear-output parameter is non-nil, the
 			      (and (functionp cvs-command-async)
 				   cvs-command-async)
 			      (or cvs-command-directory
-				  (with-buffer (or (get-buffer "*cvs*")
-						   (current-buffer))
+				  (with-buffer cvs-buffer
 				    default-directory)))))
     (message (format nil "%sing CVS: %s..."
 		     (if cvs-command-async "Start" "Call") arg-list) t)
@@ -287,6 +293,10 @@ don't ask for confirmation and kill instead of interrupting."
 				    (process-args p)))
 			processes 'interrupt-process))
       (message "[No CVS processes active]"))))
+
+(defmacro cvs-buffer-p ()
+  "Return t if the current buffer is the CVS summary buffer."
+  '(eq major-mode 'cvs-summary-mode))
 
 (defun cvs-show-output-buffer (&optional activate)
   "Ensure that the `*cvs-output*' buffer is visible in the current window,
@@ -358,31 +368,25 @@ When called interactively, DIRECTORY is prompted for."
     (error "%S is not a directory" directory))
   (setq directory (directory-file-name (expand-file-name directory)))
   (let
-      ((buffer (open-buffer "*cvs*"))
-       (inhibit-read-only t))
-    (with-buffer buffer
-      (if (and (eq major-mode 'cvs-summary-mode)
-	       (file-name= default-directory directory))
-	  ;; The *cvs* buffer is already set up for this directory
-	  ;; Just update it.
-	  (cvs-update-file-list)
+      ((inhibit-read-only t))
+    (with-buffer cvs-buffer
+      (unless (and (cvs-buffer-p)
+		   (file-name= default-directory directory))
+	;; Initialise the buffer for this directory
 	(clear-buffer)
 	(kill-all-local-variables)
-	(format buffer "[CVS] %s:\n\n" directory)
+	(format cvs-buffer "[CVS] %s:\n\n" directory)
 	(setq default-directory directory
 	      cvs-file-list nil)
 	(summary-mode "CVS" cvs-summary-functions cvs-keymap)
-	(setq major-mode 'cvs-summary-mode)
-	(cvs-update-file-list)))))
+	(setq major-mode 'cvs-summary-mode))
+      ;; Now build the list of interesting files
+      (cvs-update-file-list))))
 
 (defun cvs-update-no-prompt ()
   "Run `cvs-update' *without* prompting for a directory."
   (interactive)
-  (let
-      ((buffer (get-buffer "*cvs*")))
-    (if buffer
-	(cvs-update (with-buffer buffer default-directory))
-      (call-command 'cvs-update))))
+  (cvs-update (with-buffer cvs-buffer default-directory)))
 
 ;;;###autoload
 (defun cvs-update-parent ()
@@ -462,7 +466,7 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
 
 (defun cvs-update-if-summary ()
   "If the current buffer is the `*cvs*' summary buffer, call `cvs-update'."
-  (when (eq major-mode 'cvs-summary-mode)
+  (when (cvs-buffer-p)
     (cvs-update-file-list)))
 
 (defun cvs-summary-print (item)
@@ -482,9 +486,10 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
 (defun cvs-summary-select-other-view ()
   (interactive)
   (let
-      ((item (summary-current-item)))
+      ((file (expand-file-name (cvs-file-get-fullname
+				(summary-current-item)))))
     (goto-other-view)
-    (cvs-summary-select item)))
+    (find-file file)))
 
 (defun cvs-find-file ()
   "Open the file under the cursor in the `*cvs*' summary."
@@ -500,7 +505,7 @@ anything whose status is `unchanged' or `updated'."
 				     (memq (cvs-file-get-status f)
 					   '(unchanged updated)))
 				 cvs-file-list))
-  (when (eq major-mode 'cvs-summary-mode)
+  (when (cvs-buffer-p)
     (summary-update)))
 
 
@@ -513,7 +518,7 @@ anything whose status is `unchanged' or `updated'."
   "Return a list of CVS file structures corresponding to the files to be
 operated on by the current CVS mode command."
   (cvs-error-if-updating)
-  (if (eq major-mode 'cvs-summary-mode)
+  (if (cvs-buffer-p)
       ;; In the summary buffer, either all marked files, or if none
       ;; are marked, the ARG files under the cursor. This code
       ;; should be in summary.jl
@@ -744,7 +749,7 @@ works by deleting the local copy, before updating it from the repository."
     (map-y-or-n-p "Really lose changes to `%s'?" files 'delete-file)
     ;; Remove any files that the user answered negatively to
     (setq files (delete-if 'file-exists-p files))
-    (if (eq major-mode 'cvs-summary-mode)
+    (if (cvs-buffer-p)
 	(cvs-update-no-prompt)
       (cvs-command nil "update" files))
     (mapc #'(lambda (f)
