@@ -140,11 +140,11 @@ else in the buffer. Everything will be set up as required."
       ((pos (pos 0 (- (buffer-length) local-variable-lines))))
     (when (< (pos-line pos) 0)
       (set-pos-line pos 0))
-    (when (find-next-regexp "^(.*)Local Variables:(.*)$" pos)
+    (when (find-next-regexp "^(.*)Local Variables:(.*)$" pos nil t)
       (let
 	  ((re (concat ?^
 		       (regexp-quote (copy-area (match-start 1) (match-end 1)))
-		       "([^:]+):(.*)"
+		       "([^:\n]+):[\t ]*(.*)"
 		       (regexp-quote (copy-area (match-start 2) (match-end 2)))
 		       ?$))
 	   name value)
@@ -159,7 +159,7 @@ else in the buffer. Everything will be set up as required."
 	   ((equal name "mode")
 	    (when (or (eq enable-local-variables t)
 		      (y-or-n-p (format nil "Use major mode %s?" value)))
-	      (setq mode-name name)))
+	      (setq mode-name value)))
 	   ((equal name "eval")
 	    (when (and enable-local-eval
 		       (or (eq enable-local-eval t)
