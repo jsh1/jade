@@ -330,7 +330,7 @@ entity NAME."
 
 ;; Snarfing address/name combinations from messages
 
-(defun mail-dir-scan-function (address full-name &aux item)
+(defun mail-dir-scan-function (address full-name)
   "Assuming that a mail/news message has been received from email address
 ADDRESS, from an entity called FULL-NAME, take appropriate action for the
 mail directory. Also see the variables `mail-dir-scan-messages' and

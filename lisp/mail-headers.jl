@@ -55,7 +55,8 @@
 ;; Return (START . END) of the atom-ish expression at POS. "atom-ish"
 ;; includes comments, strings, angle-delimited addresses, and groups of
 ;; normal atoms, importantly though, _no_ commas
-(defun mail-parse-atom (p &aux char)
+(defun mail-parse-atom (p)
+ (let (char)
   (when (looking-at "[\t\n ]+" p)
     (setq p (match-end)))
   (when (setq char (get-char p))
@@ -85,7 +86,7 @@
      (t
       ;; Some sort of atom
       (and (looking-at (concat ?\( mail-atom-re "|[][.:;@]|[\t\n ]+\)+") p)
-	   (cons p (match-end)))))))
+	   (cons p (match-end))))))))
 
 ;; Parse one list of atoms, ended by a comma or EOF. Returns (STRING . END),
 ;; the text of the group of atoms, and the position of the first non-included

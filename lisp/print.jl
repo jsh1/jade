@@ -56,13 +56,13 @@ buffer.")
 
 ;; Code
 
-(defun print-build-shell-command (&optional prefix-arg buffer
+(defun print-build-shell-command (&optional prefix buffer
 				  output-file printer)
   (let
       ((command (concat print-command
 			print-standard-options
-			(and (numberp prefix-arg)
-			     (cdr (assoc prefix-arg print-num-alist)))
+			(and (numberp prefix)
+			     (cdr (assoc prefix print-num-alist)))
 			(and (with-buffer buffer major-mode)
 			     (cdr (assq (with-buffer buffer major-mode)
 					print-mode-alist)))
@@ -74,57 +74,57 @@ buffer.")
 			    (concat print-file-prefix local-output)))
 			(and printer
 			     (concat print-printer-prefix printer)))))
-    (if (and prefix-arg (not (numberp prefix-arg)))
+    (if (and prefix (not (numberp prefix)))
 	(or (prompt-for-string "Print command:" command)
 	    (error "Null print command"))
       command)))
 
 ;;;###autoload
-(defun print-buffer (&optional prefix-arg)
+(defun print-buffer (&optional prefix)
   "Print the current buffer, using `print-command' and it's associated
 options."
   (interactive "P")
-  (shell-command-on-buffer (print-build-shell-command prefix-arg
+  (shell-command-on-buffer (print-build-shell-command prefix
 						      (current-buffer))))
 
 ;;;###autoload
-(defun print-buffer-to-file (file &optional prefix-arg)
+(defun print-buffer-to-file (file &optional prefix)
   "Print the current buffer, leaving the output in FILE."
   (interactive "FOutput file\nP")
-  (shell-command-on-buffer (print-build-shell-command prefix-arg
+  (shell-command-on-buffer (print-build-shell-command prefix
 						      (current-buffer)
 						      file)))
 
 ;;;###autoload
-(defun print-buffer-to-printer (printer &optional prefix-arg)
+(defun print-buffer-to-printer (printer &optional prefix)
   "Print the current buffer using PRINTER."
   (interactive "sPrinter\nP")
-  (shell-command-on-buffer (print-build-shell-command prefix-arg
+  (shell-command-on-buffer (print-build-shell-command prefix
 						      (current-buffer)
 						      nil printer)))
 
 ;;;###autoload
-(defun print-area (start end &optional prefix-arg)
+(defun print-area (start end &optional prefix)
   "Print the area from START to END."
   (interactive "-m\nM\nP")
-  (shell-command-on-area (print-build-shell-command prefix-arg
+  (shell-command-on-area (print-build-shell-command prefix
 						    (current-buffer))
 			 start end))
 
 ;;;###autoload
-(defun print-area-to-file (start end file &optional prefix-arg)
+(defun print-area-to-file (start end file &optional prefix)
   "Print the area from START to END leaving output in FILE."
   (interactive "-m\nM\nFOutput file\nP")
-  (shell-command-on-area (print-build-shell-command prefix-arg
+  (shell-command-on-area (print-build-shell-command prefix
 						    (current-buffer)
 						    file)
 			 start end))
 
 ;;;###autoload
-(defun print-area-to-printer (start end printer &optional prefix-arg)
+(defun print-area-to-printer (start end printer &optional prefix)
   "Print the area from START to END using PRINTER."
   (interactive "-m\nM\nsPrinter\nP")
-  (shell-command-on-area (print-build-shell-command prefix-arg
+  (shell-command-on-area (print-build-shell-command prefix
 						    (current-buffer)
 						    nil printer)
 			 start end))

@@ -116,12 +116,13 @@ entered currently.")
 ;; Main entrypoint
 
 ;;;###autoload
-(defun prompt (&optional prompt-title start)
+(defun prompt (&optional title start)
   "Prompts for a string using completion. PROMPT-TITLE is the optional
 title to print in the buffer, START the original contents of the buffer.
 The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
   (let*
-      ((prompt-buffer (make-buffer "*prompt*"))
+      ((prompt-title title)
+       (prompt-buffer (make-buffer "*prompt*"))
        (prompt-original-buffer (current-buffer))
        (prompt-original-view (current-view))
        (prompt-history-index 0)
@@ -294,10 +295,11 @@ is rejected.")
       ((path (file-name-directory word))
        (file (file-name-nondirectory word))
        (files (directory-files path)))
-    (mapcar #'(lambda (x &aux y) 
-		(when (file-directory-p (setq y (concat path x)))
-		  (setq y (concat y ?/)))
-		y)
+    (mapcar #'(lambda (x) 
+		(let ((y (concat path x)))
+		  (when (file-directory-p y)
+		    (setq y (concat y ?/)))
+		  y))
 	    (delete-if #'(lambda (f)
 			   (or (not (string-head-eq f file))
 			       (string-match prompt-file-exclude f)))
@@ -422,13 +424,14 @@ string, if nil the current buffer is returned."
 	    (open-buffer buf))))))
 
 ;;;###autoload
-(defun prompt-for-symbol (&optional title prompt-symbol-predicate start)
-  "Prompt for an existing symbol. If PROMPT-SYMBOL-PREDICATE is given the
-symbol must agree with it."
+(defun prompt-for-symbol (&optional title pred start)
+  "Prompt for an existing symbol. If PRED is given the symbol must agree
+with it."
   (unless (stringp title)
     (setq title "Enter name of symbol:"))
   (let
-      ((prompt-completion-function prompt-complete-symbol)
+      ((prompt-symbol-predicate pred)
+       (prompt-completion-function prompt-complete-symbol)
        (prompt-validate-function prompt-validate-symbol)
        (prompt-history prompt-symbol-history))
     (intern (prompt title start))))
@@ -474,12 +477,13 @@ symbol must agree with it."
   (prompt-for-symbol (or title "Enter name of command:") commandp))
 
 ;;;###autoload
-(defun prompt-from-list (prompt-list title &optional start dont-validate)
+(defun prompt-from-list (options title &optional start dont-validate)
   "Return a selected choice from the list of options (strings) PROMPT-LIST.
 PROMPT is the title displayed, START the starting choice.
 Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
   (let
-      ((prompt-completion-function prompt-complete-from-list)
+      ((prompt-list options)
+       (prompt-completion-function prompt-complete-from-list)
        (prompt-validate-function (if dont-validate
 				     nil
 				   prompt-validate-from-list))

@@ -460,23 +460,21 @@ backwards. When called interactively the cursor is set to the position."
 
 ;; Block handling
 
-(defun copy-block (&aux rc)
+(defun copy-block ()
   "If a block is marked in the current window, return the text it contains and
 unmark the block."
   (when (blockp)
-    (setq rc (funcall (if (rect-blocks-p) copy-rectangle copy-area)
-		      (block-start) (block-end)))
-    (block-kill))
-  rc)
+    (prog1 (funcall (if (rect-blocks-p) copy-rectangle copy-area)
+		    (block-start) (block-end))
+      (block-kill))))
 
-(defun cut-block (&aux rc)
+(defun cut-block ()
   "Similar to `copy-block' except the block is cut (copied then deleted) from
 the buffer."
   (when (blockp)
-    (setq rc (funcall (if (rect-blocks-p) cut-rectangle cut-area)
-		      (block-start) (block-end)))
-    (block-kill))
-  rc)
+    (prog1 (funcall (if (rect-blocks-p) cut-rectangle cut-area)
+		    (block-start) (block-end))
+      (block-kill))))
 
 (defun delete-block ()
   "Deletes the block marked in the current window (if one exists)."

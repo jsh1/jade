@@ -113,7 +113,7 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
 ;; be reinitialised from FILE after the command completes.
 ;; If DISPLAY-OUTPUT is non-nil, display output in a separate view
 (defun rcs-command (command file-name options &optional
-		    reread-buffer ignore-errors output-stream display-output)
+		    reread-buffer ignore-errors output display-output)
   (unless (setq file-name (local-file-name file-name))
     (error "Can only use RCS on local files"))
   (format t "Running RCS command: %s %s %s..." command file-name options)
@@ -122,8 +122,8 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
        (process (make-process buffer))
        (arg-list (append options (list file-name))))
     (clear-buffer buffer)
-    (when output-stream
-      (set-process-output-stream process output-stream))
+    (when output
+      (set-process-output-stream process output))
     (unless (or (zerop (apply call-process process nil command arg-list))
 		ignore-errors)
       (signal 'file-error (list "Can't run RCS command")))
