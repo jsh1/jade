@@ -76,6 +76,7 @@ when initialising RCS files.")
       ((arg-list (append options (list file-name))))
     (set-process-output-stream rcs-process
 			       (or output-stream rcs-output-buffer))
+    (set-process-error-stream rcs-process rcs-output-buffer)
     (unless (or (zerop (apply 'call-process rcs-process nil command arg-list))
 		 ignore-errors)
       (signal 'file-error (list "Can't run RCS command"))))
