@@ -137,8 +137,7 @@ searching.")
 ;; Accept our current position
 (defun isearch-accept ()
   (interactive)
-  (set-mark auto-mark isearch-initial-pos isearch-buffer)
-  (message "Set auto-mark.")
+  (set-auto-mark isearch-initial-pos)
   (setq isearch-last-match (car (car isearch-trace)))
   (throw 'isearch (cursor-pos)))
 
