@@ -136,7 +136,7 @@ When called interactively, BUFFER is prompted for."
 			    (set-current-buffer (or (car buffer-list)
 						    default-buffer) v))))
 		    (window-view-list w)))
-	  window-list)))
+	  (window-list))))
 
 (defun add-buffer (buffer)
   "Make sure that BUFFER is in the `buffer-list' of all open windows. It gets
@@ -149,19 +149,19 @@ put at the end of the list if it's not already in a member."
 			    (setq buffer-list (append buffer-list
 						      (cons buffer nil)))))))
 		  (window-view-list w)))
-	window-list))
+	(window-list)))
 
-(defun bury-buffer (&optional buffer all-windows)
+(defun bury-buffer (&optional buffer all-views)
   "Puts BUFFER (or the currently displayed buffer) at the end of the current
 window's buffer-list then switch to the buffer at the head of the list.
-If ALL-WINDOWS is non-nil this is done in all windows (the same buffer
-will be buried in each window though)."
+If ALL-VIEWS is non-nil this is done in all views (the same buffer will be
+buried in each view though)."
   (interactive "\nP")
   (unless buffer
     (setq buffer (current-buffer)))
   (let
-      ((list (if all-windows
-		 window-list
+      ((list (if all-views
+		 (window-list)
 	       (cons (current-window) nil))))
     (mapc #'(lambda (w)
 	      (mapc #'(lambda (v)
@@ -170,10 +170,10 @@ will be buried in each window though)."
 			    (setq buffer-list (nconc (delq buffer buffer-list)
 						     (cons buffer nil)))
 			    (set-current-buffer (car buffer-list)))))
-		    (if all-windows
+		    (if all-views
 			(window-view-list w)
 		      (list (current-view)))))
-	  window-list)))
+	  list)))
 
 (defun switch-to-buffer ()
   "Prompt the user for the name of a buffer, then display it."
