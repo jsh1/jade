@@ -25,6 +25,7 @@
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
 #include <string.h>
+#include <assert.h>
 
 #ifdef HAVE_UNIX
 # include <fcntl.h>
@@ -33,6 +34,12 @@
 _PR struct x11_display *x11_open_display(char *display_name);
 _PR void x11_close_display(struct x11_display *xdisplay);
 _PR void x11_close_all_displays(void);
+_PR struct x11_color *x11_make_color_dpy(Lisp_Color *c, struct x11_display *);
+_PR VALUE sys_make_color(Lisp_Color *c);
+_PR struct x11_color *x11_get_color_dpy(Lisp_Color *c, struct x11_display *);
+_PR void sys_free_color(Lisp_Color *c);
+_PR void x11_free_dpy_colors(struct x11_display *dpy);
+
 static void x11_handle_sync_input(int fd);
 _PR void x11_handle_async_input(void);
 
@@ -64,9 +71,6 @@ int x11_argc;
 
 /* Command line options, and their default values. */
 static char *display_name = NULL;
-static char *bg_str = "white";
-static char *fg_str = "black";
-static char *hl_str = "skyblue3";
 static char *geom_str = "80x24";
 static int x11_opt_sync = 0;
 static char *prog_name;
@@ -78,12 +82,6 @@ bool x11_opt_reverse_video = FALSE;
 DEFSTRING(def_font_str_data, DEFAULT_FONT);
 _PR VALUE def_font_str;
 VALUE def_font_str;
-
-_PR const int x11_attr_map[], x11_rattr_map[];
-const int x11_attr_map[GA_MAX] = { P_TEXT, P_TEXT_RV, P_BLOCK, P_BLOCK_RV,
-				   P_TEXT, P_TEXT_RV, P_BLOCK, P_BLOCK_RV };
-const int x11_rattr_map[GA_MAX] = { P_TEXT_RV, P_TEXT, P_BLOCK_RV, P_BLOCK,
-				    P_TEXT_RV, P_TEXT, P_BLOCK_RV, P_BLOCK };
 
 
 /* Resource/option management */
@@ -140,13 +138,19 @@ get_resources(struct x11_display *xdisplay)
 	geom_str = s;
     if((s = XGetDefault(xdisplay->display, prog_name, "foreground"))
        || (s = XGetDefault(xdisplay->display, "Jade", "Foreground")))
-	fg_str = s;
+	default_fg_color = s;
     if((s = XGetDefault(xdisplay->display, prog_name, "background"))
        || (s = XGetDefault(xdisplay->display, "Jade", "Background")))
-	bg_str = s;
+	default_bg_color = s;
+    if((s = XGetDefault(xdisplay->display, prog_name, "block"))
+       || (s = XGetDefault(xdisplay->display, "Jade", "Block")))
+	default_block_color = s;
     if((s = XGetDefault(xdisplay->display, prog_name, "highlight"))
        || (s = XGetDefault(xdisplay->display, "Jade", "Highlight")))
-	hl_str = s;
+	default_hl_color = s;
+    if((s = XGetDefault(xdisplay->display, prog_name, "modeline"))
+       || (s = XGetDefault(xdisplay->display, "Jade", "Modeline")))
+	default_ml_color = s;
     if((s = XGetDefault(xdisplay->display, prog_name, "font"))
        || (s = XGetDefault(xdisplay->display, "Jade", "Font")))
 	def_font_str = string_dup(s);
@@ -166,6 +170,8 @@ sys_usage(void)
 	  "    -fg FOREGROUND-COLOUR\n"
 	  "    -bg BACKGROUND-COLOUR\n"
 	  "    -hl HIGHLIGHT-COLOUR\n"
+	  "    -ml MODELINE-COLOUR\n"
+	  "    -bl BLOCK-COLOUR\n"
 	  "    -rv\n"
 	  "    -font FONT-NAME\n"
 	  "    -sync\n" , stderr);
@@ -195,11 +201,15 @@ get_options(int *argc_p, char ***argv_p)
 	    else if(!strcmp("-geometry", *argv))
 		geom_str = argv[1];
 	    else if(!strcmp("-fg", *argv))
-		fg_str = argv[1];
+		default_fg_color = argv[1];
 	    else if(!strcmp("-bg", *argv))
-		bg_str = argv[1];
+		default_bg_color = argv[1];
+	    else if(!strcmp("-bl", *argv))
+		default_block_color = argv[1];
 	    else if(!strcmp("-hl", *argv))
-		hl_str = argv[1];
+		default_hl_color = argv[1];
+	    else if(!strcmp("-ml", *argv))
+		default_ml_color = argv[1];
 	    else if(!strcmp("-font", *argv))
 		def_font_str = string_dup(argv[1]);
 	    else
@@ -221,8 +231,6 @@ use_options(struct x11_display *xdisplay)
 {
     int x, y, w, h;
     int gflgs = XParseGeometry(geom_str, &x, &y, &w, &h);
-    Colormap cmap = DefaultColormap(xdisplay->display, xdisplay->screen);
-    XColor tmpc;
 
     if(gflgs & WidthValue)
 	def_dims[2] = w;
@@ -241,30 +249,6 @@ use_options(struct x11_display *xdisplay)
 	def_dims[1] = y;
     else
 	def_dims[1] = -1;
-
-    if(!XParseColor(xdisplay->display, cmap, fg_str, &tmpc))
-	fprintf(stderr, "error: invalid fg colour\n");
-    else if(!XAllocColor(xdisplay->display, cmap, &tmpc))
-	fprintf(stderr, "error: can't allocate fg colour\n");
-    else
-	xdisplay->fore_pixel = tmpc.pixel;
-
-    if(!XParseColor(xdisplay->display, cmap, bg_str, &tmpc))
-	fprintf(stderr, "error: invalid bg colour\n");
-    else if(!XAllocColor(xdisplay->display, cmap, &tmpc))
-	fprintf(stderr, "error: can't allocate bg colour\n");
-    else
-	xdisplay->back_pixel = tmpc.pixel;
-
-    if(!XParseColor(xdisplay->display, cmap, hl_str, &tmpc))
-	fprintf(stderr, "error: invalid hl colour\n");
-    else if(!XAllocColor(xdisplay->display, cmap, &tmpc))
-    {
-	fprintf(stderr, "error: can't allocate hl colour\n");
-	xdisplay->high_pixel = xdisplay->fore_pixel;
-    }
-    else
-	xdisplay->high_pixel = tmpc.pixel;
 
     return TRUE;
 }
@@ -311,8 +295,8 @@ x11_open_display(char *display_name)
 		xdisplay->jade_selection
 		    = XInternAtom(display, "JADE_SELECTION", False);
 		xdisplay->text_cursor = XCreateFontCursor(display, XC_xterm);
-		fore.pixel = xdisplay->fore_pixel;
-		back.pixel = xdisplay->back_pixel;
+		fore.pixel = BlackPixel(xdisplay->display, xdisplay->screen);
+		back.pixel = WhitePixel(xdisplay->display, xdisplay->screen);
 		XQueryColor(display,
 			    DefaultColormap(display, xdisplay->screen),
 			    &fore);
@@ -337,6 +321,7 @@ x11_open_display(char *display_name)
 void
 x11_close_display(struct x11_display *xdisplay)
 {
+    x11_free_dpy_colors(xdisplay);
     if(x11_display_list == xdisplay)
 	x11_display_list = xdisplay->next;
     else
@@ -362,6 +347,99 @@ x11_close_all_displays(void)
 {
     while(x11_display_list != 0)
 	x11_close_display(x11_display_list);
+}
+
+
+/* Color handling. */
+
+DEFSTRING(no_color, "Can't allocate color");
+
+struct x11_color *
+x11_make_color_dpy(Lisp_Color *c, struct x11_display *dpy)
+{
+    struct x11_color *cell = str_alloc(sizeof(struct x11_color));
+    if(cell != 0)
+    {
+	XColor tem;
+	Colormap cmap = DefaultColormap(dpy->display, dpy->screen);
+	cell->next = c->color;
+	cell->dpy = dpy;
+	if(XAllocNamedColor(dpy->display, cmap,
+			    VSTR(c->name), &cell->color, &tem) != 0)
+	{
+	    c->color = cell;
+	    return cell;
+	}
+	str_free(cell);
+	cmd_signal(sym_error, list_2(VAL(&no_color), c->name));
+	return 0;
+    }
+    return 0;
+}
+
+VALUE
+sys_make_color(Lisp_Color *c)
+{
+    c->color = 0;
+    if(curr_vw != 0)
+    {
+	struct x11_display *dpy = WINDOW_XDPY(curr_vw->vw_Win);
+	return x11_make_color_dpy(c, dpy) ? VAL(c) : LISP_NULL;
+    }
+    return VAL(c);			/* lazy */
+}
+
+struct x11_color *
+x11_get_color_dpy(Lisp_Color *c, struct x11_display *dpy)
+{
+    struct x11_color *x = c->color;
+    while(x != 0)
+    {
+	if(x->dpy == dpy)
+	    return x;
+	x = x->next;
+    }
+    return x11_make_color_dpy(c, dpy);
+}
+
+void
+sys_free_color(Lisp_Color *c)
+{
+    struct x11_color *x = c->color;
+    while(x != 0)
+    {
+	struct x11_color *next = x->next;
+	assert(next == 0);
+	XFreeColors(x->dpy->display, DefaultColormap(x->dpy->display,
+						     x->dpy->screen),
+		    &x->color.pixel, 1, 0);
+	str_free(x);
+	x = next;
+    }
+    c->color = 0;
+}
+
+void
+x11_free_dpy_colors(struct x11_display *dpy)
+{
+    Lisp_Color *c;
+    for(c = allocated_colors; c != 0; c = c->next)
+    {
+	struct x11_color **x = &c->color;
+	while(*x != 0)
+	{
+	    if((*x)->dpy == dpy)
+	    {
+		struct x11_color *next = (*x)->next;
+		XFreeColors(dpy->display, DefaultColormap(dpy->display,
+							  dpy->screen),
+			    &(*x)->color.pixel, 1, 0);
+		str_free(*x);
+		*x = next;
+		break;
+	    }
+	}
+    }
 }
 
 
