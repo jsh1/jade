@@ -275,8 +275,16 @@ views (minibuffer and one other) in any window.
     if(vw->vw_Win->w_ViewCount <= 2)
     {
 	/* Only two views are left. Don't destroy it. */
-	message("Can't kill the sole view in a window");
-	return(sym_nil);
+	return cmd_signal(sym_window_error,
+			  list_2(MKSTR("Can't kill the sole view in a window"),
+				 VAL(vw)));
+    }
+    else if(vw->vw_Flags & VWFF_MINIBUF)
+    {
+	/* Can't kill the minibuffer */
+	return cmd_signal(sym_window_error,
+			  list_2(MKSTR("Can't kill minibuffer view"),
+				 VAL(vw)));
     }
     cmd_eval_hook2(sym_destroy_view_hook, VAL(vw));
     sys_kill_vw(vw);
