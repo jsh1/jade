@@ -682,7 +682,7 @@ Returns t if ARG is a buffer.
 }
 
 _PR VALUE cmd_restrict_buffer(VALUE lstart, VALUE lend, VALUE tx);
-DEFUN_INT("restrict-buffer", cmd_restrict_buffer, subr_restrict_buffer, (VALUE lstart, VALUE lend, VALUE tx), V_Subr3, DOC_restrict_buffer, "m\nM") /*
+DEFUN_INT("restrict-buffer", cmd_restrict_buffer, subr_restrict_buffer, (VALUE lstart, VALUE lend, VALUE tx), V_Subr3, DOC_restrict_buffer, "-m\nM") /*
 ::doc:restrict_buffer::
 restrict-buffer START END [BUFFER]
 
