@@ -42,6 +42,10 @@
     "q" 'html-display-quit
     "g" 'find-url))
 
+(defvar html-display-c-c-map
+  (bind-keys (make-sparse-keymap)
+    "C-c" 'find-url-abort))
+
 (fset 'html-display-map 'keymap)
 ;;;###autoload (autoload-keymap 'html-display-map "html-display")
 
@@ -74,7 +78,8 @@
       (setq html-display-details details)
       (setq mode-name "HTML-Display"
 	    major-mode 'html-display-mode
-	    local-keymap html-display-map)
+	    local-keymap html-display-map
+	    local-ctrl-c-keymap html-display-c-c-map)
       (call-hook 'html-display-hook))))
 
 (defun html-display-current-link (&optional failable)
