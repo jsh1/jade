@@ -891,7 +891,7 @@ of either VIEW or the current view.
 }
 
 _PR VALUE cmd_view_dimensions(VALUE vw);
-DEFUN("view-dimensions", cmd_view_dimensions, subr_view_dimensions, (VALUE vw), V_Subr2, DOC_view_dimensions) /*
+DEFUN("view-dimensions", cmd_view_dimensions, subr_view_dimensions, (VALUE vw), V_Subr1, DOC_view_dimensions) /*
 ::doc:view_dimensions::
 view-dimensions [VIEW]
 
@@ -903,6 +903,21 @@ the current view).
 	vw = VAL(curr_vw);
     return cmd_cons(MAKE_INT(VVIEW(vw)->vw_MaxX),
 		    MAKE_INT(VVIEW(vw)->vw_MaxY));
+}
+
+_PR VALUE cmd_view_position(VALUE vw);
+DEFUN("view-position", cmd_view_position, subr_view_position, (VALUE vw),
+      V_Subr1, DOC_view_position) /*
+::doc:view_position::
+view-position [VIEW]
+
+Returns the screen position of VIEW in relation to the top-left hand corner of
+its containing window.
+::end:: */
+{
+    if(!VIEWP(vw))
+	vw = VAL(curr_vw);
+    return make_pos(VVIEW(vw)->vw_FirstX, VVIEW(vw)->vw_FirstY);
 }
 
 DEFSTRING(no_view, "No view to expand into");
@@ -962,9 +977,8 @@ the glyph at position POS in the window. Returns nil if no such view exists.
     while(vw != NULL)
     {
 	/* vw_MaxY doesn't include the status line */
-	long bottom = vw->vw_FirstY + vw->vw_MaxY;
-	if(vw->vw_Flags & VWFF_MINIBUF)
-	   bottom++;
+	long bottom = (vw->vw_FirstY + vw->vw_MaxY
+		       + ((vw->vw_Flags & VWFF_MINIBUF) ? 0 : 1));
 	if(VROW(pos) < bottom)
 	    return VAL(vw);
 	vw = vw->vw_NextView;
@@ -979,6 +993,9 @@ translate-pos-to-view POS [VIEW]
 
 Return the screen position in the current view (or in VIEW) that corresponds
 to the screen position POSITION in the view's window.
+
+If no position in VIEW corresponds to POS, return nil. If POS is in the
+status line of VIEW, return t.
 ::end:: */
 {
     long col, row;
@@ -987,7 +1004,13 @@ to the screen position POSITION in the view's window.
 	vw = VAL(curr_vw);
     col = VCOL(pos) - VVIEW(vw)->vw_FirstX;
     row = VROW(pos) - VVIEW(vw)->vw_FirstY;
-    return make_pos(col, row);
+    if(col < 0 || col >= VVIEW(vw)->vw_MaxX
+       || row < 0 || row > VVIEW(vw)->vw_MaxY)
+	return sym_nil;
+    else if(row == VVIEW(vw)->vw_MaxY)
+	return sym_t;
+    else
+	return make_pos(col, row);
 }
 
 _PR VALUE cmd_minibuffer_view_p(VALUE vw);
@@ -1081,6 +1104,7 @@ views_init(void)
     ADD_SUBR(subr_with_view);
     ADD_SUBR(subr_view_origin);
     ADD_SUBR(subr_view_dimensions);
+    ADD_SUBR(subr_view_position);
     ADD_SUBR(subr_set_view_dimensions);
     ADD_SUBR(subr_find_view_by_pos);
     ADD_SUBR(subr_translate_pos_to_view);
