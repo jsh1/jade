@@ -30,57 +30,29 @@
     "n" 'summary-next-item
     "p" 'summary-next-item
     "a" 'mds-add-item
-    "e" 'mds-edit-name
-    "b" 'mds-edit-body
-    "m" 'mds-compose-mail-to-item
+    "e" 'mds-edit
     "s" 'mds-sort-list))
 
-(defvar mds-alias-functions
-  '((select . mds-compose-mail-to-item)
-    (delete . (lambda (item) (remove-mail-alias (car item))))
-    (print . mds-print-alias)
-    (list . (lambda () mail-alias-alist))
-    (after-marking . (lambda () (summary-next-item 1)))
-    (on-quit . kill-current-buffer)))
-
-(defvar mds-address-functions
-  '((select . mds-compose-mail-to-item)
-    (delete . (lambda (item) (remove-mail-address (md-delete-record item))))
-    (print . mds-print-address)
+(defvar mds-functions
+  '((select . mds-compose)
+    (delete . md-delete-record)
+    (print . mds-print)
     (list . (lambda () mail-address-list))
     (after-marking . (lambda () (summary-next-item 1)))
     (on-quit . kill-current-buffer)))
 
 ;;;###autoload
-(defun list-mail-aliases ()
-  "List all mail aliases in a buffer."
+(defun list-mail-dir ()
+  "List all mail directory items in a buffer."
   (interactive)
   (goto-other-view)
-  (goto-buffer (open-buffer "*mail-aliases*"))
+  (goto-buffer (open-buffer "*mail-dir*"))
   (if (eq major-mode 'summary-mode)
       (summary-update)
-    (insert "Mail alias summary:\n\n  Alias\t\tExpansion\n  -----\t\t---------\n")
-    (summary-mode "Alias-Summary" mds-alias-functions mds-keymap)))
+    (insert "Mail directory:\n\n  Name\t\t\tAddress\n  ----\t\t\t-------\n")
+    (summary-mode "Mail-Dir" mds-functions mds-keymap)))
 
-;;;###autoload
-(defun list-mail-addresses ()
-  "List all mail addresses in a buffer."
-  (interactive)
-  (goto-other-view)
-  (goto-buffer (open-buffer "*mail-addresses*"))
-  (if (eq major-mode 'summary-mode)
-      (summary-update)
-    (insert "Mail address summary:\n\n  Name\t\t\tAddress\n  ----\t\t\t-------\n")
-    (summary-mode "Address-Summary" mds-address-functions mds-keymap)))
-
-(defun mds-print-alias (item)
-  (insert (if (memq 'delete (summary-get-pending-ops item)) "D " "  "))
-  (insert (car item))
-  (insert " ")
-  (indent-to 16)
-  (princ (cdr item) (current-buffer)))
-
-(defun mds-print-address (item)
+(defun mds-print (item)
   (insert (if (memq 'delete (summary-get-pending-ops item)) "D " "  "))
   (let
       ((addresses (md-get-field item ':net))
@@ -97,76 +69,100 @@
 	(insert ", "))
       (setq addresses (cdr addresses)))))
 
-;; Return t if the current buffer is displaying the address list
-(defun mds-in-addresses-p ()
-  (string= (buffer-name) "*mail-addresses*"))
-
 (defun mds-add-item ()
   "Insert a new item into the list."
   (interactive)
-  (call-command (if (mds-in-addresses-p) 'add-mail-address 'add-mail-alias))
+  (call-command 'add-mail-address)
   (summary-update))
 
-(defun mds-edit-name ()
-  "Edit the name of the current item."
-  (interactive)
-  (let*
-      ((item (summary-current-item))
-       (name (if (mds-in-addresses-p)
-		 (prompt-for-mail-full-name "New name:" t (cdr item))
-	       (prompt-for-mail-alias "New alias name:" t (car item)))))
-    (when name
-      (if (mds-in-addresses-p)
-	  (progn
-	    (md-delete-field item ':name)
-	    (md-add-to-field item ':name name))
-	(rplaca item name)
-	(setq mail-directory-modified t))
-      (summary-update-item item))))
-
-(defun mds-edit-body (&optional append)
-  "Edit the body of the current item."
-  (interactive "P")
-  (let
-      ((item (summary-current-item))
-       new)
-    (if (mds-in-addresses-p)
-	(when (setq new (prompt-for-mail-address "New address:" t (car item)))
-	  (md-delete-field item ':net)
-	  (md-add-to-field item ':net new))
-      (setq new (prompt-for-address-list (concat "List of addresses"
-						 (if append " to append")
-						 ?:) t))
-      (if append
-	  (rplacd item (append (cdr item) new))
-	(rplacd item new))
-      (setq mail-directory-modified t))
-    (summary-update-item item)))
-
-(defun mds-compose-mail-to-item (item)
+(defun mds-compose (item)
   "Compose a new mail message with the current item as the To: field (or the
 CC: field if the prefix arg is set)."
   (interactive (list (summary-current-item)))
-  (let
-      ((in-address-list (mds-in-addresses-p)))
-    (mail-setup)
-    (if current-prefix-arg
-	(send-mail-go-cc)
-      (send-mail-go-to))
-    (if in-address-list
-	(insert-mail-address-and-name (cdr item))
-      (insert-mail-alias (car item)))
-    (set-buffer-modified nil nil)
-    (send-mail-go-subject)))
+  (mail-setup)
+  (if current-prefix-arg
+      (send-mail-go-cc)
+    (send-mail-go-to))
+  (insert-mail-item (car (md-get-field item ':name)))
+  (set-buffer-modified nil nil)
+  (send-mail-go-subject))
 
 (defun mds-sort-predicate (x y)
-  (< (cdr x) (cdr y)))
+  (let
+      ((name-x (md-get-field x ':name))
+       (name-y (md-get-field y ':name)))
+    (< (or name-x x) (or name-y y))))
 
 (defun mds-sort-list ()
   "Sort the list of mail addresses or aliases."
   (interactive)
-  (if (mds-in-addresses-p)
-      (setq mail-address-list (sort mail-address-list 'mds-sort-predicate))
-    (setq mail-alias-alist (sort mail-alias-alist 'mds-sort-predicate)))
+  (setq mail-address-list (sort mail-address-list 'mds-sort-predicate))
   (setq mail-directory-modified t)
   (summary-update))
+
+
+;; Editing items
+
+(defvar mds-edit-keymap (bind-keys (make-sparse-keymap)
+			  "Ctrl-c" 'mds-edit-commit))
+
+(defvar mds-edit-item nil)
+(make-variable-buffer-local 'mds-edit-item)
+
+(defun mds-edit ()
+  (interactive)
+  (let
+      ((buffer (make-buffer "*mail-dir-edit*"))
+       (item (summary-current-item)))
+    (goto-other-view)
+    (goto-buffer buffer)
+    (setq ctrl-c-keymap mds-edit-keymap)
+    (setq major-mode 'mds-edit)
+    (setq mds-edit-item (md-get-field item ':name))
+    (unless mds-edit-item
+      (error "This item has no name: %s" item))
+    (format buffer "name: %S\n" mds-edit-item)
+    (mapc #'(lambda (cell)
+	      (unless (eq (car cell) ':name)
+		(format buffer "%s: \("
+			(substring (symbol-name (car cell)) 1))
+		(let
+		    ((first t)
+		     (indent (pos-col (char-to-glyph-pos))))
+		  (mapc #'(lambda (e)
+			    (unless first
+			      (insert "\n")
+			      (indent-to indent))
+			    (prin1 e buffer)
+			    (setq first nil)) (cdr cell)))
+		(insert "\)\n"))) item)
+    (set-buffer-modified nil nil)
+    (setq buffer-undo-list nil)
+    (shrink-view-if-larger-than-buffer)
+    (message "Type `C-c C-c' to commit edits")))
+
+(defun mds-edit-commit ()
+  (interactive)
+  (or mds-edit-item
+      (error "Nothing being edited in this buffer!"))
+  (let
+      ((record nil)
+       (tem (start-of-buffer)))
+    (while (looking-at "^([a-z]+):" tem)
+      (let*
+	  ((field (intern (concat ?: (expand-last-match "\\1"))))
+	   (stream (cons (current-buffer) (match-end)))
+	   (body (read stream)))
+	(setq tem (start-of-line (forward-line 1 (cdr stream))))
+	(setq record (cons (cons field body) record))))
+    (or (assq ':name record)
+	(error "Record has no name field: %s" record))
+    (let
+	((old (md-get-record ':name (car mds-edit-item))))
+      (when old
+	(md-delete-record old))
+      (setq mail-address-list (cons record mail-address-list))
+      (kill-current-buffer)
+      (and (get-buffer "*mail-dir*")
+	   (with-buffer (get-buffer "*mail-dir*")
+	     (summary-update))))))
