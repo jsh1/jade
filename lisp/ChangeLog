@@ -1,3 +1,17 @@
+2001-02-19  John Harper  <jsh@eazel.com>
+
+	* fill.jl: only install our minor-mode if it's not already in
+	the minor-mode-alist
+
+2001-02-18  John Harper  <jsh@eazel.com>
+
+	* html-decode.jl (html-decode-tag): within <pre> blocks, don't
+	skip whitespace terminating tags
+
+	* html-decode.jl (html-decode-tag): whacked to support such
+	abominations as `<FONT ="+1">', which is what bugzilla
+	thoughtfully outputs
+
 2001-02-13  John Harper  <jsh@eazel.com>
 
 	* pwd-prompt.jl: structure magic to replace the default
