@@ -363,6 +363,14 @@ is rejected.")
 (defun prompt-validate-directory (name)
   (file-directory-p name))
 
+(defun prompt-abbreviate-filename (name)
+  (let
+      ((abbrev (file-name-nondirectory name)))
+    (if (string= abbrev "")
+	(file-name-as-directory
+	 (file-name-nondirectory (directory-file-name name)))
+      abbrev)))
+
 (defun prompt-complete-from-list (word)
   (let
       ((src prompt-list)
@@ -406,6 +414,7 @@ allowed to be entered."
 				   nil))
        (prompt-history (or history-list prompt-file-history))
        (prompt-default-value default)
+       (completion-abbrev-function 'prompt-abbreviate-filename)
        (str (prompt prompt start)))
     (when (and (string= str "") default)
       (setq str default))
@@ -425,6 +434,7 @@ allowed to be entered."
 				     'prompt-validate-directory
 				   nil))
        (prompt-history prompt-file-history)
+       (completion-abbrev-function 'prompt-abbreviate-filename)
        (str (prompt prompt start)))
     (when (and (string= str "") default)
       (setq str default))
