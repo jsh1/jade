@@ -10,9 +10,6 @@ and more long-term ideas are marked -
 Outstanding bugs
 ================
 
- ! GTK jade doesn't always realize when all windows have been closed,
-   and it should thus exit
-
  ! Area positions marking current selection don't change with the
    buffer contents
 

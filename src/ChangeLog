@@ -1,3 +1,10 @@
+2000-02-20  John Harper  <john@dcs.warwick.ac.uk>
+
+	* gtk_jade.c (sys_deleting_window_would_exit): implement this
+	correctly, count all windows, then count all windows under the
+	toplevel gtk widget being deleted. If the two are the same,
+	return true
+
 2000-02-15  John Harper  <john@dcs.warwick.ac.uk>
 
 	* undo.c (Fset_buffer_record_undo): new function
