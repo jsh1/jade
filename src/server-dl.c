@@ -321,7 +321,7 @@ which denotes no errors. Returns nil if the file doesn't have a client.
 /* dl hooks */
 
 repv
-rep_dl_init(repv file_name)
+rep_dl_init(void)
 {
     client_list = Qnil;
     rep_mark_static(&client_list);

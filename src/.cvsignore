@@ -4,3 +4,4 @@ jade
 jadeclient
 *.lo
 *.la
+.*.d
