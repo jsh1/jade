@@ -28,6 +28,10 @@
   "When non-nil all output from sendmail is displayed, even if the return
 code states that the message was sent successfully.")
 
+(defvar mail-send-hook nil
+  "Hook called immediately prior to sending the mail message that has been
+composed in the current buffer.")
+
 ;;; Code:
 
 ;; List of (FUNCTION . ARGS) to call when message is finally sent.
