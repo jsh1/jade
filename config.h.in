@@ -21,25 +21,15 @@
 #ifndef JADE_CONFIG_H
 #define JADE_CONFIG_H
 
-/* Define if you have X11 */
-#undef HAVE_X11
+/* Define if using GTK for windowing */
+#undef HAVE_GTK
 
-/* Define if you have some flavour of Unix */
-#undef HAVE_UNIX
+/* Define if X11 is available */
+#undef HAVE_X11
 
 
 /* Jade-specific configuration; these are the things that aren't really
    inferred automatically by configure. */
-
-/* If defined, swap the meaning of "BackSpace" and "Delete" event
-   specifiers.  This may sound stupid but by mapping your `Delete' key
-   to the `BackSpace' keysym the BackSpace and Delete keys are
-   distinguishable from each other without breaking (too many?)  other
-   programs. Most programs seem to use either the Delete keysym to rub
-   out the previous character, or treat both Delete and BackSpace
-   keysyms identically. If anyone has any better ideas about this I'd
-   be *very* interested to hear them :) */
-#undef SWAP_DELETE_KEYS
 
 /* If defined, this is the character which terminates the user's
     real-name in the pw_gecos field of the passwd structure.  i.e. if
