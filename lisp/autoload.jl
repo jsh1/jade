@@ -235,4 +235,5 @@
 (autoload 'mime-decode-base64 "mime-base64")
 (autoload 'mime-encode-quoted-printable "mime-quoted-printable")
 (autoload 'mime-decode-quoted-printable "mime-quoted-printable")
+(autoload 'php3-mode "php3-mode" t)
 ;;; ::autoload-end::
