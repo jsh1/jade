@@ -25,6 +25,10 @@
 		     (require 'send-mail)
 		     (require 'rm-summary)))
 
+(defvar rm-citation-format "%F writes:\n"
+  "Format string defining how quoted messages are preceded. All standard
+message formatting characters are available.")
+
 
 ;; Replying to messages
 
@@ -118,11 +122,8 @@ message in that all recipients of the original wil receive the reply."
 	((body-start (and (re-search-forward "^\n" start) (match-end)))
 	 body-end)
       (when body-start
-	(let
-	    ((from (car (rm-get-senders msg))))
-	  (delete-area start body-start)
-	  (format (cons (current-buffer) (start-of-buffer))
-		  "%s writes:\n" (or (cdr from) (car from))))
+	(delete-area start body-start)
+	(insert (rm-format rm-citation-format msg) (start-of-buffer))
 	(setq start (forward-line 1 (start-of-buffer))))
       (setq body-end (re-search-backward "^.*[^\t\n ].*$" (end-of-buffer)))
       (while (<= start (or body-end (end-of-buffer)))
