@@ -277,7 +277,7 @@ Major mode for composing and sending mail messages."
 	      ;; Need timezone as well
 	      (format file "From %s %s\n" (user-login-name)
 		      (current-time-string))
-	      (write-buffer file))
+	      (write-buffer-contents file))
 	  (close-file file))))
 
     ;; Handle Resent-X headers. Build a list of addresses the message

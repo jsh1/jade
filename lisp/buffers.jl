@@ -226,7 +226,7 @@ init-mode, the hook find-file-hook is dispatch."
       (set-buffer-file-name buf file-name)
       (if (file-exists-p file-name)
 	  (progn
-	    (read-buffer file-name)
+	    (read-file-contents file-name)
 	    (setq buffer-file-modtime (file-modtime file-name)))
 	(message "New file")))
     (fix-local-variables)
@@ -322,7 +322,7 @@ that it is associated with."
     (let
 	((modes (when (file-exists-p name) (file-modes name))))
       (backup-file name)
-      (when (write-buffer name buffer)
+      (when (write-buffer-contents name nil nil buffer)
 	(when modes
 	  (set-file-modes name modes))
 	t))))
@@ -379,7 +379,7 @@ the cursor position."
     (setq buffer (current-buffer)))
   (with-buffer buffer
     (unless (call-hook 'insert-file-hook (list name) 'or)
-      (insert (read-file name)))))
+      (insert-file-contents name))))
 
 (defun check-changes (&optional buffer)
   "Returns t if it is ok to kill BUFFER, or the current buffer. If unsaved
@@ -444,7 +444,7 @@ name of the file stored in BUFFER."
   (flush-output)
   (with-buffer buffer
     (if (or (call-hook 'auto-save-hook (list buffer) 'or)
-	    (write-buffer (make-auto-save-name (buffer-file-name))))
+	    (write-buffer-contents (make-auto-save-name (buffer-file-name))))
 	(format t "done.")
       (error "Can't auto-save" buffer)
       nil)))
@@ -488,7 +488,7 @@ will have to agree to this)."
       (setq buffer (current-buffer)))
     (when (and (file-exists-p recover-name) (check-changes buffer))
       (with-buffer buffer
-	(read-buffer recover-name)
+	(read-file-contents recover-name)
 	(set-buffer-modified buffer t)
 	(setq last-save-time (current-time))
 	(message (concat "Using " recover-name " as "

@@ -70,7 +70,7 @@
 	 (compressor (if (string-match "\\.Z$" file-name) "compress" "gzip"))
 	 dst-file proc)
       (backup-file file-name)
-      (when (and (write-buffer tmp-name buffer)
+      (when (and (write-buffer-contents tmp-name nil nil buffer)
 		 (setq dst-file (open-file file-name "wb")))
 	(unwind-protect
 	    (progn

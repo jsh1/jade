@@ -652,7 +652,7 @@ Major mode for viewing mail folders. Commands include:\n
 	      (goto (end-of-buffer))
 	      (rm-enforce-msg-separator)
 	      (setq start (cursor-pos))
-	      (insert-file tofile)
+	      (insert-file-contents tofile)
 	      (condition-case nil
 		  (progn
 		    ;; Try to save the folder..
