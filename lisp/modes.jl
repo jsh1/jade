@@ -77,7 +77,7 @@
     ("\\.[s]$|^asm$" . asm-mode)
     ("\\.[S]$|^asm-cpp$" . asm-cpp-mode)
     ("\\.texi(|nfo)|^Texinfo$" . texinfo-mode)
-    ("\\.tex$|^TeX$" . tex-mode)
+    ("\\.(tex|sty)$|^TeX$" . tex-mode)
     ("^LaTeX$" . latex-mode)
     ("ChangeLog$" . changelog-mode)
     ("\\.sh$|^sh(ell)?$" . sh-mode)
