@@ -118,22 +118,29 @@
     ;; which was in turn copied from Linux
     (let
 	((g-month (- month 2))
-	 (g-year year))
-      (when (>= 0 (- g-month 2))
+	 (g-year year)
+	 total-seconds total-days)
+      (when (>= 0 g-month)
 	;; Put feb last since it has leap day
-	(setq g-month (+ month 12)
-	      g-year (1- year)))
+	(setq g-month (+ g-month 12)
+	      g-year (1- g-year)))
       ;; (DAYS . SECONDS)
-      (setq time_t (cons (+ (- (/ g-year 4)
-			       (/ g-year 100))
-			    (/ g-year 400)
-			    (/ (* 367 g-month) 12)
-			    day
-			    (* g-year 365)
-			    -719499)
-			 (+ second (* 60 (+ minute
-					    (- timezone)
-					    (* 60 hour)))))))
+      (setq total-days (+ (- (/ g-year 4)
+			     (/ g-year 100))
+			  (/ g-year 400)
+			  (/ (* 367 g-month) 12)
+			  day
+			  (* g-year 365)
+			  -719499)
+	    total-seconds (+ second (* 60 (+ minute
+					     (- timezone)
+					     (* 60 hour)))))
+      ;; 86400 seconds in a day
+      (when (> total-seconds 86400)
+	;; overflow
+	(setq total-days (+ total-days (/ total-seconds 86400))
+	      total-seconds (mod total-seconds 86400)))
+      (setq time_t (cons total-days total-seconds)))
     (vector day-abbrev day month-abbrev month
 	    year hour minute second timezone time_t)))
 
