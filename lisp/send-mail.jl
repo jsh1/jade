@@ -23,31 +23,40 @@
 
 ;;;; Code
 
-(defvar mail-buffer-in-use nil)
-
 ;; List of (FUNCTION . ARGS) to call when message is finally sent.
-(defvar mail-send-actions nil)
+(defvar send-mail-actions nil)
+(make-variable-buffer-local 'send-mail-actions)
 
 ;;;###autoload
-(defun mail-setup (to &optional subject in-reply-to cc references actions)
+(defun mail-setup (&optional to subject in-reply-to cc references actions)
   "Initialises a buffer in which a mail message may be composed, prior to
 being sent."
   (let
-      ((buffer (or (get-buffer "*mail*")
-		   (make-buffer "*mail*"))))
-    (clear-buffer buffer)
-    (set-buffer-special buffer nil)
+      (buffer)
+    (if (setq buffer (get-buffer "*mail*"))
+	(if (or (buffer-read-only-p buffer)
+		(y-or-n-p "Okay to lose contents of *mail* buffer?"))
+	    (progn
+	      (set-buffer-read-only buffer nil)
+	      (clear-buffer))
+	  (error "Mail buffer in use"))
+      (setq buffer (make-buffer "*mail*")))
     (goto-buffer buffer)
-    (when mail-buffer-in-use
-      (if (y-or-n-p "Okay to lose contents of *mail* buffer?")
-	  (clear-buffer)
-	(error "Mail buffer in use")))
-    (set-buffer-read-only buffer nil)
-    (setq mail-buffer-in-use t
-	  mail-send-actions actions)
-    (format buffer "To: %s\n" to)
-    (when cc
+    (setq send-mail-actions actions)
+    (insert "To: ")
+    (cond
+     ((stringp to)
+      (insert to))
+     ((consp to)
+      (mail-insert-list to)))
+    (insert "\n")
+    (cond
+     ((stringp cc)
       (format buffer "CC: %s\n" cc))
+     ((consp cc)
+      (insert "CC: ")
+      (mail-insert-list cc)
+      (insert "\n")))
     (when in-reply-to
       (format buffer "In-reply-to: %s\n" in-reply-to))
     (when references
@@ -60,7 +69,7 @@ being sent."
     (when mail-default-reply-to
       (format buffer "Reply-to: %s\n" mail-default-reply-to))
     (when mail-self-blind
-      (format buffer "BCC: %s\n" user-mail-address))
+      (format buffer "BCC: %s\n" (user-login-name)))
     (when mail-archive-file-name
       (format buffer "FCC: %s\n" mail-archive-file-name))
     (insert mail-header-separator)
@@ -79,47 +88,47 @@ being sent."
 	(goto-char old)))
     (set-buffer-modified buffer nil)
     (setq buffer-undo-list nil)
-    (mail-mode)))
+    (send-mail-mode)))
 
 
 ;; Mail mode
 
-(defvar mail-c-keymap (make-keylist))
-(bind-keys mail-c-keymap
-  "Ctrl-c" 'mail-send-and-exit
-  "Ctrl-s" 'mail-send
-  "Ctrl-f" '(setq next-keymap-path '(mail-c-f-keymap))
-  "Ctrl-t" 'mail-go-text
-  "Ctrl-w" 'mail-signature
+(defvar send-mail-c-keymap (make-keylist))
+(bind-keys send-mail-c-keymap
+  "Ctrl-c" 'send-mail-send-and-exit
+  "Ctrl-s" 'send-mail-send
+  "Ctrl-f" '(setq next-keymap-path '(send-mail-c-f-keymap))
+  "Ctrl-t" 'send-mail-go-text
+  "Ctrl-w" 'send-mail-signature
   "Ctrl-y" 'mail-yank-original
   "Ctrl-q" 'mail-fill-yanked-message)
-(defvar mail-c-f-keymap (make-keylist))
-(bind-keys mail-c-f-keymap
-  "Ctrl-t" 'mail-go-to
-  "Ctrl-s" 'mail-go-subject
-  "Ctrl-c" 'mail-go-cc
-  "Ctrl-b" 'mail-go-bcc
-  "Ctrl-f" 'mail-go-fcc)
+(defvar send-mail-c-f-keymap (make-keylist))
+(bind-keys send-mail-c-f-keymap
+  "Ctrl-t" 'send-mail-go-to
+  "Ctrl-s" 'send-mail-go-subject
+  "Ctrl-c" 'send-mail-go-cc
+  "Ctrl-b" 'send-mail-go-bcc
+  "Ctrl-f" 'send-mail-go-fcc)
 
-(defun mail-mode ()
+(defun send-mail-mode ()
   "Mail Mode:\n
 Major mode for composing and sending mail messages."
   (when major-mode-kill
     (funcall major-mode-kill (current-buffer)))
   (setq mode-name "Mail"
-	major-mode 'mail-mode
-	major-mode-kill 'mail-mode-kill
-	ctrl-c-keymap mail-c-keymap)
+	major-mode 'send-mail-mode
+	major-mode-kill 'send-mail-mode-kill
+	ctrl-c-keymap send-mail-c-keymap)
   ;; Need to turn on autosaving and associate the buffer with a
   ;; temporary file...
   (eval-hook 'mail-setup-hook))
 
-(defun mail-mode-kill ()
+(defun send-mail-mode-kill ()
   (setq major-mode nil
 	major-mode-kill nil
 	ctrl-c-keymap nil))
 
-(defun mail-go-text ()
+(defun send-mail-go-text ()
   "Put the cursor at the start of the message body."
   (interactive)
   (if (find-next-regexp (concat ?^ (regexp-quote mail-header-separator) ?$)
@@ -127,7 +136,7 @@ Major mode for composing and sending mail messages."
       (goto-char (next-line 1 (match-start)))
     (error "No mail-header-separator in message")))
 
-(defun mail-find-header (header)
+(defun send-mail-find-header (header)
   (if (find-next-regexp (concat ?^ header "[\t ]*:[\t ]*")
 			(buffer-start) nil t)
       (goto-char (match-end))
@@ -139,32 +148,32 @@ Major mode for composing and sending mail messages."
     (insert (concat header ": \n"))
     (goto-prev-char)))
     
-(defun mail-go-to ()
+(defun send-mail-go-to ()
   "Move to the message's To: header."
   (interactive)
-  (mail-find-header "To"))
+  (send-mail-find-header "To"))
 
-(defun mail-go-subject ()
+(defun send-mail-go-subject ()
   "Move to the message's Subject: header."
   (interactive)
-  (mail-find-header "Subject"))
+  (send-mail-find-header "Subject"))
 
-(defun mail-go-cc ()
+(defun send-mail-go-cc ()
   "Move to the message's CC: header."
   (interactive)
-  (mail-find-header "CC"))
+  (send-mail-find-header "CC"))
 
-(defun mail-go-bcc ()
+(defun send-mail-go-bcc ()
   "Move to the message's BCC: header."
   (interactive)
-  (mail-find-header "BCC"))
+  (send-mail-find-header "BCC"))
 
-(defun mail-go-fcc ()
+(defun send-mail-go-fcc ()
   "Move to the message's FCC: header."
   (interactive)
-  (mail-find-header "FCC"))
+  (send-mail-find-header "FCC"))
 
-(defun mail-signature ()
+(defun send-mail-signature ()
   "Insert the contents of the mail-signature-file as the message's signature."
   (interactive)
   (if (and mail-signature-file
@@ -183,11 +192,11 @@ Major mode for composing and sending mail messages."
 	  (goto-char old-pos)))
     (error "No signature file to insert")))
 
-(defun mail-send ()
+(defun send-mail-send ()
   "Send the mail message in the current buffer."
   (interactive)
-  (when (or (buffer-read-only-p)
-	    (and (string= (buffer-name) "*mail*") (not mail-buffer-in-use)))
+  (when (or (not (string= (buffer-name) "*mail*"))
+	    (buffer-read-only-p))
     (unless (y-or-n-p "Really send this buffer as a mail message?")
       (error "Quit")))
   (message "Sending..." t)
@@ -196,16 +205,15 @@ Major mode for composing and sending mail messages."
   (format t "done")
   (set-buffer-read-only (current-buffer) t)
   (set-buffer-modified (current-buffer) nil)
-  (while mail-send-actions
-    (apply (car (car mail-send-actions)) (cdr (car mail-send-actions)))
-    (setq mail-send-actions (cdr mail-send-actions)))
-  (setq mail-buffer-in-use nil)
+  (while send-mail-actions
+    (apply (car (car send-mail-actions)) (cdr (car send-mail-actions)))
+    (setq send-mail-actions (cdr send-mail-actions)))
   t)
 
-(defun mail-send-and-exit ()
+(defun send-mail-send-and-exit ()
   "Send the mail message in the current buffer and bury the buffer."
   (interactive)
-  (when (mail-send)
+  (when (send-mail-send)
     (bury-buffer)))
 
 (defun sendmail-send-message ()
