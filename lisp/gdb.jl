@@ -72,6 +72,8 @@ There is no limit to the number of gdb processes you may run at once."
   (interactive "fProgram to debug:")
   (let*
       ((buffer (get-buffer "*gdb*")))
+    (unless (setq prog (local-file-name prog))
+      (error "Can only debug local programs"))
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
 	  (setq buffer (open-buffer "*gdb*" t))
@@ -79,8 +81,8 @@ There is no limit to the number of gdb processes you may run at once."
       (clear-buffer buffer))
     (goto-buffer buffer)
     (kill-all-local-variables)
-    (set-buffer-file-name buffer prog)
-    (setq shell-program gdb-file-name
+    (setq default-directory (file-name-directory prog)
+	  shell-program gdb-file-name
 	  shell-program-args (list "-fullname" (file-name-nondirectory prog))
 	  shell-prompt-regexp "^(\\(gdb\\) *|.*\\(.+\\) *|.+---)"
 	  shell-output-stream (list 'lambda '(x)

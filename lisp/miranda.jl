@@ -31,25 +31,27 @@
 (defun miranda (&optional arg)
   "Run a Miranda interpreter in a buffer called `*miranda*' using the major
 mode `shell-mode'. ARG is a string to pass as a command line argument."
-  (interactive (list (expand-file-name (prompt-for-file "Miranda script:" t
-							(buffer-file-name)
-							(buffer-file-name))
-				       t)))
+  (interactive (list (prompt-for-file "Miranda script:" t
+				      (buffer-file-name)
+				      (buffer-file-name))
+		     t))
   (let
       ((buffer (get-buffer "*miranda*"))
-       (dir (file-name-directory (buffer-file-name))))
+       (dir (if arg
+		(file-name-directory arg)
+	      default-directory)))
     (goto-other-view)
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
 	  (goto-buffer (open-buffer "*miranda*" t))
-	  (set-buffer-file-name nil dir)
 	  (set-buffer-special nil t)
-	  (setq mildly-special-buffer t
+	  (setq default-directory dir
+		mildly-special-buffer t
 		shell-program miranda-program
 		shell-prompt-regexp miranda-prompt
 		shell-program-args (and arg (list arg)))
 	  (shell-mode))
       (goto-buffer buffer)
-      (set-buffer-file-name buffer dir)
-      (setq shell-program-args (and arg (list arg)))
+      (setq default-directory dir
+	    shell-program-args (and arg (list arg)))
       (shell-start-process))))

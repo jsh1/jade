@@ -46,8 +46,7 @@
 (defun tags-find-table ()
   (or tags-file-name
       (let
-	  ((default (file-name-concat (file-name-directory
-				       (buffer-file-name)) "TAGS")))
+	  ((default (expand-file-name "TAGS")))
 	(setq tags-last-found-pos nil)
 	(setq tags-file-name (prompt-for-file "Tags table to load:" t
 					      default default)))
@@ -112,9 +111,9 @@ move back to the previously found tag."
 	    ((file (and (or (re-search-backward "^\f\n([^,\n]+)"
 						start tags-buffer)
 			    (error "Can't find start of tags section"))
-			(file-name-concat (file-name-directory tags-file-name)
-					  (file-name-nondirectory
-					   (expand-last-match "\\1")))))
+			(expand-file-name
+			 (file-name-nondirectory (expand-last-match "\\1"))
+			 (with-buffer tags-buffer default-directory))))
 	     ;; This also switches to buffer
 	     (buffer (or (find-file file)
 			 (error "Can't open file %S" file)))

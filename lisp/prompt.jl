@@ -376,11 +376,10 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 is rejected.")
 
 ;; Ignore the `.' and `..' directory entries in UNIX
-(when (unix-p)
+(when (eq operating-system 'unix)
   (setq prompt-file-exclude (concat prompt-file-exclude "|^\\.(\\.|)$")))
 
 (defun prompt-complete-filename (word)
-  (setq word (expand-file-name word))
   (let*
       ((path (file-name-directory word))
        (file (file-name-nondirectory word))
@@ -445,8 +444,9 @@ is rejected.")
 allowed to be entered."
   (unless (stringp prompt)
     (setq prompt "Enter filename:"))
-  (unless (stringp start)
-    (setq start (file-name-directory (buffer-file-name))))
+  (setq start (if (stringp start)
+		  (expand-file-name start)
+		(file-name-as-directory default-directory)))
   (let*
       ((prompt-completion-function 'prompt-complete-filename)
        (prompt-validate-function (if existing
@@ -458,8 +458,7 @@ allowed to be entered."
        (str (prompt prompt start)))
     (when (and (string= str "") default)
       (setq str default))
-    (when str
-      (expand-file-name str))))
+    str))
 
 ;;;###autoload
 (defun prompt-for-directory (&optional prompt existing start default)
@@ -468,7 +467,7 @@ allowed to be entered."
   (unless (stringp prompt)
     (setq prompt "Enter filename:"))
   (unless (stringp start)
-    (setq start (file-name-directory (buffer-file-name))))
+    (setq start (file-name-as-directory default-directory)))
   (let*
       ((prompt-completion-function 'prompt-complete-directory)
        (prompt-validate-function (if existing
@@ -479,8 +478,7 @@ allowed to be entered."
        (str (prompt prompt start)))
     (when (and (string= str "") default)
       (setq str default))
-    (when str
-      (expand-file-name str))))
+    str))
 
 ;;;###autoload
 (defun prompt-for-buffer (&optional prompt existing default)

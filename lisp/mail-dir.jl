@@ -69,7 +69,7 @@ definitions will be added to any existing definitions."
 				      mail-directory-file)
 		     current-prefix-arg))
   (let
-      ((file-handle (open-file (expand-file-name file) "r"))
+      ((file-handle (open-file file 'read))
        form list tem)
     (if dont-merge
 	(setq mail-address-alist nil
@@ -79,25 +79,28 @@ definitions will be added to any existing definitions."
 	(setq mail-directory-modified t)))
     (when file-handle
       (unwind-protect
-	  (while (not (file-eof-p file-handle))
-	    (setq form (read file-handle))
-	    (cond
-	     ((null form))
-	     ((eq (car form) 'address-alist)
-	      ;; List of mail addresses
-	      (setq list 'mail-address-alist))
-	     ((eq (car form) 'alias-alist)
-	      ;; List of mail aliases
-	      (setq list 'mail-alias-alist))
-	     (t
-	      (error "Unknown item in mail directory: %s" (car form))))
-	    (when list
-	      (setq form (nreverse (cdr form)))
-	      (while (consp form)
-		(when (or dont-merge
-			  (null (assoc (car (car form)) (symbol-value list))))
-		  (set list (cons (car form) (symbol-value list))))
-		(setq form (cdr form)))))
+	  (condition-case nil
+	      (while t
+		(setq form (read file-handle))
+		(cond
+		 ((null form))
+		 ((eq (car form) 'address-alist)
+		  ;; List of mail addresses
+		  (setq list 'mail-address-alist))
+		 ((eq (car form) 'alias-alist)
+		  ;; List of mail aliases
+		  (setq list 'mail-alias-alist))
+		 (t
+		  (error "Unknown item in mail directory: %s" (car form))))
+		(when list
+		  (setq form (nreverse (cdr form)))
+		  (while (consp form)
+		    (when (or dont-merge
+			      (null (assoc (car (car form))
+					   (symbol-value list))))
+		      (set list (cons (car form) (symbol-value list))))
+		    (setq form (cdr form)))))
+	    (end-of-stream))
 	(close-file file-handle)))))
 
 ;; Output a LIST of objects to STREAM. Each object printed will be indented
@@ -112,7 +115,7 @@ definitions will be added to any existing definitions."
   (interactive (list (prompt-for-file "File to save mail directory to"
 				      nil mail-directory-file)))
   (let
-      ((file-handle (open-file (expand-file-name file) "w"))
+      ((file-handle (open-file file 'write))
        list)
     (when file-handle
       (unwind-protect
@@ -303,7 +306,7 @@ mail directory. Also see the variables `mail-dir-scan-messages' and
 ;; Initialisation
 
 (when (and mail-dir-load-on-init
-	   (file-readable-p (expand-file-name mail-directory-file)))
+	   (file-readable-p mail-directory-file))
   (load-mail-directory mail-directory-file))
 
 (add-hook 'before-exit-hook #'(lambda ()

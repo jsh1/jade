@@ -53,7 +53,7 @@ when showing a mail message.")
 that matches will actually be highlighted. Whatever is left in the first
 match buffer is actually highlighted.")
 
-(defvar mail-folder-dir (expand-file-name "~/Mail/")
+(defvar mail-folder-dir "~/Mail/"
   "The directory in which mail folders are stored by default.")
 
 (defvar mail-default-folder "INBOX"
@@ -168,8 +168,8 @@ include any parenthesised expressions!")
       (while tem
 	(when (or (and (file-name-absolute-p (car (car tem)))
 		       (file-name= folder (car (car tem))))
-		  (file-name= folder (file-name-concat mail-folder-dir
-						       (car (car tem)))))
+		  (file-name= folder (expand-file-name (car (car tem))
+						       mail-folder-dir)))
 	  (setq list (append list (if (consp (cdr (car tem)))
 				      (cdr (car tem))
 				    (cons (cdr (car tem)))))))

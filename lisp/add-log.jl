@@ -27,9 +27,12 @@
 ;;;###autoload
 (defun add-change-log-entry (&optional log-file)
   (interactive "FLog file:")
-  (setq log-file (expand-file-name (unless log-file "")))
-  (when (or (file-directory-p log-file) (equal log-file ""))
-    (setq log-file (file-name-concat log-file change-log-file)))
+  (setq log-file (expand-file-name (or log-file "")))
+  (cond
+   ((file-directory-p log-file)
+    (setq log-file (concat log-file change-log-file)))
+   ((equal log-file "")
+    (setq log-file change-log-file)))
   (when (find-file log-file)
     (goto (start-of-buffer))
     (unless (log-in-same-day-p (copy-area (start-of-buffer)

@@ -100,6 +100,8 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
 ;; be reinitialised from FILE after the command completes.
 (defun rcs-command (command file-name options &optional
 		    reread-buffer-p ignore-errors output-stream)
+  (unless (setq file-name (local-file-name file-name))
+    (error "Can only use RCS on local files"))
   (format t "Running RCS command: %s %s %s..." command file-name options)
   (clear-buffer rcs-output-buffer)
   (let
@@ -114,7 +116,7 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
   (when reread-buffer-p
     (let
 	((old-pos (cursor-pos)))
-      (read-file-into-buffer file-name)
+      (read-file-into-buffer (buffer-file-name))
       (goto old-pos))))
 
 ;; Switch to the buffer containing all RCS output

@@ -85,12 +85,17 @@ searched for a `Local Variables:' section.")
 (defun open-buffer (name &optional always-create)
   "If no buffer called NAME exists, creates one and adds it to the main
 buffer-list. Always returns the buffer. If ALWAYS-CREATE is non-nil never
-return an existing buffer, always create a new one."
+return an existing buffer, always create a new one. If a new buffer has
+to be created, the value of its default-directory variable will be
+inherited from the current buffer."
   (let
-      ((buf (if always-create nil (get-buffer name))))
+      ((buf (if always-create nil (get-buffer name)))
+       (old-def-dir default-directory))
     (unless buf
       (when (setq buf (make-buffer name))
-	(add-buffer buf)))
+	(add-buffer buf)
+	(with-buffer buf
+	  (setq default-directory old-def-dir))))
     buf))
 
 (defun goto-buffer (buffer &optional view)
@@ -207,8 +212,7 @@ such buffer could be made."
   (let
       ((buf (get-file-buffer name)))
     (unless (or buf (setq buf (call-hook 'find-file-hook (list name) 'or)))
-      (when (setq buf (make-buffer (file-name-nondirectory name)))
-	(add-buffer buf)
+      (when (setq buf (open-buffer (file-name-nondirectory name) t))
 	(with-buffer buf
 	  (read-file-into-buffer name))))
     (unless dont-activate
@@ -222,6 +226,7 @@ init-mode, the hook after-find-file-hook is dispatched."
   (interactive "fFile to read into buffer:")
   (let ((buf (current-buffer)))
     (clear-buffer)
+    (setq file-name (expand-file-name file-name))
     (unless (call-hook 'read-file-hook (list file-name buf) 'or)
       (set-buffer-file-name buf file-name)
       (if (file-exists-p file-name)
@@ -234,7 +239,8 @@ init-mode, the hook after-find-file-hook is dispatched."
     (when auto-save-p
       (setq auto-save-interval default-auto-save-interval))
     (setq last-save-time (current-time)
-	  buffer-undo-list nil)
+	  buffer-undo-list nil
+	  default-directory (file-name-directory file-name))
     (when (auto-save-file-newer-p file-name)
       (message "Warning: Auto-saved file is newer")
       (beep))
@@ -322,7 +328,8 @@ that it is associated with."
     (let
 	((modes (when (file-exists-p name) (file-modes name))))
       (backup-file name)
-      (when (write-buffer-contents name nil nil buffer)
+      (when (with-buffer buffer
+	      (write-buffer-contents name))
 	(when modes
 	  (set-file-modes name modes))
 	t))))
@@ -360,14 +367,15 @@ to reflect NAME. Also sets the modification count to zero."
   (unless (bufferp buffer)
     (setq buffer (current-buffer)))
   (with-buffer buffer
-    (set-buffer-file-name buffer name)
+    (set-buffer-file-name buffer (expand-file-name name))
     (set-buffer-name buffer (file-name-nondirectory name))
     (when (write-file buffer)
       (set-buffer-modified buffer nil)
       (setq last-save-time (current-time)
 	    last-save-changes (buffer-changes)
 	    last-user-save-changes (buffer-changes)
-	    buffer-file-modtime (file-modtime name))
+	    buffer-file-modtime (file-modtime name)
+	    default-directory (file-name-directory name))
       (delete-auto-save-file)
       (format t "Saved file `%s'." name))))
 
@@ -452,8 +460,9 @@ BUFFER, if such a file exists."
   "Returns t if there exists an automatically saved copy of file NAME which
 is newer than NAME."
   (let
-      ((recover-name (make-auto-save-name name)))
-    (time-later-p (file-modtime recover-name) (file-modtime name))))
+      ((t1 (file-modtime (make-auto-save-name name)))
+       (t2 (file-modtime name)))
+    (and t1 t2 (time-later-p t1 t2))))
 
 (defun auto-save-mode (&optional disable)
   "When this mode is enabled files are autosaved regularly if they've been

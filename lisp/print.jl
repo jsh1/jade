@@ -60,8 +60,7 @@ buffer.")
 			     (cdr (assq (with-buffer buffer major-mode)
 					print-mode-alist)))
 			(and output-file
-			     (concat print-file-prefix
-				     (expand-file-name output-file t)))
+			     (concat print-file-prefix output-file))
 			(and printer
 			     (concat print-printer-prefix printer)))))
     (if (and prefix-arg (not (numberp prefix-arg)))

@@ -71,16 +71,17 @@
 ;; Compilation
 
 (defun compile-init ()
-  (if compile-buffer
-      (clear-buffer compile-buffer)
-    (setq compile-buffer (make-buffer "*compilation*"))
+  (let
+      ((original-dir default-directory))
+    (if compile-buffer
+	(clear-buffer compile-buffer)
+      (setq compile-buffer (open-buffer "*compilation*"))
+      (with-buffer compile-buffer
+	(setq ctrl-c-keymap compile-keymap))
+      (set-buffer-special compile-buffer t))
     (with-buffer compile-buffer
-      (setq ctrl-c-keymap compile-keymap))
-    (set-buffer-special compile-buffer t))
+      (setq default-directory original-dir)))
   (when compile-buffer
-    (add-buffer compile-buffer)
-    (set-buffer-file-name compile-buffer
-			  (file-name-directory (buffer-file-name)))
     (setq compile-errors nil
 	  compile-parsed-errors-p nil
 	  compile-errors-exist-p nil
@@ -117,8 +118,7 @@ the command may output (i.e. `errors' for a compilation)."
     (compile-init)
     (goto-buffer compile-buffer)
     (setq compile-proc (make-process (cons compile-buffer t)
-				     'compile-callback
-				     (file-name-directory (buffer-file-name))))
+				     'compile-callback))
     (let
 	((shell-cmd (concat command ?\n)))
       (write compile-buffer shell-cmd)
@@ -212,16 +212,13 @@ buffer in a form that `goto-next-error' understands."
 	   last-e-file
 	   new-errors)
 	(while (setq compile-error-pos (re-search-forward compile-error-regexp
-							 compile-error-pos))
+							  compile-error-pos))
 	  (setq error-line (1- (read-from-string
 				(expand-last-match compile-line-expand))))
 	  (when (or (not last-e-line) (/= error-line last-e-line))
 	    (setq last-e-line error-line
-		  error-file (file-name-concat
-			      (buffer-file-name)
-			      (expand-last-match compile-file-expand)))
-	    (if (equal last-e-file error-file)
-		(setq error-file last-e-file)
+		  error-file (expand-last-match compile-file-expand))
+	    (unless (string= last-e-file error-file)
 	      (setq last-e-file error-file))
 	    (setq new-errors (cons (cons (make-mark (pos 0 error-line)
 						    error-file)

@@ -39,9 +39,9 @@
 ;; Returns t if FILE-NAME is under RCS control
 (defun rcs-file-p (file-name)
   (or (file-exists-p (concat file-name ",v"))
-      (file-exists-p (file-name-concat
-		      (file-name-directory file-name) "RCS"
-		      (concat (file-name-nondirectory file-name) ",v")))))
+      (file-exists-p (expand-file-name
+		      (concat (file-name-nondirectory file-name) ",v")
+		      (concat (file-name-directory file-name) "RCS")))))
 
 ;; Function called from the after-read-file-hook
 (defun rcs-read-file-function (buffer)

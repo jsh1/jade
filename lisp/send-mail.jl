@@ -86,8 +86,8 @@ being sent."
 	(insert "\n\n-- \n")
 	(if (eq mail-signature t)
 	    (when (and mail-signature-file
-		       (file-exists-p (expand-file-name mail-signature-file)))
-	      (insert-file (expand-file-name mail-signature-file)))
+		       (file-exists-p mail-signature-file))
+	      (insert-file mail-signature-file))
 	  (insert mail-signature))
 	(when (/= (pos-col (cursor-pos)) 0)
 	  (insert "\n"))
@@ -183,8 +183,7 @@ Major mode for composing and sending mail messages."
 (defun send-mail-signature ()
   "Insert the contents of the mail-signature-file as the message's signature."
   (interactive)
-  (if (and mail-signature-file
-	   (file-exists-p (expand-file-name mail-signature-file)))
+  (if (and mail-signature-file (file-exists-p mail-signature-file))
       (let
 	  ((pos (search-backward "\n\n-- \n" (end-of-buffer)))
 	   (old-pos (cursor-pos)))
@@ -194,7 +193,7 @@ Major mode for composing and sending mail messages."
 	      (delete-area (cursor-pos) (end-of-buffer)))
 	  (goto (end-of-buffer))
 	  (insert "\n\n-- \n"))
-	(insert-file (expand-file-name mail-signature-file))
+	(insert-file mail-signature-file)
 	(when (/= (pos-col (cursor-pos)) 0)
 	  (insert "\n"))
 	(when (<= old-pos (end-of-buffer))
@@ -272,7 +271,7 @@ Major mode for composing and sending mail messages."
 	(setq tem (mail-delete-header (match-start)))
 	(unwind-protect
 	    (progn
-	      (setq file (open-file (expand-file-name filename) "a"))
+	      (setq file (open-file filename 'append))
 	      (unless (zerop (file-size filename))
 		(write file "\n\n"))
 	      ;; Need timezone as well

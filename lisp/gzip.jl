@@ -66,12 +66,13 @@
   (when (string-match "\\.(gz|Z)$" file-name)
     (let
 	((modes (when (file-exists-p file-name) (file-modes file-name)))
-	 (tmp-name (tmp-file-name))
+	 (tmp-name (make-temp-name))
 	 (compressor (if (string-match "\\.Z$" file-name) "compress" "gzip"))
 	 dst-file proc)
       (backup-file file-name)
-      (when (and (write-buffer-contents tmp-name nil nil buffer)
-		 (setq dst-file (open-file file-name "wb")))
+      (when (and (with-buffer buffer
+		   (write-buffer-contents tmp-name))
+		 (setq dst-file (open-file file-name 'write)))
 	(unwind-protect
 	    (progn
 	      (setq proc (make-process dst-file))
