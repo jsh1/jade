@@ -320,14 +320,6 @@ which denotes no errors. Returns nil if the file doesn't have a client.
 
 /* dl hooks */
 
-rep_xsubr *rep_dl_subrs[] = {
-    &Sserver_open_p,
-    &Sserver_open,
-    &Sserver_close,
-    &Sserver_reply,
-    0
-};
-
 repv
 rep_dl_init(repv file_name)
 {
@@ -335,6 +327,10 @@ rep_dl_init(repv file_name)
     rep_mark_static(&client_list);
     rep_mark_static(&socket_name);
     rep_INTERN(server_find_file);
+    rep_ADD_SUBR (Sserver_open_p);
+    rep_ADD_SUBR (Sserver_open);
+    rep_ADD_SUBR (Sserver_close);
+    rep_ADD_SUBR (Sserver_reply);
     return Qt;
 }
 
