@@ -132,6 +132,13 @@ Major mode for composing and sending mail messages. Local bindings are:\n
   (setq mode-name "Mail"
 	major-mode 'send-mail-mode
 	major-mode-kill 'send-mail-mode-kill
+	paragraph-separate (concat "^([\t\f ]|"
+				   (quote-regexp mail-yank-prefix)
+				   ?| (quote-regexp mail-header-separator)
+				   ")*\n")
+	paragraph-start (concat "^([\t\f ]|"
+				(quote-regexp mail-yank-prefix)
+				?| (quote-regexp mail-header-separator) ")*$")
 	ctrl-c-keymap send-mail-c-keymap)
   ;; Need to turn on autosaving and associate the buffer with a
   ;; temporary file...
