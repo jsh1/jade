@@ -485,9 +485,9 @@ pointed to by POS (or the cursor), in BUFFER.
     return make_pos(len, VROW(pos));
 }
 
-DEFUN("set-indent-pos", Fset_indent_pos, Sset_indent_pos, (repv indpos, repv tx, repv spaces_p), rep_Subr3) /*
-::doc:set-indent-pos::
-set-indent-pos POS [BUFFER] [ONLY-SPACES]
+DEFUN("%set-indent-pos", Fset_indent_pos, Sset_indent_pos, (repv indpos, repv tx, repv spaces_p), rep_Subr3) /*
+::doc:%set-indent-pos::
+%set-indent-pos POS [BUFFER] [ONLY-SPACES]
 
 Sets the indentation of the line pointed to by POS to the column pointed
 to by POS by putting the optimal sequence of TAB and SPC characters at the
@@ -583,9 +583,9 @@ If ONLY-SPACES in non-nil no tab characters are used.
     return Qnil;
 }
 
-DEFUN_INT("indent-to", Findent_to, Sindent_to, (repv col, repv spaces_p), rep_Subr2, "NIndent to column:") /*
-::doc:indent-to::
-indent-to COLUMN [ONLY-SPACES]
+DEFUN_INT("%indent-to", Findent_to, Sindent_to, (repv col, repv spaces_p), rep_Subr2, "NIndent to column:") /*
+::doc:%indent-to::
+%indent-to COLUMN [ONLY-SPACES]
 
 Inserts enough tabs and spaces to move the cursor to glyph column COLUMN.
 If ONLY-SPACES is non-nil no tabs are used.

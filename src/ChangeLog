@@ -1,3 +1,8 @@
+2005-07-04  John Harper  <jsh@unfactored.org>
+
+	* editcommands.c (Fset_indent_pos, Findent_to): renamed as
+	%set-indent-pos and %indent-to
+
 2005-02-13  John Harper  <jsh@unfactored.org>
 
 	* files.c (Finsert_file_contents): fixed crash when inserting
