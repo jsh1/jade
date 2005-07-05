@@ -69,7 +69,7 @@
 ;; Configuration
 
 (defvar auto-mode-alist
-  '(("\\.(c|h)$|^c$" . c-mode)
+  '(("\\.(c|h|cpp)$|^c$" . c-mode)
     ("\\.jl$|^.jaderc$|^lisp$" . lisp-mode)
     ("\\.(te?xt|doc|article|letter)$" . text-mode)
     ("^(text|(.*/|)draft)$" . text-mode)
@@ -82,7 +82,8 @@
     ("ChangeLog$" . changelog-mode)
     ("\\.sh$|^sh(ell)?$" . sh-mode)
     ("\\.p[lm]$|^perl$" . perl-mode)
-    ("\\.y$|^yacc$" . yacc-mode))
+    ("\\.y$|^yacc$" . yacc-mode)
+    ("\\.(m|mm)$|^objective-c$" . objective-c-mode))
   "List of all major modes which can be enabled by loading a file into
 a buffer. List is made of `(REGEXP . MODE)' cells; the REGEXP is matched
 against the mode specification (i.e. the filename), if it matches the

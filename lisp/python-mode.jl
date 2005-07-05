@@ -144,11 +144,10 @@
       (set-indent-pos 
        (pos
 	(pos-col python-current-context-start)
-	(pos-line p))
-       (current-buffer) t))
+	(pos-line p))))
      (t 
       nil))
-    (set-indent-pos (python-indent-pos p) (current-buffer) t)))
+    (set-indent-pos (python-indent-pos p))))
      
 (defun python-backward-stmt (#!optional number p)
   "Return buffer position of NUMBER's previous Python statement"
@@ -204,7 +203,7 @@
 		     (+
 		      (pos-col old-indent)
 		      (* delta python-indent-step))
-		     (pos-line old-indent))) (current-buffer) t))
+		     (pos-line old-indent)))))
 
 (defun python-incr-indent (#!optional p)
   "Indent `p' or cursor line"
@@ -261,11 +260,8 @@ Commands defined by this mode are:\n
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
 	local-ctrl-c-keymap python-mode-ctrl-c-keymap
-	local-keymap python-mode-keymap)
+	local-keymap python-mode-keymap
+	indent-tabs-mode nil)
   (make-local-variable 'info-documentation-files)
   (setq info-documentation-files '("python"))
   (call-hook 'python-mode-hook))
-
-
-                                      
-

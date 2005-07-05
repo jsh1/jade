@@ -26,6 +26,7 @@
 (autoload 'asm-cpp-mode "asm-mode" t)
 (autoload 'buffer-summary "buffer-summary" t)
 (autoload 'c-mode "c-mode" t)
+(autoload 'objective-c-mode "c-mode" t)
 (autoload 'c-backslash-area "c-mode" t)
 (autoload 'start-compile-command "compile")
 (autoload 'compile "compile" t)

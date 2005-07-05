@@ -74,6 +74,10 @@ contain.")
   "Extra indentation for labels.")
 (make-variable-buffer-local 'c-label-indent)
 
+(defvar c-objective-c nil
+  "Look for Objective C syntax, e.g. @synchronized.")
+(make-variable-buffer-local 'c-objective-c)
+
 (defvar c-styles
   '((bsd
      (c-body-indent . 4)
@@ -155,6 +159,20 @@ Commands defined by this mode are:\n
   (make-local-variable 'info-documentation-files)
   (setq info-documentation-files '("libc"))
   (call-hook 'c-mode-hook))
+
+;;;###autoload
+(defun objective-c-mode ()
+  "Objective C Mode:\n
+Simple mode for editing Objective C source code. Its main feature is to be
+able to indent lines to their (probably) correct depth.\n
+Commands defined by this mode are:\n
+\\{c-mode-keymap}\\{c-mode-ctrl-c-keymap,Ctrl-c}"
+  (interactive)
+  (c-mode)
+  (setq mode-name "Objective-C"
+	major-mode 'objective-c-mode
+	c-objective-c t)
+  (call-hook 'objective-c-mode-hook))
 
 (defun c-open-brace ()
   (interactive)
@@ -261,6 +279,12 @@ Commands defined by this mode are:\n
 	 "(if|for|while|switch)[\t ]*\\(.*$|(else|do)([^a-zA-Z0-9_]|$)"
 	 exp-pos)
 	;; Something that causes the next statement to be
+	;; indented one level
+	(setq exp-ind (right-char c-body-indent exp-ind)))
+
+       ((and c-objective-c
+	     (looking-at "@(try|finally|catch|synchronized)\\s" exp-pos))
+	;; Something else that causes the next statement to be
 	;; indented one level
 	(setq exp-ind (right-char c-body-indent exp-ind)))
 

@@ -37,11 +37,15 @@ character following the end of the match.")
 (defvar page-start "^\f"
   "Regular expression that matches the start of a page of text.")
 
+(defvar indent-tabs-mode t
+  "Indentation can insert tabs if this is non-nil.")
+
 (make-variable-buffer-local 'word-regexp)
 (make-variable-buffer-local 'word-not-regexp)
 (make-variable-buffer-local 'paragraph-separate)
 (make-variable-buffer-local 'paragraph-start)
 (make-variable-buffer-local 'page-start)
+(make-variable-buffer-local 'indent-tabs-mode)
 
 (defvar toggle-read-only-function nil
   "May contain function to call when toggling a buffer between read-only
@@ -818,7 +822,7 @@ end of the line simply move COUNT characters to the left."
 (defun tab-with-spaces ()
   "Insert enough spaces before the cursor to move it to the next tab position."
   (interactive)
-  (indent-to (pos-col (forward-tab)) t))
+  (%indent-to (pos-col (forward-tab)) t))
 
 (defun just-spaces (count)
   "Ensure that there are only COUNT spaces around the cursor."
@@ -909,6 +913,19 @@ the same."
 					  (end-of-line match)))))))
       (error
        (message "[No matching bracket]")))))
+
+(defun set-indent-pos (pos)
+  "Sets the indentation of the line pointed to by POS to the column pointed
+to by POS by putting the optimal sequence of TAB and SPC characters at the
+start of the line. If `indent-tabs-mode' is nil, only SPC characters will
+be inserted."
+  (%set-indent-pos pos nil (not indent-tabs-mode)))
+
+(defun indent-to (column)
+  "Inserts enough TAB and SPC characters to move the cursor to glyph column
+COLUMN. If `indent-tabs-mode' is nil only SPC characters are used. COLUMN
+counts from zero."
+  (%indent-to column (not indent-tabs-mode)))
 
 
 ;; Some macros
