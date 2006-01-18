@@ -140,7 +140,7 @@ else
 fi
 
 dnl Use r_alloc or not?
-use_r_alloc=yes
+use_r_alloc=no
 AC_ARG_ENABLE(ralloc,
  [  --enable-ralloc	  Use the GNU relocating allocator (default)
   --disable-ralloc	  Don't use the relocating alloc],
