@@ -1,3 +1,8 @@
+2006-01-18  John Harper  <jsh@unfactored.org>
+
+	* glyphs.c, faces.c: no more nested functions - Apple morons
+	think they're a security hazard and removed them from gcc
+
 2005-07-04  John Harper  <jsh@unfactored.org>
 
 	* editcommands.c (Fset_indent_pos, Findent_to): renamed as

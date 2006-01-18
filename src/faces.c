@@ -283,41 +283,52 @@ get_merged_face(WIN *w, u_long car,
     return empty;
 }
 
+struct merge_closure
+{
+    u_long car;
+    Lisp_Color *background;
+    Lisp_Color *foreground;
+};
+
+static void union_face (struct merge_closure *c, Lisp_Face *face)
+{
+    c->car |= face->car & (FACEFF_MASK & ~FACEFF_INVERT);
+    if(face->car & FACEFF_INVERT)
+	c->car ^= FACEFF_INVERT;
+    if(c->background == 0 && COLORP(face->background))
+	c->background = VCOLOR(face->background);
+    if(c->foreground == 0 && COLORP(face->foreground))
+	c->foreground = VCOLOR(face->foreground);
+}
+
 /* Return the id of a face in W->w_MergedFaces that expresses the
    attributes of the positions within E. */
 int
 merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
 {
     WIN *w = vw->vw_Win;
-    u_long car = invert_all_faces ? FACEFF_INVERT : 0;
-    Lisp_Color *background = 0, *foreground = 0;
+    struct merge_closure c;
 
     Lisp_Extent *x;
     bool mouse_extent = FALSE;
 
-    void union_face(Lisp_Face *face) {
-	car |= face->car & (FACEFF_MASK & ~FACEFF_INVERT);
-	if(face->car & FACEFF_INVERT)
-	    car ^= FACEFF_INVERT;
-	if(background == 0 && COLORP(face->background))
-	    background = VCOLOR(face->background);
-	if(foreground == 0 && COLORP(face->foreground))
-	    foreground = VCOLOR(face->foreground);
-    }
+    c.car = invert_all_faces ? FACEFF_INVERT : 0;
+    c.background = 0;
+    c.foreground = 0;
 
     if(on_cursor)
     {
 	if(WINDOW_HAS_FOCUS(w))
-	    car |= FACEFF_INVERT;
+	    c.car |= FACEFF_INVERT;
 	else
-	    car |= FACEFF_BOXED;
+	    c.car |= FACEFF_BOXED;
     }
 
     if(in_block)
     {
 	repv face = Fsymbol_value (Qblock_face, Qt);
 	if(FACEP(face))
-	    union_face(VFACE(face));
+	    union_face(&c, VFACE(face));
     }
 
     /* Work up from E to the root. */
@@ -346,23 +357,23 @@ merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
 	{
 	    face = Fextent_get (rep_VAL(x), Qmouse_face);
 	    if (face && FACEP (face))
-		union_face (VFACE (face));
+		union_face (&c, VFACE (face));
 	}
 	face = Fextent_get(rep_VAL(x), Qface);
 	if(face && FACEP(face))
-	    union_face(VFACE(face));
+	    union_face(&c, VFACE(face));
     }
 
     /* Merge in the default-face properties */
     {
 	repv face = Fsymbol_value (Qdefault_face, Qt);
 	if(face != rep_NULL && FACEP(face))
-	    union_face(VFACE(face));
+	    union_face(&c, VFACE(face));
     }
 
-    assert(background != 0 && foreground != 0);
+    assert(c.background != 0 && c.foreground != 0);
 
-    return get_merged_face(w, car, background, foreground);
+    return get_merged_face(w, c.car, c.background, c.foreground);
 }
 
 int

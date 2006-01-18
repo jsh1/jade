@@ -293,112 +293,123 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	       CC is the positition in the line of the current character,
 	       GC is the position in the screen row of the next glyph to
 	       be output. */
-	    void CHECK_BLOCK_ATTR(long cc, long gc) {
-		if(!rect_block)
-		{
-		    /* check for a normal block */
-		    if(!block_active && block_start
-		       && (cc) == VCOL(vw->vw_BlockS))
-		    {
-			block_active = TRUE;
-			attr = merge_faces(vw, extent, block_active, FALSE);
-		    }
-		    if(block_active && block_end
-		       && (cc) == VCOL(vw->vw_BlockE))
-		    {
-			block_active = FALSE;
-			attr = merge_faces(vw, extent, block_active, FALSE);
-		    }
-		}
-		else if(block_row)
-		{
-		    /* check for a rectangular block */
-		    if((gc) == block_start)
-		    {
-			block_active = TRUE;
-			attr = merge_faces(vw, extent, block_active, FALSE);
-		    }
-		    else if((gc) == block_end)
-		    {
-			block_active = FALSE;
-			attr = merge_faces(vw, extent, block_active, FALSE);
-		    }
-		}
-	    }
+#define CHECK_BLOCK_ATTR(cc_, gc_)					\
+            do {							\
+		long cc = (cc_), gc = (gc_);				\
+		if(!rect_block)						\
+		{							\
+		    /* check for a normal block */			\
+		    if(!block_active && block_start			\
+		       && (cc) == VCOL(vw->vw_BlockS))			\
+		    {							\
+			block_active = TRUE;				\
+			attr = merge_faces(vw, extent,			\
+					   block_active, FALSE);	\
+		    }							\
+		    if(block_active && block_end			\
+		       && (cc) == VCOL(vw->vw_BlockE))			\
+		    {							\
+			block_active = FALSE;				\
+			attr = merge_faces(vw, extent,			\
+					   block_active, FALSE);	\
+		    }							\
+		}							\
+		else if(block_row)					\
+		{							\
+		    /* check for a rectangular block */			\
+		    if((gc) == block_start)				\
+		    {							\
+			block_active = TRUE;				\
+			attr = merge_faces(vw, extent,			\
+					   block_active, FALSE);	\
+		    }							\
+		    else if((gc) == block_end)				\
+		    {							\
+			block_active = FALSE;				\
+			attr = merge_faces(vw, extent,			\
+					   block_active, FALSE);	\
+		    }							\
+		}							\
+	    } while (0)
 
 	    /* Output a glyph CH with attribute defined by the
 	       variable "attr". */
-	    void OUTPUT (char ch) {
-		*codes++ = ch;
-		*attrs++ = attr;
-		if(cursor_row && char_col == cursor_col)
-		{
-		    attrs[-1] = merge_faces(vw, extent, block_active, TRUE);
-		    cursor_row = FALSE;
-		}
-	    }
+#define OUTPUT(ch)							\
+	    do {							\
+		*codes++ = (ch);					\
+		*attrs++ = attr;					\
+		if(cursor_row && char_col == cursor_col)		\
+		{							\
+		    attrs[-1] = merge_faces(vw, extent,			\
+					    block_active, TRUE);	\
+		    cursor_row = FALSE;					\
+		}							\
+	    } while (0)
 
 	    /* Use ``tem'' field of an extent to record its child that
 	       should be entered next, or null if no more children. */
-	    void CHECK_EXTENT (void) {
-		Lisp_Extent *orig = extent, *old;
-		do {
-		    old = extent;
-		    if(char_row > next_extent.row
-		       || (char_row == next_extent.row
-			   && char_col >= next_extent.col))
-		    {
-			if(extent->tem != 0
-			   && (char_row > (extent->tem->start.row
-					  + extent->start.row
-					  + extent_delta)
-			       || (char_row == (extent->tem->start.row
-						+ extent->start.row
-						+ extent_delta)
-				   && char_col >= extent->tem->start.col)))
-			{
-			    /* Entering a new extent */
-			    extent_delta += extent->start.row;
-			    extent = extent->tem;
-			    extent->tem = extent->first_child;
-			    start_visible_extent (vw, extent,
-						  real_glyph_col, glyph_row);
-			}
-			else if(extent->parent != 0)
-			{
-			    /* Move back up one level. */
-			    end_visible_extent (vw, extent,
-						real_glyph_col, glyph_row);
-			    extent->parent->tem = extent->right_sibling;
-			    extent = extent->parent;
-			    extent_delta -= extent->start.row;
-			}
-			else
-			    break;
-			if(extent->tem != 0)
-			{
-			    next_extent = extent->tem->start;
-			    next_extent.row += extent->start.row;
-			}
-			else
-			    next_extent = extent->end;
-			next_extent.row += extent_delta;
-		    }
-		} while(extent != old);
-		if(extent != orig)
-		{
-		    attr = merge_faces(vw, extent, block_active, FALSE);
-
-		    /* Reload the glyph table for the new extent. */
-		    glyph_tab = Fbuffer_symbol_value(Qglyph_table,
-							rep_VAL(extent),
-							Qnil, Qt);
-		    if(!GLYPHTABP(glyph_tab))
-			glyph_tab = rep_VAL(&default_glyph_table);
-		    width_table = &VGLYPHTAB(glyph_tab)->gt_Widths;
-		    glyph_table = &VGLYPHTAB(glyph_tab)->gt_Glyphs;
-		}
-	    }
+#define CHECK_EXTENT()								\
+	    do {								\
+		Lisp_Extent *orig = extent, *old;				\
+		do {								\
+		    old = extent;						\
+		    if(char_row > next_extent.row				\
+		       || (char_row == next_extent.row				\
+			   && char_col >= next_extent.col))			\
+		    {								\
+			if(extent->tem != 0					\
+			   && (char_row > (extent->tem->start.row		\
+					  + extent->start.row			\
+					  + extent_delta)			\
+			       || (char_row == (extent->tem->start.row		\
+						+ extent->start.row		\
+						+ extent_delta)			\
+				   && char_col >= extent->tem->start.col)))	\
+			{							\
+			    /* Entering a new extent */				\
+			    extent_delta += extent->start.row;			\
+			    extent = extent->tem;				\
+			    extent->tem = extent->first_child;			\
+			    start_visible_extent (vw, extent,			\
+						  real_glyph_col,		\
+						  glyph_row);			\
+			}							\
+			else if(extent->parent != 0)				\
+			{							\
+			    /* Move back up one level. */			\
+			    end_visible_extent (vw, extent,			\
+						real_glyph_col,			\
+						glyph_row);			\
+			    extent->parent->tem = extent->right_sibling;	\
+			    extent = extent->parent;				\
+			    extent_delta -= extent->start.row;			\
+			}							\
+			else							\
+			    break;						\
+			if(extent->tem != 0)					\
+			{							\
+			    next_extent = extent->tem->start;			\
+			    next_extent.row += extent->start.row;		\
+			}							\
+			else							\
+			    next_extent = extent->end;				\
+			next_extent.row += extent_delta;			\
+		    }								\
+		} while(extent != old);						\
+		if(extent != orig)						\
+		{								\
+		    attr = merge_faces(vw, extent, block_active, FALSE);	\
+										\
+		    /* Reload the glyph table for the new extent. */		\
+		    glyph_tab = Fbuffer_symbol_value(Qglyph_table,		\
+							rep_VAL(extent),	\
+							Qnil, Qt);		\
+		    if(!GLYPHTABP(glyph_tab))					\
+			glyph_tab = rep_VAL(&default_glyph_table);		\
+		    width_table = &VGLYPHTAB(glyph_tab)->gt_Widths;		\
+		    glyph_table = &VGLYPHTAB(glyph_tab)->gt_Glyphs;		\
+		}								\
+	    } while (0)
 
 
 	    if(in_block)
