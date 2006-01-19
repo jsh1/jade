@@ -367,7 +367,6 @@ interactively, the cursor is set to this position."
 	  (let*
 	      ((start (match-start))
 	       (end (match-end))
-	       (orig p)
 	       (separator-match (looking-at paragraph-separate start)))
 	    (setq count (1+ count))
 	    (setq p (if separator-match end start)))

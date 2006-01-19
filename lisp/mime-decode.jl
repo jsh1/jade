@@ -114,7 +114,7 @@ external mmencode program, otherwise handle locally.")
 ;; Returns (TYPE SUBTYPE [(PARAM . VALUE-STRING) ... ])
 (defun mime-decode-content-type (text)
   (let
-      (type subtype params)
+      (type subtype)
     (unless (string-looking-at (concat "[ \t\n]*(" mime-token-re
 				       ")[ \t\n]*(/[ \t\n]*(" mime-token-re
 				       ")[ \t\n]*)?") text)
@@ -208,7 +208,7 @@ external mmencode program, otherwise handle locally.")
 	    ((process (make-process output))
 	     (args (append (if base64 '("-b") '("-q"))
 			   (if encode nil '("-u")))))
-	  (condition-case data
+	  (condition-case nil
 	      (when (zerop (if buffer
 			       (with-buffer buffer
 				 (apply call-process-area process start end
@@ -460,7 +460,6 @@ interactively the MIME part under the cursor is used."
   (interactive (list (mime-current-part)))
   (let*
       ((content-type (extent-get extent 'content-type))
-       (content-xfer-enc (extent-get extent 'content-xfer-enc))
        (viewer (cdr (assq (car content-type) mime-viewer-alist))))
     (cond
      ((functionp viewer)
@@ -491,8 +490,7 @@ interactively the MIME part under the cursor is used."
       (save-restriction
 	(unrestrict-buffer)
 	(let*
-	    ((content-xfer-enc (extent-get extent 'content-xfer-enc))
-	     (tem (assq content-xfer-enc mime-xfer-encodings-alist)))
+	    ((content-xfer-enc (extent-get extent 'content-xfer-enc)))
 	  (restrict-buffer (extent-get extent 'start)
 			   (extent-get extent 'end))
 	  (goto (start-of-buffer))

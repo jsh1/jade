@@ -44,6 +44,7 @@
 		     'mouse-face active-face)))
 
 (defun rm-msg-links-addresses (point msg folder)
+  (declare (unused msg))
   (save-restriction
     (restrict-buffer point (forward-char -1 (or (mail-unfold-header point)
 						(end-of-buffer))))
@@ -113,6 +114,7 @@
 				       () (list 'sent-after date)))))))))
 
 (defun rm-msg-links-message-id (point msg folder)
+  (declare (unused msg))
   (save-restriction
     (restrict-buffer point (forward-char -1 (or (mail-unfold-header point)
 						(end-of-buffer))))

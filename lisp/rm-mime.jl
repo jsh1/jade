@@ -37,6 +37,7 @@
 
 ;; Called from the rm-display-message-hook
 (defun rm-mime-display-msg-function (msg folder)
+  (declare (unused folder))
   (when (rm-get-msg-header msg "MIME-Version")
     ;; A MIME message, look for content-type, content-transfer-encoding,
     ;; and content-disposition headers

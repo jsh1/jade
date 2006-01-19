@@ -473,6 +473,7 @@ with it."
 ;;;###autoload
 (defun prompt-for-command (#!optional title start)
   "Prompt for a command."
+  (declare (unused start))
   (prompt-for-symbol (or title "Enter name of command:") commandp))
 
 ;;;###autoload
@@ -531,9 +532,7 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
   "Prompts the user for a single keypress response, either `y' or `n' to the
 string QUESTION, returns t for `y'."
   (let
-      ((buf (current-buffer))
-       (view (current-view))
-       (prompt-buffer (make-buffer "*y-or-n*")))
+      ((prompt-buffer (make-buffer "*y-or-n*")))
     (with-view (minibuffer-view)
       (with-buffer prompt-buffer
 	(setq unbound-key-hook '(beep)

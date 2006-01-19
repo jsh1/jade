@@ -137,6 +137,7 @@ a buffer."
 	 (file (expand-last-match "\\6")))
       (when (and (not (string= user ""))
 		 (not (string= passwd "")))
+	(require 'rep.io.file-handlers.remote.ftp)
 	(remote-ftp-add-passwd user host passwd))
       ;; XXX What if the method of retrieving files from HOST isn't FTP?
       (find-file (concat ?/ (if (string= user "") "anonymous" user)
@@ -238,6 +239,7 @@ a buffer."
 	  (set-process-function
 	   (cdr cell)
 	   #'(lambda (p)
+	       (declare (unused p))
 	       (setq find-url-processes (delq cell find-url-processes))
 	       (message "[wget exited]")))
 	  (funcall (if kill kill-process interrupt-process) (cdr cell)))

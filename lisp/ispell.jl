@@ -464,6 +464,7 @@ whole of the buffer (if no block)."
 		 (list (start-of-buffer) (end-of-buffer))))
   (let
       ((failure-fun #'(lambda (word response wstart wend)
+			(declare (unused word response))
 			(let
 			    ((e (make-extent
 				 wstart wend

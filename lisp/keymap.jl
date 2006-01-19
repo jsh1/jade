@@ -137,6 +137,7 @@ is nil, the currently active keymaps used, i.e. all key bindings currently
 in effect."
   (interactive "COld command:\nCReplacement command:")
   (map-keymap #'(lambda (k pfx)
+		  (declare (unused pfx))
 		  (when (eq (car k) olddef)
 		    (rplaca k newdef))) keymap))
 

@@ -169,4 +169,5 @@ Local bindings in this mode are:\n
   (goto (forward-char 1 (char-search-forward ?}))))
 
 (defun tex-ispell-ignore-word-hook (word start end)
+  (declare (unused word end))
   (= (get-char (forward-char -1 start)) ?\\ ))

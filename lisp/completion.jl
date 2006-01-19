@@ -117,7 +117,7 @@ matching strings.")
 	(when completion-deletable-view
 	  (shrink-view-if-larger-than-buffer))))))
 
-(defun completion-insert (completions word #!optional only-display fold-case)
+(defun completion-insert (completions word #!optional only-display)
   (let
       ((count (length completions))
        (w-start (forward-char (- (length word)))))

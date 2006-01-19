@@ -28,6 +28,7 @@
       t)))
 
 (defun dired-write-file-hook (filename buffer)
+  (declare (unused buffer))
   (and (file-directory-p filename)
        (error "Can't write to directories, %s" filename)))
 

@@ -38,6 +38,7 @@
 
 ;; Called from the rm-display-message-hook
 (defun rm-highlight-urls (msg folder)
+  (declare (unused msg folder))
   (let
       ((point (start-of-buffer)))
     (save-restriction

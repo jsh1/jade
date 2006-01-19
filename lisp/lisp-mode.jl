@@ -88,21 +88,19 @@ in the status line."
   (set-indent-pos (lisp-indent-pos p)))
 
 (defun lisp-complete-sexp (sexp beg end)
+  (declare (unused end))
   (let
-      ((is-function nil)
-       completions)
+      ((is-function nil))
     (when (and (> beg (start-of-buffer))
 	       (= (get-char (forward-char -1 beg)) ?\())
       (setq is-function t))
-    (setq completions (mapcar symbol-name
-			      (apropos (concat ?^ (quote-regexp sexp))
-				       (if is-function
-					   (lambda (x)
-					     (and (boundp x)
-						  (functionp
-						   (symbol-value x))))
-					 boundp))))
-    completions))
+    (mapcar symbol-name (apropos (concat ?^ (quote-regexp sexp))
+				 (if is-function
+				     (lambda (x)
+				       (and (boundp x)
+					    (functionp
+					     (symbol-value x))))
+				   boundp)))))
 
 
 ;; Expressions

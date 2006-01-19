@@ -179,17 +179,15 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
   (goto (end-of-buffer))
   (unless (stringp output)
     (setq output (make-string 1 output)))
-  (let
-      ((start (cursor-pos)))
-    (when shell-output-filter
-      (setq output (funcall shell-output-filter output)))
-    (when output
-      (insert output)
-      (when (and shell-output-limit (> (buffer-length) shell-output-limit))
-	(delete-area (start-of-buffer) (forward-line (- (buffer-length)
-							shell-output-limit)
-						     (start-of-buffer))))
-      (setq shell-last-output (end-of-buffer)))))
+  (when shell-output-filter
+    (setq output (funcall shell-output-filter output)))
+  (when output
+    (insert output)
+    (when (and shell-output-limit (> (buffer-length) shell-output-limit))
+      (delete-area (start-of-buffer) (forward-line (- (buffer-length)
+						      shell-output-limit)
+						   (start-of-buffer))))
+    (setq shell-last-output (end-of-buffer))))
 
 
 ;; Commands

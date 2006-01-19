@@ -58,9 +58,8 @@ while auto-archiving.")
 	      (unless (zerop (1- (buffer-length)))
 		(insert "\n"))
 	      (let
-		  ((ins-start (cursor-pos))
-		   ;; Don't override read-only in normal buffers
-		   (inhibit-read-only (eq major-mode 'read-mail-mode)))
+		  ;; Don't override read-only in normal buffers
+		  ((inhibit-read-only (eq major-mode 'read-mail-mode)))
 		(insert text))))))
        ((filep dest)
 	;; DEST is a file. Append to it. The flush is for when checking the
@@ -124,7 +123,7 @@ folder's file."
   "Archive all messages in FOLDER matching RULE to the mailbox called MAILBOX."
   (interactive (list (rm-current-folder)
 		     (rm-prompt-for-rule "Rule to archive by:")
-		     (rm-prompt-for-folder "Archive to mailbox:")))
+		     (prompt-for-folder "Archive to mailbox:")))
   (let
       ((dest (or (get-file-buffer mailbox)
 		 (open-file mailbox 'append))))

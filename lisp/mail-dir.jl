@@ -65,7 +65,7 @@ definitions will be added to any existing definitions."
 		     current-prefix-arg))
   (let
       ((file-handle (open-file file 'read))
-       form tem)
+       form)
     (if dont-merge
 	(setq mail-address-list nil
 	      mail-directory-modified nil)

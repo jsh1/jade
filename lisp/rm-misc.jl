@@ -76,6 +76,7 @@ message formatting characters are available.")
 		(mail-format-address (car cell) (cdr cell)))))
       (mail-setup (mapcar fun to) subject msg-id (mapcar fun cc) references
 		  (list (cons #'(lambda (f m)
+				  (declare (unused f))
 				  (rm-message-put m 'replied t))
 			      (list folder msg)))))
     (if to

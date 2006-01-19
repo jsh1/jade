@@ -39,6 +39,7 @@ message isn't scanned.")
 
 ;; This function is added to read-mail.jl's read-mail-display-message-hook
 (defun rm-mail-dir-scanner (rm-message folder #!optional all-addresses force)
+  (declare (unused folder))
   (call-hook 'rm-mail-dir-auto-scan-hook (list rm-message) 'and)
   (mapc #'(lambda (cell)
 	    (when (and (car cell) (or (cdr cell) force))

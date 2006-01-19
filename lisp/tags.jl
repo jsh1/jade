@@ -134,10 +134,10 @@ move back to the previously found tag."
 			  (expand-file-name
 			   (expand-last-match "\\1")
 			   (with-buffer tags-buffer default-directory))))
-	       ;; This also switches to buffer
-	       (buffer (or (find-file file)
-			   (error "Can't open file %S" file)))
 	       tag-pos tag-line tag-name)
+	    ;; This switches to the new file's buffer
+	    (or (find-file file)
+		(error "Can't open file %S" file))
 	    (unless (looking-at "^(.+)\177((.+)\001|)([0-9]+)"
 				(start-of-line start) tags-buffer)
 	      (error "Malformed tag line at %S" start))

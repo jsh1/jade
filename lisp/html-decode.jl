@@ -288,6 +288,7 @@ of the document, currently only `title' and `base' keys are defined."
 
 ;; Decodes to VAR
 (defun html-decode-to-var (var start end source dest)
+  (declare (unused dest))
   (and (looking-at "[ \t\n\f\r] +" start source)
        (setq start (min (match-end) end)))
   (set var (if (symbol-value var)
@@ -423,20 +424,18 @@ of the document, currently only `title' and `base' keys are defined."
 
 ;; Pop all environments back to the first tag of type TAG
 (defun html-decode-pop-env (tag dest)
-  (let
-      (item)
-    (when (and (not (memq (car tag) html-decode-optional-close-tags))
-	       (memq (nth 2 (car html-decode-stack))
-		     html-decode-optional-close-tags))
-      ;; Close the trailing optional tags
-      (html-decode-pop-optional tag dest))
-    (if (not (eq (car tag) (nth 2 (car html-decode-stack))))
-	(and html-decode-echo-warnings
-	     (format (stderr-file)
-		     "warning: badly nested HTML: %s, %s, %s, %s\n"
-		     html-decode-source html-decode-point
-		     (car tag) (nth 2 (car html-decode-stack))))
-      (html-decode-close-frame (car tag) dest))))
+  (when (and (not (memq (car tag) html-decode-optional-close-tags))
+	     (memq (nth 2 (car html-decode-stack))
+		   html-decode-optional-close-tags))
+    ;; Close the trailing optional tags
+    (html-decode-pop-optional tag dest))
+  (if (not (eq (car tag) (nth 2 (car html-decode-stack))))
+      (and html-decode-echo-warnings
+	   (format (stderr-file)
+		   "warning: badly nested HTML: %s, %s, %s, %s\n"
+		   html-decode-source html-decode-point
+		   (car tag) (nth 2 (car html-decode-stack))))
+    (html-decode-close-frame (car tag) dest)))
 
 ;; Are we entering or leaving TAG
 (defmacro html-decode-tag-entering-p (tag)
@@ -673,10 +672,12 @@ of the document, currently only `title' and `base' keys are defined."
 	(html-decode-tag:align tag)
 	(html-decode-add-pending 'paragraph))
     (lambda (name params dest start)
+      (declare (unused name params dest start))
       (html-decode-add-pending 'paragraph))))
 (put 'p 'html-decode-fun html-decode:p)
 
 (defun html-decode:br (tag dest)
+  (declare (unused tag dest))
   (html-decode-add-pending 'line))
 (put 'br 'html-decode-fun html-decode:br)
 
@@ -684,6 +685,7 @@ of the document, currently only `title' and `base' keys are defined."
   (html-decode-tag-with tag dest
       nil
     (lambda (name params dest start)
+      (declare (unused name))
       (when (assq 'name params)
 	;; an anchor, remember its name and position
 	(setq html-decode-anchors
@@ -750,6 +752,7 @@ of the document, currently only `title' and `base' keys are defined."
 	(html-decode-tag:align tag)
 	(setq html-decode-fill nil))
     (lambda (name params dest start)
+      (declare (unused name params dest start))
       (html-decode-add-pending 'paragraph))))
 (put 'pre 'html-decode-fun html-decode:pre)
 
@@ -763,6 +766,7 @@ of the document, currently only `title' and `base' keys are defined."
 	      html-decode-indent (+ html-decode-blockquote-indent
 				    html-decode-indent)))
     (lambda (name params dest start)
+      (declare (unused name params dest start))
       (html-decode-add-pending 'paragraph))))
 (put 'blockquote 'html-decode-fun html-decode:blockquote)
 
@@ -780,14 +784,17 @@ of the document, currently only `title' and `base' keys are defined."
 	(html-decode-add-pending 'paragraph)
 	(setq html-decode-fill 'left))
     (lambda (name params dest start)
+      (declare (unused name params dest start))
       (html-decode-add-pending 'paragraph))))
 (put 'table 'html-decode-fun html-decode:table)
 
 (defun html-decode:tr (tag dest)
+  (declare (unused tag dest))
   (html-decode-add-pending 'paragraph))
 (put 'tr 'html-decode-fun html-decode:tr)
 
 (defun html-decode:td (tag dest)
+  (declare (unused tag dest))
   (html-decode-add-pending 'line))
 (put 'td 'html-decode-fun html-decode:td)
 
@@ -807,6 +814,7 @@ of the document, currently only `title' and `base' keys are defined."
 	(html-decode-add-pending 'paragraph)
 	(setq html-decode-fill 'center))
     (lambda (name params dest start)
+      (declare (unused name params dest start))
       (html-decode-add-pending 'paragraph))))
 (put 'center 'html-decode-fun html-decode:center)
 
@@ -826,6 +834,7 @@ of the document, currently only `title' and `base' keys are defined."
 	(setq html-decode-indent (+ html-decode-indent
 				    html-decode-list-indent)))
     (lambda (name params dest start)
+      (declare (unused name params dest start))
       (if (zerop html-decode-list-depth)
 	  (html-decode-add-pending 'paragraph)
 	(html-decode-add-pending 'line)))))
@@ -852,6 +861,7 @@ of the document, currently only `title' and `base' keys are defined."
 	;; XXX Should only do this if column is too wide
 	(html-decode-add-pending 'line))
     (lambda (name params dest start)
+      (declare (unused name params dest start))
       (if (zerop html-decode-list-depth)
 	  (html-decode-add-pending 'paragraph)
 	(html-decode-add-pending 'line)))))
@@ -866,6 +876,7 @@ of the document, currently only `title' and `base' keys are defined."
 	(html-decode-add-pending 'line)
 	(setq html-decode-list-pending 'dl))
     (lambda (name params dest start)
+      (declare (unused name params start))
       (html-decode-output-pending dest)
       (if (> (pos-col (with-buffer dest (char-to-glyph-pos (cursor-pos))))
 	     (+ html-decode-indent html-decode-dl-indent -1))
@@ -880,10 +891,12 @@ of the document, currently only `title' and `base' keys are defined."
   (html-decode-tag-with tag dest
       (setq html-decode-indent (+ html-decode-indent html-decode-dl-indent))
     (lambda (name params dest start)
+      (declare (unused name params dest start))
       (html-decode-add-pending 'line))))
 (put 'dd 'html-decode-fun html-decode:dd)
 
 (defun html-decode:script (tag dest)
+  (declare (unused tag dest))
   (if (search-forward "</script>" html-decode-point html-decode-source t)
       (setq html-decode-point (match-end))
     (error "<script> doesn't end: %s, %s"
@@ -891,6 +904,7 @@ of the document, currently only `title' and `base' keys are defined."
 (put 'script 'html-decode-fun html-decode:script)
 
 (defun html-decode:style (tag dest)
+  (declare (unused tag dest))
   (if (search-forward "</style>" html-decode-point html-decode-source t)
       (setq html-decode-point (match-end))
     (error "<style> doesn't end: %s, %s"

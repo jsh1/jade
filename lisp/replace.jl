@@ -61,11 +61,9 @@ for that particular occurrence (see the `expand-last-match' function for
 details of what can be in TEMPLATE). Moves the cursor to the end of the
 last change."
   (interactive "sReplace regexp:\nsReplace regexp `%s' with:")
-  (let
-      (match)
-    (goto (start-of-buffer))
-    (while (setq match (re-search-forward from nil nil case-fold-search))
-      (goto (replace-last-match template)))))
+  (goto (start-of-buffer))
+  (while (re-search-forward from nil nil case-fold-search)
+    (goto (replace-last-match template))))
 
 
 ;;; Query replace

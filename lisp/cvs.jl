@@ -762,7 +762,7 @@ backup file (created by a merge with conflicts.)"
   (save-some-buffers)
   (let
       ((working-file (cvs-command-get-filenames))
-       working-revision back-file)
+       back-file)
     (unless (eq (cdr working-file) nil)
       (message "[Ignoring all but the first file!]" t)
       ;; Give them time to read the message..

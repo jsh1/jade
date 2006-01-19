@@ -27,7 +27,7 @@
       ((index 0)
        (column (pos-col (char-to-glyph-pos p)))
        (row (pos-line p))
-       sub-string has-nl)
+       sub-string)
     (while (and (< index (length text))
 		(string-match "[^\n]*" text index))
       (setq sub-string (substring text (match-start) (match-end))
@@ -72,8 +72,7 @@ at opposite corners)."
   (let
       ((start-col (pos-col (char-to-glyph-pos start)))
        (end-col (pos-col (char-to-glyph-pos end)))
-       (row (pos-line end))
-       strings)
+       (row (pos-line end)))
     (when (> start-col end-col)
       ;; Swap start-col and end-col
       (setq start-col (prog1 end-col (setq end-col start-col))))

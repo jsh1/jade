@@ -527,7 +527,7 @@ key, the car the order to sort in, a positive or negative integer.")
     (when rm-duplicate-rules
       (let
 	  ((lst msgs)
-	   id tem)
+	   id)
 	;; Now remove duplicates
 	(while lst
 	  (setq id (rm-get-message-id (car lst)))
@@ -756,7 +756,7 @@ key, the car the order to sort in, a positive or negative integer.")
   (let
       ((end (re-search-forward "^$" start))
        (msg (rm-make-msg))
-       p tem)
+       p)
     (restrict-buffer start (or end (end-of-buffer)))
     (rm-set-msg-field msg rm-msg-mark (make-mark start))
     (rm-set-msg-field msg rm-msg-header-lines (- (pos-line (restriction-end))
@@ -1180,6 +1180,7 @@ key, the car the order to sort in, a positive or negative integer.")
 	;; Delete this message from any folders containing it
 	(rm-map-msg-folders
 	 #'(lambda (unused-message folder)
+	     (declare (unused unused-message))
 	     (rm-set-folder-field folder rm-folder-message-count
 				  (1- (rm-get-folder-field
 				       folder rm-folder-message-count)))
@@ -1370,7 +1371,6 @@ key, the car the order to sort in, a positive or negative integer.")
   (interactive)
   (let*
       ((folder (rm-current-folder))
-       (old-message (rm-get-folder-field folder rm-folder-current-msg))
        (count 0)
        (boxes (rm-get-folder-field folder rm-folder-boxes)))
     (while boxes
