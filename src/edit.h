@@ -286,7 +286,7 @@ typedef struct _TX {
     repv	    tx_SavedCPos;
     repv	    tx_SavedWPos;
     repv	    tx_SavedBlockPos[2];
-    char	    tx_SavedBlockStatus;
+    int		    tx_SavedBlockStatus;
 
 } TX;
 

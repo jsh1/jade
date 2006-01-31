@@ -1,3 +1,8 @@
+2006-01-31  John Harper  <jsh@unfactored.org>
+
+	* edit.h (TX): tx_savedBlockStatus is now an int not a char -
+	char becoming unsigned broke this on debian
+
 2006-01-18  John Harper  <jsh@unfactored.org>
 
 	* glyphs.c, faces.c: no more nested functions - Apple morons
