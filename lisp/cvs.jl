@@ -178,6 +178,7 @@ that each of the FILENAMES contains no directory specifiers."
       ((out (concat cvs-update-pending o))
        (point 0)
        (not-done t))
+    (setq cvs-update-pending nil)
     (while not-done
       (cond
        ((string-looking-at ". ([^\n]+)\n" out point)
@@ -219,6 +220,7 @@ that each of the FILENAMES contains no directory specifiers."
       ((buffer (open-buffer "*cvs*"))
        (inhibit-read-only t))
     (setq cvs-update-pending nil
+	  cvs-update-pending-stderr nil
 	  cvs-file-list (nreverse cvs-update-files)
 	  cvs-update-in-progress nil)
     (with-buffer buffer
