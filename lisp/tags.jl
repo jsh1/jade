@@ -215,8 +215,8 @@ move back to the previously found tag."
 			 "(.*)$")
 		 (canonical-file-name current-file))
 	    (setq current-file (expand-last-match "\\1")))
-	  (expand-file-name (cadr (member current-file (tags-file-list)))))
-      (expand-file-name (car (tags-file-list))))))
+	  (cadr (member current-file (tags-file-list))))
+      (car (tags-file-list)))))
 
 ;; Map (FUNCTION BUFFER POINT) over all files in the current tags-table.
 ;; MARK provides an optional start point
@@ -233,20 +233,22 @@ move back to the previously found tag."
     (unless file
       (setq file (tags-next-file)))
     (while file
-      (unless buffer
-	(setq buffer (get-file-buffer file))
-	(if buffer
-	    (setq kill-this-buffer nil)
-	  (setq buffer (find-file file t))
-	  (setq kill-this-buffer t)))
-      (unless point
-	(setq point (start-of-buffer buffer)))
-      (funcall function buffer point)
-      (when (and kill-this-buffer (not (buffer-modified-p buffer)))
-	(kill-buffer buffer))
-      (setq buffer nil)
-      (setq point nil)
-      (setq file (tags-next-file file)))))
+      (let ((real-file (expand-file-name
+			file (file-name-directory tags-file-name))))
+	(unless buffer
+	  (setq buffer (get-file-buffer real-file))
+	  (if buffer
+	      (setq kill-this-buffer nil)
+	    (setq buffer (find-file real-file t))
+	    (setq kill-this-buffer t)))
+	(unless point
+	  (setq point (start-of-buffer buffer)))
+	(funcall function buffer point)
+	(when (and kill-this-buffer (not (buffer-modified-p buffer)))
+	  (kill-buffer buffer))
+	(setq buffer nil)
+	(setq point nil)
+	(setq file (tags-next-file file))))))
 
 ;;;###autoload
 (defun tags-search (regexp #!optional mark)

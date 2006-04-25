@@ -1,3 +1,9 @@
+2006-04-25  John Harper  <jsh@unfactored.org>
+
+	* tags.jl (tags-next-file, tags-map-buffers): expand filename
+	from TAGS file relative to directory containing the TAGS file,
+	not the current directory
+
 2006-02-24  John Harper  <jsh@unfactored.org>
 
 	* cvs.jl (cvs-update-filter): fixed corruption in output when
