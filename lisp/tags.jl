@@ -32,9 +32,6 @@
 (defvar tags-last-found-pos nil
   "Position in tags table of tags-last-found, or nil.")
 
-(defvar tags-history nil
-  "List of previously found tags (as marks).")
-
 (defvar tags-marks nil
   "List of locations from which tags were found (as marks).")
 
@@ -66,10 +63,7 @@
       (error "No tags table selected")))
 
 (defun tags-trim-history ()
-  (let ((history-end (nthcdr tags-history-length tags-history))
-	(marks-end (nthcdr tags-history-length tags-marks)))
-    (when history-end
-      (rplacd history-end nil))
+  (let ((marks-end (nthcdr tags-history-length tags-marks)))
     (when marks-end
       (rplacd marks-end nil))))
 
@@ -105,16 +99,7 @@ move back to the previously found tag."
 	 start)
       (cond
        ((eq name 'pop)
-	(while (and tags-history
-		    (eq (mark-file (car tags-history)) (current-buffer))
-		    (equal (mark-pos (car tags-history)) (cursor-pos)))
-	  ;; Lose the top mark, we're already there
-	  (setq tags-history (cdr tags-history)))
-	(if tags-history
-	    (progn
-	      (goto-mark (car tags-history))
-	      (setq tags-history (cdr tags-history)))
-	  (error "No previous tag"))
+	(pop-tag-mark)
 	(throw 'return (cursor-pos)))
        ((eq name 'push)
 	(setq name tags-last-found
@@ -166,7 +151,6 @@ move back to the previously found tag."
 	    ;; break out of the loop
 	    (setq tags-last-found name
 		  tags-last-found-pos (end-of-line start tags-buffer)
-		  tags-history (cons (make-mark) tags-history)
 		  tags-marks (cons original-mark tags-marks))
 	    (throw 'return (cursor-pos)))))
       (error "Tag %S not found" name))))

@@ -1,3 +1,7 @@
+2006-05-14  John Harper  <jsh@unfactored.org>
+
+	* tags.jl: deleted tags-history, use tags-marks list instead
+
 2006-04-25  John Harper  <jsh@unfactored.org>
 
 	* tags.jl (tags-next-file, tags-map-buffers): expand filename
