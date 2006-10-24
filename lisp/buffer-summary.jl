@@ -30,7 +30,8 @@
     "o" 'bs-select-other-view
     "f" 'summary-select-item
     "~" 'bs-toggle-modified
-    "%" 'bs-toggle-read-only))
+    "%" 'bs-toggle-read-only
+    "r" 'bs-revert))
 
 (defvar bs-popup-menus '(("Select buffer" summary-select-item)
 			 ("Select in other view" bs-select-other-view)
@@ -145,6 +146,11 @@ Local bindings for this mode are,\n
   (interactive)
   (summary-add-pending-op (summary-current-item) 'save))
 
+(defun bs-revert ()
+  (interactive)
+  (mapc revert-buffer (summary-command-items))
+  (summary-update))
+     
 
 ;; init
 
