@@ -198,7 +198,7 @@ send us messages.
 		strcpy(addr.sun_path, rep_STR(name));
 		addr.sun_family = AF_UNIX;
 		if(connect(sock, (struct sockaddr *)&addr,
-                   sizeof(addr.sun_family) + strlen(addr.sun_path)) == 0)
+                   sizeof(addr.sun_family) + strlen(addr.sun_path) + 1) == 0)
 		{
 		    close(sock);
 		    (*rep_message_fun)(rep_message,
@@ -218,7 +218,7 @@ send us messages.
 	    addr.sun_family = AF_UNIX;
 	    strcpy(addr.sun_path, rep_STR(name));
 	    if(bind(socket_fd, (struct sockaddr *)&addr,
-		    sizeof(addr.sun_family) + strlen(addr.sun_path)) == 0)
+		    sizeof(addr.sun_family) + strlen(addr.sun_path) + 1) == 0)
 	    {
 		if(listen(socket_fd, 5) == 0)
 		{

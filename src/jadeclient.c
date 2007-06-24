@@ -131,7 +131,7 @@ connect_to_jade(void)
 		fprintf(stderr, "okay\n");
 	    }
 	    if(connect(sock_fd, (struct sockaddr *)&addr,
-		       sizeof(addr.sun_family) + strlen(addr.sun_path)) == 0)
+		       sizeof(addr.sun_family) + strlen(addr.sun_path) + 1) == 0)
 	    {
 		return sock_fd;
 	    }

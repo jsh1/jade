@@ -1,3 +1,8 @@
+2007-06-23  John Harper  <jsh@unfactored.org>
+
+	* server-dl.c, jadeclient.c: add one to socket address length
+	pased to connect() and bind()
+
 2006-01-31  John Harper  <jsh@unfactored.org>
 
 	* edit.h (TX): tx_savedBlockStatus is now an int not a char -
