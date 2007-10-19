@@ -150,7 +150,7 @@ Commands defined by this mode are:\n
 	mode-indent-line c-indent-line
 	mode-forward-exp c-forward-exp
 	mode-backward-exp c-backward-exp
-	mode-defun-header "^([a-zA-Z0-9_]+)[\t ]*\\([^}]+\n{"
+	mode-defun-header "^([a-zA-Z0-9:_]+)[\t ]*\\([^}]+\n{"
 	mode-defun-footer "^}"
 	paragraph-separate "^[\n\t\f ]*\n"
 	paragraph-start paragraph-separate
