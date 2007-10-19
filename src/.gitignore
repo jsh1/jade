@@ -5,3 +5,5 @@ jadeclient
 *.lo
 *.la
 .*.d
+*.o
+*.dSYM
