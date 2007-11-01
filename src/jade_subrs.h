@@ -444,7 +444,7 @@ extern repv Fset_font(repv fontname, repv win);
 
 /* from gtk_keys.c */
 extern void translate_event(u_long *, u_long *, GdkEvent *);
-extern int cook_key(void *, u_char *, int);
+extern int sys_cook_key(void *, u_char *, int);
 extern bool sys_lookup_mod(const char *name, u_long *mods);
 extern bool sys_lookup_code(const char *name, u_long *code, u_long *mods);
 extern char *sys_lookup_mod_name(char *buf, u_long mod);
@@ -508,12 +508,60 @@ extern repv Fgtk_jade_window (repv);
 extern repv Fgtk_jade_window_widget (repv);
 extern repv Fflush_output(void);
 
+#elif defined (HAVE_MAC)
+
+/* from mac_main.m */
+extern u_long mac_meta_mod;
+extern void sys_beep(WIN *w);
+extern bool sys_init(char *);
+extern void sys_kill(void);
+extern void sys_usage(void);
+extern repv sys_make_color(Lisp_Color *c);
+extern void sys_free_color(Lisp_Color *c);
+
+/* from mac_windows.m */
+extern void sys_begin_redisplay (WIN *);
+extern void sys_end_redisplay (WIN *);
+extern void sys_draw_glyphs (WIN *, int, int, glyph_attr, char *, int, bool);
+extern void sys_copy_glyphs (WIN *, int, int, int, int, int, int);
+extern void sys_recolor_cursor(repv face);
+extern void sys_update_dimensions(WIN *);
+extern void *sys_new_window(WIN *, WIN *, short *);
+extern void sys_kill_window(WIN *);
+extern int sys_sleep_win(WIN *);
+extern int sys_unsleep_win(WIN *);
+extern void sys_activate_win(WIN *);
+extern void sys_set_win_name(WIN *win, char *name);
+extern void sys_set_win_pos(WIN *, long, long, long, long);
+extern bool sys_deleting_window_would_exit (WIN *w);
+extern int sys_window_has_focus (WIN *);
+extern int sys_window_realized (WIN *);
+extern repv sys_get_mouse_pos(WIN *);
+extern repv Fflush_output(void);
+extern void sys_windows_init(void);
+
+/* from mac_keys.m */
+extern u_long esc_code, esc_mods;
+extern void sys_translate_event(u_long *, u_long *, void *);
+extern int sys_cook_key(void *, u_char *, int);
+extern bool sys_lookup_mod(const char *, u_long *);
+extern bool sys_lookup_code(const char *, u_long *, u_long *);
+extern char *sys_lookup_mod_name(char *, u_long);
+extern bool sys_lookup_code_name(char *, u_long, u_long);
+extern u_long mac_find_meta(void);
+extern int sys_set_font(WIN *);
+extern void sys_unset_font(WIN *);
+
+/* from mac_runloop.m */
+extern void mac_runloop_init (void);
+extern void mac_callback_postfix (void);
+
 #elif defined (HAVE_X11)
 
 /* from x11_keys.c */
 extern void translate_event(u_long *, u_long *, XEvent *,
 			    struct x11_display *);
-extern int cook_key(void *, u_char *, int);
+extern int sys_cook_key(void *, u_char *, int);
 extern bool sys_lookup_mod(const char *name, u_long *mods);
 extern bool sys_lookup_code(const char *name, u_long *code, u_long *mods);
 extern char *sys_lookup_mod_name(char *buf, u_long mod);

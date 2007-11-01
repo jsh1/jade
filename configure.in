@@ -96,6 +96,24 @@ dnl   HAVE_GTK=1
 dnl   AC_DEFINE(HAVE_GTK)
 dnl fi
 
+dnl Use Mac OS X code?
+use_mac=no
+AC_ARG_ENABLE(mac,
+ [  --enable-mac		  Use Mac OS X native window system
+  --disable-mac		  Use Xlib for windowing],
+ [use_mac="$enableval"])
+if test "$use_mac" = "yes"; then
+  windowsys="MAC"
+  HAVE_MAC=1
+  AC_DEFINE(HAVE_MAC)
+  MAC_CFLAGS=
+  MAC_LIBS="-framework AppKit -framework CoreText -framework Foundation -framework ApplicationServices -framework CoreFoundation"
+  AC_SUBST(MAC_CFLAGS)
+  AC_SUBST(MAC_LIBS)
+  appsdir='${exec_prefix}/Applications'
+  AC_SUBST(appsdir)
+fi
+
 dnl If X is available and nothing else has been chosen, use it
 if test "${no_x}" != "yes"; then
   AC_DEFINE(HAVE_X11)
@@ -105,7 +123,7 @@ if test "${no_x}" != "yes"; then
 fi
 
 if test "${windowsys}" = "none"; then
-  AC_MSG_ERROR([You need GTK or X11 to run Jade])
+  AC_MSG_ERROR([You need to choose a window system to build Jade])
 fi
 
 if test "${windowsys}" = "X11"; then

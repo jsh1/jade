@@ -97,9 +97,6 @@ of SYMBOL is non-nil, KEYMAP is used to search for bindings.")
   "M-ESC"	'eval-and-print
   "M-BS"	'backward-kill-word
   "C-M-BS"	'backward-kill-exp
-  "Help"	'help
-  "M-Help"	'toggle-iconic
-  "Insert"	'overwrite-mode
   "Home"	'start-of-buffer
   "End"		'end-of-buffer
   "Prior"	'prev-screen

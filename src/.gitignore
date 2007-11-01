@@ -2,6 +2,7 @@
 Makefile
 jade
 jadeclient
+Jade.app
 *.lo
 *.la
 .*.d

@@ -336,7 +336,7 @@ inner_eval_input_event(repv data_)
 		/* Try to self-insert */
 		u_char buff[256];
 		int len;
-		if((len = cook_key(OSInputMsg, buff, 256 - 1)) >= 0)
+		if((len = sys_cook_key(OSInputMsg, buff, 256 - 1)) >= 0)
 		{
 		    buff[len] = 0;
 		    if(len > 0)
@@ -787,7 +787,7 @@ a Lisp function hadn't been called instead.
     int len;
     if(!current_os_event)
 	return(Fsignal(Qerror, rep_LIST_1(rep_VAL(&not_in_handler))));
-    len = cook_key(current_os_event, buff, 256 - 1);
+    len = sys_cook_key(current_os_event, buff, 256 - 1);
     if(len > 0)
 	return(rep_string_dupn(buff, len));
     return(rep_null_string());

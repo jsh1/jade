@@ -1,3 +1,9 @@
+2007-11-01  John Harper  <jsh@unfactored.org>
+
+	* loadkeys.jl: deleted anything using Help or Insert keys
+
+	* windows.jl: don't use named colors
+
 2007-10-18  John Harper  <jsh@unfactored.org>
 
 	* c-mode.jl (c-mode): fix mode-defun-header regexp to include

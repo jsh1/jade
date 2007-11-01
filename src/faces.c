@@ -50,9 +50,9 @@ repv mouse_cursor_face;
 
 char *default_fg_color = "black";
 char *default_bg_color = "#cdcdc1";
-char *default_block_color = "lightblue";
-char *default_hl_color = "lightgoldenrod";
-char *default_ml_color = "lightsteelblue";
+char *default_block_color = "#add8e6";	/* lightblue */
+char *default_hl_color = "#eedd82";	/* lightgoldenrod */
+char *default_ml_color = "#b0c4de";	/* lightsteelblue */
 
 DEFUN("make-face", Fmake_face, Smake_face, (repv name), rep_Subr1) /*
 ::doc:make-face::

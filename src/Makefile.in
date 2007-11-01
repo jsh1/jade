@@ -33,9 +33,11 @@ SRCS :=	buffers.c commands.c edit.c editcommands.c extent.c faces.c files.c \
 
 X11_SRCS := x11_keys.c x11_main.c x11_misc.c x11_windows.c
 GTK_SRCS := gtk_jade.c gtk_keys.c gtk_main.c gtk_select.c
+MAC_SRCS := mac_keys.m mac_main.m mac_runloop.m mac_windows.m
 
 SRCS :=	$(SRCS) $($(windowsys)_SRCS)
-OBJS := $(SRCS:.c=.o)
+OBJS := $(patsubst %.c,%.o,$(filter %.c,$(SRCS))) \
+	$(patsubst %.m,%.o,$(filter %.m,$(SRCS)))
 
 DL_SRCS := server-dl.c
 DL_OBJS := $(DL_SRCS:%.c=%.la)
@@ -59,6 +61,14 @@ install : all installdirs
 	for p in $(DL_OBJS); do \
 	  $(rep_DL_INSTALL) $$p ${jadeexecdir}; \
 	done
+ifeq ($(windowsys),MAC)
+	rm -rf ${appsdir}/Jade.app
+	mkdir -p ${appsdir}/Jade.app/Contents/MacOS
+	mkdir -p ${appsdir}/Jade.app/Contents/Resources
+	$(rep_LIBTOOL) $(INSTALL_PROGRAM) jade ${appsdir}/Jade.app/Contents/MacOS/Jade
+	$(INSTALL_DATA) Info.plist ${appsdir}/Jade.app/Contents
+	$(INSTALL_DATA) jade.icns ${appsdir}/Jade.app/Contents/Resources
+endif
 
 uninstall :
 	for p in jade jadeclient; do \
@@ -73,10 +83,14 @@ installdirs : $(top_srcdir)/mkinstalldirs
 
 clean :
 	rm -f *~ *.o *.lo *.la build.h core
+	rm -rf $($(windowsys)_EXTRA)
 
 realclean : clean
 	rm -f .*.d jade jaded jadeclient Makefile
 	rm -f dump.out dumped.s
 	rm -rf .libs
 
-include $(SRCS:%.c=.%.d) $(JADE_LIBOBJS:%.o=.%.d) $(DL_SRCS:%.c=.%.d)
+include $(patsubst %.c,.%.d,$(filter %.c,$(SRCS)))
+include $(patsubst %.m,.%.d,$(filter %.m,$(SRCS)))
+include $(JADE_LIBOBJS:%.o=.%.d)
+include $(DL_SRCS:%.c=.%.d)

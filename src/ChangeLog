@@ -1,3 +1,12 @@
+2007-11-01  John Harper  <jsh@unfactored.org>
+
+	* mac_defs.h, mac_internal.h, mac_keys.m, mac_main.m,
+	mac_runloop.m, mac_windows.m: Mac OS X backend - uses an
+	NSWindow with a single view. Supports transparent colors
+
+	* faces.c, jade.h, jade_subrs.h, keys.c, misc.c, redisplay.c,
+	windows.c: misc changes to support Mac
+
 2007-06-23  John Harper  <jsh@unfactored.org>
 
 	* server-dl.c, jadeclient.c: add one to socket address length

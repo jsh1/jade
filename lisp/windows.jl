@@ -52,7 +52,7 @@ reinstall the original window as the current one."
   (set-face-attribute italic-face 'italic t))
 
 (defface active-face "Face used for ``active'' text, i.e. clickable"
-  (set-face-attribute active-face 'background "palegreen2"))
+  (set-face-attribute active-face 'background "#90ee90"))	;palegreen2
 
 
 

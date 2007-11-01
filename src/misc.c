@@ -54,6 +54,8 @@ A string naming the editor version.
 
 #if defined (HAVE_GTK)
 DEFSYM(gtk, "gtk");
+#elif defined (HAVE_MAC)
+DEFSYM(mac, "mac");
 #elif defined (HAVE_X11)
 DEFSYM(x11, "x11");
 #endif
@@ -106,6 +108,9 @@ misc_init(void)
 #if defined (HAVE_GTK)
     rep_INTERN(gtk);
     Fset (Qwindow_system, Qgtk);
+#elif defined (HAVE_MAC)
+    rep_INTERN(mac);
+    Fset (Qwindow_system, Qmac);
 #elif defined (HAVE_X11)
     rep_INTERN(x11);
     Fset (Qwindow_system, Qx11);

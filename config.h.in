@@ -24,6 +24,9 @@
 /* Define if using GTK for windowing */
 #undef HAVE_GTK
 
+/* Define if using Mac OS X for windowing */
+#undef HAVE_MAC
+
 /* Define if X11 is available */
 #undef HAVE_X11
 

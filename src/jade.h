@@ -38,6 +38,8 @@ typedef char bool;
 
 #if defined (HAVE_GTK)
 # include "gtk_defs.h"
+#elif defined (HAVE_MAC)
+# include "mac_defs.h"
 #elif defined (HAVE_X11)
 # include "x11_defs.h"
 #else

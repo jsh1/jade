@@ -756,7 +756,15 @@ non-nil, absolutely everything is refreshed, not just what changed.
     for(w = win_chain; w != 0; w = w->w_Next)
     {
 	if (w->w_Window != WINDOW_NIL)
+	{
+#ifdef SYS_BEGIN_REDISPLAY
+	    SYS_BEGIN_REDISPLAY (w);
+#endif
 	    Fredisplay_window (rep_VAL (w), arg);
+#ifdef SYS_END_REDISPLAY
+	    SYS_END_REDISPLAY (w);
+#endif
+	}
     }
 
     Fflush_output();
@@ -793,6 +801,10 @@ redisplay_message(WIN *w)
 
     redisplay_lock++;
 
+#ifdef SYS_BEGIN_REDISPLAY
+    SYS_BEGIN_REDISPLAY (w);
+#endif
+
     /* Copy existing contents of the message to w_NewContent */
     memcpy(w->w_NewContent->codes[w->w_MaxY - 1],
 	   w->w_Content->codes[w->w_MaxY - 1],
@@ -803,6 +815,11 @@ redisplay_message(WIN *w)
     w->w_Content->hashes[w->w_MaxY-1]
         = hash_glyph_row(w->w_Content, w->w_MaxY-1);
     redisplay_do_draw(w, w->w_NewContent, w->w_Content, w->w_MaxY);
+
+#ifdef SYS_END_REDISPLAY
+    SYS_END_REDISPLAY (w);
+#endif
+
     Fflush_output();
 
     redisplay_lock--;
