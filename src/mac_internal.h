@@ -53,6 +53,9 @@
     u_int _antialias :1;
     u_int _inside :1;
 };
+
+- (void)handleEvent:(NSEvent *)e;
+
 @end
 
 /* Use these macros to wrap Objective C within C modules. */

@@ -176,6 +176,11 @@ flip_y (JadeView *view, int y)
     u_long code = 0, mods = 0;
     bool redisplay;
 
+    /* May need to defer this event until latr. */
+
+    if (mac_defer_event (self, e))
+	return;
+
     p = [self convertPoint:[e locationInWindow] fromView:nil];
     p.y = flip_y (self, p.y);
 
@@ -214,9 +219,7 @@ flip_y (JadeView *view, int y)
 - (void)rightMouseUp:(NSEvent *)e {[self handleEvent:e];}
 - (void)otherMouseDown:(NSEvent *)e {[self handleEvent:e];}
 - (void)otherMouseUp:(NSEvent *)e {[self handleEvent:e];}
-
 - (void)keyDown:(NSEvent *)e {[self handleEvent:e];}
-- (void)keyUp:(NSEvent *)e {[self handleEvent:e];}
 
 - (void)windowDidResize:(NSNotification *)n
 {
@@ -280,14 +283,13 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 {
     JadeView *view = w->w_Window;
     CGContextRef ctx;
-    CGColorRef c;
     CGFontRef font;
-    bool invert;
     Merged_Face *f;
     CGRect r;
     CGPoint *pt;
     CGGlyph *glyphs;
     int i, x, y;
+    const struct mac_color *fg_color, *bg_color;
 
     if (view == nil || !sys_window_realized (w))
 	return;
@@ -298,8 +300,17 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
     if(!f->valid)
 	return;
 
-    invert = (f->car & FACEFF_INVERT) != 0;
-    
+    if (!(f->car & FACEFF_INVERT))
+    {
+	fg_color = &VCOLOR (f->foreground)->color;
+	bg_color = &VCOLOR (f->background)->color;
+    }
+    else
+    {
+	fg_color = &VCOLOR (f->background)->color;
+	bg_color = &VCOLOR (f->foreground)->color;
+    }
+
     x = w->w_LeftPix + w->w_FontX * col;
     y = flip_y (view, w->w_TopPix + w->w_FontY * row);
 
@@ -310,18 +321,17 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
     CGContextSaveGState (ctx);
     CGContextSetShouldAntialias (ctx, view->_antialias);
 
-    c = VCOLOR(invert ? f->foreground : f->background)->color;
-    if (c != 0)
-	CGContextSetFillColorWithColor (ctx, c);
+    if (bg_color->cg_color != NULL)
+	CGContextSetFillColorWithColor (ctx, bg_color->cg_color);
+
     CGContextSetBlendMode (ctx, kCGBlendModeCopy);
     r.size.width = len * w->w_FontX; r.size.height = w->w_FontY;
     r.origin.x = x; r.origin.y = y - r.size.height;
     CGContextFillRect (ctx, r);
     CGContextSetBlendMode (ctx, kCGBlendModeNormal);
 
-    c = VCOLOR(invert ? f->background : f->foreground)->color;
-    if (c != 0)
-	CGContextSetFillColorWithColor (ctx, c);
+    if (fg_color->cg_color != NULL)
+	CGContextSetFillColorWithColor (ctx, fg_color->cg_color);
 
     if(!all_spaces)
     {
@@ -405,7 +415,7 @@ sys_copy_glyphs (WIN *win, int x1, int y1, int w, int h, int x2, int y2)
 void
 sys_recolor_cursor(repv face)
 {
-    /* FIXME: NSCursor does support this. */
+    /* FIXME: NSCursor does not support this. */
 }
 
 void

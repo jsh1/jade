@@ -51,6 +51,16 @@ jade : $(OBJS) $(JADE_LIBOBJS) $(LIBOBJS)
 	$(rep_LIBTOOL) $(CC) -export-dynamic $(LDFLAGS) -o jade $(OBJS) \
 	  $(JADE_LIBOBJS) $(LIBOBJS) $(LIBS)
 
+ifeq ($(windowsys),MAC)
+Jade.app :
+	rm -rf Jade.app
+	mkdir -p Jade.app/Contents/MacOS
+	mkdir -p Jade.app/Contents/Resources
+	ln -sf ../../Info.plist Jade.app/Contents/Info.plist
+	ln -sf ../../../jade Jade.app/Contents/MacOS/Jade
+	ln -sf ../../../jade.icns Jade.app/Contents/Resources/jade.icns
+endif
+
 %.la : %.lo
 	$(rep_DL_LD) $(LDFLAGS) -o $@ $<
 
@@ -83,7 +93,9 @@ installdirs : $(top_srcdir)/mkinstalldirs
 
 clean :
 	rm -f *~ *.o *.lo *.la build.h core
-	rm -rf $($(windowsys)_EXTRA)
+ifeq ($(windowsys),MAC)
+	rm -rf Jade.app
+endif
 
 realclean : clean
 	rm -f .*.d jade jaded jadeclient Makefile

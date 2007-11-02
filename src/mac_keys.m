@@ -109,14 +109,28 @@ int
 sys_cook_key(void *event, u_char *buf, int buflen)
 {
     NSEvent *ev = event;
+    NSAutoreleasePool *pool;
+    const char *str;
+    int actual_length;
+
     if ([ev type] != NSKeyDown)
 	return 0;
-    const char *str = [[ev characters] UTF8String];
-    if (str == NULL)
-	return 0;
-    int actual_length = MIN (buflen - 1, strlen (str));
-    memcpy (buf, str, actual_length);
-    buf[actual_length] = 0;
+
+    pool = [[NSAutoreleasePool alloc] init];
+
+    str = [[ev characters] UTF8String];
+
+    if (str != NULL)
+    {
+	actual_length = MIN (buflen - 1, strlen (str));
+	memcpy (buf, str, actual_length);
+	buf[actual_length] = 0;
+    }
+    else
+	actual_length = 0;
+
+    [pool drain];
+
     return actual_length;
 }
 

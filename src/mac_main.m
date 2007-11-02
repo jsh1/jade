@@ -203,8 +203,8 @@ hexvalue (int c)
     return 0;
 }
 
-static CGColorRef
-mac_parse_color (const char *str)
+static bool
+mac_parse_color (const char *str, struct mac_color *c)
 {
     static CGColorSpaceRef cs;
     CGFloat rgba[4];
@@ -231,7 +231,7 @@ mac_parse_color (const char *str)
 	  rgba[3] = len == 7 ? 1.0 : (hexvalue (str[7]) * 16 + hexvalue (str[8])) * (1.0 / 255.0);
 	  break;
 	default:
-	  return NULL;
+	  return false;
 	}
     }
     else
@@ -267,28 +267,29 @@ mac_parse_color (const char *str)
 	    }
 	}
 	if (i == n_colors)
-	    return NULL;
+	    return false;
     }
 
     if (cs == NULL)
 	cs = CGColorSpaceCreateDeviceRGB ();
 
-    return CGColorCreate (cs, rgba);
+    c->cg_color = CGColorCreate (cs, rgba);
+    c->luminance = rgba[0] * .2125f + rgba[1] * .7154f + rgba[2] * .0721f;
+
+    return true;
 }
 
 repv
 sys_make_color(Lisp_Color *c)
 {
-    c->color = mac_parse_color (rep_STR (c->name));
-
-    if (c->color != 0)
-	return rep_VAL (c);
-    else
+    if (!mac_parse_color (rep_STR (c->name), &c->color))
 	return Fsignal(Qerror, rep_list_2(rep_VAL(&no_parse_color), c->name));
+
+    return rep_VAL (c);
 }
 
 void
 sys_free_color(Lisp_Color *c)
 {
-    CGColorRelease (c->color);
+    CGColorRelease (c->color.cg_color);
 }

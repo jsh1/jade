@@ -41,7 +41,13 @@
 /* Macros for drawing operations. These are used in redisplay.c for
    system-independent rendering. */
 
-#define SYS_COLOR_TYPE		void*
+struct mac_color
+{
+    void *cg_color;
+    float luminance;
+};
+
+#define SYS_COLOR_TYPE		struct mac_color
 #define SYS_DRAW_GLYPHS		sys_draw_glyphs
 #define COPY_GLYPHS		sys_copy_glyphs
 #define SYS_BEGIN_REDISPLAY	sys_begin_redisplay

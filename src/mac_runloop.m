@@ -28,6 +28,7 @@ struct input_data {
     int fd;
     void (*func)(int);
     CFRunLoopSourceRef source;
+    bool pending :1;
 };
 
 struct timeout_data {
@@ -44,7 +45,13 @@ static fd_set input_set;
 static struct input_data *inputs;
 static pthread_mutex_t input_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+static int waiting_for_input;
+static NSEvent *pending_event;
+static JadeView *pending_event_view;
+
 static struct timeout_data *context;
+
+static void mac_deliver_events (void);
 
 static void *
 input_thread (void *arg)
@@ -96,9 +103,18 @@ mac_source_perform (void *info)
 {
     struct input_data *d = info;
 
-    rep_call_with_barrier (inner_input_callback, rep_VAL(d), rep_TRUE, 0, 0, 0);
-
-    mac_callback_postfix ();
+    if (waiting_for_input != 0)
+    {
+	d->pending = true;
+	[NSApp stop:nil];
+    }
+    else
+    {
+	d->pending = false;
+	rep_call_with_barrier (inner_input_callback,
+			       rep_VAL(d), rep_TRUE, 0, 0, 0);
+	mac_callback_postfix ();
+    }
 }
 
 static void
@@ -164,6 +180,7 @@ mac_deregister_input_fd (int fd)
 	*ptr = d->next;
 	CFRunLoopRemoveSource (CFRunLoopGetCurrent (), d->source,
 			       kCFRunLoopCommonModes);
+	CFRelease (d->source);
 	free (d);
 	FD_CLR (fd, &input_set);
 	write (input_pipe[1], &c, 1);
@@ -180,7 +197,9 @@ timer_callback (CFRunLoopTimerRef timer, void *info)
 
     d->timed_out = 1;
 
-    /* Only quit if we'd return to the correct event loop */
+    /* Only quit if we'd return to the correct event loop.
+       FIXME: this doesn't do anything until an event arrives? */
+
     if (context == d)
 	[NSApp stop:nil];
 }
@@ -209,18 +228,18 @@ remove_timeout (void)
 }
 
 static void
-set_timeout (void)
+set_timeout (u_long timeout_msecs)
 {
     if (context != 0 && !context->timed_out)
     {
 	u_long max_sleep = rep_max_sleep_for ();
 
-	context->this_timeout_msecs = rep_input_timeout_secs * 1000;
+	context->this_timeout_msecs = timeout_msecs;
 	context->actual_timeout_msecs = MIN (context->this_timeout_msecs,
 					     max_sleep);
 
 	CFAbsoluteTime abs_t = (CFAbsoluteTimeGetCurrent ()
-				+ context->actual_timeout_msecs * 1000);
+				+ context->actual_timeout_msecs / 1000.);
 
 	if (context->timer == 0)
 	{
@@ -230,6 +249,8 @@ set_timeout (void)
 	    context->timer = CFRunLoopTimerCreate (NULL, abs_t, 100. * 365.
 						   * 24. * 60. * 60, 0, 0,
 						   timer_callback, &ctx);
+	    CFRunLoopAddTimer (CFRunLoopGetCurrent (), context->timer,
+			       kCFRunLoopCommonModes);
 	}
 	else
 	    CFRunLoopTimerSetNextFireDate (context->timer, abs_t);
@@ -244,14 +265,18 @@ mac_callback_postfix (void)
     unset_timeout ();
 
     if (rep_INTERRUPTP && context != 0)
+    {
 	[NSApp stop:nil];
-    else if (rep_redisplay_fun != 0)
+	return;
+    }
+
+    if (rep_redisplay_fun != 0)
 	(*rep_redisplay_fun)();
 
     if (context != 0)
     {
 	context->timed_out = 0;
-	set_timeout ();
+	set_timeout (rep_input_timeout_secs * 1000);
 	context->idle_counter = 0;
     }
 }
@@ -262,6 +287,7 @@ static repv
 mac_event_loop (void)
 {
     struct timeout_data data;
+    struct input_data *d;
 
     memset (&data, 0, sizeof (data));
     data.next = context;
@@ -269,15 +295,26 @@ mac_event_loop (void)
 
     while (1)
     {
+	mac_deliver_events ();
+
+	for (d = inputs; d != NULL; d = d->next)
+	{
+	    if (d->pending)
+	    {
+		d->pending = false;
+		rep_call_with_barrier (inner_input_callback,
+				       rep_VAL(d), rep_TRUE, 0, 0, 0);
+	    }
+	}
+
 	if (rep_redisplay_fun != 0)
-	    (*rep_redisplay_fun)();
+	    (*rep_redisplay_fun) ();
 
 	data.timed_out = 0;
-	set_timeout ();
-
+	set_timeout (rep_input_timeout_secs * 1000);
 	[NSApp run];
-
 	unset_timeout ();
+
 	if (data.timed_out)
 	{
 	    if (data.actual_timeout_msecs < data.this_timeout_msecs)
@@ -300,7 +337,7 @@ mac_event_loop (void)
 		remove_timeout ();
 		context = data.next;
 		/* reset the timeout for any containing event loop */
-		set_timeout ();
+		set_timeout (rep_input_timeout_secs * 1000);
 		return result;
 	    }
 	}
@@ -311,6 +348,82 @@ mac_event_loop (void)
 	alloca(0);
 #endif
     }
+}
+
+/* called by the view when it receives events. Makes sure that cancels
+   any calls to wait_for_input. */
+
+bool
+mac_defer_event (void *view, void *ns_event)
+{
+    if (waiting_for_input == 0)
+	return false;
+
+    [pending_event release];
+    [pending_event_view release];
+
+    pending_event = [(id)ns_event copy];
+    pending_event_view = [(id)view retain];
+
+    [NSApp stop:nil];
+
+    return true;
+}
+
+static void
+mac_deliver_events (void)
+{
+    if (pending_event != nil)
+    {
+	NSEvent *ev = pending_event;
+	JadeView *view = pending_event_view;
+
+	pending_event = nil;
+	pending_event_view = nil;
+
+	[view handleEvent:ev];
+	[ev release];
+	[view release];
+    }
+}
+
+static int
+mac_wait_for_input (fd_set *fds, u_long timeout_msecs)
+{
+    struct timeout_data data;
+    struct input_data *d;
+    int count;
+
+    ++waiting_for_input;
+
+    memset (&data, 0, sizeof (data));
+    data.next = context;
+    context = &data;
+
+    set_timeout (timeout_msecs);
+    [NSApp run];
+    remove_timeout ();
+
+    context = data.next;
+
+    --waiting_for_input;
+
+    count = 0;
+
+    if (!data.timed_out)
+    {
+	for (d = inputs; d != NULL; d = d->next)
+	{
+	    if (!FD_ISSET (d->fd, fds))
+		continue;
+	    if (d->pending)
+		count++;
+	    else
+		FD_CLR (d->fd, fds);
+	}
+    }
+
+    return count;
 }
 
 /* Called by librep/src/unix_processes.c whenever SIGCHLD is received
@@ -324,16 +437,17 @@ mac_sigchld_callback (void)
        signal handler. */
 
     if (context != 0)
-	[NSApp stop];
+	[NSApp stop:nil];
 #endif
 }
 
 void
 mac_runloop_init (void)
 {
-  rep_register_input_fd_fun = mac_register_input_fd;
-  rep_deregister_input_fd_fun = mac_deregister_input_fd;
-  rep_map_inputs (mac_register_input_fd);
-  rep_event_loop_fun = mac_event_loop;
-  rep_sigchld_fun = mac_sigchld_callback;
+    rep_register_input_fd_fun = mac_register_input_fd;
+    rep_deregister_input_fd_fun = mac_deregister_input_fd;
+    rep_map_inputs (mac_register_input_fd);
+    rep_event_loop_fun = mac_event_loop;
+    rep_wait_for_input_fun = mac_wait_for_input;
+    rep_sigchld_fun = mac_sigchld_callback;
 }
