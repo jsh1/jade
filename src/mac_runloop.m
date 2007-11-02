@@ -45,6 +45,9 @@ static fd_set input_set;
 static struct input_data *inputs;
 static pthread_mutex_t input_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+static int sigchld_pipe[2];
+static CFRunLoopSourceRef sigchld_source;
+
 static int waiting_for_input;
 static NSEvent *pending_event;
 static JadeView *pending_event_view;
@@ -56,26 +59,40 @@ static void mac_deliver_events (void);
 static void *
 input_thread (void *arg)
 {
+    pthread_mutex_lock (&input_mutex);
+
     while (1)
     {
 	fd_set copy;
 	int err;
 	struct input_data *d;
+	char c;
 
-	FD_COPY (&copy, &input_set);
+	FD_COPY (&input_set, &copy);
+	FD_SET (input_pipe[0], &copy);
+	FD_SET (sigchld_pipe[0], &copy);
+
+	pthread_mutex_unlock (&input_mutex);
 
 	err = select (FD_SETSIZE, &copy, NULL, NULL, NULL);
-	if (err == -1)
-	    return NULL;
+
+	if (err < 0 && errno != EINTR)
+	    break;
+
+	pthread_mutex_lock (&input_mutex);
 
 	if (err > 0 && FD_ISSET (input_pipe[0], &copy))
 	{
-	    char c;
 	    read (input_pipe[0], &c, 1);
 	    err--;
 	}
 
-	pthread_mutex_lock (&input_mutex);
+	if (err > 0 && FD_ISSET (sigchld_pipe[0], &copy))
+	{
+	    read (sigchld_pipe[0], &c, 1);
+	    CFRunLoopSourceSignal (sigchld_source);
+	    err--;
+	}
 
 	for (d = inputs; err > 0 && d != NULL; d = d->next)
 	{
@@ -85,9 +102,10 @@ input_thread (void *arg)
 		err--;
 	    }
 	}
-
-	pthread_mutex_unlock (&input_mutex);
     }
+
+    pthread_mutex_unlock (&input_mutex);
+    return NULL;
 }
 
 static repv
@@ -122,8 +140,6 @@ mac_register_input_fd (int fd, void (*callback)(int fd))
 {
     struct input_data *d;
     CFRunLoopSourceContext ctx;
-    pthread_attr_t attr;
-    pthread_t tid;
     char c = 1;
 
     if (callback == 0)
@@ -140,29 +156,19 @@ mac_register_input_fd (int fd, void (*callback)(int fd))
     d->func = callback;
     d->source = CFRunLoopSourceCreate (NULL, 0, &ctx);
 
-    FD_SET (fd, &input_set);
-
     pthread_mutex_lock (&input_mutex);
 
     d->next = inputs;
     inputs = d;
 
-    if (input_pipe[0] == 0)
-    {
-	pipe (input_pipe);
-	pthread_attr_init (&attr);
-	pthread_attr_setscope (&attr, PTHREAD_SCOPE_SYSTEM);
-	pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_DETACHED);
-	pthread_create (&tid, &attr, input_thread, NULL);
-	pthread_attr_destroy (&attr);
-    }
-
-    write (input_pipe[1], &c, 1);
+    FD_SET (fd, &input_set);
 
     pthread_mutex_unlock (&input_mutex);
 
     CFRunLoopAddSource (CFRunLoopGetCurrent (), d->source,
 			kCFRunLoopCommonModes);
+
+    write (input_pipe[1], &c, 1);
 }
 
 static void
@@ -426,24 +432,45 @@ mac_wait_for_input (fd_set *fds, u_long timeout_msecs)
     return count;
 }
 
+static void
+mac_sigchld_handler (void *info)
+{
+    if (context != 0)
+	[NSApp stop:nil];
+}
+
 /* Called by librep/src/unix_processes.c whenever SIGCHLD is received
    (from the signal handler) */
 
 static void
 mac_sigchld_callback (void)
 {
-#if FIXME
-    /* Set up another pipe for this, we can't call [NSApp stop] from a
-       signal handler. */
-
-    if (context != 0)
-	[NSApp stop:nil];
-#endif
+    char c = 1;
+    write (sigchld_pipe[1], &c, 1);
 }
 
 void
 mac_runloop_init (void)
 {
+    CFRunLoopSourceContext ctx;
+    pthread_attr_t attr;
+    pthread_t tid;
+
+    pipe (input_pipe);
+    pipe (sigchld_pipe);
+
+    memset (&ctx, 0, sizeof (ctx));
+    ctx.perform = mac_sigchld_handler;
+    sigchld_source = CFRunLoopSourceCreate (NULL, 0, &ctx);
+    CFRunLoopAddSource (CFRunLoopGetCurrent (),
+			sigchld_source, kCFRunLoopCommonModes);
+
+    pthread_attr_init (&attr);
+    pthread_attr_setscope (&attr, PTHREAD_SCOPE_SYSTEM);
+    pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_DETACHED);
+    pthread_create (&tid, &attr, input_thread, NULL);
+    pthread_attr_destroy (&attr);
+
     rep_register_input_fd_fun = mac_register_input_fd;
     rep_deregister_input_fd_fun = mac_deregister_input_fd;
     rep_map_inputs (mac_register_input_fd);
