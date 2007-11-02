@@ -251,6 +251,134 @@ flip_y (JadeView *view, int y)
     }
 }
 
+
+/* Pasteboard handling. */
+
+static NSPasteboard *_pasteboard;
+static NSArray *_pasteboard_types;
+static repv _pasteboard_data, _pasteboard_start, _pasteboard_end;
+
+- (void)pasteboard:(NSPasteboard *)sender provideDataForType:(NSString *)type
+{
+    NSString *string = nil;
+
+    if (rep_STRINGP (_pasteboard_data))
+    {
+	string = [[NSString alloc] initWithUTF8String:
+		  rep_STR (_pasteboard_data)];
+    }
+    else if (BUFFERP (_pasteboard_data))
+    {
+	if (check_section (VTX(_pasteboard_data),
+			   &_pasteboard_start, &_pasteboard_end))
+	{
+	    long tlen;
+	    char *str;
+
+	    tlen = section_length (VTX (_pasteboard_data),
+				   _pasteboard_start, _pasteboard_end);
+	    str = rep_alloc (tlen + 1);
+
+	    if (str != NULL)
+	    {
+		copy_section (VTX (_pasteboard_data),
+			      _pasteboard_start, _pasteboard_end, str);
+		str[tlen] = 0;
+		string = [[NSString alloc] initWithUTF8String:str];
+		rep_free (str);
+	    }
+	}
+    }
+
+    [sender setString:string forType:NSStringPboardType];
+    [string release];
+}
+
+- (void)pasteboardChangedOwner:(NSPasteboard *)sender
+{
+    _pasteboard_data = Qnil;
+    _pasteboard_start = _pasteboard_end = Qnil;
+}
+
+DEFUN("mac-set-pasteboard", Fmac_set_pasteboard, Smac_set_pasteboard, (repv start, repv end, repv buffer), rep_Subr3) /*
+::doc:x11-set-selection::
+mac-set-pasteboard [ STRING | START END [BUFFER] ]
+::end:: */
+{
+    if (start == Qnil)
+    {
+	if (_pasteboard_data != Qnil)
+	    [_pasteboard declareTypes:[NSArray array] owner:nil];
+
+	_pasteboard_data = Qnil;
+	_pasteboard_start = _pasteboard_end = Qnil;
+
+	return Qt;
+    }
+
+    if (!rep_STRINGP (start))
+    {
+	rep_DECLARE2 (start, POSP);
+	rep_DECLARE3 (end, POSP);
+	if (!BUFFERP (buffer))
+	    buffer = rep_VAL (curr_vw->vw_Tx);
+    }
+
+    OBJC_BEGIN
+
+    if (_pasteboard == nil)
+    {
+	_pasteboard = [[NSPasteboard generalPasteboard] retain];
+	_pasteboard_types = [[NSArray alloc] initWithObjects:
+			     NSStringPboardType, nil];
+    }
+
+    [_pasteboard declareTypes:_pasteboard_types owner:curr_win->w_Window];
+
+    OBJC_END
+
+    if (rep_STRINGP (start))
+    {
+	_pasteboard_data = start;
+	_pasteboard_start = _pasteboard_end = Qnil;
+    }
+    else
+    {
+	_pasteboard_data = buffer;
+	_pasteboard_start = start;
+	_pasteboard_end = end;
+    }
+
+    return Qt;
+}
+
+DEFUN("mac-get-pasteboard", Fmac_get_pasteboard, Smac_get_pasteboard, (repv sel), rep_Subr0) /*
+::doc:mac-get-pasteboard::
+mac-get-pasteboard
+::end:: */
+{
+    NSString *string;
+    repv ret = Qnil;
+
+    OBJC_BEGIN
+
+    if (_pasteboard == nil)
+    {
+	_pasteboard = [[NSPasteboard generalPasteboard] retain];
+	_pasteboard_types = [[NSArray alloc] initWithObjects:
+			     NSStringPboardType, nil];
+    }
+
+    string = [_pasteboard stringForType:NSStringPboardType];
+
+    if (string != nil)
+	ret = rep_string_dup ([string UTF8String]);
+
+    OBJC_END
+
+    return ret;
+}
+
 @end /* JadeView */
 
 
@@ -645,5 +773,10 @@ sys_windows_init(void)
     ibeam_cursor = [NSCursor IBeamCursor];
     rep_ADD_SUBR (Sflush_output);
     rep_ADD_SUBR (Smac_set_antialias);
+    rep_ADD_SUBR (Smac_set_pasteboard);
+    rep_ADD_SUBR (Smac_get_pasteboard);
+    rep_mark_static (&_pasteboard_data);
+    rep_mark_static (&_pasteboard_start);
+    rep_mark_static (&_pasteboard_end);
     mac_runloop_init ();
 }

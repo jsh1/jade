@@ -1,3 +1,7 @@
+2007-11-02  John Harper  <jsh@unfactored.org>
+
+	* ws-mac.jl: new file, hooks Mac pasteboard into editor
+
 2007-11-01  John Harper  <jsh@unfactored.org>
 
 	* loadkeys.jl: deleted anything using Help or Insert keys
