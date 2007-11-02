@@ -66,7 +66,7 @@ functions that operate as filters on their argument streams.")
 
 (defface mime-highlight-face "Face to highlight MIME stubs."
   (set-face-attribute mime-highlight-face 'bold t)
-  (set-face-attribute mime-highlight-face 'foreground "darkblue"))
+  (set-face-attribute mime-highlight-face 'foreground "#00008b"))
 
 (defvar mmencode-program "mimencode"
   "AT&T mmencode program for MIME content encodings. Set to nil to handle

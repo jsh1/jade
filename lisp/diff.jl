@@ -40,15 +40,15 @@
 
 (defface diff-added-face
   "Face used to display added text in diff listings."
-  (set-face-attribute diff-added-face 'background "lightgreen"))
+  (set-face-attribute diff-added-face 'background "#90ee90"))
 
 (defface diff-deleted-face
   "Face used to display removed text in diff listings."
-  (set-face-attribute diff-deleted-face 'background "pink"))
+  (set-face-attribute diff-deleted-face 'background "#ffc0cb"))
 
 (defface diff-changed-face
   "Face used to display text that has been modified in diff listings."
-  (set-face-attribute diff-changed-face 'background "lightgoldenrod"))
+  (set-face-attribute diff-changed-face 'background "#eedd82"))
 
 (defface diff-marker-face
   "Face used to show where an insertion or deletion occurs in diff listings."

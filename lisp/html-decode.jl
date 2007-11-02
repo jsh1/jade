@@ -40,7 +40,7 @@
 ;; Configuration
 
 (defface html-decode-link-face "Face used to display HTML links"
-  (set-face-attribute html-decode-link-face 'foreground "darkblue")
+  (set-face-attribute html-decode-link-face 'foreground "#00008b")
   (set-face-attribute html-decode-link-face 'underline t))
 
 (defvar html-decode-face-alist '((default . default-face)

@@ -85,7 +85,6 @@ last change."
     "Ctrl-r" 'query-replace-edit
     "Ctrl-w" '(progn (query-replace-delete) (query-replace-edit))
     "?" 'query-replace-help
-    "HELP" 'query-replace-help
     "Ctrl-h" 'query-replace-help))
 
 ;; Special vars

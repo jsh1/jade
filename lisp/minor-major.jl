@@ -20,7 +20,7 @@
 
 (defface minor-major-face
   "Face used in areas of the buffer with a minor-major mode."
-  (set-face-attribute minor-major-face 'foreground "darkblue"))
+  (set-face-attribute minor-major-face 'foreground "#00008b"))
 
 ;;;###autoload
 (defun minor-major-mode (mode start end)

@@ -101,7 +101,6 @@ results have been received.")
 			"ESC" 'ispell-quit
 			"Ctrl-g" 'ispell-quit
 			"?" 'ispell-help
-			"HELP" 'ispell-help
 			"Ctrl-h" 'ispell-help))
 
 

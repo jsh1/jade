@@ -80,7 +80,6 @@ decoded (through the `read-file-hook').")
     "u" 'info-up
     "v" 'info-visit-file
     "?" 'describe-mode
-    "HELP" 'describe-mode
     "RET" 'info-goto-link
     "button1-click2" 'info-goto-link
     "button2-click1" '(progn (goto-mouse) (info-goto-link))
