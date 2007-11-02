@@ -57,6 +57,7 @@ button_mods (int number)
 	 return EV_MOD_BUTTON4;
     else if (number == 4)
 	return EV_MOD_BUTTON5;
+    return 0;
 }
 
 void

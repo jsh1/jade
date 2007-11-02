@@ -48,6 +48,7 @@
     CGGlyph _glyph_table[256];
 
     u_int _has_focus :1;
+    u_int _antialias :1;
 };
 @end
 

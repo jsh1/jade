@@ -33,7 +33,8 @@ static bool new_window_no_show = FALSE;
 
 @implementation JadeView
 
-int flip_y (JadeView *view, int y)
+static int
+flip_y (JadeView *view, int y)
 {
     return view->_bounds.size.height - y;
 }
@@ -284,7 +285,7 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 	return;
 
     CGContextSaveGState (ctx);
-    CGContextSetShouldAntialias (ctx, false);
+    CGContextSetShouldAntialias (ctx, view->_antialias);
 
     c = VCOLOR(invert ? f->foreground : f->background)->color;
     if (c != 0)
@@ -319,7 +320,7 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 	{
 	    pt[i].x = x + w->w_FontX * i;
 	    pt[i].y = y - view->_font_ascent;
-	    glyphs[i] = view->_glyph_table[str[i]];
+	    glyphs[i] = view->_glyph_table[(unsigned int)str[i]];
 	}
 
 	CGContextSetTextMatrix (ctx, CGAffineTransformIdentity);
@@ -427,11 +428,14 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
     view->_win = w;
     [view setFont];
 
+    if (curr_win != 0)
+	view->_antialias = ((JadeView *)curr_win->w_Window)->_antialias;
+
     window = [[NSWindow alloc] initWithContentRect:
 	      NSMakeRect (x, y, width * w->w_FontX, height * w->w_FontY)
 	      styleMask:NSTitledWindowMask | NSClosableWindowMask
-	      | NSResizableWindowMask backing:NSBackingStoreBuffered
-	      defer:NO];
+	      | NSMiniaturizableWindowMask | NSResizableWindowMask
+	      backing:NSBackingStoreBuffered defer:NO];
     [view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
     [window setContentView:view];
     [window setReleasedWhenClosed:YES];
@@ -580,6 +584,23 @@ Forces any cached window output to be drawn. This is usually unnecessary.
     return Qt;
 }
 
+DEFUN("mac-set-antialias", Fmac_set_antialias, Smac_set_antialias, (repv win, repv state), rep_Subr2) /*
+::doc:mac-set-antialias::
+mac-set-antialias [WIN] [STATE]
+::end:: */
+{
+    JadeView *view;
+
+    if (win == Qnil)
+	win = rep_VAL (curr_win);
+
+    view = VWIN (win)->w_Window;
+    view->_antialias = state != Qnil;
+
+    Fredisplay (Qt);
+    return Qt;
+}
+
 
 /* Initialisation */
 
@@ -589,5 +610,6 @@ sys_windows_init(void)
     cursor_shape = @selector (IBeamCursor);
     window_cursor = [NSCursor performSelector:cursor_shape];
     rep_ADD_SUBR (Sflush_output);
+    rep_ADD_SUBR (Smac_set_antialias);
     mac_runloop_init ();
 }
