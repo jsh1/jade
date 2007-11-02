@@ -37,6 +37,8 @@
 @public
     struct _WIN *_win;
 
+    NSTrackingRectTag _tracking_tag;
+
     CGFontRef _font;
     CGFontRef _bold_font;
     CGFloat _font_size;
@@ -49,6 +51,7 @@
 
     u_int _has_focus :1;
     u_int _antialias :1;
+    u_int _inside :1;
 };
 @end
 

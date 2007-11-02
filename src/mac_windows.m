@@ -24,8 +24,7 @@
 
 #import <CoreText/CoreText.h>
 
-static SEL cursor_shape;
-static NSCursor *window_cursor = 0;
+static NSCursor *ibeam_cursor = 0;
 
 /* When true, sys_new_window _won't_ show the window. */
 static bool new_window_no_show = FALSE;
@@ -223,6 +222,30 @@ flip_y (JadeView *view, int y)
 {
     sys_update_dimensions (_win);
     update_window_dimensions (_win);
+
+    if (_tracking_tag != 0)
+	[self removeTrackingRect:_tracking_tag];
+
+    _tracking_tag = [self addTrackingRect:[self bounds]
+		     owner:self userData:nil assumeInside:NO];
+}
+
+- (void)mouseEntered:(NSEvent *)e
+{
+    if (!_inside)
+    {
+	[ibeam_cursor push];
+	_inside = true;
+    }
+}
+
+- (void)mouseExited:(NSEvent *)e
+{
+    if (_inside)
+    {
+	[ibeam_cursor pop];
+	_inside = false;
+    }
 }
 
 @end /* JadeView */
@@ -445,6 +468,8 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
      selector:@selector(windowDidResize:)
      name:NSWindowDidResizeNotification object:view];
 
+    [view windowDidResize:nil];
+
     if (!new_window_no_show)
 	[window makeKeyAndOrderFront:view];
 
@@ -607,8 +632,7 @@ mac-set-antialias [WIN] [STATE]
 void
 sys_windows_init(void)
 {
-    cursor_shape = @selector (IBeamCursor);
-    window_cursor = [NSCursor performSelector:cursor_shape];
+    ibeam_cursor = [NSCursor IBeamCursor];
     rep_ADD_SUBR (Sflush_output);
     rep_ADD_SUBR (Smac_set_antialias);
     mac_runloop_init ();
