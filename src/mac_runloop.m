@@ -418,8 +418,6 @@ static void
 observer_callback (CFRunLoopObserverRef observer,
 		   CFRunLoopActivity activity, void *info)
 {
-    unset_timeout ();
-
     if (rep_INTERRUPTP && context != 0)
     {
 	[NSApp stop:nil];
