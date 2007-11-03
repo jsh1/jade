@@ -1,5 +1,13 @@
 2007-11-02  John Harper  <jsh@unfactored.org>
 
+	* mac_runloop.m: use a runloop observer to call the "postfix"
+	code that does redisplay and exception detection etc, way more
+	reliable and efficient than trying to call it by hand in the
+	right places
+
+	* mac_windows.m, mac_main.m: fixed focus detection; fixed boxed
+	face rendering
+
 	* mac_windows.m: added pasteboard support: mac-set-pasteboard
 	and mac-get-pasteboard functions
 

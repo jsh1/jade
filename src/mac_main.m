@@ -36,8 +36,19 @@ static char *geom_str = "80x24";
 
 u_long mac_meta_mod;
 
+bool mac_app_is_active;
+
 /* Default font name. */
 DEFSTRING(def_font_str_data, DEFAULT_FONT);
+
+/* Kind of a hack, we use this class directly as our app delegate. */
+
+@interface JadeAppDelegate : NSObject
+
++ (void)applicationDidBecomeActive:(NSNotification *)notification;
++ (void)applicationDidResignActive:(NSNotification *)notification;
+
+@end
 
 
 /* Resource/option management */
@@ -138,7 +149,9 @@ sys_init(char *program_name)
 	setpgid (0, 0);
 #endif
 
-    [NSApplication sharedApplication];
+    OBJC_BEGIN
+    [[NSApplication sharedApplication] setDelegate:[JadeAppDelegate class]];
+    OBJC_END
 
     make_argv (Fcons (Fsymbol_value (Qprogram_name, Qt),
 		      Fsymbol_value (Qcommand_line_args, Qt)), &argc, &argv);
@@ -293,3 +306,20 @@ sys_free_color(Lisp_Color *c)
 {
     CGColorRelease (c->color.cg_color);
 }
+
+
+/* NSApplication delegate. */
+
+@implementation JadeAppDelegate
+
++ (void)applicationDidBecomeActive:(NSNotification *)notification
+{
+    mac_app_is_active = true;
+}
+
++ (void)applicationDidResignActive:(NSNotification *)notification
+{
+    mac_app_is_active = false;
+}
+
+@end

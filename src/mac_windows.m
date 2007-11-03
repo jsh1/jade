@@ -127,7 +127,6 @@ flip_y (JadeView *view, int y)
 - (BOOL)windowShouldClose:(id)sender
 {
     rep_call_with_barrier (Fdelete_window, rep_VAL (_win), rep_TRUE, 0, 0, 0);
-    mac_callback_postfix ();
     return NO;
 }
 
@@ -136,20 +135,14 @@ flip_y (JadeView *view, int y)
     return YES;
 }
 
-- (BOOL)becomeFirstResponder
+- (void)windowDidBecomeKey:(NSNotification *)n
 {
-    _has_focus = 1;
-    if (_win != 0 && _win->w_CurrVW != 0)
-	Fredisplay_window (rep_VAL(_win), Qnil);
-    return YES;
+    _has_focus = TRUE;
 }
 
-- (BOOL)resignFirstResponder
+- (void)windowDidResignKey:(NSNotification *)n
 {
-    _has_focus = 0;
-    if (_win != 0 && _win->w_CurrVW != 0)
-	Fredisplay_window (rep_VAL(_win), Qnil);
-    return YES;
+    _has_focus = FALSE;
 }
 
 - (void)drawRect:(NSRect)r
@@ -184,7 +177,7 @@ flip_y (JadeView *view, int y)
     p = [self convertPoint:[e locationInWindow] fromView:nil];
     p.y = flip_y (self, p.y);
 
-    redisplay = update_mouse_extent (_win, p.x, p.y);
+    update_mouse_extent (_win, p.x, p.y);
 
     sys_translate_event (&code, &mods, e);
 
@@ -200,12 +193,7 @@ flip_y (JadeView *view, int y)
 	reset_message(_win);
 	eval_input_event(e, code, mods);
 	undo_end_of_command();
-	mac_callback_postfix ();
-	redisplay = true;
     }
-
-    if (redisplay)
-	Fredisplay (Qnil);
 }
 
 - (void)mouseMoved:(NSEvent *)e {[self handleEvent:e];}
@@ -238,7 +226,7 @@ flip_y (JadeView *view, int y)
     if (!_inside)
     {
 	[ibeam_cursor push];
-	_inside = true;
+	_inside = TRUE;
     }
 }
 
@@ -247,7 +235,7 @@ flip_y (JadeView *view, int y)
     if (_inside)
     {
 	[ibeam_cursor pop];
-	_inside = false;
+	_inside = FALSE;
     }
 }
 
@@ -459,7 +447,10 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
     CGContextSetBlendMode (ctx, kCGBlendModeNormal);
 
     if (fg_color->cg_color != NULL)
+    {
 	CGContextSetFillColorWithColor (ctx, fg_color->cg_color);
+	CGContextSetStrokeColorWithColor (ctx, fg_color->cg_color);
+    }
 
     if(!all_spaces)
     {
@@ -490,21 +481,20 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 
     if(f->car & FACEFF_UNDERLINE)
     {
-	CGFloat ly = flip_y (view, y - view->_font_ascent) - .5;
+	CGFloat ly = y - view->_font_ascent - .5f;
 	CGContextBeginPath (ctx);
 	CGContextSetLineWidth (ctx, 1.);
-	CGContextMoveToPoint (ctx, x + .5, ly);
-	CGContextAddLineToPoint (ctx, x + len * w->w_FontX - .5, ly);
+	CGContextMoveToPoint (ctx, x + .5f, ly);
+	CGContextAddLineToPoint (ctx, x + len * w->w_FontX - .5f, ly);
 	CGContextStrokePath (ctx);
     }
 
     if(f->car & FACEFF_BOXED)
     {
-	int i;
 	r.size.width = w->w_FontX - 1;
 	r.size.height = w->w_FontY - 1;
-	r.origin.x = x;
-	r.origin.y = flip_y (view, y) - r.size.height;
+	r.origin.x = x + .5f;
+	r.origin.y = y - r.size.height - .5f;
 	CGContextSetLineWidth (ctx, 1.);
 	for(i = 0; i < len; i++)
 	{
@@ -605,6 +595,12 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
     [[NSNotificationCenter defaultCenter] addObserver:view
      selector:@selector(windowDidResize:)
      name:NSWindowDidResizeNotification object:view];
+    [[NSNotificationCenter defaultCenter] addObserver:view
+     selector:@selector(windowDidBecomeKey:)
+     name:NSWindowDidBecomeKeyNotification object:view];
+    [[NSNotificationCenter defaultCenter] addObserver:view
+     selector:@selector(windowDidResignKey:)
+     name:NSWindowDidResignKeyNotification object:view];
 
     [view windowDidResize:nil];
 
@@ -712,7 +708,7 @@ int
 sys_window_has_focus (WIN *win)
 {
     JadeView *view = win->w_Window;
-    return view->_has_focus;
+    return mac_app_is_active && view->_has_focus;
 }
 
 int

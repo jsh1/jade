@@ -512,6 +512,7 @@ extern repv Fflush_output(void);
 
 /* from mac_main.m */
 extern u_long mac_meta_mod;
+extern bool mac_app_is_active;
 extern void sys_beep(WIN *w);
 extern bool sys_init(char *);
 extern void sys_kill(void);
@@ -555,7 +556,6 @@ extern void sys_unset_font(WIN *);
 /* from mac_runloop.m */
 extern bool mac_defer_event (void *view, void *ns_event);
 extern void mac_runloop_init (void);
-extern void mac_callback_postfix (void);
 
 #elif defined (HAVE_X11)
 

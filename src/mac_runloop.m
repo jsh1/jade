@@ -40,6 +40,8 @@ struct timeout_data {
     CFRunLoopTimerRef timer;
 };
 
+CFRunLoopObserverRef observer;
+
 static int input_pipe[2];
 static fd_set input_set;
 static struct input_data *inputs;
@@ -98,6 +100,11 @@ input_thread (void *arg)
 	{
 	    if (FD_ISSET (d->fd, &copy))
 	    {
+		/* FIXME: we should really remove this from our fd set
+		   until we know the main thread has serviced the
+		   runloop source. Otherwise we'll keep spinning and
+		   signalling.. */
+
 		CFRunLoopSourceSignal (d->source);
 		err--;
 	    }
@@ -131,7 +138,6 @@ mac_source_perform (void *info)
 	d->pending = false;
 	rep_call_with_barrier (inner_input_callback,
 			       rep_VAL(d), rep_TRUE, 0, 0, 0);
-	mac_callback_postfix ();
     }
 }
 
@@ -260,30 +266,6 @@ set_timeout (u_long timeout_msecs)
 	}
 	else
 	    CFRunLoopTimerSetNextFireDate (context->timer, abs_t);
-    }
-}
-
-/* Call this after executing any callbacks that could invoke Lisp code */
-
-void
-mac_callback_postfix (void)
-{
-    unset_timeout ();
-
-    if (rep_INTERRUPTP && context != 0)
-    {
-	[NSApp stop:nil];
-	return;
-    }
-
-    if (rep_redisplay_fun != 0)
-	(*rep_redisplay_fun)();
-
-    if (context != 0)
-    {
-	context->timed_out = 0;
-	set_timeout (rep_input_timeout_secs * 1000);
-	context->idle_counter = 0;
     }
 }
 
@@ -433,6 +415,28 @@ mac_wait_for_input (fd_set *fds, u_long timeout_msecs)
 }
 
 static void
+observer_callback (CFRunLoopObserverRef observer,
+		   CFRunLoopActivity activity, void *info)
+{
+    unset_timeout ();
+
+    if (rep_INTERRUPTP && context != 0)
+    {
+	[NSApp stop:nil];
+	return;
+    }
+
+    Fredisplay (Qnil);
+
+    if (context != 0)
+    {
+	context->timed_out = 0;
+	set_timeout (rep_input_timeout_secs * 1000);
+	context->idle_counter = 0;
+    }
+}
+
+static void
 mac_sigchld_handler (void *info)
 {
     if (context != 0)
@@ -455,6 +459,12 @@ mac_runloop_init (void)
     CFRunLoopSourceContext ctx;
     pthread_attr_t attr;
     pthread_t tid;
+
+    observer = CFRunLoopObserverCreate (NULL, kCFRunLoopBeforeWaiting
+					| kCFRunLoopExit, true, 2000000,
+					observer_callback, NULL);
+    CFRunLoopAddObserver (CFRunLoopGetCurrent (),
+			  observer, kCFRunLoopCommonModes);
 
     pipe (input_pipe);
     pipe (sigchld_pipe);
