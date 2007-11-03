@@ -29,6 +29,8 @@ static NSCursor *ibeam_cursor = 0;
 /* When true, sys_new_window _won't_ show the window. */
 static bool new_window_no_show = FALSE;
 
+static int window_count;
+
 
 @implementation JadeView
 
@@ -126,7 +128,9 @@ flip_y (JadeView *view, int y)
 
 - (BOOL)windowShouldClose:(id)sender
 {
-    rep_call_with_barrier (Fdelete_window, rep_VAL (_win), rep_TRUE, 0, 0, 0);
+    curr_win = _win;
+    curr_vw = _win->w_CurrVW;
+    rep_call_with_barrier (Fdelete_window, Qnil, rep_TRUE, 0, 0, 0);
     return NO;
 }
 
@@ -607,8 +611,8 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 	[window makeKeyAndOrderFront:view];
 
     w->w_Window = view;
-
     [view release];			/* window retains it */
+    window_count++;
 
     OBJC_END
 
@@ -618,10 +622,15 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 void
 sys_kill_window(WIN *w)
 {
+    if (w->w_Window == 0)
+	return;
+
     OBJC_BEGIN
     [[(JadeView *)w->w_Window window] close];
     OBJC_END
+
     w->w_Window = WINDOW_NIL;
+    window_count--;
 }
 
 int
@@ -697,10 +706,7 @@ sys_set_win_name(WIN *win, char *name)
 bool
 sys_deleting_window_would_exit (WIN *win)
 {
-    if (win->w_Window == 0)
-	return FALSE;
-    else
-	return TRUE;
+    return window_count == 1;
 }
 
 int
