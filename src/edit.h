@@ -109,7 +109,7 @@ typedef struct {
 
 /* Line structure -- an array of these is in the TX->tx_Lines */
 typedef struct LINE {
-    u_char	   *ln_Line;
+    char	   *ln_Line;
     long	    ln_Strlen;	/* includes '\0' */
 } LINE;
 
@@ -395,7 +395,7 @@ typedef struct _WIN {
 
     u_long w_LastClickMics;		/* Last mouse click event */
 
-    u_char *w_Message;			/* non-null == msg in minibuffer */
+    char *w_Message;			/* non-null == msg in minibuffer */
     u_long w_MessageLen;
 
     int w_MaxX, w_MaxY;			/* COLS,ROWS in whole window */

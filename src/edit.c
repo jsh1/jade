@@ -204,14 +204,14 @@ resize_line_list(TX *tx, long change, long where)
     return tx->tx_Lines;
 }
 
-u_char *
+char *
 alloc_line_buf(TX *tx, long length)
 {
     return ALLOC_LINE_BUF(tx, length);
 }
 
 void
-free_line_buf(TX *tx, u_char *line)
+free_line_buf(TX *tx, char *line)
 {
     FREE_LINE_BUF(tx, line);
 }
@@ -232,7 +232,7 @@ insert_gap(TX *tx, long len, long col, long row)
     else
     {
 	/* Need to allocate a new buffer */
-	u_char *newline = ALLOC_LINE_BUF(tx, new_length);
+	char *newline = ALLOC_LINE_BUF(tx, new_length);
 	if(newline != NULL)
 	{
 	    if(tx->tx_Lines[row].ln_Strlen != 0)
@@ -262,7 +262,7 @@ insert_gap(TX *tx, long len, long col, long row)
    inserted into the current line. Returns the position of the character
    after the end of the inserted text. */
 repv
-insert_bytes(TX *tx, const u_char *text, long textLen, repv pos)
+insert_bytes(TX *tx, const char *text, long textLen, repv pos)
 {
     if(insert_gap(tx, textLen, VCOL(pos), VROW(pos)))
     {
@@ -276,9 +276,9 @@ insert_bytes(TX *tx, const u_char *text, long textLen, repv pos)
 /* Inserts a string, this routine acts on any '\n' characters that it
    finds. */
 repv
-insert_string(TX *tx, const u_char *text, long textLen, repv pos)
+insert_string(TX *tx, const char *text, long textLen, repv pos)
 {
-    const u_char *eol;
+    const char *eol;
     Pos tpos;
     COPY_VPOS(&tpos, pos);
     while((eol = memchr(text, '\n', textLen)))
@@ -329,7 +329,7 @@ insert_string(TX *tx, const u_char *text, long textLen, repv pos)
 		else
 		{
 		    /* Allocate a new buffer */
-		    u_char *new = ALLOC_LINE_BUF(tx, PCOL(&tpos) + 1);
+		    char *new = ALLOC_LINE_BUF(tx, PCOL(&tpos) + 1);
 		    if(new != NULL)
 		    {
 			memcpy(new, tx->tx_Lines[row].ln_Line, PCOL(&tpos));
@@ -350,7 +350,7 @@ insert_string(TX *tx, const u_char *text, long textLen, repv pos)
 	}
 	else
 	{
-	    u_char *copy;
+	    char *copy;
 	    if(!resize_line_list(tx, +1, PROW(&tpos)))
 		goto abort;
 	    copy = ALLOC_LINE_BUF(tx, len + 1);
@@ -411,7 +411,7 @@ delete_chars(TX *tx, long col, long row, long size)
 	else
 	{
 	    /* Allocate a new line */
-	    u_char *new_line = ALLOC_LINE_BUF(tx, new_length);
+	    char *new_line = ALLOC_LINE_BUF(tx, new_length);
 	    if(new_line == NULL)
 	    {
 		rep_mem_error();
@@ -484,7 +484,7 @@ delete_section(TX *tx, repv start, repv end)
 		       empty; so just use the other line */
 		    if(tx->tx_Lines[row+1].ln_Strlen == 1)
 		    {
-			u_char *tem = tx->tx_Lines[row].ln_Line;
+			char *tem = tx->tx_Lines[row].ln_Line;
 			tx->tx_Lines[row].ln_Line = tx->tx_Lines[row+1].ln_Line;
 			tx->tx_Lines[row+1].ln_Line = tem;
 			tx->tx_Lines[row+1].ln_Strlen = tx->tx_Lines[row].ln_Strlen;
@@ -498,7 +498,7 @@ delete_section(TX *tx, repv start, repv end)
 		       of the existing lines.. */
 		    int new_length = (tx->tx_Lines[row].ln_Strlen
 				      + tx->tx_Lines[row+1].ln_Strlen - 1);
-		    u_char *new_line = ALLOC_LINE_BUF(tx, new_length);
+		    char *new_line = ALLOC_LINE_BUF(tx, new_length);
 		    if(new_line == NULL)
 		    {
 			rep_mem_error();
@@ -668,7 +668,7 @@ section_length(TX *tx, repv startPos, repv endPos)
 /* Copies a section to a buffer.
    End of copy does NOT have a zero appended to it. */
 void
-copy_section(TX *tx, repv startPos, repv endPos, u_char *buff)
+copy_section(TX *tx, repv startPos, repv endPos, char *buff)
 {
     long linenum = VROW(startPos);
     long copylen;

@@ -85,7 +85,7 @@ pos_putc(TX *tx, repv *pos, int c)
 	repv end;
 	tmps[0] = (u_char)c;
 	tmps[1] = 0;
-	end = insert_string(tx, tmps, 1, *pos);
+	end = insert_string(tx, (char *)tmps, 1, *pos);
 	if(end != rep_NULL)
 	{
 	    *pos = end;
@@ -96,7 +96,7 @@ pos_putc(TX *tx, repv *pos, int c)
 }
 
 static int
-pos_puts(TX *tx, repv *pos, u_char *buf, int bufLen)
+pos_puts(TX *tx, repv *pos, char *buf, int bufLen)
 {
     if(pad_pos(tx, *pos))
     {
@@ -124,8 +124,8 @@ Construct a unique buffer-name from NAME.
     rep_DECLARE1(rawName, rep_STRINGP);
     while(TRUE)
     {
-	u_char buf[256];
-	u_char *thistry;
+	char buf[256];
+	char *thistry;
 	TX *tx = buffer_chain;
 	if(suffix != 1)
 	{
@@ -323,7 +323,7 @@ buffer_putc (repv stream, int c)
 static int
 buffer_puts (repv stream, void *data, int len, rep_bool is_val)
 {
-    u_char *buf = is_val ? rep_STR(data) : data;
+    char *buf = is_val ? rep_STR(data) : data;
     if (BUFFERP(stream))
     {
 	return pos_puts (VTX(stream),
@@ -1098,7 +1098,7 @@ mark_cmp(repv v1, repv v2)
 static void
 mark_prin(repv strm, repv obj)
 {
-    u_char tbuf[40];
+    char tbuf[40];
     rep_stream_puts(strm, "#<mark ", -1, FALSE);
     if(MARK_RESIDENT_P(VMARK(obj)))
 	buffer_prin(strm, VMARK(obj)->file);
@@ -1154,7 +1154,7 @@ mark_putc (repv stream, int c)
 static int
 mark_puts (repv stream, void *data, int len, rep_bool is_val)
 {
-    u_char *buf = is_val ? rep_STR(data) : data;
+    char *buf = is_val ? rep_STR(data) : data;
     if(!MARK_RESIDENT_P(VMARK(stream)))
     {
 	Fsignal(Qinvalid_stream, rep_list_2(stream, rep_VAL(&non_resident)));

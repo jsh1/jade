@@ -57,7 +57,7 @@ static bool
 read_file_into_tx(TX *tx, FILE *fh, long file_length)
 {
     bool rc = FALSE;
-    u_char buf[BUFSIZ];
+    char buf[BUFSIZ];
     long len, row, alloced_lines, chars_read = 0;
 
     /* For the first N allocations, use the standard resize_line_list method,
@@ -69,9 +69,9 @@ read_file_into_tx(TX *tx, FILE *fh, long file_length)
 
     while((len = fread(buf, 1, BUFSIZ, fh)) > 0)
     {
-	u_char *new;
+	char *new;
 	long newlen;
-	u_char *eol, *cur = buf;
+	char *eol, *cur = buf;
 	while((eol = memchr(cur, '\n', (buf + len) - cur)))
 	{
 	    if(tx->tx_Lines[row].ln_Strlen != 0)
@@ -349,7 +349,7 @@ before the cursor in the current buffer.
     {
 	TX *tx = curr_vw->vw_Tx;
 	FILE *fh;
-	u_char buf[BUFSIZ];
+	char buf[BUFSIZ];
 	long len;
 	repv pos = curr_vw->vw_CursorPos;
 

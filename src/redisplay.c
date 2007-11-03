@@ -88,7 +88,7 @@ alloc_glyph_buf(int cols, int rows)
     else
     {
 	/* Initialise pointers */
-	char *p = ((char *)g) + sizeof(glyph_buf);
+	u_char *p = ((u_char *)g) + sizeof(glyph_buf);
 	int i;
 	g->cols = cols;
 	g->rows = rows;
@@ -244,7 +244,7 @@ redisplay_do_draw(WIN *w, glyph_buf *old_g, glyph_buf *new_g, int line)
 	len = end - prefix;
 
 	SYS_DRAW_GLYPHS(w, prefix, line-1, attr,
-			new_codes + prefix, len, all_spaces);
+			(char *) new_codes + prefix, len, all_spaces);
 
 	prefix = end;
     }

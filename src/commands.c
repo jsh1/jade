@@ -171,8 +171,8 @@ any entered arg is given to the invoked COMMAND.
 	rep_PUSHGC(gc_cmd, cmd);
 	if(rep_STRINGP(int_spec))
 	{
-	    u_char *spec_str = rep_STR(int_spec);
-	    u_char c;
+	    char *spec_str = rep_STR(int_spec);
+	    char c;
 	    rep_GC_root gc_args;
 
 	    /* Handle leading flags */
@@ -220,7 +220,7 @@ any entered arg is given to the invoked COMMAND.
 		    else
 		    {
 			/* copy the prompt */
-			u_char *end = memchr(spec_str, '\n',
+			char *end = memchr(spec_str, '\n',
 					     rep_STRING_LEN(int_spec) -
 					     (spec_str - rep_STR(int_spec)));
 			if(!end)

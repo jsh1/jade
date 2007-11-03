@@ -506,7 +506,7 @@ regmatch(prog)
 	    break;
 	case EXACTLY:{
 		register int	len;
-		register u_char *opnd;
+		register char *opnd;
 		opnd = OPERAND(scan);
 		if(regnocase)
 		{
@@ -640,7 +640,7 @@ regmatch(prog)
 	    break;
 	case STAR:
 	case PLUS:{
-		register u_char	nextch;
+		register char	nextch;
 		register int	no;
 		Pos save;
 		register int	min;
@@ -675,7 +675,7 @@ regmatch(prog)
 	    break;
 	case NGSTAR:
 	case NGPLUS:{
-		register u_char	nextch;
+		register char	nextch;
 		register int	no;
 		Pos save;
 		register int	max;
@@ -762,7 +762,7 @@ regmatch(prog)
 	    else
 	    {
 		Pos tem = reginput;
-		u_char c0, c1;
+		char c0, c1;
 		backward_char (1, regtx, &tem);
 		c0 = INPUT_CHAR (&reginput);
 		c1 = INPUT_CHAR (&tem);
@@ -779,7 +779,7 @@ regmatch(prog)
 	    else
 	    {
 		Pos tem = reginput;
-		u_char c0, c1;
+		char c0, c1;
 		backward_char (1, regtx, &tem);
 		c0 = INPUT_CHAR (&reginput);
 		c1 = INPUT_CHAR (&tem);
@@ -823,7 +823,7 @@ regrepeat(p)
 {
     register int count = 0;
     Pos scan;
-    register u_char *opnd;
+    register char *opnd;
     char c;
 
     scan = reginput;

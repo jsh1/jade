@@ -207,8 +207,11 @@ static bool
 use_options(struct x11_display *xdpy)
 {
     int id;
-    int x, y, w, h;
-    int gflgs = XParseGeometry(geom_str, &x, &y, &w, &h);
+    int x, y;
+    unsigned int w, h;
+    int gflgs;
+
+    gflgs = XParseGeometry(geom_str, &x, &y, &w, &h);
 
     if(!(gflgs & WidthValue))
 	w = -1;
@@ -700,7 +703,7 @@ x11_handle_input(int fd, bool synchronous)
 	    case MotionNotify:
 	    {
 		Window tmpw;
-		int tmp;
+		int tmp; unsigned int utmp;
 		int x, y;
 		
 		/* Swallow any pending motion events as well. */
@@ -714,7 +717,7 @@ x11_handle_input(int fd, bool synchronous)
 		   check the Xlib manuals about this. */
 		if(XQueryPointer(xdisplay->display, ev_win->w_Window,
 				 &tmpw, &tmpw, &tmp, &tmp,
-				 &x, &y, &tmp))
+				 &x, &y, &utmp))
 		{
 		    x11_current_mouse_x = x;
 		    x11_current_mouse_y = y;

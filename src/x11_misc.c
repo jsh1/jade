@@ -309,7 +309,7 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 	{
 	    XChangeProperty(ev->display, ev->requestor, ev->property,
 			    XA_STRING, 8, PropModeReplace,
-			    rep_STR(selection_info[selno].data),
+			    (u_char *)rep_STR(selection_info[selno].data),
 			    rep_STRING_LEN(selection_info[selno].data));
 	}
 	else if(selection_info[selno].type == Sel_area)
@@ -330,7 +330,7 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 		    string[tlen] = 0;
 		    XChangeProperty(ev->display, ev->requestor, ev->property,
 				    XA_STRING, 8, PropModeReplace,
-				    string, tlen);
+				    (u_char *)string, tlen);
 		    rep_free(string);
 		}
 	    }

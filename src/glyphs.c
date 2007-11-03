@@ -157,7 +157,7 @@ static gl_cache_t gl_cache;
 void
 make_window_glyphs(glyph_buf *g, WIN *w)
 {
-    static char spaces[] = "                                                 "
+    static u_char spaces[] = "                                                 "
 "                                                                            ";
 
     VW *vw;
@@ -170,7 +170,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	repv glyph_tab = Fbuffer_symbol_value(Qglyph_table,
 					      vw->vw_DisplayOrigin,
 					      rep_VAL(vw->vw_Tx), Qt);
-	glyph_attr attr;
+	glyph_attr attr = 0;
 	int tab_size = vw->vw_Tx->tx_TabSize;
 	long first_col, first_row, first_char_col;
 	int glyph_row, last_row, char_row;
@@ -276,7 +276,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    glyph_code *codes = w->w_NewContent->codes[glyph_row];
 	    glyph_attr *attrs = w->w_NewContent->attrs[glyph_row];
 
-	    u_char *src = vw->vw_Tx->tx_Lines[char_row].ln_Line;
+	    u_char *src = (u_char *)vw->vw_Tx->tx_Lines[char_row].ln_Line;
 	    long src_len = vw->vw_Tx->tx_Lines[char_row].ln_Strlen - 1;
 
 	    /* Position in current screen row, logical glyph position in
@@ -606,7 +606,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    codes = w->w_NewContent->codes[glyph_row];
 	    attrs = w->w_NewContent->attrs[glyph_row];
 
-	    update_status_buffer(vw, codes, g->cols);
+	    update_status_buffer(vw, (char *)codes, g->cols);
 	    memset(attrs, attr, g->cols);
 	    glyph_row++;
 	}
@@ -628,7 +628,7 @@ make_message_glyphs(glyph_buf *g, WIN *w)
     glyph_attr attr;
 
     u_long msg_len = w->w_MessageLen;
-    u_char *msg = w->w_Message;
+    char *msg = w->w_Message;
     int line = w->w_MaxY - (ROUND_UP_INT(msg_len, g->cols-1) / (g->cols-1));
     if(line < w->w_MiniBuf->vw_FirstY)
     {
@@ -975,7 +975,7 @@ recenter_cursor(VW *vw)
 /* Returns the number of glyphs needed to draw the string SRC.
    TODO: this function is called a lot, should really cache its results */
 static inline long
-uncached_string_glyph_length(TX *tx, const u_char *src, long srcLen)
+uncached_string_glyph_length(TX *tx, const char *src, long srcLen)
 {
     /* FIXME: This is wrong, it's necessary to traverse the extent
        tree on this line since the glyph-table can be changed. */
@@ -988,7 +988,7 @@ uncached_string_glyph_length(TX *tx, const u_char *src, long srcLen)
     width_table = &VGLYPHTAB(gt)->gt_Widths;
     for(w = 0; srcLen-- > 0;)
     {
-	register int w1 = (*width_table)[*src++];
+	register int w1 = (*width_table)[*(u_char *)src++];
 	if(w1 != 0)
 	    w += w1;
 	else
@@ -1097,7 +1097,7 @@ glyph_col(TX *tx, long col, long linenum)
 long
 char_col(TX *tx, long col, long linenum)
 {
-    u_char *src = tx->tx_Lines[linenum].ln_Line;
+    char *src = tx->tx_Lines[linenum].ln_Line;
     long srclen = tx->tx_Lines[linenum].ln_Strlen - 1;
     glyph_widths_t *width_table;
     register long w = 0;
@@ -1109,7 +1109,7 @@ char_col(TX *tx, long col, long linenum)
     width_table = &VGLYPHTAB(gt)->gt_Widths;
     while((w < col) && (srclen-- > 0))
     {
-	register int w1 = (*width_table)[*src++];
+	register int w1 = (*width_table)[*(u_char *)src++];
 	if(w1 == 0)
 	    w += tx->tx_TabSize - (w % tx->tx_TabSize);
 	else
@@ -1389,7 +1389,7 @@ GLYPH-TABLE.
 	rep_signal_arg_error(ch, 1);
 	return rep_NULL;
     }
-    return(rep_string_dupn(&VGLYPHTAB(gt)->gt_Glyphs[rep_INT(ch)][0],
+    return(rep_string_dupn((char *)&VGLYPHTAB(gt)->gt_Glyphs[rep_INT(ch)][0],
 		       VGLYPHTAB(gt)->gt_Widths[rep_INT(ch)]));
 }
 

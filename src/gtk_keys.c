@@ -153,7 +153,7 @@ translate_event(u_long *code, u_long *mods, GdkEvent *ev)
 }
 
 int
-cook_key(void *event, u_char *buf, int buflen)
+cook_key(void *event, char *buf, int buflen)
 {
     GdkEvent *ev = event;
     if (ev->type == GDK_KEY_PRESS)

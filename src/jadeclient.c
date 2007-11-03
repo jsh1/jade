@@ -57,7 +57,7 @@ static int opt_nowait = 0;
 static char *
 system_name(void)
 {
-    u_char buf[256];
+    char buf[256];
     struct hostent *h;
 
     static char *system_name;
@@ -87,7 +87,7 @@ system_name(void)
 	    system_name = strdup(*aliases ? *aliases : h->h_name);
 	}
 	else
-	    system_name = strdup((u_char *)h->h_name);
+	    system_name = strdup((char *)h->h_name);
     }
     else
 	system_name = strdup(buf);

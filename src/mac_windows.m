@@ -167,7 +167,6 @@ flip_y (JadeView *view, int y)
 {
     NSPoint p;
     u_long code = 0, mods = 0;
-    bool redisplay;
 
     /* May need to defer this event until latr. */
 
@@ -472,7 +471,7 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 	{
 	    pt[i].x = x + w->w_FontX * i;
 	    pt[i].y = y - view->_font_ascent;
-	    glyphs[i] = view->_glyph_table[(unsigned int)str[i]];
+	    glyphs[i] = view->_glyph_table[((u_char *)str)[i]];
 	}
 
 	CGContextSetTextMatrix (ctx, CGAffineTransformIdentity);
@@ -586,7 +585,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 	      NSMakeRect (x, y, width * w->w_FontX, height * w->w_FontY)
 	      styleMask:NSTitledWindowMask | NSClosableWindowMask
 	      | NSMiniaturizableWindowMask | NSResizableWindowMask
-	      backing:NSBackingStoreBuffered defer:NO];
+	      backing:NSBackingStoreBuffered defer:YES];
     [view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
     [window setContentView:view];
     [window setReleasedWhenClosed:YES];

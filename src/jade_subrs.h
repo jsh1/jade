@@ -98,11 +98,11 @@ extern repv Fcommandp(repv cmd);
 extern bool clear_line_list(TX *);
 extern void kill_line_list(TX *);
 extern LINE *resize_line_list(TX *, long, long);
-extern u_char *alloc_line_buf(TX *, long length);
-extern void free_line_buf(TX *tx, u_char *line);
+extern char *alloc_line_buf(TX *, long length);
+extern void free_line_buf(TX *tx, char *line);
 extern bool insert_gap(TX *, long, long, long);
-extern repv insert_bytes(TX *, const u_char *, long, repv);
-extern repv insert_string(TX *, const u_char *, long, repv);
+extern repv insert_bytes(TX *, const char *, long, repv);
+extern repv insert_string(TX *, const char *, long, repv);
 extern bool delete_chars(TX *, long, long, long);
 extern repv delete_section(TX *, repv, repv);
 extern bool pad_pos(TX *, repv);
@@ -113,7 +113,7 @@ extern repv check_pos(TX *, repv);
 extern bool check_line(TX *, repv);
 extern bool check_row(TX *tx, long line);
 extern long section_length(TX *, repv, repv);
-extern void copy_section(TX *, repv, repv, u_char *);
+extern void copy_section(TX *, repv, repv, char *);
 extern void order_block(VW *);
 extern bool read_only_pos(TX *, repv);
 extern bool read_only_section(TX *, repv, repv);
@@ -279,8 +279,8 @@ extern void reset_all_views(TX *);
 
 /* from keys.c */
 extern repv eval_input_event(void *, u_long, u_long);
-extern bool lookup_event(u_long *, u_long *, u_char *);
-extern bool lookup_event_name(u_char *, u_long, u_long);
+extern bool lookup_event(u_long *, u_long *, char *);
+extern bool lookup_event_name(char *, u_long, u_long);
 extern bool print_event_prefix(void);
 extern void keys_init(void);
 extern u_long current_event[2], last_event[2];
@@ -407,8 +407,8 @@ extern repv Fviewp(repv);
 /* from windows.c */
 extern repv Qdimensions, Qposition, Qbuffer, Qfont;
 extern void update_window_dimensions(WIN *w);
-extern void messagen(u_char *, int);
-extern void messagef(u_char *, va_list);
+extern void messagen(char *, int);
+extern void messagef(char *, va_list);
 extern void reset_message(WIN *);
 extern bool remove_all_messages(bool from_idle_p);
 extern void windows_init(void);
@@ -444,7 +444,7 @@ extern repv Fset_font(repv fontname, repv win);
 
 /* from gtk_keys.c */
 extern void translate_event(u_long *, u_long *, GdkEvent *);
-extern int sys_cook_key(void *, u_char *, int);
+extern int sys_cook_key(void *, char *, int);
 extern bool sys_lookup_mod(const char *name, u_long *mods);
 extern bool sys_lookup_code(const char *name, u_long *code, u_long *mods);
 extern char *sys_lookup_mod_name(char *buf, u_long mod);
@@ -544,7 +544,7 @@ extern void sys_windows_init(void);
 /* from mac_keys.m */
 extern u_long esc_code, esc_mods;
 extern void sys_translate_event(u_long *, u_long *, void *);
-extern int sys_cook_key(void *, u_char *, int);
+extern int sys_cook_key(void *, char *, int);
 extern bool sys_lookup_mod(const char *, u_long *);
 extern bool sys_lookup_code(const char *, u_long *, u_long *);
 extern char *sys_lookup_mod_name(char *, u_long);
@@ -562,7 +562,7 @@ extern void mac_runloop_init (void);
 /* from x11_keys.c */
 extern void translate_event(u_long *, u_long *, XEvent *,
 			    struct x11_display *);
-extern int sys_cook_key(void *, u_char *, int);
+extern int sys_cook_key(void *, char *, int);
 extern bool sys_lookup_mod(const char *name, u_long *mods);
 extern bool sys_lookup_code(const char *name, u_long *code, u_long *mods);
 extern char *sys_lookup_mod_name(char *buf, u_long mod);

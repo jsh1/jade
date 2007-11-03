@@ -327,7 +327,7 @@ Cycles through the open windows forwards.
 }
 
 void
-messagen(u_char *title, int length)
+messagen(char *title, int length)
 {
     WIN *w = curr_win;
     if((w->w_Flags & WINFF_SLEEPING) == 0)
@@ -341,12 +341,12 @@ messagen(u_char *title, int length)
 }
 
 void
-messagef(u_char *fmt, va_list args)
+messagef(char *fmt, va_list args)
 {
     WIN *w = curr_win;
     if((w->w_Flags & WINFF_SLEEPING) == 0)
     {
-	u_char fmtbuff[256];
+	char fmtbuff[256];
 	u_long len;
 #ifdef HAVE_SNPRINTF
 	vsnprintf(fmtbuff, sizeof(fmtbuff), fmt, args);
@@ -397,23 +397,23 @@ jade_message (enum rep_message fn, ...)
     switch (fn)
     {
 	int len;
-	u_char *msg;
+	char *msg;
 	u_long *old_lenp;
-	u_char **old_msgp;
+	char **old_msgp;
 
     case rep_messagen:
-	msg = (u_char *)va_arg(args, u_char *);
+	msg = (char *)va_arg(args, char *);
 	len = (int)va_arg(args, int);
 	messagen (msg, len);
 	break;
 
     case rep_message:
-	msg = (u_char *)va_arg(args, u_char *);
+	msg = (char *)va_arg(args, char *);
 	messagen (msg, strlen(msg));
 	break;
 
     case rep_messagef:
-	msg = (u_char *)va_arg(args, u_char *);
+	msg = (char *)va_arg(args, char *);
 	messagef (msg, args);
 	break;
 
@@ -422,7 +422,7 @@ jade_message (enum rep_message fn, ...)
 	break;
 
     case rep_save_message:
-	old_msgp = (u_char **)va_arg(args, u_char **);
+	old_msgp = (char **)va_arg(args, char **);
 	old_lenp = (u_long *)va_arg(args, u_long *);
 	if(curr_win->w_Flags & WINFF_MESSAGE)
 	{
@@ -440,7 +440,7 @@ jade_message (enum rep_message fn, ...)
 	break;
 
     case rep_restore_message:
-	msg = (u_char *)va_arg(args, u_char *);
+	msg = (char *)va_arg(args, char *);
 	len = (int)va_arg(args, int);
 	if (msg != 0)
 	{
@@ -453,12 +453,12 @@ jade_message (enum rep_message fn, ...)
 	break;
 
     case rep_append_message:
-	msg = (u_char *)va_arg(args, u_char *);
+	msg = (char *)va_arg(args, char *);
 	len = (int)va_arg(args, int);
 	if (curr_win->w_Flags & WINFF_MESSAGE)
 	{
 	    WIN *w = curr_win;
-	    u_char *s = rep_realloc(w->w_Message, w->w_MessageLen + len + 1);
+	    char *s = rep_realloc(w->w_Message, w->w_MessageLen + len + 1);
 	    if(s != 0)
 	    {
 		w->w_Message = s;
@@ -782,7 +782,7 @@ window_mark_active (void)
 static void
 window_prin(repv strm, repv win)
 {
-    u_char buf[40];
+    char buf[40];
     if(VWIN(win)->w_Window)
     {
 #ifdef HAVE_SNPRINTF

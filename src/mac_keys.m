@@ -106,7 +106,7 @@ sys_translate_event(u_long *code, u_long *mods, void *ev_)
 }
 
 int
-sys_cook_key(void *event, u_char *buf, int buflen)
+sys_cook_key(void *event, char *buf, int buflen)
 {
     NSEvent *ev = event;
     NSAutoreleasePool *pool;

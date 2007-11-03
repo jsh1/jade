@@ -335,7 +335,7 @@ unchanged.
 	{
 	    int llen = VTX(tx)->tx_Lines[linenum].ln_Strlen - 1;
 	    col = (linenum == VROW(start) ? VCOL(start) : 0);
-	    str = VTX(tx)->tx_Lines[linenum].ln_Line + col;
+	    str = (u_char *)VTX(tx)->tx_Lines[linenum].ln_Line + col;
 	    while(col++ < llen)
 	    {
 		register u_char c = *str;
@@ -344,7 +344,7 @@ unchanged.
 	    linenum++;
 	}
 	col = (linenum == VROW(start) ? VCOL(start) : 0);
-	str = VTX(tx)->tx_Lines[linenum].ln_Line + col;
+	str = (u_char *)VTX(tx)->tx_Lines[linenum].ln_Line + col;
 	while(col++ < VCOL(end))
 	{
 	    register u_char c = *str;
@@ -449,7 +449,7 @@ empty, ie, blank or only containing spaces.
 	    return(Qt);
 	else
 	{
-	    u_char *s = VTX(tx)->tx_Lines[VROW(pos)].ln_Line;
+	    char *s = VTX(tx)->tx_Lines[VROW(pos)].ln_Line;
 	    while(*s && isspace(*s))
 		s++;
 	    if(!(*s))
@@ -471,7 +471,7 @@ pointed to by POS (or the cursor), in BUFFER.
 {
     VW *vw = curr_vw;
     long len;
-    u_char *line;
+    char *line;
     if(!BUFFERP(tx))
 	tx = rep_VAL(vw->vw_Tx);
     if(POSP(pos) && check_line(VTX(tx), pos))
@@ -503,7 +503,7 @@ If ONLY-SPACES in non-nil no tab characters are used.
     if(!read_only_pos(VTX(tx), indpos) && check_line(VTX(tx), indpos))
     {
 	long row = VROW(indpos);
-	u_char *s = VTX(tx)->tx_Lines[row].ln_Line;
+	char *s = VTX(tx)->tx_Lines[row].ln_Line;
 	repv pos = indpos;
 	long oldind, diff;
 	long tabs, spaces;
@@ -551,7 +551,7 @@ If ONLY-SPACES in non-nil no tab characters are used.
 	}
 	else
 	{
-	    u_char *s = VTX(tx)->tx_Lines[row].ln_Line;
+	    char *s = VTX(tx)->tx_Lines[row].ln_Line;
 	    long i;
 	    repv end = make_pos(tabs + spaces, VROW(pos));
 	    for(i = 0; i < tabs; i++)
@@ -621,7 +621,7 @@ COLUMN counts from zero.
 	    repv tmp = vw->vw_CursorPos;
 	    if(insert_gap(tx, spaces + tabs, VCOL(tmp), VROW(tmp)))
 	    {
-		u_char *line = tx->tx_Lines[VROW(tmp)].ln_Line;
+		char *line = tx->tx_Lines[VROW(tmp)].ln_Line;
 		memset(line + VCOL(tmp), '\t', tabs);
 		memset(line + VCOL(tmp) + tabs, ' ', spaces);
 		undo_record_insertion(tx, tmp, vw->vw_CursorPos);

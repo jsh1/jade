@@ -52,7 +52,7 @@ buffer_strpbrk(TX *tx, Pos *pos, const char *chars)
 
     while(PROW(pos) < tx->tx_LogicalEnd)
     {
-	u_char *ptr = strpbrk(line->ln_Line + PCOL(pos), chars);
+	char *ptr = strpbrk(line->ln_Line + PCOL(pos), chars);
 	if(ptr != NULL)
 	{
 	    PCOL(pos) = ptr - line->ln_Line;
@@ -85,7 +85,7 @@ buffer_reverse_strpbrk(TX *tx, Pos *pos, const char *chars)
     }
     while(1)
     {
-	u_char *match = line->ln_Line + PCOL(pos);
+	char *match = line->ln_Line + PCOL(pos);
 	while(match >= line->ln_Line)
 	{
 	    if(strchr(chars, *match) != NULL)
@@ -134,7 +134,7 @@ buffer_strchr(TX *tx, Pos *pos, char c)
     {
 	while(PROW(pos) < tx->tx_LogicalEnd)
 	{
-	    u_char *match = strchr(line->ln_Line + PCOL(pos), c);
+	    char *match = strchr(line->ln_Line + PCOL(pos), c);
 	    if(match)
 	    {
 		PCOL(pos) = match - line->ln_Line;
@@ -175,7 +175,7 @@ buffer_reverse_strchr(TX *tx, Pos *pos, char c)
     {
 	while(1)
 	{
-	    u_char *match = line->ln_Line + PCOL(pos);
+	    char *match = line->ln_Line + PCOL(pos);
 	    while(match >= line->ln_Line)
 	    {
 		if(*match == c)

@@ -334,7 +334,7 @@ inner_eval_input_event(repv data_)
 	       && (mods & EV_TYPE_KEYBD) && OSInputMsg)
 	    {
 		/* Try to self-insert */
-		u_char buff[256];
+		char buff[256];
 		int len;
 		if((len = sys_cook_key(OSInputMsg, buff, 256 - 1)) >= 0)
 		{
@@ -480,7 +480,7 @@ static struct key_def default_codes[] = {
 /* Puts the integers defining the event described in DESC into CODE
    and MODS. */
 bool
-lookup_event(u_long *code, u_long *mods, u_char *desc)
+lookup_event(u_long *code, u_long *mods, char *desc)
 {
     char *tem;
     char buf[100];
@@ -535,7 +535,7 @@ error:
 
 /* Constructs the name of the event defined by CODE and MODS in BUF.  */
 bool
-lookup_event_name(u_char *buf, u_long code, u_long mods)
+lookup_event_name(char *buf, u_long code, u_long mods)
 {
     int i;
     struct key_def *x;
@@ -783,7 +783,7 @@ Returns the string which would have been inserted by the current event if
 a Lisp function hadn't been called instead.
 ::end:: */
 {
-    u_char buff[256];
+    char buff[256];
     int len;
     if(!current_os_event)
 	return(Fsignal(Qerror, rep_LIST_1(rep_VAL(&not_in_handler))));
@@ -828,7 +828,7 @@ event-name EVENT
 Returns a string naming the event EVENT.
 ::end:: */
 {
-    u_char buf[256];
+    char buf[256];
     if(!EVENTP(ev))
 	return rep_signal_arg_error(ev, 1);
 
@@ -928,8 +928,8 @@ bool
 print_event_prefix(void)
 {
     int i;
-    u_char buf[256];
-    u_char *bufp = buf;
+    char buf[256];
+    char *bufp = buf;
     if((next_keymap_path == rep_NULL && !pending_meta)
        && (!print_prefix || printed_this_prefix))
     {

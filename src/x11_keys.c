@@ -132,7 +132,7 @@ translate_event(u_long *code, u_long *mods,
 }
 
 int
-cook_key(void *event, u_char *buf, int buflen)
+sys_cook_key(void *event, char *buf, int buflen)
 {
     XKeyEvent *xk = event;
     KeySym ks;

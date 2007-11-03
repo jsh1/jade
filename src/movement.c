@@ -372,10 +372,10 @@ DEFSTRING(no_brac, "No matching bracket");
 DEFSTRING(no_open_brac, "No opening bracket");
 
 static int
-find_matching_bracket(Pos *pos, TX *tx, u_char esc)
+find_matching_bracket(Pos *pos, TX *tx, char esc)
 {
 #define NUM_BRAC_TYPES 10
-    static u_char bracs[] =
+    static char bracs[] =
     {
 	'{', '}',
 	'(', ')',
@@ -391,7 +391,7 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
     LINE *line = tx->tx_Lines + PROW(pos);	/* safe */
     if(PCOL(pos) < line->ln_Strlen)
     {
-	u_char startc = line->ln_Line[PCOL(pos)];
+	char startc = line->ln_Line[PCOL(pos)];
 	long i;
 	for(i = 0; i < NUM_BRAC_TYPES; i++)
 	{
@@ -407,10 +407,10 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 	    if(i & 1)
 	    {
 		/* search backwards */
-		u_char endc = bracs[i - 1];
+		char endc = bracs[i - 1];
 		while(!found)
 		{
-		    u_char c;
+		    char c;
 		    if(--x < 0)
 		    {
 			if(--y < tx->tx_LogicalStart)
@@ -437,10 +437,10 @@ find_matching_bracket(Pos *pos, TX *tx, u_char esc)
 	    else
 	    {
 		/* search forwards */
-		u_char endc = bracs[i + 1];
+		char endc = bracs[i + 1];
 		while(!found)
 		{
-		    u_char c;
+		    char c;
 		    if(++x >= line->ln_Strlen)
 		    {
 			if(++y >= tx->tx_LogicalEnd)
@@ -484,7 +484,7 @@ each other are,  { }, ( ), [ ], ` ', < >. POS is altered.
 Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
 ::end:: */
 {
-    u_char esc_char = rep_INTP(esc) ? rep_INT(esc) : '\\';
+    char esc_char = rep_INTP(esc) ? rep_INT(esc) : '\\';
     Pos tem;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
