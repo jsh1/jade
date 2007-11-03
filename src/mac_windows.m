@@ -123,6 +123,9 @@ flip_y (JadeView *view, int y)
 	update_window_dimensions (_win);
     }
 
+    [[self window] setContentResizeIncrements:
+     NSMakeSize (_win->w_FontX, _win->w_FontY)];
+
     return 1;
 }
 
@@ -595,6 +598,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
     [window setReleasedWhenClosed:YES];
     [window setOpaque:NO];
     [window setDelegate:view];
+    [window setContentResizeIncrements:NSMakeSize (w->w_FontX, w->w_FontY)];
     [[NSNotificationCenter defaultCenter] addObserver:view
      selector:@selector(windowDidResize:)
      name:NSWindowDidResizeNotification object:view];
