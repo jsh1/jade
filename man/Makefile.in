@@ -72,5 +72,8 @@ installdirs : $(top_srcdir)/mkinstalldirs
 uninstall :
 	rm -f $(infodir)/jade.info*
 
-clean realclean :
-	rm -f *~ jade.info* jade.guide jade.doc jade.dvi jade.ps Makefile
+clean :
+	rm -f *~ jade.info* jade.guide jade.doc jade.dvi jade.ps
+
+realclean : clean
+	rm -f Makefile
