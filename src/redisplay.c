@@ -712,6 +712,10 @@ refreshed, not just what changed.
 	    hash_glyph_buf(w->w_NewContent);
 	}
 
+#ifdef SYS_BEGIN_REDISPLAY
+	SYS_BEGIN_REDISPLAY (w);
+#endif
+
 	if(!patch_display(w, w->w_Content, w->w_NewContent))
 	{
 	    /* MAX-D was exceeded. Draw all lines manually. */
@@ -719,6 +723,10 @@ refreshed, not just what changed.
 	    for(row = 1; row <= w->w_MaxY; row++)
 		redisplay_do_draw(w, w->w_Content, w->w_NewContent, row);
 	}
+
+#ifdef SYS_END_REDISPLAY
+	SYS_END_REDISPLAY (w);
+#endif
 
 	/* Flip the old and new glyph buffers. */
 	tem = w->w_NewContent;
@@ -757,13 +765,7 @@ non-nil, absolutely everything is refreshed, not just what changed.
     {
 	if (w->w_Window != WINDOW_NIL)
 	{
-#ifdef SYS_BEGIN_REDISPLAY
-	    SYS_BEGIN_REDISPLAY (w);
-#endif
 	    Fredisplay_window (rep_VAL (w), arg);
-#ifdef SYS_END_REDISPLAY
-	    SYS_END_REDISPLAY (w);
-#endif
 	}
     }
 

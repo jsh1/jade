@@ -34,7 +34,7 @@ static int window_count;
 
 @implementation JadeView
 
-static int
+static inline int
 flip_y (JadeView *view, int y)
 {
     return view->_bounds.size.height - y;
@@ -59,7 +59,10 @@ flip_y (JadeView *view, int y)
 
 - (BOOL)isOpaque
 {
-    return NO;
+    /* we may not be opaque, but we always draw our background in copy
+       mode, so we don't need AppKit to clear anything for us. */
+
+    return YES;
 }
 
 - (int)setFont
@@ -378,6 +381,8 @@ mac-get-pasteboard
 
 /* Low level drawing */
 
+static CGContextRef current_context;
+
 void
 sys_begin_redisplay (WIN *w)
 {
@@ -385,13 +390,22 @@ sys_begin_redisplay (WIN *w)
 
     OBJC_BEGIN
     [view lockFocus];
+    current_context = [[NSGraphicsContext currentContext] graphicsPort];
     OBJC_END
+
+    CGContextSaveGState (current_context);
+    CGContextSetShouldAntialias (current_context, view->_antialias);
+    CGContextSetTextMatrix (current_context, CGAffineTransformIdentity);
+    CGContextSetLineWidth (current_context, (CGFloat) 1.);
 }
 
 void
 sys_end_redisplay (WIN *w)
 {
     JadeView *view = w->w_Window;
+
+    CGContextRestoreGState (current_context);
+    current_context = NULL;
 
     OBJC_BEGIN
     [view unlockFocus];
@@ -436,12 +450,9 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
     x = w->w_LeftPix + w->w_FontX * col;
     y = flip_y (view, w->w_TopPix + w->w_FontY * row);
 
-    ctx = [[NSGraphicsContext currentContext] graphicsPort];
+    ctx = current_context;
     if (ctx == NULL)
 	return;
-
-    CGContextSaveGState (ctx);
-    CGContextSetShouldAntialias (ctx, view->_antialias);
 
     if (bg_color->cg_color != NULL)
 	CGContextSetFillColorWithColor (ctx, bg_color->cg_color);
@@ -481,7 +492,6 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 	    glyphs[i] = view->_glyph_table[((u_char *)str)[i]];
 	}
 
-	CGContextSetTextMatrix (ctx, CGAffineTransformIdentity);
 	CGContextShowGlyphsAtPositions (ctx, glyphs, pt, len);
     }
 
@@ -489,7 +499,6 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
     {
 	CGFloat ly = y - view->_font_ascent - .5f;
 	CGContextBeginPath (ctx);
-	CGContextSetLineWidth (ctx, 1.);
 	CGContextMoveToPoint (ctx, x + .5f, ly);
 	CGContextAddLineToPoint (ctx, x + len * w->w_FontX - .5f, ly);
 	CGContextStrokePath (ctx);
@@ -501,15 +510,12 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 	r.size.height = w->w_FontY - 1;
 	r.origin.x = x + .5f;
 	r.origin.y = y - r.size.height - .5f;
-	CGContextSetLineWidth (ctx, 1.);
 	for(i = 0; i < len; i++)
 	{
 	    CGContextStrokeRect (ctx, r);
 	    r.origin.x += w->w_FontX;
 	}
     }
-
-    CGContextRestoreGState (ctx);
 }
 
 void
