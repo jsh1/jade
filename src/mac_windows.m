@@ -183,6 +183,9 @@ flip_y (JadeView *view, int y)
     if (mac_defer_event (self, e))
 	return;
 
+    curr_win = _win;
+    curr_vw = _win->w_CurrVW;
+
     p = [self convertPoint:[e locationInWindow] fromView:nil];
     p.y = flip_y (self, p.y);
 
@@ -686,6 +689,9 @@ sys_unset_font(WIN *w)
 void
 sys_activate_win(WIN *w)
 {
+    OBJC_BEGIN
+    [[(JadeView *)w->w_Window window] makeKeyAndOrderFront:nil];
+    OBJC_END
 }
 
 void
