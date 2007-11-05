@@ -53,45 +53,17 @@
 static int opt_quiet = 0;		/* dont't print results */
 static int opt_nowait = 0;
 
-/* copied from src/unix_main.c */
 static char *
-system_name(void)
+user_login_name (void)
 {
-    char buf[256];
-    struct hostent *h;
-
-    static char *system_name;
-    if(system_name)
-	return system_name;
-
-#ifdef HAVE_GETHOSTNAME
-    if(gethostname(buf, 256))
-	return rep_NULL;
-#else
+    char *tmp = getlogin ();
+    if(tmp == 0)
     {
-	struct utsname uts;
-	uname(&uts);
-	strncpy(buf, uts.nodename, 256);
+	struct passwd *pwd = getpwuid(geteuid());
+	if (pwd != 0)
+	    tmp = pwd->pw_name;
     }
-#endif
-    h = gethostbyname(buf);
-    if(h)
-    {
-	if(!strchr(h->h_name, '.'))
-	{
-	    /* The official name is not fully qualified. Try looking
-	       through the list of alternatives. */
-	    char **aliases = h->h_aliases;
-	    while(*aliases && !strchr(*aliases, '.'))
-		aliases++;
-	    system_name = strdup(*aliases ? *aliases : h->h_name);
-	}
-	else
-	    system_name = strdup((char *)h->h_name);
-    }
-    else
-	system_name = strdup(buf);
-    return system_name;
+    return tmp;
 }
 
 /* Return a file descriptor of a connection to the server, or -1 if
@@ -99,53 +71,24 @@ system_name(void)
 static int
 connect_to_jade(void)
 {
-    int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if(sock_fd >= 0)
-    {
-	struct sockaddr_un addr;
-	struct passwd *pwd = getpwuid(getuid());
-	if(pwd && pwd->pw_dir)
-	{
-	    char *end;
-	    strcpy(addr.sun_path, pwd->pw_dir);
-	    end = addr.sun_path + strlen(addr.sun_path);
-	    if(end[-1] != '/')
-		*end++ = '/';
-	    sprintf(end, JADE_SOCK_NAME, system_name());
-	    addr.sun_family = AF_UNIX;
-	again:
-	    if(access(addr.sun_path, F_OK) != 0)
-	    {
-		if (opt_nowait)
-		{
-		    fprintf(stderr, "server not running\n");
-		    exit (1);
-		}
+    struct sockaddr_un addr;
+    int socket_fd;
 
-		/* Jade isn't running yet. hang around 'til it is... */
-		fprintf(stderr, "server not running, waiting...");
-		fflush(stderr);
-		do {
-		    sleep(1);
-		} while(access(addr.sun_path, F_OK) != 0);
-		fprintf(stderr, "okay\n");
-	    }
-	    if(connect(sock_fd, (struct sockaddr *)&addr,
-		       sizeof(addr.sun_family) + strlen(addr.sun_path) + 1) == 0)
-	    {
-		return sock_fd;
-	    }
-	    else
-	    {
-		/* Assume we've found a stale socket. */
-		if (unlink(addr.sun_path) == 0)
-		    goto again;
-		perror ("unlink socket");
-		exit (10);
-	    }
+    sprintf(addr.sun_path, JADE_SOCK_DIR "/" JADE_SOCK_NAME,
+	    user_login_name ());
+    addr.sun_family = AF_UNIX;
+
+    socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if(socket_fd >= 0)
+    {
+	if(connect(socket_fd, (struct sockaddr *)&addr,
+		   sizeof(addr.sun_family) + strlen(addr.sun_path) + 1) == 0)
+	{
+	    return socket_fd;
 	}
-	else
-	    fprintf(stderr, "can't find your home dir\n");
+	close (socket_fd);
+	fprintf (stderr, "error: can't connect to socket %s\n", addr.sun_path);
+	return -1;
     }
     else
 	perror("socket");

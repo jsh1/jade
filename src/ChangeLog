@@ -1,5 +1,10 @@
 2007-11-04  John Harper  <jsh@unfactored.org>
 
+	* server.h, server-dl.c, jadeclient.c: sockets now live at
+	/tmp/.jade-USER/socket. i.e. no embedded hostname (which
+	becomes invalid when the hostname changes). Took the code from
+	sawfish
+
 	* mac_runloop.m (input_thread): don't exit on select error,
 	e.g. we may get EBADF errors if our input fd set becomes stale,
 	but we'll recover

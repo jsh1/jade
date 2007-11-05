@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdarg.h>
@@ -174,73 +175,101 @@ send us messages.
 ::end:: */
 {
     char namebuf[256];
-    repv name;
-    if(socket_fd >= 0)
-	return(Qt);
-    name = Fsystem_name();
-    if(!name || !rep_STRINGP(name))
-	return rep_NULL;
-#ifdef HAVE_SNPRINTF
-    snprintf(namebuf, sizeof(namebuf), "~/" JADE_SOCK_NAME, rep_STR(name));
-#else
-    sprintf(namebuf, "~/" JADE_SOCK_NAME, rep_STR(name));
-#endif
-    name = Flocal_file_name(rep_string_dup(namebuf));
-    if(name && rep_STRINGP(name))
-    {
-	if(access(rep_STR(name), F_OK) == 0)
-	{
-	    /* Socket already exists. See if it's live */
-	    struct sockaddr_un addr;
-	    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
-	    if(sock >= 0)
-	    {
-		strcpy(addr.sun_path, rep_STR(name));
-		addr.sun_family = AF_UNIX;
-		if(connect(sock, (struct sockaddr *)&addr,
-                   sizeof(addr.sun_family) + strlen(addr.sun_path) + 1) == 0)
-		{
-		    close(sock);
-		    (*rep_message_fun)(rep_message,
-				       "A server is already open.");
-		    return(Qnil);
-		}
-		close(sock);
-		/* Socket is probably parentless; delete it */
-		(*rep_message_fun)(rep_message, "Deleted stale socket.");
-		unlink(rep_STR(name));
-	    }
-	}
-	socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-	if(socket_fd >= 0)
-	{
-	    struct sockaddr_un addr;
-	    addr.sun_family = AF_UNIX;
-	    strcpy(addr.sun_path, rep_STR(name));
-	    if(bind(socket_fd, (struct sockaddr *)&addr,
-		    sizeof(addr.sun_family) + strlen(addr.sun_path) + 1) == 0)
-	    {
-		if(listen(socket_fd, 5) == 0)
-		{
-		    rep_unix_set_fd_nonblocking(socket_fd);
-		    rep_register_input_fd(socket_fd, server_accept_connection);
+    repv user;
 
-		    socket_name = name;
-		    return(Qt);
+    if(socket_fd >= 0)
+	return Qt;
+
+    user = Fuser_login_name ();
+    if(!user || !rep_STRING(user))
+	return Qnil;
+
+#ifdef HAVE_SNPRINTF
+    snprintf (namebuf, sizeof(namebuf), JADE_SOCK_DIR, rep_STR(user));
+#else
+    sprintf (namebuf, JADE_SOCK_DIR, rep_STR(user));
+#endif
+
+    /* Make the socket directory trying to ensure that it hasn't
+       been compromised. */
+    if (mkdir (namebuf, 0700) != 0)
+    {
+	if (errno == EEXIST)
+	{
+	    struct stat st;
+	    if (stat (namebuf, &st) == 0)
+	    {
+		if (st.st_uid != getuid ())
+		{
+		    fprintf (stderr, "Owner of %s is not the current user\n",
+			     namebuf);
+		    return Qnil;
+		}
+		if (st.st_mode & (S_IRWXG | S_IRWXO))
+		{
+		    fprintf (stderr, "Permissions for %s are too lax\n",
+			     namebuf);
+		    return Qnil;
 		}
 	    }
-	    rep_signal_file_error(Qnil);
+	    else
+	    {
+		perror (namebuf);
+		return Qnil;
+	    }
 	}
 	else
 	{
-	    Fsignal(Qerror, rep_LIST_1(rep_VAL(&no_name)));
+	    perror (namebuf);
+	    return Qnil;
 	}
+    }
+
+    /* Add the socket name */
+    strcat (namebuf, "/" JADE_SOCK_NAME);
+
+    /* Delete the socket if it exists */
+    if(access(namebuf, F_OK) == 0)
+    {
+	/* Socket already exists. Delete it */
+	unlink(namebuf);
+
+	if (access (namebuf, F_OK) == 0)
+	{
+	    fprintf (stderr, "Can't delete %s\n", namebuf);
+	    return Qnil;
+	}
+    }
+
+    socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if(socket_fd >= 0)
+    {
+	struct sockaddr_un addr;
+	addr.sun_family = AF_UNIX;
+	strcpy(addr.sun_path, namebuf);
+	if(bind(socket_fd, (struct sockaddr *)&addr,
+		sizeof(addr.sun_family) + strlen(addr.sun_path) + 1) == 0)
+	{
+	    chmod (namebuf, 0700);
+	    if(listen(socket_fd, 5) == 0)
+	    {
+		rep_unix_set_fd_nonblocking(socket_fd);
+		rep_register_input_fd(socket_fd, server_accept_connection);
+		socket_name = rep_string_dup (namebuf);
+		return Qt;
+	    }
+	    else
+		perror ("listen");
+	}
+	else
+	    perror ("bind");
 	close(socket_fd);
-	socket_fd = -1;
     }
     else
-	rep_signal_file_error(Qnil);
-    return rep_NULL;
+	perror ("socket");
+
+    socket_fd = -1;
+    return Qnil;
 }
 
 DEFUN_INT("server-close", Fserver_close, Sserver_close, (void), rep_Subr0, "") /*

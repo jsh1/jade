@@ -21,9 +21,11 @@
 #ifndef JADE_SERVER_H
 #define JADE_SERVER_H
 
-/* Name of the unix domain socket. It's stored in the user's home directory,
-   but this is the basename. %s is fully-qualified host name */
-#define JADE_SOCK_NAME ".jade-%s"
+/* Directory containing the unix domain sockets, each socket is
+   simply the canonical display name */
+#define JADE_SOCK_DIR "/tmp/.jade-%s"
+
+#define JADE_SOCK_NAME "socket"
 
 /* Types of request packet. A byte with one of these values is sent to
    initiate a command. */
