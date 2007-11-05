@@ -78,8 +78,10 @@ input_thread (void *arg)
 
 	err = select (FD_SETSIZE, &copy, NULL, NULL, NULL);
 
-	if (err < 0 && errno != EINTR)
-	    break;
+	/* We may get EBADF errors if the fd-set changed while we were
+	   blocked, but that's okay, we'll be in sync with the main
+	   thread next time we wait. All the other possible errors
+	   should be harmless also. */
 
 	pthread_mutex_lock (&input_mutex);
 
@@ -111,8 +113,7 @@ input_thread (void *arg)
 	}
     }
 
-    pthread_mutex_unlock (&input_mutex);
-    return NULL;
+    /* not reached */
 }
 
 static repv

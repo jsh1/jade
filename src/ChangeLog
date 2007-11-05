@@ -1,3 +1,9 @@
+2007-11-04  John Harper  <jsh@unfactored.org>
+
+	* mac_runloop.m (input_thread): don't exit on select error,
+	e.g. we may get EBADF errors if our input fd set becomes stale,
+	but we'll recover
+
 2007-11-02  John Harper  <jsh@unfactored.org>
 
 	* mac_runloop.m: use a runloop observer to call the "postfix"
