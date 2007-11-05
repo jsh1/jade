@@ -20,6 +20,7 @@
 #include "jade.h"
 #include "mac_internal.h"
 #include <pthread.h>
+#include <libkern/OSAtomic.h>
 
 /* adapted from rep-gtk.c. */
 
@@ -28,7 +29,7 @@ struct input_data {
     int fd;
     void (*func)(int);
     CFRunLoopSourceRef source;
-    bool pending :1;
+    int32_t pending;
 };
 
 struct timeout_data {
@@ -43,7 +44,6 @@ struct timeout_data {
 CFRunLoopObserverRef observer;
 
 static int input_pipe[2];
-static fd_set input_set;
 static struct input_data *inputs;
 static pthread_mutex_t input_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -58,6 +58,14 @@ static struct timeout_data *context;
 
 static void mac_deliver_events (void);
 
+static void
+empty_pipe (int fd)
+{
+    char buf[16];
+    while (read (fd, buf, sizeof (buf)) > 0)
+	;
+}
+
 static void *
 input_thread (void *arg)
 {
@@ -68,11 +76,16 @@ input_thread (void *arg)
 	fd_set copy;
 	int err;
 	struct input_data *d;
-	char c;
 
-	FD_COPY (&input_set, &copy);
+	FD_ZERO (&copy);
 	FD_SET (input_pipe[0], &copy);
 	FD_SET (sigchld_pipe[0], &copy);
+
+	for (d = inputs; d != NULL; d = d->next)
+	{
+	    if (d->pending == 0)
+		FD_SET (d->fd, &copy);
+	}
 
 	pthread_mutex_unlock (&input_mutex);
 
@@ -87,13 +100,13 @@ input_thread (void *arg)
 
 	if (err > 0 && FD_ISSET (input_pipe[0], &copy))
 	{
-	    read (input_pipe[0], &c, 1);
+	    empty_pipe (input_pipe[0]);
 	    err--;
 	}
 
 	if (err > 0 && FD_ISSET (sigchld_pipe[0], &copy))
 	{
-	    read (sigchld_pipe[0], &c, 1);
+	    empty_pipe (sigchld_pipe[0]);
 	    CFRunLoopSourceSignal (sigchld_source);
 	    err--;
 	}
@@ -102,11 +115,7 @@ input_thread (void *arg)
 	{
 	    if (FD_ISSET (d->fd, &copy))
 	    {
-		/* FIXME: we should really remove this from our fd set
-		   until we know the main thread has serviced the
-		   runloop source. Otherwise we'll keep spinning and
-		   signalling.. */
-
+		OSAtomicIncrement32 (&d->pending);
 		CFRunLoopSourceSignal (d->source);
 		err--;
 	    }
@@ -114,6 +123,8 @@ input_thread (void *arg)
     }
 
     /* not reached */
+
+    return 0;
 }
 
 static repv
@@ -125,21 +136,41 @@ inner_input_callback (repv data_)
 }
 
 static void
+stop_application (void)
+{
+    NSEvent *e;
+
+    OBJC_BEGIN
+
+    [NSApp stop:nil];
+
+    /* Just calling -stop: doesn't work, we're probably stuck waiting
+       for an event to arrive, and -stop: simply sets a variable to
+       true. So post ourselves an event to shake things through. */
+
+    e = [NSEvent otherEventWithType:NSApplicationDefined
+	 location:[NSEvent mouseLocation] modifierFlags:0 timestamp:0
+	 windowNumber:0 context:nil subtype:0 data1:0 data2:0];
+    [NSApp postEvent:e atStart:NO];
+
+    OBJC_END
+}
+
+static void
 mac_source_perform (void *info)
 {
     struct input_data *d = info;
 
-    if (waiting_for_input != 0)
+    if (waiting_for_input == 0 && d->pending != 0)
     {
-	d->pending = true;
-	[NSApp stop:nil];
-    }
-    else
-    {
-	d->pending = false;
+	char c = 1;
+	write (input_pipe[1], &c, 1);
+	OSAtomicDecrement32 (&d->pending);
 	rep_call_with_barrier (inner_input_callback,
 			       rep_VAL(d), rep_TRUE, 0, 0, 0);
     }
+    else
+	stop_application ();
 }
 
 static void
@@ -168,8 +199,6 @@ mac_register_input_fd (int fd, void (*callback)(int fd))
     d->next = inputs;
     inputs = d;
 
-    FD_SET (fd, &input_set);
-
     pthread_mutex_unlock (&input_mutex);
 
     CFRunLoopAddSource (CFRunLoopGetCurrent (), d->source,
@@ -190,12 +219,13 @@ mac_deregister_input_fd (int fd)
     {
 	if (d->fd != fd)
 	    continue;
+
 	*ptr = d->next;
 	CFRunLoopRemoveSource (CFRunLoopGetCurrent (), d->source,
 			       kCFRunLoopCommonModes);
 	CFRelease (d->source);
 	free (d);
-	FD_CLR (fd, &input_set);
+
 	write (input_pipe[1], &c, 1);
 	break;
     }
@@ -214,7 +244,7 @@ timer_callback (CFRunLoopTimerRef timer, void *info)
        FIXME: this doesn't do anything until an event arrives? */
 
     if (context == d)
-	[NSApp stop:nil];
+	stop_application ();
 }
 
 static void
@@ -277,6 +307,7 @@ mac_event_loop (void)
 {
     struct timeout_data data;
     struct input_data *d;
+    bool kick_input;
 
     memset (&data, 0, sizeof (data));
     data.next = context;
@@ -286,14 +317,24 @@ mac_event_loop (void)
     {
 	mac_deliver_events ();
 
+	kick_input = false;
+    again:
 	for (d = inputs; d != NULL; d = d->next)
 	{
-	    if (d->pending)
+	    if (d->pending != 0)
 	    {
-		d->pending = false;
+		OSAtomicDecrement32 (&d->pending);
 		rep_call_with_barrier (inner_input_callback,
 				       rep_VAL(d), rep_TRUE, 0, 0, 0);
+		/* callout may have modified inputs list. */
+		goto again;
 	    }
+	}
+
+	if (kick_input)
+	{
+	    char c = 1;
+	    write (input_pipe[1], &c, 1);
 	}
 
 	if (rep_redisplay_fun != 0)
@@ -354,7 +395,7 @@ mac_defer_event (void *view, void *ns_event)
     pending_event = [(id)ns_event copy];
     pending_event_view = [(id)view retain];
 
-    [NSApp stop:nil];
+    stop_application ();
 
     return true;
 }
@@ -405,7 +446,7 @@ mac_wait_for_input (fd_set *fds, u_long timeout_msecs)
 	{
 	    if (!FD_ISSET (d->fd, fds))
 		continue;
-	    if (d->pending)
+	    if (d->pending != 0)
 		count++;
 	    else
 		FD_CLR (d->fd, fds);
@@ -421,7 +462,7 @@ observer_callback (CFRunLoopObserverRef observer,
 {
     if (rep_INTERRUPTP && context != 0)
     {
-	[NSApp stop:nil];
+	stop_application ();
 	return;
     }
 
@@ -439,7 +480,7 @@ static void
 mac_sigchld_handler (void *info)
 {
     if (context != 0)
-	[NSApp stop:nil];
+	stop_application ();
 }
 
 /* Called by librep/src/unix_processes.c whenever SIGCHLD is received
@@ -466,7 +507,14 @@ mac_runloop_init (void)
 			  observer, kCFRunLoopCommonModes);
 
     pipe (input_pipe);
+    rep_unix_set_fd_nonblocking (input_pipe[0]);
+    rep_unix_set_fd_cloexec (input_pipe[0]);
+    rep_unix_set_fd_cloexec (input_pipe[1]);
+
     pipe (sigchld_pipe);
+    rep_unix_set_fd_nonblocking (sigchld_pipe[0]);
+    rep_unix_set_fd_cloexec (sigchld_pipe[0]);
+    rep_unix_set_fd_cloexec (sigchld_pipe[1]);
 
     memset (&ctx, 0, sizeof (ctx));
     ctx.perform = mac_sigchld_handler;
