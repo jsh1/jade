@@ -40,6 +40,12 @@ flip_y (JadeView *view, int y)
     return view->_bounds.size.height - y;
 }
 
+- (id)initWithFrame:(NSRect)r
+{
+    _font_size = 10;
+    return [super initWithFrame:r];
+}
+
 - (void)dealloc
 {
     if (_font != 0)
@@ -92,9 +98,6 @@ flip_y (JadeView *view, int y)
 	CGFontRelease (_bold_font);
     /* FIXME: something else here. */
     _bold_font = CGFontRetain (_font);
-
-    /* FIXME: pull from font name? */
-    _font_size = 10;
 
     for (i = 0; i < 256; i++)
 	uc[i] = i;
@@ -781,6 +784,23 @@ mac-set-antialias [WIN] [STATE]
     return Qt;
 }
 
+DEFUN("mac-set-font-size", Fmac_set_font_size, Smac_set_font_size, (repv fontsize), rep_Subr1) /*
+::doc:mac-set-font-size::
+mac-set-font-size FONT-SIZE
+::end:: */
+{
+    JadeView *view;
+
+    rep_DECLARE1 (fontsize, rep_INTP);
+
+    view = curr_win->w_Window;
+    view->_font_size = rep_INT (fontsize);
+
+    sys_set_font (curr_win);
+    Fredisplay (Qt);
+    return Qt;
+}
+
 
 /* Initialisation */
 
@@ -792,6 +812,7 @@ sys_windows_init(void)
     rep_ADD_SUBR (Smac_set_antialias);
     rep_ADD_SUBR (Smac_set_pasteboard);
     rep_ADD_SUBR (Smac_get_pasteboard);
+    rep_ADD_SUBR (Smac_set_font_size);
     rep_mark_static (&_pasteboard_data);
     rep_mark_static (&_pasteboard_start);
     rep_mark_static (&_pasteboard_end);
