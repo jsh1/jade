@@ -371,5 +371,7 @@ sys_lookup_code_name(char *buf, u_long code, u_long type)
 u_long
 mac_find_meta(void)
 {
-    return EV_MOD_MOD2;
+    /* Use Option as Meta, to match Terminal.app. */
+
+    return EV_MOD_MOD1;
 }
