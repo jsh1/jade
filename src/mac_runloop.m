@@ -58,6 +58,8 @@ static struct timeout_data *context;
 
 static void mac_deliver_events (void);
 
+bool mac_needs_redisplay;
+
 static void
 empty_pipe (int fd)
 {
@@ -154,6 +156,8 @@ stop_application (void)
     [NSApp postEvent:e atStart:NO];
 
     OBJC_END
+
+    mac_needs_redisplay = true;
 }
 
 static void
@@ -168,6 +172,7 @@ mac_source_perform (void *info)
 	OSAtomicDecrement32 (&d->pending);
 	rep_call_with_barrier (inner_input_callback,
 			       rep_VAL(d), rep_TRUE, 0, 0, 0);
+	mac_needs_redisplay = true;
     }
     else
 	stop_application ();
@@ -338,7 +343,10 @@ mac_event_loop (void)
 	}
 
 	if (rep_redisplay_fun != 0)
+	{
 	    (*rep_redisplay_fun) ();
+	    mac_needs_redisplay = false;
+	}
 
 	data.timed_out = 0;
 	set_timeout (rep_input_timeout_secs * 1000);
@@ -466,10 +474,14 @@ observer_callback (CFRunLoopObserverRef observer,
 	return;
     }
 
-    Fredisplay (Qnil);
-
     if (context != 0)
     {
+	if (!context->timed_out && mac_needs_redisplay)
+	{
+	    Fredisplay (Qnil);
+	    mac_needs_redisplay = false;
+	}
+
 	context->timed_out = 0;
 	set_timeout (rep_input_timeout_secs * 1000);
 	context->idle_counter = 0;

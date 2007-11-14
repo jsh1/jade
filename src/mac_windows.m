@@ -140,6 +140,7 @@ flip_y (JadeView *view, int y)
     curr_win = _win;
     curr_vw = _win->w_CurrVW;
     rep_call_with_barrier (Fdelete_window, Qnil, rep_TRUE, 0, 0, 0);
+    mac_needs_redisplay = true;
     return NO;
 }
 
@@ -151,11 +152,13 @@ flip_y (JadeView *view, int y)
 - (void)windowDidBecomeKey:(NSNotification *)n
 {
     _has_focus = TRUE;
+    mac_needs_redisplay = true;
 }
 
 - (void)windowDidResignKey:(NSNotification *)n
 {
     _has_focus = FALSE;
+    mac_needs_redisplay = true;
 }
 
 - (void)drawRect:(NSRect)r
@@ -173,7 +176,7 @@ flip_y (JadeView *view, int y)
 
     garbage_glyphs(_win, x, y, width, height);
 
-    Fredisplay_window (rep_VAL (_win), Qnil);
+    mac_needs_redisplay = true;
 }
 
 - (void)handleEvent:(NSEvent *)e
@@ -209,6 +212,8 @@ flip_y (JadeView *view, int y)
 	eval_input_event(e, code, mods);
 	undo_end_of_command();
     }
+
+    mac_needs_redisplay = true;
 }
 
 - (void)mouseMoved:(NSEvent *)e {[self handleEvent:e];}
@@ -234,6 +239,8 @@ flip_y (JadeView *view, int y)
 
     _tracking_tag = [self addTrackingRect:[self bounds]
 		     owner:self userData:nil assumeInside:NO];
+
+    mac_needs_redisplay = true;
 }
 
 - (void)mouseEntered:(NSEvent *)e

@@ -554,6 +554,7 @@ extern int sys_set_font(WIN *);
 extern void sys_unset_font(WIN *);
 
 /* from mac_runloop.m */
+extern bool mac_needs_redisplay;
 extern bool mac_defer_event (void *view, void *ns_event);
 extern void mac_runloop_init (void);
 
