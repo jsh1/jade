@@ -22,6 +22,10 @@
 #include <pthread.h>
 #include <libkern/OSAtomic.h>
 
+/* waking up every second to do nothing, but then redisplaya anyway
+   is a waste of time and power. So sacrifice idle handling.. */
+#define NO_TIMEOUT 1
+
 /* adapted from rep-gtk.c. */
 
 struct input_data {
@@ -32,8 +36,8 @@ struct input_data {
     int32_t pending;
 };
 
-struct timeout_data {
-    struct timeout_data *next;
+struct runloop_data {
+    struct runloop_data *next;
     int timed_out;
     int idle_counter;
     u_long this_timeout_msecs;
@@ -51,12 +55,8 @@ static int sigchld_pipe[2];
 static CFRunLoopSourceRef sigchld_source;
 
 static int waiting_for_input;
-static NSEvent *pending_event;
-static JadeView *pending_event_view;
 
-static struct timeout_data *context;
-
-static void mac_deliver_events (void);
+static struct runloop_data *context;
 
 bool mac_needs_redisplay;
 
@@ -156,8 +156,6 @@ stop_application (void)
     [NSApp postEvent:e atStart:NO];
 
     OBJC_END
-
-    mac_needs_redisplay = true;
 }
 
 static void
@@ -241,7 +239,7 @@ mac_deregister_input_fd (int fd)
 static void
 timer_callback (CFRunLoopTimerRef timer, void *info)
 {
-    struct timeout_data *d = info;
+    struct runloop_data *d = info;
 
     d->timed_out = 1;
 
@@ -278,7 +276,7 @@ remove_timeout (void)
 static void
 set_timeout (u_long timeout_msecs)
 {
-    if (context != 0 && !context->timed_out)
+    if (context != 0)
     {
 	u_long max_sleep = rep_max_sleep_for ();
 
@@ -310,7 +308,7 @@ set_timeout (u_long timeout_msecs)
 static repv
 mac_event_loop (void)
 {
-    struct timeout_data data;
+    struct runloop_data data;
     struct input_data *d;
     bool kick_input;
 
@@ -318,10 +316,11 @@ mac_event_loop (void)
     data.next = context;
     context = &data;
 
+    Fredisplay (Qnil);
+    mac_needs_redisplay = false;
+
     while (1)
     {
-	mac_deliver_events ();
-
 	kick_input = false;
     again:
 	for (d = inputs; d != NULL; d = d->next)
@@ -342,13 +341,9 @@ mac_event_loop (void)
 	    write (input_pipe[1], &c, 1);
 	}
 
-	if (rep_redisplay_fun != 0)
-	{
-	    (*rep_redisplay_fun) ();
-	    mac_needs_redisplay = false;
-	}
-
-	data.timed_out = 0;
+#if NO_TIMEOUT
+	[NSApp run];
+#else
 	set_timeout (rep_input_timeout_secs * 1000);
 	[NSApp run];
 	unset_timeout ();
@@ -363,6 +358,7 @@ mac_event_loop (void)
 	    else
 		rep_on_idle (data.idle_counter++);
 	}
+#endif
 
 	rep_proc_periodically ();
 
@@ -375,7 +371,8 @@ mac_event_loop (void)
 		remove_timeout ();
 		context = data.next;
 		/* reset the timeout for any containing event loop */
-		set_timeout (rep_input_timeout_secs * 1000);
+		if (context != 0 && context->timer != 0)
+		    set_timeout (rep_input_timeout_secs * 1000);
 		return result;
 	    }
 	}
@@ -397,38 +394,17 @@ mac_defer_event (void *view, void *ns_event)
     if (waiting_for_input == 0)
 	return false;
 
-    [pending_event release];
-    [pending_event_view release];
-
-    pending_event = [(id)ns_event copy];
-    pending_event_view = [(id)view retain];
-
     stop_application ();
 
+    [NSApp postEvent:(NSEvent *)ns_event atStart:YES];
+
     return true;
-}
-
-static void
-mac_deliver_events (void)
-{
-    if (pending_event != nil)
-    {
-	NSEvent *ev = pending_event;
-	JadeView *view = pending_event_view;
-
-	pending_event = nil;
-	pending_event_view = nil;
-
-	[view handleEvent:ev];
-	[ev release];
-	[view release];
-    }
 }
 
 static int
 mac_wait_for_input (fd_set *fds, u_long timeout_msecs)
 {
-    struct timeout_data data;
+    struct runloop_data data;
     struct input_data *d;
     int count;
 
@@ -483,8 +459,10 @@ observer_callback (CFRunLoopObserverRef observer,
 	}
 
 	context->timed_out = 0;
-	set_timeout (rep_input_timeout_secs * 1000);
 	context->idle_counter = 0;
+
+	if (context->timer != NULL)
+	    set_timeout (rep_input_timeout_secs * 1000);
     }
 }
 
