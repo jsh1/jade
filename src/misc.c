@@ -61,18 +61,20 @@ DEFSYM(x11, "x11");
 #endif
 
 #ifndef HAVE_STPCPY
+#ifndef __APPLE__
 /*
  * copy src to dst, returning pointer to terminating '\0' of dst.
  * Although this has a prototype in my <string.h> it doesn't seem to be
  * in the actual library??
  */
 char *
-stpcpy(register char *dst, register const char *src)
+stpcpy(char *dst, const char *src)
 {
     while((*dst++ = *src++) != 0)
 	;
     return(dst - 1);
 }
+#endif /* !__APPLE__ */
 #endif /* !HAVE_STPCPY */
 
 #ifndef HAVE_MEMCHR
