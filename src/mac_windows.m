@@ -584,7 +584,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 {
     unsigned int x = -1, y = -1, width = 80, height = 24;
     NSWindow *window;
-    JadeView *view = 0;
+    JadeView *view = 0, *old_view;
 
     if (batch_mode_p ())
 	new_window_no_show = TRUE;
@@ -602,6 +602,11 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 
     view = [[JadeView alloc] initWithFrame:NSMakeRect (0, 0, 1, 1)];
     view->_win = w;
+
+    old_view = oldW ? oldW->w_Window : 0;
+    if (old_view)
+	view->_font_size = old_view->_font_size;
+
     [view setFont];
 
     if (curr_win != 0)
@@ -616,7 +621,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
     [window setContentView:view];
     [window setReleasedWhenClosed:YES];
     [window setOpaque:NO];
-    [window setDelegate:view];
+    [window setDelegate:(id)view];
     [window setContentResizeIncrements:NSMakeSize (w->w_FontX, w->w_FontY)];
     [[NSNotificationCenter defaultCenter] addObserver:view
      selector:@selector(windowDidResize:)
@@ -774,7 +779,7 @@ Forces any cached window output to be drawn. This is usually unnecessary.
     return Qt;
 }
 
-DEFUN("mac-set-antialias", Fmac_set_antialias, Smac_set_antialias, (repv win, repv state), rep_Subr2) /*
+DEFUN_INT("mac-set-antialias", Fmac_set_antialias, Smac_set_antialias, (repv win, repv state), rep_Subr2, "\nP") /*
 ::doc:mac-set-antialias::
 mac-set-antialias [WIN] [STATE]
 ::end:: */
@@ -791,19 +796,22 @@ mac-set-antialias [WIN] [STATE]
     return Qt;
 }
 
-DEFUN("mac-set-font-size", Fmac_set_font_size, Smac_set_font_size, (repv fontsize), rep_Subr1) /*
+DEFUN_INT("mac-set-font-size", Fmac_set_font_size, Smac_set_font_size, (repv win, repv fontsize), rep_Subr2, "\nNFont size:") /*
 ::doc:mac-set-font-size::
-mac-set-font-size FONT-SIZE
+mac-set-font-size WIN FONT-SIZE
 ::end:: */
 {
     JadeView *view;
 
-    rep_DECLARE1 (fontsize, rep_INTP);
+    if (win == Qnil)
+	win = rep_VAL (curr_win);
 
-    view = curr_win->w_Window;
+    rep_DECLARE2 (fontsize, rep_INTP);
+
+    view = VWIN (win)->w_Window;
     view->_font_size = rep_INT (fontsize);
 
-    sys_set_font (curr_win);
+    sys_set_font (VWIN (win));
     Fredisplay (Qt);
     return Qt;
 }
@@ -816,10 +824,10 @@ sys_windows_init(void)
 {
     ibeam_cursor = [NSCursor IBeamCursor];
     rep_ADD_SUBR (Sflush_output);
-    rep_ADD_SUBR (Smac_set_antialias);
+    rep_ADD_SUBR_INT (Smac_set_antialias);
     rep_ADD_SUBR (Smac_set_pasteboard);
     rep_ADD_SUBR (Smac_get_pasteboard);
-    rep_ADD_SUBR (Smac_set_font_size);
+    rep_ADD_SUBR_INT (Smac_set_font_size);
     rep_mark_static (&_pasteboard_data);
     rep_mark_static (&_pasteboard_start);
     rep_mark_static (&_pasteboard_end);
