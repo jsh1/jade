@@ -150,7 +150,7 @@ sys_init(char *program_name)
 #endif
 
     OBJC_BEGIN
-    [[NSApplication sharedApplication] setDelegate:[JadeAppDelegate class]];
+    [[NSApplication sharedApplication] setDelegate:(id)[JadeAppDelegate class]];
     OBJC_END
 
     make_argv (Fcons (Fsymbol_value (Qprogram_name, Qt),
