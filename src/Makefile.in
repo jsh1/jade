@@ -48,7 +48,7 @@ override LIBS   := $(LIBS) $(REP_LIBS) $($(windowsys)_LIBS)
 all : jade jadeclient $(DL_OBJS)
 
 jade : $(OBJS) $(JADE_LIBOBJS) $(LIBOBJS)
-	$(rep_LIBTOOL) $(CC) -export-dynamic $(LDFLAGS) -o jade $(OBJS) \
+	$(rep_LIBTOOL) --mode=link $(CC) -export-dynamic $(LDFLAGS) -o jade $(OBJS) \
 	  $(JADE_LIBOBJS) $(LIBOBJS) $(LIBS)
 
 ifeq ($(windowsys),MAC)
@@ -66,7 +66,7 @@ endif
 
 install : all installdirs
 	for p in jade jadeclient; do \
-	  $(rep_LIBTOOL) $(INSTALL_PROGRAM) $$p ${bindir}; \
+	  $(rep_LIBTOOL) --mode=install $(INSTALL_PROGRAM) $$p ${bindir}; \
 	done
 	for p in $(DL_OBJS); do \
 	  $(rep_DL_INSTALL) $$p ${jadeexecdir}; \
@@ -75,14 +75,14 @@ ifeq ($(windowsys),MAC)
 	rm -rf ${appsdir}/Jade.app
 	mkdir -p ${appsdir}/Jade.app/Contents/MacOS
 	mkdir -p ${appsdir}/Jade.app/Contents/Resources
-	$(rep_LIBTOOL) $(INSTALL_PROGRAM) jade ${appsdir}/Jade.app/Contents/MacOS/Jade
+	$(rep_LIBTOOL) --mode=install $(INSTALL_PROGRAM) jade ${appsdir}/Jade.app/Contents/MacOS/Jade
 	$(INSTALL_DATA) Info.plist ${appsdir}/Jade.app/Contents
 	$(INSTALL_DATA) jade.icns ${appsdir}/Jade.app/Contents/Resources
 endif
 
 uninstall :
 	for p in jade jadeclient; do \
-	  $(rep_LIBTOOL) rm ${bindir}/$$p; \
+	  $(rep_LIBTOOL) --mode=uninstall rm ${bindir}/$$p; \
 	done
 	for p in $(DL_OBJS); do \
 	  $(rep_DL_UNINSTALL) rm ${jadeexecdir}/$$p; \
