@@ -52,6 +52,7 @@
     u_int _has_focus :1;
     u_int _antialias :1;
     u_int _inside :1;
+    u_int _opaque :1;
 };
 
 - (void)handleEvent:(NSEvent *)e;

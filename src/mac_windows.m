@@ -468,7 +468,15 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 	return;
 
     if (bg_color->cg_color != NULL)
+    {
 	CGContextSetFillColorWithColor (ctx, bg_color->cg_color);
+
+	if (view->_opaque && CGColorGetAlpha (bg_color->cg_color) < 1)
+	{
+	    view->_opaque = false;
+	    [[view window] setOpaque:NO];
+	}
+    }
 
     CGContextSetBlendMode (ctx, kCGBlendModeCopy);
     r.size.width = len * w->w_FontX; r.size.height = w->w_FontY;
@@ -480,6 +488,12 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
     {
 	CGContextSetFillColorWithColor (ctx, fg_color->cg_color);
 	CGContextSetStrokeColorWithColor (ctx, fg_color->cg_color);
+
+	if (view->_opaque && CGColorGetAlpha (fg_color->cg_color) < 1)
+	{
+	    view->_opaque = false;
+	    [[view window] setOpaque:NO];
+	}
     }
 
     if(!all_spaces)
@@ -602,6 +616,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 
     view = [[JadeView alloc] initWithFrame:NSMakeRect (0, 0, 1, 1)];
     view->_win = w;
+    view->_opaque = true;
 
     old_view = oldW ? oldW->w_Window : 0;
     if (old_view)
@@ -620,7 +635,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
     [view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
     [window setContentView:view];
     [window setReleasedWhenClosed:YES];
-    [window setOpaque:NO];
+    [window setOpaque:YES];
     [window setDelegate:(id)view];
     [window setContentResizeIncrements:NSMakeSize (w->w_FontX, w->w_FontY)];
     [[NSNotificationCenter defaultCenter] addObserver:view
