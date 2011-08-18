@@ -1,3 +1,8 @@
+2011-08-17  John Harper  <jsh@unfactored.org>
+
+	* redisplay.c (patch_display): fix 64-bit crash by allocating
+	an extra row for the 'last_d' array
+
 2010-01-02  John Harper  <jsh@unfactored.org>
 
 	* mac_windows.m, mac_internal.h: don't mark the NSWindow

@@ -579,7 +579,7 @@ patch_display(WIN *w, glyph_buf *old_g, glyph_buf *new_g)
     dump_glyph_buf (new_g);
 #endif
 
-    last_d = alloca(sizeof(int) * 2 * old_g->rows);
+    last_d = alloca(sizeof(int) * (2 * old_g->rows + 1));
     script = alloca(sizeof(struct edit_script *) * (2 * old_g->rows + 1));
 
     if(redisplay_max_d == 0)
