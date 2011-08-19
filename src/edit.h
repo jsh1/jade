@@ -244,8 +244,6 @@ typedef struct _TX {
 
     struct _TX	   *tx_Next;
     Lisp_Mark	   *tx_MarkChain;
-    /* tx_Lines is allocated using r_alloc, thus it should *never*
-       be cached since *any* call to the malloc library could move it */
     LINE	   *tx_Lines;
     long	    tx_NumLines, tx_TotalLines;	/* text-lines, array-length */
 

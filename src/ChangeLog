@@ -1,3 +1,7 @@
+2011-08-19  John Harper  <jsh@unfactored.org>
+
+	* edit.c, edit.h: removed support for reallocating allocator
+
 2011-08-17  John Harper  <jsh@unfactored.org>
 
 	* redisplay.c (patch_display): fix 64-bit crash by allocating

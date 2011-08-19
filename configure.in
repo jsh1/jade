@@ -157,17 +157,6 @@ else
   AC_DEFINE(LIBC_MALLOC)
 fi
 
-dnl Use r_alloc or not?
-use_r_alloc=no
-AC_ARG_ENABLE(ralloc,
- [  --enable-ralloc	  Use the GNU relocating allocator (default)
-  --disable-ralloc	  Don't use the relocating alloc],
- [use_r_alloc="$enableval"])
-if test "$use_r_alloc" = "yes"; then
-  AC_CHECK_FUNC(r_re_alloc, , JADE_LIBOBJS="${JADE_LIBOBJS} ralloc.o")
-  AC_DEFINE(USE_R_ALLOC)
-fi
-
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_C_INLINE

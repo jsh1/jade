@@ -52,62 +52,13 @@
 /* Free something allocated with the previous macro. */
 #define FREE_LINE_BUF(tx, p)  rep_free(p)
 
-#ifdef USE_R_ALLOC
-
-/* Use the relocation allocator for line arrays.. */
-
-/* Allocate a buffer to contain N LINE structures for TX. */
-#define ALLOC_LL(tx,n) \
-    r_alloc((void **)&((tx)->tx_Lines), sizeof(LINE) * (n))
-
-/* Free one of the above in TX */
-#define FREE_LL(tx) \
-    r_alloc_free((void **)&((tx)->tx_Lines))
-
-/* Reallocate a buffer to contain N LINE structures. Sets tx->tx_Lines to
-   null if unsuccessful (freeing the old buffer). */
-#define REALLOC_LL(tx,n)						    \
-    do {								    \
-	if(r_re_alloc((void **)&((tx)->tx_Lines), sizeof(LINE) * (n)) == 0) \
-	    FREE_LL(tx);						    \
-    } while(0)
-
-extern void *r_alloc(void **ptr, size_t size);
-extern void r_alloc_free(void **ptr);
-extern void *r_re_alloc(void **ptr, size_t size);
-
-#else /* USE_R_ALLOC */
-
-/* Use standard allocation calls */
-
-#define ALLOC_LL(tx,n) \
-    ((tx)->tx_Lines = rep_alloc(sizeof(LINE) * (n)))
-
-#define FREE_LL(tx)				\
-    do {					\
-	rep_free((tx)->tx_Lines);		\
-	(tx)->tx_Lines = 0;			\
-    } while(0)
-
-#define REALLOC_LL(tx,n)						\
-    do {								\
-	LINE *tem = rep_realloc((tx)->tx_Lines, sizeof(LINE) * (n));	\
-	if(tem != 0)							\
-	    (tx)->tx_Lines = tem;					\
-	else								\
-	    FREE_LL(tx);						\
-    } while(0)
-
-#endif /* !USE_R_ALLOC */
-
-
 /* Makes buffer TX empty (null string in first line) */
 bool
 clear_line_list(TX *tx)
 {
     if(tx->tx_Lines)
 	kill_line_list(tx);
-    ALLOC_LL(tx, ALLOC_SPARE_LINES);
+    tx->tx_Lines = rep_alloc(sizeof(LINE) * ALLOC_SPARE_LINES);
     if(tx->tx_Lines)
     {
 	tx->tx_Lines[0].ln_Line = ALLOC_LINE_BUF(tx, 1);
@@ -139,7 +90,8 @@ kill_line_list(TX *tx)
 	    if(tx->tx_Lines[i].ln_Strlen)
 		FREE_LINE_BUF(tx, tx->tx_Lines[i].ln_Line);
 	}
-	FREE_LL(tx);
+	rep_free(tx->tx_Lines);
+	tx->tx_Lines = 0;
 	tx->tx_NumLines = 0;
 	tx->tx_TotalLines = 0;
     }
@@ -185,13 +137,23 @@ resize_line_list(TX *tx, long change, long where)
        || (tx->tx_TotalLines - newsize) > MAX_SPARE_LINES)
     {
 	/* Only reallocate if there's not enough space in the array */
+	long actual_size = newsize + ALLOC_SPARE_LINES;
 	if(tx->tx_Lines != 0)
-	    REALLOC_LL(tx, newsize + ALLOC_SPARE_LINES);
+	{
+	    LINE *tem = rep_realloc(tx->tx_Lines, sizeof(LINE) * actual_size);
+	    if (tem != 0)
+		tx->tx_Lines = tem;
+	    else
+	    {
+		rep_free(tx->tx_Lines);
+		tx->tx_Lines = 0;
+	    }
+	}
 	else
-	    ALLOC_LL(tx, newsize + ALLOC_SPARE_LINES);
+	    tx->tx_Lines = rep_alloc(sizeof(LINE) * actual_size);
 	if(tx->tx_Lines == 0)
 	    return 0;
-	tx->tx_TotalLines = newsize + ALLOC_SPARE_LINES;
+	tx->tx_TotalLines = actual_size;
     }
     if(change > 0)
     {

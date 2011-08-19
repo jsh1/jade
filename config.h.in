@@ -149,7 +149,4 @@
 /* Define if using libc's malloc */
 #undef LIBC_MALLOC
 
-/* Define if using r_alloc and friends */
-#undef USE_R_ALLOC
-
 #endif /* JADE_CONFIG_H */
