@@ -78,7 +78,7 @@
   (lisp-mode))
 
 ;; Print a message in the first buffer
-(format default-buffer ";; Jade %s, Copyright (C) 1993-1999 John Harper\n;; Jade comes with ABSOLUTELY NO WARRANTY; for details see the file COPYING\n\n"	jade-version)
+(format default-buffer ";; Jade %s, Copyright (C) 1993-2011 John Harper\n;; Jade comes with ABSOLUTELY NO WARRANTY; for details see the file COPYING\n\n"	jade-version)
 
 ;; Don't want it in the undo list
 (set-buffer-undo-list nil)

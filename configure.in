@@ -24,8 +24,8 @@ AC_INIT(src/jade.h)
 AC_CONFIG_HEADER(config.h)
 AC_CONFIG_AUX_DIR(etc)
 
-version="4.0-alpha"
-version_major=4
+version="5.0"
+version_major=5
 version_minor=0
 
 jadedir='${datadir}/jade'
