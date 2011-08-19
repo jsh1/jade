@@ -92,17 +92,6 @@ memchr(const void *mem, int c, size_t len)
 }
 #endif /* !HAVE_MEMCHR */
 
-#if defined (DOUG_LEA_MALLOC) && !defined (LIBC_MALLOC)
-void *
-__jade_morecore(long size)
-{
-    void *ptr = sbrk(size);
-    /* functions in the __morecore hook are expected to return zero
-       when failing */
-    return (ptr == (void *)-1) ? 0 : ptr;
-}
-#endif
-
 void
 misc_init(void)
 {

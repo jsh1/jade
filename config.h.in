@@ -113,9 +113,6 @@
 /* Define if you have the snprintf function. */
 #undef HAVE_SNPRINTF
 
-/* Define if you have the getpagesize function. */
-#undef HAVE_GETPAGESIZE
-
 /* Define if you have the stpcpy function.  */
 #undef HAVE_STPCPY
 
@@ -142,11 +139,5 @@
 
 /* Define if you have the socket library (-lsocket).  */
 #undef HAVE_LIBSOCKET
-
-/* Define if using Doug Lea's malloc */
-#undef DOUG_LEA_MALLOC
-
-/* Define if using libc's malloc */
-#undef LIBC_MALLOC
 
 #endif /* JADE_CONFIG_H */
