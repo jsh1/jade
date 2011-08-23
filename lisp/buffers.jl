@@ -504,6 +504,16 @@ be lost after confirmation from the user."
 	  ;; it was originally
 	  (center-display nil window-line))))))
 
+(defun revert-buffers ()
+  "Asks whether to revert each buffer associated with a file."
+  (interactive)
+  (let ((buffers (filter buffer-file-name (buffer-list))))
+    (if buffers
+	(map-y-or-n-p #'(lambda (x)
+			  (format nil "Revert buffer %s" (buffer-name x)))
+		      buffers revert-buffer)
+      (message "[No buffers to revert]"))))
+
 (defun save-some-buffers ()
   "Asks whether or not to save any modified buffers, returns t if no modified
 buffers exist on exit."
