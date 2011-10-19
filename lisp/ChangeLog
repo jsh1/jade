@@ -1,3 +1,9 @@
+2011-10-19  John Harper  <jsh@unfactored.org>
+
+	* c-mode.jl (c-backward-exp): added addressof and plus to the
+	list of unary operators, and in objc mode, add the block and
+	atsign operators as well
+
 2011-08-22  John Harper  <jsh@unfactored.org>
 
 	* buffers.jl (revert-buffers): new command

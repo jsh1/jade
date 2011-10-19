@@ -464,7 +464,10 @@ Commands defined by this mode are:\n
 ;				 "[][$@a-zA-Z0-9_ \t\f(){}'\"]" p))
 ;		(error "Can't classify expression"))
 	      (setq number (1+ number)))))
-	  (when (member (get-char (forward-char -1 p)) '(?! ?* ?- ?~))
+	  (when (member (get-char (forward-char -1 p))
+			(if (not c-objective-c)
+			    '(?! ?~ ?* ?& ?+ ?-)
+			  '(?! ?~ ?* ?& ?+ ?- ?^ ?@)))
 	    ;; unary operator, skip over it
 	    (setq p (forward-char -1 p))))
 	(setq number (1- number))))
