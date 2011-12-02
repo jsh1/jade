@@ -1,3 +1,9 @@
+2011-12-01  John Harper  <jsh@unfactored.org>
+
+	* server.jl (server-find-file): rewrote this function, fix the
+	problems with opening the same file again before the previous
+	buffer was garbage collected, and generally clean it up
+
 2011-10-19  John Harper  <jsh@unfactored.org>
 
 	* c-mode.jl (c-backward-exp): added addressof and plus to the

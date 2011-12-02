@@ -32,26 +32,23 @@ possible options,
   "This function is called by the editor's main event loop when a client
 process asks us to edit a file -- its job is to load the specified file
 into a new buffer and display it at line LINE-NUMBER."
-  (let
-      (buf view)
-    (if (and (not (setq buf (get-file-buffer file)))
-	     (not (setq buf (find-file file t))))
+  (let ((buf (find-file file t)))
+    (if (not buf)
 	;; Can't find the file; return an error to the client
 	(server-reply file 10)
-      (cond
-       ((eq server-open-window 'other)
-	(setq view (other-view)))
-       ((null server-open-window)
-	(setq view (current-view)))
-       (t
-	(setq view (current-view (make-window)))))
-      (with-view view
+      (with-view (cond ((eq server-open-window 'other)
+			(other-view))
+		       ((null server-open-window)
+			(current-view))
+		       (t
+			(current-view (make-window))))
 	(goto-buffer buf)
 	(goto (pos 0 line-number))
 	(message (format nil "Client file `%s'." file)))
       (with-buffer buf
-	(add-hook 'kill-buffer-hook server-file-kill))
-      buf)))
+	(unless (in-hook-p 'kill-buffer-hook server-file-kill)
+	  (add-hook 'kill-buffer-hook server-file-kill))))
+    buf))
 
 ;; Hooked into kill-buffer, replies to the client if necessary
 (defun server-file-kill ()
