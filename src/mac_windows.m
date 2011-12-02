@@ -184,7 +184,7 @@ flip_y (JadeView *view, int y)
     NSPoint p;
     u_long code = 0, mods = 0;
 
-    /* May need to defer this event until latr. */
+    /* May need to defer this event until later. */
 
     if (mac_defer_event (self, e))
 	return;

@@ -22,11 +22,12 @@
 #include <pthread.h>
 #include <libkern/OSAtomic.h>
 
-/* waking up every second to do nothing, but then redisplaya anyway
+/* Waking up every second to do nothing, but then redisplay anyway
    is a waste of time and power. So sacrifice idle handling.. */
+
 #define NO_TIMEOUT 1
 
-/* adapted from rep-gtk.c. */
+/* Adapted from rep-gtk.c. */
 
 struct input_data {
     struct input_data *next;
@@ -78,6 +79,7 @@ input_thread (void *arg)
 	fd_set copy;
 	int err;
 	struct input_data *d;
+	bool need_wake;
 
 	FD_ZERO (&copy);
 	FD_SET (input_pipe[0], &copy);
@@ -100,6 +102,8 @@ input_thread (void *arg)
 
 	pthread_mutex_lock (&input_mutex);
 
+	need_wake = false;
+
 	if (err > 0 && FD_ISSET (input_pipe[0], &copy))
 	{
 	    empty_pipe (input_pipe[0]);
@@ -110,6 +114,7 @@ input_thread (void *arg)
 	{
 	    empty_pipe (sigchld_pipe[0]);
 	    CFRunLoopSourceSignal (sigchld_source);
+	    need_wake = true;
 	    err--;
 	}
 
@@ -119,9 +124,13 @@ input_thread (void *arg)
 	    {
 		OSAtomicIncrement32 (&d->pending);
 		CFRunLoopSourceSignal (d->source);
+		need_wake = true;
 		err--;
 	    }
 	}
+
+	if (need_wake)
+	    CFRunLoopWakeUp (CFRunLoopGetMain ());
     }
 
     /* not reached */

@@ -1,3 +1,9 @@
+2011-12-01  John Harper  <jsh@unfactored.org>
+
+	* mac_runloop.m (input_thread): need to call CFRunLoopWakeUp()
+	if we signal any runloop sources, otherwise nothing will happen
+	until the next event arrives
+
 2011-08-19  John Harper  <jsh@unfactored.org>
 
 	* edit.c, edit.h: removed support for reallocating allocator
