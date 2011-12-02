@@ -22,11 +22,6 @@
 #include <pthread.h>
 #include <libkern/OSAtomic.h>
 
-/* Waking up every second to do nothing, but then redisplay anyway
-   is a waste of time and power. So sacrifice idle handling.. */
-
-#define NO_TIMEOUT 1
-
 /* Adapted from rep-gtk.c. */
 
 struct input_data {
@@ -260,17 +255,6 @@ timer_callback (CFRunLoopTimerRef timer, void *info)
 }
 
 static void
-unset_timeout (void)
-{
-    if (context != 0 && context->timer != 0)
-    {
-	CFRunLoopTimerSetNextFireDate (context->timer,
-				       CFAbsoluteTimeGetCurrent ()
-				       + 100. * 365. * 24. * 60. * 60);
-    }
-}
-
-static void
 remove_timeout (void)
 {
     if (context != 0 && context->timer != 0)
@@ -325,9 +309,6 @@ mac_event_loop (void)
     data.next = context;
     context = &data;
 
-    Fredisplay (Qnil);
-    mac_needs_redisplay = false;
-
     while (1)
     {
 	kick_input = false;
@@ -350,24 +331,10 @@ mac_event_loop (void)
 	    write (input_pipe[1], &c, 1);
 	}
 
-#if NO_TIMEOUT
-	[NSApp run];
-#else
-	set_timeout (rep_input_timeout_secs * 1000);
-	[NSApp run];
-	unset_timeout ();
+	Fredisplay (Qnil);
+	mac_needs_redisplay = false;
 
-	if (data.timed_out)
-	{
-	    if (data.actual_timeout_msecs < data.this_timeout_msecs)
-	    {
-		Fthread_suspend (Qnil, rep_MAKE_INT (data.this_timeout_msecs
-						     - data.actual_timeout_msecs));
-	    }
-	    else
-		rep_on_idle (data.idle_counter++);
-	}
-#endif
+	[NSApp run];
 
 	rep_proc_periodically ();
 

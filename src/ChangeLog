@@ -1,5 +1,11 @@
 2011-12-01  John Harper  <jsh@unfactored.org>
 
+	* mac_runloop.m: deleted the unused timeout code. Call
+	Fredisplay() every time we're about to run the runloop, this
+	seems to make us lose fewer updates
+
+2011-12-01  John Harper  <jsh@unfactored.org>
+
 	* mac_runloop.m (input_thread): need to call CFRunLoopWakeUp()
 	if we signal any runloop sources, otherwise nothing will happen
 	until the next event arrives
