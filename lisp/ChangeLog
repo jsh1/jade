@@ -1,5 +1,8 @@
 2011-12-04  John Harper  <jsh@unfactored.org>
 
+	* git.jl: simple git mode, initially just a clone of cvs.jl
+	with some commands added / removed and the obvious changes made
+
 	* compile.jl: added compile-directory and grep-directory.
 	Miscellaneous clean-up and other improvements
 
