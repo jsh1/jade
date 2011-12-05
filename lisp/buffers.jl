@@ -530,6 +530,21 @@ buffers exist on exit."
 		      save-file)
       (message "[No modified buffers]"))))
 
+(defun save-some-files (filenames)
+  "Asks whether or not to save buffers associated with the list of filenames.
+Returns t if none of the files were left modified."
+  (interactive)
+  (let ((unsaved-buffers
+	 (delete-if (lambda (b)
+		      (not (and b (buffer-modified-p b))))
+		    (mapcar get-file-buffer filenames))))
+    (if unsaved-buffers
+	(map-y-or-n-p (lambda (x)
+			(format nil "Save file %s" (buffer-file-name x)))
+		      unsaved-buffers
+		      save-file)
+      (message "[No buffers need saving]"))))
+
 (defun maybe-save-buffer (#!optional buffer)
   "If BUFFER has been modified, ask whether or not to save it. Returns t if
 the buffer is (now) in sync with the copy on disk."
