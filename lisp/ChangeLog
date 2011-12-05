@@ -1,3 +1,8 @@
+2011-12-04  John Harper  <jsh@unfactored.org>
+
+	* compile.jl: added compile-directory and grep-directory.
+	Miscellaneous clean-up and other improvements
+
 2011-12-02  John Harper  <jsh@unfactored.org>
 
 	* buffers.jl (save-some-files): new function, saves any

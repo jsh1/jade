@@ -49,7 +49,7 @@ variable `compile-push-directory-expand'.")
 (defvar compile-pop-directory-regexp "^make(\[[0-9]+\])?: Leaving directory "
   "Regexp matching output when leaving a directory.")
 
-(defvar compile-command "make"
+(defvar compile-command "make -w"
   "The command to run from `M-x compile'.")
 
 (defvar compile-shell (or (getenv "SHELL") "/bin/sh")
@@ -84,51 +84,52 @@ variable `compile-push-directory-expand'.")
 
 ;; Compilation
 
-(defun compile-init ()
-  (let
-      ((original-dir default-directory)
-       (buffer (open-buffer "*compilation*")))
+(defun compile-setup-buffer (directory)
+  (unless directory
+    (setq directory default-directory))
+  (let ((buffer (open-buffer "*compilation*")))
     (clear-buffer buffer)
     (with-buffer buffer
-      (setq default-directory original-dir))
+      (setq default-directory directory))
     (setq compile-errors nil
 	  compile-parsed-errors nil
 	  compile-errors-exist nil
 	  compile-error-pos (start-of-buffer))
     buffer))
 
+(defun compile-last-directory ()
+  (let ((buffer (get-buffer "*compilation*")))
+    (and buffer (with-buffer buffer default-directory))))
+
 (defun compile-callback ()
   (when compile-proc
-    (let
-	((stream (process-output-stream compile-proc)))
-      (cond
-       ((process-stopped-p compile-proc)
-	(write stream "Compilation suspended..."))
-       ((process-running-p compile-proc)
-	(write stream "restarted\n"))
-       (t
-	(beep)
-	(if (process-exit-value compile-proc)
-	    (format stream "\nCompilation exited with value %d\n"
-		    (process-exit-value compile-proc))
-	  (format stream "\nCompilation exited abnormally: status 0x%x\n"
-		  (process-exit-status compile-proc)))
-	(setq compile-proc nil))))))
+    (let ((stream (process-output-stream compile-proc)))
+      (cond ((process-stopped-p compile-proc)
+	     (write stream "Compilation suspended..."))
+	    ((process-running-p compile-proc)
+	     (write stream "restarted\n"))
+	    (t
+	     (beep)
+	     (if (process-exit-value compile-proc)
+		 (format stream "\nCompilation exited with value %d\n"
+			 (process-exit-value compile-proc))
+	       (format stream "\nCompilation exited abnormally: status 0x%x\n"
+		       (process-exit-status compile-proc)))
+	     (setq compile-proc nil))))))
 
 ;;;###autoload
-(defun start-compile-command (command type-str)
-  "Executes SHELL-COMMAND asynchronously in the directory containing the file
-being edited in the current buffer. Output from the process is sent to the
-`*compilation*' buffer. TYPE-STR is a string describing the type of messages
-the command may output (i.e. `errors' for a compilation)."
+(defun start-compile-command (command directory type-str)
+  "Executes SHELL-COMMAND asynchronously in DIRECTORY. Output from the
+process is sent to the `*compilation*' buffer. TYPE-STR is a string
+describing the type of messages the command may output (i.e. `errors'
+for a compilation)."
   (if compile-proc
       (error "Compilation process already running")
     (save-some-buffers)
-    (goto-buffer (compile-init))
+    (goto-buffer (compile-setup-buffer directory))
     (setq compile-proc (make-process (cons (current-buffer) t)
 				     compile-callback))
-    (let
-	((shell-cmd (concat command ?\n)))
+    (let ((shell-cmd (concat command ?\n)))
       (insert shell-cmd)
       (when (start-process compile-proc compile-shell "-c" shell-cmd)
 	(setq compile-last-type type-str
@@ -138,7 +139,8 @@ the command may output (i.e. `errors' for a compilation)."
 (defun restart-compile-command ()
   "Rerun the previous command started in the *compilation* buffer."
   (interactive)
-  (start-compile-command compile-last-command compile-last-type))
+  (start-compile-command
+   compile-last-command (compile-last-directory) compile-last-type))
 
 (defun kill-compilation ()
   (interactive)
@@ -160,7 +162,16 @@ the command may output (i.e. `errors' for a compilation)."
   "Runs the COMMAND in the `*compilation*' buffer."
   (interactive (list (prompt-for-string "Compile command:" compile-command)))
   (setq compile-command command)
-  (start-compile-command command "errors"))
+  (start-compile-command command default-directory "errors"))
+
+;;;###autoload
+(defun compile-directory (directory command)
+  "Runs the COMMAND in the `*compilation*' buffer."
+  (interactive (list (prompt-for-directory
+		      "Compile directory:" t (compile-last-directory))
+		     (prompt-for-string "Compile command:" compile-command)))
+  (setq compile-command command)
+  (start-compile-command command directory "errors"))
 
 
 ;; Grepping
@@ -172,11 +183,21 @@ output to the `*compilation*' buffer. The process may still be executing
 when this function returns."
   (interactive (list (prompt-for-string "Run grep command:"
 					compile-last-grep)))
+  (grep-directory arg))
+
+;;;###autoload
+(defun grep-directory (arg #!optional (directory default-directory))
+  "Run M-x grep in a particular directory."
+  (interactive (list (prompt-for-string "Run grep command:"
+					compile-last-grep)
+		     (prompt-for-directory
+		      "In directory:" t (compile-last-directory))))
   (when arg
     (setq compile-last-grep arg)
     ;; Concat "/dev/null /dev/null" To stop a null command (i.e. "grep")
     ;; hanging on standard input
-    (start-compile-command (concat arg " /dev/null /dev/null") "grep-hits")))
+    (start-compile-command
+     (concat arg " /dev/null /dev/null") directory "grep-hits")))
 
 (defvar grep-buffer-regexp nil
   "Regular-expression which `grep-buffer' scans for")
@@ -189,13 +210,11 @@ buffer in a form that `goto-next-error' understands."
   (interactive "sRegular expression")
   (when regexp
     (setq grep-buffer-regexp regexp))
-  (let
-      ((buffer (compile-init)))
+  (let ((buffer (compile-setup-buffer default-directory)))
     (when (and grep-buffer-regexp buffer)
-      (let*
-	  ((scanpos (start-of-buffer))
-	   (number 0)
-	   (stream (cons buffer t)))
+      (let* ((scanpos (start-of-buffer))
+	     (number 0)
+	     (stream (cons buffer t)))
 	(write stream ?\n)
 	(while (setq scanpos (re-search-forward grep-buffer-regexp scanpos))
 	  (format stream "%s:%d:%s\n" (or (buffer-file-name)
@@ -216,36 +235,35 @@ buffer in a form that `goto-next-error' understands."
 (defun compile-parse-errors ()
   (unless compile-parsed-errors
     (with-buffer (get-buffer "*compilation*")
-      (let
-	  ((p compile-error-pos)
-	   (dir-stack nil)
-	   (current-dir default-directory)
-	   errors last-line last-file)
+      (let ((p compile-error-pos)
+	    (dir-stack nil)
+	    (current-dir default-directory)
+	    errors last-line last-file)
 	(while (/= (pos-line p) (buffer-length))
-	  (cond
-	   ((looking-at compile-error-regexp p)
-	    ;; Parse the error
-	    (let
-		((line (string->number
-			(expand-last-match compile-line-expand)))
-		 (file (expand-file-name
-			(expand-last-match compile-file-expand)
-			current-dir)))
-	      (unless (and last-line (= line last-line)
-			   (file-name= file last-file))
-		(setq errors (cons (cons (make-mark (pos 0 (1- line)) file)
-					 (pos-line p))
-				   errors)
-		      last-line line
-		      last-file file))))
-	   ((looking-at compile-push-directory-regexp p)
-	    (setq dir-stack (cons current-dir dir-stack)
-		  current-dir (expand-file-name (expand-last-match
-						 compile-push-directory-expand)
-						current-dir)))
-	   ((and (looking-at compile-pop-directory-regexp p) dir-stack)
-	    (setq current-dir (car dir-stack)
-		  dir-stack (cdr dir-stack))))
+	  (cond ((looking-at compile-error-regexp p)
+		 ;; Parse the error
+		 (let ((line (string->number
+			      (expand-last-match compile-line-expand)))
+		       (file (expand-file-name
+			      (expand-last-match compile-file-expand)
+			      current-dir)))
+		   (unless (and last-line (= line last-line)
+				(file-name= file last-file))
+		     (setq errors (cons (cons (make-mark
+					       (pos 0 (1- line)) file)
+					      (pos-line p))
+					errors)
+			   last-line line
+			   last-file file))))
+		((looking-at compile-push-directory-regexp p)
+		 (setq dir-stack (cons current-dir dir-stack)
+		       current-dir (expand-file-name
+				    (expand-last-match
+				     compile-push-directory-expand)
+				    current-dir)))
+		((and (looking-at compile-pop-directory-regexp p) dir-stack)
+		 (setq current-dir (car dir-stack)
+		       dir-stack (cdr dir-stack))))
 	  (setq p (forward-line 1 p)))
 	(when errors
 	  (setq compile-errors (nconc (nreverse errors))
@@ -261,8 +279,7 @@ buffer in a form that `goto-next-error' understands."
   (interactive)
   (compile-parse-errors)
   (if compile-errors
-      (let
-	  ((err (car compile-errors)))
+      (let ((err (car compile-errors)))
 	(goto-mark (car err))
 	(when (and (cdr err)
 		   (looking-at compile-error-regexp (pos 0 (cdr err))
