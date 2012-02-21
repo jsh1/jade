@@ -69,7 +69,7 @@
 ;; Configuration
 
 (defvar auto-mode-alist
-  '(("\\.(c|h|cpp)$|^c$" . c-mode)
+  '(("\\.(c|h|cpp|cc)$|^c$" . c-mode)
     ("\\.jl$|^.jaderc$|^lisp$" . lisp-mode)
     ("\\.(te?xt|doc|article|letter)$" . text-mode)
     ("^(text|(.*/|)draft)$" . text-mode)
