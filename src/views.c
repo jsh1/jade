@@ -318,7 +318,7 @@ VIEW is the minibuffer view.
 				      &new_origin_col, &new_origin_row))
 	{
 	    new_origin_col = 0;
-	    new_origin_row = pred->vw_Tx->tx_LogicalStart;
+	    new_origin_row = pred->vw_Tx->logical_start;
 	}
 	pred->vw_DisplayOrigin = make_pos(new_origin_col, new_origin_row);
     }
@@ -464,9 +464,9 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	case 'f':			/* file-name */
 	{
 	    repv str = (fmt[-1] == 'b'
-			 ? tx->tx_BufferName
+			 ? tx->buffer_name
 			 : (fmt[-1] == 'B'
-			    ? tx->tx_StatusId : tx->tx_FileName));
+			    ? tx->status_string : tx->file_name));
 	    if(rep_STRINGP(str))
 	    {
 		len = rep_STRING_LEN(str);
@@ -480,7 +480,7 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	case 'l':			/* line-number */
 	case 'L':			/* global line-number */
 	    len = sprintf(buf, "%ld", VROW(vw->vw_CursorPos) + 1
-			  - (fmt[-1] == 'l' ? tx->tx_LogicalStart : 0));
+			  - (fmt[-1] == 'l' ? tx->logical_start : 0));
 	    buf += len; buf_len -= len;
 	    break;
 
@@ -493,7 +493,7 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	{
 	    char *position, position_buf[4];
 	    
-	    if(VROW(vw->vw_DisplayOrigin) <= tx->tx_LogicalStart)
+	    if(VROW(vw->vw_DisplayOrigin) <= tx->logical_start)
 	    {
 		if(vw->vw_Flags & VWFF_AT_BOTTOM)
 		    position = "All";
@@ -505,8 +505,8 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	    else
 	    {
 		int percent = (((VROW(vw->vw_DisplayOrigin)
-				 - tx->tx_LogicalStart) * 100)
-			       / (tx->tx_LogicalEnd - tx->tx_LogicalStart));
+				 - tx->logical_start) * 100)
+			       / (tx->logical_end - tx->logical_start));
 		position_buf[0] = (percent / 10) + '0';
 		position_buf[1] = (percent % 10) + '0';
 		position_buf[2] = '%';
@@ -537,8 +537,8 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	case '[':			/* '[' if narrowed, else '(' */
 	case ']':			/* similar to '[' */
 	{
-	    bool restr = ((tx->tx_LogicalStart != 0)
-			  || (tx->tx_LogicalEnd != tx->tx_NumLines));
+	    bool restr = ((tx->logical_start != 0)
+			  || (tx->logical_end != tx->line_count));
 	    *buf++ = (fmt[-1] == '['
 		      ? (restr ? '[' : '(') : (restr ? ']' : ')'));
 	    buf_len--;
@@ -551,7 +551,7 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	    repv tem = Fbuffer_symbol_value(Qread_only,
 						vw->vw_CursorPos,
 						rep_VAL(tx), Qt);
-	    bool mod = tx->tx_Changes != tx->tx_ProperSaveChanges;
+	    bool mod = tx->change_count != tx->proper_saved_changed_count;
 	    if(rep_VOIDP(tem))
 		tem = Qnil;
 	    if(mod && !rep_NILP(tem))
@@ -1176,7 +1176,7 @@ view_prin(repv stream, repv vw)
 	if(VVIEW(vw)->vw_Tx)
 	{
 	    rep_stream_putc(stream, ' ');
-	    rep_stream_puts(stream, rep_PTR(VVIEW(vw)->vw_Tx->tx_BufferName),
+	    rep_stream_puts(stream, rep_PTR(VVIEW(vw)->vw_Tx->buffer_name),
 			-1, TRUE);
 	}
 	rep_stream_putc(stream, '>');

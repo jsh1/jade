@@ -62,24 +62,24 @@ extern char *regprop (char *);
 /* Expands to the current input character at position P. This should
    not be called when P is past the end of the buffer. */
 #define INPUT_CHAR(p)						\
-    ((PCOL(p) >= regtx->tx_Lines[PROW(p)].ln_Strlen - 1)	\
+    ((PCOL(p) >= regtx->lines[PROW(p)].ln_Strlen - 1)	\
      ? '\n'							\
-     : regtx->tx_Lines[PROW(p)].ln_Line[PCOL(p)])
+     : regtx->lines[PROW(p)].ln_Line[PCOL(p)])
 
 #define TOUPPER_INPUT_CHAR(p)					\
-    ((PCOL(p) >= regtx->tx_Lines[PROW(p)].ln_Strlen - 1)	\
+    ((PCOL(p) >= regtx->lines[PROW(p)].ln_Strlen - 1)	\
      ? '\n'							\
-     : toupper(regtx->tx_Lines[PROW(p)].ln_Line[PCOL(p)]))
+     : toupper(regtx->lines[PROW(p)].ln_Line[PCOL(p)]))
 
 /* Non-zero when position P is past the last character in the buffer. */
 #define END_OF_INPUT(p)						\
-    (PROW(p) >= regtx->tx_LogicalEnd				\
-     || (PROW(p) == regtx->tx_LogicalEnd - 1			\
-	 && PCOL(p) >= regtx->tx_Lines[PROW(p)].ln_Strlen - 1))
+    (PROW(p) >= regtx->logical_end				\
+     || (PROW(p) == regtx->logical_end - 1			\
+	 && PCOL(p) >= regtx->lines[PROW(p)].ln_Strlen - 1))
 
 #define START_OF_INPUT(p)					\
-    (PROW(p) < regtx->tx_LogicalStart				\
-     || (PROW(p) == regtx->tx_LogicalStart && PCOL(p) == 0))
+    (PROW(p) < regtx->logical_start				\
+     || (PROW(p) == regtx->logical_start && PCOL(p) == 0))
 
 /*
  * - regexec_tx - search forwards for a regexp in a buffer sub-string
@@ -159,7 +159,7 @@ regexec_tx(prog, tx, start, eflags)
 	    PCOL(&s) = 0;
 	    PROW(&s)++;
 	}
-	while(PROW(&s) < tx->tx_LogicalEnd)
+	while(PROW(&s) < tx->logical_end)
 	{
 	    if(regtry(tx, prog, &s))
 		return (1);
@@ -292,7 +292,7 @@ regexec_reverse_tx(prog, tx, start, eflags)
     {
 	COPY_VPOS(&s, start);
 	PCOL(&s) = 0;
-	while(PROW(&s) >= tx->tx_LogicalStart)
+	while(PROW(&s) >= tx->logical_start)
 	{
 	    if(regtry(tx, prog, &s))
 		return (1);
@@ -494,13 +494,13 @@ regmatch(prog)
 	    break;
 	case EOL:
 	    if (PCOL(&reginput)
-		< regtx->tx_Lines[PROW(&reginput)].ln_Strlen - 1)
+		< regtx->lines[PROW(&reginput)].ln_Strlen - 1)
 		return (0);
 	    break;
 	case ANY:
 	    /* Don't match newlines for . */
 	    if(PCOL(&reginput)
-	       == regtx->tx_Lines[PROW(&reginput)].ln_Strlen - 1)
+	       == regtx->lines[PROW(&reginput)].ln_Strlen - 1)
 		return (0);
 	    forward_char(1, regtx, &reginput);
 	    break;
@@ -833,7 +833,7 @@ regrepeat(p)
 	/* TODO: what to do here? How about matching up to the
 	   end of the buffer? No, this could be something like .*
 	   what we want is to match up to the end of a line. */
-	count = (regtx->tx_Lines[PROW(&scan)].ln_Strlen - 1) - PCOL(&scan);
+	count = (regtx->lines[PROW(&scan)].ln_Strlen - 1) - PCOL(&scan);
 	PCOL(&scan) += count;
 	break;
     case EXACTLY:

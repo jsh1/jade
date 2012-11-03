@@ -441,7 +441,7 @@ find_extent(Lisp_Extent *root, Pos *pos)
     /* First check the cache. */
     for(i = 0; i < EXTENT_CACHE_SIZE; i++)
     {
-	struct cached_extent *ce = &tx->tx_ExtentCache[i];
+	struct cached_extent *ce = &tx->extent_cache[i];
 	if(ce->extent)
 	{
 	    if(PPOS_EQUAL_P(pos, &ce->pos))
@@ -484,18 +484,18 @@ find_extent(Lisp_Extent *root, Pos *pos)
     if(out >= 0)
     {
 	extent_cache_near_misses++;
-	x = find_extent_forwards(tx->tx_ExtentCache[out].extent, pos);
+	x = find_extent_forwards(tx->extent_cache[out].extent, pos);
     }
     else
     {
 	extent_cache_misses++;
-	x = find_extent_forwards(tx->tx_GlobalExtent, pos);
+	x = find_extent_forwards(tx->global_extent, pos);
     }
 
     /* Add X to the cache in place of OLDEST. */
-    tx->tx_ExtentCache[oldest].extent = x;
-    tx->tx_ExtentCache[oldest].pos = *pos;
-    tx->tx_ExtentCache[oldest].lru_clock = ++lru_time;
+    tx->extent_cache[oldest].extent = x;
+    tx->extent_cache[oldest].pos = *pos;
+    tx->extent_cache[oldest].lru_clock = ++lru_time;
 
     assert_invariants (x);
     return x;
@@ -551,15 +551,15 @@ invalidate_extent_cache(TX *tx)
 {
     int i;
     for(i = 0; i < EXTENT_CACHE_SIZE; i++)
-	tx->tx_ExtentCache[i].extent = 0;
+	tx->extent_cache[i].extent = 0;
 }
 
 /* Create the all-encompassing root extent for buffer TX. */
 void
 make_global_extent(TX *tx)
 {
-    tx->tx_GlobalExtent = alloc_extent(0);
-    tx->tx_GlobalExtent->tx = tx;
+    tx->global_extent = alloc_extent(0);
+    tx->global_extent->tx = tx;
     reset_global_extent(tx);
 }
 
@@ -567,12 +567,12 @@ make_global_extent(TX *tx)
 void
 reset_global_extent(TX *tx)
 {
-    Lisp_Extent *e = tx->tx_GlobalExtent;
+    Lisp_Extent *e = tx->global_extent;
     unlink_extent_recursively(e);
     e->start.row = 0;
     e->start.col = 0;
-    e->end.row = tx->tx_NumLines;
-    e->end.col = tx->tx_Lines[tx->tx_NumLines-1].ln_Strlen - 1;
+    e->end.row = tx->line_count;
+    e->end.col = tx->lines[tx->line_count-1].ln_Strlen - 1;
     e->car = extent_type | EXTFF_OPEN_START | EXTFF_OPEN_END;
     invalidate_extent_cache(tx);
 }
@@ -598,8 +598,8 @@ will work reliably however.
     rep_DECLARE1(start, POSP);
     rep_DECLARE2(end, POSP);
 
-    if(VROW(start) < 0 || VROW(start) >= tx->tx_NumLines
-       || VROW(end) < 0 || VROW(end) >= tx->tx_NumLines
+    if(VROW(start) < 0 || VROW(start) >= tx->line_count
+       || VROW(end) < 0 || VROW(end) >= tx->line_count
        || POS_GREATER_P(start, end))
 	return Fsignal(Qinvalid_pos, rep_list_2(start, end));
 
@@ -613,7 +613,7 @@ will work reliably however.
     extent->plist = plist;
     extent->locals = Qnil;
 
-    insert_extent(extent, tx->tx_GlobalExtent);
+    insert_extent(extent, tx->global_extent);
     invalidate_extent_cache(tx);
 
     return rep_VAL(extent);
@@ -631,7 +631,7 @@ EXTENT is the root extent covering the entire buffer.
 {
     rep_DECLARE1(extent, EXTENTP);
 
-    if(VEXTENT(extent) == VEXTENT(extent)->tx->tx_GlobalExtent)
+    if(VEXTENT(extent) == VEXTENT(extent)->tx->global_extent)
 	return Fsignal(Qerror, rep_list_2(rep_VAL(&no_delete_root), extent));
 
     unlink_extent(VEXTENT(extent));
@@ -649,7 +649,7 @@ Note that it's not possible to delete the global extent of a buffer itself.
 ::end:: */
 {
     if(!EXTENTP(extent))
-	extent = rep_VAL(curr_vw->vw_Tx->tx_GlobalExtent);
+	extent = rep_VAL(curr_vw->vw_Tx->global_extent);
     unlink_extent_recursively(VEXTENT(extent));
     invalidate_extent_cache(VEXTENT(extent)->tx);
     return extent;
@@ -671,7 +671,7 @@ without changing the buffer that EXTENT refers to.
     unlink_extent(VEXTENT(extent));
     COPY_VPOS(&VEXTENT(extent)->start, start);
     COPY_VPOS(&VEXTENT(extent)->end, end);
-    insert_extent(VEXTENT(extent), VEXTENT(extent)->tx->tx_GlobalExtent);
+    insert_extent(VEXTENT(extent), VEXTENT(extent)->tx->global_extent);
     invalidate_extent_cache(VEXTENT(extent)->tx);
 
     return extent;
@@ -696,7 +696,7 @@ position of the current buffer).
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     COPY_VPOS(&ppos, pos);
-    e = find_extent(VTX(tx)->tx_GlobalExtent, &ppos);
+    e = find_extent(VTX(tx)->global_extent, &ppos);
 
     return (e != 0) ? rep_VAL(e) : Qnil;
 }
@@ -741,7 +741,7 @@ deleted from within the callback function.
     {
     case 0:
 	map_section_extents(map_extents_callback,
-			    curr_vw->vw_Tx->tx_GlobalExtent,
+			    curr_vw->vw_Tx->global_extent,
 			    &s_copy, &e_copy, &data);
 	break;
 
@@ -800,7 +800,7 @@ parent.
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    return rep_VAL(VTX(tx)->tx_GlobalExtent);
+    return rep_VAL(VTX(tx)->global_extent);
 }
 
 DEFUN("extent-plist", Fextent_plist, Sextent_plist, (repv extent), rep_Subr1) /*
@@ -1069,7 +1069,7 @@ buffer_set_if_bound(repv symbol, repv value)
     Pos tem;
     Lisp_Extent *e;
     COPY_VPOS(&tem, curr_vw->vw_CursorPos);
-    e = find_extent(curr_vw->vw_Tx->tx_GlobalExtent, &tem);
+    e = find_extent(curr_vw->vw_Tx->global_extent, &tem);
     while(e != 0)
     {
 	repv cell = Fassq(symbol, e->locals);
@@ -1101,8 +1101,8 @@ set_local_symbol (repv sym, repv value)
     else if(rep_SYM(sym)->car & rep_SF_LOCAL)
     {
 	/* Create a new buffer-local value */
-	tx->tx_GlobalExtent->locals = Fcons(Fcons(sym, value),
-					    tx->tx_GlobalExtent->locals);
+	tx->global_extent->locals = Fcons(Fcons(sym, value),
+					    tx->global_extent->locals);
 	return value;
     }
     else
@@ -1126,13 +1126,13 @@ Returns SYMBOL.
     if (!(rep_SYM(sym)->car & rep_SF_SPECIAL))
 	Fmake_variable_special (sym);
     rep_SYM(sym)->car |= rep_SF_LOCAL;
-    slot = Fassq(sym, tx->tx_GlobalExtent->locals);
+    slot = Fassq(sym, tx->global_extent->locals);
     if(!slot || !rep_CONSP(slot))
     {
 	/* Need to create a binding. */
 	repv value = Fsymbol_value (sym, Qt);
-	tx->tx_GlobalExtent->locals = Fcons(Fcons(sym, value),
-					    tx->tx_GlobalExtent->locals);
+	tx->global_extent->locals = Fcons(Fcons(sym, value),
+					    tx->global_extent->locals);
     }
     return sym;
 }
@@ -1166,7 +1166,7 @@ for each minor extent.)
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    return VTX(tx)->tx_GlobalExtent->locals;
+    return VTX(tx)->global_extent->locals;
 }
 
 DEFUN("kill-all-local-variables", Fkill_all_local_variables,
@@ -1181,8 +1181,8 @@ permanent (i.e. their `permanent-local' property is unset or non-nil.)
     repv list;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    list = VTX(tx)->tx_GlobalExtent->locals;
-    VTX(tx)->tx_GlobalExtent->locals = Qnil;
+    list = VTX(tx)->global_extent->locals;
+    VTX(tx)->global_extent->locals = Qnil;
     while(rep_CONSP(list))
     {
 	if(rep_NILP(Fget(rep_CAR(rep_CAR(list)), Qpermanent_local)))
@@ -1190,8 +1190,8 @@ permanent (i.e. their `permanent-local' property is unset or non-nil.)
 	else
 	{
 	    repv next = rep_CDR(list);
-	    rep_CDR(list) = VTX(tx)->tx_GlobalExtent->locals;
-	    VTX(tx)->tx_GlobalExtent->locals = list;
+	    rep_CDR(list) = VTX(tx)->global_extent->locals;
+	    VTX(tx)->global_extent->locals = list;
 	    list = next;
 	}
     }
@@ -1211,15 +1211,15 @@ Remove the buffer-local value of the symbol SYMBOL in the specified buffer.
     rep_DECLARE1(sym, rep_SYMBOLP);
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    list = VTX(tx)->tx_GlobalExtent->locals;
-    VTX(tx)->tx_GlobalExtent->locals = Qnil;
+    list = VTX(tx)->global_extent->locals;
+    VTX(tx)->global_extent->locals = Qnil;
     while(rep_CONSP(list))
     {
 	repv nxt = rep_CDR(list);
 	if(rep_CAR(list) != sym)
 	{
-	    rep_CDR(list) = VTX(tx)->tx_GlobalExtent->locals;
-	    VTX(tx)->tx_GlobalExtent->locals = list;
+	    rep_CDR(list) = VTX(tx)->global_extent->locals;
+	    VTX(tx)->global_extent->locals = list;
 	}
 	list = nxt;
     }

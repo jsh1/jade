@@ -347,15 +347,15 @@ inner_eval_input_event(repv data_)
 			    Fcall_hook(Qpre_command_hook,
 					  Qnil, Qnil);
 			    if(Fsymbol_value (Qlast_command, Qt) == Qt
-			       && rep_CONSP(vw->vw_Tx->tx_UndoList)
-			       && rep_NILP(rep_CAR(vw->vw_Tx->tx_UndoList)))
+			       && rep_CONSP(vw->vw_Tx->undo_list)
+			       && rep_NILP(rep_CAR(vw->vw_Tx->undo_list)))
 			    {
 				/* Last command was also an insertion,
 				   fix it so that the undo information
 				   is merged. */
-				old_undo_head = vw->vw_Tx->tx_UndoList;
-				vw->vw_Tx->tx_UndoList
-				    = rep_CDR(vw->vw_Tx->tx_UndoList);
+				old_undo_head = vw->vw_Tx->undo_list;
+				vw->vw_Tx->undo_list
+				    = rep_CDR(vw->vw_Tx->undo_list);
 			    }
 			    if(pad_cursor(vw))
 			    {
@@ -386,8 +386,8 @@ inner_eval_input_event(repv data_)
 			    }
 			    if(old_undo_head != rep_NULL)
 			    {
-				rep_CDR(old_undo_head) = vw->vw_Tx->tx_UndoList;
-				vw->vw_Tx->tx_UndoList = old_undo_head;
+				rep_CDR(old_undo_head) = vw->vw_Tx->undo_list;
+				vw->vw_Tx->undo_list = old_undo_head;
 			    }
 			    Fcall_hook(Qpost_command_hook,
 					  Qnil, Qnil);

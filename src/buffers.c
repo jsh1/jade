@@ -45,11 +45,11 @@ pos_getc(TX *tx, repv *pos)
     int c = EOF;
     long row = VROW(*pos);
     long col = VCOL(*pos);
-    if(row < tx->tx_LogicalEnd)
+    if(row < tx->logical_end)
     {
-	if(col >= (tx->tx_Lines[row].ln_Strlen - 1))
+	if(col >= (tx->lines[row].ln_Strlen - 1))
 	{
-	    if(++row == tx->tx_LogicalEnd)
+	    if(++row == tx->logical_end)
 		--row;
 	    else
 	    {
@@ -58,7 +58,7 @@ pos_getc(TX *tx, repv *pos)
 	    }
 	}
 	else
-	    c = tx->tx_Lines[row].ln_Line[col++];
+	    c = tx->lines[row].ln_Line[col++];
     }
     *pos = make_pos(col, row);
     return c;
@@ -70,7 +70,7 @@ pos_getc(TX *tx, repv *pos)
 	if(--col < 0)					\
 	{						\
 	    row--;					\
-	    col = (tx)->tx_Lines[row].ln_Strlen - 1;	\
+	    col = (tx)->lines[row].ln_Strlen - 1;	\
 	}						\
 	(p) = make_pos(col, row);			\
     } while(0)
@@ -140,9 +140,9 @@ Construct a unique buffer-name from NAME.
 	    thistry = rep_STR(rawName);
 	while(tx)
 	{
-	    if(tx->tx_BufferName && !strcmp(thistry, rep_STR(tx->tx_BufferName)))
+	    if(tx->buffer_name && !strcmp(thistry, rep_STR(tx->buffer_name)))
 		break;
-	    tx = tx->tx_Next;
+	    tx = tx->next;
 	}
 	if(!tx)
 	{
@@ -176,26 +176,26 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 	memset(tx, 0, sizeof(TX));
 	if(clear_line_list(tx))
 	{
-	    tx->tx_Car = buffer_type;
-	    tx->tx_BufferName = rep_NILP(litName)
+	    tx->car = buffer_type;
+	    tx->buffer_name = rep_NILP(litName)
 	        ? Fmake_buffer_name(name) : name;
-	    if(tx->tx_BufferName)
+	    if(tx->buffer_name)
 	    {
-		tx->tx_Next = buffer_chain;
+		tx->next = buffer_chain;
 		buffer_chain = tx;
 		rep_data_after_gc += sizeof(TX);
 
-		tx->tx_FileName = Qnil;
-		tx->tx_CanonicalFileName = Qnil;
-		tx->tx_StatusId = rep_concat2("Jade: ", rep_STR(tx->tx_BufferName));
-		tx->tx_SavedBlockStatus = -1;
-		tx->tx_TabSize = 8;
-		tx->tx_LastSaveTime = rep_time();
-		tx->tx_UndoList = Qnil;
-		tx->tx_ToUndoList = rep_NULL;
-		tx->tx_UndoneList = Qnil;
-		tx->tx_SavedCPos = make_pos(0, 0);
-		tx->tx_SavedWPos = tx->tx_SavedCPos;
+		tx->file_name = Qnil;
+		tx->canonical_file_name = Qnil;
+		tx->status_string = rep_concat2("Jade: ", rep_STR(tx->buffer_name));
+		tx->saved_block_status = -1;
+		tx->tab_size = 8;
+		tx->last_saved_time = rep_time();
+		tx->undo_list = Qnil;
+		tx->pending_undo_list = rep_NULL;
+		tx->did_undo_list = Qnil;
+		tx->saved_cursor_pos = make_pos(0, 0);
+		tx->saved_display_origin = tx->saved_cursor_pos;
 		make_global_extent(tx);
 
 		return(rep_VAL(tx));
@@ -210,18 +210,18 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 static void
 buffer_mark (repv val)
 {
-    rep_MARKVAL(VTX(val)->tx_FileName);
-    rep_MARKVAL(VTX(val)->tx_CanonicalFileName);
-    rep_MARKVAL(VTX(val)->tx_BufferName);
-    rep_MARKVAL(VTX(val)->tx_StatusId);
-    rep_MARKVAL(VTX(val)->tx_UndoList);
-    rep_MARKVAL(VTX(val)->tx_ToUndoList);
-    rep_MARKVAL(VTX(val)->tx_UndoneList);
-    rep_MARKVAL(VTX(val)->tx_SavedCPos);
-    rep_MARKVAL(VTX(val)->tx_SavedWPos);
-    rep_MARKVAL(VTX(val)->tx_SavedBlockPos[0]);
-    rep_MARKVAL(VTX(val)->tx_SavedBlockPos[1]);
-    rep_MARKVAL(rep_VAL(VTX(val)->tx_GlobalExtent));
+    rep_MARKVAL(VTX(val)->file_name);
+    rep_MARKVAL(VTX(val)->canonical_file_name);
+    rep_MARKVAL(VTX(val)->buffer_name);
+    rep_MARKVAL(VTX(val)->status_string);
+    rep_MARKVAL(VTX(val)->undo_list);
+    rep_MARKVAL(VTX(val)->pending_undo_list);
+    rep_MARKVAL(VTX(val)->did_undo_list);
+    rep_MARKVAL(VTX(val)->saved_cursor_pos);
+    rep_MARKVAL(VTX(val)->saved_display_origin);
+    rep_MARKVAL(VTX(val)->saved_block[0]);
+    rep_MARKVAL(VTX(val)->saved_block[1]);
+    rep_MARKVAL(rep_VAL(VTX(val)->global_extent));
 }
 
 static void
@@ -235,20 +235,20 @@ buffer_sweep(void)
     /* ..then the buffers. There is a compelling reason for this, we
        need to make any live marks in buffers that are dead
        non-resident.  But the dead marks are not important, and
-       _won't_ have ensured that the buffer's tx_CanonicalFileName is
+       _won't_ have ensured that the buffer's canonical_file_name is
        marked (even though the buffer itself isn't. */
 
     tx = buffer_chain;
     buffer_chain = NULL;
     while(tx)
     {
-	TX *nxt = tx->tx_Next;
+	TX *nxt = tx->next;
 	if(!rep_GC_CELL_MARKEDP(rep_VAL(tx)))
 	{
-	    if(tx->tx_MarkChain != NULL)
+	    if(tx->mark_chain != NULL)
 	    {
-		/* rep_mark_value has ensured that tx_CanonicalFileName
-		   and tx_FileName are kept even if the buffer isn't */
+		/* rep_mark_value has ensured that canonical_file_name
+		   and file_name are kept even if the buffer isn't */
 		make_marks_non_resident(tx);
 	    }
 	    kill_line_list(tx);
@@ -257,7 +257,7 @@ buffer_sweep(void)
 	else
 	{
 	    rep_GC_CLR_CELL(rep_VAL(tx));
-	    tx->tx_Next = buffer_chain;
+	    tx->next = buffer_chain;
 	    buffer_chain = tx;
 	}
 	tx = nxt;
@@ -268,7 +268,7 @@ static void
 buffer_prin(repv strm, repv obj)
 {
     rep_stream_puts(strm, "#<buffer ", -1, FALSE);
-    rep_stream_puts(strm, rep_PTR(VTX(obj)->tx_BufferName), -1, TRUE);
+    rep_stream_puts(strm, rep_PTR(VTX(obj)->buffer_name), -1, TRUE);
     rep_stream_putc(strm, '>');
 }
 
@@ -390,19 +390,19 @@ swap_buffers(VW *vw, TX *new)
 	if(old != NULL)
 	{
 	    /* Save buffer context */
-	    old->tx_SavedCPos = vw->vw_CursorPos;
-	    old->tx_SavedWPos = vw->vw_DisplayOrigin;
-	    old->tx_SavedBlockPos[0] = vw->vw_BlockS;
-	    old->tx_SavedBlockPos[1] = vw->vw_BlockE;
-	    old->tx_SavedBlockStatus = vw->vw_BlockStatus;
+	    old->saved_cursor_pos = vw->vw_CursorPos;
+	    old->saved_display_origin = vw->vw_DisplayOrigin;
+	    old->saved_block[0] = vw->vw_BlockS;
+	    old->saved_block[1] = vw->vw_BlockE;
+	    old->saved_block_status = vw->vw_BlockStatus;
 	}
 	/* Restore old context */
 	vw->vw_Tx = new;
-	vw->vw_CursorPos = new->tx_SavedCPos;
-	vw->vw_DisplayOrigin = new->tx_SavedWPos;
-	vw->vw_BlockS = new->tx_SavedBlockPos[0];
-	vw->vw_BlockE = new->tx_SavedBlockPos[1];
-	vw->vw_BlockStatus = new->tx_SavedBlockStatus;
+	vw->vw_CursorPos = new->saved_cursor_pos;
+	vw->vw_DisplayOrigin = new->saved_display_origin;
+	vw->vw_BlockS = new->saved_block[0];
+	vw->vw_BlockE = new->saved_block[1];
+	vw->vw_BlockStatus = new->saved_block_status;
 
 	/* If we're switching buffers in the minibuffer, and there's
 	   a message obscuring the minibuffer contents, remove it. */
@@ -436,12 +436,12 @@ Scan all buffers for one containing the file NAME.
     tx = rep_VAL(buffer_chain);
     while(VTX(tx) != 0)
     {
-	if(rep_STRINGP(VTX(tx)->tx_CanonicalFileName)
-	   && rep_STRING_LEN(VTX(tx)->tx_CanonicalFileName) == rep_STRING_LEN(name)
-	   && memcmp(rep_STR(VTX(tx)->tx_CanonicalFileName), rep_STR(name),
+	if(rep_STRINGP(VTX(tx)->canonical_file_name)
+	   && rep_STRING_LEN(VTX(tx)->canonical_file_name) == rep_STRING_LEN(name)
+	   && memcmp(rep_STR(VTX(tx)->canonical_file_name), rep_STR(name),
 		     rep_STRING_LEN(name)) == 0)
 	    return tx;
-	tx = rep_VAL(VTX(tx)->tx_Next);
+	tx = rep_VAL(VTX(tx)->next);
     }
     return Qnil;
 }
@@ -459,9 +459,9 @@ Scan all buffers for one whose name is NAME.
     rep_DECLARE1(name, rep_STRINGP);
     while(tx)
     {
-	if(!strcmp(rep_STR(name), rep_STR(tx->tx_BufferName)))
+	if(!strcmp(rep_STR(name), rep_STR(tx->buffer_name)))
 	    return(rep_VAL(tx));
-	tx = tx->tx_Next;
+	tx = tx->next;
     }
     return(Qnil);
 }
@@ -489,7 +489,7 @@ get_tx_cursor_ptr(TX *tx)
 	    return(&vw->vw_CursorPos);
     }
 
-    return(&tx->tx_SavedCPos);
+    return(&tx->saved_cursor_pos);
 }    
 
 repv
@@ -519,11 +519,11 @@ auto_save_buffers(bool force_save)
 	Exclusion = TRUE;
 	while(tx)
 	{
-	    if(tx->tx_Changes
-	       && tx->tx_AutoSaveInterval
-	       && (tx->tx_LastSaveChanges != tx->tx_Changes)
+	    if(tx->change_count
+	       && tx->auto_save_interval
+	       && (tx->last_saved_change_count != tx->change_count)
 	       && (force_save
-	           || (time > (tx->tx_LastSaveTime + tx->tx_AutoSaveInterval))))
+	           || (time > (tx->last_saved_time + tx->auto_save_interval))))
 	    {
 		repv val_tx = rep_VAL(tx);
 		rep_GC_root gc_tx;
@@ -531,12 +531,12 @@ auto_save_buffers(bool force_save)
 		rep_call_lisp1(Fsymbol_value(Qauto_save_function, Qt),
 			       rep_VAL(tx));
 		rep_POPGC;
-		tx->tx_LastSaveTime = time;
-		tx->tx_LastSaveChanges = tx->tx_Changes;
+		tx->last_saved_time = time;
+		tx->last_saved_change_count = tx->change_count;
 		Exclusion = FALSE;
 		return(1);
 	    }
-	    tx = tx->tx_Next;
+	    tx = tx->next;
 	}
 	Exclusion = FALSE;
     }
@@ -579,7 +579,7 @@ isn't associated with a particular file, returns nil.
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    return VTX(tx)->tx_FileName;
+    return VTX(tx)->file_name;
 }
 
 DEFUN("set-buffer-file-name", Fset_buffer_file_name, Sset_buffer_file_name, (repv tx, repv name), rep_Subr2) /*
@@ -610,8 +610,8 @@ Set the name of the file associated with the contents of BUFFER to NAME.
 	canonical = Qnil;
 
     make_marks_non_resident(VTX(tx));
-    VTX(tx)->tx_FileName = name;
-    VTX(tx)->tx_CanonicalFileName = canonical;
+    VTX(tx)->file_name = name;
+    VTX(tx)->canonical_file_name = canonical;
     make_marks_resident(tx);
 
     return name;
@@ -626,7 +626,7 @@ Return the name of BUFFER.
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    return VTX(tx)->tx_BufferName;
+    return VTX(tx)->buffer_name;
 }
 
 DEFUN("set-buffer-name", Fset_buffer_name, Sset_buffer_name, (repv tx, repv name), rep_Subr2) /*
@@ -639,12 +639,12 @@ Set the name of BUFFER to NAME.
     rep_DECLARE1(name, rep_STRINGP);
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    VTX(tx)->tx_BufferName = name;
-    if(VTX(tx)->tx_StatusId == rep_NULL
-       || !strncmp("Jade: ", rep_STR(VTX(tx)->tx_StatusId), 5))
+    VTX(tx)->buffer_name = name;
+    if(VTX(tx)->status_string == rep_NULL
+       || !strncmp("Jade: ", rep_STR(VTX(tx)->status_string), 5))
     {
 	/* Reset the status-id */
-	VTX(tx)->tx_StatusId = rep_concat2("Jade: ", rep_STR(name));
+	VTX(tx)->status_string = rep_concat2("Jade: ", rep_STR(name));
     }
     return name;
 }
@@ -658,7 +658,7 @@ Return the number of modifications to BUFFER.
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    return rep_MAKE_INT(VTX(tx)->tx_Changes);
+    return rep_MAKE_INT(VTX(tx)->change_count);
 }
 
 DEFUN("buffer-modified-p", Fbuffer_modified_p, Sbuffer_modified_p, (repv tx), rep_Subr1) /*
@@ -670,7 +670,7 @@ Returns t if the buffer has changed since it was last saved to disk.
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    return ((VTX(tx)->tx_Changes != VTX(tx)->tx_ProperSaveChanges)
+    return ((VTX(tx)->change_count != VTX(tx)->proper_saved_changed_count)
 	    ? Qt : Qnil);
 }
 
@@ -685,14 +685,14 @@ it look as though it has.
     TX *tx =BUFFERP(buf) ? VTX(buf) : curr_vw->vw_Tx;
     if(rep_NILP(stat))
     {
-	tx->tx_ProperSaveChanges = tx->tx_Changes;
-	tx->tx_LastSaveChanges = tx->tx_Changes;
+	tx->proper_saved_changed_count = tx->change_count;
+	tx->last_saved_change_count = tx->change_count;
 	undo_record_unmodified(tx);
     }
     else
     {
-	tx->tx_ProperSaveChanges = tx->tx_Changes - 1;
-	tx->tx_LastSaveChanges = tx->tx_Changes - 1;
+	tx->proper_saved_changed_count = tx->change_count - 1;
+	tx->last_saved_change_count = tx->change_count - 1;
     }
     return rep_VAL(tx);
 }
@@ -706,7 +706,7 @@ Returns the number of lines in BUFFER.
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    return(rep_MAKE_INT(VTX(tx)->tx_NumLines));
+    return(rep_MAKE_INT(VTX(tx)->line_count));
 }
 
 DEFUN("line-length", Fline_length, Sline_length, (repv pos, repv tx), rep_Subr2) /*
@@ -727,7 +727,7 @@ using current cursor position if specifiers are not provided.
 	pos = curr_vw->vw_CursorPos;
 	tx = rep_VAL(curr_vw->vw_Tx);
     }
-    return(rep_MAKE_INT(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen - 1));
+    return(rep_MAKE_INT(VTX(tx)->lines[VROW(pos)].ln_Strlen - 1));
 }
 
 DEFUN("bufferp", Fbufferp, Sbufferp, (repv arg), rep_Subr1) /*
@@ -757,8 +757,8 @@ to that between the lines specified by positions START and END.
     Funrestrict_buffer(tx);
     if(check_section(VTX(tx), &start, &end) && VROW(start) <= VROW(end))
     {
-	VTX(tx)->tx_LogicalStart = VROW(start);
-	VTX(tx)->tx_LogicalEnd = VROW(end) + 1;
+	VTX(tx)->logical_start = VROW(start);
+	VTX(tx)->logical_end = VROW(end) + 1;
 	return Qt;
     }
     return Qnil;
@@ -773,8 +773,8 @@ Remove any restriction on the parts of BUFFER that may be displayed.
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    VTX(tx)->tx_LogicalStart = 0;
-    VTX(tx)->tx_LogicalEnd = VTX(tx)->tx_NumLines;
+    VTX(tx)->logical_start = 0;
+    VTX(tx)->logical_end = VTX(tx)->line_count;
     return Qt;
 }
 DEFUN("restriction-start", Frestriction_start, Srestriction_start, (repv tx), rep_Subr1) /*
@@ -787,7 +787,7 @@ Return the position of the first character that may be displayed in BUFFER
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    return make_pos(0, VTX(tx)->tx_LogicalStart);
+    return make_pos(0, VTX(tx)->logical_start);
 }
 
 DEFUN("restriction-end", Frestriction_end, Srestriction_end, (repv tx), rep_Subr1) /*
@@ -800,8 +800,8 @@ Return the position of the last character that may be displayed in BUFFER
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    return make_pos(VTX(tx)->tx_Lines[VTX(tx)->tx_LogicalEnd - 1].ln_Strlen -1,
-		    VTX(tx)->tx_LogicalEnd - 1);
+    return make_pos(VTX(tx)->lines[VTX(tx)->logical_end - 1].ln_Strlen -1,
+		    VTX(tx)->logical_end - 1);
 }
 
 DEFUN("buffer-restricted-p", Fbuffer_restricted_p, Sbuffer_restricted_p, (repv tx), rep_Subr1) /*
@@ -814,8 +814,8 @@ less than its full contents.
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    return ((VTX(tx)->tx_LogicalStart > 0
-	     || VTX(tx)->tx_LogicalEnd < VTX(tx)->tx_NumLines)
+    return ((VTX(tx)->logical_start > 0
+	     || VTX(tx)->logical_end < VTX(tx)->line_count)
 	    ? Qt : Qnil);
 }
 
@@ -828,7 +828,7 @@ automatic save of the buffer. A value of zero means that this buffer is
 not to be auto-saved.
 ::end:: */
 {
-    return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_AutoSaveInterval));
+    return(rep_handle_var_int(val, &curr_vw->vw_Tx->auto_save_interval));
 }
 
 DEFUN("last-save-changes", Flast_save_changes, Slast_save_changes, (repv val), rep_Subr1) /*
@@ -838,7 +838,7 @@ last-save-changes [NEW-VALUE]
 Number of changes the last time this buffer was saved (could be auto-save).
 ::end:: */
 {
-    return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_LastSaveChanges));
+    return(rep_handle_var_int(val, &curr_vw->vw_Tx->last_saved_change_count));
 }
 
 DEFUN("last-user-save-changes", Flast_user_save_changes, Slast_user_save_changes, (repv val), rep_Subr1) /*
@@ -848,7 +848,7 @@ last-user-save-changes [NEW-VALUE]
 Number of changes the last time this buffer was saved (not from auto-save).
 ::end:: */
 {
-    return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_ProperSaveChanges));
+    return(rep_handle_var_int(val, &curr_vw->vw_Tx->proper_saved_changed_count));
 }
 
 DEFUN("last-save-time", Flast_save_time, Slast_save_time, (repv val), rep_Subr1) /*
@@ -858,9 +858,9 @@ last-save-time [NEW-VALUE]
 System time at last save of this buffer (could be from an auto-save).
 ::end:: */
 {
-    long old = curr_vw->vw_Tx->tx_LastSaveTime;
+    long old = curr_vw->vw_Tx->last_saved_time;
     if(rep_TIMEP(val))
-	curr_vw->vw_Tx->tx_LastSaveTime = rep_GET_TIME(val);
+	curr_vw->vw_Tx->last_saved_time = rep_GET_TIME(val);
     return rep_MAKE_TIME(old);
 }
 
@@ -871,7 +871,7 @@ tab-size [NEW-VALUE]
 Sets the size of tab-stops.
 ::end:: */
 {
-    return(rep_handle_var_int(val, &curr_vw->vw_Tx->tx_TabSize));
+    return(rep_handle_var_int(val, &curr_vw->vw_Tx->tab_size));
 }
 
 DEFUN("truncate-lines", Ftruncate_lines, Struncate_lines, (repv val), rep_Subr1) /*
@@ -886,9 +886,9 @@ The default value for all buffers is nil.
     TX *tx = curr_vw->vw_Tx;
     repv old = TX_WRAP_LINES_P(tx) ? Qnil : Qt;
     if(!rep_NILP(val))
-	tx->tx_Flags |= TXFF_DONT_WRAP_LINES;
+	tx->car |= TXFF_DONT_WRAP_LINES;
     else
-	tx->tx_Flags &= ~TXFF_DONT_WRAP_LINES;
+	tx->car &= ~TXFF_DONT_WRAP_LINES;
     return old;
 }
 
@@ -902,8 +902,8 @@ the buffer is created it is set to `Jade: BUFFER-NAME'.
 ::end:: */
 {
     TX *tx = curr_vw->vw_Tx;
-    repv old = tx->tx_StatusId ? tx->tx_StatusId : Qnil;
-    tx->tx_StatusId = rep_STRINGP(val) ? val : rep_NULL;
+    repv old = tx->status_string ? tx->status_string : Qnil;
+    tx->status_string = rep_STRINGP(val) ? val : rep_NULL;
     return old;
 }
 
@@ -919,7 +919,7 @@ Return a list of all allocated buffer objects.
     while(tx != 0)
     {
 	list = Fcons(rep_VAL(tx), list);
-	tx = tx->tx_Next;
+	tx = tx->next;
     }
     return Fnreverse(list);
 }
@@ -953,14 +953,14 @@ make_marks_resident(repv newtx)
     {
 	repv nxt = rep_VAL(VMARK(mk)->next);
 	
-	if(rep_STRINGP(VTX(newtx)->tx_CanonicalFileName)
-	    && strcmp(rep_STR(VTX(newtx)->tx_CanonicalFileName),
+	if(rep_STRINGP(VTX(newtx)->canonical_file_name)
+	    && strcmp(rep_STR(VTX(newtx)->canonical_file_name),
 		      rep_STR(VMARK(mk)->canon_file)) == 0)
 	{
 	    VMARK(mk)->file = newtx;
 	    VMARK(mk)->canon_file = Qnil;
-	    VMARK(mk)->next = VTX(newtx)->tx_MarkChain;
-	    VTX(newtx)->tx_MarkChain = VMARK(mk);
+	    VMARK(mk)->next = VTX(newtx)->mark_chain;
+	    VTX(newtx)->mark_chain = VMARK(mk);
 	}
 	else
 	{
@@ -980,7 +980,7 @@ unchain_mark(Lisp_Mark *mk)
     if(!MARK_RESIDENT_P(mk))
 	headp = &non_resident_mark_chain;
     else
-	headp = &(VTX(mk->file)->tx_MarkChain);
+	headp = &(VTX(mk->file)->mark_chain);
     this = *headp;
     *headp = NULL;
     while(this)
@@ -1004,14 +1004,14 @@ unchain_mark(Lisp_Mark *mk)
 static void
 make_marks_non_resident(TX *oldtx)
 {
-    repv canon_file = (rep_STRINGP(oldtx->tx_CanonicalFileName)
-			? oldtx->tx_CanonicalFileName
+    repv canon_file = (rep_STRINGP(oldtx->canonical_file_name)
+			? oldtx->canonical_file_name
 			: Qnil);
-    repv file = (rep_STRINGP(oldtx->tx_FileName)
-		  ? oldtx->tx_FileName
+    repv file = (rep_STRINGP(oldtx->file_name)
+		  ? oldtx->file_name
 		  : canon_file);
-    Lisp_Mark *nxt, *mk = oldtx->tx_MarkChain;
-    oldtx->tx_MarkChain = NULL;
+    Lisp_Mark *nxt, *mk = oldtx->mark_chain;
+    oldtx->mark_chain = NULL;
     while(mk != NULL)
     {
 	nxt = mk->next;
@@ -1045,8 +1045,8 @@ mark_mark (repv val)
 	   be gc'd if there's marks pointing to them. The marks will
 	   just get made non-resident. But to do this we'll need
 	   the names of the file they point to.. */
-	rep_MARKVAL(VTX(VMARK(val)->file)->tx_FileName);
-	rep_MARKVAL(VTX(VMARK(val)->file)->tx_CanonicalFileName);
+	rep_MARKVAL(VTX(VMARK(val)->file)->file_name);
+	rep_MARKVAL(VTX(VMARK(val)->file)->canonical_file_name);
     }
     rep_MARKVAL(VMARK(val)->pos);
 }
@@ -1225,8 +1225,8 @@ updated as the file changes -- it will always point to the same character
 	    if(!BUFFERP(buffer))
 		buffer = rep_VAL(curr_vw->vw_Tx);
 	    VMARK(mk)->file = buffer;
-	    VMARK(mk)->next = VTX(buffer)->tx_MarkChain;
-	    VTX(buffer)->tx_MarkChain = VMARK(mk);
+	    VMARK(mk)->next = VTX(buffer)->mark_chain;
+	    VTX(buffer)->mark_chain = VMARK(mk);
 	}
 	return mk;
     }
@@ -1272,8 +1272,8 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
 	if(VMARK(mark)->file != file)
 	{
 	    unchain_mark(VMARK(mark));
-	    VMARK(mark)->next = VTX(file)->tx_MarkChain;
-	    VTX(file)->tx_MarkChain = VMARK(mark);
+	    VMARK(mark)->next = VTX(file)->mark_chain;
+	    VTX(file)->mark_chain = VMARK(mark);
 	}
 	VMARK(mark)->file = file;
 	VMARK(mark)->canon_file = Qnil;
@@ -1410,7 +1410,7 @@ buffers_kill(void)
     Lisp_Mark *mk = mark_chain;
     while(tx)
     {
-	TX *nxttx = tx->tx_Next;
+	TX *nxttx = tx->next;
 	kill_line_list(tx);
 	rep_FREE_CELL(tx);
 	tx = nxttx;

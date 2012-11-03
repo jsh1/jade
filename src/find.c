@@ -40,7 +40,7 @@
 int
 buffer_strpbrk(TX *tx, Pos *pos, const char *chars)
 {
-    LINE *line = tx->tx_Lines + PROW(pos);
+    LINE *line = tx->lines + PROW(pos);
     int chars_has_newline = strchr(chars, '\n') ? 1 : 0;
 
     if(PCOL(pos) >= line->ln_Strlen)
@@ -50,7 +50,7 @@ buffer_strpbrk(TX *tx, Pos *pos, const char *chars)
 	line++;
     }
 
-    while(PROW(pos) < tx->tx_LogicalEnd)
+    while(PROW(pos) < tx->logical_end)
     {
 	char *ptr = strpbrk(line->ln_Line + PCOL(pos), chars);
 	if(ptr != NULL)
@@ -74,7 +74,7 @@ buffer_strpbrk(TX *tx, Pos *pos, const char *chars)
 int
 buffer_reverse_strpbrk(TX *tx, Pos *pos, const char *chars)
 {
-    LINE *line = tx->tx_Lines + PROW(pos);
+    LINE *line = tx->lines + PROW(pos);
     int chars_has_newline = strchr(chars, '\n') ? 1 : 0;
 
     if(PCOL(pos) >= line->ln_Strlen)
@@ -96,7 +96,7 @@ buffer_reverse_strpbrk(TX *tx, Pos *pos, const char *chars)
 	    match--;
 	}
 	line--;
-	if(--PROW(pos) < tx->tx_LogicalStart)
+	if(--PROW(pos) < tx->logical_start)
 	    return 0;
 	PCOL(pos) = line->ln_Strlen - 1;
 	if(chars_has_newline)
@@ -109,7 +109,7 @@ buffer_reverse_strpbrk(TX *tx, Pos *pos, const char *chars)
 int
 buffer_strchr(TX *tx, Pos *pos, char c)
 {
-    LINE *line = tx->tx_Lines + PROW(pos);
+    LINE *line = tx->lines + PROW(pos);
     if(PCOL(pos) >= line->ln_Strlen)
     {
 	PCOL(pos) = 0;
@@ -119,9 +119,9 @@ buffer_strchr(TX *tx, Pos *pos, char c)
 
     if(c == '\n')
     {
-	if(PROW(pos) < tx->tx_LogicalEnd - 1)
+	if(PROW(pos) < tx->logical_end - 1)
 	{
-	    PCOL(pos) = tx->tx_Lines[PROW(pos)].ln_Strlen - 1;
+	    PCOL(pos) = tx->lines[PROW(pos)].ln_Strlen - 1;
 	    return 1;
 	}
 	else
@@ -132,7 +132,7 @@ buffer_strchr(TX *tx, Pos *pos, char c)
     }
     else
     {
-	while(PROW(pos) < tx->tx_LogicalEnd)
+	while(PROW(pos) < tx->logical_end)
 	{
 	    char *match = strchr(line->ln_Line + PCOL(pos), c);
 	    if(match)
@@ -152,7 +152,7 @@ buffer_strchr(TX *tx, Pos *pos, char c)
 int
 buffer_reverse_strchr(TX *tx, Pos *pos, char c)
 {
-    LINE *line = tx->tx_Lines + PROW(pos);
+    LINE *line = tx->lines + PROW(pos);
 
     if(PCOL(pos) >= line->ln_Strlen)
 	PCOL(pos) = line->ln_Strlen - 1;
@@ -161,7 +161,7 @@ buffer_reverse_strchr(TX *tx, Pos *pos, char c)
     {
 	if(PCOL(pos) == line->ln_Strlen - 1)
 	    return 1;
-	if(PROW(pos) == tx->tx_LogicalStart)
+	if(PROW(pos) == tx->logical_start)
 	    return 0;
 	else
 	{
@@ -185,7 +185,7 @@ buffer_reverse_strchr(TX *tx, Pos *pos, char c)
 		}
 		match--;
 	    }
-	    if(PROW(pos) == tx->tx_LogicalStart)
+	    if(PROW(pos) == tx->logical_start)
 		return 0;
 	    line--;
 	    PROW(pos)--;
@@ -205,7 +205,7 @@ buffer_reverse_strchr(TX *tx, Pos *pos, char c)
 int
 buffer_compare_n(TX *tx, Pos *pos, const char *str, int n, void *cmpfn)
 {
-    LINE *line = tx->tx_Lines + PROW(pos);
+    LINE *line = tx->lines + PROW(pos);
 
     if(PCOL(pos) >= line->ln_Strlen)
     {
@@ -214,7 +214,7 @@ buffer_compare_n(TX *tx, Pos *pos, const char *str, int n, void *cmpfn)
 	line++;
     }
 
-    while(n > 0 && PROW(pos) < tx->tx_LogicalEnd)
+    while(n > 0 && PROW(pos) < tx->logical_end)
     {
 	char *chunk = strchr(str, '\n');
 	int len;
@@ -249,7 +249,7 @@ buffer_compare_n(TX *tx, Pos *pos, const char *str, int n, void *cmpfn)
 int
 forward_char(long count, TX *tx, Pos *pos)
 {
-    LINE *line = tx->tx_Lines + PROW(pos);
+    LINE *line = tx->lines + PROW(pos);
     if(PCOL(pos) >= line->ln_Strlen)
 	PCOL(pos) = line->ln_Strlen - 1;
     while(count > 0)
@@ -263,7 +263,7 @@ forward_char(long count, TX *tx, Pos *pos)
 	{
 	    count -= line->ln_Strlen - PCOL(pos);
 	    PROW(pos)++;
-	    if(PROW(pos) >= tx->tx_LogicalEnd)
+	    if(PROW(pos) >= tx->logical_end)
 		return 0;
 	    line++;
 	    PCOL(pos) = 0;
@@ -277,7 +277,7 @@ forward_char(long count, TX *tx, Pos *pos)
 int
 backward_char(long count, TX *tx, Pos *pos)
 {
-    LINE *line = tx->tx_Lines + PROW(pos);
+    LINE *line = tx->lines + PROW(pos);
     while(count > 0)
     {
 	if(count <= PCOL(pos))
@@ -289,7 +289,7 @@ backward_char(long count, TX *tx, Pos *pos)
 	{
 	    count -= PCOL(pos) + 1; /* `+ 1' for the assumed '\n' */
 	    PROW(pos)--;
-	    if(PROW(pos) < tx->tx_LogicalStart)
+	    if(PROW(pos) < tx->logical_start)
 		return 0;
 	    line--;
 	    PCOL(pos) = line->ln_Strlen - 1;

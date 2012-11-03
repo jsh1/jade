@@ -107,7 +107,7 @@ typedef struct {
     ((PROW(s) < PROW(e)) || ((PROW(s) == PROW(e)) && (PCOL(s) <= PCOL(e))))
 
 
-/* Line structure -- an array of these is in the TX->tx_Lines */
+/* Line structure -- an array of these is in the TX->lines */
 typedef struct LINE {
     char	   *ln_Line;
     long	    ln_Strlen;	/* includes '\0' */
@@ -239,52 +239,51 @@ typedef struct merged_face {
 
 /* A buffer, strangely called `TX' */
 typedef struct _TX {
-    repv	    tx_Car;
-#define tx_Flags tx_Car
+    repv	    car;
 
-    struct _TX	   *tx_Next;
-    Lisp_Mark	   *tx_MarkChain;
-    LINE	   *tx_Lines;
-    long	    tx_NumLines, tx_TotalLines;	/* text-lines, array-length */
+    struct _TX	   *next;
+    Lisp_Mark	   *mark_chain;
+    LINE	   *lines;
+    long	    line_count, total_lines;	/* text-lines, array-length */
 
     /* line numbers of `narrowed' region */
-    long	    tx_LogicalStart, tx_LogicalEnd;
+    long	    logical_start, logical_end;
 
     /* unique name of buffer */
-    repv	    tx_BufferName;
+    repv	    buffer_name;
 
     /* absolute name of the file in this buffer as the user sees it (or nil) */
-    repv	    tx_FileName;
+    repv	    file_name;
 
     /* name of the file in this buffer such that we can compare two
        files by comparing their canonical names (or nil). */
-    repv	    tx_CanonicalFileName;
+    repv	    canonical_file_name;
 
     /* Data for status line and window title */
-    repv	    tx_StatusId;
+    repv	    status_string;
     
-    int		    tx_Changes;
-    int		    tx_LastSaveChanges;	 /* changes at last save (any type) */
-    int		    tx_ProperSaveChanges; /* changes at last `proper' save */
-    int		    tx_AutoSaveInterval; /* seconds between saves */
-    long	    tx_LastSaveTime;	 /* time at last save (auto or user) */
+    int		    change_count;
+    int		    last_saved_change_count;	/* count at last save */
+    int		    proper_saved_changed_count;	/* at last `proper' save */
+    int		    auto_save_interval; /* seconds between saves */
+    long	    last_saved_time;	/* time at last save (auto or user) */
 
-    int		    tx_TabSize;
+    int		    tab_size;
 
     /* This is an extent covering the _whole_ buffer. */
-    Lisp_Extent	   *tx_GlobalExtent;
-    struct cached_extent tx_ExtentCache[EXTENT_CACHE_SIZE];
+    Lisp_Extent	   *global_extent;
+    struct cached_extent extent_cache[EXTENT_CACHE_SIZE];
 
     /* Undo information */
-    repv	    tx_UndoList;
-    repv	    tx_ToUndoList;
-    repv	    tx_UndoneList;
+    repv	    undo_list;
+    repv	    pending_undo_list;
+    repv	    did_undo_list;
 
     /* Saved state for buffers which are not being displayed.  */
-    repv	    tx_SavedCPos;
-    repv	    tx_SavedWPos;
-    repv	    tx_SavedBlockPos[2];
-    int		    tx_SavedBlockStatus;
+    repv	    saved_cursor_pos;
+    repv	    saved_display_origin;
+    repv	    saved_block[2];
+    int		    saved_block_status;
 
 } TX;
 
@@ -293,12 +292,12 @@ typedef struct _TX {
 
 /* don't wrap long lines */
 #define TXFF_DONT_WRAP_LINES	(1 << (rep_CELL16_TYPE_BITS + 1))
-#define TX_WRAP_LINES_P(tx)	(((tx)->tx_Flags & TXFF_DONT_WRAP_LINES) == 0)
+#define TX_WRAP_LINES_P(tx)	(((tx)->car & TXFF_DONT_WRAP_LINES) == 0)
 
 /* Remnants from the old redisplay code */
-#define flag_insertion(tx, start, end)		((tx)->tx_Changes++)
-#define flag_deletion(tx, start, end)		((tx)->tx_Changes++)
-#define flag_modification(tx, start, end)	((tx)->tx_Changes++)
+#define flag_insertion(tx, start, end)		((tx)->change_count++)
+#define flag_deletion(tx, start, end)		((tx)->change_count++)
+#define flag_modification(tx, start, end)	((tx)->change_count++)
 
 
 /* Each view in a window is like this */

@@ -74,17 +74,17 @@ read_file_into_tx(TX *tx, FILE *fh, long file_length)
 	char *eol, *cur = buf;
 	while((eol = memchr(cur, '\n', (buf + len) - cur)))
 	{
-	    if(tx->tx_Lines[row].ln_Strlen != 0)
+	    if(tx->lines[row].ln_Strlen != 0)
 	    {
-		newlen = tx->tx_Lines[row].ln_Strlen + (eol - cur);
+		newlen = tx->lines[row].ln_Strlen + (eol - cur);
 		new = alloc_line_buf(tx, newlen);
-		memcpy(new, tx->tx_Lines[row].ln_Line,
-		       tx->tx_Lines[row].ln_Strlen);
-		memcpy(new + tx->tx_Lines[row].ln_Strlen - 1, cur, eol - cur);
+		memcpy(new, tx->lines[row].ln_Line,
+		       tx->lines[row].ln_Strlen);
+		memcpy(new + tx->lines[row].ln_Strlen - 1, cur, eol - cur);
 		new[newlen-1] = 0;
-		free_line_buf(tx, tx->tx_Lines[row].ln_Line);
-		tx->tx_Lines[row].ln_Line = new;
-		tx->tx_Lines[row].ln_Strlen = newlen;
+		free_line_buf(tx, tx->lines[row].ln_Line);
+		tx->lines[row].ln_Line = new;
+		tx->lines[row].ln_Strlen = newlen;
 	    }
 	    else
 	    {
@@ -94,10 +94,10 @@ read_file_into_tx(TX *tx, FILE *fh, long file_length)
 		    goto abortmem;
 		memcpy(new, cur, newlen);
 		new[newlen] = 0;
-		tx->tx_Lines[row].ln_Line = new;
-		tx->tx_Lines[row].ln_Strlen = newlen+1;
+		tx->lines[row].ln_Line = new;
+		tx->lines[row].ln_Strlen = newlen+1;
 	    }
-	    chars_read += tx->tx_Lines[row].ln_Strlen;
+	    chars_read += tx->lines[row].ln_Strlen;
 
 	    if(++row >= alloced_lines)
 	    {
@@ -132,53 +132,53 @@ read_file_into_tx(TX *tx, FILE *fh, long file_length)
 	}
 	if(cur < buf + len)
 	{
-            if(tx->tx_Lines[row].ln_Strlen)
+            if(tx->lines[row].ln_Strlen)
 	    {
                 /* Only way we can get here is if there were *no* newlines in
                    the chunk we just read. */
-		newlen = tx->tx_Lines[row].ln_Strlen + len;
+		newlen = tx->lines[row].ln_Strlen + len;
 		new = alloc_line_buf(tx, newlen);
 		if(!new)
 		    goto abortmem;
-		memcpy(new, tx->tx_Lines[row].ln_Line,
-		       tx->tx_Lines[row].ln_Strlen - 1);
-		memcpy(new + (tx->tx_Lines[row].ln_Strlen - 1), buf, len);
+		memcpy(new, tx->lines[row].ln_Line,
+		       tx->lines[row].ln_Strlen - 1);
+		memcpy(new + (tx->lines[row].ln_Strlen - 1), buf, len);
 		new[newlen-1] = 0;
-		free_line_buf(tx, tx->tx_Lines[row].ln_Line);
-		tx->tx_Lines[row].ln_Line = new;
-		tx->tx_Lines[row].ln_Strlen = newlen;
+		free_line_buf(tx, tx->lines[row].ln_Line);
+		tx->lines[row].ln_Line = new;
+		tx->lines[row].ln_Strlen = newlen;
 	    }
             else
 	    {
 		newlen = (buf + len) - cur;
-		tx->tx_Lines[row].ln_Line = alloc_line_buf(tx, newlen + 1);
-		if(!tx->tx_Lines[row].ln_Line)
+		tx->lines[row].ln_Line = alloc_line_buf(tx, newlen + 1);
+		if(!tx->lines[row].ln_Line)
 		    goto abortmem;
-		memcpy(tx->tx_Lines[row].ln_Line, cur, newlen);
-		tx->tx_Lines[row].ln_Line[newlen] = 0;
-		tx->tx_Lines[row].ln_Strlen = newlen + 1;
+		memcpy(tx->lines[row].ln_Line, cur, newlen);
+		tx->lines[row].ln_Line[newlen] = 0;
+		tx->lines[row].ln_Strlen = newlen + 1;
 	    }
 	}
     }
-    if(tx->tx_Lines[row].ln_Strlen == 0)
+    if(tx->lines[row].ln_Strlen == 0)
     {
-	tx->tx_Lines[row].ln_Line = alloc_line_buf(tx, 1);
-	if(tx->tx_Lines[row].ln_Line == NULL)
+	tx->lines[row].ln_Line = alloc_line_buf(tx, 1);
+	if(tx->lines[row].ln_Line == NULL)
 	    goto abortmem;
-	tx->tx_Lines[row].ln_Line[0] = 0;
-	tx->tx_Lines[row].ln_Strlen = 1;
+	tx->lines[row].ln_Line[0] = 0;
+	tx->lines[row].ln_Strlen = 1;
     }
     else
-	chars_read += tx->tx_Lines[row].ln_Strlen;
+	chars_read += tx->lines[row].ln_Strlen;
     row++;
 
     if(!resize_line_list(tx, row - alloced_lines, row))
 	goto abortmem;
 
-    tx->tx_LogicalStart = 0;
-    tx->tx_LogicalEnd = tx->tx_NumLines;
+    tx->logical_start = 0;
+    tx->logical_end = tx->line_count;
 
-    tx->tx_Changes++;
+    tx->change_count++;
     rc = TRUE;
 
     if(0)
@@ -232,7 +232,7 @@ the buffer (ignoring the current restriction).
 
 	/* Don't call check_section() since that looks at the restriction. */
 	if(POS_LESS_P(end, start) || VROW(start) < 0
-	   || VROW(end) > tx->tx_NumLines)
+	   || VROW(end) > tx->line_count)
 	    return(Fsignal(Qinvalid_area, rep_list_3(rep_VAL(tx), start, end)));
 
 	if(rep_FILEP(file))
@@ -245,14 +245,14 @@ the buffer (ignoring the current restriction).
 	}
 
 	row = VROW(start);
-	col = MIN(VCOL(start), tx->tx_Lines[row].ln_Strlen - 1);
+	col = MIN(VCOL(start), tx->lines[row].ln_Strlen - 1);
 
 	while(row <= VROW(end))
 	{
 	    int len = (((row == VROW(end))
-			? VCOL(end) : tx->tx_Lines[row].ln_Strlen - 1) - col);
+			? VCOL(end) : tx->lines[row].ln_Strlen - 1) - col);
 	    if(len > 0
-	       && fwrite(tx->tx_Lines[row].ln_Line + col, 1, len, fh) != len) 
+	       && fwrite(tx->lines[row].ln_Line + col, 1, len, fh) != len) 
 	    {
 		return rep_signal_file_error(file);
 	    }

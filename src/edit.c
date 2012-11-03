@@ -56,23 +56,23 @@
 bool
 clear_line_list(TX *tx)
 {
-    if(tx->tx_Lines)
+    if(tx->lines)
 	kill_line_list(tx);
-    tx->tx_Lines = rep_alloc(sizeof(LINE) * ALLOC_SPARE_LINES);
-    if(tx->tx_Lines)
+    tx->lines = rep_alloc(sizeof(LINE) * ALLOC_SPARE_LINES);
+    if(tx->lines)
     {
-	tx->tx_Lines[0].ln_Line = ALLOC_LINE_BUF(tx, 1);
-	if(tx->tx_Lines[0].ln_Line)
+	tx->lines[0].ln_Line = ALLOC_LINE_BUF(tx, 1);
+	if(tx->lines[0].ln_Line)
 	{
-	    tx->tx_Lines[0].ln_Line[0] = 0;
-	    tx->tx_Lines[0].ln_Strlen = 1;
+	    tx->lines[0].ln_Line[0] = 0;
+	    tx->lines[0].ln_Strlen = 1;
 	}
 	else
-	    tx->tx_Lines[0].ln_Strlen = 0;
-	tx->tx_NumLines = 1;
-	tx->tx_TotalLines = ALLOC_SPARE_LINES;
-	tx->tx_LogicalStart = 0;
-	tx->tx_LogicalEnd = 1;
+	    tx->lines[0].ln_Strlen = 0;
+	tx->line_count = 1;
+	tx->total_lines = ALLOC_SPARE_LINES;
+	tx->logical_start = 0;
+	tx->logical_end = 1;
 	return(TRUE);
     }
     return(FALSE);
@@ -82,18 +82,18 @@ clear_line_list(TX *tx)
 void
 kill_line_list(TX *tx)
 {
-    if(tx->tx_Lines)
+    if(tx->lines)
     {
 	long i;
-	for(i = 0; i < tx->tx_NumLines; i++)
+	for(i = 0; i < tx->line_count; i++)
 	{
-	    if(tx->tx_Lines[i].ln_Strlen)
-		FREE_LINE_BUF(tx, tx->tx_Lines[i].ln_Line);
+	    if(tx->lines[i].ln_Strlen)
+		FREE_LINE_BUF(tx, tx->lines[i].ln_Line);
 	}
-	rep_free(tx->tx_Lines);
-	tx->tx_Lines = 0;
-	tx->tx_NumLines = 0;
-	tx->tx_TotalLines = 0;
+	rep_free(tx->lines);
+	tx->lines = 0;
+	tx->line_count = 0;
+	tx->total_lines = 0;
     }
 }
 
@@ -104,11 +104,11 @@ kill_some_lines(TX *tx, long start, long number)
     long i;
     for(i = start; i < number + start; i++)
     {
-	if(tx->tx_Lines[i].ln_Strlen)
+	if(tx->lines[i].ln_Strlen)
 	{
-	    FREE_LINE_BUF(tx, tx->tx_Lines[i].ln_Line);
-	    tx->tx_Lines[i].ln_Strlen = 0;
-	    tx->tx_Lines[i].ln_Line = NULL;
+	    FREE_LINE_BUF(tx, tx->lines[i].ln_Line);
+	    tx->lines[i].ln_Strlen = 0;
+	    tx->lines[i].ln_Line = NULL;
 	}
     }
 }
@@ -121,49 +121,49 @@ kill_some_lines(TX *tx, long start, long number)
 LINE *
 resize_line_list(TX *tx, long change, long where)
 {
-    long newsize = tx->tx_NumLines + change;
+    long newsize = tx->line_count + change;
     if(newsize <= 0)
 	return NULL;
     if(change < 0)
     {
-	assert(tx->tx_Lines != 0);
+	assert(tx->lines != 0);
 	kill_some_lines(tx, where, -change);
-	memmove(tx->tx_Lines + where,
-		tx->tx_Lines + where - change,
-		(tx->tx_NumLines - where + change) * sizeof(LINE));
+	memmove(tx->lines + where,
+		tx->lines + where - change,
+		(tx->line_count - where + change) * sizeof(LINE));
     }
-    if(tx->tx_Lines == 0
-       || newsize > tx->tx_TotalLines
-       || (tx->tx_TotalLines - newsize) > MAX_SPARE_LINES)
+    if(tx->lines == 0
+       || newsize > tx->total_lines
+       || (tx->total_lines - newsize) > MAX_SPARE_LINES)
     {
 	/* Only reallocate if there's not enough space in the array */
 	long actual_size = newsize + ALLOC_SPARE_LINES;
-	if(tx->tx_Lines != 0)
+	if(tx->lines != 0)
 	{
-	    LINE *tem = rep_realloc(tx->tx_Lines, sizeof(LINE) * actual_size);
+	    LINE *tem = rep_realloc(tx->lines, sizeof(LINE) * actual_size);
 	    if (tem != 0)
-		tx->tx_Lines = tem;
+		tx->lines = tem;
 	    else
 	    {
-		rep_free(tx->tx_Lines);
-		tx->tx_Lines = 0;
+		rep_free(tx->lines);
+		tx->lines = 0;
 	    }
 	}
 	else
-	    tx->tx_Lines = rep_alloc(sizeof(LINE) * actual_size);
-	if(tx->tx_Lines == 0)
+	    tx->lines = rep_alloc(sizeof(LINE) * actual_size);
+	if(tx->lines == 0)
 	    return 0;
-	tx->tx_TotalLines = actual_size;
+	tx->total_lines = actual_size;
     }
     if(change > 0)
     {
-	memmove(tx->tx_Lines + where + change,
-		tx->tx_Lines + where,
-		(tx->tx_NumLines - where) * sizeof(LINE));
-	memset(tx->tx_Lines + where, 0, sizeof(LINE) * change);
+	memmove(tx->lines + where + change,
+		tx->lines + where,
+		(tx->line_count - where) * sizeof(LINE));
+	memset(tx->lines + where, 0, sizeof(LINE) * change);
     }
-    tx->tx_NumLines = newsize;
-    return tx->tx_Lines;
+    tx->line_count = newsize;
+    return tx->lines;
 }
 
 char *
@@ -183,13 +183,13 @@ free_line_buf(TX *tx, char *line)
 bool
 insert_gap(TX *tx, long len, long col, long row)
 {
-    long new_length = tx->tx_Lines[row].ln_Strlen + len;
-    if(LINE_BUF_SIZE(new_length) == LINE_BUF_SIZE(tx->tx_Lines[row].ln_Strlen))
+    long new_length = tx->lines[row].ln_Strlen + len;
+    if(LINE_BUF_SIZE(new_length) == LINE_BUF_SIZE(tx->lines[row].ln_Strlen))
     {
 	/* Absorb the insertion in the current buffer */
-	memmove(tx->tx_Lines[row].ln_Line + col + len,
-		tx->tx_Lines[row].ln_Line + col,
-		tx->tx_Lines[row].ln_Strlen - col);
+	memmove(tx->lines[row].ln_Line + col + len,
+		tx->lines[row].ln_Line + col,
+		tx->lines[row].ln_Strlen - col);
     }
     else
     {
@@ -197,16 +197,16 @@ insert_gap(TX *tx, long len, long col, long row)
 	char *newline = ALLOC_LINE_BUF(tx, new_length);
 	if(newline != NULL)
 	{
-	    if(tx->tx_Lines[row].ln_Strlen != 0)
+	    if(tx->lines[row].ln_Strlen != 0)
 	    {
-		memcpy(newline, tx->tx_Lines[row].ln_Line, col);
-		memcpy(newline + col + len, tx->tx_Lines[row].ln_Line + col,
-		       tx->tx_Lines[row].ln_Strlen - col);
-		FREE_LINE_BUF(tx, tx->tx_Lines[row].ln_Line);
+		memcpy(newline, tx->lines[row].ln_Line, col);
+		memcpy(newline + col + len, tx->lines[row].ln_Line + col,
+		       tx->lines[row].ln_Strlen - col);
+		FREE_LINE_BUF(tx, tx->lines[row].ln_Line);
 	    }
 	    else
 		newline[len] = 0;
-	    tx->tx_Lines[row].ln_Line = newline;
+	    tx->lines[row].ln_Line = newline;
 	}
 	else
 	{
@@ -214,7 +214,7 @@ insert_gap(TX *tx, long len, long col, long row)
 	    return FALSE;
 	}
     }
-    tx->tx_Lines[row].ln_Strlen += len;
+    tx->lines[row].ln_Strlen += len;
     adjust_marks_add_x(tx, len, col, row);
     return TRUE;
 }
@@ -228,7 +228,7 @@ insert_bytes(TX *tx, const char *text, long textLen, repv pos)
 {
     if(insert_gap(tx, textLen, VCOL(pos), VROW(pos)))
     {
-	memcpy(tx->tx_Lines[VROW(pos)].ln_Line + VCOL(pos), text, textLen);
+	memcpy(tx->lines[VROW(pos)].ln_Line + VCOL(pos), text, textLen);
 	return make_pos(VCOL(pos) + textLen, VROW(pos));
     }
     else
@@ -252,7 +252,7 @@ insert_string(TX *tx, const char *text, long textLen, repv pos)
 	    {
 		if(insert_gap(tx, len, PCOL(&tpos), PROW(&tpos)))
 		{
-		    memcpy(tx->tx_Lines[PROW(&tpos)].ln_Line + PCOL(&tpos),
+		    memcpy(tx->lines[PROW(&tpos)].ln_Line + PCOL(&tpos),
 			   text, len);
 		    PCOL(&tpos) += len;
 		}
@@ -265,28 +265,28 @@ insert_string(TX *tx, const char *text, long textLen, repv pos)
 		long row = PROW(&tpos);
 
 		/* First do the new line */
-		tx->tx_Lines[row+1].ln_Line
-		    = ALLOC_LINE_BUF(tx, tx->tx_Lines[row].ln_Strlen
+		tx->lines[row+1].ln_Line
+		    = ALLOC_LINE_BUF(tx, tx->lines[row].ln_Strlen
 				     - PCOL(&tpos));
-		if(tx->tx_Lines[row+1].ln_Line != NULL)
+		if(tx->lines[row+1].ln_Line != NULL)
 		{
-		    tx->tx_Lines[row+1].ln_Strlen
-			= tx->tx_Lines[row].ln_Strlen - PCOL(&tpos);
-		    memcpy(tx->tx_Lines[row+1].ln_Line,
-			   tx->tx_Lines[row].ln_Line + PCOL(&tpos),
-			   tx->tx_Lines[row+1].ln_Strlen - 1);
-		    tx->tx_Lines[row+1].ln_Line[tx->tx_Lines[row+1].ln_Strlen - 1] = 0;
+		    tx->lines[row+1].ln_Strlen
+			= tx->lines[row].ln_Strlen - PCOL(&tpos);
+		    memcpy(tx->lines[row+1].ln_Line,
+			   tx->lines[row].ln_Line + PCOL(&tpos),
+			   tx->lines[row+1].ln_Strlen - 1);
+		    tx->lines[row+1].ln_Line[tx->lines[row+1].ln_Strlen - 1] = 0;
 		}
 		else
 		    goto abort;
 
 		/* Then chop the end off the old one */
 		if(LINE_BUF_SIZE(PCOL(&tpos) + 1)
-		   == LINE_BUF_SIZE(tx->tx_Lines[row].ln_Strlen))
+		   == LINE_BUF_SIZE(tx->lines[row].ln_Strlen))
 		{
 		    /* Use the old buffer */
-		    tx->tx_Lines[row].ln_Strlen = PCOL(&tpos) + 1;
-		    tx->tx_Lines[row].ln_Line[tx->tx_Lines[row].ln_Strlen - 1] = 0;
+		    tx->lines[row].ln_Strlen = PCOL(&tpos) + 1;
+		    tx->lines[row].ln_Line[tx->lines[row].ln_Strlen - 1] = 0;
 		}
 		else
 		{
@@ -294,11 +294,11 @@ insert_string(TX *tx, const char *text, long textLen, repv pos)
 		    char *new = ALLOC_LINE_BUF(tx, PCOL(&tpos) + 1);
 		    if(new != NULL)
 		    {
-			memcpy(new, tx->tx_Lines[row].ln_Line, PCOL(&tpos));
+			memcpy(new, tx->lines[row].ln_Line, PCOL(&tpos));
 			new[PCOL(&tpos)] = 0;
-			FREE_LINE_BUF(tx, tx->tx_Lines[row].ln_Line);
-			tx->tx_Lines[row].ln_Line = new;
-			tx->tx_Lines[row].ln_Strlen = PCOL(&tpos) + 1;
+			FREE_LINE_BUF(tx, tx->lines[row].ln_Line);
+			tx->lines[row].ln_Line = new;
+			tx->lines[row].ln_Strlen = PCOL(&tpos) + 1;
 		    }
 		    else
 			goto abort;
@@ -320,8 +320,8 @@ insert_string(TX *tx, const char *text, long textLen, repv pos)
 		goto abort;
 	    memcpy(copy, text, len);
 	    copy[len] = 0;
-	    tx->tx_Lines[PROW(&tpos)].ln_Strlen = len + 1;
-	    tx->tx_Lines[PROW(&tpos)].ln_Line = copy;
+	    tx->lines[PROW(&tpos)].ln_Strlen = len + 1;
+	    tx->lines[PROW(&tpos)].ln_Line = copy;
 	    adjust_marks_add_y(tx, +1, PROW(&tpos));
 	    PROW(&tpos)++;
 	}
@@ -332,7 +332,7 @@ insert_string(TX *tx, const char *text, long textLen, repv pos)
     {
 	if(insert_gap(tx, textLen, PCOL(&tpos), PROW(&tpos)))
 	{
-	    memcpy(tx->tx_Lines[PROW(&tpos)].ln_Line + PCOL(&tpos),
+	    memcpy(tx->lines[PROW(&tpos)].ln_Line + PCOL(&tpos),
 		   text, textLen);
 	    PCOL(&tpos) += textLen;
 	}
@@ -354,21 +354,21 @@ insert_string(TX *tx, const char *text, long textLen, repv pos)
 bool
 delete_chars(TX *tx, long col, long row, long size)
 {
-    if(tx->tx_Lines[row].ln_Strlen)
+    if(tx->lines[row].ln_Strlen)
     {
 	long new_length;
-	if(size >= tx->tx_Lines[row].ln_Strlen - col)
-	    size = tx->tx_Lines[row].ln_Strlen - col - 1;
+	if(size >= tx->lines[row].ln_Strlen - col)
+	    size = tx->lines[row].ln_Strlen - col - 1;
 	if(size <= 0)
 	    return FALSE;
-	new_length = tx->tx_Lines[row].ln_Strlen - size;
+	new_length = tx->lines[row].ln_Strlen - size;
 	if(LINE_BUF_SIZE(new_length)
-	   == LINE_BUF_SIZE(tx->tx_Lines[row].ln_Strlen))
+	   == LINE_BUF_SIZE(tx->lines[row].ln_Strlen))
 	{
 	    /* Absorb the deletion */
-	    memmove(tx->tx_Lines[row].ln_Line + col,
-		    tx->tx_Lines[row].ln_Line + col + size,
-		    tx->tx_Lines[row].ln_Strlen - (col + size));
+	    memmove(tx->lines[row].ln_Line + col,
+		    tx->lines[row].ln_Line + col + size,
+		    tx->lines[row].ln_Strlen - (col + size));
 	}
 	else
 	{
@@ -379,13 +379,13 @@ delete_chars(TX *tx, long col, long row, long size)
 		rep_mem_error();
 		return FALSE;
 	    }
-            memcpy(new_line, tx->tx_Lines[row].ln_Line, col);
-            memcpy(new_line + col, tx->tx_Lines[row].ln_Line + col + size,
-		   tx->tx_Lines[row].ln_Strlen - col - size);
-	    FREE_LINE_BUF(tx, tx->tx_Lines[row].ln_Line);
-	    tx->tx_Lines[row].ln_Line = new_line;
+            memcpy(new_line, tx->lines[row].ln_Line, col);
+            memcpy(new_line + col, tx->lines[row].ln_Line + col + size,
+		   tx->lines[row].ln_Strlen - col - size);
+	    FREE_LINE_BUF(tx, tx->lines[row].ln_Line);
+	    tx->lines[row].ln_Line = new_line;
 	}
-	tx->tx_Lines[row].ln_Strlen -= size;
+	tx->lines[row].ln_Strlen -= size;
 	adjust_marks_sub_x(tx, size, col, row);
 	return TRUE;
     }
@@ -411,7 +411,7 @@ delete_section(TX *tx, repv start, repv end)
 	COPY_VPOS(&tstart, start); COPY_VPOS(&tend, end);
 	if(PCOL(&tstart) != 0)
 	{
-	    long start_col = (tx->tx_Lines[PROW(&tstart)].ln_Strlen
+	    long start_col = (tx->lines[PROW(&tstart)].ln_Strlen
 			      - PCOL(&tstart) - 1);
 	    if(start_col != 0)
 		delete_chars(tx, PCOL(&tstart), PROW(&tstart), start_col);
@@ -432,25 +432,25 @@ delete_section(TX *tx, repv start, repv end)
 	if(joinflag && PROW(&tstart) != 0)
 	{
 	    PROW(&tstart)--;
-	    PCOL(&tstart) = tx->tx_Lines[PROW(&tstart)].ln_Strlen - 1;
+	    PCOL(&tstart) = tx->lines[PROW(&tstart)].ln_Strlen - 1;
 
 	    /* Join the two lines at TSTART */
-	    if((PROW(&tstart) + 1) < tx->tx_LogicalEnd)
+	    if((PROW(&tstart) + 1) < tx->logical_end)
 	    {
 		long row = PROW(&tstart);
 
-		if(tx->tx_Lines[row].ln_Strlen == 1
-		   || tx->tx_Lines[row+1].ln_Strlen == 1)
+		if(tx->lines[row].ln_Strlen == 1
+		   || tx->lines[row+1].ln_Strlen == 1)
 		{
 		    /* One (or both) of the lines being joined is
 		       empty; so just use the other line */
-		    if(tx->tx_Lines[row+1].ln_Strlen == 1)
+		    if(tx->lines[row+1].ln_Strlen == 1)
 		    {
-			char *tem = tx->tx_Lines[row].ln_Line;
-			tx->tx_Lines[row].ln_Line = tx->tx_Lines[row+1].ln_Line;
-			tx->tx_Lines[row+1].ln_Line = tem;
-			tx->tx_Lines[row+1].ln_Strlen = tx->tx_Lines[row].ln_Strlen;
-			tx->tx_Lines[row].ln_Strlen = 1;
+			char *tem = tx->lines[row].ln_Line;
+			tx->lines[row].ln_Line = tx->lines[row+1].ln_Line;
+			tx->lines[row+1].ln_Line = tem;
+			tx->lines[row+1].ln_Strlen = tx->lines[row].ln_Strlen;
+			tx->lines[row].ln_Strlen = 1;
 		    }
 		}
 		else
@@ -458,22 +458,22 @@ delete_section(TX *tx, repv start, repv end)
 		    /* Allocate a new line;
 		       TODO: see if the join can be absorbed into one
 		       of the existing lines.. */
-		    int new_length = (tx->tx_Lines[row].ln_Strlen
-				      + tx->tx_Lines[row+1].ln_Strlen - 1);
+		    int new_length = (tx->lines[row].ln_Strlen
+				      + tx->lines[row+1].ln_Strlen - 1);
 		    char *new_line = ALLOC_LINE_BUF(tx, new_length);
 		    if(new_line == NULL)
 		    {
 			rep_mem_error();
 			return rep_NULL;
 		    }
-		    memcpy(new_line, tx->tx_Lines[row].ln_Line,
-			   tx->tx_Lines[row].ln_Strlen - 1);
-		    memcpy(new_line + (tx->tx_Lines[row].ln_Strlen - 1),
-			   tx->tx_Lines[row+1].ln_Line,
-			   tx->tx_Lines[row+1].ln_Strlen);
-		    FREE_LINE_BUF(tx, tx->tx_Lines[row+1].ln_Line);
-		    tx->tx_Lines[row+1].ln_Line = new_line;
-		    tx->tx_Lines[row+1].ln_Strlen = new_length;
+		    memcpy(new_line, tx->lines[row].ln_Line,
+			   tx->lines[row].ln_Strlen - 1);
+		    memcpy(new_line + (tx->lines[row].ln_Strlen - 1),
+			   tx->lines[row+1].ln_Line,
+			   tx->lines[row+1].ln_Strlen);
+		    FREE_LINE_BUF(tx, tx->lines[row+1].ln_Line);
+		    tx->lines[row+1].ln_Line = new_line;
+		    tx->lines[row+1].ln_Strlen = new_length;
 		}
 		resize_line_list(tx, -1, PROW(&tstart));
 		adjust_marks_join_y(tx, PCOL(&tstart), PROW(&tstart));
@@ -490,17 +490,17 @@ delete_section(TX *tx, repv start, repv end)
 bool
 pad_pos(TX *tx, repv pos)
 {
-    if(VROW(pos) < tx->tx_LogicalEnd && !read_only_pos(tx, pos))
+    if(VROW(pos) < tx->logical_end && !read_only_pos(tx, pos))
     {
-	if(tx->tx_Lines[VROW(pos)].ln_Strlen < (VCOL(pos) + 1))
+	if(tx->lines[VROW(pos)].ln_Strlen < (VCOL(pos) + 1))
 	{
-	    repv point = make_pos(tx->tx_Lines[VROW(pos)].ln_Strlen - 1,
+	    repv point = make_pos(tx->lines[VROW(pos)].ln_Strlen - 1,
 				   VROW(pos));
 	    if(insert_gap(tx, VCOL(pos) - VCOL(point),
 			  VCOL(point), VROW(point)))
 	    {
 		undo_record_insertion(tx, point, pos);
-		memset(tx->tx_Lines[VROW(pos)].ln_Line + VCOL(point), ' ',
+		memset(tx->lines[VROW(pos)].ln_Line + VCOL(point), ' ',
 		       VCOL(pos) - VCOL(point));
 		return TRUE;
 	    }
@@ -544,19 +544,19 @@ bool
 check_section(TX *tx, repv *start, repv *end)
 {
     order_pos(start, end);
-    if((VROW(*start) >= tx->tx_LogicalEnd)
-       || (VROW(*end) >= tx->tx_LogicalEnd)
-       || (VROW(*start) < tx->tx_LogicalStart)
-       || (VROW(*end) < tx->tx_LogicalStart))
+    if((VROW(*start) >= tx->logical_end)
+       || (VROW(*end) >= tx->logical_end)
+       || (VROW(*start) < tx->logical_start)
+       || (VROW(*end) < tx->logical_start))
     {
 	Fsignal(Qinvalid_area, rep_list_3(rep_VAL(tx), *start, *end));
 	return(FALSE);
     }
-    if(VCOL(*start) >= tx->tx_Lines[VROW(*start)].ln_Strlen)
-	*start = make_pos(tx->tx_Lines[VROW(*start)].ln_Strlen - 1,
+    if(VCOL(*start) >= tx->lines[VROW(*start)].ln_Strlen)
+	*start = make_pos(tx->lines[VROW(*start)].ln_Strlen - 1,
 			  VROW(*start));
-    if(VCOL(*end) >= tx->tx_Lines[VROW(*end)].ln_Strlen)
-	*end = make_pos(tx->tx_Lines[VROW(*end)].ln_Strlen - 1, VROW(*end));
+    if(VCOL(*end) >= tx->lines[VROW(*end)].ln_Strlen)
+	*end = make_pos(tx->lines[VROW(*end)].ln_Strlen - 1, VROW(*end));
     return TRUE;
 }
 
@@ -568,14 +568,14 @@ check_section(TX *tx, repv *start, repv *end)
 repv
 check_pos(TX *tx, repv pos)
 {
-    if(VROW(pos) >= tx->tx_LogicalEnd
-       || VROW(pos) < tx->tx_LogicalStart)
+    if(VROW(pos) >= tx->logical_end
+       || VROW(pos) < tx->logical_start)
     {
 	Fsignal(Qinvalid_pos, rep_list_2(rep_VAL(tx), pos));
 	return rep_NULL;
     }
-    if(VCOL(pos) >= tx->tx_Lines[VROW(pos)].ln_Strlen)
-	pos = make_pos(tx->tx_Lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
+    if(VCOL(pos) >= tx->lines[VROW(pos)].ln_Strlen)
+	pos = make_pos(tx->lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
     return pos;
 }
 
@@ -584,8 +584,8 @@ check_pos(TX *tx, repv pos)
 bool
 check_line(TX *tx, repv pos)
 {
-    if((VROW(pos) >= tx->tx_LogicalEnd)
-       || (VROW(pos) < tx->tx_LogicalStart)
+    if((VROW(pos) >= tx->logical_end)
+       || (VROW(pos) < tx->logical_start)
        || (VCOL(pos) < 0))
     {
 	Fsignal(Qinvalid_pos, rep_list_2(rep_VAL(tx), pos));
@@ -599,7 +599,7 @@ check_line(TX *tx, repv pos)
 bool
 check_row(TX *tx, long line)
 {
-    if(line >= tx->tx_LogicalEnd || line < tx->tx_LogicalStart)
+    if(line >= tx->logical_end || line < tx->logical_start)
     {
 	Fsignal(Qinvalid_pos, rep_list_2(rep_VAL(tx), make_pos(0, line)));
 	return FALSE;
@@ -619,9 +619,9 @@ section_length(TX *tx, repv startPos, repv endPos)
 	length = VCOL(endPos) - VCOL(startPos);
     else
     {
-	length = tx->tx_Lines[linenum++].ln_Strlen - VCOL(startPos);
+	length = tx->lines[linenum++].ln_Strlen - VCOL(startPos);
 	while(linenum < VROW(endPos))
-	    length += tx->tx_Lines[linenum++].ln_Strlen;
+	    length += tx->lines[linenum++].ln_Strlen;
 	length += VCOL(endPos);
     }
     return length;
@@ -637,25 +637,25 @@ copy_section(TX *tx, repv startPos, repv endPos, char *buff)
     if(VROW(startPos) == VROW(endPos))
     {
 	copylen = VCOL(endPos) - VCOL(startPos);
-	memcpy(buff, tx->tx_Lines[linenum].ln_Line + VCOL(startPos), copylen);
+	memcpy(buff, tx->lines[linenum].ln_Line + VCOL(startPos), copylen);
 	buff[copylen] = 0;
     }
     else
     {
-	copylen = tx->tx_Lines[linenum].ln_Strlen - VCOL(startPos) - 1;
-	memcpy(buff, tx->tx_Lines[linenum].ln_Line + VCOL(startPos), copylen);
+	copylen = tx->lines[linenum].ln_Strlen - VCOL(startPos) - 1;
+	memcpy(buff, tx->lines[linenum].ln_Line + VCOL(startPos), copylen);
 	buff[copylen] = '\n';
 	buff += copylen + 1;
 	linenum++;
 	while(linenum < VROW(endPos))
 	{
-	    copylen = tx->tx_Lines[linenum].ln_Strlen - 1;
-	    memcpy(buff, tx->tx_Lines[linenum].ln_Line, copylen);
+	    copylen = tx->lines[linenum].ln_Strlen - 1;
+	    memcpy(buff, tx->lines[linenum].ln_Line, copylen);
 	    buff[copylen] = '\n';
 	    buff += copylen + 1;
 	    linenum++;
 	}
-	memcpy(buff, tx->tx_Lines[linenum].ln_Line, VCOL(endPos));
+	memcpy(buff, tx->lines[linenum].ln_Line, VCOL(endPos));
     }
 }
 
@@ -714,7 +714,7 @@ read_only_section(TX *tx, repv start, repv end)
     COPY_VPOS(&p_start, start);
     COPY_VPOS(&p_end, end);
     map_section_extents(read_only_callback,
-			tx->tx_GlobalExtent, &p_start, &p_end, &read_only);
+			tx->global_extent, &p_start, &p_end, &read_only);
     if(read_only)
     {
 	repv tmp = Fsymbol_value(Qinhibit_read_only, Qt);

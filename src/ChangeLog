@@ -1,3 +1,11 @@
+2012-11-02  John Harper  <jsh@unfactored.org>
+
+	* views.c, undo.c, server-dl.c, regjade.c, redisplay.c,
+	movement.c, keys.c, housekeeping.c, glyphs.c, find.c, files.c,
+	extent.c, editcommands.c, edit.h, edit.c, buffers.c: renamed
+	buffer fields from tx_Foo to something sane (no prefix, no
+	camel-case, better names in some cases)
+
 2011-12-01  John Harper  <jsh@unfactored.org>
 
 	* mac_runloop.m: deleted the unused timeout code. Call

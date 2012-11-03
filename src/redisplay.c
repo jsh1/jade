@@ -735,10 +735,10 @@ refreshed, not just what changed.
 	w->w_Flags &= ~WINFF_PRESERVING;
 
 	/* See if we should update the window name */
-	if(w->w_CurrVW->vw_Tx->tx_StatusId != 0
-	   && w->w_DisplayedName != w->w_CurrVW->vw_Tx->tx_StatusId)
+	if(w->w_CurrVW->vw_Tx->status_string != 0
+	   && w->w_DisplayedName != w->w_CurrVW->vw_Tx->status_string)
 	{
-	    w->w_DisplayedName = w->w_CurrVW->vw_Tx->tx_StatusId;
+	    w->w_DisplayedName = w->w_CurrVW->vw_Tx->status_string;
 	    sys_set_win_name(w, rep_STR(w->w_DisplayedName));
 	}
     }

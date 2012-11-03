@@ -53,18 +53,18 @@ adjust_marks_add_x(TX *tx, long addx, long xpos, long ypos)
 	}
     }
 
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+    for(thismark = tx->mark_chain; thismark; thismark = thismark->next)
 	UPD(thismark->pos);
 
-    UPD(tx->tx_SavedCPos);
-    UPD(tx->tx_SavedWPos);
-    UPD(tx->tx_SavedBlockPos[0]);
-    UPD(tx->tx_SavedBlockPos[1]);
+    UPD(tx->saved_cursor_pos);
+    UPD(tx->saved_display_origin);
+    UPD(tx->saved_block[0]);
+    UPD(tx->saved_block[1]);
 
-    adjust_extents_add_cols(tx->tx_GlobalExtent, addx, xpos, ypos);
+    adjust_extents_add_cols(tx->global_extent, addx, xpos, ypos);
 
     {
-	struct cached_extent *ce = tx->tx_ExtentCache;
+	struct cached_extent *ce = tx->extent_cache;
 	int i;
 	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
 	{
@@ -104,18 +104,18 @@ adjust_marks_sub_x(TX *tx, long subx, long xpos, long ypos)
 	}
     }
 
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+    for(thismark = tx->mark_chain; thismark; thismark = thismark->next)
 	UPD(thismark->pos);
 
-    UPD(tx->tx_SavedCPos);
-    UPD(tx->tx_SavedWPos);
-    UPD(tx->tx_SavedBlockPos[0]);
-    UPD(tx->tx_SavedBlockPos[1]);
+    UPD(tx->saved_cursor_pos);
+    UPD(tx->saved_display_origin);
+    UPD(tx->saved_block[0]);
+    UPD(tx->saved_block[1]);
 
-    adjust_extents_sub_cols(tx->tx_GlobalExtent, subx, xpos, ypos);
+    adjust_extents_sub_cols(tx->global_extent, subx, xpos, ypos);
 
     {
-	struct cached_extent *ce = tx->tx_ExtentCache;
+	struct cached_extent *ce = tx->extent_cache;
 	int i;
 	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
 	{
@@ -159,23 +159,23 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
 		UPD(thisvw->vw_DisplayOrigin);
 	}
     }
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+    for(thismark = tx->mark_chain; thismark; thismark = thismark->next)
 	UPD(thismark->pos);
 
 
-    if(tx->tx_LogicalStart > ypos)
-	tx->tx_LogicalStart += addy;
-    UPD_Y(tx->tx_LogicalEnd);
+    if(tx->logical_start > ypos)
+	tx->logical_start += addy;
+    UPD_Y(tx->logical_end);
 
-    UPD(tx->tx_SavedCPos);
-    UPD(tx->tx_SavedWPos);
-    UPD(tx->tx_SavedBlockPos[0]);
-    UPD(tx->tx_SavedBlockPos[1]);
+    UPD(tx->saved_cursor_pos);
+    UPD(tx->saved_display_origin);
+    UPD(tx->saved_block[0]);
+    UPD(tx->saved_block[1]);
 
-    adjust_extents_add_rows(tx->tx_GlobalExtent, addy, ypos);
+    adjust_extents_add_rows(tx->global_extent, addy, ypos);
 
     {
-	struct cached_extent *ce = tx->tx_ExtentCache;
+	struct cached_extent *ce = tx->extent_cache;
 	int i;
 	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
 	{
@@ -242,21 +242,21 @@ adjust_marks_sub_y(TX *tx, long suby, long ypos)
 		UPD1(thisvw->vw_DisplayOrigin);
 	}
     }
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+    for(thismark = tx->mark_chain; thismark; thismark = thismark->next)
 	UPD(thismark->pos);
 
-    UPD_Y(tx->tx_LogicalStart);
-    UPD_Y(tx->tx_LogicalEnd);
+    UPD_Y(tx->logical_start);
+    UPD_Y(tx->logical_end);
 
-    UPD(tx->tx_SavedCPos);
-    UPD(tx->tx_SavedWPos);
-    UPD(tx->tx_SavedBlockPos[0]);
-    UPD(tx->tx_SavedBlockPos[1]);
+    UPD(tx->saved_cursor_pos);
+    UPD(tx->saved_display_origin);
+    UPD(tx->saved_block[0]);
+    UPD(tx->saved_block[1]);
 
-    adjust_extents_sub_rows(tx->tx_GlobalExtent, suby, ypos);
+    adjust_extents_sub_rows(tx->global_extent, suby, ypos);
 
     {
-	struct cached_extent *ce = tx->tx_ExtentCache;
+	struct cached_extent *ce = tx->extent_cache;
 	int i;
 	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
 	{
@@ -321,21 +321,21 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
 		UPD1(thisvw->vw_DisplayOrigin);
 	}
     }
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+    for(thismark = tx->mark_chain; thismark; thismark = thismark->next)
 	UPD(thismark->pos);
 
-    UPD_Y(tx->tx_LogicalStart);
-    UPD_Y(tx->tx_LogicalEnd);
+    UPD_Y(tx->logical_start);
+    UPD_Y(tx->logical_end);
 
-    UPD(tx->tx_SavedCPos);
-    UPD(tx->tx_SavedWPos);
-    UPD(tx->tx_SavedBlockPos[0]);
-    UPD(tx->tx_SavedBlockPos[1]);
+    UPD(tx->saved_cursor_pos);
+    UPD(tx->saved_display_origin);
+    UPD(tx->saved_block[0]);
+    UPD(tx->saved_block[1]);
 
-    adjust_extents_split_row(tx->tx_GlobalExtent, xpos, ypos);
+    adjust_extents_split_row(tx->global_extent, xpos, ypos);
 
     {
-	struct cached_extent *ce = tx->tx_ExtentCache;
+	struct cached_extent *ce = tx->extent_cache;
 	int i;
 	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
 	{
@@ -402,21 +402,21 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
 		UPD1(thisvw->vw_DisplayOrigin);
 	}
     }
-    for(thismark = tx->tx_MarkChain; thismark; thismark = thismark->next)
+    for(thismark = tx->mark_chain; thismark; thismark = thismark->next)
 	UPD(thismark->pos);
 
-    UPD_Y(tx->tx_LogicalStart);
-    UPD_Y(tx->tx_LogicalEnd);
+    UPD_Y(tx->logical_start);
+    UPD_Y(tx->logical_end);
 
-    UPD(tx->tx_SavedCPos);
-    UPD(tx->tx_SavedWPos);
-    UPD(tx->tx_SavedBlockPos[0]);
-    UPD(tx->tx_SavedBlockPos[1]);
+    UPD(tx->saved_cursor_pos);
+    UPD(tx->saved_display_origin);
+    UPD(tx->saved_block[0]);
+    UPD(tx->saved_block[1]);
 
-    adjust_extents_join_rows(tx->tx_GlobalExtent, xpos, ypos);
+    adjust_extents_join_rows(tx->global_extent, xpos, ypos);
 
     {
-	struct cached_extent *ce = tx->tx_ExtentCache;
+	struct cached_extent *ce = tx->extent_cache;
 	int i;
 	for(i = 0; i < EXTENT_CACHE_SIZE; i++, ce++)
 	{
@@ -450,8 +450,8 @@ reset_all_views(TX *tx)
 	    thisvw->vw_DisplayOrigin = thisvw->vw_CursorPos;
 	    thisvw->vw_BlockStatus = -1;
 	}
-	tx->tx_SavedCPos = make_pos(0, 0);
-	tx->tx_SavedWPos = tx->tx_SavedCPos;
-	tx->tx_SavedBlockStatus = -1;
+	tx->saved_cursor_pos = make_pos(0, 0);
+	tx->saved_display_origin = tx->saved_cursor_pos;
+	tx->saved_block_status = -1;
     }
 }

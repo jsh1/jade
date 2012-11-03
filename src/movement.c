@@ -107,10 +107,10 @@ view.
 	row = 0;
     }
 
-    if(row < VVIEW(vw)->vw_Tx->tx_LogicalStart)
-	row = VVIEW(vw)->vw_Tx->tx_LogicalStart;
-    if(row >= VVIEW(vw)->vw_Tx->tx_LogicalEnd)
-	row = VVIEW(vw)->vw_Tx->tx_LogicalEnd - 1;
+    if(row < VVIEW(vw)->vw_Tx->logical_start)
+	row = VVIEW(vw)->vw_Tx->logical_start;
+    if(row >= VVIEW(vw)->vw_Tx->logical_end)
+	row = VVIEW(vw)->vw_Tx->logical_end - 1;
     VVIEW(vw)->vw_DisplayOrigin = make_pos(col, row);
     return VVIEW(vw)->vw_DisplayOrigin;
 }
@@ -131,11 +131,11 @@ Move NUMBER (default: 1) screens forwards in the current window.
     if(rep_INTP(context) && lines > rep_INT(context) + 1)
 	lines -= rep_INT(context);
 
-    if(VROW(curr_vw->vw_CursorPos) == curr_vw->vw_Tx->tx_LogicalEnd - 1)
+    if(VROW(curr_vw->vw_CursorPos) == curr_vw->vw_Tx->logical_end - 1)
 	return Qnil;
     else if(curr_vw->vw_Flags & VWFF_AT_BOTTOM)
     {
-	set_cursor_vertically(curr_vw, curr_vw->vw_Tx->tx_LogicalEnd - 1);
+	set_cursor_vertically(curr_vw, curr_vw->vw_Tx->logical_end - 1);
 	return curr_vw->vw_DisplayOrigin;
     }
     else if(skip_glyph_rows_forwards(curr_vw, lines,
@@ -173,11 +173,11 @@ Move NUMBER (default: 1) screens backwards in the current window.
 				 VROW(curr_vw->vw_DisplayOrigin),
 				 &col, &row))
 	new_origin = make_pos(col, row);
-    else if(VROW(curr_vw->vw_DisplayOrigin) != curr_vw->vw_Tx->tx_LogicalStart)
-	new_origin = make_pos(0, curr_vw->vw_Tx->tx_LogicalStart);
-    else if(VROW(curr_vw->vw_CursorPos) != curr_vw->vw_Tx->tx_LogicalStart)
+    else if(VROW(curr_vw->vw_DisplayOrigin) != curr_vw->vw_Tx->logical_start)
+	new_origin = make_pos(0, curr_vw->vw_Tx->logical_start);
+    else if(VROW(curr_vw->vw_CursorPos) != curr_vw->vw_Tx->logical_start)
     {
-	set_cursor_vertically(curr_vw, curr_vw->vw_Tx->tx_LogicalStart);
+	set_cursor_vertically(curr_vw, curr_vw->vw_Tx->logical_start);
 	return curr_vw->vw_DisplayOrigin;
     }
     else
@@ -217,8 +217,8 @@ of the buffer's restriction.
     if(!rep_NILP(irp))
     {
 	long x, y;
-	y = VTX(tx)->tx_NumLines - 1;
-	x = VTX(tx)->tx_Lines[y].ln_Strlen - 1;
+	y = VTX(tx)->line_count - 1;
+	x = VTX(tx)->lines[y].ln_Strlen - 1;
 	return make_pos(x, y);
     }
     else
@@ -254,8 +254,8 @@ the cursor).
 	tx = rep_VAL(curr_vw->vw_Tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
-    if(VROW(pos) < VTX(tx)->tx_NumLines)
-	return make_pos(VTX(tx)->tx_Lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
+    if(VROW(pos) < VTX(tx)->line_count)
+	return make_pos(VTX(tx)->lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
     else
 	return Qnil;
 }
@@ -343,7 +343,7 @@ undefined; negative values move towards the left hand side of the screen.
 {
     int tabs = rep_INTP(num) ? rep_INT(num) : 1;
     VW *vw = curr_vw;
-    int tabsize = rep_INTP(size) ? rep_INT(size) : vw->vw_Tx->tx_TabSize;
+    int tabsize = rep_INTP(size) ? rep_INT(size) : vw->vw_Tx->tab_size;
     long col;
     if(!POSP(pos))
     {
@@ -388,7 +388,7 @@ find_matching_bracket(Pos *pos, TX *tx, char esc)
    that COL is referenced more than once, so no side effects please!   */
 #define TST_ESC(line, col) ((col) > 0 && (line)[(col)-1] == esc)
 
-    LINE *line = tx->tx_Lines + PROW(pos);	/* safe */
+    LINE *line = tx->lines + PROW(pos);	/* safe */
     if(PCOL(pos) < line->ln_Strlen)
     {
 	char startc = line->ln_Line[PCOL(pos)];
@@ -413,7 +413,7 @@ find_matching_bracket(Pos *pos, TX *tx, char esc)
 		    char c;
 		    if(--x < 0)
 		    {
-			if(--y < tx->tx_LogicalStart)
+			if(--y < tx->logical_start)
 			{
 			    Fsignal(Qerror, rep_LIST_1(rep_VAL(&no_brac)));
 			    return(FALSE);
@@ -443,7 +443,7 @@ find_matching_bracket(Pos *pos, TX *tx, char esc)
 		    char c;
 		    if(++x >= line->ln_Strlen)
 		    {
-			if(++y >= tx->tx_LogicalEnd)
+			if(++y >= tx->logical_end)
 			{
 			    Fsignal(Qerror, rep_LIST_1(rep_VAL(&no_brac)));
 			    return(FALSE);

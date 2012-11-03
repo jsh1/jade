@@ -41,30 +41,30 @@ static TX *last_undid_tx;
 DEFSYM(undo, "undo");
 
 /* If not in an undo, this will re-combine the waiting_undo and
-   tx_UndoList. */
+   undo_list. */
 static void
 coalesce_undo(TX *tx)
 {
     if(!in_undo
-       && (tx->tx_ToUndoList != rep_NULL))
+       && (tx->pending_undo_list != rep_NULL))
     {
-	repv tmp = Fnreverse(tx->tx_UndoneList);
+	repv tmp = Fnreverse(tx->did_undo_list);
 	if(tmp)
 	{
 	    if (rep_CONSP(tmp) && rep_CAR(tmp) != Qnil)
 		tmp = Fcons (Qnil, tmp);
-	    if (rep_CONSP(tx->tx_ToUndoList)
-		&& rep_CAR(tx->tx_ToUndoList) != Qnil)
+	    if (rep_CONSP(tx->pending_undo_list)
+		&& rep_CAR(tx->pending_undo_list) != Qnil)
 	    {
-		tx->tx_ToUndoList = Fcons (Qnil, tx->tx_ToUndoList);
+		tx->pending_undo_list = Fcons (Qnil, tx->pending_undo_list);
 	    }
 
-	    tx->tx_UndoList = Fnconc(rep_list_3(tx->tx_UndoList,
+	    tx->undo_list = Fnconc(rep_list_3(tx->undo_list,
 					       tmp,
-					       tx->tx_ToUndoList));
+					       tx->pending_undo_list));
 	}
-	tx->tx_UndoneList = Qnil;
-	tx->tx_ToUndoList = rep_NULL;
+	tx->did_undo_list = Qnil;
+	tx->pending_undo_list = rep_NULL;
 	last_undid_tx = NULL;
     }
 }
@@ -74,11 +74,11 @@ coalesce_undo(TX *tx)
 static inline void
 check_first_mod(TX *tx)
 {
-    if((tx->tx_Changes == tx->tx_ProperSaveChanges)
-       && ((tx->tx_Flags & TXFF_NO_UNDO) == 0))
+    if((tx->change_count == tx->proper_saved_changed_count)
+       && ((tx->car & TXFF_NO_UNDO) == 0))
     {
 	/* First modification, record this. */
-	tx->tx_UndoList = Fcons(Qt, tx->tx_UndoList);
+	tx->undo_list = Fcons(Qt, tx->undo_list);
     }
 }
 
@@ -90,10 +90,10 @@ check_first_mod(TX *tx)
 void
 undo_record_unmodified(TX *tx)
 {
-    if((tx->tx_Changes == tx->tx_ProperSaveChanges)
-       && ((tx->tx_Flags & TXFF_NO_UNDO) == 0))
+    if((tx->change_count == tx->proper_saved_changed_count)
+       && ((tx->car & TXFF_NO_UNDO) == 0))
     {
-	repv *ptr = &tx->tx_UndoList;
+	repv *ptr = &tx->undo_list;
 	coalesce_undo(tx);
 	while(rep_CONSP(*ptr))
 	{
@@ -118,7 +118,7 @@ undo_record_unmodified(TX *tx)
 void
 undo_record_deletion(TX *tx, repv start, repv end)
 {
-    if((tx->tx_Flags & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
+    if((tx->car & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
     {
 	repv string;
 	if((pending_deletion_string != rep_NULL)
@@ -148,8 +148,8 @@ undo_record_deletion(TX *tx, repv start, repv end)
 	}
 	coalesce_undo(tx);
 	check_first_mod(tx);
-	tx->tx_UndoList = Fcons(Fcons(start, string),
-				   tx->tx_UndoList);
+	tx->undo_list = Fcons(Fcons(start, string),
+				   tx->undo_list);
     }
     pending_deletion_string = rep_NULL;
 }
@@ -182,12 +182,12 @@ undo_push_deletion(TX *tx, repv start, repv end)
 void
 undo_record_insertion(TX *tx, repv start, repv end)
 {
-    if((tx->tx_Flags & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
+    if((tx->car & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
     {
 	repv item;
 	coalesce_undo(tx);
 	check_first_mod(tx);
-	item = tx->tx_UndoList;
+	item = tx->undo_list;
 	if(rep_CONSP(item) && rep_CONSP(rep_CAR(item)))
 	{
 	    item = rep_CAR(item);
@@ -200,7 +200,7 @@ undo_record_insertion(TX *tx, repv start, repv end)
 		return;
 	    }
 	}
-	tx->tx_UndoList = Fcons(Fcons(start, end), tx->tx_UndoList);
+	tx->undo_list = Fcons(Fcons(start, end), tx->undo_list);
     }
 }
 
@@ -209,7 +209,7 @@ undo_record_insertion(TX *tx, repv start, repv end)
 void
 undo_record_modification(TX *tx, repv start, repv end)
 {
-    if((tx->tx_Flags & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
+    if((tx->car & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
     {
 	undo_record_deletion(tx, start, end);
 	undo_record_insertion(tx, start, end);
@@ -224,7 +224,7 @@ undo_end_of_command(void)
     TX *tx;
     repv last = Fsymbol_value (Qlast_command, Qt);
     if((!rep_NILP(last)) && (last != Qundo)
-       && last_undid_tx && last_undid_tx->tx_ToUndoList)
+       && last_undid_tx && last_undid_tx->pending_undo_list)
     {
 	coalesce_undo(last_undid_tx);
     }
@@ -233,11 +233,11 @@ undo_end_of_command(void)
     tx = buffer_chain;
     while(tx != NULL)
     {
-	if(!rep_NILP(tx->tx_UndoList)
-	   && ((tx->tx_Flags & TXFF_NO_UNDO) == 0)
-	   && !(rep_CONSP(tx->tx_UndoList) && rep_NILP(rep_CAR(tx->tx_UndoList))))
-	    tx->tx_UndoList = Fcons(Qnil, tx->tx_UndoList);
-	tx = tx->tx_Next;
+	if(!rep_NILP(tx->undo_list)
+	   && ((tx->car & TXFF_NO_UNDO) == 0)
+	   && !(rep_CONSP(tx->undo_list) && rep_NILP(rep_CAR(tx->undo_list))))
+	    tx->undo_list = Fcons(Qnil, tx->undo_list);
+	tx = tx->next;
     }
 }
 
@@ -258,26 +258,26 @@ taken from the prefix argument.
     long count = rep_INTP(arg) ? rep_INT(arg) : 1;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->vw_Tx);
-    if(VTX(tx)->tx_ToUndoList == rep_NULL)
+    if(VTX(tx)->pending_undo_list == rep_NULL)
     {
 	/* First call. */
-	VTX(tx)->tx_ToUndoList = VTX(tx)->tx_UndoList;
-	VTX(tx)->tx_UndoList = Qnil;
-	if(rep_CONSP(VTX(tx)->tx_ToUndoList) && rep_NILP(rep_CAR(VTX(tx)->tx_ToUndoList)))
+	VTX(tx)->pending_undo_list = VTX(tx)->undo_list;
+	VTX(tx)->undo_list = Qnil;
+	if(rep_CONSP(VTX(tx)->pending_undo_list) && rep_NILP(rep_CAR(VTX(tx)->pending_undo_list)))
 	    /* Ignore the initial group separator */
 	    count++;
     }
-    if(rep_NILP(VTX(tx)->tx_ToUndoList))
+    if(rep_NILP(VTX(tx)->pending_undo_list))
     {
 	return(Fsignal(Qerror, rep_LIST_1(rep_VAL(&nothing_to_undo))));
     }
     in_undo = TRUE;
     last_undid_tx = VTX(tx);
-    while(rep_CONSP(VTX(tx)->tx_ToUndoList))
+    while(rep_CONSP(VTX(tx)->pending_undo_list))
     {
-	repv item = rep_CAR(VTX(tx)->tx_ToUndoList);
-	VTX(tx)->tx_ToUndoList = rep_CDR(VTX(tx)->tx_ToUndoList);
-	VTX(tx)->tx_UndoneList = Fcons(item, VTX(tx)->tx_UndoneList);
+	repv item = rep_CAR(VTX(tx)->pending_undo_list);
+	VTX(tx)->pending_undo_list = rep_CDR(VTX(tx)->pending_undo_list);
+	VTX(tx)->did_undo_list = Fcons(item, VTX(tx)->did_undo_list);
 	if(rep_NILP(item))
 	{
 	    /* Group separator; break the loop if ARG commands undone. */
@@ -315,8 +315,8 @@ taken from the prefix argument.
 	else if(item == Qt)
 	{
 	    /* clear modification flag. */
-	    VTX(tx)->tx_ProperSaveChanges = VTX(tx)->tx_Changes;
-	    VTX(tx)->tx_LastSaveChanges = VTX(tx)->tx_Changes;
+	    VTX(tx)->proper_saved_changed_count = VTX(tx)->change_count;
+	    VTX(tx)->last_saved_change_count = VTX(tx)->change_count;
 	}
 	rep_TEST_INT;
 	if(rep_INTERRUPTP)
@@ -345,7 +345,7 @@ When nil no undo information is kept in this buffer.
 ::end:: */
 {
     TX *tx = curr_vw->vw_Tx;
-    return (tx->tx_Flags & TXFF_NO_UNDO) ? Qnil : Qt;
+    return (tx->car & TXFF_NO_UNDO) ? Qnil : Qt;
 }
 
 DEFUN("set-buffer-record-undo", Fset_buffer_record_undo, Sset_buffer_record_undo, (repv val), rep_Subr1) /*
@@ -357,9 +357,9 @@ When nil no undo information is kept in this buffer.
 {
     TX *tx = curr_vw->vw_Tx;
     if(rep_NILP(val))
-	tx->tx_Flags |= TXFF_NO_UNDO;
+	tx->car |= TXFF_NO_UNDO;
     else
-	tx->tx_Flags &= ~TXFF_NO_UNDO;
+	tx->car &= ~TXFF_NO_UNDO;
     return val;
 }
 
@@ -371,7 +371,7 @@ This buffer's list of undo information.
 ::end:: */
 {
     TX *tx = curr_vw->vw_Tx;
-    return tx->tx_UndoList;
+    return tx->undo_list;
 }
 
 DEFUN("set-buffer-undo-list", Fset_buffer_undo_list, Sset_buffer_undo_list, (repv val), rep_Subr1) /*
@@ -382,7 +382,7 @@ This buffer's list of undo information.
 ::end:: */
 {
     TX *tx = curr_vw->vw_Tx;
-    tx->tx_UndoList = val;
+    tx->undo_list = val;
     return val;
 }
 
@@ -403,12 +403,12 @@ undo_trim(void)
     {
 	repv *undo_list;
 	long size_count = 0;
-	if(tx->tx_ToUndoList && !rep_NILP(tx->tx_ToUndoList))
-	    undo_list = &tx->tx_ToUndoList;
-	else if(!rep_NILP(tx->tx_UndoneList))
-	    undo_list = &tx->tx_UndoneList;
+	if(tx->pending_undo_list && !rep_NILP(tx->pending_undo_list))
+	    undo_list = &tx->pending_undo_list;
+	else if(!rep_NILP(tx->did_undo_list))
+	    undo_list = &tx->did_undo_list;
 	else
-	    undo_list = &tx->tx_UndoList;
+	    undo_list = &tx->undo_list;
 	while(rep_CONSP(*undo_list))
 	{
 	    repv item = rep_CAR(*undo_list);
@@ -431,7 +431,7 @@ undo_trim(void)
 	    }
 	    undo_list = &rep_CDR(*undo_list);
 	}
-	tx = tx->tx_Next;
+	tx = tx->next;
     }
 }
 
