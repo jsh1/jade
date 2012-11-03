@@ -44,7 +44,7 @@ static int opt_sync = 0;
 
 static GdkColormap *color_map;
 
-u_long gtk_meta_mod;
+unsigned long gtk_meta_mod;
 
 /* Default font name. */
 DEFSTRING(def_font_str_data, DEFAULT_FONT);

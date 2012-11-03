@@ -65,8 +65,8 @@ struct _GtkJade
     GdkGCValuesMask gc_values_mask;
 
     int width, height;
-    u_int has_focus :1;
-    u_int unobscured :1;
+    unsigned int has_focus :1;
+    unsigned int unobscured :1;
 };
 
 struct _GtkJadeClass

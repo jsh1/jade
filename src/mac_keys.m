@@ -22,10 +22,10 @@
 #include "mac_internal.h"
 #include <string.h>
 
-u_long esc_code = 8+53, esc_mods = EV_TYPE_KEYBD;
+unsigned long esc_code = 8+53, esc_mods = EV_TYPE_KEYBD;
 
-static u_long
-translate_mods(u_long mods, unsigned int state, bool subst_meta)
+static unsigned long
+translate_mods(unsigned long mods, unsigned int state, bool subst_meta)
 {
     if(state & NSShiftKeyMask)
 	mods |= EV_MOD_SHIFT;
@@ -44,7 +44,7 @@ translate_mods(u_long mods, unsigned int state, bool subst_meta)
     return mods;
 }
 
-static u_long
+static unsigned long
 button_mods (int number)
 {
     if (number == 0)
@@ -61,7 +61,7 @@ button_mods (int number)
 }
 
 void
-sys_translate_event(u_long *code, u_long *mods, void *ev_)
+sys_translate_event(unsigned long *code, unsigned long *mods, void *ev_)
 {
     NSEvent *ev = ev_;
 
@@ -140,7 +140,7 @@ sys_cook_key(void *event, char *buf, int buflen)
 
 struct key_def {
     const char *name;
-    u_long mods, code;
+    unsigned long mods, code;
 };
 
 static struct key_def x11_mods[] = {
@@ -279,7 +279,7 @@ static const struct keymap_entry mac_keys[256] = {
 };
 
 bool
-sys_lookup_mod(const char *name, u_long *mods)
+sys_lookup_mod(const char *name, unsigned long *mods)
 {
     struct key_def *x = x11_mods;
     while(x->name != 0)
@@ -295,7 +295,7 @@ sys_lookup_mod(const char *name, u_long *mods)
 }
 
 bool
-sys_lookup_code(const char *name, u_long *code, u_long *mods)
+sys_lookup_code(const char *name, unsigned long *code, unsigned long *mods)
 {
     struct key_def *x = x11_codes;
     int i;
@@ -332,7 +332,7 @@ sys_lookup_code(const char *name, u_long *code, u_long *mods)
 }
 
 char *
-sys_lookup_mod_name(char *buf, u_long mod)
+sys_lookup_mod_name(char *buf, unsigned long mod)
 {
     struct key_def *x = x11_mods;
     while(x->name != 0)
@@ -345,7 +345,7 @@ sys_lookup_mod_name(char *buf, u_long mod)
 }
 
 bool
-sys_lookup_code_name(char *buf, u_long code, u_long type)
+sys_lookup_code_name(char *buf, unsigned long code, unsigned long type)
 {
     struct key_def *x = x11_codes;
 
@@ -368,7 +368,7 @@ sys_lookup_code_name(char *buf, u_long code, u_long type)
     return FALSE;
 }
 
-u_long
+unsigned long
 mac_find_meta(void)
 {
 #if 0

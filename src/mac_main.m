@@ -34,7 +34,7 @@
 /* Command line options, and their default values. */
 static char *geom_str = "80x24";
 
-u_long mac_meta_mod;
+unsigned long mac_meta_mod;
 
 bool mac_app_is_active;
 

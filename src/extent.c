@@ -434,8 +434,8 @@ find_extent(Lisp_Extent *root, Pos *pos)
 {
     Lisp_Buffer *tx = root->tx;
     int i, out = -1, oldest = 0;
-    u_long oldest_lru = ULONG_MAX;
-    static u_long lru_time;
+    uint32_t oldest_lru = UINT32_MAX;
+    static uint32_t lru_time;
     Lisp_Extent *x;
 
     /* First check the cache. */
@@ -925,8 +925,8 @@ function.
 
     if(prop == Qfront_sticky || prop == Qrear_sticky)
     {
-	u_long bit = (prop == Qfront_sticky
-		      ? EXTFF_OPEN_START : EXTFF_OPEN_END);
+	repv bit = (prop == Qfront_sticky
+		    ?  : EXTFF_OPEN_END);
 	extent = rep_VAL((prop == Qfront_sticky
 		      ? find_first_frag : find_last_frag)(VEXTENT(extent)));
 	VEXTENT(extent)->car &= ~bit;

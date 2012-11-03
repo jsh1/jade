@@ -613,7 +613,7 @@ format_mode_value(repv format, Lisp_View *vw, char *buf, long buf_len)
 
 	if(rep_STRINGP(item))
 	{
-	    u_long done = buf_len - format_mode_string(rep_STR(item), vw,
+	    unsigned long done = buf_len - format_mode_string(rep_STR(item), vw,
 						       buf, buf_len);
 	    buf += done; buf_len -= done;
 	}
@@ -632,14 +632,14 @@ format_mode_value(repv format, Lisp_View *vw, char *buf, long buf_len)
 	    }
 	    else
 	    {
-		u_long done = buf_len - format_mode_value(tem, vw,
+		unsigned long done = buf_len - format_mode_value(tem, vw,
 							  buf, buf_len);
 		buf += done; buf_len -= done;
 	    }
 	}
 	else if(rep_CONSP(item))
 	{
-	    u_long done = 0;
+	    unsigned long done = 0;
 	    repv first = rep_CAR(item);
 	    if(rep_STRINGP(first))
 		done = buf_len - format_mode_string(rep_STR(first), vw,
@@ -676,7 +676,7 @@ update_status_buffer(Lisp_View *vw, char *buf, long buf_len)
 {
     if(!(vw->car & VWFF_MINIBUF))
     {
-	u_long done;
+	unsigned long done;
 	Lisp_Buffer *tx = vw->tx;
 	repv format = Fbuffer_symbol_value(Qmode_line_format,
 					       vw->cursor_pos,

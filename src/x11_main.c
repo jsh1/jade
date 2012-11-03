@@ -538,7 +538,7 @@ x11_async_event_pred(Display *dpy, XEvent *ev, XPointer arg)
 	return True;
     else if(ev->xany.type == KeyPress)
     {
-	u_long code = 0, mods = 0;
+	unsigned long code = 0, mods = 0;
 	translate_event(&code, &mods, ev, (struct x11_display *)arg);
 	if(code == XK_g && mods == (EV_TYPE_KEYBD | EV_MOD_CTRL))
 	{
@@ -603,7 +603,7 @@ x11_handle_input(int fd, bool synchronous)
 
 	    switch(xev.type)
 	    {
-		u_long code, mods;
+		unsigned long code, mods;
 
 	    case MappingNotify:
 		XRefreshKeyboardMapping(&xev.xmapping);

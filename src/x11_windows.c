@@ -100,7 +100,7 @@ xcolor_to_xftcolor (XColor *xc, XftColor *xfc)
 
 /* The only thing necessary in `vw' is the font stuff (I think) */
 Window
-sys_new_window(Lisp_Window *oldW, Lisp_Window *w, short *dims)
+sys_new_window(Lisp_Window *oldW, Lisp_Window *w, int *dims)
 {
     unsigned int x, y, width, height;
     Window win;

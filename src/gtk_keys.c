@@ -33,12 +33,12 @@
 # include <X11/keysym.h>
 #endif
 
-u_long esc_code = GDK_Escape, esc_mods = EV_TYPE_KEYBD;
+unsigned long esc_code = GDK_Escape, esc_mods = EV_TYPE_KEYBD;
 
-static u_long num_lock_mod, scroll_lock_mod, all_lock_mask;
+static unsigned long num_lock_mod, scroll_lock_mod, all_lock_mask;
 
-static u_long
-translate_mods(u_long mods, unsigned int state, bool subst_meta)
+static unsigned long
+translate_mods(unsigned long mods, unsigned int state, bool subst_meta)
 {
     if(state & GDK_SHIFT_MASK)
 	mods |= EV_MOD_SHIFT;
@@ -74,7 +74,7 @@ translate_mods(u_long mods, unsigned int state, bool subst_meta)
 }
 
 void
-translate_event(u_long *code, u_long *mods, GdkEvent *ev)
+translate_event(unsigned long *code, unsigned long *mods, GdkEvent *ev)
 {
     switch((int) ev->type)
     {
@@ -173,7 +173,7 @@ cook_key(void *event, char *buf, int buflen)
 
 struct key_def {
     const char *name;
-    u_long mods, code;
+    unsigned long mods, code;
 };
 
 static struct key_def x11_mods[] = {
@@ -241,7 +241,7 @@ static struct key_def x11_codes[] = {
 };
 
 bool
-sys_lookup_mod(const char *name, u_long *mods)
+sys_lookup_mod(const char *name, unsigned long *mods)
 {
     struct key_def *x = x11_mods;
     while(x->name != 0)
@@ -257,7 +257,7 @@ sys_lookup_mod(const char *name, u_long *mods)
 }
 
 bool
-sys_lookup_code(const char *name, u_long *code, u_long *mods)
+sys_lookup_code(const char *name, unsigned long *code, unsigned long *mods)
 {
     struct key_def *x = x11_codes;
     while(x->name != 0)
@@ -285,7 +285,7 @@ sys_lookup_code(const char *name, u_long *code, u_long *mods)
 }
 
 char *
-sys_lookup_mod_name(char *buf, u_long mod)
+sys_lookup_mod_name(char *buf, unsigned long mod)
 {
     struct key_def *x = x11_mods;
     while(x->name != 0)
@@ -298,7 +298,7 @@ sys_lookup_mod_name(char *buf, u_long mod)
 }
 
 bool
-sys_lookup_code_name(char *buf, u_long code, u_long type)
+sys_lookup_code_name(char *buf, unsigned long code, unsigned long type)
 {
     struct key_def *x = x11_codes;
     char *tem;
@@ -326,11 +326,11 @@ sys_lookup_code_name(char *buf, u_long code, u_long type)
    shamelessly stolen from Emacs 19. :-)
 
    XXX how can I do this in GDK? */
-u_long
+unsigned long
 gtk_find_meta(void)
 {
 #ifdef HAVE_X11
-    u_long meta_mod = 0, alt_mod = 0;
+    unsigned long meta_mod = 0, alt_mod = 0;
 
     int min_code, max_code;
     KeySym *syms;

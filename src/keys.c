@@ -30,7 +30,7 @@
 
 /* current_event holds the event we're processing (or 0s), last_event
    contains the previously processed event.  */
-u_long current_event[2], last_event[2];
+unsigned long current_event[2], last_event[2];
 
 /* Pointer to the window system's representation of the current_event,
    used for cooking events into strings.  */
@@ -42,7 +42,7 @@ static bool print_prefix, printed_this_prefix;
 
 /* Buffer holding the events making this key-sequence. */
 #define EVENT_BUFSIZ 20
-static u_long event_buf[EVENT_BUFSIZ]; /* one event = (code,mods) */
+static unsigned long event_buf[EVENT_BUFSIZ]; /* one event = (code,mods) */
 static int event_index;
 
 DEFSYM(global_keymap, "global-keymap");
@@ -86,7 +86,7 @@ periods only!
    If this function returns true, then this binding is acceptable and
    is returned from the function. */
 static repv
-search_keymap(repv km, u_long code, u_long mods, bool (*callback)(repv key))
+search_keymap(repv km, unsigned long code, unsigned long mods, bool (*callback)(repv key))
 {
     /* If it's a symbol, dereference it. */
     while(rep_SYMBOLP(km) && !rep_NILP(km) && !rep_INTERRUPTP)
@@ -134,7 +134,7 @@ search_keymap(repv km, u_long code, u_long mods, bool (*callback)(repv key))
 
 /* Search for a binding of CODE&MODS.  */
 static repv
-lookup_binding(u_long code, u_long mods, bool (*callback)(repv key))
+lookup_binding(unsigned long code, unsigned long mods, bool (*callback)(repv key))
 {
     repv k = rep_NULL, nkp = next_keymap_path;
     next_keymap_path = rep_NULL;
@@ -269,7 +269,7 @@ eval_input_callback(repv key)
 
 struct eval_input_data {
     void *osinput;
-    u_long code, mods;
+    unsigned long code, mods;
 };
 
 static repv
@@ -277,8 +277,8 @@ inner_eval_input_event(repv data_)
 {
     struct eval_input_data *data = (struct eval_input_data *) rep_PTR(data_);
     void *OSInputMsg = data->osinput;
-    u_long code = data->code;
-    u_long mods = data->mods;
+    unsigned long code = data->code;
+    unsigned long mods = data->mods;
 
     repv result = Qnil;
     event_buf[event_index++] = code;
@@ -429,7 +429,7 @@ inner_eval_input_event(repv data_)
 /* Process the event CODE+MODS. OS-INPUT-MSG is the raw input event
    from the window-system, this is only used to cook a string from.  */
 repv
-eval_input_event(void *OSInputMsg, u_long code, u_long mods)
+eval_input_event(void *OSInputMsg, unsigned long code, unsigned long mods)
 {
     struct eval_input_data data;
     data.osinput = OSInputMsg;
@@ -444,7 +444,7 @@ eval_input_event(void *OSInputMsg, u_long code, u_long mods)
 
 struct key_def {
     const char *name;
-    u_long mods, code;
+    unsigned long mods, code;
 };
 
 static struct key_def default_mods[] = {
@@ -480,7 +480,7 @@ static struct key_def default_codes[] = {
 /* Puts the integers defining the event described in DESC into CODE
    and MODS. */
 bool
-lookup_event(u_long *code, u_long *mods, char *desc)
+lookup_event(unsigned long *code, unsigned long *mods, char *desc)
 {
     char *tem;
     char buf[100];
@@ -535,11 +535,11 @@ error:
 
 /* Constructs the name of the event defined by CODE and MODS in BUF.  */
 bool
-lookup_event_name(char *buf, u_long code, u_long mods)
+lookup_event_name(char *buf, unsigned long code, unsigned long mods)
 {
     int i;
     struct key_def *x;
-    u_long type = mods & EV_TYPE_MASK;
+    unsigned long type = mods & EV_TYPE_MASK;
 
     char *end = buf;
     *buf = 0;
@@ -550,7 +550,7 @@ lookup_event_name(char *buf, u_long code, u_long mods)
 
     for(i = 2; i < 32 && mods != 0; i++)	/* magic numbers!? */
     {
-	u_long mask = 1 << i;
+	unsigned long mask = 1 << i;
 	if(mods & mask)
 	{
 	    mods &= ~mask;
@@ -634,7 +634,7 @@ Returns KEYMAP when successful.
     args = rep_CDR(args);
     while(rc && rep_CONSP(args) && rep_CONSP(rep_CDR(args)))
     {
-	u_long code, mods;
+	unsigned long code, mods;
 	repv key;
 	arg1 = rep_CAR(args);
 	args = rep_CDR(args);
@@ -659,7 +659,7 @@ Returns KEYMAP when successful.
 	{
 	    if(rep_VECTORP(km))
 	    {
-		u_long hash = KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE;
+		unsigned long hash = KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE;
 		repv old = rep_VECTI(km, hash);
 		rep_VECTI(km, hash) = Fcons(key, old);
 	    }
@@ -693,7 +693,7 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
     args = rep_CDR(args);
     while(rc && rep_CONSP(args))
     {
-	u_long code, mods;
+	unsigned long code, mods;
 	repv *keyp;
 	arg1 = rep_CAR(args);
 	if(rep_STRINGP(arg1))
@@ -845,7 +845,7 @@ lookup-event EVENT-NAME
 Return the event whose name is EVENT-NAME.
 ::end:: */
 {
-    u_long code, mods;
+    unsigned long code, mods;
     rep_DECLARE1(name, rep_STRINGP);
 
     if(lookup_event(&code, &mods, rep_STR(name)))

@@ -57,10 +57,6 @@ static int redisplay_max_d = 0;
    lines are drawn, which are copied, etc) */
 #undef DEBUG
 
-/* Rotate X, a 32 bit quanitity, by N bits to the left. */
-#define ROTATE(x, n) (((x) << (n)) | ((x) >> ((8 * sizeof(u_long)) - (n))))
-
-
 /* When greater than zero, we're in redisplay, and hence no Lisp code
    should be run, and no asynchronous input should be taken. */
 int redisplay_lock;
@@ -79,7 +75,7 @@ alloc_glyph_buf(int cols, int rows)
     size_t size = (sizeof(glyph_buf)
 		   + sizeof(glyph_code *) * rows
 		   + sizeof(glyph_attr *) * rows
-		   + sizeof(u_long) * rows
+		   + sizeof(uint32_t) * rows
 		   + sizeof(glyph_code) * rows * cols
 		   + sizeof(glyph_attr) * rows * cols);
     glyph_buf *g = rep_alloc(size);
@@ -97,7 +93,7 @@ alloc_glyph_buf(int cols, int rows)
 	g->attrs = (void *)p;
 	p += sizeof(glyph_attr *) * rows;
 	g->hashes = (void *)p;
-	p += sizeof(u_long) * rows;
+	p += sizeof(uint32_t) * rows;
 	for(i = 0; i < rows; i++)
 	{
 	    memset (p, 0, cols * (sizeof (glyph_code) + sizeof (glyph_attr)));
@@ -122,14 +118,14 @@ copy_glyph_buf(glyph_buf *dst, glyph_buf *src)
 {
     memcpy(dst->codes[0], src->codes[0],
 	   (sizeof(glyph_code) + sizeof(glyph_attr)) * dst->rows * dst->cols);
-    memcpy(dst->hashes, src->hashes, sizeof(u_long) * dst->rows);
+    memcpy(dst->hashes, src->hashes, sizeof(uint32_t) * dst->rows);
 }
 
 /* Compute and return the hash code of line ROW in buffer G. */
-static inline u_long
+static inline uint32_t
 hash_glyph_row(glyph_buf *g, int row)
 {
-    u_long value = 0;
+    uint32_t value = 0;
     int togo = g->cols;
     glyph_code *codes = g->codes[row];
     glyph_attr *attrs = g->attrs[row];
@@ -272,7 +268,7 @@ redisplay_do_copy(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g,
     memmove(old_g->codes[dst_line-1], old_g->codes[src_line-1],
 	    (sizeof(glyph_code) + sizeof(glyph_attr)) * n_lines * old_g->cols);
     memmove(old_g->hashes + (dst_line-1), old_g->hashes + (src_line-1),
-	    sizeof(u_long) * n_lines);
+	    sizeof(uint32_t) * n_lines);
 }
 
 

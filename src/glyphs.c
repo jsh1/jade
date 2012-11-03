@@ -43,7 +43,7 @@ typedef char glyph_widths_t[256];
    single character, each character (except tabs) can be made of
    no more than 4 glyphs. The above table is used to decide how
    many to use out of the possible 4.  */
-typedef u_char glyph_glyphs_t[256][4];
+typedef uint8_t glyph_glyphs_t[256][4];
 
 typedef struct glyph_table {
     repv		gt_Car;
@@ -128,21 +128,21 @@ static glyph_table_t *gt_chain = &default_glyph_table;
 #define GL_MAP_LINE(l) ((l) % GL_CACHE_SETS)
 
 typedef struct {
-    u_long line;			/* line number */
-    Lisp_Buffer *tx;				/* buffer */
-    u_long glyphs;			/* number of glyphs in line */
-    u_long changes;			/* change-count at calc. time */
+    unsigned int line;			/* line number */
+    Lisp_Buffer *tx;			/* buffer */
+    int glyphs;				/* number of glyphs in line */
+    int changes;			/* change-count at calc. time */
 #if GL_CACHE_ASSOC > 1
-    u_long lru_clock;			/* last access time */
+    uint32_t lru_clock;			/* last access time */
 #endif
 } gl_cache_entry_t;
 
 typedef struct {
     gl_cache_entry_t data[GL_CACHE_SETS * GL_CACHE_ASSOC];
 #if GL_CACHE_ASSOC > 1
-    u_long lru_clock;
+    uint32_t lru_clock;
 #endif
-    u_long misses, valid_hits, invalid_hits;
+    unsigned int misses, valid_hits, invalid_hits;
 } gl_cache_t;
 
 /* Get a pointer to the array of entries forming set S */
@@ -157,8 +157,9 @@ static gl_cache_t gl_cache;
 void
 make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 {
-    static u_char spaces[] = "                                                 "
-"                                                                            ";
+    static uint8_t spaces[] = "                                              \
+                                                                             \
+  ";
 
     Lisp_View *vw;
 
@@ -276,7 +277,7 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 	    glyph_code *codes = w->new_content->codes[glyph_row];
 	    glyph_attr *attrs = w->new_content->attrs[glyph_row];
 
-	    u_char *src = (u_char *)vw->tx->lines[char_row].ln_Line;
+	    char *src = vw->tx->lines[char_row].ln_Line;
 	    long src_len = vw->tx->lines[char_row].ln_Strlen - 1;
 
 	    /* Position in current screen row, logical glyph position in
@@ -462,13 +463,15 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 	    {
 		while(glyph_row < last_row && src_len-- > 0)
 		{
-		    register u_char *ptr;
-		    register int width;
+		    unsigned int c;
+		    uint8_t *ptr;
+		    int width;
 
 		    CHECK_EXTENT();
 
-		    ptr = &(*glyph_table)[*src][0];
-		    width = (*width_table)[*src++];
+		    c = *src++;
+		    ptr = &(*glyph_table)[c][0];
+		    width = (*width_table)[c];
 		    if(width == 0)
 		    {
 			/* TAB special case. */
@@ -504,13 +507,15 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 	    {
 		while(real_glyph_col < vw->width && src_len-- > 0)
 		{
-		    register u_char *ptr;
-		    register int width;
+		    unsigned int c;
+		    uint8_t *ptr;
+		    int width;
 
 		    CHECK_EXTENT();
 
-		    ptr = &(*glyph_table)[*src][0];
-		    width = (*width_table)[*src++];
+		    c = *src++;
+		    ptr = &(*glyph_table)[c][0];
+		    width = (*width_table)[c];
 		    if(width == 0)
 		    {
 			/* TAB special case. */
@@ -627,7 +632,7 @@ make_message_glyphs(glyph_buf *g, Lisp_Window *w)
     repv face;
     glyph_attr attr;
 
-    u_long msg_len = w->message_length;
+    int msg_len = w->message_length;
     char *msg = w->message;
     int line = w->row_count - (ROUND_UP_INT(msg_len, g->cols-1) / (g->cols-1));
     if(line < w->mini_buffer_view->min_y)
@@ -981,14 +986,15 @@ uncached_string_glyph_length(Lisp_Buffer *tx, const char *src, long srcLen)
        tree on this line since the glyph-table can be changed. */
     repv gt = Fbuffer_symbol_value(Qglyph_table, Qnil,
 				       rep_VAL(tx), Qt);
-    register long w;
+    long w;
     glyph_widths_t *width_table;
     if(!GLYPHTABP(gt))
 	gt = Fdefault_glyph_table();
     width_table = &VGLYPHTAB(gt)->gt_Widths;
     for(w = 0; srcLen-- > 0;)
     {
-	register int w1 = (*width_table)[*(u_char *)src++];
+	unsigned int c = *src++;
+	int w1 = (*width_table)[c];
 	if(w1 != 0)
 	    w += w1;
 	else
@@ -1002,7 +1008,7 @@ uncached_string_glyph_length(Lisp_Buffer *tx, const char *src, long srcLen)
 static long
 line_glyph_length(Lisp_Buffer *tx, long line)
 {
-    u_long set = GL_MAP_LINE(line);
+    int set = GL_MAP_LINE(line);
     gl_cache_entry_t *set_data = GL_GET_SET(&gl_cache, set);
 
 #if GL_CACHE_ASSOC == 1 /* Direct-mapped cache */
@@ -1036,7 +1042,7 @@ line_glyph_length(Lisp_Buffer *tx, long line)
 #else /* Set associative cache */
 
     int i, lru_set = 0;
-    u_long lru_time = ~0;
+    uint32_t lru_time = UINT32_MAX;
     for(i = 0; i < GL_CACHE_ASSOC; i++)
     {
 	if(set_data[i].line == line
@@ -1100,7 +1106,7 @@ char_col(Lisp_Buffer *tx, long col, long linenum)
     char *src = tx->lines[linenum].ln_Line;
     long srclen = tx->lines[linenum].ln_Strlen - 1;
     glyph_widths_t *width_table;
-    register long w = 0;
+    long w = 0;
     /* FIXME: This is wrong */
     repv gt = Fbuffer_symbol_value(Qglyph_table, rep_VAL(tx),
 				       Qnil, Qt);
@@ -1109,7 +1115,8 @@ char_col(Lisp_Buffer *tx, long col, long linenum)
     width_table = &VGLYPHTAB(gt)->gt_Widths;
     while((w < col) && (srclen-- > 0))
     {
-	register int w1 = (*width_table)[*(u_char *)src++];
+	unsigned int c = *src++;
+	int w1 = (*width_table)[c];
 	if(w1 == 0)
 	    w += tx->tab_size - (w % tx->tab_size);
 	else

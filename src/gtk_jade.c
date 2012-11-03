@@ -74,7 +74,7 @@ static bool new_window_no_frame = FALSE;
 static bool new_window_no_show = FALSE;
 
 /* Timestamp from a recent event */
-u_long gtk_jade_last_event_time;
+unsigned long gtk_jade_last_event_time;
 
 DEFSYM (gtk_jade_new_hook, "gtk-jade-new-hook"); /*
 ::doc:gtk-jade-new-hook::
@@ -443,7 +443,7 @@ static gint
 gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
 {
     GtkJade *jade;
-    u_long code = 0, mods = 0;
+    unsigned long code = 0, mods = 0;
     bool redisplay = FALSE;
     g_return_val_if_fail (widget != NULL, FALSE);
     g_return_val_if_fail (GTK_IS_JADE (widget), FALSE);
@@ -757,7 +757,7 @@ focus_out_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
 
 /* The only thing necessary in W is the font stuff (I think) */
 GtkJade *
-sys_new_window(Lisp_Window *oldW, Lisp_Window *w, short *dims)
+sys_new_window(Lisp_Window *oldW, Lisp_Window *w, int *dims)
 {
     unsigned int x = -1, y = -1, width = 80, height = 24;
     GtkWidget *frame = 0;

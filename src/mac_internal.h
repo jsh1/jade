@@ -49,10 +49,10 @@
 
     CGGlyph _glyph_table[256];
 
-    u_int _has_focus :1;
-    u_int _antialias :1;
-    u_int _inside :1;
-    u_int _opaque :1;
+    unsigned int _has_focus :1;
+    unsigned int _antialias :1;
+    unsigned int _inside :1;
+    unsigned int _opaque :1;
 };
 
 - (void)handleEvent:(NSEvent *)e;

@@ -182,7 +182,7 @@ flip_y (JadeView *view, int y)
 - (void)handleEvent:(NSEvent *)e
 {
     NSPoint p;
-    u_long code = 0, mods = 0;
+    unsigned long code = 0, mods = 0;
 
     /* May need to defer this event until later. */
 
@@ -594,7 +594,7 @@ sys_update_dimensions(Lisp_Window *w)
 /* The only thing necessary in W is the font stuff (I think) */
 
 void *
-sys_new_window(Lisp_Window *oldW, Lisp_Window *w, short *dims)
+sys_new_window(Lisp_Window *oldW, Lisp_Window *w, int *dims)
 {
     unsigned int x = -1, y = -1, width = 80, height = 24;
     NSWindow *window;

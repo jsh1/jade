@@ -1,3 +1,14 @@
+2012-11-03  John Harper  <jsh@unfactored.org>
+
+	* x11_windowsys.h, x11_windows.c, x11_main.c, x11_keys.c,
+	windows.c, views.c, undo.c, server-dl.c, redisplay.c,
+	mac_windows.m, mac_runloop.m, mac_main.m, mac_keys.m,
+	mac_internal.h, keys.c, jadeclient.c, jade_subrs.h, jade.h,
+	gtk_select.c, gtk_main.c, gtk_keys.c, gtk_jade.c, gtk_defs.h,
+	glyphs.c, files.c, faces.c, extent.c, editcommands.c, edit.h,
+	buffers.c: trying to use saner types -- no u_{char,int,long}
+	and no shorts. Use uint8_t and uint32_t where it makes sense.
+
 2012-11-02  John Harper  <jsh@unfactored.org>
 
 	* regjade.c, movement.c, jade_subrs.h, glyphs.c, find.c,

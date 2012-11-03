@@ -328,26 +328,26 @@ unchanged.
     {
 	long linenum = VROW(start), col;
 	int tablen = rep_STRING_LEN(table);
-	register u_char *str;
+	char *str;
 	undo_record_modification(VBUFFER(tx), start, end);
 	flag_modification(VBUFFER(tx), start, end);
 	while(linenum < VROW(end))
 	{
 	    int llen = VBUFFER(tx)->lines[linenum].ln_Strlen - 1;
 	    col = (linenum == VROW(start) ? VCOL(start) : 0);
-	    str = (u_char *)VBUFFER(tx)->lines[linenum].ln_Line + col;
+	    str = VBUFFER(tx)->lines[linenum].ln_Line + col;
 	    while(col++ < llen)
 	    {
-		register u_char c = *str;
+		unsigned int c = *str;
 		*str++ = (c < tablen) ? rep_STR(table)[c] : c;
 	    }
 	    linenum++;
 	}
 	col = (linenum == VROW(start) ? VCOL(start) : 0);
-	str = (u_char *)VBUFFER(tx)->lines[linenum].ln_Line + col;
+	str = VBUFFER(tx)->lines[linenum].ln_Line + col;
 	while(col++ < VCOL(end))
 	{
-	    register u_char c = *str;
+	    unsigned int c = *str;
 	    *str++ = (c < tablen) ? rep_STR(table)[c] : c;
 	}
 	return(Qt);

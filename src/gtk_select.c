@@ -43,7 +43,7 @@ enum Sel_type {
 
 static struct selection_info {
     repv owner;				/* a window or nil */
-    u_long birthdate;
+    unsigned long birthdate;
     repv data;				/* either a string or a buffer */
     repv start, end;
     enum Sel_type type;

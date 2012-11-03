@@ -81,11 +81,11 @@ pos_putc(Lisp_Buffer *tx, repv *pos, int c)
     int rc = EOF;
     if(pad_pos(tx, *pos))
     {
-	u_char tmps[2];
+	char tmps[2];
 	repv end;
-	tmps[0] = (u_char)c;
+	tmps[0] = c;
 	tmps[1] = 0;
-	end = insert_string(tx, (char *)tmps, 1, *pos);
+	end = insert_string(tx, tmps, 1, *pos);
 	if(end != rep_NULL)
 	{
 	    *pos = end;
@@ -515,7 +515,7 @@ auto_save_buffers(bool force_save)
     if(!Exclusion)
     {
 	Lisp_Buffer *tx = buffer_chain;
-	u_long time = rep_time();
+	unsigned long time = rep_time();
 	Exclusion = TRUE;
 	while(tx)
 	{

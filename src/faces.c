@@ -251,7 +251,7 @@ The face used to color the mouse cursor.
 /* rendering with faces */
 
 static int
-get_merged_face(Lisp_Window *w, u_long car,
+get_merged_face(Lisp_Window *w, repv car,
 		Lisp_Color *background, Lisp_Color *foreground)
 {
     int id, empty = -1;
@@ -285,7 +285,7 @@ get_merged_face(Lisp_Window *w, u_long car,
 
 struct merge_closure
 {
-    u_long car;
+    repv car;
     Lisp_Color *background;
     Lisp_Color *foreground;
 };
@@ -379,7 +379,7 @@ merge_faces(Lisp_View *vw, Lisp_Extent *e, int in_block, int on_cursor)
 int
 get_face_id(Lisp_Window *w, Lisp_Face *f)
 {
-    long car = f->car;
+    repv car = f->car;
     if (invert_all_faces)
 	car ^= FACEFF_INVERT;
     assert(COLORP(f->background) && COLORP(f->foreground));

@@ -104,14 +104,14 @@ disconnect_from_jade(int sock_fd)
     close(sock_fd);
 }
 
-static u_long
-find_file(int sock_fd, char *arg, u_long linenum)
+static unsigned long
+find_file(int sock_fd, char *arg, unsigned long linenum)
 {
     char buf[PATH_MAX];
     char *filename;
-    u_long filename_len;
+    unsigned long filename_len;
     u_char req = !opt_quiet ? req_find_file : req_find_file_async;
-    u_long result = 0;
+    unsigned long result = 0;
 
     /* Make sure the filename is absolute; the server could have
        a different working directory to us.  */
@@ -144,11 +144,11 @@ find_file(int sock_fd, char *arg, u_long linenum)
     filename_len = strlen(filename);
 
     if(write(sock_fd, &req, 1) != 1
-       || write(sock_fd, &filename_len, sizeof(u_long)) != sizeof(u_long)
+       || write(sock_fd, &filename_len, sizeof(unsigned long)) != sizeof(unsigned long)
        || write(sock_fd, filename, filename_len) != filename_len
-       || write(sock_fd, &linenum, sizeof(u_long)) != sizeof(u_long)
+       || write(sock_fd, &linenum, sizeof(unsigned long)) != sizeof(unsigned long)
        || (req != req_find_file_async
-	   && read(sock_fd, &result, sizeof(u_long)) != sizeof(u_long)))
+	   && read(sock_fd, &result, sizeof(unsigned long)) != sizeof(unsigned long)))
     {
 	perror("find_file");
 	return 10;
@@ -156,20 +156,20 @@ find_file(int sock_fd, char *arg, u_long linenum)
     return result;
 }
 
-static u_long
+static unsigned long
 eval_lisp_form(int sock_fd, char *form)
 {
     /* Protocol is; >req_eval:1, >FORM-LEN:4, >FORM:?, <RES-LEN:4, <RES:?
        in the local byte-order. */
     u_char req = !opt_quiet ? req_eval : req_eval_async;
-    u_long len = strlen(form);
+    unsigned long len = strlen(form);
     char *result;
 
     if(write(sock_fd, &req, 1) != 1
-       || write(sock_fd, &len, sizeof(u_long)) != sizeof(u_long)
+       || write(sock_fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)
        || write(sock_fd, form, len) != len
        || (req != req_eval_async
-	   && read(sock_fd, &len, sizeof(u_long)) != sizeof(u_long)))
+	   && read(sock_fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)))
     {
 	perror("eval_req");
 	return 10;
@@ -222,7 +222,7 @@ main(int argc, char *argv[])
 {
     char *prog_name = argv[0];
     int sock_fd;
-    u_long result = 0;
+    unsigned long result = 0;
 
     argc--; argv++;
 
@@ -363,7 +363,7 @@ main(int argc, char *argv[])
 	}
 	else if(argc > 0)
 	{
-	    u_long linenum = 0;
+	    unsigned long linenum = 0;
 	    if(argc >= 1 && **argv == '+')	/* +LINE-NUMBER */
 	    {
 #ifdef HAVE_STRTOL

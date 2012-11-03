@@ -54,7 +54,7 @@ Lisp_Window *win_chain;
 Lisp_Window *curr_win;
 
 /* The default window position and dimensions. */
-static short def_dims[4] = { 0, 0, 80, 24 };
+static int def_dims[4] = { 0, 0, 80, 24 };
 
 repv def_font_str;
 
@@ -66,7 +66,7 @@ DEFSYM(buffer, "buffer");
 DEFSYM(font, "font");
 
 void
-set_default_geometry (short x, short y, short w, short h)
+set_default_geometry (int x, int y, int w, int h)
 {
     def_dims[0] = x;
     def_dims[1] = y;
@@ -91,7 +91,7 @@ ATTRS is an alist with any of the following pairs:
 {
     Lisp_Window *w;
     repv tem, tx, font;
-    short dims[4];
+    int dims[4];
 
     memcpy (dims, def_dims, sizeof (dims));
 
@@ -327,7 +327,7 @@ Cycles through the open windows forwards.
 }
 
 void
-messagen(char *title, int length)
+messagen(char *title, size_t length)
 {
     Lisp_Window *w = curr_win;
     if((w->car & WINFF_SLEEPING) == 0)
@@ -347,7 +347,7 @@ messagef(char *fmt, va_list args)
     if((w->car & WINFF_SLEEPING) == 0)
     {
 	char fmtbuff[256];
-	u_long len;
+	size_t len;
 #ifdef HAVE_SNPRINTF
 	vsnprintf(fmtbuff, sizeof(fmtbuff), fmt, args);
 #else
@@ -398,7 +398,7 @@ jade_message (enum rep_message fn, ...)
     {
 	int len;
 	char *msg;
-	u_long *old_lenp;
+	unsigned long *old_lenp;
 	char **old_msgp;
 
     case rep_messagen:
@@ -423,12 +423,12 @@ jade_message (enum rep_message fn, ...)
 
     case rep_save_message:
 	old_msgp = (char **)va_arg(args, char **);
-	old_lenp = (u_long *)va_arg(args, u_long *);
+	old_lenp = (unsigned long *)va_arg(args, unsigned long *);
 	if(curr_win->car & WINFF_MESSAGE)
 	{
 	    /* a message is being displayed. */
 	    *old_msgp = curr_win->message;
-	    *old_lenp = curr_win->message_length;
+	    *old_lenp = (unsigned long) curr_win->message_length;
 	    curr_win->message = NULL;
 	    curr_win->message_length = 0;
 	}
@@ -575,7 +575,7 @@ under Intuition a pointer (integer) to the window structure.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return(rep_MAKE_LONG_INT((u_long)VWINDOW(win)->w_Window));
+    return(rep_MAKE_LONG_INT((unsigned long)VWINDOW(win)->w_Window));
 }
 
 DEFUN("font-dimensions", Ffont_dimensions, Sfont_dimensions,

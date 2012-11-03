@@ -293,7 +293,7 @@ object to be used. Also removes any restriction on BUFFER.
     if(rep_NILP(handler))
     {
 	FILE *fh;
-	u_long file_length;
+	unsigned long file_length;
 	repv res = rep_NULL;
 	repv start;
 

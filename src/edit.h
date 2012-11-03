@@ -55,16 +55,19 @@
 /* We define the column in the cdr and the row in the car, so that
    the normal cons-comparison (car first, then cdr) will work as the
    old pos-comparison used to (i.e. row-major). */
+
 #define MAKE_POS(col, row) Fcons(rep_MAKE_INT(row), rep_MAKE_INT(col))
 #define VCOL(v) (rep_INT(rep_CDR(v)))
 #define VROW(v) (rep_INT(rep_CAR(v)))
 
 /* These should never be used unless it's clear there can be
    no other references to V. */
+
 #define VSETCOL(v,c) (rep_CDR(v) = rep_MAKE_INT(c))
 #define VSETROW(v,r) (rep_CAR(v) = rep_MAKE_INT(r))
 
 /* These all want repv pointers */
+
 #define POS_EQUAL_P(s,e) \
     ((VROW(s) == VROW(e)) && (VCOL(s) == VCOL(e)))
 #define POS_GREATER_P(s,e) \
@@ -78,6 +81,7 @@
 
 /* A more conventional C structure, used in the editor internals to
    avoid the gratuitous masking and shifting otherwise required. */
+
 typedef struct {
     long row, col;
 } Pos;
@@ -94,6 +98,7 @@ typedef struct {
 #define COPY_POS(p) MAKE_POS(PCOL(p), PROW(p))
 
 /* These all want Pos pointers */
+
 #define PPOS_EQUAL_P(s,e) \
     ((PROW(s) == PROW(e)) && (PCOL(s) == PCOL(e)))
 #define PPOS_GREATER_P(s,e) \
@@ -184,12 +189,13 @@ typedef struct lisp_extent {
 struct cached_extent {
     Pos pos;
     Lisp_Extent *extent;
-    u_long lru_clock;
+    uint32_t lru_clock;
 };
 
 /* Each window has a list of the extents that are in the current
    contents of the window, and their positions in the character
    grid of the window. */
+
 struct visible_extent {
     struct visible_extent *next;
     Lisp_Extent *extent;
@@ -315,7 +321,7 @@ typedef struct lisp_view {
 
     /* Cursor positioning data.  */
     repv cursor_pos;
-    u_long last_cursor_offset; /* number of glyphs from col 0 */
+    long last_cursor_offset;		/* number of glyphs from col 0 */
     repv last_cursor_pos;
     int last_cursor_change_count;
     Lisp_Buffer *last_cursor_tx;
@@ -355,8 +361,8 @@ typedef struct lisp_view {
 
 /* Windows */
 
-typedef u_char glyph_code;
-typedef u_char glyph_attr;
+typedef uint8_t glyph_code;
+typedef uint8_t glyph_attr;
 
 enum Glyph_Attrs {
     GA_LastFace = 63,			/* max faces per window */
@@ -367,7 +373,7 @@ typedef struct {
     int cols, rows;
     glyph_code **codes;			/* ROWS glyph codes */
     glyph_attr **attrs;			/* ROWS glyph attrs */
-    u_long *hashes;			/* ROWS hash values */
+    uint32_t *hashes;			/* ROWS hash values */
 
     /* Note that attrs[i] follows immediately after codes[i], so that
        all data for a line can be copied by a single call to memcpy() */
@@ -388,10 +394,8 @@ typedef struct lisp_window {
     glyph_buf *content, *new_content;	/* Data for redisplay */
     struct visible_extent *visible_extents;	/* List of displayed extents */
 
-    u_long last_click_time;		/* Last mouse click event */
-
     char *message;			/* non-null == msg in minibuffer */
-    u_long message_length;
+    size_t message_length;
 
     int column_count, row_count;	/* COLS,ROWS in whole window */
     int pixel_width, pixel_height;	/* width,height in pixels of window */

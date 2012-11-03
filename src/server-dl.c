@@ -62,7 +62,7 @@ server_handle_request(int fd)
 	goto disconnect;
     switch(req)
     {
-	u_long len, tem;
+	unsigned long len, tem;
 	repv val;
 
     case req_find_file:
@@ -72,10 +72,10 @@ server_handle_request(int fd)
 	   3. read the line number
 	   4. if !async add (FILE . SOCK-FD) to list of client files
 	   5. call server-find-file with FILE and LINE */
-	if(read(fd, &len, sizeof(u_long)) != sizeof(u_long)
+	if(read(fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)
 	   || (val = rep_make_string(len + 1)) == rep_NULL
 	   || read(fd, rep_STR(val), len) != len
-	   || read(fd, &tem, sizeof(u_long)) != sizeof(u_long))
+	   || read(fd, &tem, sizeof(unsigned long)) != sizeof(unsigned long))
 	    goto io_error;
 	rep_STR(val)[len] = 0;
 	if (req != req_find_file_async)
@@ -97,7 +97,7 @@ server_handle_request(int fd)
 	   3. eval and print FORM
 	   4. write length of result-string
 	   5. write LENGTH bytes of result string */
-	if(read(fd, &len, sizeof(u_long)) != sizeof(u_long)
+	if(read(fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)
 	   || (val = rep_make_string(len + 1)) == rep_NULL
 	   || read(fd, rep_STR(val), len) != len)
 	    goto io_error;
@@ -112,14 +112,14 @@ server_handle_request(int fd)
 	    if(val != rep_NULL && rep_STRINGP(val))
 	    {
 		len = rep_STRING_LEN(val);
-		if(write(fd, &len, sizeof(u_long)) != sizeof(u_long)
+		if(write(fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)
 		   || write(fd, rep_STR(val), len) != len)
 		    goto io_error;
 	    }
 	    else
 	    {
 		len = 0;
-		if(write(fd, &len, sizeof(u_long)) != sizeof(u_long))
+		if(write(fd, &len, sizeof(unsigned long)) != sizeof(unsigned long))
 		    goto io_error;
 	    }
 	}
@@ -327,7 +327,7 @@ which denotes no errors. Returns nil if the file doesn't have a client.
 	{
 	    /* Send the result to our client. */
 	    int con_fd = rep_INT(rep_CDR(car));
-	    u_long result = rep_INTP(rc) ? rep_INT(rc) : 0;
+	    unsigned long result = rep_INTP(rc) ? rep_INT(rc) : 0;
 	    if(write(con_fd, &result, sizeof(result)) != sizeof(result))
 		res = rep_signal_file_error(file);
 	    else
@@ -379,9 +379,9 @@ rep_dl_kill(void)
     {
 	/* Any client-opened files still around are replied to with
 	   a result of 5 (fail).  */
-	static u_long failrc = 5;
+	static unsigned long failrc = 5;
 	int fd = rep_INT(rep_CDR(rep_CAR(tmp)));
-	write(fd, &failrc, sizeof(u_long));
+	write(fd, &failrc, sizeof(unsigned long));
 	close(fd);
 	tmp = rep_CDR(tmp);
     }
