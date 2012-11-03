@@ -56,7 +56,7 @@ typedef struct _GtkJadeClass GtkJadeClass;
 struct _GtkJade
 {
     GtkWidget widget;
-    struct _WIN *win;
+    struct lisp_window *win;
 
     GdkFont *font;
     GdkFont *bold_font;	/* or null */

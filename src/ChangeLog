@@ -1,5 +1,9 @@
 2012-11-02  John Harper  <jsh@unfactored.org>
 
+	* mac_internal.h, gtk_defs.h, edit.h: renamed _TX, _VW and _WIN
+	structus to lisp_buffer, lisp_view and lisp_window. TX, VW and
+	WIN typedefs still exist (for now)
+
 	* views.c, undo.c, server-dl.c, regjade.c, redisplay.c,
 	movement.c, keys.c, housekeeping.c, glyphs.c, find.c, files.c,
 	extent.c, editcommands.c, edit.h, edit.c, buffers.c: renamed

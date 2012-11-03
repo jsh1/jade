@@ -35,7 +35,7 @@
 @interface JadeView : NSView
 {
 @public
-    struct _WIN *_win;
+    struct lisp_window *_win;
 
     NSTrackingRectTag _tracking_tag;
 

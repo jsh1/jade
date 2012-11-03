@@ -157,7 +157,7 @@ typedef struct lisp_extent {
     /* ``Temporary'' field. Used for traversing trees sometimes */
     struct lisp_extent *tem;
 
-    struct _TX *tx;
+    struct lisp_buffer *tx;
     repv plist;
     repv locals;			/* alist of (SYMBOL . repv) */
 
@@ -192,7 +192,7 @@ struct cached_extent {
 struct visible_extent {
     struct visible_extent *next;
     Lisp_Extent *extent;
-    struct _VW *vw;
+    struct lisp_view *vw;
     long start_col, start_row;
     long end_col, end_row;
 };
@@ -238,54 +238,56 @@ typedef struct merged_face {
 
 
 /* A buffer, strangely called `TX' */
-typedef struct _TX {
-    repv	    car;
 
-    struct _TX	   *next;
-    Lisp_Mark	   *mark_chain;
-    LINE	   *lines;
-    long	    line_count, total_lines;	/* text-lines, array-length */
+typedef struct lisp_buffer {
+    repv car;
+
+    struct lisp_buffer *next;
+    Lisp_Mark *mark_chain;
+    LINE *lines;
+    long line_count, total_lines;	/* text-lines, array-length */
 
     /* line numbers of `narrowed' region */
-    long	    logical_start, logical_end;
+    long logical_start, logical_end;
 
     /* unique name of buffer */
-    repv	    buffer_name;
+    repv buffer_name;
 
     /* absolute name of the file in this buffer as the user sees it (or nil) */
-    repv	    file_name;
+    repv file_name;
 
     /* name of the file in this buffer such that we can compare two
        files by comparing their canonical names (or nil). */
-    repv	    canonical_file_name;
+    repv canonical_file_name;
 
     /* Data for status line and window title */
-    repv	    status_string;
+    repv status_string;
     
-    int		    change_count;
-    int		    last_saved_change_count;	/* count at last save */
-    int		    proper_saved_changed_count;	/* at last `proper' save */
-    int		    auto_save_interval; /* seconds between saves */
-    long	    last_saved_time;	/* time at last save (auto or user) */
+    int change_count;
+    int last_saved_change_count;	/* count at last save */
+    int proper_saved_changed_count;	/* at last `proper' save */
+    int auto_save_interval;		/* seconds between saves */
+    long last_saved_time;		/* time at last save (auto or user) */
 
-    int		    tab_size;
+    int tab_size;
 
     /* This is an extent covering the _whole_ buffer. */
-    Lisp_Extent	   *global_extent;
+    Lisp_Extent *global_extent;
     struct cached_extent extent_cache[EXTENT_CACHE_SIZE];
 
     /* Undo information */
-    repv	    undo_list;
-    repv	    pending_undo_list;
-    repv	    did_undo_list;
+    repv undo_list;
+    repv pending_undo_list;
+    repv did_undo_list;
 
     /* Saved state for buffers which are not being displayed.  */
-    repv	    saved_cursor_pos;
-    repv	    saved_display_origin;
-    repv	    saved_block[2];
-    int		    saved_block_status;
+    repv saved_cursor_pos;
+    repv saved_display_origin;
+    repv saved_block[2];
+    int saved_block_status;
+} Lisp_Buffer;
 
-} TX;
+typedef Lisp_Buffer TX;
 
 /* No recording of undo information */
 #define TXFF_NO_UNDO		(1 << (rep_CELL16_TYPE_BITS + 0))
@@ -304,15 +306,15 @@ typedef struct _TX {
 
 #define MAX_MOUSE_EXTENTS 16
 
-typedef struct _VW
+typedef struct lisp_view
 {
     repv	    vw_Car;
 #define vw_Flags vw_Car
 
-    struct _VW	   *vw_Next;
+    struct lisp_view *vw_Next;
     TX		   *vw_Tx;
-    struct _WIN	   *vw_Win;
-    struct _VW	   *vw_NextView;	/* for w_ViewList */
+    struct lisp_window *vw_Win;
+    struct lisp_view *vw_NextView;	/* for w_ViewList */
 
     /* Cursor positioning data.  */
     repv	    vw_CursorPos;
@@ -342,7 +344,9 @@ typedef struct _VW
 
     int 	    vw_XStepRatio, vw_YStepRatio;
     short	    vw_XStep, vw_YStep;
-} VW;
+} Lisp_View;
+
+typedef Lisp_View VW;
 
 /* mark rectangular blocks */
 #define VWFF_RECTBLOCKS		(1 << (rep_CELL16_TYPE_BITS + 0))
@@ -375,11 +379,11 @@ typedef struct {
 } glyph_buf;
 
 /* Each window is represented by one of these */
-typedef struct _WIN {
+typedef struct lisp_window {
     repv w_Car;
 #define w_Flags w_Car
 
-    struct _WIN *w_Next;
+    struct lisp_window *w_Next;
 
     VW *w_ViewList;			/* List of views in top-down order */
     VW *w_CurrVW;			/* Active view in window */
@@ -408,7 +412,9 @@ typedef struct _WIN {
     /* Merged faces in this window. If the `next' field in each
        face is non-zero the face is valid. */
     Merged_Face w_MergedFaces[GA_LastFace+1];
-} WIN;
+} Lisp_Window;
+
+typedef Lisp_Window WIN;
 
 /* refresh whole window */
 #define WINFF_FORCE_REFRESH	(1 << (rep_CELL16_TYPE_BITS + 0))
