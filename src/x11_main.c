@@ -38,7 +38,7 @@
 static void x11_handle_sync_input(int fd);
 
 /* The window in which the current event occurred. */
-WIN *x11_current_event_win;
+Lisp_Window *x11_current_event_win;
 
 /* The mouse position of the current event, relative to the origin of
    the window that the event occurred in, measured in glyphs. */
@@ -562,7 +562,7 @@ x11_handle_input(int fd, bool synchronous)
     while(rep_throw_value == rep_NULL)
     {
 	XEvent xev;
-	WIN *oldwin = curr_win, *ev_win;
+	Lisp_Window *oldwin = curr_win, *ev_win;
 
 	if(xdisplay == 0)
 	{
@@ -599,7 +599,7 @@ x11_handle_input(int fd, bool synchronous)
 	{
 	    int old_mouse_x = x11_current_mouse_x;
 	    int old_mouse_y = x11_current_mouse_y;
-	    WIN *old_mouse_win = x11_current_event_win;
+	    Lisp_Window *old_mouse_win = x11_current_event_win;
 
 	    switch(xev.type)
 	    {
@@ -637,7 +637,7 @@ x11_handle_input(int fd, bool synchronous)
 			   don't let the expose cause the current display
 			   state to be redrawn; preserve the window contents
 			   at the last redisplay */
-			WIN *w;;
+			Lisp_Window *w;;
 			for(w = win_chain; w != 0; w = w->next)
 			{
 			    if(!(w->car & WINFF_PRESERVING))

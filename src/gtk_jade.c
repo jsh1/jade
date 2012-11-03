@@ -227,7 +227,7 @@ gtk_jade_get_size (GtkJade *jade, gint *widthp, gint *heightp)
 }
 
 GtkWidget *
-gtk_jade_new (WIN *win, int width, int height)
+gtk_jade_new (Lisp_Window *win, int width, int height)
 {
     static GtkTargetEntry drag_types[] = { { "text/uri-list", 0, 0 } };
     static gint n_drag_types = sizeof (drag_types) / sizeof (drag_types [0]);
@@ -613,7 +613,7 @@ face_to_gc(GtkJade *jade, Merged_Face *f, bool invert)
 }
 
 void
-sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
+sys_draw_glyphs(Lisp_Window *w, int col, int row, glyph_attr attr, char *str,
 		int len, bool all_spaces)
 {
     GtkJade *jade = w->w_Window;
@@ -704,7 +704,7 @@ sys_recolor_cursor(repv face)
 }
 
 void
-sys_update_dimensions(WIN *w)
+sys_update_dimensions(Lisp_Window *w)
 {
     if(w->w_Window && ((w->car & WINFF_SLEEPING) == 0))
     {
@@ -757,7 +757,7 @@ focus_out_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
 
 /* The only thing necessary in W is the font stuff (I think) */
 GtkJade *
-sys_new_window(WIN *oldW, WIN *w, short *dims)
+sys_new_window(Lisp_Window *oldW, Lisp_Window *w, short *dims)
 {
     unsigned int x = -1, y = -1, width = 80, height = 24;
     GtkWidget *frame = 0;
@@ -824,7 +824,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 }
 
 void
-sys_kill_window(WIN *w)
+sys_kill_window(Lisp_Window *w)
 {
     GtkWidget *toplevel = gtk_widget_get_toplevel (GTK_WIDGET (w->w_Window));
 
@@ -840,19 +840,19 @@ sys_kill_window(WIN *w)
 }
 
 int
-sys_sleep_win(WIN *w)
+sys_sleep_win(Lisp_Window *w)
 {
     return 1;
 }
 
 int
-sys_unsleep_win(WIN *w)
+sys_unsleep_win(Lisp_Window *w)
 {
     return 1;
 }
 
 int
-sys_set_font(WIN *w)
+sys_set_font(Lisp_Window *w)
 {
     if (w->w_Window == WINDOW_NIL)
 	return 1;
@@ -862,17 +862,17 @@ sys_set_font(WIN *w)
 }
 
 void
-sys_unset_font(WIN *w)
+sys_unset_font(Lisp_Window *w)
 {
 }
 
 void
-sys_activate_win(WIN *w)
+sys_activate_win(Lisp_Window *w)
 {
 }
 
 void
-sys_set_win_pos(WIN *win, long x, long y, long w, long h)
+sys_set_win_pos(Lisp_Window *win, long x, long y, long w, long h)
 {
     GtkWidget *toplevel = gtk_widget_get_toplevel (GTK_WIDGET (win->w_Window));
     if (toplevel != 0)
@@ -883,7 +883,7 @@ sys_set_win_pos(WIN *win, long x, long y, long w, long h)
 }
 
 void
-sys_set_win_name(WIN *win, char *name)
+sys_set_win_name(Lisp_Window *win, char *name)
 {
     GtkWidget *toplevel = gtk_widget_get_toplevel (GTK_WIDGET (win->w_Window));
     if (toplevel != 0 && GTK_IS_WINDOW (toplevel))
@@ -898,7 +898,7 @@ deleting_callback (GtkJade *jade, gpointer data)
 }
 
 bool
-sys_deleting_window_would_exit (WIN *win)
+sys_deleting_window_would_exit (Lisp_Window *win)
 {
     if (win->w_Window == 0)
 	return FALSE;
@@ -954,7 +954,7 @@ if adding to another container.
 
     if (win && WINDOWP (win))
     {
-	GtkJade *jade = VWIN (win)->w_Window;
+	GtkJade *jade = VWINDOW (win)->w_Window;
 	return (*gtk_jade_wrap_gtkobj) (GTK_OBJECT (jade));
     }
     else
@@ -986,7 +986,7 @@ Return the GTK widget associated with window WINDOW.
 {
     if (!WINDOWP (win))
 	win = rep_VAL (curr_win);
-    return (*gtk_jade_wrap_gtkobj) (GTK_OBJECT (VWIN(win)->w_Window));
+    return (*gtk_jade_wrap_gtkobj) (GTK_OBJECT (VWINDOW(win)->w_Window));
 }
 
 DEFUN("flush-output", Fflush_output, Sflush_output, (void), rep_Subr0) /*
@@ -1027,7 +1027,7 @@ An integer identifying the cursor to use for editor windows. See
 {
     if (rep_INTP(arg) && rep_INT(arg) != cursor_shape)
     {
-	WIN *w = win_chain;
+	Lisp_Window *w = win_chain;
 	cursor_shape = rep_INT(arg);
 	gdk_cursor_destroy (window_cursor);
 	window_cursor = gdk_cursor_new (cursor_shape);
@@ -1057,7 +1057,7 @@ DEFUN("gtk-last-timestamp", Fgtk_last_timestamp,
 static Bool
 async_event_pred (Display *dpy, XEvent *ev, XPointer arg)
 {
-    WIN *w;
+    Lisp_Window *w;
     for (w = win_chain; w != 0; w = w->next)
     {
 	if (w->w_Window && GTK_WIDGET_REALIZED (GTK_WIDGET (w->w_Window)))
@@ -1069,7 +1069,7 @@ async_event_pred (Display *dpy, XEvent *ev, XPointer arg)
     }
     if (w != 0)
     {
-	*(WIN **)arg = w;
+	*(Lisp_Window **)arg = w;
 	switch (ev->xany.type)
 	{
 	case Expose:
@@ -1099,7 +1099,7 @@ gtk_jade_handle_async_input (void)
     if (!redisplay_lock)
     {
 #ifdef HAVE_X11
-	WIN *ev_win;
+	Lisp_Window *ev_win;
 	XEvent xev;
 	if (XCheckIfEvent (gdk_display, &xev,
 			   &async_event_pred, (XPointer)&ev_win))
@@ -1107,7 +1107,7 @@ gtk_jade_handle_async_input (void)
 	    switch (xev.type)
 	    {
 		int x, y, width, height;
-		WIN *w;
+		Lisp_Window *w;
 
 	    case Expose:
 		x = (xev.xexpose.x - ev_win->pixel_left) / ev_win->font_width;

@@ -38,7 +38,7 @@ static struct x11_display *pending_display;
 
 /* Let the window-manager handle all iconifying... */
 int
-sys_sleep_win(WIN *w)
+sys_sleep_win(Lisp_Window *w)
 {
     if((w->car & WINFF_SLEEPING) == 0)
     {
@@ -50,7 +50,7 @@ sys_sleep_win(WIN *w)
 }
 
 int
-sys_unsleep_win(WIN *w)
+sys_unsleep_win(Lisp_Window *w)
 {
     if(w->car & WINFF_SLEEPING)
     {
@@ -65,7 +65,7 @@ sys_unsleep_win(WIN *w)
 }
 
 void
-sys_update_dimensions(WIN *w)
+sys_update_dimensions(Lisp_Window *w)
 {
     XWindowAttributes xwa;
     XGetWindowAttributes(WINDOW_XDPY(w)->display, w->w_Window, &xwa);
@@ -73,7 +73,7 @@ sys_update_dimensions(WIN *w)
 }
 
 void
-x11_update_dimensions(WIN *w, int width, int height)
+x11_update_dimensions(Lisp_Window *w, int width, int height)
 {
     if(w->w_Window && ((w->car & WINFF_SLEEPING) == 0))
     {
@@ -100,7 +100,7 @@ xcolor_to_xftcolor (XColor *xc, XftColor *xfc)
 
 /* The only thing necessary in `vw' is the font stuff (I think) */
 Window
-sys_new_window(WIN *oldW, WIN *w, short *dims)
+sys_new_window(Lisp_Window *oldW, Lisp_Window *w, short *dims)
 {
     unsigned int x, y, width, height;
     Window win;
@@ -237,7 +237,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 }
 
 void
-sys_kill_window(WIN *w)
+sys_kill_window(Lisp_Window *w)
 {
     x11_window_lose_selections(w);
     XFreeGC(WINDOW_XDPY(w)->display, w->window_system.ws_GC);
@@ -251,7 +251,7 @@ sys_kill_window(WIN *w)
 }
 
 void
-sys_activate_win(WIN *w)
+sys_activate_win(Lisp_Window *w)
 {
     /* Not sure about all this??  */
     XRaiseWindow(WINDOW_XDPY(w)->display, w->w_Window);
@@ -259,7 +259,7 @@ sys_activate_win(WIN *w)
 }
 
 void
-sys_set_win_pos(WIN *win, long x, long y, long w, long h)
+sys_set_win_pos(Lisp_Window *win, long x, long y, long w, long h)
 {
     XMoveResizeWindow(WINDOW_XDPY(win)->display, win->w_Window,
 		      (unsigned int)x, (unsigned int)y,
@@ -267,15 +267,15 @@ sys_set_win_pos(WIN *win, long x, long y, long w, long h)
 }
 
 void
-sys_set_win_name(WIN *win, char *name)
+sys_set_win_name(Lisp_Window *win, char *name)
 {
     XStoreName(WINDOW_XDPY(win)->display, win->w_Window, name);
 }
 
-WIN *
+Lisp_Window *
 x11_find_window(Window win)
 {
-    WIN *w = win_chain;
+    Lisp_Window *w = win_chain;
     while(w)
     {
 	if(w->w_Window == win)
@@ -286,7 +286,7 @@ x11_find_window(Window win)
 }
 
 static inline void
-face_to_gc(WIN *w, Merged_Face *f, bool invert)
+face_to_gc(Lisp_Window *w, Merged_Face *f, bool invert)
 {
     unsigned long mask = 0;
     struct x11_color *c;
@@ -345,7 +345,7 @@ face_to_gc(WIN *w, Merged_Face *f, bool invert)
 }
 
 void
-sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
+sys_draw_glyphs(Lisp_Window *w, int col, int row, glyph_attr attr, char *str,
 		int len, bool all_spaces)
 {
     bool invert = FALSE;
@@ -415,7 +415,7 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 }
 
 int
-sys_set_font(WIN *w)
+sys_set_font(Lisp_Window *w)
 {
 #ifndef HAVE_X11_XFT_XFT_H
     XFontStruct *font;
@@ -535,7 +535,7 @@ sys_set_font(WIN *w)
 }
 
 void
-sys_unset_font(WIN *w)
+sys_unset_font(Lisp_Window *w)
 {
     if(WINDOW_XDPY(w) != 0)
     {
@@ -561,7 +561,7 @@ sys_unset_font(WIN *w)
 }
 
 bool
-sys_deleting_window_would_exit (WIN *w)
+sys_deleting_window_would_exit (Lisp_Window *w)
 {
     return (x11_display_list->next == 0
 	    && x11_display_list->window_count == 1);
@@ -570,7 +570,7 @@ sys_deleting_window_would_exit (WIN *w)
 /* Now this returns the glyph position in the window of the cursor;
    it doesn't worry about the views in the window. */
 repv
-sys_get_mouse_pos(WIN *w)
+sys_get_mouse_pos(Lisp_Window *w)
 {
     if(w != x11_current_event_win)
     {

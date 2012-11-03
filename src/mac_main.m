@@ -102,7 +102,7 @@ use_options(void)
 }
 
 void
-sys_beep (WIN *w)
+sys_beep (Lisp_Window *w)
 {
     NSBeep ();
 }

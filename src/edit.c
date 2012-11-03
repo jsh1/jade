@@ -54,7 +54,7 @@
 
 /* Makes buffer TX empty (null string in first line) */
 bool
-clear_line_list(TX *tx)
+clear_line_list(Lisp_Buffer *tx)
 {
     if(tx->lines)
 	kill_line_list(tx);
@@ -80,7 +80,7 @@ clear_line_list(TX *tx)
 
 /* deallocates all lines and their list */
 void
-kill_line_list(TX *tx)
+kill_line_list(Lisp_Buffer *tx)
 {
     if(tx->lines)
     {
@@ -99,7 +99,7 @@ kill_line_list(TX *tx)
 
 /* deallocates some lines (but not the list) */
 static void
-kill_some_lines(TX *tx, long start, long number)
+kill_some_lines(Lisp_Buffer *tx, long start, long number)
 {
     long i;
     for(i = start; i < number + start; i++)
@@ -119,7 +119,7 @@ kill_some_lines(TX *tx, long start, long number)
    deleted the actual text is also deleted.
    NOTE: A line list of zero lines is not allowed. */
 LINE *
-resize_line_list(TX *tx, long change, long where)
+resize_line_list(Lisp_Buffer *tx, long change, long where)
 {
     long newsize = tx->line_count + change;
     if(newsize <= 0)
@@ -167,13 +167,13 @@ resize_line_list(TX *tx, long change, long where)
 }
 
 char *
-alloc_line_buf(TX *tx, long length)
+alloc_line_buf(Lisp_Buffer *tx, long length)
 {
     return ALLOC_LINE_BUF(tx, length);
 }
 
 void
-free_line_buf(TX *tx, char *line)
+free_line_buf(Lisp_Buffer *tx, char *line)
 {
     FREE_LINE_BUF(tx, line);
 }
@@ -181,7 +181,7 @@ free_line_buf(TX *tx, char *line)
 /* Inserts LEN characters of `space' at pos. The gap will be filled
    with random garbage. */
 bool
-insert_gap(TX *tx, long len, long col, long row)
+insert_gap(Lisp_Buffer *tx, long len, long col, long row)
 {
     long new_length = tx->lines[row].ln_Strlen + len;
     if(LINE_BUF_SIZE(new_length) == LINE_BUF_SIZE(tx->lines[row].ln_Strlen))
@@ -224,7 +224,7 @@ insert_gap(TX *tx, long len, long col, long row)
    inserted into the current line. Returns the position of the character
    after the end of the inserted text. */
 repv
-insert_bytes(TX *tx, const char *text, long textLen, repv pos)
+insert_bytes(Lisp_Buffer *tx, const char *text, long textLen, repv pos)
 {
     if(insert_gap(tx, textLen, VCOL(pos), VROW(pos)))
     {
@@ -238,7 +238,7 @@ insert_bytes(TX *tx, const char *text, long textLen, repv pos)
 /* Inserts a string, this routine acts on any '\n' characters that it
    finds. */
 repv
-insert_string(TX *tx, const char *text, long textLen, repv pos)
+insert_string(Lisp_Buffer *tx, const char *text, long textLen, repv pos)
 {
     const char *eol;
     Pos tpos;
@@ -352,7 +352,7 @@ insert_string(TX *tx, const char *text, long textLen, repv pos)
 /* Deletes some SIZE bytes from line at (COL,ROW). Returns true if okay.
    This won't delete past the end of the line at (COL,ROW). */
 bool
-delete_chars(TX *tx, long col, long row, long size)
+delete_chars(Lisp_Buffer *tx, long col, long row, long size)
 {
     if(tx->lines[row].ln_Strlen)
     {
@@ -394,7 +394,7 @@ delete_chars(TX *tx, long col, long row, long size)
 
 /* Deletes from START to END; returns END if okay. */
 repv
-delete_section(TX *tx, repv start, repv end)
+delete_section(Lisp_Buffer *tx, repv start, repv end)
 {
     undo_record_deletion(tx, start, end);
     if(VROW(end) == VROW(start))
@@ -488,7 +488,7 @@ delete_section(TX *tx, repv start, repv end)
 
 /* Inserts spaces from end of line to pos */
 bool
-pad_pos(TX *tx, repv pos)
+pad_pos(Lisp_Buffer *tx, repv pos)
 {
     if(VROW(pos) < tx->logical_end && !read_only_pos(tx, pos))
     {
@@ -513,7 +513,7 @@ pad_pos(TX *tx, repv pos)
 }
 
 bool
-pad_cursor(VW *vw)
+pad_cursor(Lisp_View *vw)
 {
     repv old_cursor = vw->cursor_pos;
     if(pad_pos(vw->tx, vw->cursor_pos))
@@ -541,7 +541,7 @@ order_pos(repv *start, repv *end)
 }
 
 bool
-check_section(TX *tx, repv *start, repv *end)
+check_section(Lisp_Buffer *tx, repv *start, repv *end)
 {
     order_pos(start, end);
     if((VROW(*start) >= tx->logical_end)
@@ -566,7 +566,7 @@ check_section(TX *tx, repv *start, repv *end)
    returned will be the position of the end of the line, otherwise
    POSITION is returned. */
 repv
-check_pos(TX *tx, repv pos)
+check_pos(Lisp_Buffer *tx, repv pos)
 {
     if(VROW(pos) >= tx->logical_end
        || VROW(pos) < tx->logical_start)
@@ -582,7 +582,7 @@ check_pos(TX *tx, repv pos)
 /* Check that POSITION is in the current restriction of buffer TX.
    If not an error is signalled and the function returns false. */
 bool
-check_line(TX *tx, repv pos)
+check_line(Lisp_Buffer *tx, repv pos)
 {
     if((VROW(pos) >= tx->logical_end)
        || (VROW(pos) < tx->logical_start)
@@ -597,7 +597,7 @@ check_line(TX *tx, repv pos)
 /* Check that row LINE is in the current restriction of buffer TX.
    If not an error is signalled and the function returns false. */
 bool
-check_row(TX *tx, long line)
+check_row(Lisp_Buffer *tx, long line)
 {
     if(line >= tx->logical_end || line < tx->logical_start)
     {
@@ -611,7 +611,7 @@ check_row(TX *tx, long line)
 /* Returns the number of bytes needed to store a section, doesn't include
    a zero terminator but does include all newline chars. */
 long
-section_length(TX *tx, repv startPos, repv endPos)
+section_length(Lisp_Buffer *tx, repv startPos, repv endPos)
 {
     long linenum = VROW(startPos);
     long length;
@@ -630,7 +630,7 @@ section_length(TX *tx, repv startPos, repv endPos)
 /* Copies a section to a buffer.
    End of copy does NOT have a zero appended to it. */
 void
-copy_section(TX *tx, repv startPos, repv endPos, char *buff)
+copy_section(Lisp_Buffer *tx, repv startPos, repv endPos, char *buff)
 {
     long linenum = VROW(startPos);
     long copylen;
@@ -661,7 +661,7 @@ copy_section(TX *tx, repv startPos, repv endPos, char *buff)
 
 /* Ensures that the marked block is valid */
 void
-order_block(VW *vw)
+order_block(Lisp_View *vw)
 {
     if(!vw->block_state)
     {
@@ -679,7 +679,7 @@ order_block(VW *vw)
 /* Returns TRUE and signals an error if buffer TX is currently read-only,
    otherwise returns FALSE. */
 bool
-read_only_pos(TX *tx, repv pos)
+read_only_pos(Lisp_Buffer *tx, repv pos)
 {
     repv tmp = Fbuffer_symbol_value(Qread_only, pos, rep_VAL(tx), Qt);
     if(rep_VOIDP(tmp))
@@ -706,7 +706,7 @@ read_only_callback (Lisp_Extent *e, void *data)
 }
 
 bool
-read_only_section(TX *tx, repv start, repv end)
+read_only_section(Lisp_Buffer *tx, repv start, repv end)
 {
     bool read_only = FALSE;
     Pos p_start, p_end;

@@ -1,5 +1,12 @@
 2012-11-02  John Harper  <jsh@unfactored.org>
 
+	* x11_windows.c, x11_misc.c, x11_main.c, windows.c, views.c,
+	undo.c, server-dl.c, regsub.c, regjade.c, redisplay.c,
+	movement.c, mac_windows.m, mac_main.m, keys.c, jade_subrs.h,
+	housekeeping.c, gtk_select.c, gtk_main.c, gtk_jade.c, glyphs.c,
+	find.c, files.c, faces.c, extent.c, editcommands.c, edit.h,
+	edit.c, buffers.c: removed TX, VW and WIN typedefs
+
 	* x11_windowsys.h, x11_windows.c, x11_misc.c, x11_main.c,
 	windows.c, views.c, redisplay.c, mac_windows.m, mac_defs.h,
 	keys.c, gtk_main.c, gtk_jade.c, gtk_defs.h, glyphs.c, faces.c,

@@ -54,7 +54,7 @@ DEFSYM(insert_file_contents, "insert-file-contents");
    killed. FILE-LENGTH is the length of the file to be loaded, or -1
    if the length is unknown. */
 static bool
-read_file_into_tx(TX *tx, FILE *fh, long file_length)
+read_file_into_tx(Lisp_Buffer *tx, FILE *fh, long file_length)
 {
     bool rc = FALSE;
     char buf[BUFSIZ];
@@ -209,7 +209,7 @@ If START or END aren't defined they are taken from the start and end of
 the buffer (ignoring the current restriction).
 ::end:: */
 {
-    TX *tx = curr_vw->tx;
+    Lisp_Buffer *tx = curr_vw->tx;
     repv handler;
     rep_GC_root gc_start, gc_end;
 
@@ -284,7 +284,7 @@ object to be used. Also removes any restriction on BUFFER.
 {
     repv handler
 	= rep_get_handler_from_file_or_name(&file, rep_op_read_file_contents);
-    TX *tx = curr_vw->tx;
+    Lisp_Buffer *tx = curr_vw->tx;
     if(handler == rep_NULL)
 	return handler;
 
@@ -347,7 +347,7 @@ before the cursor in the current buffer.
 	return handler;
     if(rep_NILP(handler))
     {
-	TX *tx = curr_vw->tx;
+	Lisp_Buffer *tx = curr_vw->tx;
 	FILE *fh;
 	char buf[BUFSIZ];
 	long len;

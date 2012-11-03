@@ -47,11 +47,11 @@ int window_type;
 
 /* This can contain `dead' windows, ie w_Window==NULL, they have been
    close'd but must hang around until we're sure all refs are dead.  */
-WIN *win_chain;
+Lisp_Window *win_chain;
 
 /* curr_win is the active window. When setting it's value curr_vw
    must be set to a view in the same window. */
-WIN *curr_win;
+Lisp_Window *curr_win;
 
 /* The default window position and dimensions. */
 static short def_dims[4] = { 0, 0, 80, 24 };
@@ -89,7 +89,7 @@ ATTRS is an alist with any of the following pairs:
 	(buffer . BUFFER)
 ::end:: */
 {
-    WIN *w;
+    Lisp_Window *w;
     repv tem, tx, font;
     short dims[4];
 
@@ -131,10 +131,10 @@ ATTRS is an alist with any of the following pairs:
     else
 	font = def_font_str;
 
-    w = rep_ALLOC_CELL(sizeof(WIN));
+    w = rep_ALLOC_CELL(sizeof(Lisp_Window));
     if(w != NULL)
     {
-	memset(w, 0, sizeof(WIN));
+	memset(w, 0, sizeof(Lisp_Window));
 	w->car = window_type;
 	w->font_name = rep_STRINGP(font) ? font : def_font_str;
 	if(sys_set_font(w))
@@ -146,7 +146,7 @@ ATTRS is an alist with any of the following pairs:
 		update_window_dimensions(w);
 		/* First the main view.. */
 		if(w->content != 0 && w->new_content != 0
-		   && make_view(NULL, w, VTX(tx), 0, FALSE))
+		   && make_view(NULL, w, VBUFFER(tx), 0, FALSE))
 		{
 		    /* ..then the minibuffer view. */
 		    if(make_view(NULL, w, NULL, 0, TRUE))
@@ -187,7 +187,7 @@ ATTRS is an alist with any of the following pairs:
 
 /* Close window W. */
 static void
-delete_window(WIN *w)
+delete_window(Lisp_Window *w)
 {
     Fcall_hook(Qdelete_window_hook, rep_LIST_1(rep_VAL(w)), Qnil);
     kill_all_views(w);
@@ -241,7 +241,7 @@ care of any unsaved files, hooks to run, etc.
 This function always returns nil.
 ::end:: */
 {
-    WIN *w = WINDOWP(win) ? VWIN(win) : curr_win;
+    Lisp_Window *w = WINDOWP(win) ? VWINDOW(win) : curr_win;
     if(sys_deleting_window_would_exit (w))
 	rep_call_lisp0(Fsymbol_value(Qsave_and_quit, Qt));
     else
@@ -250,7 +250,7 @@ This function always returns nil.
 }
 
 void
-update_window_dimensions(WIN *w)
+update_window_dimensions(Lisp_Window *w)
 {
     long new_width = w->pixel_width / w->font_width;
     long new_height = w->pixel_height / w->font_height;
@@ -279,8 +279,8 @@ Iconifies the current window.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    if(((VWIN(win)->car & WINFF_SLEEPING) == 0)
-       && sys_sleep_win(VWIN(win)))
+    if(((VWINDOW(win)->car & WINFF_SLEEPING) == 0)
+       && sys_sleep_win(VWINDOW(win)))
 	return(win);
     return(Qnil);
 }
@@ -294,7 +294,7 @@ Uniconifies the current window.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    if((VWIN(win)->car & WINFF_SLEEPING) && sys_unsleep_win(VWIN(win)))
+    if((VWINDOW(win)->car & WINFF_SLEEPING) && sys_unsleep_win(VWINDOW(win)))
 	return(win);
     return(Qnil);
 }
@@ -308,20 +308,20 @@ Cycles through the open windows forwards.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win->next);
-    while(VWIN(win) != curr_win)
+    while(VWINDOW(win) != curr_win)
     {
 	if(!win)
 	    win = rep_VAL(win_chain);
-	if(VWIN(win)->w_Window)
+	if(VWINDOW(win)->w_Window)
 	{
 	    if(!rep_NILP(activ))
 	    {
-		curr_win = VWIN(win);
-		sys_activate_win(VWIN(win));
+		curr_win = VWINDOW(win);
+		sys_activate_win(VWINDOW(win));
 	    }
 	    return(win);
 	}
-	win = rep_VAL(VWIN(win)->next);
+	win = rep_VAL(VWINDOW(win)->next);
     }
     return(rep_VAL(curr_win));
 }
@@ -329,7 +329,7 @@ Cycles through the open windows forwards.
 void
 messagen(char *title, int length)
 {
-    WIN *w = curr_win;
+    Lisp_Window *w = curr_win;
     if((w->car & WINFF_SLEEPING) == 0)
     {
 	if(w->message != NULL)
@@ -343,7 +343,7 @@ messagen(char *title, int length)
 void
 messagef(char *fmt, va_list args)
 {
-    WIN *w = curr_win;
+    Lisp_Window *w = curr_win;
     if((w->car & WINFF_SLEEPING) == 0)
     {
 	char fmtbuff[256];
@@ -364,7 +364,7 @@ messagef(char *fmt, va_list args)
 }
 
 void
-reset_message (WIN *w)
+reset_message (Lisp_Window *w)
 {
     w->car &= ~WINFF_MESSAGE;
 }
@@ -372,7 +372,7 @@ reset_message (WIN *w)
 bool
 remove_all_messages(bool from_idle_p)
 {
-    WIN *w;
+    Lisp_Window *w;
     bool success = FALSE;
     for(w = win_chain; w != 0; w = w->next)
     {
@@ -457,7 +457,7 @@ jade_message (enum rep_message fn, ...)
 	len = (int)va_arg(args, int);
 	if (curr_win->car & WINFF_MESSAGE)
 	{
-	    WIN *w = curr_win;
+	    Lisp_Window *w = curr_win;
 	    char *s = rep_realloc(w->message, w->message_length + len + 1);
 	    if(s != 0)
 	    {
@@ -502,7 +502,7 @@ Returns the name of the font being used in this window.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return(VWIN(win)->font_name);
+    return(VWINDOW(win)->font_name);
 }
 
 DEFUN("window-asleep-p", Fwindow_asleep_p, Swindow_asleep_p, (void), rep_Subr0) /*
@@ -557,10 +557,10 @@ of the window as well).
 ::end:: */
 {
     rep_DECLARE1(win, WINDOWP);
-    curr_win = VWIN(win);
+    curr_win = VWINDOW(win);
     curr_vw = curr_win->current_view;
     if(!rep_NILP(activ))
-	sys_activate_win(VWIN(win));
+	sys_activate_win(VWINDOW(win));
     return(rep_VAL(curr_win));
 }
 
@@ -575,7 +575,7 @@ under Intuition a pointer (integer) to the window structure.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return(rep_MAKE_LONG_INT((u_long)VWIN(win)->w_Window));
+    return(rep_MAKE_LONG_INT((u_long)VWINDOW(win)->w_Window));
 }
 
 DEFUN("font-dimensions", Ffont_dimensions, Sfont_dimensions,
@@ -588,8 +588,8 @@ Returns (WIDTH . HEIGHT) of the window's font (in pixels).
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return Fcons(rep_MAKE_INT((long)VWIN(win)->font_width),
-		 rep_MAKE_INT((long)VWIN(win)->font_height));
+    return Fcons(rep_MAKE_INT((long)VWINDOW(win)->font_width),
+		 rep_MAKE_INT((long)VWINDOW(win)->font_height));
 }
 
 DEFUN("window-dimensions", Fwindow_dimensions, Swindow_dimensions, (repv win), rep_Subr2) /*
@@ -602,8 +602,8 @@ the current window).
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return Fcons(rep_MAKE_INT(VWIN(win)->column_count),
-		    rep_MAKE_INT(VWIN(win)->row_count));
+    return Fcons(rep_MAKE_INT(VWINDOW(win)->column_count),
+		    rep_MAKE_INT(VWINDOW(win)->row_count));
 }
 
 DEFUN("window-list", Fwindow_list, Swindow_list, (void), rep_Subr0) /*
@@ -615,7 +615,7 @@ Return a list of all non-deleted windows.
 {
     repv head = Qnil;
     repv *ptr = &head;
-    WIN *w = win_chain;
+    Lisp_Window *w = win_chain;
     while(w != 0)
     {
 	if(w->w_Window)
@@ -636,12 +636,12 @@ Return a list of the views in WINDOW. The list will be ordered in top to
 bottom order, ending with the mini-buffer.
 ::end:: */
 {
-    VW *vw;
+    Lisp_View *vw;
     repv res = Qnil;
     repv *ptr = &res;
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    for(vw = VWIN(win)->view_list; vw != 0; vw = vw->next_view)
+    for(vw = VWINDOW(win)->view_list; vw != 0; vw = vw->next_view)
     {
 	if(!(*ptr = Fcons(rep_VAL(vw), Qnil)))
 	    return rep_NULL;
@@ -660,7 +660,7 @@ minibuffer view, whether it's active or not.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return rep_MAKE_INT(VWIN(win)->view_count);
+    return rep_MAKE_INT(VWINDOW(win)->view_count);
 }
 
 DEFUN("window-first-view", Fwindow_first_view, Swindow_first_view, (repv win), rep_Subr1) /*
@@ -672,7 +672,7 @@ Returns the first view in WINDOW.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return rep_VAL(VWIN(win)->view_list);
+    return rep_VAL(VWINDOW(win)->view_list);
 }
 
 DEFUN("windowp", Fwindowp, Swindowp, (repv arg), rep_Subr1) /*
@@ -699,16 +699,16 @@ the standard window system conventions.
     rep_DECLARE1(fontname, rep_STRINGP);
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    oldfont = VWIN(win)->font_name;
-    VWIN(win)->font_name = fontname;
-    if(sys_set_font(VWIN(win)))
+    oldfont = VWINDOW(win)->font_name;
+    VWINDOW(win)->font_name = fontname;
+    if(sys_set_font(VWINDOW(win)))
     {
-	VWIN(win)->car |= WINFF_FORCE_REFRESH;
+	VWINDOW(win)->car |= WINFF_FORCE_REFRESH;
 	return Qt;
     }
     else
     {
-	VWIN(win)->font_name = oldfont;
+	VWINDOW(win)->font_name = oldfont;
 	return Fsignal(Qerror, rep_list_2(rep_VAL(&no_font), fontname));
     }
 }
@@ -733,11 +733,11 @@ beep (void)
 static void
 window_sweep(void)
 {
-    WIN *w = win_chain;
+    Lisp_Window *w = win_chain;
     win_chain = NULL;
     while(w)
     {
-	WIN *next = w->next;
+	Lisp_Window *next = w->next;
 	if(rep_GC_CELL_MARKEDP(rep_VAL(w)))
 	{
 	    rep_GC_CLR_CELL(rep_VAL(w));
@@ -753,16 +753,16 @@ window_sweep(void)
 static void
 window_mark (repv val)
 {
-    rep_MARKVAL(VWIN(val)->font_name);
-    rep_MARKVAL(VWIN(val)->displayed_name);
-    rep_MARKVAL(rep_VAL(VWIN(val)->view_list));
+    rep_MARKVAL(VWINDOW(val)->font_name);
+    rep_MARKVAL(VWINDOW(val)->displayed_name);
+    rep_MARKVAL(rep_VAL(VWINDOW(val)->view_list));
 }
 
 static void
 window_mark_active (void)
 {
     /* Don't want any open windows mysteriously vanishing so,  */
-    WIN *win = win_chain;
+    Lisp_Window *win = win_chain;
     while(win != 0)
     {
 #ifdef WINDOW_NON_COLLECTABLE
@@ -783,7 +783,7 @@ static void
 window_prin(repv strm, repv win)
 {
     char buf[40];
-    if(VWIN(win)->w_Window)
+    if(VWINDOW(win)->w_Window)
     {
 #ifdef HAVE_SNPRINTF
 	snprintf(buf, sizeof(buf),
@@ -791,9 +791,9 @@ window_prin(repv strm, repv win)
 	sprintf(buf,
 #endif
 #if defined (HAVE_GTK) || defined (HAVE_MAC) || !defined (HAVE_X11)
-		"#<window %p", VWIN(win)->w_Window);
+		"#<window %p", VWINDOW(win)->w_Window);
 #else
-		"#<window %ld", VWIN(win)->w_Window);
+		"#<window %ld", VWINDOW(win)->w_Window);
 #endif
 	rep_stream_puts(strm, buf, -1, FALSE);
 	rep_stream_putc(strm, '>');
@@ -810,7 +810,7 @@ window_bind (repv win)
     else
     {
 	repv handle = rep_VAL(curr_win);
-	curr_win = VWIN(win);
+	curr_win = VWINDOW(win);
 	curr_vw = curr_win->current_view;
 	return handle;
     }
@@ -819,9 +819,9 @@ window_bind (repv win)
 static void
 window_unbind (repv handle)
 {
-    if (VWIN(handle)->w_Window != WINDOW_NIL)
+    if (VWINDOW(handle)->w_Window != WINDOW_NIL)
     {
-	curr_win = VWIN(handle);
+	curr_win = VWINDOW(handle);
 	curr_vw = curr_win->current_view;
     }
 }
@@ -875,7 +875,7 @@ windows_init(void)
 void
 windows_kill(void)
 {
-    WIN *w, *next;
+    Lisp_Window *w, *next;
     while(curr_win)
 	delete_window(curr_win);
     w = win_chain;

@@ -41,7 +41,7 @@
 #endif
 
 /* Global work variables for regexec(). */
-static TX      *regtx;		/* buffer */
+static Lisp_Buffer *regtx;		/* buffer */
 static Pos      reginput;	/* String-input pointer. */
 static char	regnocase;	/* Ignore case when string-matching. */
 static repv   *regstartp;	/* Pointer to startp array. */
@@ -49,7 +49,7 @@ static repv   *regendp;	/* Ditto for endp. */
 static int	regnest;
 
 /* Forwards. */
-static int	regtry(TX *tx, rep_regexp *, Pos *);
+static int	regtry(Lisp_Buffer *tx, rep_regexp *, Pos *);
 static int	regmatch(char *);
 static int	regrepeat(char *);
 static char    *regnext(char *);
@@ -88,7 +88,7 @@ extern char *regprop (char *);
 int
 regexec_tx(prog, tx, start, eflags)
     register rep_regexp *prog;
-    TX *tx;
+    Lisp_Buffer *tx;
     repv start;
     int eflags;
 {
@@ -223,7 +223,7 @@ regexec_tx(prog, tx, start, eflags)
 int
 regexec_reverse_tx(prog, tx, start, eflags)
     register rep_regexp *prog;
-    TX *tx;
+    Lisp_Buffer *tx;
     repv start;
     int eflags;
 {
@@ -398,7 +398,7 @@ regexec_reverse_tx(prog, tx, start, eflags)
 int
 regmatch_tx(prog, tx, start, eflags)
     register rep_regexp *prog;
-    TX *tx;
+    Lisp_Buffer *tx;
     repv start;
     int eflags;
 {
@@ -415,7 +415,7 @@ regmatch_tx(prog, tx, start, eflags)
  */
 static int			/* 0 failure, 1 success */
 regtry(tx, prog, matchpos)
-    TX		   *tx;
+    Lisp_Buffer *tx;
     rep_regexp	   *prog;
     Pos            *matchpos;
 {

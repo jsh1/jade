@@ -432,7 +432,7 @@ static int extent_cache_misses, extent_cache_hits, extent_cache_near_misses;
 Lisp_Extent *
 find_extent(Lisp_Extent *root, Pos *pos)
 {
-    TX *tx = root->tx;
+    Lisp_Buffer *tx = root->tx;
     int i, out = -1, oldest = 0;
     u_long oldest_lru = ULONG_MAX;
     static u_long lru_time;
@@ -547,7 +547,7 @@ map_section_extents(void (*map_func)(Lisp_Extent *x, void *data),
 
 /* Notify the cache that some extents in TX were changed. */
 static inline void
-invalidate_extent_cache(TX *tx)
+invalidate_extent_cache(Lisp_Buffer *tx)
 {
     int i;
     for(i = 0; i < EXTENT_CACHE_SIZE; i++)
@@ -556,7 +556,7 @@ invalidate_extent_cache(TX *tx)
 
 /* Create the all-encompassing root extent for buffer TX. */
 void
-make_global_extent(TX *tx)
+make_global_extent(Lisp_Buffer *tx)
 {
     tx->global_extent = alloc_extent(0);
     tx->global_extent->tx = tx;
@@ -565,7 +565,7 @@ make_global_extent(TX *tx)
 
 /* After loading a file into TX, call this. */
 void
-reset_global_extent(TX *tx)
+reset_global_extent(Lisp_Buffer *tx)
 {
     Lisp_Extent *e = tx->global_extent;
     unlink_extent_recursively(e);
@@ -594,7 +594,7 @@ will work reliably however.
 ::end:: */
 {
     Lisp_Extent *extent;
-    TX *tx = curr_vw->tx;
+    Lisp_Buffer *tx = curr_vw->tx;
     rep_DECLARE1(start, POSP);
     rep_DECLARE2(end, POSP);
 
@@ -694,9 +694,9 @@ position of the current buffer).
 	    pos = curr_vw->cursor_pos;
     }
     if(!POSP(pos))
-	pos = get_tx_cursor(VTX(tx));
+	pos = get_tx_cursor(VBUFFER(tx));
     COPY_VPOS(&ppos, pos);
-    e = find_extent(VTX(tx)->global_extent, &ppos);
+    e = find_extent(VBUFFER(tx)->global_extent, &ppos);
 
     return (e != 0) ? rep_VAL(e) : Qnil;
 }
@@ -800,7 +800,7 @@ parent.
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    return rep_VAL(VTX(tx)->global_extent);
+    return rep_VAL(VBUFFER(tx)->global_extent);
 }
 
 DEFUN("extent-plist", Fextent_plist, Sextent_plist, (repv extent), rep_Subr1) /*
@@ -1095,7 +1095,7 @@ buffer_set_if_bound(repv symbol, repv value)
 static repv
 set_local_symbol (repv sym, repv value)
 {
-    TX *tx = curr_vw->tx;
+    Lisp_Buffer *tx = curr_vw->tx;
     if(buffer_set_if_bound(sym, value))
 	return value;
     else if(rep_SYM(sym)->car & rep_SF_LOCAL)
@@ -1121,7 +1121,7 @@ Returns SYMBOL.
 ::end:: */
 {
     repv slot;
-    TX *tx = curr_vw->tx;
+    Lisp_Buffer *tx = curr_vw->tx;
     rep_DECLARE1(sym, rep_SYMBOLP);
     if (!(rep_SYM(sym)->car & rep_SF_SPECIAL))
 	Fmake_variable_special (sym);
@@ -1166,7 +1166,7 @@ for each minor extent.)
 {
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    return VTX(tx)->global_extent->locals;
+    return VBUFFER(tx)->global_extent->locals;
 }
 
 DEFUN("kill-all-local-variables", Fkill_all_local_variables,
@@ -1181,8 +1181,8 @@ permanent (i.e. their `permanent-local' property is unset or non-nil.)
     repv list;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    list = VTX(tx)->global_extent->locals;
-    VTX(tx)->global_extent->locals = Qnil;
+    list = VBUFFER(tx)->global_extent->locals;
+    VBUFFER(tx)->global_extent->locals = Qnil;
     while(rep_CONSP(list))
     {
 	if(rep_NILP(Fget(rep_CAR(rep_CAR(list)), Qpermanent_local)))
@@ -1190,12 +1190,12 @@ permanent (i.e. their `permanent-local' property is unset or non-nil.)
 	else
 	{
 	    repv next = rep_CDR(list);
-	    rep_CDR(list) = VTX(tx)->global_extent->locals;
-	    VTX(tx)->global_extent->locals = list;
+	    rep_CDR(list) = VBUFFER(tx)->global_extent->locals;
+	    VBUFFER(tx)->global_extent->locals = list;
 	    list = next;
 	}
     }
-    tx_kill_local_variables(VTX(tx));
+    tx_kill_local_variables(VBUFFER(tx));
     return tx;
 }
 
@@ -1211,15 +1211,15 @@ Remove the buffer-local value of the symbol SYMBOL in the specified buffer.
     rep_DECLARE1(sym, rep_SYMBOLP);
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    list = VTX(tx)->global_extent->locals;
-    VTX(tx)->global_extent->locals = Qnil;
+    list = VBUFFER(tx)->global_extent->locals;
+    VBUFFER(tx)->global_extent->locals = Qnil;
     while(rep_CONSP(list))
     {
 	repv nxt = rep_CDR(list);
 	if(rep_CAR(list) != sym)
 	{
-	    rep_CDR(list) = VTX(tx)->global_extent->locals;
-	    VTX(tx)->global_extent->locals = list;
+	    rep_CDR(list) = VBUFFER(tx)->global_extent->locals;
+	    VBUFFER(tx)->global_extent->locals = list;
 	}
 	list = nxt;
     }
@@ -1435,7 +1435,7 @@ adjust_extents_join_rows(Lisp_Extent *x, long col, long row)
 /* Handling the visible-extents list. */
 
 void
-start_visible_extent (VW *vw, Lisp_Extent *e, long start_col, long start_row)
+start_visible_extent (Lisp_View *vw, Lisp_Extent *e, long start_col, long start_row)
 {
     struct visible_extent *x;
     e = find_first_frag (e);
@@ -1466,7 +1466,7 @@ start_visible_extent (VW *vw, Lisp_Extent *e, long start_col, long start_row)
 }
 
 void
-end_visible_extent (VW *vw, Lisp_Extent *e, long end_col, long end_row)
+end_visible_extent (Lisp_View *vw, Lisp_Extent *e, long end_col, long end_row)
 {
     struct visible_extent *x;
     e = find_first_frag (e);
@@ -1483,7 +1483,7 @@ end_visible_extent (VW *vw, Lisp_Extent *e, long end_col, long end_row)
 }
 
 void
-free_visible_extents (WIN *w)
+free_visible_extents (Lisp_Window *w)
 {
     struct visible_extent *x = w->visible_extents;
     w->visible_extents = 0;
@@ -1496,7 +1496,7 @@ free_visible_extents (WIN *w)
 }
 
 void
-map_visible_extents (WIN *w, long col, long row,
+map_visible_extents (Lisp_Window *w, long col, long row,
 		     void (*fun)(struct visible_extent *x))
 {
     struct visible_extent *x = w->visible_extents;
@@ -1520,19 +1520,19 @@ map_visible_extents (WIN *w, long col, long row,
 static void
 update_pointer_extent_callback (struct visible_extent *x)
 {
-    VW *vw = x->vw;
+    Lisp_View *vw = x->vw;
     if (vw->pointer_extents_count < MAX_POINTER_EXTENTS)
 	vw->pointer_extents[vw->pointer_extents_count++] = x->extent;
 }
 
 /* Return true if the display should be redrawn. */
 bool
-update_pointer_extent (WIN *w, long mouse_col, long mouse_row)
+update_pointer_extent (Lisp_Window *w, long mouse_col, long mouse_row)
 {
     /* XXX remove this GNU CC dependency */
     Lisp_Extent *old[w->view_count][MAX_POINTER_EXTENTS];
     int old_num[w->view_count];
-    VW *vw;
+    Lisp_View *vw;
     int i;
 
     for (i = 0, vw = w->view_list; vw != 0; i++, vw = vw->next_view)
@@ -1559,10 +1559,10 @@ update_pointer_extent (WIN *w, long mouse_col, long mouse_row)
 }
 
 void
-mark_visible_extents (WIN *w)
+mark_visible_extents (Lisp_Window *w)
 {
     struct visible_extent *x = w->visible_extents;
-    VW *vw;
+    Lisp_View *vw;
     while (x != 0)
     {
 	rep_MARKVAL (rep_VAL (x->extent));

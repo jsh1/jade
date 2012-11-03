@@ -141,7 +141,7 @@ may be one of these symbols:
 	Boolean attributes.
 ::end:: */
 {
-    WIN *w;
+    Lisp_Window *w;
     rep_DECLARE1(face, FACEP);
 
     if(attr == Qforeground || attr == Qbackground)
@@ -251,7 +251,7 @@ The face used to color the mouse cursor.
 /* rendering with faces */
 
 static int
-get_merged_face(WIN *w, u_long car,
+get_merged_face(Lisp_Window *w, u_long car,
 		Lisp_Color *background, Lisp_Color *foreground)
 {
     int id, empty = -1;
@@ -304,9 +304,9 @@ static void union_face (struct merge_closure *c, Lisp_Face *face)
 /* Return the id of a face in W->merged_faces that expresses the
    attributes of the positions within E. */
 int
-merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
+merge_faces(Lisp_View *vw, Lisp_Extent *e, int in_block, int on_cursor)
 {
-    WIN *w = vw->window;
+    Lisp_Window *w = vw->window;
     struct merge_closure c;
 
     Lisp_Extent *x;
@@ -377,7 +377,7 @@ merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
 }
 
 int
-get_face_id(WIN *w, Lisp_Face *f)
+get_face_id(Lisp_Window *w, Lisp_Face *f)
 {
     long car = f->car;
     if (invert_all_faces)
@@ -388,7 +388,7 @@ get_face_id(WIN *w, Lisp_Face *f)
 }
 
 static void
-mark_glyph_buf_faces(WIN *w, glyph_buf *g)
+mark_glyph_buf_faces(Lisp_Window *w, glyph_buf *g)
 {
     int row, col;
     int id;
@@ -420,7 +420,7 @@ mark_glyph_buf_faces(WIN *w, glyph_buf *g)
 }
 
 void
-mark_merged_faces(WIN *w)
+mark_merged_faces(Lisp_Window *w)
 {
     mark_glyph_buf_faces(w, w->content);
     mark_glyph_buf_faces(w, w->new_content);

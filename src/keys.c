@@ -153,7 +153,7 @@ lookup_binding(u_long code, u_long mods, bool (*callback)(repv key))
 	{
 	    /* First scan the extents under the mouse for mouse-keymap
 	       properties.. */
-	    VW *vw;
+	    Lisp_View *vw;
 	    for (vw = curr_win->view_list;
 		 k == 0 && vw != 0;
 		 vw = vw->next_view)
@@ -295,7 +295,7 @@ inner_eval_input_event(repv data_)
     }
     else
     {
-	VW *vw = curr_vw;
+	Lisp_View *vw = curr_vw;
 	repv cmd, orig_next_keymap_path = next_keymap_path;
 	if(pending_meta)
 	{

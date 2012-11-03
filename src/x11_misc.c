@@ -24,7 +24,7 @@
 #include <sys/stat.h>
 
 void
-sys_beep(WIN *w)
+sys_beep(Lisp_Window *w)
 {
     XBell(WINDOW_XDPY(w)->display, 0);
 }
@@ -210,17 +210,17 @@ If the selection currently has no value, nil is returned.
 		res = selection_info[selno].data;
 	    else if(selection_info[selno].type == Sel_area)
 	    {
-		if(check_section(VTX(selection_info[selno].data),
+		if(check_section(VBUFFER(selection_info[selno].data),
 				 &selection_info[selno].start,
 				 &selection_info[selno].end))
 		{
-		    long tlen = section_length(VTX(selection_info[selno].data),
+		    long tlen = section_length(VBUFFER(selection_info[selno].data),
 					       selection_info[selno].start,
 					       selection_info[selno].end);
 		    res = rep_make_string(tlen + 1);
 		    if(res)
 		    {
-			copy_section(VTX(selection_info[selno].data),
+			copy_section(VBUFFER(selection_info[selno].data),
 				     selection_info[selno].start,
 				     selection_info[selno].end, rep_STR(res));
 			rep_STR(res)[tlen] = 0;
@@ -314,17 +314,17 @@ x11_convert_selection(XSelectionRequestEvent *ev)
 	}
 	else if(selection_info[selno].type == Sel_area)
 	{
-	    if(check_section(VTX(selection_info[selno].data),
+	    if(check_section(VBUFFER(selection_info[selno].data),
 			     &selection_info[selno].start,
 			     &selection_info[selno].end))
 	    {
-		long tlen = section_length(VTX(selection_info[selno].data),
+		long tlen = section_length(VBUFFER(selection_info[selno].data),
 					   selection_info[selno].start,
 					   selection_info[selno].end);
 		char *string = rep_alloc(tlen + 1);
 		if(string)
 		{
-		    copy_section(VTX(selection_info[selno].data),
+		    copy_section(VBUFFER(selection_info[selno].data),
 				 selection_info[selno].start,
 				 selection_info[selno].end, string);
 		    string[tlen] = 0;
@@ -355,7 +355,7 @@ x11_lose_selection(XSelectionClearEvent *ev)
 }
 
 void
-x11_window_lose_selections(WIN *w)
+x11_window_lose_selections(Lisp_Window *w)
 {
     int i;
     for(i = 0; i < 2; i++)
@@ -411,7 +411,7 @@ An integer identifying the X cursor to use for editor windows. See
     if (rep_INTP(arg) && rep_INT(arg) != x11_cursor_shape)
     {
 	struct x11_display *dpy = x11_display_list;
-	WIN *win = win_chain;
+	Lisp_Window *win = win_chain;
 	x11_cursor_shape = rep_INT(arg);
 	while (dpy != 0)
 	{

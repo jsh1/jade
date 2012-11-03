@@ -36,7 +36,7 @@ Set the cursor position in the current window to the character position
 POSITION.
 ::end:: */
 {
-    VW *vw = curr_vw;
+    Lisp_View *vw = curr_vw;
     rep_DECLARE1(pos, POSP);
     if(check_line(vw->tx, pos))
     {
@@ -54,7 +54,7 @@ goto-glyph POSITION
 Set the cursor position in the current window to the glyph position POSITION.
 ::end:: */
 {
-    VW *vw = curr_vw;
+    Lisp_View *vw = curr_vw;
     rep_DECLARE1(pos, POSP);
     if(check_line(vw->tx, pos))
     {
@@ -217,8 +217,8 @@ of the buffer's restriction.
     if(!rep_NILP(irp))
     {
 	long x, y;
-	y = VTX(tx)->line_count - 1;
-	x = VTX(tx)->lines[y].ln_Strlen - 1;
+	y = VBUFFER(tx)->line_count - 1;
+	x = VBUFFER(tx)->lines[y].ln_Strlen - 1;
 	return make_pos(x, y);
     }
     else
@@ -253,9 +253,9 @@ the cursor).
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VTX(tx));
-    if(VROW(pos) < VTX(tx)->line_count)
-	return make_pos(VTX(tx)->lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
+	pos = get_tx_cursor(VBUFFER(tx));
+    if(VROW(pos) < VBUFFER(tx)->line_count)
+	return make_pos(VBUFFER(tx)->lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
     else
 	return Qnil;
 }
@@ -314,18 +314,18 @@ beginning or the end of the buffer is passed, nil is returned.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VTX(tx));
+	pos = get_tx_cursor(VBUFFER(tx));
     else
     {
-	if(!check_pos(VTX(tx), pos))
+	if(!check_pos(VBUFFER(tx), pos))
 	    return rep_NULL;
     }
     dist = rep_INTP(count) ? rep_INT(count) : 1;
     if(dist == 0)
 	return pos;
     COPY_VPOS(&tem, pos);
-    if((dist > 0 && forward_char(dist, VTX(tx), &tem))
-       || backward_char(-dist, VTX(tx), &tem))
+    if((dist > 0 && forward_char(dist, VBUFFER(tx), &tem))
+       || backward_char(-dist, VBUFFER(tx), &tem))
 	return COPY_POS(&tem);
     else
 	return Qnil;
@@ -342,7 +342,7 @@ undefined; negative values move towards the left hand side of the screen.
 ::end:: */
 {
     int tabs = rep_INTP(num) ? rep_INT(num) : 1;
-    VW *vw = curr_vw;
+    Lisp_View *vw = curr_vw;
     int tabsize = rep_INTP(size) ? rep_INT(size) : vw->tx->tab_size;
     long col;
     if(!POSP(pos))
@@ -372,7 +372,7 @@ DEFSTRING(no_brac, "No matching bracket");
 DEFSTRING(no_open_brac, "No opening bracket");
 
 static int
-find_matching_bracket(Pos *pos, TX *tx, char esc)
+find_matching_bracket(Pos *pos, Lisp_Buffer *tx, char esc)
 {
 #define NUM_BRAC_TYPES 10
     static char bracs[] =
@@ -489,14 +489,14 @@ Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VTX(tx));
+	pos = get_tx_cursor(VBUFFER(tx));
     else
     {
-	if(!check_pos(VTX(tx), pos))
+	if(!check_pos(VBUFFER(tx), pos))
 	    return rep_NULL;
     }
     COPY_VPOS(&tem, pos);
-    if(find_matching_bracket(&tem, VTX(tx), esc_char))
+    if(find_matching_bracket(&tem, VBUFFER(tx), esc_char))
 	return COPY_POS(&tem);
     return(Qnil);
 }

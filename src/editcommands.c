@@ -84,10 +84,10 @@ character after the end of the inserted text.
     if(!BUFFERP(buff))
 	buff = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VTX(buff));
-    if(pad_pos(VTX(buff), pos))
+	pos = get_tx_cursor(VBUFFER(buff));
+    if(pad_pos(VBUFFER(buff), pos))
     {
-	pos = insert_string(VTX(buff), rep_STR(string), rep_STRING_LEN(string), pos);
+	pos = insert_string(VBUFFER(buff), rep_STR(string), rep_STRING_LEN(string), pos);
 	if(pos != rep_NULL)
 	    return pos;
     }
@@ -105,10 +105,10 @@ Deletes from START-POS up to (but not including) END-POS.
     rep_DECLARE2(end, POSP);
     if(!BUFFERP(buff))
 	buff = rep_VAL(curr_vw->tx);
-    if(check_section(VTX(buff), &start, &end)
-       && !read_only_section(VTX(buff), start, end))
+    if(check_section(VBUFFER(buff), &start, &end)
+       && !read_only_section(VBUFFER(buff), start, end))
     {
-	delete_section(VTX(buff), start, end);
+	delete_section(VBUFFER(buff), start, end);
 	return start;
     }
     return(Qnil);
@@ -125,13 +125,13 @@ Returns the string from START-POS up to END-POS.
     rep_DECLARE2(end, POSP);
     if(!BUFFERP(buff))
 	buff = rep_VAL(curr_vw->tx);
-    if(check_section(VTX(buff), &start, &end))
+    if(check_section(VBUFFER(buff), &start, &end))
     {
-	long tlen = section_length(VTX(buff), start, end) + 1;
+	long tlen = section_length(VBUFFER(buff), start, end) + 1;
 	repv str = rep_make_string(tlen);
 	if(str)
 	{
-	    copy_section(VTX(buff), start, end, rep_STR(str));
+	    copy_section(VBUFFER(buff), start, end, rep_STR(str));
 	    rep_STR(str)[tlen - 1] = 0;
 	    return(str);
 	}
@@ -151,14 +151,14 @@ END-POS) is deleted from the file after being duplicated.
     rep_DECLARE2(end, POSP);
     if(!BUFFERP(buff))
 	buff = rep_VAL(curr_vw->tx);
-    if(check_section(VTX(buff), &start, &end)
-       && !read_only_section(VTX(buff), start, end))
+    if(check_section(VBUFFER(buff), &start, &end)
+       && !read_only_section(VBUFFER(buff), start, end))
     {
 	/* Only one copy is made. */
-	repv str = undo_push_deletion(VTX(buff), start, end);
+	repv str = undo_push_deletion(VBUFFER(buff), start, end);
 	if(str)
 	{
-	    delete_section(VTX(buff), start, end);
+	    delete_section(VBUFFER(buff), start, end);
 	    return(str);
 	}
     }
@@ -170,7 +170,7 @@ DEFUN_INT("block-toggle", Fblock_toggle, Sblock_toggle, (void), rep_Subr0, "") /
 block-toggle
 ::end:: */
 {
-    VW *vw = curr_vw;
+    Lisp_View *vw = curr_vw;
     switch(vw->block_state)
     {
 	case 0:
@@ -203,7 +203,7 @@ Always returns the position of the block-start as it is, if POS is given
 it is used as the new position of the start of the block.
 ::end:: */
 {
-    VW *vw = curr_vw;
+    Lisp_View *vw = curr_vw;
     repv res;
     if(!vw->block_state || (vw->block_state == 1))
 	res = vw->block_start;
@@ -245,7 +245,7 @@ Always returns the position of the block-end as it is, if POS is given
 it is used as the new position of the end of the block.
 ::end:: */
 {
-    VW *vw = curr_vw;
+    Lisp_View *vw = curr_vw;
     repv res;
     if(!vw->block_state || (vw->block_state == 2))
 	res = vw->block_end;
@@ -286,7 +286,7 @@ block-kill
 Unmarks the block.
 ::end:: */
 {
-    VW *vw = curr_vw;
+    Lisp_View *vw = curr_vw;
     if(vw->block_state == 0)
     {
 	vw->block_state = -1;
@@ -323,19 +323,19 @@ unchanged.
     rep_DECLARE1(start, POSP);
     rep_DECLARE2(end, POSP);
     rep_DECLARE3(table, rep_STRINGP);
-    if(check_section(VTX(tx), &start, &end)
-       && !read_only_section(VTX(tx), start, end))
+    if(check_section(VBUFFER(tx), &start, &end)
+       && !read_only_section(VBUFFER(tx), start, end))
     {
 	long linenum = VROW(start), col;
 	int tablen = rep_STRING_LEN(table);
 	register u_char *str;
-	undo_record_modification(VTX(tx), start, end);
-	flag_modification(VTX(tx), start, end);
+	undo_record_modification(VBUFFER(tx), start, end);
+	flag_modification(VBUFFER(tx), start, end);
 	while(linenum < VROW(end))
 	{
-	    int llen = VTX(tx)->lines[linenum].ln_Strlen - 1;
+	    int llen = VBUFFER(tx)->lines[linenum].ln_Strlen - 1;
 	    col = (linenum == VROW(start) ? VCOL(start) : 0);
-	    str = (u_char *)VTX(tx)->lines[linenum].ln_Line + col;
+	    str = (u_char *)VBUFFER(tx)->lines[linenum].ln_Line + col;
 	    while(col++ < llen)
 	    {
 		register u_char c = *str;
@@ -344,7 +344,7 @@ unchanged.
 	    linenum++;
 	}
 	col = (linenum == VROW(start) ? VCOL(start) : 0);
-	str = (u_char *)VTX(tx)->lines[linenum].ln_Line + col;
+	str = (u_char *)VBUFFER(tx)->lines[linenum].ln_Line + col;
 	while(col++ < VCOL(end))
 	{
 	    register u_char c = *str;
@@ -366,20 +366,20 @@ character exists at that position, nil is returned.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VTX(tx));
-    if(!check_line(VTX(tx), pos))
+	pos = get_tx_cursor(VBUFFER(tx));
+    if(!check_line(VBUFFER(tx), pos))
 	return(Qnil);
-    if(VCOL(pos) >= VTX(tx)->lines[VROW(pos)].ln_Strlen)
+    if(VCOL(pos) >= VBUFFER(tx)->lines[VROW(pos)].ln_Strlen)
 	return(Qnil);
-    else if(VCOL(pos) == VTX(tx)->lines[VROW(pos)].ln_Strlen - 1)
+    else if(VCOL(pos) == VBUFFER(tx)->lines[VROW(pos)].ln_Strlen - 1)
     {
-	if(VROW(pos) == VTX(tx)->logical_end - 1)
+	if(VROW(pos) == VBUFFER(tx)->logical_end - 1)
 	    return(Qnil);
 	else
 	    return(rep_MAKE_INT('\n'));
     }
     else
-	return(rep_MAKE_INT(VTX(tx)->lines[VROW(pos)].ln_Line[VCOL(pos)]));
+	return(rep_MAKE_INT(VBUFFER(tx)->lines[VROW(pos)].ln_Line[VCOL(pos)]));
 }
 
 DEFUN_INT("set-char", Fset_char, Sset_char, (repv ch, repv pos, repv tx), rep_Subr3, "cCharacter:") /*
@@ -395,15 +395,15 @@ Sets the character at position POS in BUFFER to CHARACTER.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VTX(tx));
-    if(!check_line(VTX(tx), pos))
+	pos = get_tx_cursor(VBUFFER(tx));
+    if(!check_line(VBUFFER(tx), pos))
 	return(Qnil);
     end = make_pos(VCOL(pos) + 1, VROW(pos));
-    if(pad_pos(VTX(tx), end))
+    if(pad_pos(VBUFFER(tx), end))
     {
-	undo_record_modification(VTX(tx), pos, end);
-	VTX(tx)->lines[VROW(pos)].ln_Line[VCOL(pos)] = rep_INT(ch);
-	flag_modification(VTX(tx), pos, end);
+	undo_record_modification(VBUFFER(tx), pos, end);
+	VBUFFER(tx)->lines[VROW(pos)].ln_Line[VCOL(pos)] = rep_INT(ch);
+	flag_modification(VBUFFER(tx), pos, end);
 	return(ch);
     }
     return rep_NULL;
@@ -442,14 +442,14 @@ empty, ie, blank or only containing spaces.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VTX(tx));
-    if(check_line(VTX(tx), pos))
+	pos = get_tx_cursor(VBUFFER(tx));
+    if(check_line(VBUFFER(tx), pos))
     {
-	if(VTX(tx)->lines[VROW(pos)].ln_Strlen == 1)
+	if(VBUFFER(tx)->lines[VROW(pos)].ln_Strlen == 1)
 	    return(Qt);
 	else
 	{
-	    char *s = VTX(tx)->lines[VROW(pos)].ln_Line;
+	    char *s = VBUFFER(tx)->lines[VROW(pos)].ln_Line;
 	    while(*s && isspace(*s))
 		s++;
 	    if(!(*s))
@@ -469,19 +469,19 @@ Returns the glyph position of the first non-space character in the line
 pointed to by POS (or the cursor), in BUFFER.
 ::end:: */
 {
-    VW *vw = curr_vw;
+    Lisp_View *vw = curr_vw;
     long len;
     char *line;
     if(!BUFFERP(tx))
 	tx = rep_VAL(vw->tx);
-    if(POSP(pos) && check_line(VTX(tx), pos))
+    if(POSP(pos) && check_line(VBUFFER(tx), pos))
 	;
     else
 	pos = vw->cursor_pos;
-    line = VTX(tx)->lines[VROW(pos)].ln_Line;
+    line = VBUFFER(tx)->lines[VROW(pos)].ln_Line;
     for(len = 0; *line && isspace(*line); len++, line++)
 	;
-    len = glyph_col(VTX(tx), len, VROW(pos));
+    len = glyph_col(VBUFFER(tx), len, VROW(pos));
     return make_pos(len, VROW(pos));
 }
 
@@ -500,20 +500,20 @@ If ONLY-SPACES in non-nil no tab characters are used.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     /* FIXME: should check if the region is read-only. */
-    if(!read_only_pos(VTX(tx), indpos) && check_line(VTX(tx), indpos))
+    if(!read_only_pos(VBUFFER(tx), indpos) && check_line(VBUFFER(tx), indpos))
     {
 	long row = VROW(indpos);
-	char *s = VTX(tx)->lines[row].ln_Line;
+	char *s = VBUFFER(tx)->lines[row].ln_Line;
 	repv pos = indpos;
 	long oldind, diff;
 	long tabs, spaces;
 	while(*s && isspace(*s))
 	    s++;
-	oldind = s - VTX(tx)->lines[row].ln_Line;
+	oldind = s - VBUFFER(tx)->lines[row].ln_Line;
 	if(rep_NILP(spaces_p))
 	{
-	    tabs = VCOL(pos) / VTX(tx)->tab_size;
-	    spaces = VCOL(pos) % VTX(tx)->tab_size;
+	    tabs = VCOL(pos) / VBUFFER(tx)->tab_size;
+	    spaces = VCOL(pos) % VBUFFER(tx)->tab_size;
 	}
 	else
 	{
@@ -525,43 +525,43 @@ If ONLY-SPACES in non-nil no tab characters are used.
 	if(diff > 0)
 	{
 	    repv end = make_pos(diff, VROW(pos));
-	    undo_record_deletion(VTX(tx), pos, end);
-	    delete_chars(VTX(tx), VCOL(pos), VROW(pos), diff);
-	    flag_deletion(VTX(tx), pos, end);
+	    undo_record_deletion(VBUFFER(tx), pos, end);
+	    delete_chars(VBUFFER(tx), VCOL(pos), VROW(pos), diff);
+	    flag_deletion(VBUFFER(tx), pos, end);
 	    end = make_pos(tabs + spaces, VROW(end));
-	    undo_record_modification(VTX(tx), pos, end);
-	    memset(VTX(tx)->lines[row].ln_Line, '\t', tabs);
-	    memset(VTX(tx)->lines[row].ln_Line + tabs, ' ', spaces);
-	    flag_modification(VTX(tx), pos, end);
+	    undo_record_modification(VBUFFER(tx), pos, end);
+	    memset(VBUFFER(tx)->lines[row].ln_Line, '\t', tabs);
+	    memset(VBUFFER(tx)->lines[row].ln_Line + tabs, ' ', spaces);
+	    flag_modification(VBUFFER(tx), pos, end);
 	}
 	else if(diff < 0)
 	{
 	    repv end;
 	    diff = -diff;
 	    end = make_pos(diff, VROW(pos));
-	    insert_gap(VTX(tx), diff, VCOL(pos), VROW(pos));
-	    undo_record_insertion(VTX(tx), pos, end);
-	    flag_insertion(VTX(tx), pos, end);
+	    insert_gap(VBUFFER(tx), diff, VCOL(pos), VROW(pos));
+	    undo_record_insertion(VBUFFER(tx), pos, end);
+	    flag_insertion(VBUFFER(tx), pos, end);
 	    pos = make_pos(diff, VROW(pos));
 	    end = make_pos(tabs + spaces, VROW(end));
-	    undo_record_modification(VTX(tx), pos, end);
-	    memset(VTX(tx)->lines[row].ln_Line, '\t', tabs);
-	    memset(VTX(tx)->lines[row].ln_Line + tabs, ' ', spaces);
-	    flag_modification(VTX(tx), pos, end);
+	    undo_record_modification(VBUFFER(tx), pos, end);
+	    memset(VBUFFER(tx)->lines[row].ln_Line, '\t', tabs);
+	    memset(VBUFFER(tx)->lines[row].ln_Line + tabs, ' ', spaces);
+	    flag_modification(VBUFFER(tx), pos, end);
 	}
 	else
 	{
-	    char *s = VTX(tx)->lines[row].ln_Line;
+	    char *s = VBUFFER(tx)->lines[row].ln_Line;
 	    long i;
 	    repv end = make_pos(tabs + spaces, VROW(pos));
 	    for(i = 0; i < tabs; i++)
 	    {
 		if(*s++ != '\t')
 		{
-		    undo_record_modification(VTX(tx), pos, end);
-		    memset(VTX(tx)->lines[row].ln_Line, '\t', tabs);
-		    memset(VTX(tx)->lines[row].ln_Line + tabs, ' ', spaces);
-		    flag_modification(VTX(tx), pos, end);
+		    undo_record_modification(VBUFFER(tx), pos, end);
+		    memset(VBUFFER(tx)->lines[row].ln_Line, '\t', tabs);
+		    memset(VBUFFER(tx)->lines[row].ln_Line + tabs, ' ', spaces);
+		    flag_modification(VBUFFER(tx), pos, end);
 		    return indpos;
 		}
 	    }
@@ -570,9 +570,9 @@ If ONLY-SPACES in non-nil no tab characters are used.
 		if(*s++ != ' ')
 		{
 		    pos = make_pos(tabs, VROW(pos));
-		    undo_record_modification(VTX(tx), pos, end);
-		    memset(VTX(tx)->lines[row].ln_Line + tabs, ' ', spaces);
-		    flag_modification(VTX(tx), pos, end);
+		    undo_record_modification(VBUFFER(tx), pos, end);
+		    memset(VBUFFER(tx)->lines[row].ln_Line + tabs, ' ', spaces);
+		    flag_modification(VBUFFER(tx), pos, end);
 		    return indpos;
 		}
 	    }
@@ -592,8 +592,8 @@ If ONLY-SPACES is non-nil no tabs are used.
 COLUMN counts from zero.
 ::end:: */
 {
-    VW *vw = curr_vw;
-    TX *tx = vw->tx;
+    Lisp_View *vw = curr_vw;
+    Lisp_Buffer *tx = vw->tx;
     rep_DECLARE1(col, rep_INTP);
     if(pad_cursor(vw))
     {
@@ -648,11 +648,11 @@ any restriction on the buffer.
     Funrestrict_buffer(tx);
     start = make_pos(0, 0);
     end = Fend_of_buffer(rep_VAL(tx), Qt);
-    undo_record_deletion(VTX(tx), start, end);
-    if(clear_line_list(VTX(tx)))
+    undo_record_deletion(VBUFFER(tx), start, end);
+    if(clear_line_list(VBUFFER(tx)))
     {
-	reset_global_extent(VTX(tx));
-	reset_all_views(VTX(tx));
+	reset_global_extent(VBUFFER(tx));
+	reset_all_views(VBUFFER(tx));
 	return tx;
     }
     return Qnil;
@@ -670,12 +670,12 @@ is from the beginning of the buffer.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VTX(tx));
-    if(check_pos(VTX(tx), pos))
+	pos = get_tx_cursor(VBUFFER(tx));
+    if(check_pos(VBUFFER(tx), pos))
     {
 	offset = 0;
 	for(line_num = 0; line_num < VROW(pos); line_num++)
-	    offset += VTX(tx)->lines[line_num].ln_Strlen;
+	    offset += VBUFFER(tx)->lines[line_num].ln_Strlen;
 	offset += VCOL(pos);
 	return rep_MAKE_INT(offset);
     }
@@ -697,8 +697,8 @@ Returns the position which is OFFSET characters from the start of the buffer.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     row = 0;
-    while(offset >= VTX(tx)->lines[row].ln_Strlen)
-	offset -= VTX(tx)->lines[row++].ln_Strlen;
+    while(offset >= VBUFFER(tx)->lines[row].ln_Strlen)
+	offset -= VBUFFER(tx)->lines[row++].ln_Strlen;
     col = offset;
     return make_pos(col, row);
 }

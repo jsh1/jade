@@ -26,7 +26,7 @@
 # include <memory.h>
 #endif
 
-static long line_glyph_length(TX *tx, long line);
+static long line_glyph_length(Lisp_Buffer *tx, long line);
 
 DEFSYM(glyph_table, "glyph-table");
 
@@ -129,7 +129,7 @@ static glyph_table_t *gt_chain = &default_glyph_table;
 
 typedef struct {
     u_long line;			/* line number */
-    TX *tx;				/* buffer */
+    Lisp_Buffer *tx;				/* buffer */
     u_long glyphs;			/* number of glyphs in line */
     u_long changes;			/* change-count at calc. time */
 #if GL_CACHE_ASSOC > 1
@@ -155,12 +155,12 @@ static gl_cache_t gl_cache;
 
 /* Fill glyph buffer G with whatever should be displayed in window W. */
 void
-make_window_glyphs(glyph_buf *g, WIN *w)
+make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 {
     static u_char spaces[] = "                                                 "
 "                                                                            ";
 
-    VW *vw;
+    Lisp_View *vw;
 
     free_visible_extents (w);
     for(vw = w->view_list; vw != 0; vw = vw->next_view)
@@ -620,7 +620,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 }
 
 void
-make_message_glyphs(glyph_buf *g, WIN *w)
+make_message_glyphs(glyph_buf *g, Lisp_Window *w)
 {
     /* TODO: use glyph table to output message */
 
@@ -670,11 +670,11 @@ make_message_glyphs(glyph_buf *g, WIN *w)
    enough lines in the buffer to move COUNT rows forwards, return false
    leaving COLP and ROWP unset, otherwise return true. */
 bool
-skip_glyph_rows_forwards(VW *vw, long count,
+skip_glyph_rows_forwards(Lisp_View *vw, long count,
 			 long col, long row,
 			 long *colp, long *rowp)
 {
-    TX *tx = vw->tx;
+    Lisp_Buffer *tx = vw->tx;
     if(TX_WRAP_LINES_P(tx))
     {
 	long len = line_glyph_length(tx, row);
@@ -709,11 +709,11 @@ skip_glyph_rows_forwards(VW *vw, long count,
    enough lines in the buffer to move COUNT rows backwards, return false
    leaving COLP and ROWP unset, otherwise return true. */
 bool
-skip_glyph_rows_backwards(VW *vw, long count,
+skip_glyph_rows_backwards(Lisp_View *vw, long count,
 			  long col, long row,
 			  long *colp, long *rowp)
 {
-    TX *tx = vw->tx;
+    Lisp_Buffer *tx = vw->tx;
     if(TX_WRAP_LINES_P(tx))
     {
 	while(count-- > 0)
@@ -745,9 +745,9 @@ skip_glyph_rows_backwards(VW *vw, long count,
    visible region of the buffer (in this view)
    TODO: set VWFF_AT_BOTTOM when appropriate. */
 void
-recenter_cursor(VW *vw)
+recenter_cursor(Lisp_View *vw)
 {
-    TX *tx = vw->tx;
+    Lisp_Buffer *tx = vw->tx;
     long start_col = VCOL(vw->display_origin);
     long start_row = VROW(vw->display_origin);
 
@@ -975,7 +975,7 @@ recenter_cursor(VW *vw)
 /* Returns the number of glyphs needed to draw the string SRC.
    TODO: this function is called a lot, should really cache its results */
 static inline long
-uncached_string_glyph_length(TX *tx, const char *src, long srcLen)
+uncached_string_glyph_length(Lisp_Buffer *tx, const char *src, long srcLen)
 {
     /* FIXME: This is wrong, it's necessary to traverse the extent
        tree on this line since the glyph-table can be changed. */
@@ -1000,7 +1000,7 @@ uncached_string_glyph_length(TX *tx, const char *src, long srcLen)
 /* Return the total number of glyphs needed to display the whole of line
    LINE in buffer TX. This caches the results from recently examined lines */
 static long
-line_glyph_length(TX *tx, long line)
+line_glyph_length(Lisp_Buffer *tx, long line)
 {
     u_long set = GL_MAP_LINE(line);
     gl_cache_entry_t *set_data = GL_GET_SET(&gl_cache, set);
@@ -1080,7 +1080,7 @@ line_glyph_length(TX *tx, long line)
 
 /* Return the glyph index of (COL,LINE) in TX.	*/
 long
-glyph_col(TX *tx, long col, long linenum)
+glyph_col(Lisp_Buffer *tx, long col, long linenum)
 {
     if(col >= tx->lines[linenum].ln_Strlen)
     {
@@ -1095,7 +1095,7 @@ glyph_col(TX *tx, long col, long linenum)
 
 /* Find how many chars to glyph position col. */
 long
-char_col(TX *tx, long col, long linenum)
+char_col(Lisp_Buffer *tx, long col, long linenum)
 {
     char *src = tx->lines[linenum].ln_Line;
     long srclen = tx->lines[linenum].ln_Strlen - 1;
@@ -1123,9 +1123,9 @@ char_col(TX *tx, long col, long linenum)
 
 /* Return the actual column on the screen that the cursor appears in. */
 long
-get_cursor_column(VW *vw)
+get_cursor_column(Lisp_View *vw)
 {
-    TX *tx = vw->tx;
+    Lisp_Buffer *tx = vw->tx;
     if(!((tx == vw->last_cursor_tx)
 	 && (tx->change_count == vw->last_cursor_change_count)
 	 && POS_EQUAL_P(vw->cursor_pos, vw->last_cursor_pos)))
@@ -1143,7 +1143,7 @@ get_cursor_column(VW *vw)
 /* Sets the cursor_pos.pos_Col so that the cursor appears in line ROW,
    as near as possible to last_cursor_offset horizontally.  */
 void
-set_cursor_vertically(VW *vw, long row)
+set_cursor_vertically(Lisp_View *vw, long row)
 {
     long col = char_col(vw->tx, vw->last_cursor_offset, row);
     vw->cursor_pos = make_pos(col, row);
@@ -1173,9 +1173,9 @@ rendered.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VTX(tx));
-    if(check_line(VTX(tx), pos))
-	return make_pos(glyph_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
+	pos = get_tx_cursor(VBUFFER(tx));
+    if(check_line(VBUFFER(tx), pos))
+	return make_pos(glyph_col(VBUFFER(tx), VCOL(pos), VROW(pos)), VROW(pos));
     else
 	return rep_NULL;
 }
@@ -1191,8 +1191,8 @@ position.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     rep_DECLARE1(pos, POSP);
-    if(check_line(VTX(tx), pos))
-	return make_pos(char_col(VTX(tx), VCOL(pos), VROW(pos)), VROW(pos));
+    if(check_line(VBUFFER(tx), pos))
+	return make_pos(char_col(VBUFFER(tx), VCOL(pos), VROW(pos)), VROW(pos));
     else
 	return rep_NULL;
 }
@@ -1208,7 +1208,7 @@ Returns nil if no such character exists (i.e. POSITION is past the end of
 the buffer).
 ::end:: */
 {
-    TX *tx;
+    Lisp_Buffer *tx;
     long col, row;
     rep_DECLARE1(pos, POSP);
     if(!VIEWP(vw))
@@ -1243,7 +1243,7 @@ that the character at POSITION in VIEW is displayed. If this character is
 not currently being displayed, return nil.
 ::end:: */
 {
-    TX *tx;
+    Lisp_Buffer *tx;
     long gcol, grow;
 
     rep_DECLARE1(pos, POSP);

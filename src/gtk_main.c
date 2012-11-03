@@ -169,7 +169,7 @@ make_argv (repv list, int *argc, char ***argv)
 }
 
 void
-sys_beep (WIN *w)
+sys_beep (Lisp_Window *w)
 {
     gdk_beep ();
 }
@@ -264,7 +264,7 @@ sys_usage(void)
 }
 
 repv
-sys_get_mouse_pos(WIN *w)
+sys_get_mouse_pos(Lisp_Window *w)
 {
     int x, y;
     /* XXX track mouse pointer position in gtk_jade.c.. */

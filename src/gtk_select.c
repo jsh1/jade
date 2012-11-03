@@ -230,17 +230,17 @@ If the selection currently has no value, nil is returned.
 		res = selection_info[selno].data;
 	    else if(selection_info[selno].type == Sel_area)
 	    {
-		if(check_section(VTX(selection_info[selno].data),
+		if(check_section(VBUFFER(selection_info[selno].data),
 				 &selection_info[selno].start,
 				 &selection_info[selno].end))
 		{
-		    long tlen = section_length(VTX(selection_info[selno].data),
+		    long tlen = section_length(VBUFFER(selection_info[selno].data),
 					       selection_info[selno].start,
 					       selection_info[selno].end);
 		    res = rep_make_string(tlen + 1);
 		    if(res)
 		    {
-			copy_section(VTX(selection_info[selno].data),
+			copy_section(VBUFFER(selection_info[selno].data),
 				     selection_info[selno].start,
 				     selection_info[selno].end, rep_STR(res));
 			rep_STR(res)[tlen] = 0;
@@ -323,17 +323,17 @@ gtk_jade_selection_get(GtkWidget *widget, GtkSelectionData *sel_data,
     }
     else if(selection_info[selno].type == Sel_area)
     {
-	if(check_section(VTX(selection_info[selno].data),
+	if(check_section(VBUFFER(selection_info[selno].data),
 			 &selection_info[selno].start,
 			 &selection_info[selno].end))
 	{
-	    len = section_length(VTX(selection_info[selno].data),
+	    len = section_length(VBUFFER(selection_info[selno].data),
 				 selection_info[selno].start,
 				 selection_info[selno].end);
 	    data = rep_alloc(len + 1);
 	    if(data)
 	    {
-		copy_section(VTX(selection_info[selno].data),
+		copy_section(VBUFFER(selection_info[selno].data),
 			     selection_info[selno].start,
 			     selection_info[selno].end, data);
 		data[len] = 0;
@@ -368,7 +368,7 @@ gtk_jade_selection_clear(GtkWidget *widget, GdkEventSelection *event)
 }
 
 void
-gtk_jade_window_lose_selections(WIN *w)
+gtk_jade_window_lose_selections(Lisp_Window *w)
 {
     int i;
     for(i = 0; i < 2; i++)

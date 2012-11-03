@@ -97,7 +97,7 @@ jade_regsub(lasttype, matches, source, dest, data)
 	    }
 	    else if(lasttype == rep_reg_obj)
 	    {
-		TX *tx = data;
+		Lisp_Buffer *tx = data;
 		if(matches->obj.startp[no] != rep_NULL)
 		{
 		    if(check_section(tx, &matches->obj.startp[no],
@@ -168,7 +168,7 @@ jade_regsublen(lasttype, matches, source, data)
 	    }
 	    else if(lasttype == rep_reg_obj)
 	    {
-		TX *tx = data;
+		Lisp_Buffer *tx = data;
 		if(matches->obj.startp[no] != rep_NULL)
 		{
 		    if(check_section(tx, &matches->obj.startp[no],

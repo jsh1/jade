@@ -29,9 +29,9 @@
    inserted.  */
 
 void
-adjust_marks_add_x(TX *tx, long addx, long xpos, long ypos)
+adjust_marks_add_x(Lisp_Buffer *tx, long addx, long xpos, long ypos)
 {
-    VW *thisvw;
+    Lisp_View *thisvw;
     Lisp_Mark *thismark;
 
 #define UPD(p)						\
@@ -77,9 +77,9 @@ adjust_marks_add_x(TX *tx, long addx, long xpos, long ypos)
 }
 
 void
-adjust_marks_sub_x(TX *tx, long subx, long xpos, long ypos)
+adjust_marks_sub_x(Lisp_Buffer *tx, long subx, long xpos, long ypos)
 {
-    VW *thisvw;
+    Lisp_View *thisvw;
     Lisp_Mark *thismark;
 
 #define UPD(p)						\
@@ -131,9 +131,9 @@ adjust_marks_sub_x(TX *tx, long subx, long xpos, long ypos)
  * Whole lines only please
  */
 void
-adjust_marks_add_y(TX *tx, long addy, long ypos)
+adjust_marks_add_y(Lisp_Buffer *tx, long addy, long ypos)
 {
-    VW *thisvw;
+    Lisp_View *thisvw;
     Lisp_Mark *thismark;
 
 #define UPD(p)						\
@@ -192,9 +192,9 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
  * Whole lines only please
  */
 void
-adjust_marks_sub_y(TX *tx, long suby, long ypos)
+adjust_marks_sub_y(Lisp_Buffer *tx, long suby, long ypos)
 {
-    VW *thisvw;
+    Lisp_View *thisvw;
     Lisp_Mark *thismark;
 
 #define UPD_Y(y)				\
@@ -274,9 +274,9 @@ adjust_marks_sub_y(TX *tx, long suby, long ypos)
  * Use when splitting a line into 2, cursor should be at position of split
  */
 void
-adjust_marks_split_y(TX *tx, long xpos, long ypos)
+adjust_marks_split_y(Lisp_Buffer *tx, long xpos, long ypos)
 {
-    VW *thisvw;
+    Lisp_View *thisvw;
     Lisp_Mark *thismark;
 
 #define UPD_Y(y)				\
@@ -359,9 +359,9 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
  * Use when compacting 2 adjacent lines into one
  */
 void
-adjust_marks_join_y(TX *tx, long xpos, long ypos)
+adjust_marks_join_y(Lisp_Buffer *tx, long xpos, long ypos)
 {
-    VW *thisvw;
+    Lisp_View *thisvw;
     Lisp_Mark *thismark;
 
 #define UPD_Y(y)				\
@@ -439,9 +439,9 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
 /* This makes all views of this file have their cursor at the top of the
    file, it also refreshes each view. */
 void
-reset_all_views(TX *tx)
+reset_all_views(Lisp_Buffer *tx)
 {
-    VW *thisvw;
+    Lisp_View *thisvw;
     for(thisvw = view_chain; thisvw; thisvw = thisvw->next)
     {
 	if(thisvw->tx == tx)

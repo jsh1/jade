@@ -30,20 +30,20 @@ static int max_undo_size = 10000;
    other uses.	*/
 static repv pending_deletion_string;
 static repv pending_deletion_start, pending_deletion_end;
-static TX *pending_deletion_tx;
+static Lisp_Buffer *pending_deletion_tx;
 
 /* While we're in Fundo() this is set.  This is also tested by
    undo_distinct(); if FALSE it will call coalesce_undo() if necessary.
    undo_distinct() always sets this to FALSE. */
 static bool in_undo;
-static TX *last_undid_tx;
+static Lisp_Buffer *last_undid_tx;
 
 DEFSYM(undo, "undo");
 
 /* If not in an undo, this will re-combine the waiting_undo and
    undo_list. */
 static void
-coalesce_undo(TX *tx)
+coalesce_undo(Lisp_Buffer *tx)
 {
     if(!in_undo
        && (tx->pending_undo_list != rep_NULL))
@@ -72,7 +72,7 @@ coalesce_undo(TX *tx)
 /* Called *after* recording an undo command, checks if this is the
    first change to the buffer. Should be called before the operation. */
 static inline void
-check_first_mod(TX *tx)
+check_first_mod(Lisp_Buffer *tx)
 {
     if((tx->change_count == tx->proper_saved_changed_count)
        && ((tx->car & TXFF_NO_UNDO) == 0))
@@ -88,7 +88,7 @@ check_first_mod(TX *tx)
    errnoneously set the buffer as being unmodified (i.e. the same as the
    copy on disk). */
 void
-undo_record_unmodified(TX *tx)
+undo_record_unmodified(Lisp_Buffer *tx)
 {
     if((tx->change_count == tx->proper_saved_changed_count)
        && ((tx->car & TXFF_NO_UNDO) == 0))
@@ -116,7 +116,7 @@ undo_record_unmodified(TX *tx)
    the buffer's undo-list.  This has to be done *before* the text is
    actually deleted from the buffer (for obvious reasons).  */
 void
-undo_record_deletion(TX *tx, repv start, repv end)
+undo_record_deletion(Lisp_Buffer *tx, repv start, repv end)
 {
     if((tx->car & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
     {
@@ -159,7 +159,7 @@ undo_record_deletion(TX *tx, repv start, repv end)
    return it. The next call to undo_record_deletion() will use the
    *same* copy (unless the parameters don't match).  */
 repv
-undo_push_deletion(TX *tx, repv start, repv end)
+undo_push_deletion(Lisp_Buffer *tx, repv start, repv end)
 {
     long len = section_length(tx, start, end);
     if(len > 0)
@@ -180,7 +180,7 @@ undo_push_deletion(TX *tx, repv start, repv end)
 /* Adds an insertion between START and END to the TX buffer's undo-list.
    Doesn't copy anything, just records START and END.  */
 void
-undo_record_insertion(TX *tx, repv start, repv end)
+undo_record_insertion(Lisp_Buffer *tx, repv start, repv end)
 {
     if((tx->car & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
     {
@@ -207,7 +207,7 @@ undo_record_insertion(TX *tx, repv start, repv end)
 /* Record that the text between START and END has been modified.  This
    must be done *before* the modification is actually done.  */
 void
-undo_record_modification(TX *tx, repv start, repv end)
+undo_record_modification(Lisp_Buffer *tx, repv start, repv end)
 {
     if((tx->car & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
     {
@@ -221,7 +221,7 @@ undo_record_modification(TX *tx, repv start, repv end)
 void
 undo_end_of_command(void)
 {
-    TX *tx;
+    Lisp_Buffer *tx;
     repv last = Fsymbol_value (Qlast_command, Qt);
     if((!rep_NILP(last)) && (last != Qundo)
        && last_undid_tx && last_undid_tx->pending_undo_list)
@@ -258,26 +258,26 @@ taken from the prefix argument.
     long count = rep_INTP(arg) ? rep_INT(arg) : 1;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    if(VTX(tx)->pending_undo_list == rep_NULL)
+    if(VBUFFER(tx)->pending_undo_list == rep_NULL)
     {
 	/* First call. */
-	VTX(tx)->pending_undo_list = VTX(tx)->undo_list;
-	VTX(tx)->undo_list = Qnil;
-	if(rep_CONSP(VTX(tx)->pending_undo_list) && rep_NILP(rep_CAR(VTX(tx)->pending_undo_list)))
+	VBUFFER(tx)->pending_undo_list = VBUFFER(tx)->undo_list;
+	VBUFFER(tx)->undo_list = Qnil;
+	if(rep_CONSP(VBUFFER(tx)->pending_undo_list) && rep_NILP(rep_CAR(VBUFFER(tx)->pending_undo_list)))
 	    /* Ignore the initial group separator */
 	    count++;
     }
-    if(rep_NILP(VTX(tx)->pending_undo_list))
+    if(rep_NILP(VBUFFER(tx)->pending_undo_list))
     {
 	return(Fsignal(Qerror, rep_LIST_1(rep_VAL(&nothing_to_undo))));
     }
     in_undo = TRUE;
-    last_undid_tx = VTX(tx);
-    while(rep_CONSP(VTX(tx)->pending_undo_list))
+    last_undid_tx = VBUFFER(tx);
+    while(rep_CONSP(VBUFFER(tx)->pending_undo_list))
     {
-	repv item = rep_CAR(VTX(tx)->pending_undo_list);
-	VTX(tx)->pending_undo_list = rep_CDR(VTX(tx)->pending_undo_list);
-	VTX(tx)->did_undo_list = Fcons(item, VTX(tx)->did_undo_list);
+	repv item = rep_CAR(VBUFFER(tx)->pending_undo_list);
+	VBUFFER(tx)->pending_undo_list = rep_CDR(VBUFFER(tx)->pending_undo_list);
+	VBUFFER(tx)->did_undo_list = Fcons(item, VBUFFER(tx)->did_undo_list);
 	if(rep_NILP(item))
 	{
 	    /* Group separator; break the loop if ARG commands undone. */
@@ -315,8 +315,8 @@ taken from the prefix argument.
 	else if(item == Qt)
 	{
 	    /* clear modification flag. */
-	    VTX(tx)->proper_saved_changed_count = VTX(tx)->change_count;
-	    VTX(tx)->last_saved_change_count = VTX(tx)->change_count;
+	    VBUFFER(tx)->proper_saved_changed_count = VBUFFER(tx)->change_count;
+	    VBUFFER(tx)->last_saved_change_count = VBUFFER(tx)->change_count;
 	}
 	rep_TEST_INT;
 	if(rep_INTERRUPTP)
@@ -344,7 +344,7 @@ buffer-record-undo
 When nil no undo information is kept in this buffer.
 ::end:: */
 {
-    TX *tx = curr_vw->tx;
+    Lisp_Buffer *tx = curr_vw->tx;
     return (tx->car & TXFF_NO_UNDO) ? Qnil : Qt;
 }
 
@@ -355,7 +355,7 @@ set-buffer-record-undo VALUE
 When nil no undo information is kept in this buffer.
 ::end:: */
 {
-    TX *tx = curr_vw->tx;
+    Lisp_Buffer *tx = curr_vw->tx;
     if(rep_NILP(val))
 	tx->car |= TXFF_NO_UNDO;
     else
@@ -370,7 +370,7 @@ buffer-undo-list
 This buffer's list of undo information.
 ::end:: */
 {
-    TX *tx = curr_vw->tx;
+    Lisp_Buffer *tx = curr_vw->tx;
     return tx->undo_list;
 }
 
@@ -381,7 +381,7 @@ set-buffer-undo-list VALUE
 This buffer's list of undo information.
 ::end:: */
 {
-    TX *tx = curr_vw->tx;
+    Lisp_Buffer *tx = curr_vw->tx;
     tx->undo_list = val;
     return val;
 }
@@ -393,7 +393,7 @@ This buffer's list of undo information.
 void
 undo_trim(void)
 {
-    TX *tx;
+    Lisp_Buffer *tx;
 
     if (in_undo)
 	return;

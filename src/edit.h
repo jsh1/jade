@@ -26,8 +26,7 @@
 
 #define VMARK(v)	((Lisp_Mark *)rep_PTR(v))
 #define VBUFFER(v)	((Lisp_Buffer *)rep_PTR(v))
-#define VTX(v)		VBUFFER(v)
-#define VWIN(v)		((Lisp_Window *)rep_PTR(v))
+#define VWINDOW(v)	((Lisp_Window *)rep_PTR(v))
 #define VVIEW(v)	((Lisp_View *)rep_PTR(v))
 #define VGLYPHTAB(v)	((glyph_table_t *)rep_PTR(v))
 #define VEXTENT(v)	((Lisp_Extent *)rep_PTR(v))	
@@ -36,7 +35,7 @@
 
 #define BUFFERP(v)	rep_CELL16_TYPEP(v, buffer_type)
 #define MARKP(v)	rep_CELL16_TYPEP(v, mark_type)
-#define WINDOWP(v)	(rep_CELL16_TYPEP(v, window_type) && VWIN(v)->w_Window)
+#define WINDOWP(v)	(rep_CELL16_TYPEP(v, window_type) && VWINDOW(v)->w_Window)
 #define VIEWP(v)	(rep_CELL16_TYPEP(v, view_type) && VVIEW(v)->window)
 #define GLYPHTABP(v)	rep_CELL16_TYPEP(v, glyph_table_type)
 #define EXTENTP(v)	rep_CELL16_TYPEP(v, extent_type)
@@ -239,7 +238,7 @@ typedef struct merged_face {
 				 | FACEFF_BOXED)
 
 
-/* A buffer, strangely called `TX' */
+/* A buffer, often called 'tx'. */
 
 typedef struct lisp_buffer {
     repv car;
@@ -289,8 +288,6 @@ typedef struct lisp_buffer {
     int saved_block_state;
 } Lisp_Buffer;
 
-typedef Lisp_Buffer TX;
-
 /* No recording of undo information */
 #define TXFF_NO_UNDO		(1 << (rep_CELL16_TYPE_BITS + 0))
 
@@ -312,7 +309,7 @@ typedef struct lisp_view {
     repv car;
     struct lisp_view *next;
 
-    TX *tx;
+    Lisp_Buffer *tx;
     struct lisp_window *window;
     struct lisp_view *next_view;	/* for view_list */
 
@@ -345,8 +342,6 @@ typedef struct lisp_view {
     int scroll_ratio_x, scroll_ratio_y;
     int scroll_step_x, scroll_step_y;
 } Lisp_View;
-
-typedef Lisp_View VW;
 
 /* mark rectangular blocks */
 #define VWFF_RECTBLOCKS		(1 << (rep_CELL16_TYPE_BITS + 0))
@@ -412,8 +407,6 @@ typedef struct lisp_window {
        face is non-zero the face is valid. */
     Merged_Face merged_faces[GA_LastFace+1];
 } Lisp_Window;
-
-typedef Lisp_Window WIN;
 
 /* refresh whole window */
 #define WINFF_FORCE_REFRESH	(1 << (rep_CELL16_TYPE_BITS + 0))

@@ -26,7 +26,7 @@
 # include <memory.h>
 #endif
 
-static void kill_view(VW *vw);
+static void kill_view(Lisp_View *vw);
 
 DEFSYM(split_view_hook, "split-view-hook");
 DEFSYM(delete_view_hook, "delete-view-hook"); /*
@@ -43,22 +43,22 @@ int view_type;
 
 DEFSYM(mode_line_format, "mode-line-format");
 
-static void set_scroll_steps(VW *vw);
-static void recalc_measures(WIN *w);
+static void set_scroll_steps(Lisp_View *vw);
+static void recalc_measures(Lisp_Window *w);
 
 /* view_chain is a list of all allocated VW structures, linked through
    their next fields. curr_vw is the currently active view; a mirror
    of curr_win->vw_CurrVW. */
-VW *view_chain, *curr_vw;
+Lisp_View *view_chain, *curr_vw;
 
 /* This buffer is put into minibuffer views when they're not being
    used. */
-TX *mb_unused_buffer;
+Lisp_Buffer *mb_unused_buffer;
 DEFSTRING(unused_mb, "*unused-minibuf*");
 
 /* Copy some preferences from SRC to DEST; SRC may be null */
 static void
-copy_view_prefs(VW *dest, VW *src)
+copy_view_prefs(Lisp_View *dest, Lisp_View *src)
 {
     if(src)
     {
@@ -86,10 +86,10 @@ DEFSTRING(too_few_lines, "Too few lines to split");
    the view.
 
    MINIBUF-P controls whether or not the buffer is a minibuffer. */
-VW *
-make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
+Lisp_View *
+make_view(Lisp_View *sibling, Lisp_Window *parent, Lisp_Buffer *tx, long lines, bool minibuf_p)
 {
-    VW *vw;
+    Lisp_View *vw;
 
     /* Try to initialise PARENT, SIBLING and TX. PARENT must be
        non-null, the others don't have to be if it's not possible. */
@@ -150,10 +150,10 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
     }
 
     /* Now the construction of the view proper... */
-    vw = rep_ALLOC_CELL(sizeof(VW));
+    vw = rep_ALLOC_CELL(sizeof(Lisp_View));
     if(vw != NULL)
     {
-	memset(vw, 0, sizeof(VW));
+	memset(vw, 0, sizeof(Lisp_View));
 	vw->car = view_type;
 	vw->next = view_chain;
 	view_chain = vw;
@@ -167,7 +167,7 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	   SIBLING if it has one. */
 	if(minibuf_p)
 	{
-	    VW *x;
+	    Lisp_View *x;
 	    /* This view is destined to be a minibuffer */
 	    vw->width = parent->column_count;
 	    vw->height = 1;
@@ -257,9 +257,9 @@ to contain the new view.
 
 /* Destroy one view. It should have been removed from the view_list */
 static void
-kill_view(VW *vw)
+kill_view(Lisp_View *vw)
 {
-    WIN *w = vw->window;
+    Lisp_Window *w = vw->window;
     vw->next_view = NULL;
     vw->tx = NULL;
     vw->window = NULL;
@@ -290,8 +290,8 @@ than two views in the window (including the minibuffer view), or when
 VIEW is the minibuffer view.
 ::end:: */
 {
-    VW *vw = VIEWP(view) ? VVIEW(view) : curr_vw;
-    VW *pred;
+    Lisp_View *vw = VIEWP(view) ? VVIEW(view) : curr_vw;
+    Lisp_View *pred;
     if(vw->window->view_count <= 2)
     {
 	/* Only two views are left. Don't destroy it. */
@@ -342,12 +342,12 @@ VIEW is the minibuffer view.
 
 /* Destroy all views of window W. */
 void
-kill_all_views(WIN *w)
+kill_all_views(Lisp_Window *w)
 {
-    VW *vw = w->view_list;
+    Lisp_View *vw = w->view_list;
     while(vw != 0)
     {
-	VW *next = vw->next_view;
+	Lisp_View *next = vw->next_view;
 	kill_view(vw);
 	vw = next;
     }
@@ -358,7 +358,7 @@ kill_all_views(WIN *w)
 /* Initialise the scroll steps in VW, from the size of the view and 
    the desired ratios. */
 static void
-set_scroll_steps(VW *vw)
+set_scroll_steps(Lisp_View *vw)
 {
     if((vw->scroll_ratio_x <= 0)
        || ((vw->scroll_step_x = vw->width / vw->scroll_ratio_x) <= 0)
@@ -373,9 +373,9 @@ set_scroll_steps(VW *vw)
 /* For each view in window W, recalculate all view positions from
    the MaxX and MaxY settings. */
 static void
-recalc_measures(WIN *w)
+recalc_measures(Lisp_Window *w)
 {
-    VW *vw;
+    Lisp_View *vw;
     int row = 0;
     for(vw = w->view_list; vw != 0; vw = vw->next_view)
     {
@@ -391,11 +391,11 @@ recalc_measures(WIN *w)
    each view stays the same. Horrible things could happen if there's not
    enough window space for all the views... */
 void
-update_views_dimensions(WIN *w)
+update_views_dimensions(Lisp_Window *w)
 {
     int lines_given = 0;
     int old_total_lines = 0;
-    VW *vw;
+    Lisp_View *vw;
 
     for(vw = w->view_list; vw != 0; vw = vw->next_view)
 	old_total_lines += vw->height + 1;
@@ -409,7 +409,7 @@ update_views_dimensions(WIN *w)
     {
 	/* Not enough lines for the number of existing views. Delete
 	   views until there is */
-	VW *dead = w->view_list;
+	Lisp_View *dead = w->view_list;
 	w->view_list = w->view_list->next_view;
 	kill_view(dead);
     }
@@ -442,9 +442,9 @@ update_views_dimensions(WIN *w)
 
 /* Expand format characters */
 static long
-format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
+format_mode_string(char *fmt, Lisp_View *vw, char *buf, long buf_len)
 {
-    TX *tx = vw->tx;
+    Lisp_Buffer *tx = vw->tx;
     while(*fmt && buf_len > 0)
     {
 	while(buf_len > 0 && *fmt && *fmt != '%')
@@ -581,9 +581,9 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 }
 
 static long
-format_mode_value(repv format, VW *vw, char *buf, long buf_len)
+format_mode_value(repv format, Lisp_View *vw, char *buf, long buf_len)
 {
-    TX *tx = vw->tx;
+    Lisp_Buffer *tx = vw->tx;
 
     if(rep_SYMBOLP(format))
     {
@@ -672,12 +672,12 @@ format_mode_value(repv format, VW *vw, char *buf, long buf_len)
 
 /* Reformat the status string of VW. */
 void
-update_status_buffer(VW *vw, char *buf, long buf_len)
+update_status_buffer(Lisp_View *vw, char *buf, long buf_len)
 {
     if(!(vw->car & VWFF_MINIBUF))
     {
 	u_long done;
-	TX *tx = vw->tx;
+	Lisp_Buffer *tx = vw->tx;
 	repv format = Fbuffer_symbol_value(Qmode_line_format,
 					       vw->cursor_pos,
 					       rep_VAL(tx), Qt);
@@ -763,7 +763,7 @@ current-view [WINDOW]
 Returns the currently active view in WINDOW.
 ::end:: */
 {
-    return(WINDOWP(win) ? rep_VAL(VWIN(win)->current_view) : rep_VAL(curr_vw));
+    return(WINDOWP(win) ? rep_VAL(VWINDOW(win)->current_view) : rep_VAL(curr_vw));
 }
 
 DEFUN("set-current-view", Fset_current_view, Sset_current_view, (repv vw, repv activ), rep_Subr2) /*
@@ -817,12 +817,12 @@ the next window and so on. If no view displaying BUFFER is found, nil
 is returned.
 ::end:: */
 {
-    WIN *w = curr_win;
+    Lisp_Window *w = curr_win;
     rep_DECLARE1(buffer, BUFFERP);
     do {
-	VW *vw = w->current_view;
+	Lisp_View *vw = w->current_view;
 	do {
-	    if(vw->tx == VTX(buffer))
+	    if(vw->tx == VBUFFER(buffer))
 		return rep_VAL(vw);
 	    vw = vw->next_view;
 	    if(vw == 0)
@@ -847,14 +847,14 @@ If WINDOW is actually a view, the following view will be returned,
 according to the same rules.
 ::end:: */
 {
-    VW *curr;
+    Lisp_View *curr;
     if(VIEWP(win))
     {
 	curr = VVIEW(win);
 	win = rep_VAL(curr->window);
     }
     else if(WINDOWP(win))
-	curr = VWIN(win)->current_view;
+	curr = VWINDOW(win)->current_view;
     else
     {
 	curr = curr_vw;
@@ -867,11 +867,11 @@ according to the same rules.
     {
 	if(rep_NILP(allp))
 	    /* First view of the original window. */
-	    return rep_VAL(VWIN(win)->view_list);
+	    return rep_VAL(VWINDOW(win)->view_list);
 	else
 	{
-	    if(VWIN(win)->next != 0)
-		return rep_VAL(VWIN(win)->next->view_list);
+	    if(VWINDOW(win)->next != 0)
+		return rep_VAL(VWINDOW(win)->next->view_list);
 	    else
 		return rep_VAL(win_chain->view_list);
 	}
@@ -890,29 +890,29 @@ If WINDOW is actually a view, the following view will be returned,
 according to the same rules.
 ::end:: */
 {
-    VW *vw;
-    VW *curr;
+    Lisp_View *vw;
+    Lisp_View *curr;
     if(VIEWP(win))
     {
 	curr = VVIEW(win);
 	win = rep_VAL(curr->window);
     }
     else if(WINDOWP(win))
-	curr = VWIN(win)->current_view;
+	curr = VWINDOW(win)->current_view;
     else
     {
 	curr = curr_vw;
 	win = rep_VAL(curr_win);
     }
-    if(curr == VWIN(win)->view_list)
+    if(curr == VWINDOW(win)->view_list)
     {
 	/* current view is first in this window. If ALLP is t
 	   need to find the previous window and the last view in it.
 	   otherwise the last view in the current window. */
-	WIN *w;
+	Lisp_Window *w;
 	if(!rep_NILP(allp))
 	{
-	    w = VWIN(win);
+	    w = VWINDOW(win);
 	    if(w == win_chain)
 	    {
 		/* first window, find last */
@@ -927,7 +927,7 @@ according to the same rules.
 	    }
 	}
 	else
-	    w = VWIN(win);
+	    w = VWINDOW(win);
 	/* now simply find the last view in W, handling minibuffer
 	   views appropriately. */
 	vw = w->view_list;
@@ -937,7 +937,7 @@ according to the same rules.
     else
     {
 	/* find the predecessor of the current view */
-	vw = VWIN(win)->view_list;
+	vw = VWINDOW(win)->view_list;
 	while(vw->next_view != curr)
 	    vw = vw->next_view;
     }
@@ -1002,7 +1002,7 @@ Note that due to horizontal division of windows not actually being supported
 the COLUMNS parameter is always ignored (for the moment).
 ::end:: */
 {
-    VW *sibling;
+    Lisp_View *sibling;
     long new_sibling_height;
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
@@ -1034,8 +1034,8 @@ Attempt to find the view in the current window (or in WINDOW), that includes
 the glyph at position POS in the window. Returns nil if no such view exists.
 ::end:: */
 {
-    WIN *w = WINDOWP(win) ? VWIN(win) : curr_win;
-    VW *vw = w->view_list;
+    Lisp_Window *w = WINDOWP(win) ? VWINDOW(win) : curr_win;
+    Lisp_View *vw = w->view_list;
     rep_DECLARE1(pos, POSP);
     if(VROW(pos) < 0)
 	return Qnil;
@@ -1096,7 +1096,7 @@ minibuffer-view [WINDOW]
 Returns the view of the minibuffer in WINDOW (or the current window).
 ::end:: */
 {
-    return rep_VAL(WINDOWP(win) ? VWIN(win)->mini_buffer_view : curr_win->mini_buffer_view);
+    return rep_VAL(WINDOWP(win) ? VWINDOW(win)->mini_buffer_view : curr_win->mini_buffer_view);
 }
 
 DEFUN("minibuffer-active-p", Fminibuffer_active_p, Sminibuffer_active_p, (repv win), rep_Subr1) /*
@@ -1106,7 +1106,7 @@ minibuffer-active-p [WINDOW]
 Returns t if the minibuffer of WINDOW is being used.
 ::end:: */
 {
-    return MINIBUFFER_ACTIVE_P(WINDOWP(win) ? VWIN(win) : curr_win)
+    return MINIBUFFER_ACTIVE_P(WINDOWP(win) ? VWINDOW(win) : curr_win)
 	? Qt : Qnil;
 }
 
@@ -1123,11 +1123,11 @@ Returns t if ARG is a view object.
 static void
 view_sweep(void)
 {
-    VW *vw = view_chain;
+    Lisp_View *vw = view_chain;
     view_chain = NULL;
     while(vw)
     {
-	VW *next = vw->next;
+	Lisp_View *next = vw->next;
 	if(rep_GC_CELL_MARKEDP(rep_VAL(vw)))
 	{
 	    rep_GC_CLR_CELL(rep_VAL(vw));
@@ -1202,8 +1202,8 @@ view_bind (repv vw)
 static void
 view_unbind (repv handle)
 {
-    VW *vw = VVIEW(rep_CAR(handle));
-    WIN *win = VWIN(rep_CDR(handle));
+    Lisp_View *vw = VVIEW(rep_CAR(handle));
+    Lisp_Window *win = VWINDOW(rep_CDR(handle));
     if (vw->window && vw->window->w_Window != WINDOW_NIL)
     {
 	vw->window->current_view = vw;
@@ -1220,7 +1220,7 @@ views_init(void)
 				       0, 0, 0, 0,
 				       view_bind, view_unbind);
 
-    mb_unused_buffer = VTX(Fmake_buffer(rep_VAL(&unused_mb), Qnil, Qt));
+    mb_unused_buffer = VBUFFER(Fmake_buffer(rep_VAL(&unused_mb), Qnil, Qt));
 
     rep_ADD_SUBR_INT(Ssplit_view);
     rep_ADD_SUBR_INT(Sdelete_view);
@@ -1253,10 +1253,10 @@ views_init(void)
 void
 views_kill(void)
 {
-    VW *vw = view_chain;
+    Lisp_View *vw = view_chain;
     while(vw != 0)
     {
-	VW *next = vw->next;
+	Lisp_View *next = vw->next;
 	rep_FREE_CELL(vw);
 	vw = next;
     }

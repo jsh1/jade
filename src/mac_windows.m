@@ -279,19 +279,19 @@ static repv _pasteboard_data, _pasteboard_start, _pasteboard_end;
     }
     else if (BUFFERP (_pasteboard_data))
     {
-	if (check_section (VTX(_pasteboard_data),
+	if (check_section (VBUFFER(_pasteboard_data),
 			   &_pasteboard_start, &_pasteboard_end))
 	{
 	    long tlen;
 	    char *str;
 
-	    tlen = section_length (VTX (_pasteboard_data),
+	    tlen = section_length (VBUFFER (_pasteboard_data),
 				   _pasteboard_start, _pasteboard_end);
 	    str = rep_alloc (tlen + 1);
 
 	    if (str != NULL)
 	    {
-		copy_section (VTX (_pasteboard_data),
+		copy_section (VBUFFER (_pasteboard_data),
 			      _pasteboard_start, _pasteboard_end, str);
 		str[tlen] = 0;
 		string = [[NSString alloc] initWithUTF8String:str];
@@ -397,7 +397,7 @@ mac-get-pasteboard
 static CGContextRef current_context;
 
 void
-sys_begin_redisplay (WIN *w)
+sys_begin_redisplay (Lisp_Window *w)
 {
     JadeView *view = w->w_Window;
 
@@ -413,7 +413,7 @@ sys_begin_redisplay (WIN *w)
 }
 
 void
-sys_end_redisplay (WIN *w)
+sys_end_redisplay (Lisp_Window *w)
 {
     JadeView *view = w->w_Window;
 
@@ -427,7 +427,7 @@ sys_end_redisplay (WIN *w)
 }
 
 void
-sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
+sys_draw_glyphs(Lisp_Window *w, int col, int row, glyph_attr attr, char *str,
 		int len, bool all_spaces)
 {
     JadeView *view = w->w_Window;
@@ -546,7 +546,7 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 }
 
 void
-sys_copy_glyphs (WIN *win, int x1, int y1, int w, int h, int x2, int y2)
+sys_copy_glyphs (Lisp_Window *win, int x1, int y1, int w, int h, int x2, int y2)
 {
     JadeView *view = win->w_Window;
     NSRect r;
@@ -576,7 +576,7 @@ sys_recolor_cursor(repv face)
 }
 
 void
-sys_update_dimensions(WIN *w)
+sys_update_dimensions(Lisp_Window *w)
 {
     if(w->w_Window && ((w->car & WINFF_SLEEPING) == 0))
     {
@@ -594,7 +594,7 @@ sys_update_dimensions(WIN *w)
 /* The only thing necessary in W is the font stuff (I think) */
 
 void *
-sys_new_window(WIN *oldW, WIN *w, short *dims)
+sys_new_window(Lisp_Window *oldW, Lisp_Window *w, short *dims)
 {
     unsigned int x = -1, y = -1, width = 80, height = 24;
     NSWindow *window;
@@ -663,7 +663,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 }
 
 void
-sys_kill_window(WIN *w)
+sys_kill_window(Lisp_Window *w)
 {
     if (w->w_Window == 0)
 	return;
@@ -677,7 +677,7 @@ sys_kill_window(WIN *w)
 }
 
 int
-sys_sleep_win(WIN *w)
+sys_sleep_win(Lisp_Window *w)
 {
     OBJC_BEGIN
     [[(JadeView *)w->w_Window window] miniaturize:nil];
@@ -686,7 +686,7 @@ sys_sleep_win(WIN *w)
 }
 
 int
-sys_unsleep_win(WIN *w)
+sys_unsleep_win(Lisp_Window *w)
 {
     OBJC_BEGIN
     [[(JadeView *)w->w_Window window] deminiaturize:nil];
@@ -695,7 +695,7 @@ sys_unsleep_win(WIN *w)
 }
 
 int
-sys_set_font(WIN *w)
+sys_set_font(Lisp_Window *w)
 {
     int ret = 0;
 
@@ -712,12 +712,12 @@ sys_set_font(WIN *w)
 }
 
 void
-sys_unset_font(WIN *w)
+sys_unset_font(Lisp_Window *w)
 {
 }
 
 void
-sys_activate_win(WIN *w)
+sys_activate_win(Lisp_Window *w)
 {
     OBJC_BEGIN
     [[(JadeView *)w->w_Window window] makeKeyAndOrderFront:nil];
@@ -725,7 +725,7 @@ sys_activate_win(WIN *w)
 }
 
 void
-sys_set_win_pos(WIN *win, long x, long y, long w, long h)
+sys_set_win_pos(Lisp_Window *win, long x, long y, long w, long h)
 {
     NSWindow *window;
     OBJC_BEGIN
@@ -736,7 +736,7 @@ sys_set_win_pos(WIN *win, long x, long y, long w, long h)
 }
 
 void
-sys_set_win_name(WIN *win, char *name)
+sys_set_win_name(Lisp_Window *win, char *name)
 {
     NSWindow *w;
     CFStringRef str;
@@ -750,27 +750,27 @@ sys_set_win_name(WIN *win, char *name)
 }
 
 bool
-sys_deleting_window_would_exit (WIN *win)
+sys_deleting_window_would_exit (Lisp_Window *win)
 {
     return window_count == 1;
 }
 
 int
-sys_window_has_focus (WIN *win)
+sys_window_has_focus (Lisp_Window *win)
 {
     JadeView *view = win->w_Window;
     return mac_app_is_active && view->_has_focus;
 }
 
 int
-sys_window_realized (WIN *win)
+sys_window_realized (Lisp_Window *win)
 {
     JadeView *view = win->w_Window;
     return [view window] != nil;
 }
 
 repv
-sys_get_mouse_pos(WIN *w)
+sys_get_mouse_pos(Lisp_Window *w)
 {
     JadeView *v = w->w_Window;
     NSPoint p = [v convertPoint:[[[v window] currentEvent]
@@ -804,7 +804,7 @@ mac-set-antialias [WIN] [STATE]
     if (win == Qnil)
 	win = rep_VAL (curr_win);
 
-    view = VWIN (win)->w_Window;
+    view = VWINDOW (win)->w_Window;
     view->_antialias = state != Qnil;
 
     Fredisplay (Qt);
@@ -823,10 +823,10 @@ mac-set-font-size WIN FONT-SIZE
 
     rep_DECLARE2 (fontsize, rep_INTP);
 
-    view = VWIN (win)->w_Window;
+    view = VWINDOW (win)->w_Window;
     view->_font_size = rep_INT (fontsize);
 
-    sys_set_font (VWIN (win));
+    sys_set_font (VWINDOW (win));
     Fredisplay (Qt);
     return Qt;
 }

@@ -38,7 +38,7 @@
    the set of characters CHARS. Returns non-zero if such a character was
    found, zero if not (POS undefined in this case). */
 int
-buffer_strpbrk(TX *tx, Pos *pos, const char *chars)
+buffer_strpbrk(Lisp_Buffer *tx, Pos *pos, const char *chars)
 {
     LINE *line = tx->lines + PROW(pos);
     int chars_has_newline = strchr(chars, '\n') ? 1 : 0;
@@ -72,7 +72,7 @@ buffer_strpbrk(TX *tx, Pos *pos, const char *chars)
 
 /* Same as buffer_strpbrk() but searches backwards. */
 int
-buffer_reverse_strpbrk(TX *tx, Pos *pos, const char *chars)
+buffer_reverse_strpbrk(Lisp_Buffer *tx, Pos *pos, const char *chars)
 {
     LINE *line = tx->lines + PROW(pos);
     int chars_has_newline = strchr(chars, '\n') ? 1 : 0;
@@ -107,7 +107,7 @@ buffer_reverse_strpbrk(TX *tx, Pos *pos, const char *chars)
 /* Set POS to the first character C in TX from POS. Returns non-zero for
    success. */
 int
-buffer_strchr(TX *tx, Pos *pos, char c)
+buffer_strchr(Lisp_Buffer *tx, Pos *pos, char c)
 {
     LINE *line = tx->lines + PROW(pos);
     if(PCOL(pos) >= line->ln_Strlen)
@@ -150,7 +150,7 @@ buffer_strchr(TX *tx, Pos *pos, char c)
 
 /* Same as buffer_strchr() but searches backwards. */
 int
-buffer_reverse_strchr(TX *tx, Pos *pos, char c)
+buffer_reverse_strchr(Lisp_Buffer *tx, Pos *pos, char c)
 {
     LINE *line = tx->lines + PROW(pos);
 
@@ -203,7 +203,7 @@ buffer_reverse_strchr(TX *tx, Pos *pos, char c)
    compiler warnings. */
 #define CMPFN ((int (*)(const char *, const char *, size_t))cmpfn)
 int
-buffer_compare_n(TX *tx, Pos *pos, const char *str, int n, void *cmpfn)
+buffer_compare_n(Lisp_Buffer *tx, Pos *pos, const char *str, int n, void *cmpfn)
 {
     LINE *line = tx->lines + PROW(pos);
 
@@ -247,7 +247,7 @@ buffer_compare_n(TX *tx, Pos *pos, const char *str, int n, void *cmpfn)
 /* Move POS forward COUNT characters in TX. Returns non-zero if the end
    of the buffer wasn't reached. */
 int
-forward_char(long count, TX *tx, Pos *pos)
+forward_char(long count, Lisp_Buffer *tx, Pos *pos)
 {
     LINE *line = tx->lines + PROW(pos);
     if(PCOL(pos) >= line->ln_Strlen)
@@ -275,7 +275,7 @@ forward_char(long count, TX *tx, Pos *pos)
 /* Move POS backward COUNT characters in TX. Returns non-zero if the start
    of the buffer wasn't reached. */
 int
-backward_char(long count, TX *tx, Pos *pos)
+backward_char(long count, Lisp_Buffer *tx, Pos *pos)
 {
     LINE *line = tx->lines + PROW(pos);
     while(count > 0)
@@ -318,14 +318,14 @@ that character classes are still case-significant.
 	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    if(check_line(VTX(tx), pos))
+    if(check_line(VBUFFER(tx), pos))
     {
 	repv ret = Qnil;
 	rep_regexp *prog;
 	prog = rep_compile_regexp(re);
 	if(prog != NULL)
 	{
-	    if(regexec_tx(prog, VTX(tx), pos,
+	    if(regexec_tx(prog, VBUFFER(tx), pos,
 			  rep_NILP(nocase_p) ? 0 : rep_REG_NOCASE))
 	    {
 		rep_update_last_match(tx, prog);
@@ -356,13 +356,13 @@ that character classes are still case-significant.
 	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    if(check_line(VTX(tx), pos))
+    if(check_line(VBUFFER(tx), pos))
     {
 	repv ret = Qnil;
 	rep_regexp *prog = rep_compile_regexp(re);
 	if(prog != NULL)
 	{
-	    if(regexec_reverse_tx(prog, VTX(tx), pos,
+	    if(regexec_reverse_tx(prog, VBUFFER(tx), pos,
 				  rep_NILP(nocase_p) ? 0 : rep_REG_NOCASE))
 	    {
 		rep_update_last_match(tx, prog);
@@ -390,7 +390,7 @@ match data.
 	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    if(check_line(VTX(tx), pos))
+    if(check_line(VBUFFER(tx), pos))
     {
 	char first[3];
 	long len = rep_STRING_LEN(str);
@@ -407,10 +407,10 @@ match data.
 	    first[0] = rep_STR(str)[0];
 	    first[1] = 0;
 	}
-	while(buffer_strpbrk(VTX(tx), &start, first))
+	while(buffer_strpbrk(VBUFFER(tx), &start, first))
 	{
 	    Pos end = start;
-	    if(buffer_compare_n(VTX(tx), &end, rep_STR(str), len,
+	    if(buffer_compare_n(VBUFFER(tx), &end, rep_STR(str), len,
 				rep_NILP(nocasep) ? strncmp : strncasecmp))
 	    {
 		repv vstart = make_pos(PCOL(&start), PROW(&start));
@@ -418,7 +418,7 @@ match data.
 				     make_pos(PCOL(&end), PROW(&end)));
 		return vstart;
 	    }
-	    if(!forward_char(1, VTX(tx), &start))
+	    if(!forward_char(1, VBUFFER(tx), &start))
 		break;
 	}
 	return(Qnil);
@@ -440,7 +440,7 @@ match data.
 	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    if(check_line(VTX(tx), pos))
+    if(check_line(VBUFFER(tx), pos))
     {
 	char first[3];
 	long len = rep_STRING_LEN(str);
@@ -457,10 +457,10 @@ match data.
 	    first[0] = rep_STR(str)[0];
 	    first[1] = 0;
 	}
-	while(buffer_reverse_strpbrk(VTX(tx), &start, first))
+	while(buffer_reverse_strpbrk(VBUFFER(tx), &start, first))
 	{
 	    Pos end = start;
-	    if(buffer_compare_n(VTX(tx), &end, rep_STR(str), len,
+	    if(buffer_compare_n(VBUFFER(tx), &end, rep_STR(str), len,
 				rep_NILP(nocasep) ? strncmp : strncasecmp))
 	    {
 		repv vstart = make_pos(PCOL(&start), PROW(&start));
@@ -468,7 +468,7 @@ match data.
 				     make_pos(PCOL(&end), PROW(&end)));
 		return vstart;
 	    }
-	    if(!backward_char(1, VTX(tx), &start))
+	    if(!backward_char(1, VBUFFER(tx), &start))
 		break;
 	}
 	return(Qnil);
@@ -489,11 +489,11 @@ with CHAR. Returns the position of the next match or nil.
 	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    if(check_line(VTX(tx), pos))
+    if(check_line(VBUFFER(tx), pos))
     {
 	Pos tem;
 	COPY_VPOS(&tem, pos);
-	if(buffer_strchr(VTX(tx), &tem, rep_INT(ch)))
+	if(buffer_strchr(VBUFFER(tx), &tem, rep_INT(ch)))
 	    return make_pos(PCOL(&tem), PROW(&tem));
 	return(Qnil);
     }
@@ -513,11 +513,11 @@ with CHAR. Returns the position of the next match or nil.
 	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    if(check_line(VTX(tx), pos))
+    if(check_line(VBUFFER(tx), pos))
     {
 	Pos tem;
 	COPY_VPOS(&tem, pos);
-	if(buffer_reverse_strchr(VTX(tx), &tem, rep_INT(ch)))
+	if(buffer_reverse_strchr(VBUFFER(tx), &tem, rep_INT(ch)))
 	    return make_pos(PCOL(&tem), PROW(&tem));
 	return(Qnil);
     }
@@ -535,14 +535,14 @@ Returns t if REGEXP matches the text at POS. Updates the match data.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VTX(tx));
-    if(check_line(VTX(tx), pos))
+	pos = get_tx_cursor(VBUFFER(tx));
+    if(check_line(VBUFFER(tx), pos))
     {
 	rep_regexp *prog = rep_compile_regexp(re);
 	if(prog != NULL)
 	{
 	    repv res;
-	    if(regmatch_tx(prog, VTX(tx), pos,
+	    if(regmatch_tx(prog, VBUFFER(tx), pos,
 			   rep_NILP(nocase_p) ? 0 : rep_REG_NOCASE))
 	    {
 		rep_update_last_match(tx, prog);
@@ -572,7 +572,7 @@ the match data.
 ::end:: */
 {
     long length;
-    TX *tx = curr_vw->tx;
+    Lisp_Buffer *tx = curr_vw->tx;
     rep_DECLARE1(string, rep_STRINGP);
     length = rep_STRING_LEN(string);
     if(rep_INTP(len))

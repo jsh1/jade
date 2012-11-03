@@ -152,7 +152,7 @@ hash_glyph_buf(glyph_buf *g)
 /* Record that the WIDTH,HEIGHT rectangle of glyphs at X,Y in window W's
    glyph buffer has been mangled, and therefore will need to be redrawn. */
 void
-garbage_glyphs(WIN *w, int x, int y, int width, int height)
+garbage_glyphs(Lisp_Window *w, int x, int y, int width, int height)
 {
     glyph_buf *g = w->content;
     if(x + width > g->cols)
@@ -189,7 +189,7 @@ compare_lines(glyph_buf *g1, glyph_buf *g2, int line1, int line2)
    current contents of this line are contained in OLD-G at LINE.
    In this function LINE counts from one.. */
 static void
-redisplay_do_draw(WIN *w, glyph_buf *old_g, glyph_buf *new_g, int line)
+redisplay_do_draw(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g, int line)
 {
     /* Draw LINE from NEW-G. OLD-G[LINE] _will_ reflect the currently
        displayed contents of LINE. */
@@ -254,7 +254,7 @@ redisplay_do_draw(WIN *w, glyph_buf *old_g, glyph_buf *new_g, int line)
    both count from one). Updates OLD-G to reflect this. In this function
    SRC-LINE and DST-LINE count from one.. */
 static void
-redisplay_do_copy(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
+redisplay_do_copy(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g,
 		  int src_line, int dst_line, int n_lines)
 {
     int i;
@@ -384,7 +384,7 @@ dump_glyph_buf (glyph_buf *g)
    contents as depicted by OLD-G to the desired contents as shown by NEW-G.
    POINT should be the (currently reversed) edit script. */
 static void
-execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
+execute_script(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g,
 	       struct edit_script *point)
 {
     struct edit_script *lookahead, *behind;
@@ -550,7 +550,7 @@ execute_script(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
    TRUE if the comparison went ok and everything's been redisplayed.
    Returns FALSE when more than MAX-D edit instructions were needed. */
 static bool
-patch_display(WIN *w, glyph_buf *old_g, glyph_buf *new_g)
+patch_display(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g)
 {
     int col;				/* column number */
     int d;				/* current edit distance */
@@ -684,9 +684,9 @@ When FORCE (the raw prefix arg) is non-nil, absolutely everything is
 refreshed, not just what changed.
 ::end:: */
 {
-    WIN *w;
+    Lisp_Window *w;
     rep_DECLARE1 (win, WINDOWP);
-    w = VWIN (win);
+    w = VWINDOW (win);
 
 #ifdef DEBUG
     fprintf(stderr, "Entering redisplay..\n");
@@ -759,7 +759,7 @@ Redisplay everything that needs to be. When FORCE (the raw prefix arg) is
 non-nil, absolutely everything is refreshed, not just what changed.
 ::end:: */
 {
-    WIN *w;
+    Lisp_Window *w;
 
     for(w = win_chain; w != 0; w = w->next)
     {
@@ -796,7 +796,7 @@ aborted and each row of the window is redisplayed manually.
 /* Just refresh the contents of the message displayed at the bottom
    of window W. */
 void
-redisplay_message(WIN *w)
+redisplay_message(Lisp_Window *w)
 {
     if(w->w_Window == 0 || !(w->car & WINFF_MESSAGE))
 	return;
