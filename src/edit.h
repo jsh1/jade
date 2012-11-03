@@ -384,7 +384,7 @@ typedef struct lisp_window {
     Lisp_View *mini_buffer_view;	/* Minibuffer view */
     int view_count;			/* Number of views in window */
 
-    Window_system window_system;	/* Data for the window system */
+    WindowSystem window_system;	/* Data for the window system */
     glyph_buf *content, *new_content;	/* Data for redisplay */
     struct visible_extent *visible_extents;	/* List of displayed extents */
 

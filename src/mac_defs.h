@@ -25,7 +25,7 @@
 
 /* Definitions for Lisp WIN object */
 
-#define Window_system		void*
+#define WindowSystem		void*
 #define w_Window		window_system
 #define WINDOW_NIL		(0)
 

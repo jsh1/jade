@@ -77,7 +77,7 @@ struct _GtkJadeClass
 
 /* Definitions for Lisp WIN object */
 
-#define Window_system		GtkJade*
+#define WindowSystem		GtkJade*
 #define w_Window		window_system
 #define WINDOW_NIL		(0)
 
