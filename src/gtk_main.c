@@ -269,8 +269,8 @@ sys_get_mouse_pos(WIN *w)
     int x, y;
     /* XXX track mouse pointer position in gtk_jade.c.. */
     gtk_widget_get_pointer (GTK_WIDGET (w->w_Window), &x, &y);
-    return make_pos((x - w->w_LeftPix) / w->w_FontX,
-		    (y - w->w_TopPix) / w->w_FontY);
+    return make_pos((x - w->pixel_left) / w->font_width,
+		    (y - w->pixel_top) / w->font_height);
 }
 
 

@@ -156,7 +156,7 @@ gtk_jade_init (GtkJade *jade)
 int
 gtk_jade_set_font (GtkJade *jade)
 {
-    GdkFont *font = gdk_font_load (rep_STR (jade->win->w_FontName));
+    GdkFont *font = gdk_font_load (rep_STR (jade->win->font_name));
     if (font == 0)
 	font = gdk_font_load (DEFAULT_FONT);
     if (font == 0)
@@ -172,18 +172,18 @@ gtk_jade_set_font (GtkJade *jade)
 	jade->bold_font = 0;
     }
 
-    jade->win->w_FontX = gdk_text_width (font, "M", 1);
-    jade->win->w_FontY = font->ascent + font->descent;
+    jade->win->font_width = gdk_text_width (font, "M", 1);
+    jade->win->font_height = font->ascent + font->descent;
 
-    if (jade->win->w_FontX <= 0)
-	jade->win->w_FontX = 1;
-    if (jade->win->w_FontY <= 0)
-	jade->win->w_FontY = 1;
+    if (jade->win->font_width <= 0)
+	jade->win->font_width = 1;
+    if (jade->win->font_height <= 0)
+	jade->win->font_height = 1;
 
     /* Now for the bold font. It doesn't look as though GDK
        allows us to find the fully expanded name of the font? */
     {
-	char *name = rep_STR (jade->win->w_FontName);
+	char *name = rep_STR (jade->win->font_name);
 	char *tem = name;
 	int dashes = 0;
 	while(*tem && dashes != 3)
@@ -352,8 +352,8 @@ gtk_jade_size_request (GtkWidget *widget,
     g_return_if_fail (GTK_IS_JADE (widget));
     jade = GTK_JADE (widget);
 
-    requisition->width = 4 * jade->win->w_FontX;
-    requisition->height = 4 * jade->win->w_FontY;
+    requisition->width = 4 * jade->win->font_width;
+    requisition->height = 4 * jade->win->font_height;
 }
 
 static void
@@ -376,15 +376,15 @@ gtk_jade_size_allocate (GtkWidget *widget, GtkAllocation *allocation)
        If I propagate this everything loses (update_views_dimensions will
        delete _all_ views since there's no room). So just pretend the
        window was iconified.. */
-    if (allocation->width >= jade->win->w_FontX
-	&& allocation->height >= jade->win->w_FontY)
+    if (allocation->width >= jade->win->font_width
+	&& allocation->height >= jade->win->font_height)
     {
 	jade->width = allocation->width;
 	jade->height = allocation->height;
-	jade->win->w_Flags &= ~WINFF_SLEEPING;
+	jade->win->car &= ~WINFF_SLEEPING;
     }
     else
-	jade->win->w_Flags |= WINFF_SLEEPING;
+	jade->win->car |= WINFF_SLEEPING;
 
     if (jade->win != 0)
     {
@@ -406,11 +406,11 @@ gtk_jade_expose (GtkWidget *widget, GdkEventExpose *event)
     g_return_val_if_fail (GTK_IS_JADE (widget), FALSE);
     jade = GTK_JADE (widget);
 
-    x = (event->area.x - jade->win->w_LeftPix) / jade->win->w_FontX;
-    y = (event->area.y - jade->win->w_TopPix) / jade->win->w_FontY;
+    x = (event->area.x - jade->win->pixel_left) / jade->win->font_width;
+    y = (event->area.y - jade->win->pixel_top) / jade->win->font_height;
     /* Why +2? It seems to be necessary.. */
-    width = (event->area.width / jade->win->w_FontX) + 2;
-    height = (event->area.height / jade->win->w_FontY) + 2;
+    width = (event->area.width / jade->win->font_width) + 2;
+    height = (event->area.height / jade->win->font_height) + 2;
 
     garbage_glyphs(jade->win, x, y, width, height);
 
@@ -465,8 +465,8 @@ gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
 	x = event->button.x;
 	y = event->button.y;
     do_motion:
-	x = (x - jade->win->w_LeftPix) / jade->win->w_FontX;
-	y = (y - jade->win->w_TopPix) / jade->win->w_FontY;
+	x = (x - jade->win->pixel_left) / jade->win->font_width;
+	y = (y - jade->win->pixel_top) / jade->win->font_height;
 	redisplay = update_pointer_extent (jade->win, x, y);
 	break;
 
@@ -483,7 +483,7 @@ gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
 	   || (mods & EV_MOD_BUTTON_MASK) != 0))
     {
 	if(curr_win != jade->win)
-	    curr_vw = jade->win->w_CurrVW;
+	    curr_vw = jade->win->current_view;
 	curr_win = jade->win;
 	reset_message(jade->win);
 	eval_input_event(event, code, mods);
@@ -539,8 +539,8 @@ gtk_jade_drag_data_received (GtkWidget *widget, GdkDragContext *context,
     g_return_if_fail (GTK_IS_JADE (widget));
     jade = GTK_JADE (widget);
 
-    pos = make_pos ((x - jade->win->w_LeftPix) / jade->win->w_FontX,
-		    (y - jade->win->w_TopPix) / jade->win->w_FontY);
+    pos = make_pos ((x - jade->win->pixel_left) / jade->win->font_width,
+		    (y - jade->win->pixel_top) / jade->win->font_height);
 
     data = (char *)selection_data->data;
 
@@ -627,15 +627,15 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 
     assert(attr <= GA_LastFace);
 
-    f = &w->w_MergedFaces[attr];
+    f = &w->merged_faces[attr];
     if(!f->valid)
 	return;
     
-    x = w->w_LeftPix + w->w_FontX * col;
-    y = w->w_TopPix + w->w_FontY * row;
+    x = w->pixel_left + w->font_width * col;
+    y = w->pixel_top + w->font_height * row;
 
     face_to_gc(w->w_Window, f, !invert);
-    gdk_draw_rectangle (win, jade->gc, 1, x, y, len * w->w_FontX, w->w_FontY);
+    gdk_draw_rectangle (win, jade->gc, 1, x, y, len * w->font_width, w->font_height);
 
     if(!all_spaces)
     {
@@ -650,7 +650,7 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 	    face_to_gc(w->w_Window, f, invert);
 	gdk_draw_line (win, jade->gc, 
 		       x, y + jade->font->ascent + 1,
-		       x + len * w->w_FontX - 1, y + jade->font->ascent + 1);
+		       x + len * w->font_width - 1, y + jade->font->ascent + 1);
     }
 
     if(f->car & FACEFF_BOXED)
@@ -661,8 +661,8 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 	for(i = 0; i < len; i++)
 	{
 	    gdk_draw_rectangle (win, jade->gc, 0, x, y,
-				w->w_FontX - 1, w->w_FontY - 1);
-	    x += w->w_FontX;
+				w->font_width - 1, w->font_height - 1);
+	    x += w->font_width;
 	}
     }
 }
@@ -706,17 +706,17 @@ sys_recolor_cursor(repv face)
 void
 sys_update_dimensions(WIN *w)
 {
-    if(w->w_Window && ((w->w_Flags & WINFF_SLEEPING) == 0))
+    if(w->w_Window && ((w->car & WINFF_SLEEPING) == 0))
     {
 	int width, height;
 	/* XXX move this to gtk_jade.c */
 	gtk_jade_get_size (w->w_Window, &width, &height);
-	w->w_LeftPix = 0;
-	w->w_TopPix = 0;
-	w->w_RightPix = width;
-	w->w_BottomPix = height;
-	w->w_WidthPix = w->w_RightPix - w->w_LeftPix;
-	w->w_HeightPix = w->w_BottomPix - w->w_TopPix;
+	w->pixel_left = 0;
+	w->pixel_top = 0;
+	w->pixel_right = width;
+	w->pixel_bottom = height;
+	w->pixel_width = w->pixel_right - w->pixel_left;
+	w->pixel_height = w->pixel_bottom - w->pixel_top;
     }
 }
 
@@ -733,7 +733,7 @@ static void
 focus_callback (GtkJade *jade, gpointer data)
 {
     jade->has_focus = (data != 0);
-    if (jade->win != 0 && jade->win->w_CurrVW != 0)
+    if (jade->win != 0 && jade->win->current_view != 0)
 	Fredisplay_window (rep_VAL(jade->win), Qnil);
 }    
 
@@ -799,13 +799,13 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 			   gtk_widget_get_toplevel (GTK_WIDGET (w->w_Window)));
 	if (width > 0 && height > 0)
 	    gtk_window_set_default_size (GTK_WINDOW (frame),
-					 width * w->w_FontX + 4,
-					 height * w->w_FontY + 4);
+					 width * w->font_width + 4,
+					 height * w->font_height + 4);
 	hints.base_width = hints.base_height = 0;
-	hints.width_inc = w->w_FontX;
-	hints.height_inc = w->w_FontY;
-	hints.min_width = w->w_FontX * 4;
-	hints.min_height = w->w_FontY * 4;
+	hints.width_inc = w->font_width;
+	hints.height_inc = w->font_height;
+	hints.min_width = w->font_width * 4;
+	hints.min_height = w->font_height * 4;
 	gtk_window_set_geometry_hints (GTK_WINDOW (frame),
 				       GTK_WIDGET (w->w_Window),
 				       &hints,
@@ -910,7 +910,7 @@ sys_deleting_window_would_exit (WIN *win)
 	gtk_jade_foreach (GTK_CONTAINER (toplevel),
 			  (GtkCallback) deleting_callback,
 			  (gpointer) &deleted);
-	for (win = win_chain; win != 0; win = win->w_Next)
+	for (win = win_chain; win != 0; win = win->next)
 	{
 	    if (win->w_Window != WINDOW_NIL)
 		total++;
@@ -1034,7 +1034,7 @@ An integer identifying the cursor to use for editor windows. See
 	while (w != 0)
 	{
 	    gdk_window_set_cursor (w->w_Window->widget.window, window_cursor);
-	    w = w->w_Next;
+	    w = w->next;
 	}
 	return arg;
     }
@@ -1058,7 +1058,7 @@ static Bool
 async_event_pred (Display *dpy, XEvent *ev, XPointer arg)
 {
     WIN *w;
-    for (w = win_chain; w != 0; w = w->w_Next)
+    for (w = win_chain; w != 0; w = w->next)
     {
 	if (w->w_Window && GTK_WIDGET_REALIZED (GTK_WIDGET (w->w_Window)))
 	{
@@ -1110,22 +1110,22 @@ gtk_jade_handle_async_input (void)
 		WIN *w;
 
 	    case Expose:
-		x = (xev.xexpose.x - ev_win->w_LeftPix) / ev_win->w_FontX;
-		y = (xev.xexpose.y - ev_win->w_TopPix) / ev_win->w_FontY;
+		x = (xev.xexpose.x - ev_win->pixel_left) / ev_win->font_width;
+		y = (xev.xexpose.y - ev_win->pixel_top) / ev_win->font_height;
 		/* Why +2? It seems to be necessary.. */
-		width = (xev.xexpose.width / ev_win->w_FontX) + 2;
-		height = (xev.xexpose.height / ev_win->w_FontY) + 2;
+		width = (xev.xexpose.width / ev_win->font_width) + 2;
+		height = (xev.xexpose.height / ev_win->font_height) + 2;
 
 		/* We're in the middle of doing something else,
 		   don't let the expose cause the current display
 		   state to be redrawn; preserve the window contents
 		   at the last redisplay */
-		for(w = win_chain; w != 0; w = w->w_Next)
+		for(w = win_chain; w != 0; w = w->next)
 		{
-		    if(!(w->w_Flags & WINFF_PRESERVING))
+		    if(!(w->car & WINFF_PRESERVING))
 		    {
-			copy_glyph_buf(w->w_NewContent, w->w_Content);
-			w->w_Flags |= WINFF_PRESERVING;
+			copy_glyph_buf(w->new_content, w->content);
+			w->car |= WINFF_PRESERVING;
 		    }
 		}
 

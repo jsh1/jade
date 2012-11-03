@@ -408,7 +408,7 @@ swap_buffers(VW *vw, TX *new)
 	   a message obscuring the minibuffer contents, remove it. */
 	if((vw->car & VWFF_MINIBUF)
 	   && MINIBUFFER_ACTIVE_P(vw->window)
-	   && (vw->window->w_Flags & WINFF_MESSAGE))
+	   && (vw->window->car & WINFF_MESSAGE))
 	{
 	    (*rep_message_fun)(rep_reset_message);
 	}
@@ -476,7 +476,7 @@ get_tx_cursor_ptr(TX *tx)
 	return(&curr_vw->cursor_pos);
 
     /* Then other views in the same window. */
-    for(vw = curr_win->w_ViewList; vw != 0; vw = vw->next_view)
+    for(vw = curr_win->view_list; vw != 0; vw = vw->next_view)
     {
 	if(vw->window && vw->window->w_Window && (vw->tx == tx))
 	    return(&vw->cursor_pos);

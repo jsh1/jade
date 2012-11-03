@@ -25,10 +25,10 @@
 /* Macros for editor types */
 
 #define VMARK(v)	((Lisp_Mark *)rep_PTR(v))
-#define VTX(v)		((TX *)rep_PTR(v))
-#define VBUFFER(v)	VTX(v)
-#define VWIN(v)		((WIN *)rep_PTR(v))
-#define VVIEW(v)	((VW *)rep_PTR(v))
+#define VBUFFER(v)	((Lisp_Buffer *)rep_PTR(v))
+#define VTX(v)		VBUFFER(v)
+#define VWIN(v)		((Lisp_Window *)rep_PTR(v))
+#define VVIEW(v)	((Lisp_View *)rep_PTR(v))
 #define VGLYPHTAB(v)	((glyph_table_t *)rep_PTR(v))
 #define VEXTENT(v)	((Lisp_Extent *)rep_PTR(v))	
 #define VFACE(v)	((Lisp_Face *)rep_PTR(v))	
@@ -108,6 +108,7 @@ typedef struct {
 
 
 /* Line structure -- an array of these is in the TX->lines */
+
 typedef struct LINE {
     char	   *ln_Line;
     long	    ln_Strlen;	/* includes '\0' */
@@ -115,6 +116,7 @@ typedef struct LINE {
 
 
 /* Each bookmark has one of these */
+
 typedef struct lisp_mark {
     repv car;
 
@@ -241,8 +243,8 @@ typedef struct merged_face {
 
 typedef struct lisp_buffer {
     repv car;
-
     struct lisp_buffer *next;
+
     Lisp_Mark *mark_chain;
     LINE *lines;
     long line_count, total_lines;	/* text-lines, array-length */
@@ -306,21 +308,20 @@ typedef Lisp_Buffer TX;
 
 #define MAX_POINTER_EXTENTS 16
 
-typedef struct lisp_view
-{
+typedef struct lisp_view {
     repv car;
-
     struct lisp_view *next;
+
     TX *tx;
     struct lisp_window *window;
-    struct lisp_view *next_view;	/* for w_ViewList */
+    struct lisp_view *next_view;	/* for view_list */
 
     /* Cursor positioning data.  */
     repv cursor_pos;
     u_long last_cursor_offset; /* number of glyphs from col 0 */
     repv last_cursor_pos;
     int last_cursor_change_count;
-    TX *last_cursor_tx;
+    Lisp_Buffer *last_cursor_tx;
 
     repv display_origin;
 
@@ -378,39 +379,38 @@ typedef struct {
 } glyph_buf;
 
 /* Each window is represented by one of these */
+
 typedef struct lisp_window {
-    repv w_Car;
-#define w_Flags w_Car
+    repv car;
+    struct lisp_window *next;
 
-    struct lisp_window *w_Next;
+    Lisp_View *view_list;		/* List of views in top-down order */
+    Lisp_View *current_view;		/* Active view in window */
+    Lisp_View *mini_buffer_view;	/* Minibuffer view */
+    int view_count;			/* Number of views in window */
 
-    VW *w_ViewList;			/* List of views in top-down order */
-    VW *w_CurrVW;			/* Active view in window */
-    VW *w_MiniBuf;			/* Minibuffer view */
-    int w_ViewCount;			/* Number of views in window */
+    Window_system window_system;	/* Data for the window system */
+    glyph_buf *content, *new_content;	/* Data for redisplay */
+    struct visible_extent *visible_extents;	/* List of displayed extents */
 
-    W_WindowSys w_WindowSys;		/* Data for the window system */
-    glyph_buf *w_Content, *w_NewContent; /* Data for redisplay */
-    struct visible_extent *w_VisibleExtents; /* List of displayed extents */
+    u_long last_click_time;		/* Last mouse click event */
 
-    u_long w_LastClickMics;		/* Last mouse click event */
+    char *message;			/* non-null == msg in minibuffer */
+    u_long message_length;
 
-    char *w_Message;			/* non-null == msg in minibuffer */
-    u_long w_MessageLen;
+    int column_count, row_count;	/* COLS,ROWS in whole window */
+    int pixel_width, pixel_height;	/* width,height in pixels of window */
+    int pixel_left, pixel_right;	/* pixel position of top left corner */
+    int pixel_top, pixel_bottom;	/*  "      "   of bottom right */
 
-    int w_MaxX, w_MaxY;			/* COLS,ROWS in whole window */
-    int w_WidthPix, w_HeightPix;	/* width,height in pixels of window */
-    int w_LeftPix, w_RightPix;		/* Pixel position of top left corner */
-    int w_TopPix, w_BottomPix;		/*  "      "   of bottom right */
+    repv font_name;
+    int font_width, font_height;	/* pixel width and height of glyphs */
 
-    repv w_FontName;
-    short w_FontX, w_FontY;		/* pixel width and height of glyphs */
-
-    repv w_DisplayedName;		/* current ``name'' of window  */
+    repv displayed_name;		/* current ``name'' of window  */
 
     /* Merged faces in this window. If the `next' field in each
        face is non-zero the face is valid. */
-    Merged_Face w_MergedFaces[GA_LastFace+1];
+    Merged_Face merged_faces[GA_LastFace+1];
 } Lisp_Window;
 
 typedef Lisp_Window WIN;
@@ -424,12 +424,12 @@ typedef Lisp_Window WIN;
 /* a message is currently displayed in the minibuffer */
 #define WINFF_MESSAGE		(1 << (rep_CELL16_TYPE_BITS + 2))
 
-/* using the w_NewContent field of the window to preserve the w_Content.
+/* using the 'new_content' field of the window to preserve the 'content'.
    Used by asynchronous input handling to save screen contents */
 #define WINFF_PRESERVING	(1 << (rep_CELL16_TYPE_BITS + 3))
 
 /* True when the minibuffer in WIN is in use. */
 #define MINIBUFFER_ACTIVE_P(win) \
-    ((win)->w_MiniBuf->tx != mb_unused_buffer)
+    ((win)->mini_buffer_view->tx != mb_unused_buffer)
 
 #endif /* EDIT_H */

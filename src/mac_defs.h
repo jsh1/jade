@@ -25,8 +25,8 @@
 
 /* Definitions for Lisp WIN object */
 
-#define W_WindowSys		void*
-#define w_Window		w_WindowSys
+#define Window_system		void*
+#define w_Window		window_system
 #define WINDOW_NIL		(0)
 
 #define WINDOW_META(w)		mac_meta_mod

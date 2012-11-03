@@ -127,7 +127,7 @@ ATTRS is an alist with any of the following pairs:
     if (tem != Qnil)
 	font = rep_CDR(tem);
     else if (curr_win != 0)
-	font = curr_win->w_FontName;
+	font = curr_win->font_name;
     else
 	font = def_font_str;
 
@@ -135,8 +135,8 @@ ATTRS is an alist with any of the following pairs:
     if(w != NULL)
     {
 	memset(w, 0, sizeof(WIN));
-	w->w_Car = window_type;
-	w->w_FontName = rep_STRINGP(font) ? font : def_font_str;
+	w->car = window_type;
+	w->font_name = rep_STRINGP(font) ? font : def_font_str;
 	if(sys_set_font(w))
 	{
 	    w->w_Window = sys_new_window(curr_win, w, dims);
@@ -145,24 +145,24 @@ ATTRS is an alist with any of the following pairs:
 		sys_update_dimensions(w);
 		update_window_dimensions(w);
 		/* First the main view.. */
-		if(w->w_Content != 0 && w->w_NewContent != 0
+		if(w->content != 0 && w->new_content != 0
 		   && make_view(NULL, w, VTX(tx), 0, FALSE))
 		{
 		    /* ..then the minibuffer view. */
 		    if(make_view(NULL, w, NULL, 0, TRUE))
 		    {
-			w->w_CurrVW = w->w_ViewList;
-			w->w_Flags |= WINFF_FORCE_REFRESH;
-			w->w_Next = win_chain;
+			w->current_view = w->view_list;
+			w->car |= WINFF_FORCE_REFRESH;
+			w->next = win_chain;
 			win_chain = w;
 			if(curr_win == 0)
 			{
 			    curr_win = w;
-			    curr_vw = w->w_CurrVW;
+			    curr_vw = w->current_view;
 			}
 			else
 			{
-			    w->w_CurrVW->buffer_list
+			    w->current_view->buffer_list
 				= Fcopy_sequence(curr_vw->buffer_list);
 			}
 			Fset_current_window(rep_VAL(w), Qnil);
@@ -171,10 +171,10 @@ ATTRS is an alist with any of the following pairs:
 		    }
 		    kill_all_views(w);
 		}
-		if(w->w_NewContent)
-		    free_glyph_buf(w->w_NewContent);
-		if(w->w_Content)
-		    free_glyph_buf(w->w_Content);
+		if(w->new_content)
+		    free_glyph_buf(w->new_content);
+		if(w->content)
+		    free_glyph_buf(w->content);
 		free_visible_extents (w);
 		sys_kill_window(w);
 	    }
@@ -193,20 +193,20 @@ delete_window(WIN *w)
     kill_all_views(w);
     sys_unset_font(w);
     sys_kill_window(w);
-    free_glyph_buf(w->w_NewContent);
-    free_glyph_buf(w->w_Content);
-    w->w_NewContent = w->w_Content = NULL;
+    free_glyph_buf(w->new_content);
+    free_glyph_buf(w->content);
+    w->new_content = w->content = NULL;
     free_visible_extents (w);
     /* This flags that this window is dead.  */
     w->w_Window = WINDOW_NIL;
     if(curr_win == w)
     {
-	while((w = w->w_Next))
+	while((w = w->next))
 	{
 	    if(w->w_Window)
 	    {
 		curr_win = w;
-		curr_vw = w->w_CurrVW;
+		curr_vw = w->current_view;
 		return;
 	    }
 	}
@@ -216,13 +216,13 @@ delete_window(WIN *w)
 	    if(w->w_Window)
 	    {
 		curr_win = w;
-		curr_vw = w->w_CurrVW;
+		curr_vw = w->current_view;
 		return;
 	    }
-	    w = w->w_Next;
+	    w = w->next;
 	}
 	/* No living windows left :-( we'll die soon :-(  */
-	curr_win->w_CurrVW = NULL;
+	curr_win->current_view = NULL;
 	curr_win = NULL;
 	curr_vw = NULL;
 	rep_throw_value = Fcons(Qquit, rep_MAKE_INT(0)); /* experimental. */
@@ -252,20 +252,20 @@ This function always returns nil.
 void
 update_window_dimensions(WIN *w)
 {
-    long new_width = w->w_WidthPix / w->w_FontX;
-    long new_height = w->w_HeightPix / w->w_FontY;
-    if(new_width != w->w_MaxX || new_height != w->w_MaxY)
+    long new_width = w->pixel_width / w->font_width;
+    long new_height = w->pixel_height / w->font_height;
+    if(new_width != w->column_count || new_height != w->row_count)
     {
-	if(w->w_Content)
-	    free_glyph_buf(w->w_Content);
-	if(w->w_NewContent)
-	    free_glyph_buf(w->w_NewContent);
-	w->w_Content = alloc_glyph_buf(new_width, new_height);
-	w->w_NewContent = alloc_glyph_buf(new_width, new_height);
-	if(!w->w_Content || !w->w_NewContent)
+	if(w->content)
+	    free_glyph_buf(w->content);
+	if(w->new_content)
+	    free_glyph_buf(w->new_content);
+	w->content = alloc_glyph_buf(new_width, new_height);
+	w->new_content = alloc_glyph_buf(new_width, new_height);
+	if(!w->content || !w->new_content)
 	    abort();			/* TODO: this is evil */
-	w->w_MaxX = new_width;
-	w->w_MaxY = new_height;
+	w->column_count = new_width;
+	w->row_count = new_height;
 	update_views_dimensions(w);
     }
 }
@@ -279,7 +279,7 @@ Iconifies the current window.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    if(((VWIN(win)->w_Flags & WINFF_SLEEPING) == 0)
+    if(((VWIN(win)->car & WINFF_SLEEPING) == 0)
        && sys_sleep_win(VWIN(win)))
 	return(win);
     return(Qnil);
@@ -294,7 +294,7 @@ Uniconifies the current window.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    if((VWIN(win)->w_Flags & WINFF_SLEEPING) && sys_unsleep_win(VWIN(win)))
+    if((VWIN(win)->car & WINFF_SLEEPING) && sys_unsleep_win(VWIN(win)))
 	return(win);
     return(Qnil);
 }
@@ -307,7 +307,7 @@ Cycles through the open windows forwards.
 ::end:: */
 {
     if(!WINDOWP(win))
-	win = rep_VAL(curr_win->w_Next);
+	win = rep_VAL(curr_win->next);
     while(VWIN(win) != curr_win)
     {
 	if(!win)
@@ -321,7 +321,7 @@ Cycles through the open windows forwards.
 	    }
 	    return(win);
 	}
-	win = rep_VAL(VWIN(win)->w_Next);
+	win = rep_VAL(VWIN(win)->next);
     }
     return(rep_VAL(curr_win));
 }
@@ -330,13 +330,13 @@ void
 messagen(char *title, int length)
 {
     WIN *w = curr_win;
-    if((w->w_Flags & WINFF_SLEEPING) == 0)
+    if((w->car & WINFF_SLEEPING) == 0)
     {
-	if(w->w_Message != NULL)
-	    rep_free(w->w_Message);
-	w->w_Message = rep_str_dupn(title, length);
-	w->w_MessageLen = length;
-	w->w_Flags |= WINFF_MESSAGE;
+	if(w->message != NULL)
+	    rep_free(w->message);
+	w->message = rep_str_dupn(title, length);
+	w->message_length = length;
+	w->car |= WINFF_MESSAGE;
     }
 }
 
@@ -344,7 +344,7 @@ void
 messagef(char *fmt, va_list args)
 {
     WIN *w = curr_win;
-    if((w->w_Flags & WINFF_SLEEPING) == 0)
+    if((w->car & WINFF_SLEEPING) == 0)
     {
 	char fmtbuff[256];
 	u_long len;
@@ -354,19 +354,19 @@ messagef(char *fmt, va_list args)
 	vsprintf(fmtbuff, fmt, args);
 #endif
 	va_end(args);
-	if(w->w_Message != NULL)
-	    rep_free(w->w_Message);
+	if(w->message != NULL)
+	    rep_free(w->message);
 	len = strlen(fmtbuff);
-	w->w_Message = rep_str_dupn(fmtbuff, len);
-	w->w_MessageLen = len;
-	w->w_Flags |= WINFF_MESSAGE;
+	w->message = rep_str_dupn(fmtbuff, len);
+	w->message_length = len;
+	w->car |= WINFF_MESSAGE;
     }
 }
 
 void
 reset_message (WIN *w)
 {
-    w->w_Flags &= ~WINFF_MESSAGE;
+    w->car &= ~WINFF_MESSAGE;
 }
 
 bool
@@ -374,12 +374,12 @@ remove_all_messages(bool from_idle_p)
 {
     WIN *w;
     bool success = FALSE;
-    for(w = win_chain; w != 0; w = w->w_Next)
+    for(w = win_chain; w != 0; w = w->next)
     {
 	/* Really if we're being called from idle-time we
 	   only want to remove a message if the minibuffer is
 	   in use. */
-	if(w->w_Flags & WINFF_MESSAGE
+	if(w->car & WINFF_MESSAGE
 	   && (!from_idle_p || MINIBUFFER_ACTIVE_P(w)))
 	{
 	    reset_message(w);
@@ -424,13 +424,13 @@ jade_message (enum rep_message fn, ...)
     case rep_save_message:
 	old_msgp = (char **)va_arg(args, char **);
 	old_lenp = (u_long *)va_arg(args, u_long *);
-	if(curr_win->w_Flags & WINFF_MESSAGE)
+	if(curr_win->car & WINFF_MESSAGE)
 	{
 	    /* a message is being displayed. */
-	    *old_msgp = curr_win->w_Message;
-	    *old_lenp = curr_win->w_MessageLen;
-	    curr_win->w_Message = NULL;
-	    curr_win->w_MessageLen = 0;
+	    *old_msgp = curr_win->message;
+	    *old_lenp = curr_win->message_length;
+	    curr_win->message = NULL;
+	    curr_win->message_length = 0;
 	}
 	else
 	{
@@ -444,28 +444,28 @@ jade_message (enum rep_message fn, ...)
 	len = (int)va_arg(args, int);
 	if (msg != 0)
 	{
-	    if(curr_win->w_Message != NULL)
-		rep_free(curr_win->w_Message);
-	    curr_win->w_Message = msg;
-	    curr_win->w_MessageLen = len;
-	    curr_win->w_Flags |= WINFF_MESSAGE;
+	    if(curr_win->message != NULL)
+		rep_free(curr_win->message);
+	    curr_win->message = msg;
+	    curr_win->message_length = len;
+	    curr_win->car |= WINFF_MESSAGE;
 	}
 	break;
 
     case rep_append_message:
 	msg = (char *)va_arg(args, char *);
 	len = (int)va_arg(args, int);
-	if (curr_win->w_Flags & WINFF_MESSAGE)
+	if (curr_win->car & WINFF_MESSAGE)
 	{
 	    WIN *w = curr_win;
-	    char *s = rep_realloc(w->w_Message, w->w_MessageLen + len + 1);
+	    char *s = rep_realloc(w->message, w->message_length + len + 1);
 	    if(s != 0)
 	    {
-		w->w_Message = s;
-		memcpy (w->w_Message + w->w_MessageLen, msg, len);
-		w->w_MessageLen += len;
-		s[w->w_MessageLen] = 0;
-		w->w_Flags |= WINFF_MESSAGE;
+		w->message = s;
+		memcpy (w->message + w->message_length, msg, len);
+		w->message_length += len;
+		s[w->message_length] = 0;
+		w->car |= WINFF_MESSAGE;
 	    }
 	}
 	else
@@ -502,7 +502,7 @@ Returns the name of the font being used in this window.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return(VWIN(win)->w_FontName);
+    return(VWIN(win)->font_name);
 }
 
 DEFUN("window-asleep-p", Fwindow_asleep_p, Swindow_asleep_p, (void), rep_Subr0) /*
@@ -512,7 +512,7 @@ window-asleep-p
 Returns t if window is currently iconified.
 ::end:: */
 {
-    if(curr_win->w_Flags & WINFF_SLEEPING)
+    if(curr_win->car & WINFF_SLEEPING)
 	return(Qt);
     return(Qnil);
 }
@@ -558,7 +558,7 @@ of the window as well).
 {
     rep_DECLARE1(win, WINDOWP);
     curr_win = VWIN(win);
-    curr_vw = curr_win->w_CurrVW;
+    curr_vw = curr_win->current_view;
     if(!rep_NILP(activ))
 	sys_activate_win(VWIN(win));
     return(rep_VAL(curr_win));
@@ -588,8 +588,8 @@ Returns (WIDTH . HEIGHT) of the window's font (in pixels).
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return Fcons(rep_MAKE_INT((long)VWIN(win)->w_FontX),
-		 rep_MAKE_INT((long)VWIN(win)->w_FontY));
+    return Fcons(rep_MAKE_INT((long)VWIN(win)->font_width),
+		 rep_MAKE_INT((long)VWIN(win)->font_height));
 }
 
 DEFUN("window-dimensions", Fwindow_dimensions, Swindow_dimensions, (repv win), rep_Subr2) /*
@@ -602,8 +602,8 @@ the current window).
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return Fcons(rep_MAKE_INT(VWIN(win)->w_MaxX),
-		    rep_MAKE_INT(VWIN(win)->w_MaxY));
+    return Fcons(rep_MAKE_INT(VWIN(win)->column_count),
+		    rep_MAKE_INT(VWIN(win)->row_count));
 }
 
 DEFUN("window-list", Fwindow_list, Swindow_list, (void), rep_Subr0) /*
@@ -623,7 +623,7 @@ Return a list of all non-deleted windows.
 	    *ptr = Fcons(rep_VAL(w), Qnil);
 	    ptr = &(rep_CDR(*ptr));
 	}
-	w = w->w_Next;
+	w = w->next;
     }
     return head;
 }
@@ -641,7 +641,7 @@ bottom order, ending with the mini-buffer.
     repv *ptr = &res;
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    for(vw = VWIN(win)->w_ViewList; vw != 0; vw = vw->next_view)
+    for(vw = VWIN(win)->view_list; vw != 0; vw = vw->next_view)
     {
 	if(!(*ptr = Fcons(rep_VAL(vw), Qnil)))
 	    return rep_NULL;
@@ -660,7 +660,7 @@ minibuffer view, whether it's active or not.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return rep_MAKE_INT(VWIN(win)->w_ViewCount);
+    return rep_MAKE_INT(VWIN(win)->view_count);
 }
 
 DEFUN("window-first-view", Fwindow_first_view, Swindow_first_view, (repv win), rep_Subr1) /*
@@ -672,7 +672,7 @@ Returns the first view in WINDOW.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return rep_VAL(VWIN(win)->w_ViewList);
+    return rep_VAL(VWIN(win)->view_list);
 }
 
 DEFUN("windowp", Fwindowp, Swindowp, (repv arg), rep_Subr1) /*
@@ -699,16 +699,16 @@ the standard window system conventions.
     rep_DECLARE1(fontname, rep_STRINGP);
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    oldfont = VWIN(win)->w_FontName;
-    VWIN(win)->w_FontName = fontname;
+    oldfont = VWIN(win)->font_name;
+    VWIN(win)->font_name = fontname;
     if(sys_set_font(VWIN(win)))
     {
-	VWIN(win)->w_Flags |= WINFF_FORCE_REFRESH;
+	VWIN(win)->car |= WINFF_FORCE_REFRESH;
 	return Qt;
     }
     else
     {
-	VWIN(win)->w_FontName = oldfont;
+	VWIN(win)->font_name = oldfont;
 	return Fsignal(Qerror, rep_list_2(rep_VAL(&no_font), fontname));
     }
 }
@@ -737,11 +737,11 @@ window_sweep(void)
     win_chain = NULL;
     while(w)
     {
-	WIN *next = w->w_Next;
+	WIN *next = w->next;
 	if(rep_GC_CELL_MARKEDP(rep_VAL(w)))
 	{
 	    rep_GC_CLR_CELL(rep_VAL(w));
-	    w->w_Next = win_chain;
+	    w->next = win_chain;
 	    win_chain = w;
 	}
 	else
@@ -753,9 +753,9 @@ window_sweep(void)
 static void
 window_mark (repv val)
 {
-    rep_MARKVAL(VWIN(val)->w_FontName);
-    rep_MARKVAL(VWIN(val)->w_DisplayedName);
-    rep_MARKVAL(rep_VAL(VWIN(val)->w_ViewList));
+    rep_MARKVAL(VWIN(val)->font_name);
+    rep_MARKVAL(VWIN(val)->displayed_name);
+    rep_MARKVAL(rep_VAL(VWIN(val)->view_list));
 }
 
 static void
@@ -775,7 +775,7 @@ window_mark_active (void)
 	    mark_merged_faces(win);
 	    mark_visible_extents (win);
 	}
-	win = win->w_Next;
+	win = win->next;
     }
 }
 
@@ -811,7 +811,7 @@ window_bind (repv win)
     {
 	repv handle = rep_VAL(curr_win);
 	curr_win = VWIN(win);
-	curr_vw = curr_win->w_CurrVW;
+	curr_vw = curr_win->current_view;
 	return handle;
     }
 }
@@ -822,7 +822,7 @@ window_unbind (repv handle)
     if (VWIN(handle)->w_Window != WINDOW_NIL)
     {
 	curr_win = VWIN(handle);
-	curr_vw = curr_win->w_CurrVW;
+	curr_vw = curr_win->current_view;
     }
 }
 
@@ -881,7 +881,7 @@ windows_kill(void)
     w = win_chain;
     while(w)
     {
-	next = w->w_Next;
+	next = w->next;
 	rep_FREE_CELL(w);
 	w = next;
     }

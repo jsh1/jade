@@ -1,5 +1,10 @@
 2012-11-02  John Harper  <jsh@unfactored.org>
 
+	* x11_windowsys.h, x11_windows.c, x11_misc.c, x11_main.c,
+	windows.c, views.c, redisplay.c, mac_windows.m, mac_defs.h,
+	keys.c, gtk_main.c, gtk_jade.c, gtk_defs.h, glyphs.c, faces.c,
+	extent.c, edit.h, buffers.c: renamed lisp_window fields
+
 	* x11_misc.c, x11_main.c, windows.c, views.c, undo.c,
 	server-dl.c, redisplay.c, movement.c, mac_windows.m, keys.c,
 	jade_subrs.h, housekeeping.c, gtk_select.c, gtk_jade.c,

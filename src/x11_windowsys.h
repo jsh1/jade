@@ -67,14 +67,14 @@ typedef struct {
     int			ws_Width, ws_Height;
     int			ws_HasFocus;
     u_int		ws_Unobscured :1;
-} W_WindowSys;
+} Window_system;
 
-#define w_Window	w_WindowSys.ws_Window
+#define w_Window	window_system.ws_Window
 #define WINDOW_NIL	(0)
 
-#define WINDOW_XDPY(w)	((w)->w_WindowSys.ws_Display)
+#define WINDOW_XDPY(w)	((w)->window_system.ws_Display)
 #define WINDOW_META(w)  (WINDOW_XDPY(w)->meta_mod)
-#define WINDOW_HAS_FOCUS(w) ((w)->w_WindowSys.ws_HasFocus)
+#define WINDOW_HAS_FOCUS(w) ((w)->window_system.ws_HasFocus)
 
 struct x11_color {
     struct x11_color *next;
@@ -98,15 +98,15 @@ typedef struct {
 /* Copy WxH glyphs from (X1,Y1) to (X2,Y2)  */
 #define COPY_GLYPHS(win, x1, y1, w, h, x2, y2)				\
     do {								\
-	int x1pix = (win)->w_LeftPix + (win)->w_FontX * (x1);		\
-	int y1pix = (win)->w_TopPix + (win)->w_FontY * (y1);		\
-	int x2pix = (win)->w_LeftPix + (win)->w_FontX * (x2);		\
-	int y2pix = (win)->w_TopPix + (win)->w_FontY * (y2);		\
-	int width = (w) * (win)->w_FontX;				\
-	int height = (h) * (win)->w_FontY;				\
+	int x1pix = (win)->pixel_left + (win)->font_width * (x1);		\
+	int y1pix = (win)->pixel_top + (win)->font_height * (y1);		\
+	int x2pix = (win)->pixel_left + (win)->font_width * (x2);		\
+	int y2pix = (win)->pixel_top + (win)->font_height * (y2);		\
+	int width = (w) * (win)->font_width;				\
+	int height = (h) * (win)->font_height;				\
 	XCopyArea(WINDOW_XDPY(win)->display,				\
 		  (win)->w_Window, (win)->w_Window,			\
-		  (win)->w_WindowSys.ws_GC,				\
+		  (win)->window_system.ws_GC,				\
 		  x1pix, y1pix, width, height, x2pix, y2pix);		\
     } while(0)
 

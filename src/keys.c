@@ -154,7 +154,7 @@ lookup_binding(u_long code, u_long mods, bool (*callback)(repv key))
 	    /* First scan the extents under the mouse for mouse-keymap
 	       properties.. */
 	    VW *vw;
-	    for (vw = curr_win->w_ViewList;
+	    for (vw = curr_win->view_list;
 		 k == 0 && vw != 0;
 		 vw = vw->next_view)
 	    {

@@ -387,7 +387,7 @@ by Jade, relinquish ownership.
 	int selno = selection_atom_to_index(selection);
 	if(selection_info[selno].owner != WINDOW_NIL)
 	{
-	    XSetSelectionOwner(curr_win->w_WindowSys.ws_Display->display,
+	    XSetSelectionOwner(curr_win->window_system.ws_Display->display,
 			       selection, None, x11_last_event_time);
 	    selection_info[selno].owner = WINDOW_NIL;
 	    selection_info[selno].data = Qnil;
@@ -424,7 +424,7 @@ An integer identifying the X cursor to use for editor windows. See
 	{
 	    XDefineCursor (WINDOW_XDPY(win)->display, win->w_Window,
 			   WINDOW_XDPY(win)->text_cursor);
-	    win = win->w_Next;
+	    win = win->next;
 	}
 	return arg;
     }

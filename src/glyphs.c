@@ -163,7 +163,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
     VW *vw;
 
     free_visible_extents (w);
-    for(vw = w->w_ViewList; vw != 0; vw = vw->next_view)
+    for(vw = w->view_list; vw != 0; vw = vw->next_view)
     {
 	glyph_widths_t *width_table;
 	glyph_glyphs_t *glyph_table;
@@ -273,8 +273,8 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	{
 	    /* Fill in the glyphs for CHAR_ROW */
 
-	    glyph_code *codes = w->w_NewContent->codes[glyph_row];
-	    glyph_attr *attrs = w->w_NewContent->attrs[glyph_row];
+	    glyph_code *codes = w->new_content->codes[glyph_row];
+	    glyph_attr *attrs = w->new_content->attrs[glyph_row];
 
 	    u_char *src = (u_char *)vw->tx->lines[char_row].ln_Line;
 	    long src_len = vw->tx->lines[char_row].ln_Strlen - 1;
@@ -284,7 +284,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	    long real_glyph_col = 0, glyph_col = 0, char_col = 0;
 
 	    /* Is the cursor in this row? */
-	    bool cursor_row = (vw == w->w_CurrVW
+	    bool cursor_row = (vw == w->current_view
 			       && VROW(vw->cursor_pos) == char_row);
 	    bool block_row = FALSE;
 
@@ -488,8 +488,8 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 				*attrs = attr;
 				real_glyph_col = 0;
 				++glyph_row;
-				codes = w->w_NewContent->codes[glyph_row];
-				attrs = w->w_NewContent->attrs[glyph_row];
+				codes = w->new_content->codes[glyph_row];
+				attrs = w->new_content->attrs[glyph_row];
 			    }
 			    if(glyph_row < last_row)
 				OUTPUT(*ptr++);
@@ -585,8 +585,8 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	}
 	while(glyph_row < last_row)
 	{
-	    memset(w->w_NewContent->codes[glyph_row], ' ', g->cols);
-	    memset(w->w_NewContent->attrs[glyph_row], attr, g->cols);
+	    memset(w->new_content->codes[glyph_row], ' ', g->cols);
+	    memset(w->new_content->attrs[glyph_row], attr, g->cols);
 	    glyph_row++;
 	}
 
@@ -603,8 +603,8 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 		attr = get_face_id(w, VFACE(face));
 
 	    glyph_row = vw->min_y + vw->height;
-	    codes = w->w_NewContent->codes[glyph_row];
-	    attrs = w->w_NewContent->attrs[glyph_row];
+	    codes = w->new_content->codes[glyph_row];
+	    attrs = w->new_content->attrs[glyph_row];
 
 	    update_status_buffer(vw, (char *)codes, g->cols);
 	    memset(attrs, attr, g->cols);
@@ -612,7 +612,7 @@ make_window_glyphs(glyph_buf *g, WIN *w)
 	}
     }
 
-    if(w->w_Flags & WINFF_MESSAGE)
+    if(w->car & WINFF_MESSAGE)
     {
 	/* The minibuffer has a message [partially?] obscuring it. */
 	make_message_glyphs(g, w);
@@ -627,13 +627,13 @@ make_message_glyphs(glyph_buf *g, WIN *w)
     repv face;
     glyph_attr attr;
 
-    u_long msg_len = w->w_MessageLen;
-    char *msg = w->w_Message;
-    int line = w->w_MaxY - (ROUND_UP_INT(msg_len, g->cols-1) / (g->cols-1));
-    if(line < w->w_MiniBuf->min_y)
+    u_long msg_len = w->message_length;
+    char *msg = w->message;
+    int line = w->row_count - (ROUND_UP_INT(msg_len, g->cols-1) / (g->cols-1));
+    if(line < w->mini_buffer_view->min_y)
     {
-	line = w->w_MiniBuf->min_y;
-	msg_len = (g->cols-1) * w->w_MiniBuf->height;
+	line = w->mini_buffer_view->min_y;
+	msg_len = (g->cols-1) * w->mini_buffer_view->height;
     }
 
     face = Fsymbol_value (Qdefault_face, Qt);
@@ -643,7 +643,7 @@ make_message_glyphs(glyph_buf *g, WIN *w)
 	attr = GA_Garbage;
 
     /* Output the message on the bottom-most lines. */
-    while(line < w->w_MaxY)
+    while(line < w->row_count)
     {
 	if(msg_len >= g->cols - 1)
 	{

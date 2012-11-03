@@ -1439,7 +1439,7 @@ start_visible_extent (VW *vw, Lisp_Extent *e, long start_col, long start_row)
 {
     struct visible_extent *x;
     e = find_first_frag (e);
-    x = vw->window->w_VisibleExtents;
+    x = vw->window->visible_extents;
     while (x != 0 && (x->extent != e || x->vw != vw))
 	x = x->next;
     if (x != 0)
@@ -1454,8 +1454,8 @@ start_visible_extent (VW *vw, Lisp_Extent *e, long start_col, long start_row)
     else
     {
 	x = rep_alloc (sizeof (struct visible_extent));
-	x->next = vw->window->w_VisibleExtents;
-	vw->window->w_VisibleExtents = x;
+	x->next = vw->window->visible_extents;
+	vw->window->visible_extents = x;
 	x->extent = e;
 	x->vw = vw;
 	x->start_col = start_col;
@@ -1470,7 +1470,7 @@ end_visible_extent (VW *vw, Lisp_Extent *e, long end_col, long end_row)
 {
     struct visible_extent *x;
     e = find_first_frag (e);
-    x = vw->window->w_VisibleExtents;
+    x = vw->window->visible_extents;
     while (x != 0 && (x->extent != e || x->vw != vw))
 	x = x->next;
     assert (x != 0);
@@ -1485,8 +1485,8 @@ end_visible_extent (VW *vw, Lisp_Extent *e, long end_col, long end_row)
 void
 free_visible_extents (WIN *w)
 {
-    struct visible_extent *x = w->w_VisibleExtents;
-    w->w_VisibleExtents = 0;
+    struct visible_extent *x = w->visible_extents;
+    w->visible_extents = 0;
     while (x != 0)
     {
 	struct visible_extent *next = x->next;
@@ -1499,7 +1499,7 @@ void
 map_visible_extents (WIN *w, long col, long row,
 		     void (*fun)(struct visible_extent *x))
 {
-    struct visible_extent *x = w->w_VisibleExtents;
+    struct visible_extent *x = w->visible_extents;
     while (x != 0)
     {
 	if ((row > x->start_row && row < x->end_row)
@@ -1530,12 +1530,12 @@ bool
 update_pointer_extent (WIN *w, long mouse_col, long mouse_row)
 {
     /* XXX remove this GNU CC dependency */
-    Lisp_Extent *old[w->w_ViewCount][MAX_POINTER_EXTENTS];
-    int old_num[w->w_ViewCount];
+    Lisp_Extent *old[w->view_count][MAX_POINTER_EXTENTS];
+    int old_num[w->view_count];
     VW *vw;
     int i;
 
-    for (i = 0, vw = w->w_ViewList; vw != 0; i++, vw = vw->next_view)
+    for (i = 0, vw = w->view_list; vw != 0; i++, vw = vw->next_view)
     {
 	old_num[i] = vw->pointer_extents_count;
 	memcpy (&old[i][0], vw->pointer_extents,
@@ -1546,7 +1546,7 @@ update_pointer_extent (WIN *w, long mouse_col, long mouse_row)
     map_visible_extents (w, mouse_col, mouse_row,
 			 update_pointer_extent_callback);
 
-    for (i = 0, vw = w->w_ViewList; vw != 0; i++, vw = vw->next_view)
+    for (i = 0, vw = w->view_list; vw != 0; i++, vw = vw->next_view)
     {
 	if (vw->pointer_extents_count != old_num[i]
 	    || memcmp (&old[i][0], vw->pointer_extents,
@@ -1561,14 +1561,14 @@ update_pointer_extent (WIN *w, long mouse_col, long mouse_row)
 void
 mark_visible_extents (WIN *w)
 {
-    struct visible_extent *x = w->w_VisibleExtents;
+    struct visible_extent *x = w->visible_extents;
     VW *vw;
     while (x != 0)
     {
 	rep_MARKVAL (rep_VAL (x->extent));
 	x = x->next;
     }
-    for (vw = w->w_ViewList; vw != 0; vw = vw->next_view)
+    for (vw = w->view_list; vw != 0; vw = vw->next_view)
     {
 	int i;
 	for (i = 0; i < vw->pointer_extents_count; i++)

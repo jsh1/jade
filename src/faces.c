@@ -192,11 +192,11 @@ may be one of these symbols:
     else
 	return rep_signal_arg_error(attr, 2);
 
-    for(w = win_chain; w != 0; w = w->w_Next)
+    for(w = win_chain; w != 0; w = w->next)
     {
 	if(w->w_Window)
 	    /* TODO: this is highly suboptimal... */
-	    w->w_Flags |= WINFF_FORCE_REFRESH;
+	    w->car |= WINFF_FORCE_REFRESH;
     }
     if(face == mouse_cursor_face)
 	sys_recolor_cursor(face);
@@ -260,9 +260,9 @@ get_merged_face(WIN *w, u_long car,
        an equivalent of this one, or an empty slot. */
     for(id = 0; id <= GA_LastFace; id++)
     {
-	if(w->w_MergedFaces[id].valid)
+	if(w->merged_faces[id].valid)
 	{
-	    Merged_Face *f = &w->w_MergedFaces[id];
+	    Merged_Face *f = &w->merged_faces[id];
 	    if(f->car == car
 	       && f->background == background
 	       && f->foreground == foreground)
@@ -276,10 +276,10 @@ get_merged_face(WIN *w, u_long car,
     assert(empty != -1);		/* FIXME: handle gracefully? */
 
     /* Fill the new face */
-    w->w_MergedFaces[empty].car = car;
-    w->w_MergedFaces[empty].valid = TRUE;
-    w->w_MergedFaces[empty].background = background;
-    w->w_MergedFaces[empty].foreground = foreground;
+    w->merged_faces[empty].car = car;
+    w->merged_faces[empty].valid = TRUE;
+    w->merged_faces[empty].background = background;
+    w->merged_faces[empty].foreground = foreground;
     return empty;
 }
 
@@ -301,7 +301,7 @@ static void union_face (struct merge_closure *c, Lisp_Face *face)
 	c->foreground = VCOLOR(face->foreground);
 }
 
-/* Return the id of a face in W->w_MergedFaces that expresses the
+/* Return the id of a face in W->merged_faces that expresses the
    attributes of the positions within E. */
 int
 merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
@@ -394,7 +394,7 @@ mark_glyph_buf_faces(WIN *w, glyph_buf *g)
     int id;
 
     for(id = 0; id <= GA_LastFace; id++)
-	w->w_MergedFaces[id].valid = FALSE;
+	w->merged_faces[id].valid = FALSE;
 
     for(row = 0; row < g->rows; row++)
     {
@@ -402,7 +402,7 @@ mark_glyph_buf_faces(WIN *w, glyph_buf *g)
 	for(col = 0; col < g->cols; col++)
 	{
 	    if(attrs[col] <= GA_LastFace)
-		w->w_MergedFaces[attrs[col]].valid = TRUE;
+		w->merged_faces[attrs[col]].valid = TRUE;
 	    else if (attrs[col] != GA_Garbage)
 		fprintf (stderr, "warning: invalid glyph attr (%d,%d) = %d\n",
 			 row, col, attrs[col]);
@@ -411,10 +411,10 @@ mark_glyph_buf_faces(WIN *w, glyph_buf *g)
 
     for(id = 0; id <= GA_LastFace; id++)
     {
-	if(w->w_MergedFaces[id].valid)
+	if(w->merged_faces[id].valid)
 	{
-	    rep_MARKVAL(rep_VAL(w->w_MergedFaces[id].background));
-	    rep_MARKVAL(rep_VAL(w->w_MergedFaces[id].foreground));
+	    rep_MARKVAL(rep_VAL(w->merged_faces[id].background));
+	    rep_MARKVAL(rep_VAL(w->merged_faces[id].foreground));
 	}
     }
 }
@@ -422,8 +422,8 @@ mark_glyph_buf_faces(WIN *w, glyph_buf *g)
 void
 mark_merged_faces(WIN *w)
 {
-    mark_glyph_buf_faces(w, w->w_Content);
-    mark_glyph_buf_faces(w, w->w_NewContent);
+    mark_glyph_buf_faces(w, w->content);
+    mark_glyph_buf_faces(w, w->new_content);
 }
 
 

@@ -610,7 +610,7 @@ x11_handle_input(int fd, bool synchronous)
 		break;
 
 	    case VisibilityNotify:
-		ev_win->w_WindowSys.ws_Unobscured = (xev.xvisibility.state
+		ev_win->window_system.ws_Unobscured = (xev.xvisibility.state
 						     == VisibilityUnobscured);
 		break;
 
@@ -618,18 +618,18 @@ x11_handle_input(int fd, bool synchronous)
 		/* Avoid cascading graphics expose events by never copying */
 		redisplay_set_no_copy ();
 	    case Expose:
-		if(ev_win->w_Flags & WINFF_SLEEPING)
+		if(ev_win->car & WINFF_SLEEPING)
 		{
 		    /* Guess that the wm uniconified us? */
-		    ev_win->w_Flags &= ~WINFF_SLEEPING;
+		    ev_win->car &= ~WINFF_SLEEPING;
 		}
-		if(!(ev_win->w_Flags & WINFF_FORCE_REFRESH))
+		if(!(ev_win->car & WINFF_FORCE_REFRESH))
 		{
-		    int x = (xev.xexpose.x - ev_win->w_LeftPix) / ev_win->w_FontX;
-		    int y = (xev.xexpose.y - ev_win->w_TopPix) / ev_win->w_FontY;
+		    int x = (xev.xexpose.x - ev_win->pixel_left) / ev_win->font_width;
+		    int y = (xev.xexpose.y - ev_win->pixel_top) / ev_win->font_height;
 		    /* Why +2? It seems to be necessary.. */
-		    int width = (xev.xexpose.width / ev_win->w_FontX) + 2;
-		    int height = (xev.xexpose.height / ev_win->w_FontY) + 2;
+		    int width = (xev.xexpose.width / ev_win->font_width) + 2;
+		    int height = (xev.xexpose.height / ev_win->font_height) + 2;
 
 		    if(!synchronous)
 		    {
@@ -638,12 +638,12 @@ x11_handle_input(int fd, bool synchronous)
 			   state to be redrawn; preserve the window contents
 			   at the last redisplay */
 			WIN *w;;
-			for(w = win_chain; w != 0; w = w->w_Next)
+			for(w = win_chain; w != 0; w = w->next)
 			{
-			    if(!(w->w_Flags & WINFF_PRESERVING))
+			    if(!(w->car & WINFF_PRESERVING))
 			    {
-				copy_glyph_buf(w->w_NewContent, w->w_Content);
-				w->w_Flags |= WINFF_PRESERVING;
+				copy_glyph_buf(w->new_content, w->content);
+				w->car |= WINFF_PRESERVING;
 			    }
 			}
 		    }
@@ -655,13 +655,13 @@ x11_handle_input(int fd, bool synchronous)
 		break;
 
 	    case ConfigureNotify:
-		if((ev_win->w_WindowSys.ws_Width != xev.xconfigure.width)
-		   || (ev_win->w_WindowSys.ws_Height != xev.xconfigure.height))
+		if((ev_win->window_system.ws_Width != xev.xconfigure.width)
+		   || (ev_win->window_system.ws_Height != xev.xconfigure.height))
 		{
-		    if((ev_win->w_WindowSys.ws_Height != 0)
-		       && (ev_win->w_WindowSys.ws_Height < xev.xconfigure.height))
-			ev_win->w_WindowSys.ws_Width = xev.xconfigure.width;
-		    ev_win->w_WindowSys.ws_Height = xev.xconfigure.height;
+		    if((ev_win->window_system.ws_Height != 0)
+		       && (ev_win->window_system.ws_Height < xev.xconfigure.height))
+			ev_win->window_system.ws_Width = xev.xconfigure.width;
+		    ev_win->window_system.ws_Height = xev.xconfigure.height;
 		    x11_update_dimensions(ev_win, xev.xconfigure.width,
 					  xev.xconfigure.height);
 		    update_window_dimensions(ev_win);
@@ -675,7 +675,7 @@ x11_handle_input(int fd, bool synchronous)
 		{
 		    curr_win = ev_win;
 		    if(ev_win != oldwin)
-			curr_vw = curr_win->w_CurrVW;
+			curr_vw = curr_win->current_view;
 		    rep_call_with_barrier (Fdelete_window, Qnil,
 					   rep_TRUE, 0, 0, 0);
 		    xdisplay = 0;
@@ -684,18 +684,18 @@ x11_handle_input(int fd, bool synchronous)
 		break;
 
 	    case FocusIn:
-		ev_win->w_WindowSys.ws_HasFocus = TRUE;
+		ev_win->window_system.ws_HasFocus = TRUE;
 		if(ev_win != oldwin)
 		{
 		    curr_win = ev_win;
-		    curr_vw = curr_win->w_CurrVW;
+		    curr_vw = curr_win->current_view;
 		}
 		undo_end_of_command();
 		need_redisplay = TRUE;
 		break;
 
 	    case FocusOut:
-		ev_win->w_WindowSys.ws_HasFocus = FALSE;
+		ev_win->window_system.ws_HasFocus = FALSE;
 		undo_end_of_command();
 		need_redisplay = TRUE;
 		break;
@@ -741,11 +741,11 @@ x11_handle_input(int fd, bool synchronous)
 	    do_command:
 		x11_current_event_win = ev_win;
 		x11_current_mouse_x
-		    = ((x11_current_mouse_x - ev_win->w_LeftPix)
-		       / ev_win->w_FontX);
+		    = ((x11_current_mouse_x - ev_win->pixel_left)
+		       / ev_win->font_width);
 		x11_current_mouse_y
-		    = ((x11_current_mouse_y - ev_win->w_TopPix)
-		       / ev_win->w_FontY);
+		    = ((x11_current_mouse_y - ev_win->pixel_top)
+		       / ev_win->font_height);
 		if (ev_win != old_mouse_win
 		    || old_mouse_x != x11_current_mouse_x
 		    || old_mouse_y != x11_current_mouse_y)
@@ -765,7 +765,7 @@ x11_handle_input(int fd, bool synchronous)
 		{
 		    curr_win = ev_win;
 		    if(oldwin != ev_win)
-			curr_vw = curr_win->w_CurrVW;
+			curr_vw = curr_win->current_view;
 		    reset_message(ev_win);
 		    eval_input_event(&xev, code, mods);
 		    need_redisplay = TRUE;

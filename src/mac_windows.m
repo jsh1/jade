@@ -79,7 +79,7 @@ flip_y (JadeView *view, int y)
     CGFloat units;
     UniChar uc[256];
 
-    string = CFStringCreateWithCString (NULL, rep_STR (_win->w_FontName),
+    string = CFStringCreateWithCString (NULL, rep_STR (_win->font_name),
 					kCFStringEncodingUTF8);
     font = CGFontCreateWithFontName (string);
     CFRelease (string);
@@ -115,13 +115,13 @@ flip_y (JadeView *view, int y)
     _font_descent = -CGFontGetDescent (_font) * units;
     _font_leading = CGFontGetLeading (_font) * units;
     
-    _win->w_FontX = round (_font_width);
-    _win->w_FontY = round (_font_ascent + _font_descent + _font_leading);
+    _win->font_width = round (_font_width);
+    _win->font_height = round (_font_ascent + _font_descent + _font_leading);
 
-    if (_win->w_FontX <= 0)
-	_win->w_FontX = 1;
-    if (_win->w_FontY <= 0)
-	_win->w_FontY = 1;
+    if (_win->font_width <= 0)
+	_win->font_width = 1;
+    if (_win->font_height <= 0)
+	_win->font_height = 1;
 
     if (sys_window_realized (_win))
     {
@@ -130,7 +130,7 @@ flip_y (JadeView *view, int y)
     }
 
     [[self window] setContentResizeIncrements:
-     NSMakeSize (_win->w_FontX, _win->w_FontY)];
+     NSMakeSize (_win->font_width, _win->font_height)];
 
     return 1;
 }
@@ -138,7 +138,7 @@ flip_y (JadeView *view, int y)
 - (BOOL)windowShouldClose:(id)sender
 {
     curr_win = _win;
-    curr_vw = _win->w_CurrVW;
+    curr_vw = _win->current_view;
     rep_call_with_barrier (Fdelete_window, Qnil, rep_TRUE, 0, 0, 0);
     mac_needs_redisplay = true;
     return NO;
@@ -168,11 +168,11 @@ flip_y (JadeView *view, int y)
     if (_win->w_Window == WINDOW_NIL)
 	return;				/* still initializing */
 
-    x = (r.origin.x - _win->w_LeftPix) / _win->w_FontX;
-    y = (r.origin.y - _win->w_TopPix) / _win->w_FontY;
+    x = (r.origin.x - _win->pixel_left) / _win->font_width;
+    y = (r.origin.y - _win->pixel_top) / _win->font_height;
     /* Why +2? It seems to be necessary.. */
-    width = (r.size.width / _win->w_FontX) + 2;
-    height = (r.size.height / _win->w_FontY) + 2;
+    width = (r.size.width / _win->font_width) + 2;
+    height = (r.size.height / _win->font_height) + 2;
 
     garbage_glyphs(_win, x, y, width, height);
 
@@ -190,7 +190,7 @@ flip_y (JadeView *view, int y)
 	return;
 
     curr_win = _win;
-    curr_vw = _win->w_CurrVW;
+    curr_vw = _win->current_view;
 
     p = [self convertPoint:[e locationInWindow] fromView:nil];
     p.y = flip_y (self, p.y);
@@ -206,7 +206,7 @@ flip_y (JadeView *view, int y)
 	   || (mods & EV_MOD_BUTTON_MASK) != 0))
     {
 	if(curr_win != _win)
-	    curr_vw = _win->w_CurrVW;
+	    curr_vw = _win->current_view;
 	curr_win = _win;
 	reset_message(_win);
 	eval_input_event(e, code, mods);
@@ -445,7 +445,7 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 
     assert(attr <= GA_LastFace);
 
-    f = &w->w_MergedFaces[attr];
+    f = &w->merged_faces[attr];
     if(!f->valid)
 	return;
 
@@ -460,8 +460,8 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 	bg_color = &VCOLOR (f->foreground)->color;
     }
 
-    x = w->w_LeftPix + w->w_FontX * col;
-    y = flip_y (view, w->w_TopPix + w->w_FontY * row);
+    x = w->pixel_left + w->font_width * col;
+    y = flip_y (view, w->pixel_top + w->font_height * row);
 
     ctx = current_context;
     if (ctx == NULL)
@@ -479,7 +479,7 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
     }
 
     CGContextSetBlendMode (ctx, kCGBlendModeCopy);
-    r.size.width = len * w->w_FontX; r.size.height = w->w_FontY;
+    r.size.width = len * w->font_width; r.size.height = w->font_height;
     r.origin.x = x; r.origin.y = y - r.size.height;
     CGContextFillRect (ctx, r);
     CGContextSetBlendMode (ctx, kCGBlendModeNormal);
@@ -514,7 +514,7 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 
 	for (i = 0; i < len; i++)
 	{
-	    pt[i].x = x + w->w_FontX * i;
+	    pt[i].x = x + w->font_width * i;
 	    pt[i].y = y - view->_font_ascent;
 	    glyphs[i] = view->_glyph_table[((u_char *)str)[i]];
 	}
@@ -527,20 +527,20 @@ sys_draw_glyphs(WIN *w, int col, int row, glyph_attr attr, char *str,
 	CGFloat ly = y - view->_font_ascent - .5f;
 	CGContextBeginPath (ctx);
 	CGContextMoveToPoint (ctx, x + .5f, ly);
-	CGContextAddLineToPoint (ctx, x + len * w->w_FontX - .5f, ly);
+	CGContextAddLineToPoint (ctx, x + len * w->font_width - .5f, ly);
 	CGContextStrokePath (ctx);
     }
 
     if(f->car & FACEFF_BOXED)
     {
-	r.size.width = w->w_FontX - 1;
-	r.size.height = w->w_FontY - 1;
+	r.size.width = w->font_width - 1;
+	r.size.height = w->font_height - 1;
 	r.origin.x = x + .5f;
 	r.origin.y = y - r.size.height - .5f;
 	for(i = 0; i < len; i++)
 	{
 	    CGContextStrokeRect (ctx, r);
-	    r.origin.x += w->w_FontX;
+	    r.origin.x += w->font_width;
 	}
     }
 }
@@ -552,13 +552,13 @@ sys_copy_glyphs (WIN *win, int x1, int y1, int w, int h, int x2, int y2)
     NSRect r;
     NSSize off;
 
-    r.size.width = w * win->w_FontX;
-    r.size.height = h * win->w_FontY;
-    r.origin.x = win->w_LeftPix + win->w_FontX * x1;
-    r.origin.y = flip_y (view, win->w_TopPix + win->w_FontY * y1) - r.size.height;
+    r.size.width = w * win->font_width;
+    r.size.height = h * win->font_height;
+    r.origin.x = win->pixel_left + win->font_width * x1;
+    r.origin.y = flip_y (view, win->pixel_top + win->font_height * y1) - r.size.height;
 
-    off.width = win->w_LeftPix + win->w_FontX * (x2 - x1);
-    off.height = win->w_TopPix + win->w_FontY * (y2 - y1);
+    off.width = win->pixel_left + win->font_width * (x2 - x1);
+    off.height = win->pixel_top + win->font_height * (y2 - y1);
     off.height = -off.height;
 
     OBJC_BEGIN
@@ -578,16 +578,16 @@ sys_recolor_cursor(repv face)
 void
 sys_update_dimensions(WIN *w)
 {
-    if(w->w_Window && ((w->w_Flags & WINFF_SLEEPING) == 0))
+    if(w->w_Window && ((w->car & WINFF_SLEEPING) == 0))
     {
 	NSRect r = [(JadeView *)w->w_Window bounds];
 	int width = r.size.width, height = r.size.height;
-	w->w_LeftPix = 0;
-	w->w_TopPix = 0;
-	w->w_RightPix = width;
-	w->w_BottomPix = height;
-	w->w_WidthPix = w->w_RightPix - w->w_LeftPix;
-	w->w_HeightPix = w->w_BottomPix - w->w_TopPix;
+	w->pixel_left = 0;
+	w->pixel_top = 0;
+	w->pixel_right = width;
+	w->pixel_bottom = height;
+	w->pixel_width = w->pixel_right - w->pixel_left;
+	w->pixel_height = w->pixel_bottom - w->pixel_top;
     }
 }
 
@@ -628,7 +628,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
 	view->_antialias = ((JadeView *)curr_win->w_Window)->_antialias;
 
     window = [[NSWindow alloc] initWithContentRect:
-	      NSMakeRect (x, y, width * w->w_FontX, height * w->w_FontY)
+	      NSMakeRect (x, y, width * w->font_width, height * w->font_height)
 	      styleMask:NSTitledWindowMask | NSClosableWindowMask
 	      | NSMiniaturizableWindowMask | NSResizableWindowMask
 	      backing:NSBackingStoreBuffered defer:YES];
@@ -637,7 +637,7 @@ sys_new_window(WIN *oldW, WIN *w, short *dims)
     [window setReleasedWhenClosed:YES];
     [window setOpaque:YES];
     [window setDelegate:(id)view];
-    [window setContentResizeIncrements:NSMakeSize (w->w_FontX, w->w_FontY)];
+    [window setContentResizeIncrements:NSMakeSize (w->font_width, w->font_height)];
     [[NSNotificationCenter defaultCenter] addObserver:view
      selector:@selector(windowDidResize:)
      name:NSWindowDidResizeNotification object:view];
@@ -776,8 +776,8 @@ sys_get_mouse_pos(WIN *w)
     NSPoint p = [v convertPoint:[[[v window] currentEvent]
 				 locationInWindow] fromView:nil];
     p.y = flip_y (v, p.y);
-    return make_pos (((int) p.x - w->w_LeftPix) / w->w_FontX,
-		     ((int) p.y - w->w_TopPix) / w->w_FontY);
+    return make_pos (((int) p.x - w->pixel_left) / w->font_width,
+		     ((int) p.y - w->pixel_top) / w->font_height);
 }
 
 

@@ -154,7 +154,7 @@ hash_glyph_buf(glyph_buf *g)
 void
 garbage_glyphs(WIN *w, int x, int y, int width, int height)
 {
-    glyph_buf *g = w->w_Content;
+    glyph_buf *g = w->content;
     if(x + width > g->cols)
 	width = g->cols - x;
     if(y + height > g->rows)
@@ -262,7 +262,7 @@ redisplay_do_copy(WIN *w, glyph_buf *old_g, glyph_buf *new_g,
     assert(src_line > 0 && dst_line > 0);
 
     if (!redisplay_no_copy)
-	COPY_GLYPHS(w, 0, src_line - 1, w->w_MaxX, n_lines, 0, dst_line - 1);
+	COPY_GLYPHS(w, 0, src_line - 1, w->column_count, n_lines, 0, dst_line - 1);
     else
     {
 	for (i = 0; i < n_lines; i++)
@@ -698,30 +698,30 @@ refreshed, not just what changed.
     {
 	glyph_buf *tem;
 
-	if(arg != Qnil || (w->w_Flags & WINFF_FORCE_REFRESH))
+	if(arg != Qnil || (w->car & WINFF_FORCE_REFRESH))
 	{
 	    /* Must redraw this window. The easiest way to do this
 	       is to just garbage the entire contents */
-	    garbage_glyphs(w, 0, 0, w->w_MaxX, w->w_MaxY);
-	    w->w_Flags &= ~(WINFF_FORCE_REFRESH | WINFF_PRESERVING);
+	    garbage_glyphs(w, 0, 0, w->column_count, w->row_count);
+	    w->car &= ~(WINFF_FORCE_REFRESH | WINFF_PRESERVING);
 	}
 
-	if((w->w_Flags & WINFF_PRESERVING) == 0)
+	if((w->car & WINFF_PRESERVING) == 0)
 	{
-	    make_window_glyphs(w->w_NewContent, w);
-	    hash_glyph_buf(w->w_NewContent);
+	    make_window_glyphs(w->new_content, w);
+	    hash_glyph_buf(w->new_content);
 	}
 
 #ifdef SYS_BEGIN_REDISPLAY
 	SYS_BEGIN_REDISPLAY (w);
 #endif
 
-	if(!patch_display(w, w->w_Content, w->w_NewContent))
+	if(!patch_display(w, w->content, w->new_content))
 	{
 	    /* MAX-D was exceeded. Draw all lines manually. */
 	    int row;
-	    for(row = 1; row <= w->w_MaxY; row++)
-		redisplay_do_draw(w, w->w_Content, w->w_NewContent, row);
+	    for(row = 1; row <= w->row_count; row++)
+		redisplay_do_draw(w, w->content, w->new_content, row);
 	}
 
 #ifdef SYS_END_REDISPLAY
@@ -729,17 +729,17 @@ refreshed, not just what changed.
 #endif
 
 	/* Flip the old and new glyph buffers. */
-	tem = w->w_NewContent;
-	w->w_NewContent = w->w_Content;
-	w->w_Content = tem;
-	w->w_Flags &= ~WINFF_PRESERVING;
+	tem = w->new_content;
+	w->new_content = w->content;
+	w->content = tem;
+	w->car &= ~WINFF_PRESERVING;
 
 	/* See if we should update the window name */
-	if(w->w_CurrVW->tx->status_string != 0
-	   && w->w_DisplayedName != w->w_CurrVW->tx->status_string)
+	if(w->current_view->tx->status_string != 0
+	   && w->displayed_name != w->current_view->tx->status_string)
 	{
-	    w->w_DisplayedName = w->w_CurrVW->tx->status_string;
-	    sys_set_win_name(w, rep_STR(w->w_DisplayedName));
+	    w->displayed_name = w->current_view->tx->status_string;
+	    sys_set_win_name(w, rep_STR(w->displayed_name));
 	}
     }
     redisplay_lock--;
@@ -761,7 +761,7 @@ non-nil, absolutely everything is refreshed, not just what changed.
 {
     WIN *w;
 
-    for(w = win_chain; w != 0; w = w->w_Next)
+    for(w = win_chain; w != 0; w = w->next)
     {
 	if (w->w_Window != WINDOW_NIL)
 	{
@@ -798,7 +798,7 @@ aborted and each row of the window is redisplayed manually.
 void
 redisplay_message(WIN *w)
 {
-    if(w->w_Window == 0 || !(w->w_Flags & WINFF_MESSAGE))
+    if(w->w_Window == 0 || !(w->car & WINFF_MESSAGE))
 	return;
 
     redisplay_lock++;
@@ -807,16 +807,16 @@ redisplay_message(WIN *w)
     SYS_BEGIN_REDISPLAY (w);
 #endif
 
-    /* Copy existing contents of the message to w_NewContent */
-    memcpy(w->w_NewContent->codes[w->w_MaxY - 1],
-	   w->w_Content->codes[w->w_MaxY - 1],
-	   w->w_MaxX * (sizeof(glyph_code) + sizeof(glyph_attr)));
-    w->w_NewContent->hashes[w->w_MaxY-1] = w->w_Content->hashes[w->w_MaxY-1];
+    /* Copy existing contents of the message to new_content */
+    memcpy(w->new_content->codes[w->row_count - 1],
+	   w->content->codes[w->row_count - 1],
+	   w->column_count * (sizeof(glyph_code) + sizeof(glyph_attr)));
+    w->new_content->hashes[w->row_count-1] = w->content->hashes[w->row_count-1];
 
-    make_message_glyphs(w->w_Content, w);
-    w->w_Content->hashes[w->w_MaxY-1]
-        = hash_glyph_row(w->w_Content, w->w_MaxY-1);
-    redisplay_do_draw(w, w->w_NewContent, w->w_Content, w->w_MaxY);
+    make_message_glyphs(w->content, w);
+    w->content->hashes[w->row_count-1]
+        = hash_glyph_row(w->content, w->row_count-1);
+    redisplay_do_draw(w, w->new_content, w->content, w->row_count);
 
 #ifdef SYS_END_REDISPLAY
     SYS_END_REDISPLAY (w);
