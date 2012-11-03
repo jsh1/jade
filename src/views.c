@@ -47,7 +47,7 @@ static void set_scroll_steps(VW *vw);
 static void recalc_measures(WIN *w);
 
 /* view_chain is a list of all allocated VW structures, linked through
-   their vw_Next fields. curr_vw is the currently active view; a mirror
+   their next fields. curr_vw is the currently active view; a mirror
    of curr_win->vw_CurrVW. */
 VW *view_chain, *curr_vw;
 
@@ -62,16 +62,16 @@ copy_view_prefs(VW *dest, VW *src)
 {
     if(src)
     {
-	dest->vw_XStepRatio = src->vw_XStepRatio;
-	dest->vw_YStepRatio = src->vw_YStepRatio;
+	dest->scroll_ratio_x = src->scroll_ratio_x;
+	dest->scroll_ratio_y = src->scroll_ratio_y;
     }
     else
     {
-	dest->vw_XStepRatio = 4;
+	dest->scroll_ratio_x = 4;
 #ifdef HAVE_AMIGA
-	dest->vw_YStepRatio = 0;
+	dest->scroll_ratio_y = 0;
 #else
-	dest->vw_YStepRatio = 4;
+	dest->scroll_ratio_y = 4;
 #endif
     }
 }
@@ -93,19 +93,19 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 
     /* Try to initialise PARENT, SIBLING and TX. PARENT must be
        non-null, the others don't have to be if it's not possible. */
-    if(sibling && sibling->vw_Flags & VWFF_MINIBUF)
+    if(sibling && sibling->car & VWFF_MINIBUF)
     {
 	/* Try to find the view above the minibuffer view */
-	sibling = sibling->vw_Win->w_ViewList;
-	while(sibling && sibling->vw_NextView
-	      && sibling->vw_NextView->vw_NextView)
-	    sibling = sibling->vw_NextView;
+	sibling = sibling->window->w_ViewList;
+	while(sibling && sibling->next_view
+	      && sibling->next_view->next_view)
+	    sibling = sibling->next_view;
     }
     if(sibling)
     {
 	if(!tx)
-	    tx = sibling->vw_Tx;
-	parent = sibling->vw_Win;
+	    tx = sibling->tx;
+	parent = sibling->window;
     }
     else
     {
@@ -113,13 +113,13 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	    parent = curr_win;
 	if(!tx)
 	{
-	    if(parent && parent->w_CurrVW && parent->w_CurrVW->vw_Tx)
-		tx = parent->w_CurrVW->vw_Tx;
+	    if(parent && parent->w_CurrVW && parent->w_CurrVW->tx)
+		tx = parent->w_CurrVW->tx;
 	    else
 		tx = buffer_chain; /* whatever */
 	}
 	if(parent && parent->w_CurrVW
-	   && (parent->w_CurrVW->vw_Flags & VWFF_MINIBUF) == 0)
+	   && (parent->w_CurrVW->car & VWFF_MINIBUF) == 0)
 	    sibling = parent->w_CurrVW;
     }
 
@@ -129,7 +129,7 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
     {
 	if(sibling)
 	{
-	    lines = ((sibling->vw_MaxY + 1) / 2) - 1;
+	    lines = ((sibling->height + 1) / 2) - 1;
 	    if(lines < 1)
 		lines = 1;
 	}
@@ -140,7 +140,7 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
     /* Check to see if there's space for the new view. */
     if(!minibuf_p)
     {
-	if((sibling && sibling->vw_MaxY + 1 < lines + 3)
+	if((sibling && sibling->height + 1 < lines + 3)
 	   || parent->w_MaxY < lines + 2)
 	{
 	    Fsignal(Qwindow_error,
@@ -154,14 +154,14 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
     if(vw != NULL)
     {
 	memset(vw, 0, sizeof(VW));
-	vw->vw_Car = view_type;
-	vw->vw_Next = view_chain;
+	vw->car = view_type;
+	vw->next = view_chain;
 	view_chain = vw;
-	vw->vw_Win = parent;
+	vw->window = parent;
 	parent->w_ViewCount++;
 	copy_view_prefs(vw, sibling ? sibling : curr_vw);
-	vw->vw_BlockStatus = -1;
-	vw->vw_BufferList = Qnil;
+	vw->block_state = -1;
+	vw->buffer_list = Qnil;
 
 	/* Initialise the size of the new view, and resize its
 	   SIBLING if it has one. */
@@ -169,35 +169,35 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	{
 	    VW *x;
 	    /* This view is destined to be a minibuffer */
-	    vw->vw_MaxX = parent->w_MaxX;
-	    vw->vw_MaxY = 1;
+	    vw->width = parent->w_MaxX;
+	    vw->height = 1;
 	    swap_buffers(vw, mb_unused_buffer);
-	    vw->vw_Flags |= VWFF_MINIBUF;
+	    vw->car |= VWFF_MINIBUF;
 	    parent->w_MiniBuf = vw;
-	    for(x = parent->w_ViewList; x->vw_NextView; x = x->vw_NextView)
+	    for(x = parent->w_ViewList; x->next_view; x = x->next_view)
 		;
-	    x->vw_NextView = vw;
-	    vw->vw_NextView = NULL;
+	    x->next_view = vw;
+	    vw->next_view = NULL;
 	}
 	else if(sibling)
 	{
 	    /* Divide up the space used by SIBLING.  We know
 	       that there's enough room for LINES new lines. */
-	    vw->vw_NextView = sibling->vw_NextView;
-	    sibling->vw_NextView = vw;
-	    vw->vw_MaxX = sibling->vw_MaxX;
-	    vw->vw_MaxY = lines;
-	    sibling->vw_MaxY = ((sibling->vw_MaxY + 1)
-				- (vw->vw_MaxY + 1)) - 1;
+	    vw->next_view = sibling->next_view;
+	    sibling->next_view = vw;
+	    vw->width = sibling->width;
+	    vw->height = lines;
+	    sibling->height = ((sibling->height + 1)
+				- (vw->height + 1)) - 1;
 	    set_scroll_steps(sibling);
 	}
 	else
 	{
 	    /* All space in PARENT goes to the new view. */
-	    vw->vw_NextView = NULL;
+	    vw->next_view = NULL;
 	    parent->w_ViewList = vw;
-	    vw->vw_MaxX = parent->w_MaxX;
-	    vw->vw_MaxY = parent->w_MaxY - 2;	/* status & minibuf */
+	    vw->width = parent->w_MaxX;
+	    vw->height = parent->w_MaxY - 2;	/* status & minibuf */
 	}
 	recalc_measures(parent);
 	set_scroll_steps(vw);
@@ -205,22 +205,22 @@ make_view(VW *sibling, WIN *parent, TX *tx, long lines, bool minibuf_p)
 	/* Now try to initialise the new view's buffer. */
 	if(!minibuf_p && tx)
 	{
-	    if(sibling && sibling->vw_Tx == tx)
+	    if(sibling && sibling->tx == tx)
 	    {
 		/* copy configuration of SIBLING */
-		vw->vw_Tx = tx;
-		vw->vw_CursorPos = sibling->vw_CursorPos;
-		vw->vw_DisplayOrigin = sibling->vw_DisplayOrigin;
-		vw->vw_BlockS = sibling->vw_BlockS;
-		vw->vw_BlockE = sibling->vw_BlockE;
-		vw->vw_BlockStatus = sibling->vw_BlockStatus;
-		vw->vw_BufferList = Fcopy_sequence(sibling->vw_BufferList);
+		vw->tx = tx;
+		vw->cursor_pos = sibling->cursor_pos;
+		vw->display_origin = sibling->display_origin;
+		vw->block_start = sibling->block_start;
+		vw->block_end = sibling->block_end;
+		vw->block_state = sibling->block_state;
+		vw->buffer_list = Fcopy_sequence(sibling->buffer_list);
 	    }
 	    else
 	    {
 		/* this doesn't always work as well as the above. */
 		swap_buffers(vw, tx);
-		vw->vw_BufferList = Qnil;
+		vw->buffer_list = Qnil;
 	    }
 	    Fcall_hook(Qsplit_view_hook, rep_LIST_1(rep_VAL(vw)), Qnil);
 	}
@@ -250,8 +250,8 @@ to contain the new view.
 {
     if(!VIEWP(sib))
 	sib = rep_VAL(curr_vw);
-    return rep_VAL(make_view(VVIEW(sib), VVIEW(sib)->vw_Win,
-			 VVIEW(sib)->vw_Tx, rep_INTP(lines) ? rep_INT(lines) : 0,
+    return rep_VAL(make_view(VVIEW(sib), VVIEW(sib)->window,
+			 VVIEW(sib)->tx, rep_INTP(lines) ? rep_INT(lines) : 0,
 			 FALSE));
 }
 
@@ -259,11 +259,11 @@ to contain the new view.
 static void
 kill_view(VW *vw)
 {
-    WIN *w = vw->vw_Win;
-    vw->vw_NextView = NULL;
-    vw->vw_Tx = NULL;
-    vw->vw_Win = NULL;
-    vw->vw_BufferList = Qnil;
+    WIN *w = vw->window;
+    vw->next_view = NULL;
+    vw->tx = NULL;
+    vw->window = NULL;
+    vw->buffer_list = Qnil;
     w->w_ViewCount--;
     if(w->w_CurrVW == vw)
     {
@@ -292,50 +292,50 @@ VIEW is the minibuffer view.
 {
     VW *vw = VIEWP(view) ? VVIEW(view) : curr_vw;
     VW *pred;
-    if(vw->vw_Win->w_ViewCount <= 2)
+    if(vw->window->w_ViewCount <= 2)
     {
 	/* Only two views are left. Don't destroy it. */
 	return Fsignal(Qwindow_error, rep_list_2(rep_VAL(&sole_view), rep_VAL(vw)));
     }
-    else if(vw->vw_Flags & VWFF_MINIBUF)
+    else if(vw->car & VWFF_MINIBUF)
     {
 	/* Can't kill the minibuffer */
 	return Fsignal(Qwindow_error, rep_list_2(rep_VAL(&mini_view), rep_VAL(vw)));
     }
     Fcall_hook(Qdelete_view_hook, rep_LIST_1(rep_VAL(vw)), Qnil);
 
-    if(vw->vw_Win->w_ViewList == vw)
+    if(vw->window->w_ViewList == vw)
     {
 	/* There's no predecessor to VW. So give its space to
 	   the following view. If possible fix the display origin
 	   of the following view to minimise scrolling. */
 	long new_origin_col, new_origin_row;
-	pred = vw->vw_NextView;
-	vw->vw_Win->w_ViewList = pred;
-	if(!skip_glyph_rows_backwards(pred, vw->vw_MaxY + 1,
-				      VCOL(pred->vw_DisplayOrigin),
-				      VROW(pred->vw_DisplayOrigin),
+	pred = vw->next_view;
+	vw->window->w_ViewList = pred;
+	if(!skip_glyph_rows_backwards(pred, vw->height + 1,
+				      VCOL(pred->display_origin),
+				      VROW(pred->display_origin),
 				      &new_origin_col, &new_origin_row))
 	{
 	    new_origin_col = 0;
-	    new_origin_row = pred->vw_Tx->logical_start;
+	    new_origin_row = pred->tx->logical_start;
 	}
-	pred->vw_DisplayOrigin = make_pos(new_origin_col, new_origin_row);
+	pred->display_origin = make_pos(new_origin_col, new_origin_row);
     }
     else
     {
 	/* Find this view's predecessor. */
-	for(pred = vw->vw_Win->w_ViewList; pred != 0; pred = pred->vw_NextView)
+	for(pred = vw->window->w_ViewList; pred != 0; pred = pred->next_view)
 	{
-	    if(pred->vw_NextView == vw)
+	    if(pred->next_view == vw)
 		break;
 	}
-	pred->vw_NextView = vw->vw_NextView;
+	pred->next_view = vw->next_view;
     }
     kill_view(vw);
     /* VW is now unlinked; now gives its window-space to PRED. */
-    pred->vw_MaxY += vw->vw_MaxY + 1;
-    recalc_measures(pred->vw_Win);
+    pred->height += vw->height + 1;
+    recalc_measures(pred->window);
     set_scroll_steps(pred);
     return(rep_VAL(vw));
 }
@@ -347,7 +347,7 @@ kill_all_views(WIN *w)
     VW *vw = w->w_ViewList;
     while(vw != 0)
     {
-	VW *next = vw->vw_NextView;
+	VW *next = vw->next_view;
 	kill_view(vw);
 	vw = next;
     }
@@ -360,14 +360,14 @@ kill_all_views(WIN *w)
 static void
 set_scroll_steps(VW *vw)
 {
-    if((vw->vw_XStepRatio <= 0)
-       || ((vw->vw_XStep = vw->vw_MaxX / vw->vw_XStepRatio) <= 0)
-       || (vw->vw_XStep > vw->vw_MaxX))
-	vw->vw_XStep = 1;
-    if((vw->vw_YStepRatio <= 0)
-       || ((vw->vw_YStep = vw->vw_MaxY / vw->vw_YStepRatio) <= 0)
-       || (vw->vw_YStep > vw->vw_MaxY))
-	vw->vw_YStep = 1;
+    if((vw->scroll_ratio_x <= 0)
+       || ((vw->scroll_step_x = vw->width / vw->scroll_ratio_x) <= 0)
+       || (vw->scroll_step_x > vw->width))
+	vw->scroll_step_x = 1;
+    if((vw->scroll_ratio_y <= 0)
+       || ((vw->scroll_step_y = vw->height / vw->scroll_ratio_y) <= 0)
+       || (vw->scroll_step_y > vw->height))
+	vw->scroll_step_y = 1;
 }
 
 /* For each view in window W, recalculate all view positions from
@@ -377,11 +377,11 @@ recalc_measures(WIN *w)
 {
     VW *vw;
     int row = 0;
-    for(vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
+    for(vw = w->w_ViewList; vw != 0; vw = vw->next_view)
     {
-	vw->vw_FirstX = 0;
-	vw->vw_FirstY = row;
-	row += vw->vw_MaxY + ((vw->vw_Flags & VWFF_MINIBUF) ? 0 : 1);
+	vw->min_x = 0;
+	vw->min_y = row;
+	row += vw->height + ((vw->car & VWFF_MINIBUF) ? 0 : 1);
     }
 }
 
@@ -397,11 +397,11 @@ update_views_dimensions(WIN *w)
     int old_total_lines = 0;
     VW *vw;
 
-    for(vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
-	old_total_lines += vw->vw_MaxY + 1;
+    for(vw = w->w_ViewList; vw != 0; vw = vw->next_view)
+	old_total_lines += vw->height + 1;
     old_total_lines--;		/* minibuf has no status line */
 
-    if(old_total_lines == w->w_MaxY && w->w_MaxX == w->w_ViewList->vw_MaxX)
+    if(old_total_lines == w->w_MaxY && w->w_MaxX == w->w_ViewList->width)
 	/* No changes */
 	return;
 
@@ -410,32 +410,32 @@ update_views_dimensions(WIN *w)
 	/* Not enough lines for the number of existing views. Delete
 	   views until there is */
 	VW *dead = w->w_ViewList;
-	w->w_ViewList = w->w_ViewList->vw_NextView;
+	w->w_ViewList = w->w_ViewList->next_view;
 	kill_view(dead);
     }
 
-    for(vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
+    for(vw = w->w_ViewList; vw != 0; vw = vw->next_view)
     {
-	vw->vw_FirstX = 0;
-	vw->vw_MaxX = w->w_MaxX;
-	if(vw->vw_Flags & VWFF_MINIBUF)
-	    vw->vw_MaxY = 1;
+	vw->min_x = 0;
+	vw->width = w->w_MaxX;
+	if(vw->car & VWFF_MINIBUF)
+	    vw->height = 1;
 	else
 	{
-	    if(vw->vw_NextView->vw_Flags & VWFF_MINIBUF)
+	    if(vw->next_view->car & VWFF_MINIBUF)
 		/* Last view. Give it the remainder (except
 		   the minibuf's line). */
-		vw->vw_MaxY = w->w_MaxY - lines_given - 2;
+		vw->height = w->w_MaxY - lines_given - 2;
 	    else
 	    {
 		/* Otherwise try to keep the old weighting. */
-		vw->vw_MaxY = (((vw->vw_MaxY + 1) * w->w_MaxY)
+		vw->height = (((vw->height + 1) * w->w_MaxY)
 			       / old_total_lines) - 1;
-		vw->vw_MaxY = MAX(vw->vw_MaxY, 1);
+		vw->height = MAX(vw->height, 1);
 	    }
 	}
-	vw->vw_FirstY = lines_given;
-	lines_given += vw->vw_MaxY + 1;
+	vw->min_y = lines_given;
+	lines_given += vw->height + 1;
 	set_scroll_steps(vw);
     }
 }
@@ -444,7 +444,7 @@ update_views_dimensions(WIN *w)
 static long
 format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 {
-    TX *tx = vw->vw_Tx;
+    TX *tx = vw->tx;
     while(*fmt && buf_len > 0)
     {
 	while(buf_len > 0 && *fmt && *fmt != '%')
@@ -479,7 +479,7 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 
 	case 'l':			/* line-number */
 	case 'L':			/* global line-number */
-	    len = sprintf(buf, "%ld", VROW(vw->vw_CursorPos) + 1
+	    len = sprintf(buf, "%ld", VROW(vw->cursor_pos) + 1
 			  - (fmt[-1] == 'l' ? tx->logical_start : 0));
 	    buf += len; buf_len -= len;
 	    break;
@@ -493,18 +493,18 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	{
 	    char *position, position_buf[4];
 	    
-	    if(VROW(vw->vw_DisplayOrigin) <= tx->logical_start)
+	    if(VROW(vw->display_origin) <= tx->logical_start)
 	    {
-		if(vw->vw_Flags & VWFF_AT_BOTTOM)
+		if(vw->car & VWFF_AT_BOTTOM)
 		    position = "All";
 		else
 		    position = "Top";
 	    }
-	    else if(vw->vw_Flags & VWFF_AT_BOTTOM)
+	    else if(vw->car & VWFF_AT_BOTTOM)
 		position = "Bot";
 	    else
 	    {
-		int percent = (((VROW(vw->vw_DisplayOrigin)
+		int percent = (((VROW(vw->display_origin)
 				 - tx->logical_start) * 100)
 			       / (tx->logical_end - tx->logical_start));
 		position_buf[0] = (percent / 10) + '0';
@@ -520,7 +520,7 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	}
 
 	case 'm':
-	    *buf++ = "-+<>"[vw->vw_BlockStatus+1];
+	    *buf++ = "-+<>"[vw->block_state+1];
 	    buf_len--;
 	    break;
 
@@ -549,7 +549,7 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 	case '+':			/* *, % or hyphen */
 	{
 	    repv tem = Fbuffer_symbol_value(Qread_only,
-						vw->vw_CursorPos,
+						vw->cursor_pos,
 						rep_VAL(tx), Qt);
 	    bool mod = tx->change_count != tx->proper_saved_changed_count;
 	    if(rep_VOIDP(tem))
@@ -583,11 +583,11 @@ format_mode_string(char *fmt, VW *vw, char *buf, long buf_len)
 static long
 format_mode_value(repv format, VW *vw, char *buf, long buf_len)
 {
-    TX *tx = vw->vw_Tx;
+    TX *tx = vw->tx;
 
     if(rep_SYMBOLP(format))
     {
-	repv tem = Fbuffer_symbol_value(format, vw->vw_CursorPos,
+	repv tem = Fbuffer_symbol_value(format, vw->cursor_pos,
 					    rep_VAL(tx), Qt);
 	if(rep_VOIDP(tem))
 	    tem = Fdefault_value(format, Qt);
@@ -619,7 +619,7 @@ format_mode_value(repv format, VW *vw, char *buf, long buf_len)
 	}
 	else if(rep_SYMBOLP(item))
 	{
-	    repv tem = Fbuffer_symbol_value(item, vw->vw_CursorPos,
+	    repv tem = Fbuffer_symbol_value(item, vw->cursor_pos,
 						rep_VAL(tx), Qt);
 	    if(rep_VOIDP(tem))
 		tem = Fdefault_value(item, Qt);
@@ -646,7 +646,7 @@ format_mode_value(repv format, VW *vw, char *buf, long buf_len)
 						    buf, buf_len);
 	    else if(rep_SYMBOLP(first))
 	    {
-		repv tem = Fbuffer_symbol_value(first, vw->vw_CursorPos,
+		repv tem = Fbuffer_symbol_value(first, vw->cursor_pos,
 						    rep_VAL(tx), Qt);
 		if(rep_VOIDP(tem))
 		    tem = Fdefault_value(first, Qt);
@@ -674,12 +674,12 @@ format_mode_value(repv format, VW *vw, char *buf, long buf_len)
 void
 update_status_buffer(VW *vw, char *buf, long buf_len)
 {
-    if(!(vw->vw_Flags & VWFF_MINIBUF))
+    if(!(vw->car & VWFF_MINIBUF))
     {
 	u_long done;
-	TX *tx = vw->vw_Tx;
+	TX *tx = vw->tx;
 	repv format = Fbuffer_symbol_value(Qmode_line_format,
-					       vw->vw_CursorPos,
+					       vw->cursor_pos,
 					       rep_VAL(tx), Qt);
 	if(rep_VOIDP(format))
 	{
@@ -706,7 +706,7 @@ formula:
 If the value is 0 then the window will be scrolled by one line.
 ::end:: */
 {
-    return rep_handle_var_int (val, &curr_vw->vw_YStepRatio);
+    return rep_handle_var_int (val, &curr_vw->scroll_ratio_y);
 }
 
 DEFUN("x-scroll-step-ratio", Fx_scroll_step_ratio, Sx_scroll_step_ratio, (repv val), rep_Subr1) /*
@@ -719,7 +719,7 @@ formula:
 If the value is 0 then the window will be scrolled by one column.
 ::end:: */
 {
-    return rep_handle_var_int (val, &curr_vw->vw_XStepRatio);
+    return rep_handle_var_int (val, &curr_vw->scroll_ratio_x);
 }
 
 DEFUN("rect-blocks-p", Frect_blocks_p, Srect_blocks_p, (repv vw), rep_Subr1) /*
@@ -732,7 +732,7 @@ rectangles.
 {
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
-    if(VVIEW(vw)->vw_Flags & VWFF_RECTBLOCKS)
+    if(VVIEW(vw)->car & VWFF_RECTBLOCKS)
 	return(Qt);
     return(Qnil);
 }
@@ -748,11 +748,11 @@ rectangles in VIEW. When STATUS is t rectangles are used.
     int oflags;
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
-    oflags = VVIEW(vw)->vw_Flags;
+    oflags = VVIEW(vw)->car;
     if(rep_NILP(stat))
-	VVIEW(vw)->vw_Flags &= ~VWFF_RECTBLOCKS;
+	VVIEW(vw)->car &= ~VWFF_RECTBLOCKS;
     else
-	VVIEW(vw)->vw_Flags |= VWFF_RECTBLOCKS;
+	VVIEW(vw)->car |= VWFF_RECTBLOCKS;
     return(stat);
 }
 
@@ -776,14 +776,14 @@ and activated.
 ::end:: */
 {
     rep_DECLARE1(vw, VIEWP);
-    VVIEW(vw)->vw_Win->w_CurrVW = VVIEW(vw);
-    if(VVIEW(vw)->vw_Win == curr_win)
+    VVIEW(vw)->window->w_CurrVW = VVIEW(vw);
+    if(VVIEW(vw)->window == curr_win)
     {
 	curr_vw = VVIEW(vw);
-	curr_vw->vw_Win->w_CurrVW = curr_vw;
+	curr_vw->window->w_CurrVW = curr_vw;
     }
     if(!rep_NILP(activ))
-	Fset_current_window(rep_VAL(VVIEW(vw)->vw_Win), activ);
+	Fset_current_window(rep_VAL(VVIEW(vw)->window), activ);
     return(vw);
 }
 
@@ -792,7 +792,7 @@ DEFUN("buffer-list", Fbuffer_list, Sbuffer_list, (void), rep_Subr0) /*
 List of buffers in most-recently-used order. Each view has it's own.
 ::end:: */
 {
-    return(curr_vw->vw_BufferList);
+    return(curr_vw->buffer_list);
 }
 
 DEFUN("set-buffer-list", Fset_buffer_list, Sset_buffer_list, (repv val), rep_Subr1) /*
@@ -800,7 +800,7 @@ DEFUN("set-buffer-list", Fset_buffer_list, Sset_buffer_list, (repv val), rep_Sub
 List of buffers in most-recently-used order. Each view has it's own.
 ::end:: */
 {
-    curr_vw->vw_BufferList = val;
+    curr_vw->buffer_list = val;
     return val;
 }
 
@@ -822,9 +822,9 @@ is returned.
     do {
 	VW *vw = w->w_CurrVW;
 	do {
-	    if(vw->vw_Tx == VTX(buffer))
+	    if(vw->tx == VTX(buffer))
 		return rep_VAL(vw);
-	    vw = vw->vw_NextView;
+	    vw = vw->next_view;
 	    if(vw == 0)
 		vw = w->w_ViewList;
 	} while(vw != w->w_CurrVW);
@@ -851,7 +851,7 @@ according to the same rules.
     if(VIEWP(win))
     {
 	curr = VVIEW(win);
-	win = rep_VAL(curr->vw_Win);
+	win = rep_VAL(curr->window);
     }
     else if(WINDOWP(win))
 	curr = VWIN(win)->w_CurrVW;
@@ -861,8 +861,8 @@ according to the same rules.
 	win = rep_VAL(curr_win);
     }
     /* If possible just return the next view in the original window */
-    if(curr->vw_NextView != 0)
-	return rep_VAL(curr->vw_NextView);
+    if(curr->next_view != 0)
+	return rep_VAL(curr->next_view);
     else
     {
 	if(rep_NILP(allp))
@@ -895,7 +895,7 @@ according to the same rules.
     if(VIEWP(win))
     {
 	curr = VVIEW(win);
-	win = rep_VAL(curr->vw_Win);
+	win = rep_VAL(curr->window);
     }
     else if(WINDOWP(win))
 	curr = VWIN(win)->w_CurrVW;
@@ -931,15 +931,15 @@ according to the same rules.
 	/* now simply find the last view in W, handling minibuffer
 	   views appropriately. */
 	vw = w->w_ViewList;
-	while(vw->vw_NextView != 0)
-	    vw = vw->vw_NextView;
+	while(vw->next_view != 0)
+	    vw = vw->next_view;
     }
     else
     {
 	/* find the predecessor of the current view */
 	vw = VWIN(win)->w_ViewList;
-	while(vw->vw_NextView != curr)
-	    vw = vw->vw_NextView;
+	while(vw->next_view != curr)
+	    vw = vw->next_view;
     }
     return rep_VAL(vw);
 }
@@ -957,7 +957,7 @@ of either VIEW or the current view.
     /* Make sure that we get the position that would be at the top-left
        after the _next_ redisplay.. */
     recenter_cursor(VVIEW(vw));
-    return VVIEW(vw)->vw_DisplayOrigin;
+    return VVIEW(vw)->display_origin;
 }
 
 DEFUN("view-dimensions", Fview_dimensions, Sview_dimensions, (repv vw), rep_Subr1) /*
@@ -970,8 +970,8 @@ the current view).
 {
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
-    return Fcons(rep_MAKE_INT(VVIEW(vw)->vw_MaxX),
-		    rep_MAKE_INT(VVIEW(vw)->vw_MaxY));
+    return Fcons(rep_MAKE_INT(VVIEW(vw)->width),
+		    rep_MAKE_INT(VVIEW(vw)->height));
 }
 
 DEFUN("view-position", Fview_position, Sview_position, (repv vw), rep_Subr1) /*
@@ -984,7 +984,7 @@ its containing window.
 {
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
-    return make_pos(VVIEW(vw)->vw_FirstX, VVIEW(vw)->vw_FirstY);
+    return make_pos(VVIEW(vw)->min_x, VVIEW(vw)->min_y);
 }
 
 DEFSTRING(no_view, "No view to expand into");
@@ -1008,19 +1008,19 @@ the COLUMNS parameter is always ignored (for the moment).
 	vw = rep_VAL(curr_vw);
     if(!rep_INTP(rows))
 	return vw;
-    sibling = VVIEW(vw)->vw_NextView;
+    sibling = VVIEW(vw)->next_view;
     if(sibling == 0)
     {
 	return Fsignal(Qwindow_error, rep_list_2(rep_VAL(&no_view), vw));
     }
-    new_sibling_height = sibling->vw_MaxY - (rep_INT(rows) - VVIEW(vw)->vw_MaxY);
+    new_sibling_height = sibling->height - (rep_INT(rows) - VVIEW(vw)->height);
     if(new_sibling_height < 1 || rep_INT(rows) < 1)
     {
 	return Fsignal(Qwindow_error, rep_list_2(rep_VAL(&no_room), vw));
     }
-    VVIEW(vw)->vw_MaxY = rep_INT(rows);
-    sibling->vw_MaxY = new_sibling_height;
-    recalc_measures(VVIEW(vw)->vw_Win);
+    VVIEW(vw)->height = rep_INT(rows);
+    sibling->height = new_sibling_height;
+    recalc_measures(VVIEW(vw)->window);
     set_scroll_steps(VVIEW(vw));
     set_scroll_steps(sibling);
     return vw;
@@ -1041,12 +1041,12 @@ the glyph at position POS in the window. Returns nil if no such view exists.
 	return Qnil;
     while(vw != NULL)
     {
-	/* vw_MaxY doesn't include the status line */
-	long bottom = (vw->vw_FirstY + vw->vw_MaxY
-		       + ((vw->vw_Flags & VWFF_MINIBUF) ? 0 : 1));
+	/* height doesn't include the status line */
+	long bottom = (vw->min_y + vw->height
+		       + ((vw->car & VWFF_MINIBUF) ? 0 : 1));
 	if(VROW(pos) < bottom)
 	    return rep_VAL(vw);
-	vw = vw->vw_NextView;
+	vw = vw->next_view;
     }
     return Qnil;
 }
@@ -1066,12 +1066,12 @@ status line of VIEW, return t.
     rep_DECLARE1(pos, POSP);
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
-    col = VCOL(pos) - VVIEW(vw)->vw_FirstX;
-    row = VROW(pos) - VVIEW(vw)->vw_FirstY;
-    if(col < 0 || col >= VVIEW(vw)->vw_MaxX
-       || row < 0 || row > VVIEW(vw)->vw_MaxY)
+    col = VCOL(pos) - VVIEW(vw)->min_x;
+    row = VROW(pos) - VVIEW(vw)->min_y;
+    if(col < 0 || col >= VVIEW(vw)->width
+       || row < 0 || row > VVIEW(vw)->height)
 	return Qnil;
-    else if(row == VVIEW(vw)->vw_MaxY)
+    else if(row == VVIEW(vw)->height)
 	return Qt;
     else
 	return make_pos(col, row);
@@ -1086,7 +1086,7 @@ Returns t if VIEW is a view of a minibuffer.
 {
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
-    return (VVIEW(vw)->vw_Flags & VWFF_MINIBUF) ? Qt : Qnil;
+    return (VVIEW(vw)->car & VWFF_MINIBUF) ? Qt : Qnil;
 }
 
 DEFUN("minibuffer-view", Fminibuffer_view, Sminibuffer_view, (repv win), rep_Subr1) /*
@@ -1127,11 +1127,11 @@ view_sweep(void)
     view_chain = NULL;
     while(vw)
     {
-	VW *next = vw->vw_Next;
+	VW *next = vw->next;
 	if(rep_GC_CELL_MARKEDP(rep_VAL(vw)))
 	{
 	    rep_GC_CLR_CELL(rep_VAL(vw));
-	    vw->vw_Next = view_chain;
+	    vw->next = view_chain;
 	    view_chain = vw;
 	}
 	else
@@ -1145,14 +1145,14 @@ view_mark (repv val)
 {
     while (val != rep_NULL)
     {
-	rep_MARKVAL(rep_VAL(VVIEW(val)->vw_Tx));
-	rep_MARKVAL(VVIEW(val)->vw_BufferList);
-	rep_MARKVAL(VVIEW(val)->vw_CursorPos);
-	rep_MARKVAL(VVIEW(val)->vw_LastCursorPos);
-	rep_MARKVAL(VVIEW(val)->vw_DisplayOrigin);
-	rep_MARKVAL(VVIEW(val)->vw_BlockS);
-	rep_MARKVAL(VVIEW(val)->vw_BlockE);
-	val = rep_VAL(VVIEW(val)->vw_NextView);
+	rep_MARKVAL(rep_VAL(VVIEW(val)->tx));
+	rep_MARKVAL(VVIEW(val)->buffer_list);
+	rep_MARKVAL(VVIEW(val)->cursor_pos);
+	rep_MARKVAL(VVIEW(val)->last_cursor_pos);
+	rep_MARKVAL(VVIEW(val)->display_origin);
+	rep_MARKVAL(VVIEW(val)->block_start);
+	rep_MARKVAL(VVIEW(val)->block_end);
+	val = rep_VAL(VVIEW(val)->next_view);
 	if (val != rep_NULL)
 	    rep_GC_SET_CELL (val);
     }
@@ -1162,21 +1162,21 @@ static void
 view_prin(repv stream, repv vw)
 {
     char buf[32];
-    if(VVIEW(vw)->vw_Win == 0)
+    if(VVIEW(vw)->window == 0)
 	rep_stream_puts(stream, "#<dead-view>", -1, FALSE);
     else
     {
 #ifdef HAVE_SNPRINTF
 	snprintf(buf, sizeof(buf),
-		 "#<view %d,%d", VVIEW(vw)->vw_MaxX, VVIEW(vw)->vw_MaxY);
+		 "#<view %d,%d", VVIEW(vw)->width, VVIEW(vw)->height);
 #else
-	sprintf(buf, "#<view %d,%d", VVIEW(vw)->vw_MaxX, VVIEW(vw)->vw_MaxY);
+	sprintf(buf, "#<view %d,%d", VVIEW(vw)->width, VVIEW(vw)->height);
 #endif
 	rep_stream_puts(stream, buf, -1, FALSE);
-	if(VVIEW(vw)->vw_Tx)
+	if(VVIEW(vw)->tx)
 	{
 	    rep_stream_putc(stream, ' ');
-	    rep_stream_puts(stream, rep_PTR(VVIEW(vw)->vw_Tx->buffer_name),
+	    rep_stream_puts(stream, rep_PTR(VVIEW(vw)->tx->buffer_name),
 			-1, TRUE);
 	}
 	rep_stream_putc(stream, '>');
@@ -1190,10 +1190,10 @@ view_bind (repv vw)
 	return Qnil;
     else
     {
-	repv handle = Fcons (rep_VAL(VVIEW(vw)->vw_Win->w_CurrVW),
+	repv handle = Fcons (rep_VAL(VVIEW(vw)->window->w_CurrVW),
 			     rep_VAL(curr_win));
 	curr_vw = VVIEW(vw);
-	curr_win = VVIEW(vw)->vw_Win;
+	curr_win = VVIEW(vw)->window;
 	curr_win->w_CurrVW = curr_vw;
 	return handle;
     }
@@ -1204,9 +1204,9 @@ view_unbind (repv handle)
 {
     VW *vw = VVIEW(rep_CAR(handle));
     WIN *win = VWIN(rep_CDR(handle));
-    if (vw->vw_Win && vw->vw_Win->w_Window != WINDOW_NIL)
+    if (vw->window && vw->window->w_Window != WINDOW_NIL)
     {
-	vw->vw_Win->w_CurrVW = vw;
+	vw->window->w_CurrVW = vw;
 	curr_win = win;
 	curr_vw = curr_win->w_CurrVW;
     }
@@ -1256,7 +1256,7 @@ views_kill(void)
     VW *vw = view_chain;
     while(vw != 0)
     {
-	VW *next = vw->vw_Next;
+	VW *next = vw->next;
 	rep_FREE_CELL(vw);
 	vw = next;
     }

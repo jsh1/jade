@@ -182,7 +182,7 @@ any entered arg is given to the invoked COMMAND.
 		if(c == '*')
 		{
 		    /* Abort if buffer is read-only */
-		    if(read_only_pos(curr_vw->vw_Tx, curr_vw->vw_CursorPos))
+		    if(read_only_pos(curr_vw->tx, curr_vw->cursor_pos))
 		    {
 			rep_POPGC;
 			goto exit;

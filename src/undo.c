@@ -257,7 +257,7 @@ taken from the prefix argument.
 {
     long count = rep_INTP(arg) ? rep_INT(arg) : 1;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(VTX(tx)->pending_undo_list == rep_NULL)
     {
 	/* First call. */
@@ -344,7 +344,7 @@ buffer-record-undo
 When nil no undo information is kept in this buffer.
 ::end:: */
 {
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     return (tx->car & TXFF_NO_UNDO) ? Qnil : Qt;
 }
 
@@ -355,7 +355,7 @@ set-buffer-record-undo VALUE
 When nil no undo information is kept in this buffer.
 ::end:: */
 {
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     if(rep_NILP(val))
 	tx->car |= TXFF_NO_UNDO;
     else
@@ -370,7 +370,7 @@ buffer-undo-list
 This buffer's list of undo information.
 ::end:: */
 {
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     return tx->undo_list;
 }
 
@@ -381,7 +381,7 @@ set-buffer-undo-list VALUE
 This buffer's list of undo information.
 ::end:: */
 {
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     tx->undo_list = val;
     return val;
 }

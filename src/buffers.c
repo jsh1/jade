@@ -166,7 +166,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
     if(!BUFFERP(oldTx))
     {
 	if(curr_vw)
-	    oldTx = rep_VAL(curr_vw->vw_Tx);
+	    oldTx = rep_VAL(curr_vw->tx);
 	else
 	    oldTx = rep_NULL;
     }
@@ -188,7 +188,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 		tx->file_name = Qnil;
 		tx->canonical_file_name = Qnil;
 		tx->status_string = rep_concat2("Jade: ", rep_STR(tx->buffer_name));
-		tx->saved_block_status = -1;
+		tx->saved_block_state = -1;
 		tx->tab_size = 8;
 		tx->last_saved_time = rep_time();
 		tx->undo_list = Qnil;
@@ -384,31 +384,31 @@ first_buffer(void)
 TX *
 swap_buffers(VW *vw, TX *new)
 {
-    TX *old = vw->vw_Tx;
+    TX *old = vw->tx;
     if(old != new)
     {
 	if(old != NULL)
 	{
 	    /* Save buffer context */
-	    old->saved_cursor_pos = vw->vw_CursorPos;
-	    old->saved_display_origin = vw->vw_DisplayOrigin;
-	    old->saved_block[0] = vw->vw_BlockS;
-	    old->saved_block[1] = vw->vw_BlockE;
-	    old->saved_block_status = vw->vw_BlockStatus;
+	    old->saved_cursor_pos = vw->cursor_pos;
+	    old->saved_display_origin = vw->display_origin;
+	    old->saved_block[0] = vw->block_start;
+	    old->saved_block[1] = vw->block_end;
+	    old->saved_block_state = vw->block_state;
 	}
 	/* Restore old context */
-	vw->vw_Tx = new;
-	vw->vw_CursorPos = new->saved_cursor_pos;
-	vw->vw_DisplayOrigin = new->saved_display_origin;
-	vw->vw_BlockS = new->saved_block[0];
-	vw->vw_BlockE = new->saved_block[1];
-	vw->vw_BlockStatus = new->saved_block_status;
+	vw->tx = new;
+	vw->cursor_pos = new->saved_cursor_pos;
+	vw->display_origin = new->saved_display_origin;
+	vw->block_start = new->saved_block[0];
+	vw->block_end = new->saved_block[1];
+	vw->block_state = new->saved_block_state;
 
 	/* If we're switching buffers in the minibuffer, and there's
 	   a message obscuring the minibuffer contents, remove it. */
-	if((vw->vw_Flags & VWFF_MINIBUF)
-	   && MINIBUFFER_ACTIVE_P(vw->vw_Win)
-	   && (vw->vw_Win->w_Flags & WINFF_MESSAGE))
+	if((vw->car & VWFF_MINIBUF)
+	   && MINIBUFFER_ACTIVE_P(vw->window)
+	   && (vw->window->w_Flags & WINFF_MESSAGE))
 	{
 	    (*rep_message_fun)(rep_reset_message);
 	}
@@ -472,21 +472,21 @@ get_tx_cursor_ptr(TX *tx)
     VW *vw;
 
     /* Check active view first */
-    if(curr_vw->vw_Tx == tx)
-	return(&curr_vw->vw_CursorPos);
+    if(curr_vw->tx == tx)
+	return(&curr_vw->cursor_pos);
 
     /* Then other views in the same window. */
-    for(vw = curr_win->w_ViewList; vw != 0; vw = vw->vw_NextView)
+    for(vw = curr_win->w_ViewList; vw != 0; vw = vw->next_view)
     {
-	if(vw->vw_Win && vw->vw_Win->w_Window && (vw->vw_Tx == tx))
-	    return(&vw->vw_CursorPos);
+	if(vw->window && vw->window->w_Window && (vw->tx == tx))
+	    return(&vw->cursor_pos);
     }
 
     /* Finally all other windows */
-    for(vw = view_chain; vw != 0; vw = vw->vw_Next)
+    for(vw = view_chain; vw != 0; vw = vw->next)
     {
-	if(vw->vw_Win && vw->vw_Win->w_Window && (vw->vw_Tx == tx))
-	    return(&vw->vw_CursorPos);
+	if(vw->window && vw->window->w_Window && (vw->tx == tx))
+	    return(&vw->cursor_pos);
     }
 
     return(&tx->saved_cursor_pos);
@@ -552,7 +552,7 @@ Return the buffer that VIEW (or the current view) is displaying.
 {
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
-    return(rep_VAL(VVIEW(vw)->vw_Tx));
+    return(rep_VAL(VVIEW(vw)->tx));
 }
 
 DEFUN("set-current-buffer", Fset_current_buffer, Sset_current_buffer, (repv tx, repv vw), rep_Subr2) /*
@@ -578,7 +578,7 @@ isn't associated with a particular file, returns nil.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     return VTX(tx)->file_name;
 }
 
@@ -595,7 +595,7 @@ Set the name of the file associated with the contents of BUFFER to NAME.
     if(!rep_NILP(name))
 	rep_DECLARE1(name, rep_STRINGP);
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
 
     if(rep_STRINGP(name))
     {
@@ -625,7 +625,7 @@ Return the name of BUFFER.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     return VTX(tx)->buffer_name;
 }
 
@@ -638,7 +638,7 @@ Set the name of BUFFER to NAME.
 {
     rep_DECLARE1(name, rep_STRINGP);
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     VTX(tx)->buffer_name = name;
     if(VTX(tx)->status_string == rep_NULL
        || !strncmp("Jade: ", rep_STR(VTX(tx)->status_string), 5))
@@ -657,7 +657,7 @@ Return the number of modifications to BUFFER.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     return rep_MAKE_INT(VTX(tx)->change_count);
 }
 
@@ -669,7 +669,7 @@ Returns t if the buffer has changed since it was last saved to disk.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     return ((VTX(tx)->change_count != VTX(tx)->proper_saved_changed_count)
 	    ? Qt : Qnil);
 }
@@ -682,7 +682,7 @@ If STATUS is nil make it look as though buffer hasn't changed, else make
 it look as though it has.
 ::end:: */
 {
-    TX *tx =BUFFERP(buf) ? VTX(buf) : curr_vw->vw_Tx;
+    TX *tx =BUFFERP(buf) ? VTX(buf) : curr_vw->tx;
     if(rep_NILP(stat))
     {
 	tx->proper_saved_changed_count = tx->change_count;
@@ -705,7 +705,7 @@ Returns the number of lines in BUFFER.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     return(rep_MAKE_INT(VTX(tx)->line_count));
 }
 
@@ -720,12 +720,12 @@ using current cursor position if specifiers are not provided.
     if(POSP(pos))
     {
 	if(!BUFFERP(tx))
-	    tx = rep_VAL(curr_vw->vw_Tx);
+	    tx = rep_VAL(curr_vw->tx);
     }
     else
     {
-	pos = curr_vw->vw_CursorPos;
-	tx = rep_VAL(curr_vw->vw_Tx);
+	pos = curr_vw->cursor_pos;
+	tx = rep_VAL(curr_vw->tx);
     }
     return(rep_MAKE_INT(VTX(tx)->lines[VROW(pos)].ln_Strlen - 1));
 }
@@ -753,7 +753,7 @@ to that between the lines specified by positions START and END.
     rep_DECLARE1(start, POSP);
     rep_DECLARE2(end, POSP);
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     Funrestrict_buffer(tx);
     if(check_section(VTX(tx), &start, &end) && VROW(start) <= VROW(end))
     {
@@ -772,7 +772,7 @@ Remove any restriction on the parts of BUFFER that may be displayed.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     VTX(tx)->logical_start = 0;
     VTX(tx)->logical_end = VTX(tx)->line_count;
     return Qt;
@@ -786,7 +786,7 @@ Return the position of the first character that may be displayed in BUFFER
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     return make_pos(0, VTX(tx)->logical_start);
 }
 
@@ -799,7 +799,7 @@ Return the position of the last character that may be displayed in BUFFER
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     return make_pos(VTX(tx)->lines[VTX(tx)->logical_end - 1].ln_Strlen -1,
 		    VTX(tx)->logical_end - 1);
 }
@@ -813,7 +813,7 @@ less than its full contents.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     return ((VTX(tx)->logical_start > 0
 	     || VTX(tx)->logical_end < VTX(tx)->line_count)
 	    ? Qt : Qnil);
@@ -828,7 +828,7 @@ automatic save of the buffer. A value of zero means that this buffer is
 not to be auto-saved.
 ::end:: */
 {
-    return(rep_handle_var_int(val, &curr_vw->vw_Tx->auto_save_interval));
+    return(rep_handle_var_int(val, &curr_vw->tx->auto_save_interval));
 }
 
 DEFUN("last-save-changes", Flast_save_changes, Slast_save_changes, (repv val), rep_Subr1) /*
@@ -838,7 +838,7 @@ last-save-changes [NEW-VALUE]
 Number of changes the last time this buffer was saved (could be auto-save).
 ::end:: */
 {
-    return(rep_handle_var_int(val, &curr_vw->vw_Tx->last_saved_change_count));
+    return(rep_handle_var_int(val, &curr_vw->tx->last_saved_change_count));
 }
 
 DEFUN("last-user-save-changes", Flast_user_save_changes, Slast_user_save_changes, (repv val), rep_Subr1) /*
@@ -848,7 +848,7 @@ last-user-save-changes [NEW-VALUE]
 Number of changes the last time this buffer was saved (not from auto-save).
 ::end:: */
 {
-    return(rep_handle_var_int(val, &curr_vw->vw_Tx->proper_saved_changed_count));
+    return(rep_handle_var_int(val, &curr_vw->tx->proper_saved_changed_count));
 }
 
 DEFUN("last-save-time", Flast_save_time, Slast_save_time, (repv val), rep_Subr1) /*
@@ -858,9 +858,9 @@ last-save-time [NEW-VALUE]
 System time at last save of this buffer (could be from an auto-save).
 ::end:: */
 {
-    long old = curr_vw->vw_Tx->last_saved_time;
+    long old = curr_vw->tx->last_saved_time;
     if(rep_TIMEP(val))
-	curr_vw->vw_Tx->last_saved_time = rep_GET_TIME(val);
+	curr_vw->tx->last_saved_time = rep_GET_TIME(val);
     return rep_MAKE_TIME(old);
 }
 
@@ -871,7 +871,7 @@ tab-size [NEW-VALUE]
 Sets the size of tab-stops.
 ::end:: */
 {
-    return(rep_handle_var_int(val, &curr_vw->vw_Tx->tab_size));
+    return(rep_handle_var_int(val, &curr_vw->tx->tab_size));
 }
 
 DEFUN("truncate-lines", Ftruncate_lines, Struncate_lines, (repv val), rep_Subr1) /*
@@ -883,7 +883,7 @@ truncated, not wrapped onto the next row as when this variable is nil.
 The default value for all buffers is nil.
 ::end:: */
 {
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     repv old = TX_WRAP_LINES_P(tx) ? Qnil : Qt;
     if(!rep_NILP(val))
 	tx->car |= TXFF_DONT_WRAP_LINES;
@@ -901,7 +901,7 @@ This buffer-local string is displayed in the status line of the buffer. When
 the buffer is created it is set to `Jade: BUFFER-NAME'.
 ::end:: */
 {
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     repv old = tx->status_string ? tx->status_string : Qnil;
     tx->status_string = rep_STRINGP(val) ? val : rep_NULL;
     return old;
@@ -1188,10 +1188,10 @@ updated as the file changes -- it will always point to the same character
 	VMARK(mk)->next_alloc = mark_chain;
 	mark_chain = VMARK(mk);
 	rep_data_after_gc += sizeof(Lisp_Mark);
-	VMARK(mk)->pos = POSP(pos) ? pos : curr_vw->vw_CursorPos;
+	VMARK(mk)->pos = POSP(pos) ? pos : curr_vw->cursor_pos;
 
 	/* just so these are valid */
-	VMARK(mk)->file = rep_VAL(curr_vw->vw_Tx);
+	VMARK(mk)->file = rep_VAL(curr_vw->tx);
 	VMARK(mk)->canon_file = Qnil;
 	VMARK(mk)->next = NULL;
 
@@ -1223,7 +1223,7 @@ updated as the file changes -- it will always point to the same character
 	else
 	{
 	    if(!BUFFERP(buffer))
-		buffer = rep_VAL(curr_vw->vw_Tx);
+		buffer = rep_VAL(curr_vw->tx);
 	    VMARK(mk)->file = buffer;
 	    VMARK(mk)->next = VTX(buffer)->mark_chain;
 	    VTX(buffer)->mark_chain = VMARK(mk);

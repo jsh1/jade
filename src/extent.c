@@ -594,7 +594,7 @@ will work reliably however.
 ::end:: */
 {
     Lisp_Extent *extent;
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     rep_DECLARE1(start, POSP);
     rep_DECLARE2(end, POSP);
 
@@ -649,7 +649,7 @@ Note that it's not possible to delete the global extent of a buffer itself.
 ::end:: */
 {
     if(!EXTENTP(extent))
-	extent = rep_VAL(curr_vw->vw_Tx->global_extent);
+	extent = rep_VAL(curr_vw->tx->global_extent);
     unlink_extent_recursively(VEXTENT(extent));
     invalidate_extent_cache(VEXTENT(extent)->tx);
     return extent;
@@ -689,9 +689,9 @@ position of the current buffer).
     Pos ppos;
     if(!BUFFERP(tx))
     {
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
 	if(!POSP(pos))
-	    pos = curr_vw->vw_CursorPos;
+	    pos = curr_vw->cursor_pos;
     }
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
@@ -741,7 +741,7 @@ deleted from within the callback function.
     {
     case 0:
 	map_section_extents(map_extents_callback,
-			    curr_vw->vw_Tx->global_extent,
+			    curr_vw->tx->global_extent,
 			    &s_copy, &e_copy, &data);
 	break;
 
@@ -799,7 +799,7 @@ parent.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     return rep_VAL(VTX(tx)->global_extent);
 }
 
@@ -1068,8 +1068,8 @@ buffer_set_if_bound(repv symbol, repv value)
 {
     Pos tem;
     Lisp_Extent *e;
-    COPY_VPOS(&tem, curr_vw->vw_CursorPos);
-    e = find_extent(curr_vw->vw_Tx->global_extent, &tem);
+    COPY_VPOS(&tem, curr_vw->cursor_pos);
+    e = find_extent(curr_vw->tx->global_extent, &tem);
     while(e != 0)
     {
 	repv cell = Fassq(symbol, e->locals);
@@ -1095,7 +1095,7 @@ buffer_set_if_bound(repv symbol, repv value)
 static repv
 set_local_symbol (repv sym, repv value)
 {
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     if(buffer_set_if_bound(sym, value))
 	return value;
     else if(rep_SYM(sym)->car & rep_SF_LOCAL)
@@ -1121,7 +1121,7 @@ Returns SYMBOL.
 ::end:: */
 {
     repv slot;
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     rep_DECLARE1(sym, rep_SYMBOLP);
     if (!(rep_SYM(sym)->car & rep_SF_SPECIAL))
 	Fmake_variable_special (sym);
@@ -1165,7 +1165,7 @@ for each minor extent.)
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     return VTX(tx)->global_extent->locals;
 }
 
@@ -1180,7 +1180,7 @@ permanent (i.e. their `permanent-local' property is unset or non-nil.)
 {
     repv list;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     list = VTX(tx)->global_extent->locals;
     VTX(tx)->global_extent->locals = Qnil;
     while(rep_CONSP(list))
@@ -1210,7 +1210,7 @@ Remove the buffer-local value of the symbol SYMBOL in the specified buffer.
     repv list;
     rep_DECLARE1(sym, rep_SYMBOLP);
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     list = VTX(tx)->global_extent->locals;
     VTX(tx)->global_extent->locals = Qnil;
     while(rep_CONSP(list))
@@ -1439,7 +1439,7 @@ start_visible_extent (VW *vw, Lisp_Extent *e, long start_col, long start_row)
 {
     struct visible_extent *x;
     e = find_first_frag (e);
-    x = vw->vw_Win->w_VisibleExtents;
+    x = vw->window->w_VisibleExtents;
     while (x != 0 && (x->extent != e || x->vw != vw))
 	x = x->next;
     if (x != 0)
@@ -1454,8 +1454,8 @@ start_visible_extent (VW *vw, Lisp_Extent *e, long start_col, long start_row)
     else
     {
 	x = rep_alloc (sizeof (struct visible_extent));
-	x->next = vw->vw_Win->w_VisibleExtents;
-	vw->vw_Win->w_VisibleExtents = x;
+	x->next = vw->window->w_VisibleExtents;
+	vw->window->w_VisibleExtents = x;
 	x->extent = e;
 	x->vw = vw;
 	x->start_col = start_col;
@@ -1470,7 +1470,7 @@ end_visible_extent (VW *vw, Lisp_Extent *e, long end_col, long end_row)
 {
     struct visible_extent *x;
     e = find_first_frag (e);
-    x = vw->vw_Win->w_VisibleExtents;
+    x = vw->window->w_VisibleExtents;
     while (x != 0 && (x->extent != e || x->vw != vw))
 	x = x->next;
     assert (x != 0);
@@ -1518,38 +1518,38 @@ map_visible_extents (WIN *w, long col, long row,
 }
 
 static void
-update_mouse_extent_callback (struct visible_extent *x)
+update_pointer_extent_callback (struct visible_extent *x)
 {
     VW *vw = x->vw;
-    if (vw->vw_NumMouseExtents < MAX_MOUSE_EXTENTS)
-	vw->vw_MouseExtents[vw->vw_NumMouseExtents++] = x->extent;
+    if (vw->pointer_extents_count < MAX_POINTER_EXTENTS)
+	vw->pointer_extents[vw->pointer_extents_count++] = x->extent;
 }
 
 /* Return true if the display should be redrawn. */
 bool
-update_mouse_extent (WIN *w, long mouse_col, long mouse_row)
+update_pointer_extent (WIN *w, long mouse_col, long mouse_row)
 {
     /* XXX remove this GNU CC dependency */
-    Lisp_Extent *old[w->w_ViewCount][MAX_MOUSE_EXTENTS];
+    Lisp_Extent *old[w->w_ViewCount][MAX_POINTER_EXTENTS];
     int old_num[w->w_ViewCount];
     VW *vw;
     int i;
 
-    for (i = 0, vw = w->w_ViewList; vw != 0; i++, vw = vw->vw_NextView)
+    for (i = 0, vw = w->w_ViewList; vw != 0; i++, vw = vw->next_view)
     {
-	old_num[i] = vw->vw_NumMouseExtents;
-	memcpy (&old[i][0], vw->vw_MouseExtents,
+	old_num[i] = vw->pointer_extents_count;
+	memcpy (&old[i][0], vw->pointer_extents,
 		 old_num[i] * sizeof(Lisp_Extent *));
-	vw->vw_NumMouseExtents = 0;
+	vw->pointer_extents_count = 0;
     }
 
     map_visible_extents (w, mouse_col, mouse_row,
-			 update_mouse_extent_callback);
+			 update_pointer_extent_callback);
 
-    for (i = 0, vw = w->w_ViewList; vw != 0; i++, vw = vw->vw_NextView)
+    for (i = 0, vw = w->w_ViewList; vw != 0; i++, vw = vw->next_view)
     {
-	if (vw->vw_NumMouseExtents != old_num[i]
-	    || memcmp (&old[i][0], vw->vw_MouseExtents,
+	if (vw->pointer_extents_count != old_num[i]
+	    || memcmp (&old[i][0], vw->pointer_extents,
 		       old_num[i] * sizeof(Lisp_Extent *)) != 0)
 	{
 	    return TRUE;
@@ -1568,11 +1568,11 @@ mark_visible_extents (WIN *w)
 	rep_MARKVAL (rep_VAL (x->extent));
 	x = x->next;
     }
-    for (vw = w->w_ViewList; vw != 0; vw = vw->vw_NextView)
+    for (vw = w->w_ViewList; vw != 0; vw = vw->next_view)
     {
 	int i;
-	for (i = 0; i < vw->vw_NumMouseExtents; i++)
-	    rep_MARKVAL (rep_VAL (vw->vw_MouseExtents[i]));
+	for (i = 0; i < vw->pointer_extents_count; i++)
+	    rep_MARKVAL (rep_VAL (vw->pointer_extents[i]));
     }
 }
 

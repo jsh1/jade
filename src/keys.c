@@ -156,12 +156,12 @@ lookup_binding(u_long code, u_long mods, bool (*callback)(repv key))
 	    VW *vw;
 	    for (vw = curr_win->w_ViewList;
 		 k == 0 && vw != 0;
-		 vw = vw->vw_NextView)
+		 vw = vw->next_view)
 	    {
 		int i;
-		for (i = 0; k == 0 && i < vw->vw_NumMouseExtents; i++)
+		for (i = 0; k == 0 && i < vw->pointer_extents_count; i++)
 		{
-		    tem = Fextent_get(rep_VAL(vw->vw_MouseExtents[i]),
+		    tem = Fextent_get(rep_VAL(vw->pointer_extents[i]),
 				      Qmouse_keymap);
 		    if (tem && tem != Qnil)
 			k = search_keymap (tem, code, mods, callback);
@@ -341,21 +341,21 @@ inner_eval_input_event(repv data_)
 		    buff[len] = 0;
 		    if(len > 0)
 		    {
-			if(!read_only_pos(vw->vw_Tx, vw->vw_CursorPos))
+			if(!read_only_pos(vw->tx, vw->cursor_pos))
 			{
 			    repv old_undo_head = rep_NULL;
 			    Fcall_hook(Qpre_command_hook,
 					  Qnil, Qnil);
 			    if(Fsymbol_value (Qlast_command, Qt) == Qt
-			       && rep_CONSP(vw->vw_Tx->undo_list)
-			       && rep_NILP(rep_CAR(vw->vw_Tx->undo_list)))
+			       && rep_CONSP(vw->tx->undo_list)
+			       && rep_NILP(rep_CAR(vw->tx->undo_list)))
 			    {
 				/* Last command was also an insertion,
 				   fix it so that the undo information
 				   is merged. */
-				old_undo_head = vw->vw_Tx->undo_list;
-				vw->vw_Tx->undo_list
-				    = rep_CDR(vw->vw_Tx->undo_list);
+				old_undo_head = vw->tx->undo_list;
+				vw->tx->undo_list
+				    = rep_CDR(vw->tx->undo_list);
 			    }
 			    if(pad_cursor(vw))
 			    {
@@ -364,30 +364,30 @@ inner_eval_input_event(repv data_)
 				if(!rep_INTP(arg) || rep_INT(arg) < 1)
 				    Fbeep();
 				else if(rep_INT(arg) == 1)
-				    insert_string(vw->vw_Tx, buff,
-						  len, vw->vw_CursorPos);
+				    insert_string(vw->tx, buff,
+						  len, vw->cursor_pos);
 				else if(len == 1
 					&& rep_INT(arg) < sizeof(buff) - 1)
 				{
 				    /* Inserting a single char, more than
 				       once, build a string of them. */
 				    memset(buff, buff[0], rep_INT(arg));
-				    insert_string(vw->vw_Tx, buff,
-						  rep_INT(arg), vw->vw_CursorPos);
+				    insert_string(vw->tx, buff,
+						  rep_INT(arg), vw->cursor_pos);
 				}
 				else
 				{
 				    /* Do a looping insertion */
 				    int i = rep_INT(arg);
 				    while(i-- > 0)
-					insert_string(vw->vw_Tx, buff,
-						      len, vw->vw_CursorPos);
+					insert_string(vw->tx, buff,
+						      len, vw->cursor_pos);
 				}
 			    }
 			    if(old_undo_head != rep_NULL)
 			    {
-				rep_CDR(old_undo_head) = vw->vw_Tx->undo_list;
-				vw->vw_Tx->undo_list = old_undo_head;
+				rep_CDR(old_undo_head) = vw->tx->undo_list;
+				vw->tx->undo_list = old_undo_head;
 			    }
 			    Fcall_hook(Qpost_command_hook,
 					  Qnil, Qnil);

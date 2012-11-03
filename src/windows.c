@@ -101,7 +101,7 @@ ATTRS is an alist with any of the following pairs:
     if (tem != Qnil)
 	tx = rep_CDR(tem);
     else
-	tx = curr_vw ? rep_VAL(curr_vw->vw_Tx) : Qnil;
+	tx = curr_vw ? rep_VAL(curr_vw->tx) : Qnil;
 
     tem = Fassq (Qposition, attrs);
     if (!tem)
@@ -162,8 +162,8 @@ ATTRS is an alist with any of the following pairs:
 			}
 			else
 			{
-			    w->w_CurrVW->vw_BufferList
-				= Fcopy_sequence(curr_vw->vw_BufferList);
+			    w->w_CurrVW->buffer_list
+				= Fcopy_sequence(curr_vw->buffer_list);
 			}
 			Fset_current_window(rep_VAL(w), Qnil);
 			Fcall_hook(Qmake_window_hook, Qnil, Qnil);
@@ -641,7 +641,7 @@ bottom order, ending with the mini-buffer.
     repv *ptr = &res;
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    for(vw = VWIN(win)->w_ViewList; vw != 0; vw = vw->vw_NextView)
+    for(vw = VWIN(win)->w_ViewList; vw != 0; vw = vw->next_view)
     {
 	if(!(*ptr = Fcons(rep_VAL(vw), Qnil)))
 	    return rep_NULL;

@@ -195,7 +195,7 @@ flip_y (JadeView *view, int y)
     p = [self convertPoint:[e locationInWindow] fromView:nil];
     p.y = flip_y (self, p.y);
 
-    update_mouse_extent (_win, p.x, p.y);
+    update_pointer_extent (_win, p.x, p.y);
 
     sys_translate_event (&code, &mods, e);
 
@@ -331,7 +331,7 @@ mac-set-pasteboard [ STRING | START END [BUFFER] ]
 	rep_DECLARE2 (start, POSP);
 	rep_DECLARE3 (end, POSP);
 	if (!BUFFERP (buffer))
-	    buffer = rep_VAL (curr_vw->vw_Tx);
+	    buffer = rep_VAL (curr_vw->tx);
     }
 
     OBJC_BEGIN

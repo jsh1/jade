@@ -750,7 +750,7 @@ x11_handle_input(int fd, bool synchronous)
 		    || old_mouse_x != x11_current_mouse_x
 		    || old_mouse_y != x11_current_mouse_y)
 		{
-		    need_redisplay = update_mouse_extent (ev_win,
+		    need_redisplay = update_pointer_extent (ev_win,
 							  x11_current_mouse_x,
 							  x11_current_mouse_y);
 		}

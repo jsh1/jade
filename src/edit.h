@@ -37,7 +37,7 @@
 #define BUFFERP(v)	rep_CELL16_TYPEP(v, buffer_type)
 #define MARKP(v)	rep_CELL16_TYPEP(v, mark_type)
 #define WINDOWP(v)	(rep_CELL16_TYPEP(v, window_type) && VWIN(v)->w_Window)
-#define VIEWP(v)	(rep_CELL16_TYPEP(v, view_type) && VVIEW(v)->vw_Win)
+#define VIEWP(v)	(rep_CELL16_TYPEP(v, view_type) && VVIEW(v)->window)
 #define GLYPHTABP(v)	rep_CELL16_TYPEP(v, glyph_table_type)
 #define EXTENTP(v)	rep_CELL16_TYPEP(v, extent_type)
 #define FACEP(v)	rep_CELL16_TYPEP(v, face_type)
@@ -284,7 +284,7 @@ typedef struct lisp_buffer {
     repv saved_cursor_pos;
     repv saved_display_origin;
     repv saved_block[2];
-    int saved_block_status;
+    int saved_block_state;
 } Lisp_Buffer;
 
 typedef Lisp_Buffer TX;
@@ -304,46 +304,45 @@ typedef Lisp_Buffer TX;
 
 /* Each view in a window is like this */
 
-#define MAX_MOUSE_EXTENTS 16
+#define MAX_POINTER_EXTENTS 16
 
 typedef struct lisp_view
 {
-    repv	    vw_Car;
-#define vw_Flags vw_Car
+    repv car;
 
-    struct lisp_view *vw_Next;
-    TX		   *vw_Tx;
-    struct lisp_window *vw_Win;
-    struct lisp_view *vw_NextView;	/* for w_ViewList */
+    struct lisp_view *next;
+    TX *tx;
+    struct lisp_window *window;
+    struct lisp_view *next_view;	/* for w_ViewList */
 
     /* Cursor positioning data.  */
-    repv	    vw_CursorPos;
-    u_long	    vw_LastCursorOffset; /* number of glyphs from col 0 */
-    repv	    vw_LastCursorPos;
-    u_long	    vw_LastCursorChanges;
-    TX		   *vw_LastCursorTx;
+    repv cursor_pos;
+    u_long last_cursor_offset; /* number of glyphs from col 0 */
+    repv last_cursor_pos;
+    int last_cursor_change_count;
+    TX *last_cursor_tx;
 
-    repv	    vw_DisplayOrigin;
+    repv display_origin;
 
-    repv	    vw_BlockS, vw_BlockE;
     /* 0=block marked, 1=start marked, 2=end marked, -1=none marked */
-    int		    vw_BlockStatus;
+    int block_state;
+    repv block_start, block_end;
 
     /* List of extents currently under the mouse in this view. */
-    Lisp_Extent *vw_MouseExtents[MAX_MOUSE_EXTENTS];
-    int vw_NumMouseExtents;
+    Lisp_Extent *pointer_extents[MAX_POINTER_EXTENTS];
+    int pointer_extents_count;
 
-    /* This pane of vw_Win starts at glyph (FirstX, FirstY), for
+    /* This pane of window starts at glyph (FirstX, FirstY), for
        (MaxX, MaxY) glyphs (not including status line) */
-    int		    vw_FirstX, vw_FirstY;
-    int		    vw_MaxX, vw_MaxY;
+    int min_x, min_y;
+    int width, height;
 
     /* List of buffers accessible in this window.  This is not used by the
        C code at all; access is via the `buffer-list' variable.  */
-    repv	    vw_BufferList;
+    repv buffer_list;
 
-    int 	    vw_XStepRatio, vw_YStepRatio;
-    short	    vw_XStep, vw_YStep;
+    int scroll_ratio_x, scroll_ratio_y;
+    int scroll_step_x, scroll_step_y;
 } Lisp_View;
 
 typedef Lisp_View VW;
@@ -431,6 +430,6 @@ typedef Lisp_Window WIN;
 
 /* True when the minibuffer in WIN is in use. */
 #define MINIBUFFER_ACTIVE_P(win) \
-    ((win)->w_MiniBuf->vw_Tx != mb_unused_buffer)
+    ((win)->w_MiniBuf->tx != mb_unused_buffer)
 
 #endif /* EDIT_H */

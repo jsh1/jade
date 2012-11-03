@@ -306,11 +306,11 @@ static void union_face (struct merge_closure *c, Lisp_Face *face)
 int
 merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
 {
-    WIN *w = vw->vw_Win;
+    WIN *w = vw->window;
     struct merge_closure c;
 
     Lisp_Extent *x;
-    bool mouse_extent = FALSE;
+    bool pointer_extent = FALSE;
 
     c.car = invert_all_faces ? FACEFF_INVERT : 0;
     c.background = 0;
@@ -335,25 +335,25 @@ merge_faces(VW *vw, Lisp_Extent *e, int in_block, int on_cursor)
     for(x = e; x != 0; x = x->parent)
     {
 	repv face;
-	if (!mouse_extent && vw->vw_NumMouseExtents > 0)
+	if (!pointer_extent && vw->pointer_extents_count > 0)
 	{
 	    Lisp_Extent *first = x;
 	    int i;
 	    while (first->frag_pred != 0)
 		first = first->frag_pred;
-	    for (i = 0; i < vw->vw_NumMouseExtents; i++)
+	    for (i = 0; i < vw->pointer_extents_count; i++)
 	    {
-		if (first == vw->vw_MouseExtents[i])
+		if (first == vw->pointer_extents[i])
 		{
 		    /* If an inner extent contains the mouse,
 		       then all parents of this extent also
 		       contain the mouse pointer. */
-		    mouse_extent = TRUE;
+		    pointer_extent = TRUE;
 		    break;
 		}
 	    }
 	}
-	if (mouse_extent)
+	if (pointer_extent)
 	{
 	    face = Fextent_get (rep_VAL(x), Qmouse_face);
 	    if (face && FACEP (face))

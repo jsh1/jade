@@ -66,8 +66,8 @@ pos COLUMN ROW
 Returns a new position object with coordinates (COLUMN , ROW).
 ::end:: */
 {
-    long col = rep_INTP(x) ? rep_INT(x) : VCOL(curr_vw->vw_CursorPos);
-    long row = rep_INTP(y) ? rep_INT(y) : VROW(curr_vw->vw_CursorPos);
+    long col = rep_INTP(x) ? rep_INT(x) : VCOL(curr_vw->cursor_pos);
+    long row = rep_INTP(y) ? rep_INT(y) : VROW(curr_vw->cursor_pos);
     return MAKE_POS(col ,row);
 }
 
@@ -82,7 +82,7 @@ character after the end of the inserted text.
 {
     rep_DECLARE1(string, rep_STRINGP);
     if(!BUFFERP(buff))
-	buff = rep_VAL(curr_vw->vw_Tx);
+	buff = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(buff));
     if(pad_pos(VTX(buff), pos))
@@ -104,7 +104,7 @@ Deletes from START-POS up to (but not including) END-POS.
     rep_DECLARE1(start, POSP);
     rep_DECLARE2(end, POSP);
     if(!BUFFERP(buff))
-	buff = rep_VAL(curr_vw->vw_Tx);
+	buff = rep_VAL(curr_vw->tx);
     if(check_section(VTX(buff), &start, &end)
        && !read_only_section(VTX(buff), start, end))
     {
@@ -124,7 +124,7 @@ Returns the string from START-POS up to END-POS.
     rep_DECLARE1(start, POSP);
     rep_DECLARE2(end, POSP);
     if(!BUFFERP(buff))
-	buff = rep_VAL(curr_vw->vw_Tx);
+	buff = rep_VAL(curr_vw->tx);
     if(check_section(VTX(buff), &start, &end))
     {
 	long tlen = section_length(VTX(buff), start, end) + 1;
@@ -150,7 +150,7 @@ END-POS) is deleted from the file after being duplicated.
     rep_DECLARE1(start, POSP);
     rep_DECLARE2(end, POSP);
     if(!BUFFERP(buff))
-	buff = rep_VAL(curr_vw->vw_Tx);
+	buff = rep_VAL(curr_vw->tx);
     if(check_section(VTX(buff), &start, &end)
        && !read_only_section(VTX(buff), start, end))
     {
@@ -171,24 +171,24 @@ block-toggle
 ::end:: */
 {
     VW *vw = curr_vw;
-    switch(vw->vw_BlockStatus)
+    switch(vw->block_state)
     {
 	case 0:
-	    vw->vw_BlockStatus = -1;
+	    vw->block_state = -1;
 	    break;
 	case 1:
-	    vw->vw_BlockE = vw->vw_CursorPos;
-	    vw->vw_BlockStatus = 0;
+	    vw->block_end = vw->cursor_pos;
+	    vw->block_state = 0;
 	    order_block(vw);
 	    break;
 	case 2:
-	    vw->vw_BlockS = vw->vw_CursorPos;
-	    vw->vw_BlockStatus = 0;
+	    vw->block_start = vw->cursor_pos;
+	    vw->block_state = 0;
 	    order_block(vw);
 	    break;
 	case -1:
-	    vw->vw_BlockS = vw->vw_CursorPos;
-	    vw->vw_BlockStatus = 1;
+	    vw->block_start = vw->cursor_pos;
+	    vw->block_state = 1;
 	    break;
     }
     Fcall_hook(Qblock_status_hook, Qnil, Qnil);
@@ -205,32 +205,32 @@ it is used as the new position of the start of the block.
 {
     VW *vw = curr_vw;
     repv res;
-    if(!vw->vw_BlockStatus || (vw->vw_BlockStatus == 1))
-	res = vw->vw_BlockS;
+    if(!vw->block_state || (vw->block_state == 1))
+	res = vw->block_start;
     else
 	res = Qnil;
-    if(POSP(pos) && check_line(vw->vw_Tx, pos))
+    if(POSP(pos) && check_line(vw->tx, pos))
     {
-	switch(vw->vw_BlockStatus)
+	switch(vw->block_state)
 	{
 	    rep_GC_root gc_res;
 	    case 0:
-		vw->vw_BlockS = pos;
+		vw->block_start = pos;
 		order_block(vw);
 		break;
 	    case 2:
-		vw->vw_BlockS = pos;
-		vw->vw_BlockStatus = 0;
+		vw->block_start = pos;
+		vw->block_state = 0;
 		order_block(vw);
 		rep_PUSHGC(gc_res, res);
 		Fcall_hook(Qblock_status_hook, Qnil, Qnil);
 		rep_POPGC;
 		break;
 	    case -1:
-		vw->vw_BlockStatus = 1;
+		vw->block_state = 1;
 		/* FALL THROUGH */
 	    case 1:
-		vw->vw_BlockS = pos;
+		vw->block_start = pos;
 		break;
 	}
     }
@@ -247,32 +247,32 @@ it is used as the new position of the end of the block.
 {
     VW *vw = curr_vw;
     repv res;
-    if(!vw->vw_BlockStatus || (vw->vw_BlockStatus == 2))
-	res = vw->vw_BlockE;
+    if(!vw->block_state || (vw->block_state == 2))
+	res = vw->block_end;
     else
 	res = Qnil;
-    if(POSP(pos) && check_line(vw->vw_Tx, pos))
+    if(POSP(pos) && check_line(vw->tx, pos))
     {
-	switch(vw->vw_BlockStatus)
+	switch(vw->block_state)
 	{
 	    rep_GC_root gc_res;
 	    case 0:
-		vw->vw_BlockE = pos;
+		vw->block_end = pos;
 		order_block(vw);
 		break;
 	    case 1:
-		vw->vw_BlockE = pos;
-		vw->vw_BlockStatus = 0;
+		vw->block_end = pos;
+		vw->block_state = 0;
 		order_block(vw);
 		rep_PUSHGC(gc_res, res);
 		Fcall_hook(Qblock_status_hook, Qnil, Qnil);
 		rep_POPGC;
 		break;
 	    case -1:
-		vw->vw_BlockStatus = 2;
+		vw->block_state = 2;
 		/* FALL THROUGH */
 	    case 2:
-		vw->vw_BlockE = pos;
+		vw->block_end = pos;
 		break;
 	}
     }
@@ -287,9 +287,9 @@ Unmarks the block.
 ::end:: */
 {
     VW *vw = curr_vw;
-    if(vw->vw_BlockStatus == 0)
+    if(vw->block_state == 0)
     {
-	vw->vw_BlockStatus = -1;
+	vw->block_state = -1;
 	Fcall_hook(Qblock_status_hook, Qnil, Qnil);
     }
     return(Qt);
@@ -302,7 +302,7 @@ blockp
 Returns true if a block is currently marked.
 ::end:: */
 {
-    if(curr_vw->vw_BlockStatus == 0)
+    if(curr_vw->block_state == 0)
 	return(Qt);
     return(Qnil);
 }
@@ -319,7 +319,7 @@ unchanged.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     rep_DECLARE1(start, POSP);
     rep_DECLARE2(end, POSP);
     rep_DECLARE3(table, rep_STRINGP);
@@ -364,7 +364,7 @@ character exists at that position, nil is returned.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     if(!check_line(VTX(tx), pos))
@@ -393,7 +393,7 @@ Sets the character at position POS in BUFFER to CHARACTER.
     repv end;
     rep_DECLARE1(ch, rep_INTP);
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     if(!check_line(VTX(tx), pos))
@@ -428,7 +428,7 @@ cursor-pos
 Returns the position of the cursor in the current window.
 ::end:: */
 {
-    return curr_vw->vw_CursorPos;
+    return curr_vw->cursor_pos;
 }
 
 DEFUN("empty-line-p", Fempty_line_p, Sempty_line_p, (repv pos, repv tx), rep_Subr2) /*
@@ -440,7 +440,7 @@ empty, ie, blank or only containing spaces.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     if(check_line(VTX(tx), pos))
@@ -473,11 +473,11 @@ pointed to by POS (or the cursor), in BUFFER.
     long len;
     char *line;
     if(!BUFFERP(tx))
-	tx = rep_VAL(vw->vw_Tx);
+	tx = rep_VAL(vw->tx);
     if(POSP(pos) && check_line(VTX(tx), pos))
 	;
     else
-	pos = vw->vw_CursorPos;
+	pos = vw->cursor_pos;
     line = VTX(tx)->lines[VROW(pos)].ln_Line;
     for(len = 0; *line && isspace(*line); len++, line++)
 	;
@@ -498,7 +498,7 @@ If ONLY-SPACES in non-nil no tab characters are used.
 {
     rep_DECLARE1(indpos, POSP);
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     /* FIXME: should check if the region is read-only. */
     if(!read_only_pos(VTX(tx), indpos) && check_line(VTX(tx), indpos))
     {
@@ -593,7 +593,7 @@ COLUMN counts from zero.
 ::end:: */
 {
     VW *vw = curr_vw;
-    TX *tx = vw->vw_Tx;
+    TX *tx = vw->tx;
     rep_DECLARE1(col, rep_INTP);
     if(pad_cursor(vw))
     {
@@ -618,14 +618,14 @@ COLUMN counts from zero.
 	}
 	if(spaces + tabs > 0)
 	{
-	    repv tmp = vw->vw_CursorPos;
+	    repv tmp = vw->cursor_pos;
 	    if(insert_gap(tx, spaces + tabs, VCOL(tmp), VROW(tmp)))
 	    {
 		char *line = tx->lines[VROW(tmp)].ln_Line;
 		memset(line + VCOL(tmp), '\t', tabs);
 		memset(line + VCOL(tmp) + tabs, ' ', spaces);
-		undo_record_insertion(tx, tmp, vw->vw_CursorPos);
-		flag_insertion(tx, tmp, vw->vw_CursorPos);
+		undo_record_insertion(tx, tmp, vw->cursor_pos);
+		flag_insertion(tx, tmp, vw->cursor_pos);
 		return(col);
 	    }
 	}
@@ -644,7 +644,7 @@ any restriction on the buffer.
 {
     repv start, end;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     Funrestrict_buffer(tx);
     start = make_pos(0, 0);
     end = Fend_of_buffer(rep_VAL(tx), Qt);
@@ -668,7 +668,7 @@ is from the beginning of the buffer.
 {
     long offset, line_num;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     if(check_pos(VTX(tx), pos))
@@ -695,7 +695,7 @@ Returns the position which is OFFSET characters from the start of the buffer.
     rep_DECLARE1(voffset, rep_INTP);
     offset = rep_INT(voffset);
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     row = 0;
     while(offset >= VTX(tx)->lines[row].ln_Strlen)
 	offset -= VTX(tx)->lines[row++].ln_Strlen;

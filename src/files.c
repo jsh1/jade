@@ -209,7 +209,7 @@ If START or END aren't defined they are taken from the start and end of
 the buffer (ignoring the current restriction).
 ::end:: */
 {
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     repv handler;
     rep_GC_root gc_start, gc_end;
 
@@ -284,7 +284,7 @@ object to be used. Also removes any restriction on BUFFER.
 {
     repv handler
 	= rep_get_handler_from_file_or_name(&file, rep_op_read_file_contents);
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     if(handler == rep_NULL)
 	return handler;
 
@@ -347,11 +347,11 @@ before the cursor in the current buffer.
 	return handler;
     if(rep_NILP(handler))
     {
-	TX *tx = curr_vw->vw_Tx;
+	TX *tx = curr_vw->tx;
 	FILE *fh;
 	char buf[BUFSIZ];
 	long len;
-	repv pos = curr_vw->vw_CursorPos;
+	repv pos = curr_vw->cursor_pos;
 
 	if (!pad_pos(tx, pos))
 	    return rep_NULL;

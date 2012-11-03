@@ -467,7 +467,7 @@ gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
     do_motion:
 	x = (x - jade->win->w_LeftPix) / jade->win->w_FontX;
 	y = (y - jade->win->w_TopPix) / jade->win->w_FontY;
-	redisplay = update_mouse_extent (jade->win, x, y);
+	redisplay = update_pointer_extent (jade->win, x, y);
 	break;
 
     case GDK_KEY_PRESS:

@@ -194,7 +194,7 @@ extern void free_visible_extents (WIN *w);
 extern void map_visible_extents (WIN *w, long col, long row,
 				 void (*fun)(struct visible_extent *x));
 extern void mark_visible_extents (WIN *w);
-extern bool update_mouse_extent (WIN *w, long mouse_col, long mouse_row);
+extern bool update_pointer_extent (WIN *w, long mouse_col, long mouse_row);
 
 /* from faces.c */
 extern int invert_all_faces;

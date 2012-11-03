@@ -315,9 +315,9 @@ that character classes are still case-significant.
 {
     rep_DECLARE1(re, rep_STRINGP);
     if(!POSP(pos))
-	pos = curr_vw->vw_CursorPos;
+	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(check_line(VTX(tx), pos))
     {
 	repv ret = Qnil;
@@ -353,9 +353,9 @@ that character classes are still case-significant.
 {
     rep_DECLARE1(re, rep_STRINGP);
     if(!POSP(pos))
-	pos = curr_vw->vw_CursorPos;
+	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(check_line(VTX(tx), pos))
     {
 	repv ret = Qnil;
@@ -387,9 +387,9 @@ match data.
 {
     rep_DECLARE1(str, rep_STRINGP);
     if(!POSP(pos))
-	pos = curr_vw->vw_CursorPos;
+	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(check_line(VTX(tx), pos))
     {
 	char first[3];
@@ -437,9 +437,9 @@ match data.
 {
     rep_DECLARE1(str, rep_STRINGP);
     if(!POSP(pos))
-	pos = curr_vw->vw_CursorPos;
+	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(check_line(VTX(tx), pos))
     {
 	char first[3];
@@ -486,9 +486,9 @@ with CHAR. Returns the position of the next match or nil.
 {
     rep_DECLARE1(ch, rep_INTP);
     if(!POSP(pos))
-	pos = curr_vw->vw_CursorPos;
+	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(check_line(VTX(tx), pos))
     {
 	Pos tem;
@@ -510,9 +510,9 @@ with CHAR. Returns the position of the next match or nil.
 {
     rep_DECLARE1(ch, rep_INTP);
     if(!POSP(pos))
-	pos = curr_vw->vw_CursorPos;
+	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(check_line(VTX(tx), pos))
     {
 	Pos tem;
@@ -533,7 +533,7 @@ Returns t if REGEXP matches the text at POS. Updates the match data.
 {
     rep_DECLARE1(re, rep_STRINGP);
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     if(check_line(VTX(tx), pos))
@@ -572,7 +572,7 @@ the match data.
 ::end:: */
 {
     long length;
-    TX *tx = curr_vw->vw_Tx;
+    TX *tx = curr_vw->tx;
     rep_DECLARE1(string, rep_STRINGP);
     length = rep_STRING_LEN(string);
     if(rep_INTP(len))

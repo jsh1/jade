@@ -1,5 +1,11 @@
 2012-11-02  John Harper  <jsh@unfactored.org>
 
+	* x11_misc.c, x11_main.c, windows.c, views.c, undo.c,
+	server-dl.c, redisplay.c, movement.c, mac_windows.m, keys.c,
+	jade_subrs.h, housekeeping.c, gtk_select.c, gtk_jade.c,
+	glyphs.c, find.c, files.c, faces.c, extent.c, editcommands.c,
+	edit.h, edit.c, commands.c, buffers.c: renamed lisp_view fields
+
 	* mac_internal.h, gtk_defs.h, edit.h: renamed _TX, _VW and _WIN
 	structus to lisp_buffer, lisp_view and lisp_window. TX, VW and
 	WIN typedefs still exist (for now)

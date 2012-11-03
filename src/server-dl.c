@@ -305,7 +305,7 @@ which denotes no errors. Returns nil if the file doesn't have a client.
     if(BUFFERP(file))
 	file = VTX(file)->canonical_file_name;
     else if(!rep_STRINGP(file))
-	file = curr_vw->vw_Tx->canonical_file_name;
+	file = curr_vw->tx->canonical_file_name;
     else
     {
 	rep_GC_root gc_rc;

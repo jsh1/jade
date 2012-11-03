@@ -40,15 +40,15 @@ adjust_marks_add_x(TX *tx, long addx, long xpos, long ypos)
 	    (p) = make_pos(VCOL(p) + addx, VROW(p));	\
     } while(0)
 
-    for(thisvw = view_chain; thisvw; thisvw = thisvw->vw_Next)
+    for(thisvw = view_chain; thisvw; thisvw = thisvw->next)
     {
-	if(thisvw->vw_Tx == tx)
+	if(thisvw->tx == tx)
 	{
-	    UPD(thisvw->vw_CursorPos);
-            if(!(thisvw->vw_Flags & VWFF_RECTBLOCKS))
+	    UPD(thisvw->cursor_pos);
+            if(!(thisvw->car & VWFF_RECTBLOCKS))
 	    {
-		UPD(thisvw->vw_BlockS);
-		UPD(thisvw->vw_BlockE);
+		UPD(thisvw->block_start);
+		UPD(thisvw->block_end);
 	    }
 	}
     }
@@ -91,15 +91,15 @@ adjust_marks_sub_x(TX *tx, long subx, long xpos, long ypos)
 	}						\
     } while(0)
 
-    for(thisvw = view_chain; thisvw; thisvw = thisvw->vw_Next)
+    for(thisvw = view_chain; thisvw; thisvw = thisvw->next)
     {
-	if(thisvw->vw_Tx == tx)
+	if(thisvw->tx == tx)
 	{
-	    UPD(thisvw->vw_CursorPos);
-            if(!(thisvw->vw_Flags & VWFF_RECTBLOCKS))
+	    UPD(thisvw->cursor_pos);
+            if(!(thisvw->car & VWFF_RECTBLOCKS))
 	    {
-		UPD(thisvw->vw_BlockS);
-		UPD(thisvw->vw_BlockE);
+		UPD(thisvw->block_start);
+		UPD(thisvw->block_end);
 	    }
 	}
     }
@@ -148,15 +148,15 @@ adjust_marks_add_y(TX *tx, long addy, long ypos)
 	    y += addy;				\
     } while(0)
 
-    for(thisvw = view_chain; thisvw; thisvw = thisvw->vw_Next)
+    for(thisvw = view_chain; thisvw; thisvw = thisvw->next)
     {
-	if(thisvw->vw_Tx == tx)
+	if(thisvw->tx == tx)
 	{
-	    UPD(thisvw->vw_CursorPos);
-	    UPD(thisvw->vw_BlockS);
-	    UPD(thisvw->vw_BlockE);
+	    UPD(thisvw->cursor_pos);
+	    UPD(thisvw->block_start);
+	    UPD(thisvw->block_end);
 	    if(thisvw != curr_vw)
-		UPD(thisvw->vw_DisplayOrigin);
+		UPD(thisvw->display_origin);
 	}
     }
     for(thismark = tx->mark_chain; thismark; thismark = thismark->next)
@@ -223,23 +223,23 @@ adjust_marks_sub_y(TX *tx, long suby, long ypos)
 	(p) = make_pos(VCOL(p), MAX(row, ypos));	\
     } while(0)
 
-    for(thisvw = view_chain; thisvw; thisvw = thisvw->vw_Next)
+    for(thisvw = view_chain; thisvw; thisvw = thisvw->next)
     {
-	if(thisvw->vw_Tx == tx)
+	if(thisvw->tx == tx)
 	{
-	    UPD(thisvw->vw_CursorPos);
-            if(thisvw->vw_Flags & VWFF_RECTBLOCKS)
+	    UPD(thisvw->cursor_pos);
+            if(thisvw->car & VWFF_RECTBLOCKS)
 	    {
-		UPD1(thisvw->vw_BlockS);
-		UPD1(thisvw->vw_BlockE);
+		UPD1(thisvw->block_start);
+		UPD1(thisvw->block_end);
 	    }
             else
 	    {
-                UPD(thisvw->vw_BlockS);
-                UPD(thisvw->vw_BlockE);
+                UPD(thisvw->block_start);
+                UPD(thisvw->block_end);
 	    }
 	    if(thisvw != curr_vw)
-		UPD1(thisvw->vw_DisplayOrigin);
+		UPD1(thisvw->display_origin);
 	}
     }
     for(thismark = tx->mark_chain; thismark; thismark = thismark->next)
@@ -302,23 +302,23 @@ adjust_marks_split_y(TX *tx, long xpos, long ypos)
 	    (p) = make_pos(VCOL(p), VROW(p) + 1);	\
     } while(0)
 
-    for(thisvw = view_chain; thisvw; thisvw = thisvw->vw_Next)
+    for(thisvw = view_chain; thisvw; thisvw = thisvw->next)
     {
-	if(thisvw->vw_Tx == tx)
+	if(thisvw->tx == tx)
 	{
-	    UPD(thisvw->vw_CursorPos);
-            if(thisvw->vw_Flags & VWFF_RECTBLOCKS)
+	    UPD(thisvw->cursor_pos);
+            if(thisvw->car & VWFF_RECTBLOCKS)
 	    {
-		UPD1(thisvw->vw_BlockS);
-		UPD1(thisvw->vw_BlockE);
+		UPD1(thisvw->block_start);
+		UPD1(thisvw->block_end);
 	    }
             else
 	    {
-                UPD(thisvw->vw_BlockS);
-                UPD(thisvw->vw_BlockE);
+                UPD(thisvw->block_start);
+                UPD(thisvw->block_end);
 	    }
 	    if(thisvw != curr_vw)
-		UPD1(thisvw->vw_DisplayOrigin);
+		UPD1(thisvw->display_origin);
 	}
     }
     for(thismark = tx->mark_chain; thismark; thismark = thismark->next)
@@ -383,23 +383,23 @@ adjust_marks_join_y(TX *tx, long xpos, long ypos)
 	    (p) = make_pos(VCOL(p), VROW(p) - 1);	\
     } while(0)
 
-    for(thisvw = view_chain; thisvw; thisvw = thisvw->vw_Next)
+    for(thisvw = view_chain; thisvw; thisvw = thisvw->next)
     {
-	if(thisvw->vw_Tx == tx)
+	if(thisvw->tx == tx)
 	{
-	    UPD(thisvw->vw_CursorPos);
-            if(thisvw->vw_Flags & VWFF_RECTBLOCKS)
+	    UPD(thisvw->cursor_pos);
+            if(thisvw->car & VWFF_RECTBLOCKS)
 	    {
-		UPD1(thisvw->vw_BlockS);
-		UPD1(thisvw->vw_BlockE);
+		UPD1(thisvw->block_start);
+		UPD1(thisvw->block_end);
 	    }
             else
 	    {
-                UPD(thisvw->vw_BlockS);
-                UPD(thisvw->vw_BlockE);
+                UPD(thisvw->block_start);
+                UPD(thisvw->block_end);
 	    }
 	    if(thisvw != curr_vw)
-		UPD1(thisvw->vw_DisplayOrigin);
+		UPD1(thisvw->display_origin);
 	}
     }
     for(thismark = tx->mark_chain; thismark; thismark = thismark->next)
@@ -442,16 +442,16 @@ void
 reset_all_views(TX *tx)
 {
     VW *thisvw;
-    for(thisvw = view_chain; thisvw; thisvw = thisvw->vw_Next)
+    for(thisvw = view_chain; thisvw; thisvw = thisvw->next)
     {
-	if(thisvw->vw_Tx == tx)
+	if(thisvw->tx == tx)
 	{
-	    thisvw->vw_CursorPos = Fstart_of_buffer(rep_VAL(tx), Qnil);
-	    thisvw->vw_DisplayOrigin = thisvw->vw_CursorPos;
-	    thisvw->vw_BlockStatus = -1;
+	    thisvw->cursor_pos = Fstart_of_buffer(rep_VAL(tx), Qnil);
+	    thisvw->display_origin = thisvw->cursor_pos;
+	    thisvw->block_state = -1;
 	}
 	tx->saved_cursor_pos = make_pos(0, 0);
 	tx->saved_display_origin = tx->saved_cursor_pos;
-	tx->saved_block_status = -1;
+	tx->saved_block_state = -1;
     }
 }

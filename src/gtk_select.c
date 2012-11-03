@@ -110,7 +110,7 @@ otherwise.
 	    rep_DECLARE2(start, POSP);
 	    rep_DECLARE3(end, POSP);
 	    if(!BUFFERP(buffer))
-		buffer = rep_VAL(curr_vw->vw_Tx);
+		buffer = rep_VAL(curr_vw->tx);
 	    type = Sel_area;
 	}
 

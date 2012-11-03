@@ -515,13 +515,13 @@ pad_pos(TX *tx, repv pos)
 bool
 pad_cursor(VW *vw)
 {
-    repv old_cursor = vw->vw_CursorPos;
-    if(pad_pos(vw->vw_Tx, vw->vw_CursorPos))
+    repv old_cursor = vw->cursor_pos;
+    if(pad_pos(vw->tx, vw->cursor_pos))
     {
 	/* Need to reinstall the old cursor position, since it
 	   may have been changed by the insertion of spaces
 	   before it. */
-	vw->vw_CursorPos = old_cursor;
+	vw->cursor_pos = old_cursor;
 	return TRUE;
     }
     else
@@ -663,15 +663,15 @@ copy_section(TX *tx, repv startPos, repv endPos, char *buff)
 void
 order_block(VW *vw)
 {
-    if(!vw->vw_BlockStatus)
+    if(!vw->block_state)
     {
-	if(VROW(vw->vw_BlockS) > VROW(vw->vw_BlockE)
-	   || (VROW(vw->vw_BlockS) == VROW(vw->vw_BlockE)
-	       && VCOL(vw->vw_BlockS) > VCOL(vw->vw_BlockE)))
+	if(VROW(vw->block_start) > VROW(vw->block_end)
+	   || (VROW(vw->block_start) == VROW(vw->block_end)
+	       && VCOL(vw->block_start) > VCOL(vw->block_end)))
 	{
-	    repv tem = vw->vw_BlockE;
-	    vw->vw_BlockE = vw->vw_BlockS;
-	    vw->vw_BlockS = tem;
+	    repv tem = vw->block_end;
+	    vw->block_end = vw->block_start;
+	    vw->block_start = tem;
 	}
     }
 }

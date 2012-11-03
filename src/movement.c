@@ -38,9 +38,9 @@ POSITION.
 {
     VW *vw = curr_vw;
     rep_DECLARE1(pos, POSP);
-    if(check_line(vw->vw_Tx, pos))
+    if(check_line(vw->tx, pos))
     {
-	vw->vw_CursorPos = pos;
+	vw->cursor_pos = pos;
 	return(pos);
     }
     else
@@ -56,9 +56,9 @@ Set the cursor position in the current window to the glyph position POSITION.
 {
     VW *vw = curr_vw;
     rep_DECLARE1(pos, POSP);
-    if(check_line(vw->vw_Tx, pos))
+    if(check_line(vw->tx, pos))
     {
-	vw->vw_CursorPos = make_pos(char_col(vw->vw_Tx, VCOL(pos), VROW(pos)),
+	vw->cursor_pos = make_pos(char_col(vw->tx, VCOL(pos), VROW(pos)),
 				    VROW(pos));
 	return(pos);
     }
@@ -85,13 +85,13 @@ view.
 	vw = rep_VAL(curr_vw);
 
     if(rep_NILP(arg) || rep_CONSP(arg))
-	offset = VVIEW(vw)->vw_MaxY / 2;
+	offset = VVIEW(vw)->height / 2;
     else if(rep_SYMBOLP(arg))
-	offset = VVIEW(vw)->vw_MaxY - 1;
+	offset = VVIEW(vw)->height - 1;
     else if(rep_INTP(arg))
     {
 	if(rep_INT(arg) < 0)
-	    offset = VVIEW(vw)->vw_MaxY + rep_INT(arg);
+	    offset = VVIEW(vw)->height + rep_INT(arg);
 	else
 	    offset = rep_INT(arg);
     }
@@ -99,20 +99,20 @@ view.
 	offset = 0;
 
     if(!skip_glyph_rows_backwards(VVIEW(vw), offset,
-				  VCOL(VVIEW(vw)->vw_CursorPos),
-				  VROW(VVIEW(vw)->vw_CursorPos),
+				  VCOL(VVIEW(vw)->cursor_pos),
+				  VROW(VVIEW(vw)->cursor_pos),
 				  &col, &row))
     {
 	col = 0;
 	row = 0;
     }
 
-    if(row < VVIEW(vw)->vw_Tx->logical_start)
-	row = VVIEW(vw)->vw_Tx->logical_start;
-    if(row >= VVIEW(vw)->vw_Tx->logical_end)
-	row = VVIEW(vw)->vw_Tx->logical_end - 1;
-    VVIEW(vw)->vw_DisplayOrigin = make_pos(col, row);
-    return VVIEW(vw)->vw_DisplayOrigin;
+    if(row < VVIEW(vw)->tx->logical_start)
+	row = VVIEW(vw)->tx->logical_start;
+    if(row >= VVIEW(vw)->tx->logical_end)
+	row = VVIEW(vw)->tx->logical_end - 1;
+    VVIEW(vw)->display_origin = make_pos(col, row);
+    return VVIEW(vw)->display_origin;
 }
 
 DEFUN_INT("next-screen", Fnext_screen, Snext_screen, (repv number), rep_Subr1, "p") /*
@@ -122,31 +122,31 @@ next-screen [NUMBER]
 Move NUMBER (default: 1) screens forwards in the current window.
 ::end:: */
 {
-    long lines = (rep_INTP(number) ? rep_INT(number) : 1) * curr_vw->vw_MaxY;
+    long lines = (rep_INTP(number) ? rep_INT(number) : 1) * curr_vw->height;
     long col, row;
     repv context;
     if(lines < 0)
-	return Fprev_screen(rep_MAKE_INT(-lines / curr_vw->vw_MaxY));
+	return Fprev_screen(rep_MAKE_INT(-lines / curr_vw->height));
     context = Fsymbol_value(Qnext_screen_context_lines, Qt);
     if(rep_INTP(context) && lines > rep_INT(context) + 1)
 	lines -= rep_INT(context);
 
-    if(VROW(curr_vw->vw_CursorPos) == curr_vw->vw_Tx->logical_end - 1)
+    if(VROW(curr_vw->cursor_pos) == curr_vw->tx->logical_end - 1)
 	return Qnil;
-    else if(curr_vw->vw_Flags & VWFF_AT_BOTTOM)
+    else if(curr_vw->car & VWFF_AT_BOTTOM)
     {
-	set_cursor_vertically(curr_vw, curr_vw->vw_Tx->logical_end - 1);
-	return curr_vw->vw_DisplayOrigin;
+	set_cursor_vertically(curr_vw, curr_vw->tx->logical_end - 1);
+	return curr_vw->display_origin;
     }
     else if(skip_glyph_rows_forwards(curr_vw, lines,
-				     VCOL(curr_vw->vw_DisplayOrigin),
-				     VROW(curr_vw->vw_DisplayOrigin),
+				     VCOL(curr_vw->display_origin),
+				     VROW(curr_vw->display_origin),
 				     &col, &row))
     {
-	curr_vw->vw_DisplayOrigin = make_pos(col, row);
-	if(POS_GREATER_P(curr_vw->vw_DisplayOrigin, curr_vw->vw_CursorPos))
-	    set_cursor_vertically(curr_vw, VROW(curr_vw->vw_DisplayOrigin));
-	return curr_vw->vw_DisplayOrigin;
+	curr_vw->display_origin = make_pos(col, row);
+	if(POS_GREATER_P(curr_vw->display_origin, curr_vw->cursor_pos))
+	    set_cursor_vertically(curr_vw, VROW(curr_vw->display_origin));
+	return curr_vw->display_origin;
     }
     else
 	return Qnil;
@@ -159,47 +159,47 @@ prev-screen [NUMBER]
 Move NUMBER (default: 1) screens backwards in the current window.
 ::end:: */
 {
-    long lines = (rep_INTP(number) ? rep_INT(number) : 1) * curr_vw->vw_MaxY;
+    long lines = (rep_INTP(number) ? rep_INT(number) : 1) * curr_vw->height;
     long col, row;
     repv context, new_origin;
     if(lines < 0)
-	return Fnext_screen(rep_MAKE_INT(-lines / curr_vw->vw_MaxY));
+	return Fnext_screen(rep_MAKE_INT(-lines / curr_vw->height));
 
     context = Fsymbol_value(Qnext_screen_context_lines, Qt);
     if(rep_INTP(context) && lines > rep_INT(context) + 1)
 	lines -= rep_INT(context);
     if(skip_glyph_rows_backwards(curr_vw, lines,
-				 VCOL(curr_vw->vw_DisplayOrigin),
-				 VROW(curr_vw->vw_DisplayOrigin),
+				 VCOL(curr_vw->display_origin),
+				 VROW(curr_vw->display_origin),
 				 &col, &row))
 	new_origin = make_pos(col, row);
-    else if(VROW(curr_vw->vw_DisplayOrigin) != curr_vw->vw_Tx->logical_start)
-	new_origin = make_pos(0, curr_vw->vw_Tx->logical_start);
-    else if(VROW(curr_vw->vw_CursorPos) != curr_vw->vw_Tx->logical_start)
+    else if(VROW(curr_vw->display_origin) != curr_vw->tx->logical_start)
+	new_origin = make_pos(0, curr_vw->tx->logical_start);
+    else if(VROW(curr_vw->cursor_pos) != curr_vw->tx->logical_start)
     {
-	set_cursor_vertically(curr_vw, curr_vw->vw_Tx->logical_start);
-	return curr_vw->vw_DisplayOrigin;
+	set_cursor_vertically(curr_vw, curr_vw->tx->logical_start);
+	return curr_vw->display_origin;
     }
     else
 	return Qnil;
 
     /* Now fix the cursor position. */
-    if(skip_glyph_rows_forwards(curr_vw, curr_vw->vw_MaxY - 1,
+    if(skip_glyph_rows_forwards(curr_vw, curr_vw->height - 1,
 				VCOL(new_origin), VROW(new_origin),
 				&col, &row))
     {
 	long curs_offset = get_cursor_column(curr_vw);
-	if(VROW(curr_vw->vw_CursorPos) > row
-	   || (VROW(curr_vw->vw_CursorPos) == row
+	if(VROW(curr_vw->cursor_pos) > row
+	   || (VROW(curr_vw->cursor_pos) == row
 	       && curs_offset > col))
 	{
 	    /* TODO: the column isn't correct */
-	    curr_vw->vw_CursorPos = make_pos(col, row);
+	    curr_vw->cursor_pos = make_pos(col, row);
 	}
     }
 
-    curr_vw->vw_DisplayOrigin = new_origin;
-    return curr_vw->vw_DisplayOrigin;
+    curr_vw->display_origin = new_origin;
+    return curr_vw->display_origin;
 }
 
 DEFUN_INT("end-of-buffer", Fend_of_buffer, Send_of_buffer,
@@ -213,7 +213,7 @@ of the buffer's restriction.
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(!rep_NILP(irp))
     {
 	long x, y;
@@ -251,7 +251,7 @@ the cursor).
 ::end:: */
 {
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     if(VROW(pos) < VTX(tx)->line_count)
@@ -270,7 +270,7 @@ Return the position of the first character in the line pointed to by POS
 ::end:: */
 {
     if(!POSP(pos))
-	pos = curr_vw->vw_CursorPos;
+	pos = curr_vw->cursor_pos;
     if(VCOL(pos) != 0)
 	return make_pos(0, VROW(pos));
     else
@@ -291,7 +291,7 @@ line number is made) nil is returned.
 {
     long row;
     if(!POSP(pos))
-	pos = curr_vw->vw_CursorPos;
+	pos = curr_vw->cursor_pos;
     row = VROW(pos) + (rep_INTP(lines) ? rep_INT(lines) : 1);
     if(row < 0)
 	return Qnil;
@@ -312,7 +312,7 @@ beginning or the end of the buffer is passed, nil is returned.
     long dist;
     Pos tem;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     else
@@ -343,11 +343,11 @@ undefined; negative values move towards the left hand side of the screen.
 {
     int tabs = rep_INTP(num) ? rep_INT(num) : 1;
     VW *vw = curr_vw;
-    int tabsize = rep_INTP(size) ? rep_INT(size) : vw->vw_Tx->tab_size;
+    int tabsize = rep_INTP(size) ? rep_INT(size) : vw->tx->tab_size;
     long col;
     if(!POSP(pos))
     {
-	pos = curr_vw->vw_CursorPos;
+	pos = curr_vw->cursor_pos;
 	col = get_cursor_column(vw);
     }
     else
@@ -487,7 +487,7 @@ Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
     char esc_char = rep_INTP(esc) ? rep_INT(esc) : '\\';
     Pos tem;
     if(!BUFFERP(tx))
-	tx = rep_VAL(curr_vw->vw_Tx);
+	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
 	pos = get_tx_cursor(VTX(tx));
     else
