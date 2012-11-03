@@ -82,11 +82,11 @@ extern char *regprop (char *);
      || (PROW(p) == regtx->logical_start && PCOL(p) == 0))
 
 /*
- * - regexec_tx - search forwards for a regexp in a buffer sub-string
+ * - regexec_buffer - search forwards for a regexp in a buffer sub-string
  *    START is preserved whatever.
  */
 int
-regexec_tx(prog, tx, start, eflags)
+regexec_buffer(prog, tx, start, eflags)
     register rep_regexp *prog;
     Lisp_Buffer *tx;
     repv start;
@@ -205,7 +205,7 @@ regexec_tx(prog, tx, start, eflags)
     return (0);
 }
 
-/* regexec_reverse_tx - search backwards for a regexp in a buffer.
+/* regexec_reverse_buffer - search backwards for a regexp in a buffer.
    START is preserved whatever.
   
    There's a slight issue here. We obviously want to find the largest
@@ -221,7 +221,7 @@ regexec_tx(prog, tx, start, eflags)
    original. Obviously the longest-match rule doesn't hold across line
    boundaries; I think this is acceptable. */
 int
-regexec_reverse_tx(prog, tx, start, eflags)
+regexec_reverse_buffer(prog, tx, start, eflags)
     register rep_regexp *prog;
     Lisp_Buffer *tx;
     repv start;
@@ -392,11 +392,11 @@ regexec_reverse_tx(prog, tx, start, eflags)
 }
 
 /*
- * - regmatch_tx - match a regexp against the string starting at
+ * - regmatch_buffer - match a regexp against the string starting at
  *		   START. No searching. START is preserved.
  */
 int
-regmatch_tx(prog, tx, start, eflags)
+regmatch_buffer(prog, tx, start, eflags)
     register rep_regexp *prog;
     Lisp_Buffer *tx;
     repv start;

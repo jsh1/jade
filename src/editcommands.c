@@ -84,7 +84,7 @@ character after the end of the inserted text.
     if(!BUFFERP(buff))
 	buff = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VBUFFER(buff));
+	pos = get_buffer_cursor(VBUFFER(buff));
     if(pad_pos(VBUFFER(buff), pos))
     {
 	pos = insert_string(VBUFFER(buff), rep_STR(string), rep_STRING_LEN(string), pos);
@@ -366,7 +366,7 @@ character exists at that position, nil is returned.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VBUFFER(tx));
+	pos = get_buffer_cursor(VBUFFER(tx));
     if(!check_line(VBUFFER(tx), pos))
 	return(Qnil);
     if(VCOL(pos) >= VBUFFER(tx)->lines[VROW(pos)].ln_Strlen)
@@ -395,7 +395,7 @@ Sets the character at position POS in BUFFER to CHARACTER.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VBUFFER(tx));
+	pos = get_buffer_cursor(VBUFFER(tx));
     if(!check_line(VBUFFER(tx), pos))
 	return(Qnil);
     end = make_pos(VCOL(pos) + 1, VROW(pos));
@@ -442,7 +442,7 @@ empty, ie, blank or only containing spaces.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VBUFFER(tx));
+	pos = get_buffer_cursor(VBUFFER(tx));
     if(check_line(VBUFFER(tx), pos))
     {
 	if(VBUFFER(tx)->lines[VROW(pos)].ln_Strlen == 1)
@@ -670,7 +670,7 @@ is from the beginning of the buffer.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VBUFFER(tx));
+	pos = get_buffer_cursor(VBUFFER(tx));
     if(check_pos(VBUFFER(tx), pos))
     {
 	offset = 0;

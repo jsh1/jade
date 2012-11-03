@@ -325,7 +325,7 @@ that character classes are still case-significant.
 	prog = rep_compile_regexp(re);
 	if(prog != NULL)
 	{
-	    if(regexec_tx(prog, VBUFFER(tx), pos,
+	    if(regexec_buffer(prog, VBUFFER(tx), pos,
 			  rep_NILP(nocase_p) ? 0 : rep_REG_NOCASE))
 	    {
 		rep_update_last_match(tx, prog);
@@ -362,7 +362,7 @@ that character classes are still case-significant.
 	rep_regexp *prog = rep_compile_regexp(re);
 	if(prog != NULL)
 	{
-	    if(regexec_reverse_tx(prog, VBUFFER(tx), pos,
+	    if(regexec_reverse_buffer(prog, VBUFFER(tx), pos,
 				  rep_NILP(nocase_p) ? 0 : rep_REG_NOCASE))
 	    {
 		rep_update_last_match(tx, prog);
@@ -535,14 +535,14 @@ Returns t if REGEXP matches the text at POS. Updates the match data.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VBUFFER(tx));
+	pos = get_buffer_cursor(VBUFFER(tx));
     if(check_line(VBUFFER(tx), pos))
     {
 	rep_regexp *prog = rep_compile_regexp(re);
 	if(prog != NULL)
 	{
 	    repv res;
-	    if(regmatch_tx(prog, VBUFFER(tx), pos,
+	    if(regmatch_buffer(prog, VBUFFER(tx), pos,
 			   rep_NILP(nocase_p) ? 0 : rep_REG_NOCASE))
 	    {
 		rep_update_last_match(tx, prog);
@@ -583,7 +583,7 @@ the match data.
 	    return rep_signal_arg_error(len, 2);
     }
     if(!POSP(pos))
-	pos = get_tx_cursor(tx);
+	pos = get_buffer_cursor(tx);
     if(check_line(tx, pos))
     {
 	Pos ppos;

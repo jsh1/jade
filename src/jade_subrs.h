@@ -24,10 +24,10 @@
 /* from buffers.c */
 extern Lisp_Buffer *first_buffer(void);
 extern Lisp_Buffer *swap_buffers(Lisp_View *, Lisp_Buffer *);
-extern repv *get_tx_cursor_ptr(Lisp_Buffer *tx);
-extern repv get_tx_cursor(Lisp_Buffer *);
+extern repv *get_buffer_cursor_ptr(Lisp_Buffer *tx);
+extern repv get_buffer_cursor(Lisp_Buffer *);
 extern int auto_save_buffers(bool);
-extern void tx_kill_local_variables(Lisp_Buffer *tx);
+extern void kill_buffer_local_variables(Lisp_Buffer *tx);
 extern void buffers_init(void);
 extern void buffers_kill(void);
 extern int buffer_type;
@@ -346,9 +346,9 @@ extern repv var_redisplay_max_d(repv val);
 extern void redisplay_set_no_copy (void);
 
 /* from regjade.c */
-extern int regexec_tx(rep_regexp *prog, Lisp_Buffer *tx, repv start, int flags);
-extern int regexec_reverse_tx(rep_regexp *prog, Lisp_Buffer *tx, repv start, int flags);
-extern int regmatch_tx(rep_regexp *prog, Lisp_Buffer *tx, repv start, int flags);
+extern int regexec_buffer(rep_regexp *prog, Lisp_Buffer *tx, repv start, int flags);
+extern int regexec_reverse_buffer(rep_regexp *prog, Lisp_Buffer *tx, repv start, int flags);
+extern int regmatch_buffer(rep_regexp *prog, Lisp_Buffer *tx, repv start, int flags);
 
 /* from regsub.c */
 extern void jade_regsub(int lasttype, rep_regsubs *matches,

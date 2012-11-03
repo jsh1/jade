@@ -694,7 +694,7 @@ position of the current buffer).
 	    pos = curr_vw->cursor_pos;
     }
     if(!POSP(pos))
-	pos = get_tx_cursor(VBUFFER(tx));
+	pos = get_buffer_cursor(VBUFFER(tx));
     COPY_VPOS(&ppos, pos);
     e = find_extent(VBUFFER(tx)->global_extent, &ppos);
 
@@ -1195,7 +1195,7 @@ permanent (i.e. their `permanent-local' property is unset or non-nil.)
 	    list = next;
 	}
     }
-    tx_kill_local_variables(VBUFFER(tx));
+    kill_buffer_local_variables(VBUFFER(tx));
     return tx;
 }
 

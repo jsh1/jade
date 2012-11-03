@@ -276,7 +276,7 @@ static int
 buffer_getc (repv stream)
 {
     if (BUFFERP(stream))
-	return pos_getc (VBUFFER(stream), get_tx_cursor_ptr (VBUFFER(stream)));
+	return pos_getc (VBUFFER(stream), get_buffer_cursor_ptr (VBUFFER(stream)));
     else if (rep_CONSP(stream) && POSP(rep_CDR(stream)))
 	return pos_getc (VBUFFER(rep_CAR(stream)), &rep_CDR(stream));
     else
@@ -289,7 +289,7 @@ buffer_ungetc (repv stream, int c)
     repv *ptr;
     if (BUFFERP(stream))
     {
-	ptr = get_tx_cursor_ptr (VBUFFER(stream));
+	ptr = get_buffer_cursor_ptr (VBUFFER(stream));
 	POS_UNGETC(*ptr, VBUFFER(stream));
     }
     else if (rep_CONSP(stream))
@@ -305,7 +305,7 @@ static int
 buffer_putc (repv stream, int c)
 {
     if (BUFFERP(stream))
-	return pos_putc (VBUFFER(stream), get_tx_cursor_ptr(VBUFFER(stream)), c);
+	return pos_putc (VBUFFER(stream), get_buffer_cursor_ptr(VBUFFER(stream)), c);
     else if (rep_CONSP(stream))
     {
 	if (POSP(rep_CDR(stream)))
@@ -327,7 +327,7 @@ buffer_puts (repv stream, void *data, int len, rep_bool is_val)
     if (BUFFERP(stream))
     {
 	return pos_puts (VBUFFER(stream),
-			 get_tx_cursor_ptr(VBUFFER(stream)), buf, len);
+			 get_buffer_cursor_ptr(VBUFFER(stream)), buf, len);
     }
     else if (rep_CONSP(stream))
     {
@@ -467,7 +467,7 @@ Scan all buffers for one whose name is NAME.
 }
 
 repv *
-get_tx_cursor_ptr(Lisp_Buffer *tx)
+get_buffer_cursor_ptr(Lisp_Buffer *tx)
 {
     Lisp_View *vw;
 
@@ -493,9 +493,9 @@ get_tx_cursor_ptr(Lisp_Buffer *tx)
 }    
 
 repv
-get_tx_cursor(Lisp_Buffer *tx)
+get_buffer_cursor(Lisp_Buffer *tx)
 {
-    return *get_tx_cursor_ptr(tx);
+    return *get_buffer_cursor_ptr(tx);
 }
 
 /* returns the number of buffers saved.
@@ -925,7 +925,7 @@ Return a list of all allocated buffer objects.
 }
 
 void
-tx_kill_local_variables(Lisp_Buffer *tx)
+kill_buffer_local_variables(Lisp_Buffer *tx)
 {
 }
 

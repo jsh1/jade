@@ -1,5 +1,9 @@
 2012-11-02  John Harper  <jsh@unfactored.org>
 
+	* regjade.c, movement.c, jade_subrs.h, glyphs.c, find.c,
+	extent.c, editcommands.c, buffers.c: removed "tx" from some
+	function names
+
 	* x11_windows.c, x11_misc.c, x11_main.c, windows.c, views.c,
 	undo.c, server-dl.c, regsub.c, regjade.c, redisplay.c,
 	movement.c, mac_windows.m, mac_main.m, keys.c, jade_subrs.h,

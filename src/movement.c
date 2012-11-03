@@ -253,7 +253,7 @@ the cursor).
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VBUFFER(tx));
+	pos = get_buffer_cursor(VBUFFER(tx));
     if(VROW(pos) < VBUFFER(tx)->line_count)
 	return make_pos(VBUFFER(tx)->lines[VROW(pos)].ln_Strlen - 1, VROW(pos));
     else
@@ -314,7 +314,7 @@ beginning or the end of the buffer is passed, nil is returned.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VBUFFER(tx));
+	pos = get_buffer_cursor(VBUFFER(tx));
     else
     {
 	if(!check_pos(VBUFFER(tx), pos))
@@ -489,7 +489,7 @@ Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VBUFFER(tx));
+	pos = get_buffer_cursor(VBUFFER(tx));
     else
     {
 	if(!check_pos(VBUFFER(tx), pos))

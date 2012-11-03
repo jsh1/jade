@@ -1173,7 +1173,7 @@ rendered.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
-	pos = get_tx_cursor(VBUFFER(tx));
+	pos = get_buffer_cursor(VBUFFER(tx));
     if(check_line(VBUFFER(tx), pos))
 	return make_pos(glyph_col(VBUFFER(tx), VCOL(pos), VROW(pos)), VROW(pos));
     else
