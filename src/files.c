@@ -54,11 +54,11 @@ DEFSYM(insert_file_contents, "insert-file-contents");
    killed. FILE-LENGTH is the length of the file to be loaded, or -1
    if the length is unknown. */
 static bool
-read_file_into_tx(Lisp_Buffer *tx, FILE *fh, long file_length)
+read_file_into_tx(Lisp_Buffer *tx, FILE *fh, rep_intptr_t file_length)
 {
     bool rc = FALSE;
     char buf[BUFSIZ];
-    long len, row, alloced_lines, chars_read = 0;
+    rep_intptr_t len, row, alloced_lines, chars_read = 0;
 
     /* For the first N allocations, use the standard resize_line_list method,
        even if we know the length of the file.. */
@@ -70,7 +70,7 @@ read_file_into_tx(Lisp_Buffer *tx, FILE *fh, long file_length)
     while((len = fread(buf, 1, BUFSIZ, fh)) > 0)
     {
 	char *new;
-	long newlen;
+	rep_intptr_t newlen;
 	char *eol, *cur = buf;
 	while((eol = memchr(cur, '\n', (buf + len) - cur)))
 	{
@@ -108,7 +108,7 @@ read_file_into_tx(Lisp_Buffer *tx, FILE *fh, long file_length)
 		    /* We know the file_length, and the average bytes-per-line
 		       so far. Re-calibrate our prediction of the total
 		       number of lines. */
-		    long predicted_lines = file_length * row / chars_read;
+		    rep_intptr_t predicted_lines = file_length * row / chars_read;
 		    /* Ensure that at least some new lines are going
 		       to be allocated.. */
 		    if(predicted_lines < row + 32)
@@ -227,7 +227,7 @@ the buffer (ignoring the current restriction).
 
     if(rep_NILP(handler))
     {
-	long row, col;
+	rep_intptr_t row, col;
 	FILE *fh;
 
 	/* Don't call check_section() since that looks at the restriction. */
@@ -293,7 +293,7 @@ object to be used. Also removes any restriction on BUFFER.
     if(rep_NILP(handler))
     {
 	FILE *fh;
-	unsigned long file_length;
+	rep_intptr_t file_length;
 	repv res = rep_NULL;
 	repv start;
 
@@ -350,7 +350,7 @@ before the cursor in the current buffer.
 	Lisp_Buffer *tx = curr_vw->tx;
 	FILE *fh;
 	char buf[BUFSIZ];
-	long len;
+	rep_intptr_t len;
 	repv pos = curr_vw->cursor_pos;
 
 	if (!pad_pos(tx, pos))

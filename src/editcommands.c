@@ -54,7 +54,7 @@ with a single argument, t if the block is now marked, nil if it isn't.
 /* Positions */
 
 repv
-make_pos(long col, long row)
+make_pos(rep_intptr_t col, rep_intptr_t row)
 {
     return MAKE_POS(col, row);
 }
@@ -66,8 +66,8 @@ pos COLUMN ROW
 Returns a new position object with coordinates (COLUMN , ROW).
 ::end:: */
 {
-    long col = rep_INTP(x) ? rep_INT(x) : VCOL(curr_vw->cursor_pos);
-    long row = rep_INTP(y) ? rep_INT(y) : VROW(curr_vw->cursor_pos);
+    rep_intptr_t col = rep_INTP(x) ? rep_INT(x) : VCOL(curr_vw->cursor_pos);
+    rep_intptr_t row = rep_INTP(y) ? rep_INT(y) : VROW(curr_vw->cursor_pos);
     return MAKE_POS(col ,row);
 }
 
@@ -127,7 +127,7 @@ Returns the string from START-POS up to END-POS.
 	buff = rep_VAL(curr_vw->tx);
     if(check_section(VBUFFER(buff), &start, &end))
     {
-	long tlen = section_length(VBUFFER(buff), start, end) + 1;
+	rep_intptr_t tlen = section_length(VBUFFER(buff), start, end) + 1;
 	repv str = rep_make_string(tlen);
 	if(str)
 	{
@@ -326,7 +326,7 @@ unchanged.
     if(check_section(VBUFFER(tx), &start, &end)
        && !read_only_section(VBUFFER(tx), start, end))
     {
-	long linenum = VROW(start), col;
+	rep_intptr_t linenum = VROW(start), col;
 	int tablen = rep_STRING_LEN(table);
 	char *str;
 	undo_record_modification(VBUFFER(tx), start, end);
@@ -470,7 +470,7 @@ pointed to by POS (or the cursor), in BUFFER.
 ::end:: */
 {
     Lisp_View *vw = curr_vw;
-    long len;
+    rep_intptr_t len;
     char *line;
     if(!BUFFERP(tx))
 	tx = rep_VAL(vw->tx);
@@ -502,11 +502,11 @@ If ONLY-SPACES in non-nil no tab characters are used.
     /* FIXME: should check if the region is read-only. */
     if(!read_only_pos(VBUFFER(tx), indpos) && check_line(VBUFFER(tx), indpos))
     {
-	long row = VROW(indpos);
+	rep_intptr_t row = VROW(indpos);
 	char *s = VBUFFER(tx)->lines[row].ln_Line;
 	repv pos = indpos;
-	long oldind, diff;
-	long tabs, spaces;
+	rep_intptr_t oldind, diff;
+	rep_intptr_t tabs, spaces;
 	while(*s && isspace(*s))
 	    s++;
 	oldind = s - VBUFFER(tx)->lines[row].ln_Line;
@@ -552,7 +552,7 @@ If ONLY-SPACES in non-nil no tab characters are used.
 	else
 	{
 	    char *s = VBUFFER(tx)->lines[row].ln_Line;
-	    long i;
+	    rep_intptr_t i;
 	    repv end = make_pos(tabs + spaces, VROW(pos));
 	    for(i = 0; i < tabs; i++)
 	    {
@@ -598,7 +598,7 @@ COLUMN counts from zero.
     if(pad_cursor(vw))
     {
 	int spaces, tabs;
-	long curr_col, dest_col;
+	rep_intptr_t curr_col, dest_col;
         curr_col = get_cursor_column(vw);
         dest_col = rep_INT(col);
         if(dest_col <= curr_col)
@@ -666,7 +666,7 @@ Returns the number of characters (counting from zero) that POS (or the cursor)
 is from the beginning of the buffer.
 ::end:: */
 {
-    long offset, line_num;
+    rep_intptr_t offset, line_num;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
@@ -690,8 +690,8 @@ offset-to-pos OFFSET [BUFFER]
 Returns the position which is OFFSET characters from the start of the buffer.
 ::end:: */
 {
-    long offset;
-    long col, row;
+    rep_intptr_t offset;
+    rep_intptr_t col, row;
     rep_DECLARE1(voffset, rep_INTP);
     offset = rep_INT(voffset);
     if(!BUFFERP(tx))

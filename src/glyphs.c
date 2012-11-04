@@ -26,7 +26,7 @@
 # include <memory.h>
 #endif
 
-static long line_glyph_length(Lisp_Buffer *tx, long line);
+static rep_intptr_t line_glyph_length(Lisp_Buffer *tx, rep_intptr_t line);
 
 DEFSYM(glyph_table, "glyph-table");
 
@@ -173,15 +173,15 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 					      rep_VAL(vw->tx), Qt);
 	glyph_attr attr = 0;
 	int tab_size = vw->tx->tab_size;
-	long first_col, first_row, first_char_col;
+	rep_intptr_t first_col, first_row, first_char_col;
 	int glyph_row, last_row, char_row;
-	long cursor_col;
+	rep_intptr_t cursor_col;
 
 	bool in_block, rect_block = FALSE, block_active = FALSE;
-	long block_start = 0, block_end = 0;
+	rep_intptr_t block_start = 0, block_end = 0;
 
 	Lisp_Extent *extent;
-	long extent_delta;
+	rep_intptr_t extent_delta;
 	Pos next_extent;
 
 	if(!GLYPHTABP(glyph_tab))
@@ -257,7 +257,7 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 					      VROW(vw->block_end));
 			if(block_start > block_end)
 			{
-			    long tem = block_start;
+			    rep_intptr_t tem = block_start;
 			    block_start = block_end;
 			    block_end = tem;
 			}
@@ -278,11 +278,11 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 	    glyph_attr *attrs = w->new_content->attrs[glyph_row];
 
 	    char *src = vw->tx->lines[char_row].ln_Line;
-	    long src_len = vw->tx->lines[char_row].ln_Strlen - 1;
+	    rep_intptr_t src_len = vw->tx->lines[char_row].ln_Strlen - 1;
 
 	    /* Position in current screen row, logical glyph position in
 	       current buffer line, actual character in buffer line. */
-	    long real_glyph_col = 0, glyph_col = 0, char_col = 0;
+	    rep_intptr_t real_glyph_col = 0, glyph_col = 0, char_col = 0;
 
 	    /* Is the cursor in this row? */
 	    bool cursor_row = (vw == w->current_view
@@ -296,7 +296,7 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 	       be output. */
 #define CHECK_BLOCK_ATTR(cc_, gc_)					\
             do {							\
-		long cc = (cc_), gc = (gc_);				\
+		rep_intptr_t cc = (cc_), gc = (gc_);				\
 		if(!rect_block)						\
 		{							\
 		    /* check for a normal block */			\
@@ -675,14 +675,14 @@ make_message_glyphs(glyph_buf *g, Lisp_Window *w)
    enough lines in the buffer to move COUNT rows forwards, return false
    leaving COLP and ROWP unset, otherwise return true. */
 bool
-skip_glyph_rows_forwards(Lisp_View *vw, long count,
-			 long col, long row,
-			 long *colp, long *rowp)
+skip_glyph_rows_forwards(Lisp_View *vw, rep_intptr_t count,
+			 rep_intptr_t col, rep_intptr_t row,
+			 rep_intptr_t *colp, rep_intptr_t *rowp)
 {
     Lisp_Buffer *tx = vw->tx;
     if(TX_WRAP_LINES_P(tx))
     {
-	long len = line_glyph_length(tx, row);
+	rep_intptr_t len = line_glyph_length(tx, row);
 	while(count-- > 0)
 	{
 	    col += vw->width - 1;
@@ -714,9 +714,9 @@ skip_glyph_rows_forwards(Lisp_View *vw, long count,
    enough lines in the buffer to move COUNT rows backwards, return false
    leaving COLP and ROWP unset, otherwise return true. */
 bool
-skip_glyph_rows_backwards(Lisp_View *vw, long count,
-			  long col, long row,
-			  long *colp, long *rowp)
+skip_glyph_rows_backwards(Lisp_View *vw, rep_intptr_t count,
+			  rep_intptr_t col, rep_intptr_t row,
+			  rep_intptr_t *colp, rep_intptr_t *rowp)
 {
     Lisp_Buffer *tx = vw->tx;
     if(TX_WRAP_LINES_P(tx))
@@ -753,8 +753,8 @@ void
 recenter_cursor(Lisp_View *vw)
 {
     Lisp_Buffer *tx = vw->tx;
-    long start_col = VCOL(vw->display_origin);
-    long start_row = VROW(vw->display_origin);
+    rep_intptr_t start_col = VCOL(vw->display_origin);
+    rep_intptr_t start_row = VROW(vw->display_origin);
 
     /* First check that the cursor is within the current
        restriction, if not move the cursor until it is. */
@@ -769,8 +769,8 @@ recenter_cursor(Lisp_View *vw)
     {
 	/* First for the easy case when lines are never wrapped. */
 
-	long offset = get_cursor_column(vw);
-	long delta;
+	rep_intptr_t offset = get_cursor_column(vw);
+	rep_intptr_t delta;
 
 	/* Move horizontally if necessary */
 	while((offset - start_col) >= vw->width)
@@ -825,7 +825,7 @@ recenter_cursor(Lisp_View *vw)
     {
 	/* The more difficult case when lines may be wrapped. */
 
-	long offset = get_cursor_column(vw);
+	rep_intptr_t offset = get_cursor_column(vw);
 
 	if(start_row < tx->logical_start)
 	    start_row = tx->logical_start;
@@ -835,7 +835,7 @@ recenter_cursor(Lisp_View *vw)
 	/* First, is the cursor past the end of the last row of glyphs
 	   that will be displayed for the line it's on? */
 	{
-	    long last_col = line_glyph_length(tx, VROW(vw->cursor_pos));
+	    rep_intptr_t last_col = line_glyph_length(tx, VROW(vw->cursor_pos));
 	    if(last_col == 0)
 		/* Always display a line, even if there's no glyphs at all */
 		last_col = vw->width - 1;
@@ -881,7 +881,7 @@ recenter_cursor(Lisp_View *vw)
 	{
 	    /* Find the position of the start of the glyph
 	       row following the end of the view. */
-	    long next_line_col, next_line_row;
+	    rep_intptr_t next_line_col, next_line_row;
 	    if(skip_glyph_rows_forwards(vw, vw->height,
 					start_col, start_row,
 					&next_line_col, &next_line_row)
@@ -945,8 +945,8 @@ recenter_cursor(Lisp_View *vw)
 	{
 	    /* There's the possibility of a gap at the bottom of
 	       the view. If so, supress it. */
-	    long row = tx->logical_end - 1;
-	    long col = line_glyph_length(tx, row);
+	    rep_intptr_t row = tx->logical_end - 1;
+	    rep_intptr_t col = line_glyph_length(tx, row);
 	    if(skip_glyph_rows_backwards(vw, vw->height - 1,
 					 col, row, &col, &row))
 	    {
@@ -979,14 +979,14 @@ recenter_cursor(Lisp_View *vw)
 
 /* Returns the number of glyphs needed to draw the string SRC.
    TODO: this function is called a lot, should really cache its results */
-static inline long
-uncached_string_glyph_length(Lisp_Buffer *tx, const char *src, long srcLen)
+static inline rep_intptr_t
+uncached_string_glyph_length(Lisp_Buffer *tx, const char *src, rep_intptr_t srcLen)
 {
     /* FIXME: This is wrong, it's necessary to traverse the extent
        tree on this line since the glyph-table can be changed. */
     repv gt = Fbuffer_symbol_value(Qglyph_table, Qnil,
 				       rep_VAL(tx), Qt);
-    long w;
+    rep_intptr_t w;
     glyph_widths_t *width_table;
     if(!GLYPHTABP(gt))
 	gt = Fdefault_glyph_table();
@@ -1005,8 +1005,8 @@ uncached_string_glyph_length(Lisp_Buffer *tx, const char *src, long srcLen)
 
 /* Return the total number of glyphs needed to display the whole of line
    LINE in buffer TX. This caches the results from recently examined lines */
-static long
-line_glyph_length(Lisp_Buffer *tx, long line)
+static rep_intptr_t
+line_glyph_length(Lisp_Buffer *tx, rep_intptr_t line)
 {
     int set = GL_MAP_LINE(line);
     gl_cache_entry_t *set_data = GL_GET_SET(&gl_cache, set);
@@ -1085,8 +1085,8 @@ line_glyph_length(Lisp_Buffer *tx, long line)
 }
 
 /* Return the glyph index of (COL,LINE) in TX.	*/
-long
-glyph_col(Lisp_Buffer *tx, long col, long linenum)
+rep_intptr_t
+glyph_col(Lisp_Buffer *tx, rep_intptr_t col, rep_intptr_t linenum)
 {
     if(col >= tx->lines[linenum].ln_Strlen)
     {
@@ -1100,13 +1100,13 @@ glyph_col(Lisp_Buffer *tx, long col, long linenum)
 }
 
 /* Find how many chars to glyph position col. */
-long
-char_col(Lisp_Buffer *tx, long col, long linenum)
+rep_intptr_t
+char_col(Lisp_Buffer *tx, rep_intptr_t col, rep_intptr_t linenum)
 {
     char *src = tx->lines[linenum].ln_Line;
-    long srclen = tx->lines[linenum].ln_Strlen - 1;
+    rep_intptr_t srclen = tx->lines[linenum].ln_Strlen - 1;
     glyph_widths_t *width_table;
-    long w = 0;
+    rep_intptr_t w = 0;
     /* FIXME: This is wrong */
     repv gt = Fbuffer_symbol_value(Qglyph_table, rep_VAL(tx),
 				       Qnil, Qt);
@@ -1129,7 +1129,7 @@ char_col(Lisp_Buffer *tx, long col, long linenum)
 }
 
 /* Return the actual column on the screen that the cursor appears in. */
-long
+rep_intptr_t
 get_cursor_column(Lisp_View *vw)
 {
     Lisp_Buffer *tx = vw->tx;
@@ -1150,9 +1150,9 @@ get_cursor_column(Lisp_View *vw)
 /* Sets the cursor_pos.pos_Col so that the cursor appears in line ROW,
    as near as possible to last_cursor_offset horizontally.  */
 void
-set_cursor_vertically(Lisp_View *vw, long row)
+set_cursor_vertically(Lisp_View *vw, rep_intptr_t row)
 {
-    long col = char_col(vw->tx, vw->last_cursor_offset, row);
+    rep_intptr_t col = char_col(vw->tx, vw->last_cursor_offset, row);
     vw->cursor_pos = make_pos(col, row);
 }
 
@@ -1216,7 +1216,7 @@ the buffer).
 ::end:: */
 {
     Lisp_Buffer *tx;
-    long col, row;
+    rep_intptr_t col, row;
     rep_DECLARE1(pos, POSP);
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
@@ -1251,7 +1251,7 @@ not currently being displayed, return nil.
 ::end:: */
 {
     Lisp_Buffer *tx;
-    long gcol, grow;
+    rep_intptr_t gcol, grow;
 
     rep_DECLARE1(pos, POSP);
     if(!VIEWP(vw))
@@ -1264,11 +1264,11 @@ not currently being displayed, return nil.
 
     if(TX_WRAP_LINES_P(tx))
     {
-	long row = VROW(VVIEW(vw)->display_origin);
+	rep_intptr_t row = VROW(VVIEW(vw)->display_origin);
 	grow = 0;
 	while(row < VROW(pos) && grow < VVIEW(vw)->height)
 	{
-	    long len = line_glyph_length(tx, row);
+	    rep_intptr_t len = line_glyph_length(tx, row);
 	    if(len != 0)
 	    {
 		len = ROUND_UP_INT(len, VVIEW(vw)->width - 1);

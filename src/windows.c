@@ -252,8 +252,8 @@ This function always returns nil.
 void
 update_window_dimensions(Lisp_Window *w)
 {
-    long new_width = w->pixel_width / w->font_width;
-    long new_height = w->pixel_height / w->font_height;
+    rep_intptr_t new_width = w->pixel_width / w->font_width;
+    rep_intptr_t new_height = w->pixel_height / w->font_height;
     if(new_width != w->column_count || new_height != w->row_count)
     {
 	if(w->content)
@@ -396,14 +396,12 @@ jade_message (enum rep_message fn, ...)
     va_start (args, fn);
     switch (fn)
     {
-	int len;
+	size_t len;
 	char *msg;
-	unsigned long *old_lenp;
-	char **old_msgp;
 
     case rep_messagen:
 	msg = (char *)va_arg(args, char *);
-	len = (int)va_arg(args, int);
+	len = (size_t)va_arg(args, size_t);
 	messagen (msg, len);
 	break;
 
@@ -421,40 +419,9 @@ jade_message (enum rep_message fn, ...)
 	reset_message (curr_win);
 	break;
 
-    case rep_save_message:
-	old_msgp = (char **)va_arg(args, char **);
-	old_lenp = (unsigned long *)va_arg(args, unsigned long *);
-	if(curr_win->car & WINFF_MESSAGE)
-	{
-	    /* a message is being displayed. */
-	    *old_msgp = curr_win->message;
-	    *old_lenp = (unsigned long) curr_win->message_length;
-	    curr_win->message = NULL;
-	    curr_win->message_length = 0;
-	}
-	else
-	{
-	    *old_msgp = NULL;
-	    *old_lenp = 0;
-	}
-	break;
-
-    case rep_restore_message:
-	msg = (char *)va_arg(args, char *);
-	len = (int)va_arg(args, int);
-	if (msg != 0)
-	{
-	    if(curr_win->message != NULL)
-		rep_free(curr_win->message);
-	    curr_win->message = msg;
-	    curr_win->message_length = len;
-	    curr_win->car |= WINFF_MESSAGE;
-	}
-	break;
-
     case rep_append_message:
 	msg = (char *)va_arg(args, char *);
-	len = (int)va_arg(args, int);
+	len = (size_t)va_arg(args, size_t);
 	if (curr_win->car & WINFF_MESSAGE)
 	{
 	    Lisp_Window *w = curr_win;
@@ -487,7 +454,7 @@ window is next refreshed unless DISPLAY-NOW is non-nil.
 ::end:: */
 {
     rep_DECLARE1(string, rep_STRINGP);
-    (*rep_message_fun)(rep_messagen, rep_STR(string), rep_STRING_LEN(string));
+    (*rep_message_fun)(rep_messagen, rep_STR(string), (size_t) rep_STRING_LEN(string));
     if(!rep_NILP(now))
 	(*rep_message_fun)(rep_redisplay_message);
     return(string);
@@ -575,7 +542,7 @@ under Intuition a pointer (integer) to the window structure.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return(rep_MAKE_LONG_INT((unsigned long)VWINDOW(win)->w_Window));
+    return(rep_make_long_int((rep_uintptr_t)VWINDOW(win)->w_Window));
 }
 
 DEFUN("font-dimensions", Ffont_dimensions, Sfont_dimensions,
@@ -588,8 +555,8 @@ Returns (WIDTH . HEIGHT) of the window's font (in pixels).
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return Fcons(rep_MAKE_INT((long)VWINDOW(win)->font_width),
-		 rep_MAKE_INT((long)VWINDOW(win)->font_height));
+    return Fcons(rep_MAKE_INT(VWINDOW(win)->font_width),
+		 rep_MAKE_INT(VWINDOW(win)->font_height));
 }
 
 DEFUN("window-dimensions", Fwindow_dimensions, Swindow_dimensions, (repv win), rep_Subr2) /*

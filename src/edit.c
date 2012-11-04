@@ -84,7 +84,7 @@ kill_line_list(Lisp_Buffer *tx)
 {
     if(tx->lines)
     {
-	long i;
+	rep_intptr_t i;
 	for(i = 0; i < tx->line_count; i++)
 	{
 	    if(tx->lines[i].ln_Strlen)
@@ -99,9 +99,9 @@ kill_line_list(Lisp_Buffer *tx)
 
 /* deallocates some lines (but not the list) */
 static void
-kill_some_lines(Lisp_Buffer *tx, long start, long number)
+kill_some_lines(Lisp_Buffer *tx, rep_intptr_t start, rep_intptr_t number)
 {
-    long i;
+    rep_intptr_t i;
     for(i = start; i < number + start; i++)
     {
 	if(tx->lines[i].ln_Strlen)
@@ -119,9 +119,9 @@ kill_some_lines(Lisp_Buffer *tx, long start, long number)
    deleted the actual text is also deleted.
    NOTE: A line list of zero lines is not allowed. */
 LINE *
-resize_line_list(Lisp_Buffer *tx, long change, long where)
+resize_line_list(Lisp_Buffer *tx, rep_intptr_t change, rep_intptr_t where)
 {
-    long newsize = tx->line_count + change;
+    rep_intptr_t newsize = tx->line_count + change;
     if(newsize <= 0)
 	return NULL;
     if(change < 0)
@@ -137,7 +137,7 @@ resize_line_list(Lisp_Buffer *tx, long change, long where)
        || (tx->total_lines - newsize) > MAX_SPARE_LINES)
     {
 	/* Only reallocate if there's not enough space in the array */
-	long actual_size = newsize + ALLOC_SPARE_LINES;
+	rep_intptr_t actual_size = newsize + ALLOC_SPARE_LINES;
 	if(tx->lines != 0)
 	{
 	    LINE *tem = rep_realloc(tx->lines, sizeof(LINE) * actual_size);
@@ -167,7 +167,7 @@ resize_line_list(Lisp_Buffer *tx, long change, long where)
 }
 
 char *
-alloc_line_buf(Lisp_Buffer *tx, long length)
+alloc_line_buf(Lisp_Buffer *tx, rep_intptr_t length)
 {
     return ALLOC_LINE_BUF(tx, length);
 }
@@ -181,9 +181,10 @@ free_line_buf(Lisp_Buffer *tx, char *line)
 /* Inserts LEN characters of `space' at pos. The gap will be filled
    with random garbage. */
 bool
-insert_gap(Lisp_Buffer *tx, long len, long col, long row)
+insert_gap(Lisp_Buffer *tx, rep_intptr_t len,
+	   rep_intptr_t col, rep_intptr_t row)
 {
-    long new_length = tx->lines[row].ln_Strlen + len;
+    rep_intptr_t new_length = tx->lines[row].ln_Strlen + len;
     if(LINE_BUF_SIZE(new_length) == LINE_BUF_SIZE(tx->lines[row].ln_Strlen))
     {
 	/* Absorb the insertion in the current buffer */
@@ -224,7 +225,7 @@ insert_gap(Lisp_Buffer *tx, long len, long col, long row)
    inserted into the current line. Returns the position of the character
    after the end of the inserted text. */
 repv
-insert_bytes(Lisp_Buffer *tx, const char *text, long textLen, repv pos)
+insert_bytes(Lisp_Buffer *tx, const char *text, size_t textLen, repv pos)
 {
     if(insert_gap(tx, textLen, VCOL(pos), VROW(pos)))
     {
@@ -238,14 +239,14 @@ insert_bytes(Lisp_Buffer *tx, const char *text, long textLen, repv pos)
 /* Inserts a string, this routine acts on any '\n' characters that it
    finds. */
 repv
-insert_string(Lisp_Buffer *tx, const char *text, long textLen, repv pos)
+insert_string(Lisp_Buffer *tx, const char *text, size_t textLen, repv pos)
 {
     const char *eol;
     Pos tpos;
     COPY_VPOS(&tpos, pos);
     while((eol = memchr(text, '\n', textLen)))
     {
-	long len = eol - text;
+	size_t len = eol - text;
 	if(PCOL(&tpos) != 0)
 	{
 	    if(len > 0)
@@ -262,7 +263,7 @@ insert_string(Lisp_Buffer *tx, const char *text, long textLen, repv pos)
 	    /* Split line at TPOS */
 	    if(resize_line_list(tx, +1, PROW(&tpos) + 1))
 	    {
-		long row = PROW(&tpos);
+		rep_intptr_t row = PROW(&tpos);
 
 		/* First do the new line */
 		tx->lines[row+1].ln_Line
@@ -352,11 +353,12 @@ insert_string(Lisp_Buffer *tx, const char *text, long textLen, repv pos)
 /* Deletes some SIZE bytes from line at (COL,ROW). Returns true if okay.
    This won't delete past the end of the line at (COL,ROW). */
 bool
-delete_chars(Lisp_Buffer *tx, long col, long row, long size)
+delete_chars(Lisp_Buffer *tx, rep_intptr_t col,
+	     rep_intptr_t row, rep_intptr_t size)
 {
     if(tx->lines[row].ln_Strlen)
     {
-	long new_length;
+	rep_intptr_t new_length;
 	if(size >= tx->lines[row].ln_Strlen - col)
 	    size = tx->lines[row].ln_Strlen - col - 1;
 	if(size <= 0)
@@ -405,14 +407,14 @@ delete_section(Lisp_Buffer *tx, repv start, repv end)
     }
     else
     {
-	long middle_lines;
+	rep_intptr_t middle_lines;
 	bool joinflag = FALSE;
 	Pos tstart, tend;
 	COPY_VPOS(&tstart, start); COPY_VPOS(&tend, end);
 	if(PCOL(&tstart) != 0)
 	{
-	    long start_col = (tx->lines[PROW(&tstart)].ln_Strlen
-			      - PCOL(&tstart) - 1);
+	    rep_intptr_t start_col = (tx->lines[PROW(&tstart)].ln_Strlen
+				      - PCOL(&tstart) - 1);
 	    if(start_col != 0)
 		delete_chars(tx, PCOL(&tstart), PROW(&tstart), start_col);
 	    PCOL(&tstart) = 0;
@@ -437,7 +439,7 @@ delete_section(Lisp_Buffer *tx, repv start, repv end)
 	    /* Join the two lines at TSTART */
 	    if((PROW(&tstart) + 1) < tx->logical_end)
 	    {
-		long row = PROW(&tstart);
+		rep_intptr_t row = PROW(&tstart);
 
 		if(tx->lines[row].ln_Strlen == 1
 		   || tx->lines[row+1].ln_Strlen == 1)
@@ -597,7 +599,7 @@ check_line(Lisp_Buffer *tx, repv pos)
 /* Check that row LINE is in the current restriction of buffer TX.
    If not an error is signalled and the function returns false. */
 bool
-check_row(Lisp_Buffer *tx, long line)
+check_row(Lisp_Buffer *tx, rep_intptr_t line)
 {
     if(line >= tx->logical_end || line < tx->logical_start)
     {
@@ -610,11 +612,11 @@ check_row(Lisp_Buffer *tx, long line)
 
 /* Returns the number of bytes needed to store a section, doesn't include
    a zero terminator but does include all newline chars. */
-long
+size_t
 section_length(Lisp_Buffer *tx, repv startPos, repv endPos)
 {
-    long linenum = VROW(startPos);
-    long length;
+    rep_intptr_t linenum = VROW(startPos);
+    rep_intptr_t length;
     if(VROW(startPos) == VROW(endPos))
 	length = VCOL(endPos) - VCOL(startPos);
     else
@@ -632,8 +634,8 @@ section_length(Lisp_Buffer *tx, repv startPos, repv endPos)
 void
 copy_section(Lisp_Buffer *tx, repv startPos, repv endPos, char *buff)
 {
-    long linenum = VROW(startPos);
-    long copylen;
+    rep_intptr_t linenum = VROW(startPos);
+    rep_intptr_t copylen;
     if(VROW(startPos) == VROW(endPos))
     {
 	copylen = VCOL(endPos) - VCOL(startPos);

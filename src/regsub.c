@@ -103,8 +103,9 @@ jade_regsub(lasttype, matches, source, dest, data)
 		    if(check_section(tx, &matches->obj.startp[no],
 				     &matches->obj.endp[no]))
 		    {
-			long len = section_length(tx, matches->obj.startp[no],
-						  matches->obj.endp[no]);
+			size_t len = section_length(tx,
+						    matches->obj.startp[no],
+						    matches->obj.endp[no]);
 			copy_section(tx, matches->obj.startp[no],
 				     matches->obj.endp[no], dst);
 			dst += len;
@@ -120,7 +121,7 @@ jade_regsub(lasttype, matches, source, dest, data)
  * - regsublen - dummy regsub() returning length of contructed string,
  * including terminating '\0'
  */
-int
+size_t
 jade_regsublen(lasttype, matches, source, data)
     int		    lasttype;
     rep_regsubs	   *matches;
@@ -130,7 +131,7 @@ jade_regsublen(lasttype, matches, source, data)
     register char  *src;
     register char   c;
     register int    no;
-    register int    dstlen = 1;
+    register size_t dstlen = 1;
 
     if (matches == NULL || source == NULL) {
 	rep_regerror("NULL parm to regsublen");

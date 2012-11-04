@@ -78,8 +78,8 @@ lines from the bottom of the view, other numbers count from the top of the
 view.
 ::end:: */
 {
-    long offset;
-    long col, row;
+    rep_intptr_t offset;
+    rep_intptr_t col, row;
 
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
@@ -122,8 +122,8 @@ next-screen [NUMBER]
 Move NUMBER (default: 1) screens forwards in the current window.
 ::end:: */
 {
-    long lines = (rep_INTP(number) ? rep_INT(number) : 1) * curr_vw->height;
-    long col, row;
+    rep_intptr_t lines = (rep_INTP(number) ? rep_INT(number) : 1) * curr_vw->height;
+    rep_intptr_t col, row;
     repv context;
     if(lines < 0)
 	return Fprev_screen(rep_MAKE_INT(-lines / curr_vw->height));
@@ -159,8 +159,8 @@ prev-screen [NUMBER]
 Move NUMBER (default: 1) screens backwards in the current window.
 ::end:: */
 {
-    long lines = (rep_INTP(number) ? rep_INT(number) : 1) * curr_vw->height;
-    long col, row;
+    rep_intptr_t lines = (rep_INTP(number) ? rep_INT(number) : 1) * curr_vw->height;
+    rep_intptr_t col, row;
     repv context, new_origin;
     if(lines < 0)
 	return Fnext_screen(rep_MAKE_INT(-lines / curr_vw->height));
@@ -188,7 +188,7 @@ Move NUMBER (default: 1) screens backwards in the current window.
 				VCOL(new_origin), VROW(new_origin),
 				&col, &row))
     {
-	long curs_offset = get_cursor_column(curr_vw);
+	rep_intptr_t curs_offset = get_cursor_column(curr_vw);
 	if(VROW(curr_vw->cursor_pos) > row
 	   || (VROW(curr_vw->cursor_pos) == row
 	       && curs_offset > col))
@@ -216,7 +216,7 @@ of the buffer's restriction.
 	tx = rep_VAL(curr_vw->tx);
     if(!rep_NILP(irp))
     {
-	long x, y;
+	rep_intptr_t x, y;
 	y = VBUFFER(tx)->line_count - 1;
 	x = VBUFFER(tx)->lines[y].ln_Strlen - 1;
 	return make_pos(x, y);
@@ -289,7 +289,7 @@ Negative NUMBERs move backwards, if the first line is passed (i.e. a negative
 line number is made) nil is returned.
 ::end:: */
 {
-    long row;
+    rep_intptr_t row;
     if(!POSP(pos))
 	pos = curr_vw->cursor_pos;
     row = VROW(pos) + (rep_INTP(lines) ? rep_INT(lines) : 1);
@@ -309,7 +309,7 @@ after POS (or the cursor). Negative COUNTs move backwards. If either the
 beginning or the end of the buffer is passed, nil is returned.
 ::end:: */
 {
-    long dist;
+    rep_intptr_t dist;
     Pos tem;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
@@ -344,7 +344,7 @@ undefined; negative values move towards the left hand side of the screen.
     int tabs = rep_INTP(num) ? rep_INT(num) : 1;
     Lisp_View *vw = curr_vw;
     int tabsize = rep_INTP(size) ? rep_INT(size) : vw->tx->tab_size;
-    long col;
+    rep_intptr_t col;
     if(!POSP(pos))
     {
 	pos = curr_vw->cursor_pos;
@@ -392,7 +392,7 @@ find_matching_bracket(Pos *pos, Lisp_Buffer *tx, char esc)
     if(PCOL(pos) < line->ln_Strlen)
     {
 	char startc = line->ln_Line[PCOL(pos)];
-	long i;
+	rep_intptr_t i;
 	for(i = 0; i < NUM_BRAC_TYPES; i++)
 	{
 	    if(startc == bracs[i])
@@ -400,9 +400,9 @@ find_matching_bracket(Pos *pos, Lisp_Buffer *tx, char esc)
 	}
 	if(!TST_ESC(line->ln_Line, PCOL(pos)) && (i < NUM_BRAC_TYPES))
 	{
-	    long x = PCOL(pos);
-	    long y = PROW(pos);
-	    long braccount = 1;
+	    rep_intptr_t x = PCOL(pos);
+	    rep_intptr_t y = PROW(pos);
+	    int braccount = 1;
 	    bool found = FALSE;
 	    if(i & 1)
 	    {

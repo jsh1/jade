@@ -131,7 +131,7 @@ undo_record_deletion(Lisp_Buffer *tx, repv start, repv end)
 	}
 	else
 	{
-	    long len = section_length(tx, start, end);
+	    size_t len = section_length(tx, start, end);
 	    if(len == 1)
 	    {
 		/* A deletion of 1 character is recorded as a character. */
@@ -161,7 +161,7 @@ undo_record_deletion(Lisp_Buffer *tx, repv start, repv end)
 repv
 undo_push_deletion(Lisp_Buffer *tx, repv start, repv end)
 {
-    long len = section_length(tx, start, end);
+    size_t len = section_length(tx, start, end);
     if(len > 0)
     {
 	repv string = rep_make_string(len + 1);
@@ -255,7 +255,7 @@ ARG is the number of commands to undo, when called interactively this is
 taken from the prefix argument.
 ::end:: */
 {
-    long count = rep_INTP(arg) ? rep_INT(arg) : 1;
+    rep_intptr_t count = rep_INTP(arg) ? rep_INT(arg) : 1;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(VBUFFER(tx)->pending_undo_list == rep_NULL)
@@ -402,7 +402,7 @@ undo_trim(void)
     while(tx)
     {
 	repv *undo_list;
-	long size_count = 0;
+	size_t size_count = 0;
 	if(tx->pending_undo_list && !rep_NILP(tx->pending_undo_list))
 	    undo_list = &tx->pending_undo_list;
 	else if(!rep_NILP(tx->did_undo_list))
@@ -420,7 +420,7 @@ undo_trim(void)
 		    size_count += sizeof(rep_cons) * 2;
 		else if(rep_STRINGP(rep_CDR(item)))
 		    size_count += rep_STRING_LEN(rep_CDR(item));
-		if(size_count > max_undo_size)
+		if(size_count > (size_t) max_undo_size)
 		{
 		    /* Truncate the list at the end of this group. */
 		    while(rep_CONSP(*undo_list) && !rep_NILP(rep_CAR(*undo_list)))

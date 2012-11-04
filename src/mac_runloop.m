@@ -36,8 +36,8 @@ struct runloop_data {
     struct runloop_data *next;
     int timed_out;
     int idle_counter;
-    unsigned long this_timeout_msecs;
-    unsigned long actual_timeout_msecs;
+    int this_timeout_msecs;
+    int actual_timeout_msecs;
     CFRunLoopTimerRef timer;
 };
 
@@ -267,11 +267,11 @@ remove_timeout (void)
 }
 
 static void
-set_timeout (unsigned long timeout_msecs)
+set_timeout (int timeout_msecs)
 {
     if (context != 0)
     {
-	unsigned long max_sleep = rep_max_sleep_for ();
+	int max_sleep = rep_max_sleep_for ();
 
 	context->this_timeout_msecs = timeout_msecs;
 	context->actual_timeout_msecs = MIN (context->this_timeout_msecs,
@@ -378,7 +378,7 @@ mac_defer_event (void *view, void *ns_event)
 }
 
 static int
-mac_wait_for_input (fd_set *fds, unsigned long timeout_msecs)
+mac_wait_for_input (fd_set *fds, int timeout_msecs)
 {
     struct runloop_data data;
     struct input_data *d;

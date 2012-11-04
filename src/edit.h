@@ -83,7 +83,7 @@
    avoid the gratuitous masking and shifting otherwise required. */
 
 typedef struct {
-    long row, col;
+    rep_intptr_t row, col;
 } Pos;
 
 #define PCOL(p) ((p)->col)
@@ -115,7 +115,7 @@ typedef struct {
 
 typedef struct LINE {
     char	   *ln_Line;
-    long	    ln_Strlen;	/* includes '\0' */
+    rep_intptr_t    ln_Strlen;	/* includes '\0' */
 } LINE;
 
 
@@ -252,10 +252,10 @@ typedef struct lisp_buffer {
 
     Lisp_Mark *mark_chain;
     LINE *lines;
-    long line_count, total_lines;	/* text-lines, array-length */
+    rep_intptr_t line_count, total_lines;	/* text-lines, array-length */
 
     /* line numbers of `narrowed' region */
-    long logical_start, logical_end;
+    rep_intptr_t logical_start, logical_end;
 
     /* unique name of buffer */
     repv buffer_name;
@@ -274,7 +274,7 @@ typedef struct lisp_buffer {
     int last_saved_change_count;	/* count at last save */
     int proper_saved_changed_count;	/* at last `proper' save */
     int auto_save_interval;		/* seconds between saves */
-    long last_saved_time;		/* time at last save (auto or user) */
+    rep_intptr_t last_saved_time;	/* time at last save (auto or user) */
 
     int tab_size;
 

@@ -87,7 +87,8 @@ DEFSTRING(too_few_lines, "Too few lines to split");
 
    MINIBUF-P controls whether or not the buffer is a minibuffer. */
 Lisp_View *
-make_view(Lisp_View *sibling, Lisp_Window *parent, Lisp_Buffer *tx, long lines, bool minibuf_p)
+make_view(Lisp_View *sibling, Lisp_Window *parent, Lisp_Buffer *tx,
+	  rep_intptr_t lines, bool minibuf_p)
 {
     Lisp_View *vw;
 
@@ -309,7 +310,7 @@ VIEW is the minibuffer view.
 	/* There's no predecessor to VW. So give its space to
 	   the following view. If possible fix the display origin
 	   of the following view to minimise scrolling. */
-	long new_origin_col, new_origin_row;
+	rep_intptr_t new_origin_col, new_origin_row;
 	pred = vw->next_view;
 	vw->window->view_list = pred;
 	if(!skip_glyph_rows_backwards(pred, vw->height + 1,
@@ -441,8 +442,8 @@ update_views_dimensions(Lisp_Window *w)
 }
 
 /* Expand format characters */
-static long
-format_mode_string(char *fmt, Lisp_View *vw, char *buf, long buf_len)
+static rep_intptr_t
+format_mode_string(char *fmt, Lisp_View *vw, char *buf, rep_intptr_t buf_len)
 {
     Lisp_Buffer *tx = vw->tx;
     while(*fmt && buf_len > 0)
@@ -457,7 +458,7 @@ format_mode_string(char *fmt, Lisp_View *vw, char *buf, long buf_len)
 	fmt++;
 	switch(*fmt++)
 	{
-	    int len;
+	    rep_intptr_t len;
 
 	case 'b':			/* buffer-name */
 	case 'B':			/* buffer-status-id */
@@ -580,8 +581,8 @@ format_mode_string(char *fmt, Lisp_View *vw, char *buf, long buf_len)
     return buf_len;
 }
 
-static long
-format_mode_value(repv format, Lisp_View *vw, char *buf, long buf_len)
+static rep_intptr_t
+format_mode_value(repv format, Lisp_View *vw, char *buf, rep_intptr_t buf_len)
 {
     Lisp_Buffer *tx = vw->tx;
 
@@ -613,7 +614,7 @@ format_mode_value(repv format, Lisp_View *vw, char *buf, long buf_len)
 
 	if(rep_STRINGP(item))
 	{
-	    unsigned long done = buf_len - format_mode_string(rep_STR(item), vw,
+	    rep_intptr_t done = buf_len - format_mode_string(rep_STR(item), vw,
 						       buf, buf_len);
 	    buf += done; buf_len -= done;
 	}
@@ -632,14 +633,14 @@ format_mode_value(repv format, Lisp_View *vw, char *buf, long buf_len)
 	    }
 	    else
 	    {
-		unsigned long done = buf_len - format_mode_value(tem, vw,
+		rep_intptr_t done = buf_len - format_mode_value(tem, vw,
 							  buf, buf_len);
 		buf += done; buf_len -= done;
 	    }
 	}
 	else if(rep_CONSP(item))
 	{
-	    unsigned long done = 0;
+	    rep_intptr_t done = 0;
 	    repv first = rep_CAR(item);
 	    if(rep_STRINGP(first))
 		done = buf_len - format_mode_string(rep_STR(first), vw,
@@ -672,11 +673,11 @@ format_mode_value(repv format, Lisp_View *vw, char *buf, long buf_len)
 
 /* Reformat the status string of VW. */
 void
-update_status_buffer(Lisp_View *vw, char *buf, long buf_len)
+update_status_buffer(Lisp_View *vw, char *buf, rep_intptr_t buf_len)
 {
     if(!(vw->car & VWFF_MINIBUF))
     {
-	unsigned long done;
+	rep_intptr_t done;
 	Lisp_Buffer *tx = vw->tx;
 	repv format = Fbuffer_symbol_value(Qmode_line_format,
 					       vw->cursor_pos,
@@ -1003,7 +1004,7 @@ the COLUMNS parameter is always ignored (for the moment).
 ::end:: */
 {
     Lisp_View *sibling;
-    long new_sibling_height;
+    rep_intptr_t new_sibling_height;
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
     if(!rep_INTP(rows))
@@ -1042,8 +1043,8 @@ the glyph at position POS in the window. Returns nil if no such view exists.
     while(vw != NULL)
     {
 	/* height doesn't include the status line */
-	long bottom = (vw->min_y + vw->height
-		       + ((vw->car & VWFF_MINIBUF) ? 0 : 1));
+	rep_intptr_t bottom = (vw->min_y + vw->height
+			       + ((vw->car & VWFF_MINIBUF) ? 0 : 1));
 	if(VROW(pos) < bottom)
 	    return rep_VAL(vw);
 	vw = vw->next_view;
@@ -1062,7 +1063,7 @@ If no position in VIEW corresponds to POS, return nil. If POS is in the
 status line of VIEW, return t.
 ::end:: */
 {
-    long col, row;
+    rep_intptr_t col, row;
     rep_DECLARE1(pos, POSP);
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
