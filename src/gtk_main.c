@@ -29,13 +29,11 @@
 # include <gdk/gdkprivate.h>
 #endif
 
-#ifdef HAVE_UNIX
-# ifdef HAVE_FCNTL_H
-#  include <fcntl.h>
-# endif
-# ifdef HAVE_UNISTD_H
-#  include <unistd.h>
-# endif
+#ifdef HAVE_FCNTL_H
+# include <fcntl.h>
+#endif
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
 #endif
 
 /* Command line options, and their default values. */
@@ -143,7 +141,7 @@ use_options(void)
 	XSynchronize (gdk_display, True);
 #endif
 
-    return TRUE;
+    return true;
 }
 
 static void
@@ -184,10 +182,8 @@ sys_init(char *program_name)
 
     gtk_set_locale ();
 
-#ifdef HAVE_UNIX
     if (!batch_mode_p ())
 	setpgid (0, 0);
-#endif
 
     make_argv (Fcons (Fsymbol_value (Qprogram_name, Qt),
 		      Fsymbol_value (Qcommand_line_args, Qt)), &argc, &argv);
@@ -235,10 +231,10 @@ sys_init(char *program_name)
 	assert (gtk_jade_wrap_gtkobj != 0
 		&& gtk_jade_get_gtkobj != 0
 		&& gtk_jade_callback_postfix != 0);
-	return TRUE;
+	return true;
     }
     else
-	return FALSE;
+	return false;
 }
 
 void

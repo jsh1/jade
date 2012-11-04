@@ -386,10 +386,10 @@ top:
 }
 
 /* Find the global offset of the first row of extent E. */
-static rep_intptr_t
+static intptr_t
 row_delta(Lisp_Extent *e)
 {
-    rep_intptr_t delta = 0;
+    intptr_t delta = 0;
     if(e != 0)
     {
 	e = e->parent;
@@ -453,7 +453,7 @@ find_extent(Lisp_Extent *root, Pos *pos)
 	    }
 	    else
 	    {
-		rep_intptr_t delta = row_delta(ce->extent);
+		intptr_t delta = row_delta(ce->extent);
 		if((pos->row > ce->extent->start.row + delta
 		    || (pos->row == ce->extent->start.row + delta
 			&& pos->col >= ce->extent->start.col))
@@ -510,7 +510,7 @@ map_section_extents(void (*map_func)(Lisp_Extent *x, void *data),
 {
     Lisp_Extent *x = find_extent(root, start);
     Pos s_copy = *start, e_copy = *end;
-    rep_intptr_t delta = row_delta(x->parent);
+    intptr_t delta = row_delta(x->parent);
     s_copy.row -= delta; e_copy.row -= delta;
 
     while(x != 0 && PPOS_LESS_P(&x->start, &e_copy))
@@ -1076,7 +1076,7 @@ buffer_set_if_bound(repv symbol, repv value)
 	if(cell && rep_CONSP(cell))
 	{
 	    rep_CDR(cell) = value;
-	    return TRUE;
+	    return true;
 	}
 	else if(e->car & EXTFF_CATCH_VARIABLES)
 	{
@@ -1084,12 +1084,12 @@ buffer_set_if_bound(repv symbol, repv value)
 	    if(rep_NILP(tem))
 	    {
 		Fextent_set(rep_VAL(e), symbol, value);
-		return TRUE;
+		return true;
 	    }
 	}
 	e = e->parent;
     }
-    return FALSE;
+    return false;
 }
 
 static repv
@@ -1230,8 +1230,8 @@ Remove the buffer-local value of the symbol SYMBOL in the specified buffer.
 /* functions for housekeeping.c to call */
 
 void
-adjust_extents_add_cols(Lisp_Extent *x, rep_intptr_t add_x,
-			rep_intptr_t col, rep_intptr_t row)
+adjust_extents_add_cols(Lisp_Extent *x, intptr_t add_x,
+			intptr_t col, intptr_t row)
 {
     if(x->parent == 0)
 	invalidate_extent_cache(x->tx);
@@ -1261,8 +1261,8 @@ adjust_extents_add_cols(Lisp_Extent *x, rep_intptr_t add_x,
 }
 
 void
-adjust_extents_sub_cols(Lisp_Extent *x, rep_intptr_t sub_x,
-			rep_intptr_t col, rep_intptr_t row)
+adjust_extents_sub_cols(Lisp_Extent *x, intptr_t sub_x,
+			intptr_t col, intptr_t row)
 {
     if(x->parent == 0)
 	invalidate_extent_cache(x->tx);
@@ -1297,7 +1297,7 @@ adjust_extents_sub_cols(Lisp_Extent *x, rep_intptr_t sub_x,
 }
 
 void
-adjust_extents_add_rows(Lisp_Extent *x, rep_intptr_t add_y, rep_intptr_t row)
+adjust_extents_add_rows(Lisp_Extent *x, intptr_t add_y, intptr_t row)
 {
     if(x->parent == 0)
 	invalidate_extent_cache(x->tx);
@@ -1324,7 +1324,7 @@ adjust_extents_add_rows(Lisp_Extent *x, rep_intptr_t add_y, rep_intptr_t row)
 }
 
 void
-adjust_extents_sub_rows(Lisp_Extent *x, rep_intptr_t sub_y, rep_intptr_t row)
+adjust_extents_sub_rows(Lisp_Extent *x, intptr_t sub_y, intptr_t row)
 {
     if(x->parent == 0)
 	invalidate_extent_cache(x->tx);
@@ -1371,7 +1371,7 @@ adjust_extents_sub_rows(Lisp_Extent *x, rep_intptr_t sub_y, rep_intptr_t row)
 }
 
 void
-adjust_extents_split_row(Lisp_Extent *x, rep_intptr_t col, rep_intptr_t row)
+adjust_extents_split_row(Lisp_Extent *x, intptr_t col, intptr_t row)
 {
     if(x->parent == 0)
 	invalidate_extent_cache(x->tx);
@@ -1406,7 +1406,7 @@ adjust_extents_split_row(Lisp_Extent *x, rep_intptr_t col, rep_intptr_t row)
 }
 
 void
-adjust_extents_join_rows(Lisp_Extent *x, rep_intptr_t col, rep_intptr_t row)
+adjust_extents_join_rows(Lisp_Extent *x, intptr_t col, intptr_t row)
 {
     if(x->parent == 0)
 	invalidate_extent_cache(x->tx);
@@ -1438,7 +1438,7 @@ adjust_extents_join_rows(Lisp_Extent *x, rep_intptr_t col, rep_intptr_t row)
 
 void
 start_visible_extent (Lisp_View *vw, Lisp_Extent *e,
-		      rep_intptr_t start_col, rep_intptr_t start_row)
+		      intptr_t start_col, intptr_t start_row)
 {
     struct visible_extent *x;
     e = find_first_frag (e);
@@ -1470,7 +1470,7 @@ start_visible_extent (Lisp_View *vw, Lisp_Extent *e,
 
 void
 end_visible_extent (Lisp_View *vw, Lisp_Extent *e,
-		    rep_intptr_t end_col, rep_intptr_t end_row)
+		    intptr_t end_col, intptr_t end_row)
 {
     struct visible_extent *x;
     e = find_first_frag (e);
@@ -1500,7 +1500,7 @@ free_visible_extents (Lisp_Window *w)
 }
 
 void
-map_visible_extents (Lisp_Window *w, rep_intptr_t col, rep_intptr_t row,
+map_visible_extents (Lisp_Window *w, intptr_t col, intptr_t row,
 		     void (*fun)(struct visible_extent *x))
 {
     struct visible_extent *x = w->visible_extents;
@@ -1531,8 +1531,8 @@ update_pointer_extent_callback (struct visible_extent *x)
 
 /* Return true if the display should be redrawn. */
 bool
-update_pointer_extent (Lisp_Window *w, rep_intptr_t mouse_col,
-		       rep_intptr_t mouse_row)
+update_pointer_extent (Lisp_Window *w, intptr_t mouse_col,
+		       intptr_t mouse_row)
 {
     /* XXX remove this GNU CC dependency */
     Lisp_Extent *old[w->view_count][MAX_POINTER_EXTENTS];
@@ -1557,10 +1557,10 @@ update_pointer_extent (Lisp_Window *w, rep_intptr_t mouse_col,
 	    || memcmp (&old[i][0], vw->pointer_extents,
 		       old_num[i] * sizeof(Lisp_Extent *)) != 0)
 	{
-	    return TRUE;
+	    return true;
 	}
     }
-    return FALSE;
+    return false;
 }
 
 void
@@ -1627,11 +1627,11 @@ extent_prin(repv strm, repv e)
     sprintf(buf, "#<extent (%ld,%ld)->(%ld,%ld)",
 	    VEXTENT(e)->start.row, VEXTENT(e)->start.col,
 	    VEXTENT(e)->end.row, VEXTENT(e)->end.col);
-    rep_stream_puts(strm, buf, -1, FALSE);
+    rep_stream_puts(strm, buf, -1, false);
 #ifdef DEBUG
     rep_stream_putc(strm, ' ');
     rep_print_val(strm, VEXTENT(e)->plist);
-    rep_stream_puts(strm, " [", -1, FALSE);
+    rep_stream_puts(strm, " [", -1, false);
     {
 	Lisp_Extent *x = VEXTENT(e)->first_child;
 	while(x != 0)

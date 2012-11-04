@@ -26,16 +26,7 @@
 #endif
 
 #include <rep.h>
-#include <sys/types.h>
-#include <stdio.h>
 #include <stdarg.h>
-#include <stdint.h>
-
-typedef char bool;
-
-#ifdef rep_HAVE_UNIX
-# define HAVE_UNIX 1
-#endif
 
 #if defined (HAVE_GTK)
 # include "gtk_defs.h"
@@ -68,18 +59,6 @@ extern char *stpcpy(char *, const char *);
 
 #ifndef HAVE_MEMCHR
 extern void *memchr(const void *, int, size_t);
-#endif
-
-#ifndef NULL
-# define NULL 0
-#endif
-
-#ifndef TRUE
-# define TRUE 1
-#endif
-
-#ifndef FALSE
-# define FALSE 0
 #endif
 
 #endif /* JADE_H */

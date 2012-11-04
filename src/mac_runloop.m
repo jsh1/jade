@@ -173,7 +173,7 @@ mac_source_perform (void *info)
 	write (input_pipe[1], &c, 1);
 	OSAtomicDecrement32 (&d->pending);
 	rep_call_with_barrier (inner_input_callback,
-			       rep_VAL(d), rep_TRUE, 0, 0, 0);
+			       rep_VAL(d), true, 0, 0, 0);
 	mac_needs_redisplay = true;
     }
     else
@@ -319,7 +319,7 @@ mac_event_loop (void)
 	    {
 		OSAtomicDecrement32 (&d->pending);
 		rep_call_with_barrier (inner_input_callback,
-				       rep_VAL(d), rep_TRUE, 0, 0, 0);
+				       rep_VAL(d), true, 0, 0, 0);
 		/* callout may have modified inputs list. */
 		goto again;
 	    }
@@ -473,14 +473,14 @@ mac_runloop_init (void)
 			  observer, kCFRunLoopCommonModes);
 
     pipe (input_pipe);
-    rep_unix_set_fd_nonblocking (input_pipe[0]);
-    rep_unix_set_fd_cloexec (input_pipe[0]);
-    rep_unix_set_fd_cloexec (input_pipe[1]);
+    rep_set_fd_nonblocking (input_pipe[0]);
+    rep_set_fd_cloexec (input_pipe[0]);
+    rep_set_fd_cloexec (input_pipe[1]);
 
     pipe (sigchld_pipe);
-    rep_unix_set_fd_nonblocking (sigchld_pipe[0]);
-    rep_unix_set_fd_cloexec (sigchld_pipe[0]);
-    rep_unix_set_fd_cloexec (sigchld_pipe[1]);
+    rep_set_fd_nonblocking (sigchld_pipe[0]);
+    rep_set_fd_cloexec (sigchld_pipe[0]);
+    rep_set_fd_cloexec (sigchld_pipe[1]);
 
     memset (&ctx, 0, sizeof (ctx));
     ctx.perform = mac_sigchld_handler;

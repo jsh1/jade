@@ -160,7 +160,7 @@ any entered arg is given to the invoked COMMAND.
 	repv args = Qnil;
 	repv *argsp = &args;
 	rep_GC_root gc_cmd;
-	bool clear_block = FALSE, goto_result = FALSE, set_before_goto = FALSE;
+	bool clear_block = false, goto_result = false, set_before_goto = false;
 
 	if(int_spec == rep_NULL)
 	{
@@ -190,14 +190,14 @@ any entered arg is given to the invoked COMMAND.
 		}
 		else if(c == '-')
 		    /* Clear block after building argument list */
-		    clear_block = TRUE;
+		    clear_block = true;
 		else if(c == '@')
 		    /* If result of command is a position, move the
 		       cursor to it. */
-		    goto_result = TRUE;
+		    goto_result = true;
 		else if(c == '!')
 		    /* Set auto mark */
-		    set_before_goto = TRUE;
+		    set_before_goto = true;
 		else
 		    break;
 		spec_str++;
@@ -210,7 +210,7 @@ any entered arg is given to the invoked COMMAND.
 		if(c != '\n')
 		{
 		    /* Non-null code. */
-		    bool can_be_nil = FALSE;
+		    bool can_be_nil = false;
 		    if(*spec_str == '\n')
 		    {
 			/* no prompt */
@@ -298,14 +298,14 @@ any entered arg is given to the invoked COMMAND.
 			break;
 		    case 'P':
 			arg = Farg;
-			can_be_nil = TRUE;
+			can_be_nil = true;
 			break;
 		    case 's':
 			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_string, Qt), prompt);
 			break;
 		    case 'S':
 			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_symbol, Qt), prompt);
-			can_be_nil = TRUE;
+			can_be_nil = true;
 			break;
 		    case 't':
 			arg = Qt;
@@ -315,13 +315,13 @@ any entered arg is given to the invoked COMMAND.
 			break;
 		    case 'x':
 			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_lisp, Qt), prompt);
-			can_be_nil = TRUE;
+			can_be_nil = true;
 			break;
 		    case 'X':
 			arg = rep_call_lisp1(Fsymbol_value(Qprompt_for_lisp, Qt), prompt);
 			if(arg)
 			    arg = Feval(arg);
-			can_be_nil = TRUE;
+			can_be_nil = true;
 			break;
 		    default:
 			arg = rep_NULL;
@@ -356,7 +356,7 @@ any entered arg is given to the invoked COMMAND.
 	{
 	    if (rep_SYMBOLP(cmd))
 		cmd = Fsymbol_value (cmd, Qt);
-	    res = rep_funcall(cmd, args, FALSE);
+	    res = rep_funcall(cmd, args, false);
 	}
 	rep_POPGC;
 

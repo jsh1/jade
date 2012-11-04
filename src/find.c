@@ -245,7 +245,7 @@ buffer_compare_n(Lisp_Buffer *tx, Pos *pos, const char *str, int n, void *cmpfn)
 /* Move POS forward COUNT characters in TX. Returns non-zero if the end
    of the buffer wasn't reached. */
 int
-forward_char(rep_intptr_t count, Lisp_Buffer *tx, Pos *pos)
+forward_char(intptr_t count, Lisp_Buffer *tx, Pos *pos)
 {
     LINE *line = tx->lines + PROW(pos);
     if(PCOL(pos) >= line->ln_Strlen)
@@ -273,7 +273,7 @@ forward_char(rep_intptr_t count, Lisp_Buffer *tx, Pos *pos)
 /* Move POS backward COUNT characters in TX. Returns non-zero if the start
    of the buffer wasn't reached. */
 int
-backward_char(rep_intptr_t count, Lisp_Buffer *tx, Pos *pos)
+backward_char(intptr_t count, Lisp_Buffer *tx, Pos *pos)
 {
     LINE *line = tx->lines + PROW(pos);
     while(count > 0)
@@ -391,7 +391,7 @@ match data.
     if(check_line(VBUFFER(tx), pos))
     {
 	char first[3];
-	rep_intptr_t len = rep_STRING_LEN(str);
+	intptr_t len = rep_STRING_LEN(str);
 	Pos start;
 	COPY_VPOS(&start, pos);
 	if(!rep_NILP(nocasep))
@@ -441,7 +441,7 @@ match data.
     if(check_line(VBUFFER(tx), pos))
     {
 	char first[3];
-	rep_intptr_t len = rep_STRING_LEN(str);
+	intptr_t len = rep_STRING_LEN(str);
 	Pos start;
 	COPY_VPOS(&start, pos);
 	if(!rep_NILP(nocasep))
@@ -569,7 +569,7 @@ the last compared character is returned, otherwise nil is returned. Updates
 the match data.
 ::end:: */
 {
-    rep_intptr_t length;
+    intptr_t length;
     Lisp_Buffer *tx = curr_vw->tx;
     rep_DECLARE1(string, rep_STRINGP);
     length = rep_STRING_LEN(string);

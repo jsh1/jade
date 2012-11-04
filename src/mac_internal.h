@@ -24,7 +24,6 @@
 #import <Foundation/Foundation.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <ApplicationServices/ApplicationServices.h>
-#undef bool
 
 /* Definitions for the jade view.
 

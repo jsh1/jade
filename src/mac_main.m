@@ -22,13 +22,11 @@
 #include <string.h>
 #include <assert.h>
 
-#ifdef HAVE_UNIX
-# ifdef HAVE_FCNTL_H
-#  include <fcntl.h>
-# endif
-# ifdef HAVE_UNISTD_H
-#  include <unistd.h>
-# endif
+#ifdef HAVE_FCNTL_H
+# include <fcntl.h>
+#endif
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
 #endif
 
 /* Command line options, and their default values. */
@@ -144,10 +142,8 @@ sys_init(char *program_name)
     char **argv;
     repv head, *last;
 
-#ifdef HAVE_UNIX
     if (!batch_mode_p ())
 	setpgid (0, 0);
-#endif
 
     OBJC_BEGIN
     [[NSApplication sharedApplication] setDelegate:(id)[JadeAppDelegate class]];

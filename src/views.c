@@ -88,7 +88,7 @@ DEFSTRING(too_few_lines, "Too few lines to split");
    MINIBUF-P controls whether or not the buffer is a minibuffer. */
 Lisp_View *
 make_view(Lisp_View *sibling, Lisp_Window *parent, Lisp_Buffer *tx,
-	  rep_intptr_t lines, bool minibuf_p)
+	  intptr_t lines, bool minibuf_p)
 {
     Lisp_View *vw;
 
@@ -253,7 +253,7 @@ to contain the new view.
 	sib = rep_VAL(curr_vw);
     return rep_VAL(make_view(VVIEW(sib), VVIEW(sib)->window,
 			 VVIEW(sib)->tx, rep_INTP(lines) ? rep_INT(lines) : 0,
-			 FALSE));
+			 false));
 }
 
 /* Destroy one view. It should have been removed from the view_list */
@@ -310,7 +310,7 @@ VIEW is the minibuffer view.
 	/* There's no predecessor to VW. So give its space to
 	   the following view. If possible fix the display origin
 	   of the following view to minimise scrolling. */
-	rep_intptr_t new_origin_col, new_origin_row;
+	intptr_t new_origin_col, new_origin_row;
 	pred = vw->next_view;
 	vw->window->view_list = pred;
 	if(!skip_glyph_rows_backwards(pred, vw->height + 1,
@@ -442,8 +442,8 @@ update_views_dimensions(Lisp_Window *w)
 }
 
 /* Expand format characters */
-static rep_intptr_t
-format_mode_string(char *fmt, Lisp_View *vw, char *buf, rep_intptr_t buf_len)
+static intptr_t
+format_mode_string(char *fmt, Lisp_View *vw, char *buf, intptr_t buf_len)
 {
     Lisp_Buffer *tx = vw->tx;
     while(*fmt && buf_len > 0)
@@ -458,7 +458,7 @@ format_mode_string(char *fmt, Lisp_View *vw, char *buf, rep_intptr_t buf_len)
 	fmt++;
 	switch(*fmt++)
 	{
-	    rep_intptr_t len;
+	    intptr_t len;
 
 	case 'b':			/* buffer-name */
 	case 'B':			/* buffer-status-id */
@@ -581,8 +581,8 @@ format_mode_string(char *fmt, Lisp_View *vw, char *buf, rep_intptr_t buf_len)
     return buf_len;
 }
 
-static rep_intptr_t
-format_mode_value(repv format, Lisp_View *vw, char *buf, rep_intptr_t buf_len)
+static intptr_t
+format_mode_value(repv format, Lisp_View *vw, char *buf, intptr_t buf_len)
 {
     Lisp_Buffer *tx = vw->tx;
 
@@ -614,7 +614,7 @@ format_mode_value(repv format, Lisp_View *vw, char *buf, rep_intptr_t buf_len)
 
 	if(rep_STRINGP(item))
 	{
-	    rep_intptr_t done = buf_len - format_mode_string(rep_STR(item), vw,
+	    intptr_t done = buf_len - format_mode_string(rep_STR(item), vw,
 						       buf, buf_len);
 	    buf += done; buf_len -= done;
 	}
@@ -633,14 +633,14 @@ format_mode_value(repv format, Lisp_View *vw, char *buf, rep_intptr_t buf_len)
 	    }
 	    else
 	    {
-		rep_intptr_t done = buf_len - format_mode_value(tem, vw,
+		intptr_t done = buf_len - format_mode_value(tem, vw,
 							  buf, buf_len);
 		buf += done; buf_len -= done;
 	    }
 	}
 	else if(rep_CONSP(item))
 	{
-	    rep_intptr_t done = 0;
+	    intptr_t done = 0;
 	    repv first = rep_CAR(item);
 	    if(rep_STRINGP(first))
 		done = buf_len - format_mode_string(rep_STR(first), vw,
@@ -673,11 +673,11 @@ format_mode_value(repv format, Lisp_View *vw, char *buf, rep_intptr_t buf_len)
 
 /* Reformat the status string of VW. */
 void
-update_status_buffer(Lisp_View *vw, char *buf, rep_intptr_t buf_len)
+update_status_buffer(Lisp_View *vw, char *buf, intptr_t buf_len)
 {
     if(!(vw->car & VWFF_MINIBUF))
     {
-	rep_intptr_t done;
+	intptr_t done;
 	Lisp_Buffer *tx = vw->tx;
 	repv format = Fbuffer_symbol_value(Qmode_line_format,
 					       vw->cursor_pos,
@@ -1004,7 +1004,7 @@ the COLUMNS parameter is always ignored (for the moment).
 ::end:: */
 {
     Lisp_View *sibling;
-    rep_intptr_t new_sibling_height;
+    intptr_t new_sibling_height;
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
     if(!rep_INTP(rows))
@@ -1043,7 +1043,7 @@ the glyph at position POS in the window. Returns nil if no such view exists.
     while(vw != NULL)
     {
 	/* height doesn't include the status line */
-	rep_intptr_t bottom = (vw->min_y + vw->height
+	intptr_t bottom = (vw->min_y + vw->height
 			       + ((vw->car & VWFF_MINIBUF) ? 0 : 1));
 	if(VROW(pos) < bottom)
 	    return rep_VAL(vw);
@@ -1063,7 +1063,7 @@ If no position in VIEW corresponds to POS, return nil. If POS is in the
 status line of VIEW, return t.
 ::end:: */
 {
-    rep_intptr_t col, row;
+    intptr_t col, row;
     rep_DECLARE1(pos, POSP);
     if(!VIEWP(vw))
 	vw = rep_VAL(curr_vw);
@@ -1164,7 +1164,7 @@ view_prin(repv stream, repv vw)
 {
     char buf[32];
     if(VVIEW(vw)->window == 0)
-	rep_stream_puts(stream, "#<dead-view>", -1, FALSE);
+	rep_stream_puts(stream, "#<dead-view>", -1, false);
     else
     {
 #ifdef HAVE_SNPRINTF
@@ -1173,12 +1173,12 @@ view_prin(repv stream, repv vw)
 #else
 	sprintf(buf, "#<view %d,%d", VVIEW(vw)->width, VVIEW(vw)->height);
 #endif
-	rep_stream_puts(stream, buf, -1, FALSE);
+	rep_stream_puts(stream, buf, -1, false);
 	if(VVIEW(vw)->tx)
 	{
 	    rep_stream_putc(stream, ' ');
 	    rep_stream_puts(stream, rep_PTR(VVIEW(vw)->tx->buffer_name),
-			-1, TRUE);
+			-1, true);
 	}
 	rep_stream_putc(stream, '>');
     }

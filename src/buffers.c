@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 static void mark_sweep(void);
 static void make_marks_resident(repv newtx);
@@ -43,8 +44,8 @@ static int
 pos_getc(Lisp_Buffer *tx, repv *pos)
 {
     int c = EOF;
-    rep_intptr_t row = VROW(*pos);
-    rep_intptr_t col = VCOL(*pos);
+    intptr_t row = VROW(*pos);
+    intptr_t col = VCOL(*pos);
     if(row < tx->logical_end)
     {
 	if(col >= (tx->lines[row].ln_Strlen - 1))
@@ -66,7 +67,7 @@ pos_getc(Lisp_Buffer *tx, repv *pos)
 
 #define POS_UNGETC(p, tx)				\
     do {						\
-	rep_intptr_t row = VROW(p), col = VCOL(p);	\
+	intptr_t row = VROW(p), col = VCOL(p);	\
 	if(--col < 0)					\
 	{						\
 	    row--;					\
@@ -95,8 +96,8 @@ pos_putc(Lisp_Buffer *tx, repv *pos, int c)
     return rc;
 }
 
-static rep_intptr_t
-pos_puts(Lisp_Buffer *tx, repv *pos, char *buf, rep_intptr_t bufLen)
+static intptr_t
+pos_puts(Lisp_Buffer *tx, repv *pos, char *buf, intptr_t bufLen)
 {
     if(pad_pos(tx, *pos))
     {
@@ -122,7 +123,7 @@ Construct a unique buffer-name from NAME.
 {
     int suffix = 1;
     rep_DECLARE1(rawName, rep_STRINGP);
-    while(TRUE)
+    while(true)
     {
 	char buf[256];
 	char *thistry;
@@ -267,8 +268,8 @@ buffer_sweep(void)
 static void
 buffer_prin(repv strm, repv obj)
 {
-    rep_stream_puts(strm, "#<buffer ", -1, FALSE);
-    rep_stream_puts(strm, rep_PTR(VBUFFER(obj)->buffer_name), -1, TRUE);
+    rep_stream_puts(strm, "#<buffer ", -1, false);
+    rep_stream_puts(strm, rep_PTR(VBUFFER(obj)->buffer_name), -1, true);
     rep_stream_putc(strm, '>');
 }
 
@@ -320,8 +321,8 @@ buffer_putc (repv stream, int c)
 	return 0;
 }
 
-static rep_intptr_t
-buffer_puts (repv stream, void *data, rep_intptr_t len, rep_bool is_val)
+static intptr_t
+buffer_puts (repv stream, void *data, intptr_t len, bool is_val)
 {
     char *buf = is_val ? rep_STR(data) : data;
     if (BUFFERP(stream))
@@ -515,8 +516,8 @@ auto_save_buffers(bool force_save)
     if(!Exclusion)
     {
 	Lisp_Buffer *tx = buffer_chain;
-	rep_uintptr_t time = rep_time();
-	Exclusion = TRUE;
+	uintptr_t time = rep_time();
+	Exclusion = true;
 	while(tx)
 	{
 	    if(tx->change_count
@@ -533,12 +534,12 @@ auto_save_buffers(bool force_save)
 		rep_POPGC;
 		tx->last_saved_time = time;
 		tx->last_saved_change_count = tx->change_count;
-		Exclusion = FALSE;
+		Exclusion = false;
 		return(1);
 	    }
 	    tx = tx->next;
 	}
-	Exclusion = FALSE;
+	Exclusion = false;
     }
     return(0);
 }
@@ -858,7 +859,7 @@ last-save-time [NEW-VALUE]
 System time at last save of this buffer (could be from an auto-save).
 ::end:: */
 {
-    rep_intptr_t old = curr_vw->tx->last_saved_time;
+    intptr_t old = curr_vw->tx->last_saved_time;
     if(rep_TIMEP(val))
 	curr_vw->tx->last_saved_time = rep_GET_TIME(val);
     return rep_MAKE_TIME(old);
@@ -1099,13 +1100,13 @@ static void
 mark_prin(repv strm, repv obj)
 {
     char tbuf[40];
-    rep_stream_puts(strm, "#<mark ", -1, FALSE);
+    rep_stream_puts(strm, "#<mark ", -1, false);
     if(MARK_RESIDENT_P(VMARK(obj)))
 	buffer_prin(strm, VMARK(obj)->file);
     else
     {
 	rep_stream_putc(strm, '"');
-	rep_stream_puts(strm, rep_PTR(VMARK(obj)->file), -1, TRUE);
+	rep_stream_puts(strm, rep_PTR(VMARK(obj)->file), -1, true);
 	rep_stream_putc(strm, '"');
     }
 #ifdef HAVE_SNPRINTF
@@ -1113,11 +1114,10 @@ mark_prin(repv strm, repv obj)
 #else
     sprintf(tbuf,
 #endif
-	    " #<pos %" rep_PTR_SIZED_INT_CONV
-	    "d %" rep_PTR_SIZED_INT_CONV "d>>",
+	    " #<pos %" PRIdPTR " %" PRIdPTR ">>",
 	    VCOL(VMARK(obj)->pos),
 	    VROW(VMARK(obj)->pos));
-    rep_stream_puts(strm, tbuf, -1, FALSE);
+    rep_stream_puts(strm, tbuf, -1, false);
 }
 
 static int
@@ -1151,8 +1151,8 @@ mark_putc (repv stream, int c)
 	return pos_putc(VBUFFER(VMARK(stream)->file), &VMARK(stream)->pos, c);
 }
 
-static rep_intptr_t
-mark_puts (repv stream, void *data, rep_intptr_t len, rep_bool is_val)
+static intptr_t
+mark_puts (repv stream, void *data, intptr_t len, bool is_val)
 {
     char *buf = is_val ? rep_STR(data) : data;
     if(!MARK_RESIDENT_P(VMARK(stream)))

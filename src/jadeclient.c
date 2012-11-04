@@ -26,8 +26,6 @@
 #include <limits.h>
 #include <string.h>
 
-#ifdef HAVE_UNIX
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -193,8 +191,6 @@ eval_lisp_form(int sock_fd, char *form)
     }
     return 0;
 }
-
-#endif /* HAVE_UNIX */
 
 static void
 usage(char *prog_name)

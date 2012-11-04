@@ -40,8 +40,6 @@ appsdir=@appsdir@
 
 jadedir=@jadedir@
 lispdir=@lispdir@
-dumped_lisp_files=@dumped_lisp_files@
-enable_dumped=@opt_enable_dumped@
 jadeexecdir=@jadeexecdir@
 host_type=@host@
 windowsys=@windowsys@

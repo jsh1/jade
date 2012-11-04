@@ -33,8 +33,8 @@ static repv pending_deletion_start, pending_deletion_end;
 static Lisp_Buffer *pending_deletion_tx;
 
 /* While we're in Fundo() this is set.  This is also tested by
-   undo_distinct(); if FALSE it will call coalesce_undo() if necessary.
-   undo_distinct() always sets this to FALSE. */
+   undo_distinct(); if false it will call coalesce_undo() if necessary.
+   undo_distinct() always sets this to false. */
 static bool in_undo;
 static Lisp_Buffer *last_undid_tx;
 
@@ -228,7 +228,7 @@ undo_end_of_command(void)
     {
 	coalesce_undo(last_undid_tx);
     }
-    in_undo = FALSE;
+    in_undo = false;
 
     tx = buffer_chain;
     while(tx != NULL)
@@ -255,7 +255,7 @@ ARG is the number of commands to undo, when called interactively this is
 taken from the prefix argument.
 ::end:: */
 {
-    rep_intptr_t count = rep_INTP(arg) ? rep_INT(arg) : 1;
+    intptr_t count = rep_INTP(arg) ? rep_INT(arg) : 1;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(VBUFFER(tx)->pending_undo_list == rep_NULL)
@@ -271,7 +271,7 @@ taken from the prefix argument.
     {
 	return(Fsignal(Qerror, rep_LIST_1(rep_VAL(&nothing_to_undo))));
     }
-    in_undo = TRUE;
+    in_undo = true;
     last_undid_tx = VBUFFER(tx);
     while(rep_CONSP(VBUFFER(tx)->pending_undo_list))
     {

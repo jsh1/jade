@@ -26,13 +26,11 @@
 #include <assert.h>
 #include <locale.h>
 
-#ifdef HAVE_UNIX
-# ifdef HAVE_FCNTL_H
-#  include <fcntl.h>
-# endif
-# ifdef HAVE_UNISTD_H
-#  include <unistd.h>
-# endif
+#ifdef HAVE_FCNTL_H
+# include <fcntl.h>
+#endif
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
 #endif
 
 static void x11_handle_sync_input(int fd);
@@ -60,7 +58,7 @@ static int x11_opt_sync = 0;
 static char *prog_name;
 static char *visual_name;
 
-bool x11_opt_reverse_video = FALSE;
+bool x11_opt_reverse_video = false;
 
 /* Default font name. */
 DEFSTRING(def_font_str_data, DEFAULT_FONT);
@@ -87,10 +85,8 @@ sys_init(char *program_name)
 	setlocale (LC_ALL, "C");
     }
 
-#ifdef HAVE_UNIX
     if (!batch_mode_p ())
 	setpgid (0, 0);
-#endif
 
     prog_name = program_name;
     def_font_str = rep_VAL (&def_font_str_data);
@@ -105,12 +101,12 @@ sys_init(char *program_name)
 
     xdisplay = x11_open_display(display_name);
     if(xdisplay != 0)
-	return TRUE;
+	return true;
     else
     {
 	fprintf(stderr, "jade: Can't open display: %s\n",
 		display_name ? display_name : "");
-	return FALSE;
+	return false;
     }
 }
 
@@ -289,7 +285,7 @@ use_options(struct x11_display *xdpy)
 	xdpy->colormap = DefaultColormap(xdpy->display, xdpy->screen);
     }
 
-    return TRUE;
+    return true;
 }
 
 
@@ -556,7 +552,7 @@ static bool
 x11_handle_input(int fd, bool synchronous)
 {
     struct x11_display *xdisplay = 0;
-    bool need_redisplay = FALSE;
+    bool need_redisplay = false;
 
     /* Read all events in the input queue. */
     while(rep_throw_value == rep_NULL)
@@ -651,7 +647,7 @@ x11_handle_input(int fd, bool synchronous)
 		    garbage_glyphs(ev_win, x, y, width, height);
 		}
 		if(xev.xexpose.count == 0)
-		    need_redisplay = TRUE;
+		    need_redisplay = true;
 		break;
 
 	    case ConfigureNotify:
@@ -666,7 +662,7 @@ x11_handle_input(int fd, bool synchronous)
 					  xev.xconfigure.height);
 		    update_window_dimensions(ev_win);
 		}
-		need_redisplay = TRUE;
+		need_redisplay = true;
 		break;
 
 	    case ClientMessage:
@@ -677,27 +673,27 @@ x11_handle_input(int fd, bool synchronous)
 		    if(ev_win != oldwin)
 			curr_vw = curr_win->current_view;
 		    rep_call_with_barrier (Fdelete_window, Qnil,
-					   rep_TRUE, 0, 0, 0);
+					   true, 0, 0, 0);
 		    xdisplay = 0;
 		}
-		need_redisplay = TRUE;
+		need_redisplay = true;
 		break;
 
 	    case FocusIn:
-		ev_win->window_system.ws_HasFocus = TRUE;
+		ev_win->window_system.ws_HasFocus = true;
 		if(ev_win != oldwin)
 		{
 		    curr_win = ev_win;
 		    curr_vw = curr_win->current_view;
 		}
 		undo_end_of_command();
-		need_redisplay = TRUE;
+		need_redisplay = true;
 		break;
 
 	    case FocusOut:
-		ev_win->window_system.ws_HasFocus = FALSE;
+		ev_win->window_system.ws_HasFocus = false;
 		undo_end_of_command();
-		need_redisplay = TRUE;
+		need_redisplay = true;
 		break;
 
 	    case MotionNotify:
@@ -768,7 +764,7 @@ x11_handle_input(int fd, bool synchronous)
 			curr_vw = curr_win->current_view;
 		    reset_message(ev_win);
 		    eval_input_event(&xev, code, mods);
-		    need_redisplay = TRUE;
+		    need_redisplay = true;
 		}
 		x11_current_event_win = NULL;
 		xdisplay = 0;
@@ -793,7 +789,7 @@ x11_handle_input(int fd, bool synchronous)
 static void
 x11_handle_sync_input(int fd)
 {
-    x11_handle_input(fd, TRUE);
+    x11_handle_input(fd, true);
 }
 
 void
@@ -803,7 +799,7 @@ x11_handle_async_input(void)
     {
 	struct x11_display *dpy = WINDOW_XDPY(curr_win);
 	int fd = ConnectionNumber(dpy->display);
-	if(rep_poll_input(fd) && x11_handle_input(fd, FALSE))
+	if(rep_poll_input(fd) && x11_handle_input(fd, false))
 	    Fredisplay(Qnil);
     }
 }

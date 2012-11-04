@@ -311,7 +311,7 @@ gtk_jade_selection_get(GtkWidget *widget, GtkSelectionData *sel_data,
 {
     gint len;
     guchar *data;
-    bool free_data = FALSE;
+    bool free_data = false;
     int selno = selection_atom_to_index(sel_data->selection);
     if (selection_info[selno].owner == Qnil)
 	return;
@@ -337,7 +337,7 @@ gtk_jade_selection_get(GtkWidget *widget, GtkSelectionData *sel_data,
 			     selection_info[selno].start,
 			     selection_info[selno].end, data);
 		data[len] = 0;
-		free_data = TRUE;
+		free_data = true;
 	    }
 	}
 	else
@@ -364,7 +364,7 @@ gtk_jade_selection_clear(GtkWidget *widget, GdkEventSelection *event)
 	selection_info[selno].owner = Qnil;
 	selection_info[selno].data = Qnil;
     }
-    return FALSE;
+    return false;
 }
 
 void

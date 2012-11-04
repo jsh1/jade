@@ -97,13 +97,13 @@ extern repv Fcommandp(repv cmd);
 /* from edit.c */
 extern bool clear_line_list(Lisp_Buffer *);
 extern void kill_line_list(Lisp_Buffer *);
-extern LINE *resize_line_list(Lisp_Buffer *, rep_intptr_t, rep_intptr_t);
-extern char *alloc_line_buf(Lisp_Buffer *, rep_intptr_t length);
+extern LINE *resize_line_list(Lisp_Buffer *, intptr_t, intptr_t);
+extern char *alloc_line_buf(Lisp_Buffer *, intptr_t length);
 extern void free_line_buf(Lisp_Buffer *tx, char *line);
-extern bool insert_gap(Lisp_Buffer *, rep_intptr_t, rep_intptr_t, rep_intptr_t);
+extern bool insert_gap(Lisp_Buffer *, intptr_t, intptr_t, intptr_t);
 extern repv insert_bytes(Lisp_Buffer *, const char *, size_t, repv);
 extern repv insert_string(Lisp_Buffer *, const char *, size_t, repv);
-extern bool delete_chars(Lisp_Buffer *, rep_intptr_t, rep_intptr_t, rep_intptr_t);
+extern bool delete_chars(Lisp_Buffer *, intptr_t, intptr_t, intptr_t);
 extern repv delete_section(Lisp_Buffer *, repv, repv);
 extern bool pad_pos(Lisp_Buffer *, repv);
 extern bool pad_cursor(Lisp_View *);
@@ -111,13 +111,13 @@ extern void order_pos(repv *, repv *);
 extern bool check_section(Lisp_Buffer *, repv *, repv *);
 extern repv check_pos(Lisp_Buffer *, repv);
 extern bool check_line(Lisp_Buffer *, repv);
-extern bool check_row(Lisp_Buffer *tx, rep_intptr_t line);
+extern bool check_row(Lisp_Buffer *tx, intptr_t line);
 extern size_t section_length(Lisp_Buffer *, repv, repv);
 extern void copy_section(Lisp_Buffer *, repv, repv, char *);
 extern void order_block(Lisp_View *);
 extern bool read_only_pos(Lisp_Buffer *, repv);
 extern bool read_only_section(Lisp_Buffer *, repv, repv);
-extern repv make_pos(rep_intptr_t, rep_intptr_t);
+extern repv make_pos(intptr_t, intptr_t);
 extern void edit_init(void);
 
 /* from editcommands.c */
@@ -155,18 +155,18 @@ extern void map_section_extents(void (*)(Lisp_Extent *, void *),
 extern void make_global_extent(Lisp_Buffer *tx);
 extern void reset_global_extent(Lisp_Buffer *tx);
 extern bool buffer_set_if_bound(repv symbol, repv value);
-extern void adjust_extents_add_cols(Lisp_Extent *, rep_intptr_t,
-				    rep_intptr_t, rep_intptr_t);
-extern void adjust_extents_sub_cols(Lisp_Extent *, rep_intptr_t,
-				    rep_intptr_t, rep_intptr_t);
-extern void adjust_extents_add_rows(Lisp_Extent *, rep_intptr_t,
-				    rep_intptr_t);
-extern void adjust_extents_sub_rows(Lisp_Extent *, rep_intptr_t,
-				    rep_intptr_t);
-extern void adjust_extents_split_row(Lisp_Extent *, rep_intptr_t,
-				     rep_intptr_t);
-extern void adjust_extents_join_rows(Lisp_Extent *, rep_intptr_t,
-				     rep_intptr_t);
+extern void adjust_extents_add_cols(Lisp_Extent *, intptr_t,
+				    intptr_t, intptr_t);
+extern void adjust_extents_sub_cols(Lisp_Extent *, intptr_t,
+				    intptr_t, intptr_t);
+extern void adjust_extents_add_rows(Lisp_Extent *, intptr_t,
+				    intptr_t);
+extern void adjust_extents_sub_rows(Lisp_Extent *, intptr_t,
+				    intptr_t);
+extern void adjust_extents_split_row(Lisp_Extent *, intptr_t,
+				     intptr_t);
+extern void adjust_extents_join_rows(Lisp_Extent *, intptr_t,
+				     intptr_t);
 extern void extent_init(void);
 extern repv Qfront_sticky, Qrear_sticky;
 extern repv Qlocal_variables, Qcatch_variables;
@@ -193,20 +193,20 @@ extern repv Fmake_variable_buffer_local(repv);
 extern repv Fbuffer_variables(repv);
 extern repv Fkill_all_local_variables(repv);
 extern repv Fkill_local_variable(repv, repv);
-extern void start_visible_extent (Lisp_View *vw, Lisp_Extent *e, rep_intptr_t
-				  start_col, rep_intptr_t start_row);
+extern void start_visible_extent (Lisp_View *vw, Lisp_Extent *e, intptr_t
+				  start_col, intptr_t start_row);
 extern void end_visible_extent (Lisp_View *vw, Lisp_Extent *e,
-				rep_intptr_t end_col, rep_intptr_t end_row);
+				intptr_t end_col, intptr_t end_row);
 extern void free_visible_extents (Lisp_Window *w);
-extern void map_visible_extents (Lisp_Window *w, rep_intptr_t col,
-				 rep_intptr_t row,
+extern void map_visible_extents (Lisp_Window *w, intptr_t col,
+				 intptr_t row,
 				 void (*fun)(struct visible_extent *x));
 extern void mark_visible_extents (Lisp_Window *w);
-extern bool update_pointer_extent (Lisp_Window *w, rep_intptr_t mouse_col,
-				   rep_intptr_t mouse_row);
+extern bool update_pointer_extent (Lisp_Window *w, intptr_t mouse_col,
+				   intptr_t mouse_row);
 
 /* from faces.c */
-extern int invert_all_faces;
+extern bool invert_all_faces;
 extern int merge_faces(Lisp_View *vw, Lisp_Extent *e, int in_active, int on_cursor);
 extern int get_face_id(Lisp_Window *w, Lisp_Face *f);
 extern void mark_merged_faces(Lisp_Window *w);
@@ -256,17 +256,17 @@ extern repv Fbuffer_compare_string(repv, repv, repv, repv);
 /* from glyphs.c */
 extern void make_window_glyphs(glyph_buf *g, Lisp_Window *w);
 extern void make_message_glyphs(glyph_buf *g, Lisp_Window *w);
-extern bool skip_glyph_rows_forwards(Lisp_View *, rep_intptr_t,
-				     rep_intptr_t, rep_intptr_t,
-				     rep_intptr_t *, rep_intptr_t *);
-extern bool skip_glyph_rows_backwards(Lisp_View *, rep_intptr_t, rep_intptr_t,
-				      rep_intptr_t, rep_intptr_t *,
-				      rep_intptr_t *);
+extern bool skip_glyph_rows_forwards(Lisp_View *, intptr_t,
+				     intptr_t, intptr_t,
+				     intptr_t *, intptr_t *);
+extern bool skip_glyph_rows_backwards(Lisp_View *, intptr_t, intptr_t,
+				      intptr_t, intptr_t *,
+				      intptr_t *);
 extern void recenter_cursor(Lisp_View *vw);
-extern rep_intptr_t glyph_col(Lisp_Buffer *, rep_intptr_t, rep_intptr_t);
-extern rep_intptr_t char_col(Lisp_Buffer *, rep_intptr_t, rep_intptr_t);
-extern rep_intptr_t get_cursor_column(Lisp_View *);
-extern void set_cursor_vertically(Lisp_View *vw, rep_intptr_t row);
+extern intptr_t glyph_col(Lisp_Buffer *, intptr_t, intptr_t);
+extern intptr_t char_col(Lisp_Buffer *, intptr_t, intptr_t);
+extern intptr_t get_cursor_column(Lisp_View *);
+extern void set_cursor_vertically(Lisp_View *vw, intptr_t row);
 extern void glyphs_init(void);
 extern void glyphs_kill(void);
 extern repv Qglyph_table;
@@ -282,14 +282,14 @@ extern repv Fset_glyph(repv gt, repv ch, repv glyph);
 extern repv Fget_glyph(repv gt, repv ch);
 
 /* from housekeeping.c */
-extern void adjust_marks_add_x(Lisp_Buffer *, rep_intptr_t, rep_intptr_t,
-			       rep_intptr_t);
-extern void adjust_marks_sub_x(Lisp_Buffer *, rep_intptr_t, rep_intptr_t,
-			       rep_intptr_t);
-extern void adjust_marks_add_y(Lisp_Buffer *, rep_intptr_t, rep_intptr_t);
-extern void adjust_marks_sub_y(Lisp_Buffer *, rep_intptr_t, rep_intptr_t);
-extern void adjust_marks_split_y(Lisp_Buffer *, rep_intptr_t, rep_intptr_t);
-extern void adjust_marks_join_y(Lisp_Buffer *, rep_intptr_t, rep_intptr_t);
+extern void adjust_marks_add_x(Lisp_Buffer *, intptr_t, intptr_t,
+			       intptr_t);
+extern void adjust_marks_sub_x(Lisp_Buffer *, intptr_t, intptr_t,
+			       intptr_t);
+extern void adjust_marks_add_y(Lisp_Buffer *, intptr_t, intptr_t);
+extern void adjust_marks_sub_y(Lisp_Buffer *, intptr_t, intptr_t);
+extern void adjust_marks_split_y(Lisp_Buffer *, intptr_t, intptr_t);
+extern void adjust_marks_join_y(Lisp_Buffer *, intptr_t, intptr_t);
 extern void reset_all_views(Lisp_Buffer *);
 
 /* from keys.c */
@@ -348,10 +348,10 @@ extern repv Ffind_matching_bracket(repv pos, repv tx, repv esc);
 extern repv Fraw_mouse_pos(void);
 
 /* from redisplay.c */
-extern glyph_buf *alloc_glyph_buf(rep_intptr_t cols, rep_intptr_t rows);
+extern glyph_buf *alloc_glyph_buf(intptr_t cols, intptr_t rows);
 extern void free_glyph_buf(glyph_buf *gb);
 extern void copy_glyph_buf(glyph_buf *dst, glyph_buf *src);
-extern void garbage_glyphs(Lisp_Window *w, rep_intptr_t x, rep_intptr_t y, rep_intptr_t width, rep_intptr_t height);
+extern void garbage_glyphs(Lisp_Window *w, intptr_t x, intptr_t y, intptr_t width, intptr_t height);
 extern void redisplay_message(Lisp_Window *w);
 extern void redisplay_init(void);
 extern int redisplay_lock;
@@ -388,10 +388,10 @@ extern repv var_buffer_record_undo(repv val);
 /* from views.c */
 extern void kill_all_views(Lisp_Window *w);
 extern void update_views_dimensions(Lisp_Window *w);
-extern void update_status_buffer(Lisp_View *vw, char *status_buf, rep_intptr_t buflen);
+extern void update_status_buffer(Lisp_View *vw, char *status_buf, intptr_t buflen);
 extern void views_init(void);
 extern void views_kill(void);
-extern Lisp_View *make_view(Lisp_View *, Lisp_Window *, Lisp_Buffer *, rep_intptr_t, bool);
+extern Lisp_View *make_view(Lisp_View *, Lisp_Window *, Lisp_Buffer *, intptr_t, bool);
 extern repv Qsplit_view_hook, Qdelete_view_hook;
 extern int view_type;
 extern Lisp_View *view_chain, *curr_vw;

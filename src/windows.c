@@ -146,10 +146,10 @@ ATTRS is an alist with any of the following pairs:
 		update_window_dimensions(w);
 		/* First the main view.. */
 		if(w->content != 0 && w->new_content != 0
-		   && make_view(NULL, w, VBUFFER(tx), 0, FALSE))
+		   && make_view(NULL, w, VBUFFER(tx), 0, false))
 		{
 		    /* ..then the minibuffer view. */
-		    if(make_view(NULL, w, NULL, 0, TRUE))
+		    if(make_view(NULL, w, NULL, 0, true))
 		    {
 			w->current_view = w->view_list;
 			w->car |= WINFF_FORCE_REFRESH;
@@ -252,8 +252,8 @@ This function always returns nil.
 void
 update_window_dimensions(Lisp_Window *w)
 {
-    rep_intptr_t new_width = w->pixel_width / w->font_width;
-    rep_intptr_t new_height = w->pixel_height / w->font_height;
+    intptr_t new_width = w->pixel_width / w->font_width;
+    intptr_t new_height = w->pixel_height / w->font_height;
     if(new_width != w->column_count || new_height != w->row_count)
     {
 	if(w->content)
@@ -373,7 +373,7 @@ bool
 remove_all_messages(bool from_idle_p)
 {
     Lisp_Window *w;
-    bool success = FALSE;
+    bool success = false;
     for(w = win_chain; w != 0; w = w->next)
     {
 	/* Really if we're being called from idle-time we
@@ -383,7 +383,7 @@ remove_all_messages(bool from_idle_p)
 	   && (!from_idle_p || MINIBUFFER_ACTIVE_P(w)))
 	{
 	    reset_message(w);
-	    success = TRUE;
+	    success = true;
 	}
     }
     return success;
@@ -542,7 +542,7 @@ under Intuition a pointer (integer) to the window structure.
 {
     if(!WINDOWP(win))
 	win = rep_VAL(curr_win);
-    return(rep_make_long_int((rep_uintptr_t)VWINDOW(win)->w_Window));
+    return(rep_make_long_int((uintptr_t)VWINDOW(win)->w_Window));
 }
 
 DEFUN("font-dimensions", Ffont_dimensions, Sfont_dimensions,
@@ -762,11 +762,11 @@ window_prin(repv strm, repv win)
 #else
 		"#<window %ld", VWINDOW(win)->w_Window);
 #endif
-	rep_stream_puts(strm, buf, -1, FALSE);
+	rep_stream_puts(strm, buf, -1, false);
 	rep_stream_putc(strm, '>');
     }
     else
-	rep_stream_puts(strm, "#<deleted window>", -1, FALSE);
+	rep_stream_puts(strm, "#<deleted window>", -1, false);
 }
 
 static repv

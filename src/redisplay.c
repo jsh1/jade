@@ -70,7 +70,7 @@ static bool redisplay_no_copy;
 
 /* Allocate a new glyph buffer and initialise it. */
 glyph_buf *
-alloc_glyph_buf(rep_intptr_t cols, rep_intptr_t rows)
+alloc_glyph_buf(intptr_t cols, intptr_t rows)
 {
     size_t size = (sizeof(glyph_buf)
 		   + sizeof(glyph_code *) * rows
@@ -85,7 +85,7 @@ alloc_glyph_buf(rep_intptr_t cols, rep_intptr_t rows)
     {
 	/* Initialise pointers */
 	u_char *p = ((u_char *)g) + sizeof(glyph_buf);
-	rep_intptr_t i;
+	intptr_t i;
 	g->cols = cols;
 	g->rows = rows;
 	g->codes = (void *)p;
@@ -123,10 +123,10 @@ copy_glyph_buf(glyph_buf *dst, glyph_buf *src)
 
 /* Compute and return the hash code of line ROW in buffer G. */
 static inline uint32_t
-hash_glyph_row(glyph_buf *g, rep_intptr_t row)
+hash_glyph_row(glyph_buf *g, intptr_t row)
 {
     uint32_t value = 0;
-    rep_intptr_t togo = g->cols;
+    intptr_t togo = g->cols;
     glyph_code *codes = g->codes[row];
     glyph_attr *attrs = g->attrs[row];
 
@@ -140,7 +140,7 @@ hash_glyph_row(glyph_buf *g, rep_intptr_t row)
 static inline void
 hash_glyph_buf(glyph_buf *g)
 {
-    rep_intptr_t i;
+    intptr_t i;
     for(i = 0; i < g->rows; i++)
 	g->hashes[i] = hash_glyph_row(g, i);
 }
@@ -148,8 +148,8 @@ hash_glyph_buf(glyph_buf *g)
 /* Record that the WIDTH,HEIGHT rectangle of glyphs at X,Y in window W's
    glyph buffer has been mangled, and therefore will need to be redrawn. */
 void
-garbage_glyphs(Lisp_Window *w, rep_intptr_t x, rep_intptr_t y,
-	       rep_intptr_t width, rep_intptr_t height)
+garbage_glyphs(Lisp_Window *w, intptr_t x, intptr_t y,
+	       intptr_t width, intptr_t height)
 {
     glyph_buf *g = w->content;
     if(x + width > g->cols)
@@ -168,8 +168,8 @@ garbage_glyphs(Lisp_Window *w, rep_intptr_t x, rep_intptr_t y,
    buffer G2 (matching both codes and attributes). The hash arrays should
    have been filled in. In this function L1 and L2 count from zero.. */
 static inline bool
-compare_lines(glyph_buf *g1, glyph_buf *g2, rep_intptr_t line1,
-	      rep_intptr_t line2)
+compare_lines(glyph_buf *g1, glyph_buf *g2, intptr_t line1,
+	      intptr_t line2)
 {
 #if COMPARE_FAST_AND_LOOSE
     return g1->hashes[line1] == g2->hashes[line2];
@@ -188,7 +188,7 @@ compare_lines(glyph_buf *g1, glyph_buf *g2, rep_intptr_t line1,
    In this function LINE counts from one.. */
 static void
 redisplay_do_draw(Lisp_Window *w, glyph_buf *old_g,
-		  glyph_buf *new_g, rep_intptr_t line)
+		  glyph_buf *new_g, intptr_t line)
 {
     /* Draw LINE from NEW-G. OLD-G[LINE] _will_ reflect the currently
        displayed contents of LINE. */
@@ -197,7 +197,7 @@ redisplay_do_draw(Lisp_Window *w, glyph_buf *old_g,
     glyph_attr *old_attrs = old_g->attrs[line-1];
     glyph_attr *new_attrs = new_g->attrs[line-1];
 
-    rep_intptr_t prefix, suffix;
+    intptr_t prefix, suffix;
 
     assert(line > 0);
 
@@ -230,15 +230,15 @@ redisplay_do_draw(Lisp_Window *w, glyph_buf *old_g,
     while(prefix < suffix)
     {
 	glyph_attr attr = new_attrs[prefix];
-	rep_intptr_t end, len;
-	bool all_spaces = TRUE;
+	intptr_t end, len;
+	bool all_spaces = true;
 
 	for(end = prefix; end < suffix; end++)
 	{
 	    if(new_attrs[end] != attr)
 		break;
 	    if(all_spaces && new_codes[end] != ' ')
-		all_spaces = FALSE;
+		all_spaces = false;
 	}
 	len = end - prefix;
 
@@ -254,10 +254,10 @@ redisplay_do_draw(Lisp_Window *w, glyph_buf *old_g,
    SRC-LINE and DST-LINE count from one.. */
 static void
 redisplay_do_copy(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g,
-		  rep_intptr_t src_line, rep_intptr_t dst_line,
-		  rep_intptr_t n_lines)
+		  intptr_t src_line, intptr_t dst_line,
+		  intptr_t n_lines)
 {
-    rep_intptr_t i;
+    intptr_t i;
 
     assert(src_line > 0 && dst_line > 0);
 
@@ -336,8 +336,8 @@ enum Edit_Op {
 struct edit_script {
     struct edit_script *link;		/* previous edit instruction */
     enum Edit_Op op;			/* insertion or deletion? */
-    rep_intptr_t line1;			/* line number in buffer 1 */
-    rep_intptr_t line2;			/* line number in buffer 2 */
+    intptr_t line1;			/* line number in buffer 1 */
+    intptr_t line2;			/* line number in buffer 2 */
 };
 
 #ifdef DEBUG
@@ -357,7 +357,7 @@ dump_script(struct edit_script *start)
 }
 
 static void
-dump_glyph_line (u_char *data, rep_intptr_t length)
+dump_glyph_line (u_char *data, intptr_t length)
 {
     fputs ("{ ", stderr);
     fwrite (data, length, 1, stderr);
@@ -367,7 +367,7 @@ dump_glyph_line (u_char *data, rep_intptr_t length)
 static void
 dump_glyph_buf (glyph_buf *g)
 {
-    rep_intptr_t row;
+    intptr_t row;
     fprintf (stderr, "\nGlyph buffer %p (%dx%d):", g, g->cols, g->rows);
     for (row = 0; row < g->rows; row++)
     {
@@ -388,8 +388,8 @@ execute_script(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g,
 	       struct edit_script *point)
 {
     struct edit_script *lookahead, *behind;
-    rep_intptr_t *links;			/* zeroth element unused */
-    rep_intptr_t current1 = 1, last2 = 1, i;
+    intptr_t *links;			/* zeroth element unused */
+    intptr_t current1 = 1, last2 = 1, i;
 
     /* First of all, reverse the script */
     lookahead = point;
@@ -402,7 +402,7 @@ execute_script(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g,
 	point->link = behind;		/* flip the pointer */
     }
 
-    links = alloca(sizeof(rep_intptr_t) * (old_g->rows + 1));
+    links = alloca(sizeof(intptr_t) * (old_g->rows + 1));
 
     /* Make the links. LINKS[K] is the position of the line currently
        displayed (i.e. in A) that should be displayed at line K after
@@ -436,7 +436,7 @@ execute_script(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g,
     i = 1;
     while(i <= new_g->rows)
     {
-	rep_intptr_t begin, delta, src, dst, n;
+	intptr_t begin, delta, src, dst, n;
 
 	/* Skip lines that must be drawn in pass 2 */
 	while(i <= new_g->rows && links[i] == -1)
@@ -476,10 +476,10 @@ execute_script(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g,
 	if(src < dst)
 	{
 	    /* We're scrolling down the page */
-	    rep_intptr_t j;
+	    intptr_t j;
 	    for(j = i; j <= new_g->rows; j++)
 	    {
-		rep_intptr_t link_j = links[j];
+		intptr_t link_j = links[j];
 		if(link_j >= dst && link_j < src + n)
 		{
 		    /* The line to be drawn at J was one of the
@@ -504,10 +504,10 @@ execute_script(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g,
 	else
 	{
 	    /* We're scrolling up the page */
-	    rep_intptr_t j;
+	    intptr_t j;
 	    for(j = i; j <= new_g->rows; j++)
 	    {
-		rep_intptr_t link_j = links[j];
+		intptr_t link_j = links[j];
 		if(link_j >= dst && link_j < src)
 		{
 		    /* Overwritten */
@@ -547,24 +547,24 @@ execute_script(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g,
 
 
 /* MAX-D is bound on size of edit script (zero means unbounded). Returns
-   TRUE if the comparison went ok and everything's been redisplayed.
-   Returns FALSE when more than MAX-D edit instructions were needed. */
+   true if the comparison went ok and everything's been redisplayed.
+   Returns false when more than MAX-D edit instructions were needed. */
 static bool
 patch_display(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g)
 {
-    rep_intptr_t col;			/* column number */
-    rep_intptr_t d;			/* current edit distance */
-    rep_intptr_t lower;			/* left-most diag under consid. */
-    rep_intptr_t k;			/* current diagonal */
-    rep_intptr_t row;			/* row number */
-    rep_intptr_t upper;			/* right-most diagonal under
+    intptr_t col;			/* column number */
+    intptr_t d;			/* current edit distance */
+    intptr_t lower;			/* left-most diag under consid. */
+    intptr_t k;			/* current diagonal */
+    intptr_t row;			/* row number */
+    intptr_t upper;			/* right-most diagonal under
 					   consideration */
     int max_d;
 
 #define ORIGIN (old_g->rows)		/* for accessing the arrays */
     
     /* for each diagonal, two items are saved: */
-    rep_intptr_t *last_d;		/* row containing the last d */
+    intptr_t *last_d;		/* row containing the last d */
     struct edit_script **script;	/* corresponding edit script */
 
     struct edit_script *new;
@@ -579,7 +579,7 @@ patch_display(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g)
     dump_glyph_buf (new_g);
 #endif
 
-    last_d = alloca(sizeof(rep_intptr_t) * (2 * old_g->rows + 1));
+    last_d = alloca(sizeof(intptr_t) * (2 * old_g->rows + 1));
     script = alloca(sizeof(struct edit_script *) * (2 * old_g->rows + 1));
 
     if(redisplay_max_d == 0)
@@ -598,7 +598,7 @@ patch_display(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g)
     lower = (row == old_g->rows) ? ORIGIN + 1 : ORIGIN - 1;
     upper = (row == new_g->rows) ? ORIGIN - 1 : ORIGIN + 1;
     if(lower > upper)
-	return TRUE;			/* buffers are identical */
+	return true;			/* buffers are identical */
 
     /* for each value of the edit distance... */
     for(d = 1; d <= max_d; ++d)
@@ -649,7 +649,7 @@ patch_display(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g)
 		dump_script(script[k]);
 #endif
 		execute_script(w, old_g, new_g, script[k]);
-		return TRUE;
+		return true;
 	    }
 
 	    if(row == old_g->rows)
@@ -665,7 +665,7 @@ patch_display(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g)
     }
 
     /* Too many edit operations, give up. */
-    return FALSE;
+    return false;
 
 #undef ORIGIN
 }
@@ -719,7 +719,7 @@ refreshed, not just what changed.
 	if(!patch_display(w, w->content, w->new_content))
 	{
 	    /* MAX-D was exceeded. Draw all lines manually. */
-	    rep_intptr_t row;
+	    intptr_t row;
 	    for(row = 1; row <= w->row_count; row++)
 		redisplay_do_draw(w, w->content, w->new_content, row);
 	}
@@ -830,7 +830,7 @@ redisplay_message(Lisp_Window *w)
 void
 redisplay_set_no_copy (void)
 {
-    redisplay_no_copy = TRUE;
+    redisplay_no_copy = true;
 }
 
 void

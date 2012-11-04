@@ -73,9 +73,9 @@ clear_line_list(Lisp_Buffer *tx)
 	tx->total_lines = ALLOC_SPARE_LINES;
 	tx->logical_start = 0;
 	tx->logical_end = 1;
-	return(TRUE);
+	return(true);
     }
-    return(FALSE);
+    return(false);
 }
 
 /* deallocates all lines and their list */
@@ -84,7 +84,7 @@ kill_line_list(Lisp_Buffer *tx)
 {
     if(tx->lines)
     {
-	rep_intptr_t i;
+	intptr_t i;
 	for(i = 0; i < tx->line_count; i++)
 	{
 	    if(tx->lines[i].ln_Strlen)
@@ -99,9 +99,9 @@ kill_line_list(Lisp_Buffer *tx)
 
 /* deallocates some lines (but not the list) */
 static void
-kill_some_lines(Lisp_Buffer *tx, rep_intptr_t start, rep_intptr_t number)
+kill_some_lines(Lisp_Buffer *tx, intptr_t start, intptr_t number)
 {
-    rep_intptr_t i;
+    intptr_t i;
     for(i = start; i < number + start; i++)
     {
 	if(tx->lines[i].ln_Strlen)
@@ -119,9 +119,9 @@ kill_some_lines(Lisp_Buffer *tx, rep_intptr_t start, rep_intptr_t number)
    deleted the actual text is also deleted.
    NOTE: A line list of zero lines is not allowed. */
 LINE *
-resize_line_list(Lisp_Buffer *tx, rep_intptr_t change, rep_intptr_t where)
+resize_line_list(Lisp_Buffer *tx, intptr_t change, intptr_t where)
 {
-    rep_intptr_t newsize = tx->line_count + change;
+    intptr_t newsize = tx->line_count + change;
     if(newsize <= 0)
 	return NULL;
     if(change < 0)
@@ -137,7 +137,7 @@ resize_line_list(Lisp_Buffer *tx, rep_intptr_t change, rep_intptr_t where)
        || (tx->total_lines - newsize) > MAX_SPARE_LINES)
     {
 	/* Only reallocate if there's not enough space in the array */
-	rep_intptr_t actual_size = newsize + ALLOC_SPARE_LINES;
+	intptr_t actual_size = newsize + ALLOC_SPARE_LINES;
 	if(tx->lines != 0)
 	{
 	    LINE *tem = rep_realloc(tx->lines, sizeof(LINE) * actual_size);
@@ -167,7 +167,7 @@ resize_line_list(Lisp_Buffer *tx, rep_intptr_t change, rep_intptr_t where)
 }
 
 char *
-alloc_line_buf(Lisp_Buffer *tx, rep_intptr_t length)
+alloc_line_buf(Lisp_Buffer *tx, intptr_t length)
 {
     return ALLOC_LINE_BUF(tx, length);
 }
@@ -181,10 +181,10 @@ free_line_buf(Lisp_Buffer *tx, char *line)
 /* Inserts LEN characters of `space' at pos. The gap will be filled
    with random garbage. */
 bool
-insert_gap(Lisp_Buffer *tx, rep_intptr_t len,
-	   rep_intptr_t col, rep_intptr_t row)
+insert_gap(Lisp_Buffer *tx, intptr_t len,
+	   intptr_t col, intptr_t row)
 {
-    rep_intptr_t new_length = tx->lines[row].ln_Strlen + len;
+    intptr_t new_length = tx->lines[row].ln_Strlen + len;
     if(LINE_BUF_SIZE(new_length) == LINE_BUF_SIZE(tx->lines[row].ln_Strlen))
     {
 	/* Absorb the insertion in the current buffer */
@@ -212,12 +212,12 @@ insert_gap(Lisp_Buffer *tx, rep_intptr_t len,
 	else
 	{
 	    rep_mem_error();
-	    return FALSE;
+	    return false;
 	}
     }
     tx->lines[row].ln_Strlen += len;
     adjust_marks_add_x(tx, len, col, row);
-    return TRUE;
+    return true;
 }
 
 /* Inserts a piece of memory into the current line at POS.
@@ -263,7 +263,7 @@ insert_string(Lisp_Buffer *tx, const char *text, size_t textLen, repv pos)
 	    /* Split line at TPOS */
 	    if(resize_line_list(tx, +1, PROW(&tpos) + 1))
 	    {
-		rep_intptr_t row = PROW(&tpos);
+		intptr_t row = PROW(&tpos);
 
 		/* First do the new line */
 		tx->lines[row+1].ln_Line
@@ -353,16 +353,16 @@ insert_string(Lisp_Buffer *tx, const char *text, size_t textLen, repv pos)
 /* Deletes some SIZE bytes from line at (COL,ROW). Returns true if okay.
    This won't delete past the end of the line at (COL,ROW). */
 bool
-delete_chars(Lisp_Buffer *tx, rep_intptr_t col,
-	     rep_intptr_t row, rep_intptr_t size)
+delete_chars(Lisp_Buffer *tx, intptr_t col,
+	     intptr_t row, intptr_t size)
 {
     if(tx->lines[row].ln_Strlen)
     {
-	rep_intptr_t new_length;
+	intptr_t new_length;
 	if(size >= tx->lines[row].ln_Strlen - col)
 	    size = tx->lines[row].ln_Strlen - col - 1;
 	if(size <= 0)
-	    return FALSE;
+	    return false;
 	new_length = tx->lines[row].ln_Strlen - size;
 	if(LINE_BUF_SIZE(new_length)
 	   == LINE_BUF_SIZE(tx->lines[row].ln_Strlen))
@@ -379,7 +379,7 @@ delete_chars(Lisp_Buffer *tx, rep_intptr_t col,
 	    if(new_line == NULL)
 	    {
 		rep_mem_error();
-		return FALSE;
+		return false;
 	    }
             memcpy(new_line, tx->lines[row].ln_Line, col);
             memcpy(new_line + col, tx->lines[row].ln_Line + col + size,
@@ -389,9 +389,9 @@ delete_chars(Lisp_Buffer *tx, rep_intptr_t col,
 	}
 	tx->lines[row].ln_Strlen -= size;
 	adjust_marks_sub_x(tx, size, col, row);
-	return TRUE;
+	return true;
     }
-    return FALSE;
+    return false;
 }
 
 /* Deletes from START to END; returns END if okay. */
@@ -407,19 +407,19 @@ delete_section(Lisp_Buffer *tx, repv start, repv end)
     }
     else
     {
-	rep_intptr_t middle_lines;
-	bool joinflag = FALSE;
+	intptr_t middle_lines;
+	bool joinflag = false;
 	Pos tstart, tend;
 	COPY_VPOS(&tstart, start); COPY_VPOS(&tend, end);
 	if(PCOL(&tstart) != 0)
 	{
-	    rep_intptr_t start_col = (tx->lines[PROW(&tstart)].ln_Strlen
+	    intptr_t start_col = (tx->lines[PROW(&tstart)].ln_Strlen
 				      - PCOL(&tstart) - 1);
 	    if(start_col != 0)
 		delete_chars(tx, PCOL(&tstart), PROW(&tstart), start_col);
 	    PCOL(&tstart) = 0;
 	    PROW(&tstart)++;
-	    joinflag = TRUE;
+	    joinflag = true;
 	}
 	middle_lines = PROW(&tend) - PROW(&tstart);
 	if(middle_lines != 0)
@@ -439,7 +439,7 @@ delete_section(Lisp_Buffer *tx, repv start, repv end)
 	    /* Join the two lines at TSTART */
 	    if((PROW(&tstart) + 1) < tx->logical_end)
 	    {
-		rep_intptr_t row = PROW(&tstart);
+		intptr_t row = PROW(&tstart);
 
 		if(tx->lines[row].ln_Strlen == 1
 		   || tx->lines[row+1].ln_Strlen == 1)
@@ -504,14 +504,14 @@ pad_pos(Lisp_Buffer *tx, repv pos)
 		undo_record_insertion(tx, point, pos);
 		memset(tx->lines[VROW(pos)].ln_Line + VCOL(point), ' ',
 		       VCOL(pos) - VCOL(point));
-		return TRUE;
+		return true;
 	    }
 	    rep_mem_error();
-	    return FALSE;
+	    return false;
 	}
-	return TRUE;
+	return true;
     }
-    return FALSE;
+    return false;
 }
 
 bool
@@ -524,10 +524,10 @@ pad_cursor(Lisp_View *vw)
 	   may have been changed by the insertion of spaces
 	   before it. */
 	vw->cursor_pos = old_cursor;
-	return TRUE;
+	return true;
     }
     else
-	return FALSE;
+	return false;
 }
 
 /* if end is before start then swap the two */
@@ -552,14 +552,14 @@ check_section(Lisp_Buffer *tx, repv *start, repv *end)
        || (VROW(*end) < tx->logical_start))
     {
 	Fsignal(Qinvalid_area, rep_list_3(rep_VAL(tx), *start, *end));
-	return(FALSE);
+	return(false);
     }
     if(VCOL(*start) >= tx->lines[VROW(*start)].ln_Strlen)
 	*start = make_pos(tx->lines[VROW(*start)].ln_Strlen - 1,
 			  VROW(*start));
     if(VCOL(*end) >= tx->lines[VROW(*end)].ln_Strlen)
 	*end = make_pos(tx->lines[VROW(*end)].ln_Strlen - 1, VROW(*end));
-    return TRUE;
+    return true;
 }
 
 /* Check that POSITION is in the current restriction of buffer TX.
@@ -591,23 +591,23 @@ check_line(Lisp_Buffer *tx, repv pos)
        || (VCOL(pos) < 0))
     {
 	Fsignal(Qinvalid_pos, rep_list_2(rep_VAL(tx), pos));
-	return FALSE;
+	return false;
     }
-    return TRUE;
+    return true;
 }
 
 /* Check that row LINE is in the current restriction of buffer TX.
    If not an error is signalled and the function returns false. */
 bool
-check_row(Lisp_Buffer *tx, rep_intptr_t line)
+check_row(Lisp_Buffer *tx, intptr_t line)
 {
     if(line >= tx->logical_end || line < tx->logical_start)
     {
 	Fsignal(Qinvalid_pos, rep_list_2(rep_VAL(tx), make_pos(0, line)));
-	return FALSE;
+	return false;
     }
     else
-	return TRUE;
+	return true;
 }
 
 /* Returns the number of bytes needed to store a section, doesn't include
@@ -615,8 +615,8 @@ check_row(Lisp_Buffer *tx, rep_intptr_t line)
 size_t
 section_length(Lisp_Buffer *tx, repv startPos, repv endPos)
 {
-    rep_intptr_t linenum = VROW(startPos);
-    rep_intptr_t length;
+    intptr_t linenum = VROW(startPos);
+    intptr_t length;
     if(VROW(startPos) == VROW(endPos))
 	length = VCOL(endPos) - VCOL(startPos);
     else
@@ -634,8 +634,8 @@ section_length(Lisp_Buffer *tx, repv startPos, repv endPos)
 void
 copy_section(Lisp_Buffer *tx, repv startPos, repv endPos, char *buff)
 {
-    rep_intptr_t linenum = VROW(startPos);
-    rep_intptr_t copylen;
+    intptr_t linenum = VROW(startPos);
+    intptr_t copylen;
     if(VROW(startPos) == VROW(endPos))
     {
 	copylen = VCOL(endPos) - VCOL(startPos);
@@ -678,8 +678,8 @@ order_block(Lisp_View *vw)
     }
 }
 
-/* Returns TRUE and signals an error if buffer TX is currently read-only,
-   otherwise returns FALSE. */
+/* Returns true and signals an error if buffer TX is currently read-only,
+   otherwise returns false. */
 bool
 read_only_pos(Lisp_Buffer *tx, repv pos)
 {
@@ -692,10 +692,10 @@ read_only_pos(Lisp_Buffer *tx, repv pos)
 	if(rep_VOIDP(tmp) || rep_NILP(tmp))
 	{
 	    Fsignal(Qbuffer_read_only, rep_LIST_2(pos, rep_VAL(tx)));
-	    return TRUE;
+	    return true;
 	}
     }
-    return FALSE;
+    return false;
 }
 
 static void
@@ -704,13 +704,13 @@ read_only_callback (Lisp_Extent *e, void *data)
     bool *read_onlyp = data;
     repv val = Fbuffer_symbol_value(Qread_only, rep_VAL(e), Qnil, Qt);
     if(!rep_VOIDP(val) && !rep_NILP(val))
-	*read_onlyp = TRUE;
+	*read_onlyp = true;
 }
 
 bool
 read_only_section(Lisp_Buffer *tx, repv start, repv end)
 {
-    bool read_only = FALSE;
+    bool read_only = false;
     Pos p_start, p_end;
 
     COPY_VPOS(&p_start, start);
@@ -723,8 +723,8 @@ read_only_section(Lisp_Buffer *tx, repv start, repv end)
 	if(rep_VOIDP(tmp) || rep_NILP(tmp))
 	{
 	    Fsignal(Qbuffer_read_only, rep_list_3(start, end, rep_VAL(tx)));
-	    return TRUE;
+	    return true;
 	}
     }
-    return FALSE;
+    return false;
 }

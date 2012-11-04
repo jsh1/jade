@@ -58,24 +58,24 @@ DEFSTRING(err_bad_event_desc, "Invalid event description");
 DEFSYM(rep, "rep");
 #endif
 
-static rep_bool
+static bool
 on_idle (int since_last)
 {
-    if(remove_all_messages(TRUE)
+    if(remove_all_messages(true)
        || print_event_prefix()
-       || auto_save_buffers(FALSE))
+       || auto_save_buffers(false))
     {
-	return rep_TRUE;
+	return true;
     }
     else
-	return rep_FALSE;
+	return false;
 }
 
 static void
 on_termination (void)
 {
     /* Autosave all buffers */
-    while(auto_save_buffers(TRUE) > 0)
+    while(auto_save_buffers(true) > 0)
 	;
 }
 
@@ -179,7 +179,7 @@ batch_mode_p (void)
     if (!cached)
     {
 	mode = Fsymbol_value (Qbatch_mode, Qt) != Qnil;
-	cached = TRUE;
+	cached = true;
     }
     return mode;
 }
@@ -212,8 +212,8 @@ main(int argc, char **argv)
 
 #if rep_INTERFACE >= 9
     rep_push_structure ("jade");
-    rep_structure_exports_all (rep_structure, rep_TRUE);
-    rep_structure_set_binds (rep_structure, rep_TRUE);
+    rep_structure_exports_all (rep_structure, true);
+    rep_structure_set_binds (rep_structure, true);
     rep_INTERN (rep);
     Frequire (Qrep);
 #endif
@@ -222,7 +222,7 @@ main(int argc, char **argv)
     {
 	jade_symbols();
 
-	rep_call_with_barrier (inner_main, Qnil, rep_TRUE, 0, 0, 0);
+	rep_call_with_barrier (inner_main, Qnil, true, 0, 0, 0);
 
 	rc = rep_top_level_exit ();
 

@@ -26,12 +26,10 @@
 # include <memory.h>
 #endif
 
-#ifdef HAVE_UNIX
-# include <fcntl.h>
-# include <sys/stat.h>
-# ifdef HAVE_UNISTD_H
-#  include <unistd.h>
-# endif
+#include <fcntl.h>
+#include <sys/stat.h>
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
 #endif
 
 DEFSYM(block_status_hook, "block-status-hook");
@@ -54,7 +52,7 @@ with a single argument, t if the block is now marked, nil if it isn't.
 /* Positions */
 
 repv
-make_pos(rep_intptr_t col, rep_intptr_t row)
+make_pos(intptr_t col, intptr_t row)
 {
     return MAKE_POS(col, row);
 }
@@ -66,8 +64,8 @@ pos COLUMN ROW
 Returns a new position object with coordinates (COLUMN , ROW).
 ::end:: */
 {
-    rep_intptr_t col = rep_INTP(x) ? rep_INT(x) : VCOL(curr_vw->cursor_pos);
-    rep_intptr_t row = rep_INTP(y) ? rep_INT(y) : VROW(curr_vw->cursor_pos);
+    intptr_t col = rep_INTP(x) ? rep_INT(x) : VCOL(curr_vw->cursor_pos);
+    intptr_t row = rep_INTP(y) ? rep_INT(y) : VROW(curr_vw->cursor_pos);
     return MAKE_POS(col ,row);
 }
 
@@ -127,7 +125,7 @@ Returns the string from START-POS up to END-POS.
 	buff = rep_VAL(curr_vw->tx);
     if(check_section(VBUFFER(buff), &start, &end))
     {
-	rep_intptr_t tlen = section_length(VBUFFER(buff), start, end) + 1;
+	intptr_t tlen = section_length(VBUFFER(buff), start, end) + 1;
 	repv str = rep_make_string(tlen);
 	if(str)
 	{
@@ -326,7 +324,7 @@ unchanged.
     if(check_section(VBUFFER(tx), &start, &end)
        && !read_only_section(VBUFFER(tx), start, end))
     {
-	rep_intptr_t linenum = VROW(start), col;
+	intptr_t linenum = VROW(start), col;
 	int tablen = rep_STRING_LEN(table);
 	char *str;
 	undo_record_modification(VBUFFER(tx), start, end);
@@ -470,7 +468,7 @@ pointed to by POS (or the cursor), in BUFFER.
 ::end:: */
 {
     Lisp_View *vw = curr_vw;
-    rep_intptr_t len;
+    intptr_t len;
     char *line;
     if(!BUFFERP(tx))
 	tx = rep_VAL(vw->tx);
@@ -502,11 +500,11 @@ If ONLY-SPACES in non-nil no tab characters are used.
     /* FIXME: should check if the region is read-only. */
     if(!read_only_pos(VBUFFER(tx), indpos) && check_line(VBUFFER(tx), indpos))
     {
-	rep_intptr_t row = VROW(indpos);
+	intptr_t row = VROW(indpos);
 	char *s = VBUFFER(tx)->lines[row].ln_Line;
 	repv pos = indpos;
-	rep_intptr_t oldind, diff;
-	rep_intptr_t tabs, spaces;
+	intptr_t oldind, diff;
+	intptr_t tabs, spaces;
 	while(*s && isspace(*s))
 	    s++;
 	oldind = s - VBUFFER(tx)->lines[row].ln_Line;
@@ -552,7 +550,7 @@ If ONLY-SPACES in non-nil no tab characters are used.
 	else
 	{
 	    char *s = VBUFFER(tx)->lines[row].ln_Line;
-	    rep_intptr_t i;
+	    intptr_t i;
 	    repv end = make_pos(tabs + spaces, VROW(pos));
 	    for(i = 0; i < tabs; i++)
 	    {
@@ -598,7 +596,7 @@ COLUMN counts from zero.
     if(pad_cursor(vw))
     {
 	int spaces, tabs;
-	rep_intptr_t curr_col, dest_col;
+	intptr_t curr_col, dest_col;
         curr_col = get_cursor_column(vw);
         dest_col = rep_INT(col);
         if(dest_col <= curr_col)
@@ -666,7 +664,7 @@ Returns the number of characters (counting from zero) that POS (or the cursor)
 is from the beginning of the buffer.
 ::end:: */
 {
-    rep_intptr_t offset, line_num;
+    intptr_t offset, line_num;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
@@ -690,8 +688,8 @@ offset-to-pos OFFSET [BUFFER]
 Returns the position which is OFFSET characters from the start of the buffer.
 ::end:: */
 {
-    rep_intptr_t offset;
-    rep_intptr_t col, row;
+    intptr_t offset;
+    intptr_t col, row;
     rep_DECLARE1(voffset, rep_INTP);
     offset = rep_INT(voffset);
     if(!BUFFERP(tx))
@@ -745,7 +743,6 @@ set in the PROCESS prior to calling this function.
 		    temp_file = Fmake_temp_name();
 		    if(temp_file && rep_STRINGP(temp_file))
 		    {
-#ifdef HAVE_UNIX
 			/* Open the file to make it private. */
 			int fd = open(rep_STR(temp_file),
 				      O_RDWR | O_CREAT | O_TRUNC,
@@ -753,9 +750,6 @@ set in the PROCESS prior to calling this function.
 			if(fd < 0)
 			    return rep_signal_file_error(temp_file);
 			close(fd);
-#else
-# warning "call-process-area isn't secure on this operating system"
-#endif
 		    }
 		    ret = Fwrite_buffer_contents(temp_file, start, end);
 		    if(ret && ret != Qnil)

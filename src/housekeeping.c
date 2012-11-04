@@ -27,8 +27,8 @@
    inserted.  */
 
 void
-adjust_marks_add_x(Lisp_Buffer *tx, rep_intptr_t addx,
-		   rep_intptr_t xpos, rep_intptr_t ypos)
+adjust_marks_add_x(Lisp_Buffer *tx, intptr_t addx,
+		   intptr_t xpos, intptr_t ypos)
 {
     Lisp_View *thisvw;
     Lisp_Mark *thismark;
@@ -76,8 +76,8 @@ adjust_marks_add_x(Lisp_Buffer *tx, rep_intptr_t addx,
 }
 
 void
-adjust_marks_sub_x(Lisp_Buffer *tx, rep_intptr_t subx,
-		   rep_intptr_t xpos, rep_intptr_t ypos)
+adjust_marks_sub_x(Lisp_Buffer *tx, intptr_t subx,
+		   intptr_t xpos, intptr_t ypos)
 {
     Lisp_View *thisvw;
     Lisp_Mark *thismark;
@@ -86,7 +86,7 @@ adjust_marks_sub_x(Lisp_Buffer *tx, rep_intptr_t subx,
     do {						\
 	if(p && VROW(p) == ypos && VCOL(p) >= xpos)	\
 	{						\
-	    rep_intptr_t col = VCOL(p) - subx;		\
+	    intptr_t col = VCOL(p) - subx;		\
 	    (p) = make_pos(MAX(col, xpos), VROW(p));	\
 	}						\
     } while(0)
@@ -131,7 +131,7 @@ adjust_marks_sub_x(Lisp_Buffer *tx, rep_intptr_t subx,
  * Whole lines only please
  */
 void
-adjust_marks_add_y(Lisp_Buffer *tx, rep_intptr_t addy, rep_intptr_t ypos)
+adjust_marks_add_y(Lisp_Buffer *tx, intptr_t addy, intptr_t ypos)
 {
     Lisp_View *thisvw;
     Lisp_Mark *thismark;
@@ -192,7 +192,7 @@ adjust_marks_add_y(Lisp_Buffer *tx, rep_intptr_t addy, rep_intptr_t ypos)
  * Whole lines only please
  */
 void
-adjust_marks_sub_y(Lisp_Buffer *tx, rep_intptr_t suby, rep_intptr_t ypos)
+adjust_marks_sub_y(Lisp_Buffer *tx, intptr_t suby, intptr_t ypos)
 {
     Lisp_View *thisvw;
     Lisp_Mark *thismark;
@@ -209,7 +209,7 @@ adjust_marks_sub_y(Lisp_Buffer *tx, rep_intptr_t suby, rep_intptr_t ypos)
 #define UPD(p)					\
     if(p && VROW(p) >= ypos)			\
     {						\
-	rep_intptr_t row = VROW(p) - suby;	\
+	intptr_t row = VROW(p) - suby;	\
 	if(row < ypos)				\
 	    (p) = make_pos(0, ypos);		\
 	else					\
@@ -219,7 +219,7 @@ adjust_marks_sub_y(Lisp_Buffer *tx, rep_intptr_t suby, rep_intptr_t ypos)
 #define UPD1(p)						\
     if(p && VROW(p) >= ypos)				\
     {							\
-	rep_intptr_t row = VROW(p) - suby;		\
+	intptr_t row = VROW(p) - suby;		\
 	(p) = make_pos(VCOL(p), MAX(row, ypos));	\
     } while(0)
 
@@ -274,7 +274,7 @@ adjust_marks_sub_y(Lisp_Buffer *tx, rep_intptr_t suby, rep_intptr_t ypos)
  * Use when splitting a line into 2, cursor should be at position of split
  */
 void
-adjust_marks_split_y(Lisp_Buffer *tx, rep_intptr_t xpos, rep_intptr_t ypos)
+adjust_marks_split_y(Lisp_Buffer *tx, intptr_t xpos, intptr_t ypos)
 {
     Lisp_View *thisvw;
     Lisp_Mark *thismark;
@@ -359,7 +359,7 @@ adjust_marks_split_y(Lisp_Buffer *tx, rep_intptr_t xpos, rep_intptr_t ypos)
  * Use when compacting 2 adjacent lines into one
  */
 void
-adjust_marks_join_y(Lisp_Buffer *tx, rep_intptr_t xpos, rep_intptr_t ypos)
+adjust_marks_join_y(Lisp_Buffer *tx, intptr_t xpos, intptr_t ypos)
 {
     Lisp_View *thisvw;
     Lisp_Mark *thismark;

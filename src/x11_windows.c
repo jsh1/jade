@@ -46,7 +46,7 @@ sys_sleep_win(Lisp_Window *w)
 		       WINDOW_XDPY(w)->screen);
 	w->car |= WINFF_SLEEPING;
     }
-    return(TRUE);
+    return(true);
 }
 
 int
@@ -61,7 +61,7 @@ sys_unsleep_win(Lisp_Window *w)
 	XMapWindow(WINDOW_XDPY(w)->display, w->w_Window);
 	w->car &= ~WINFF_SLEEPING;
     }
-    return(TRUE);
+    return(true);
 }
 
 void
@@ -233,7 +233,7 @@ sys_new_window(Lisp_Window *oldW, Lisp_Window *w, int *dims)
 	}
 	return win;
     }
-    return FALSE;
+    return false;
 }
 
 void
@@ -348,7 +348,7 @@ void
 sys_draw_glyphs(Lisp_Window *w, int col, int row, glyph_attr attr, char *str,
 		int len, bool all_spaces)
 {
-    bool invert = FALSE;
+    bool invert = false;
     Merged_Face *f;
     int x, y;
 
@@ -529,9 +529,9 @@ sys_set_font(Lisp_Window *w)
 	    w->window_system.ws_BoldFont = XftFontOpenName(dpy->display, 0, buf);
 #endif
 	}
-	return TRUE;
+	return true;
     }
-    return FALSE;
+    return false;
 }
 
 void

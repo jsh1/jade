@@ -54,11 +54,11 @@ DEFSYM(insert_file_contents, "insert-file-contents");
    killed. FILE-LENGTH is the length of the file to be loaded, or -1
    if the length is unknown. */
 static bool
-read_file_into_tx(Lisp_Buffer *tx, FILE *fh, rep_intptr_t file_length)
+read_file_into_tx(Lisp_Buffer *tx, FILE *fh, intptr_t file_length)
 {
-    bool rc = FALSE;
+    bool rc = false;
     char buf[BUFSIZ];
-    rep_intptr_t len, row, alloced_lines, chars_read = 0;
+    intptr_t len, row, alloced_lines, chars_read = 0;
 
     /* For the first N allocations, use the standard resize_line_list method,
        even if we know the length of the file.. */
@@ -70,7 +70,7 @@ read_file_into_tx(Lisp_Buffer *tx, FILE *fh, rep_intptr_t file_length)
     while((len = fread(buf, 1, BUFSIZ, fh)) > 0)
     {
 	char *new;
-	rep_intptr_t newlen;
+	intptr_t newlen;
 	char *eol, *cur = buf;
 	while((eol = memchr(cur, '\n', (buf + len) - cur)))
 	{
@@ -108,7 +108,7 @@ read_file_into_tx(Lisp_Buffer *tx, FILE *fh, rep_intptr_t file_length)
 		    /* We know the file_length, and the average bytes-per-line
 		       so far. Re-calibrate our prediction of the total
 		       number of lines. */
-		    rep_intptr_t predicted_lines = file_length * row / chars_read;
+		    intptr_t predicted_lines = file_length * row / chars_read;
 		    /* Ensure that at least some new lines are going
 		       to be allocated.. */
 		    if(predicted_lines < row + 32)
@@ -179,7 +179,7 @@ read_file_into_tx(Lisp_Buffer *tx, FILE *fh, rep_intptr_t file_length)
     tx->logical_end = tx->line_count;
 
     tx->change_count++;
-    rc = TRUE;
+    rc = true;
 
     if(0)
     {
@@ -227,7 +227,7 @@ the buffer (ignoring the current restriction).
 
     if(rep_NILP(handler))
     {
-	rep_intptr_t row, col;
+	intptr_t row, col;
 	FILE *fh;
 
 	/* Don't call check_section() since that looks at the restriction. */
@@ -293,7 +293,7 @@ object to be used. Also removes any restriction on BUFFER.
     if(rep_NILP(handler))
     {
 	FILE *fh;
-	rep_intptr_t file_length;
+	intptr_t file_length;
 	repv res = rep_NULL;
 	repv start;
 
@@ -350,7 +350,7 @@ before the cursor in the current buffer.
 	Lisp_Buffer *tx = curr_vw->tx;
 	FILE *fh;
 	char buf[BUFSIZ];
-	rep_intptr_t len;
+	intptr_t len;
 	repv pos = curr_vw->cursor_pos;
 
 	if (!pad_pos(tx, pos))

@@ -29,7 +29,7 @@ Lisp_Face *allocated_faces;
 
 int face_type;
 
-rep_bool invert_all_faces;
+bool invert_all_faces;
 
 DEFSYM(foreground, "foreground");
 DEFSYM(background, "background");
@@ -93,7 +93,7 @@ face_prin(repv strm, repv obj)
 #else
     sprintf(buf, "#<face %s>", rep_STR(VFACE(obj)->name));
 #endif
-    rep_stream_puts(strm, buf, -1, FALSE);
+    rep_stream_puts(strm, buf, -1, false);
 }
 
 static void
@@ -277,7 +277,7 @@ get_merged_face(Lisp_Window *w, repv car,
 
     /* Fill the new face */
     w->merged_faces[empty].car = car;
-    w->merged_faces[empty].valid = TRUE;
+    w->merged_faces[empty].valid = true;
     w->merged_faces[empty].background = background;
     w->merged_faces[empty].foreground = foreground;
     return empty;
@@ -310,7 +310,7 @@ merge_faces(Lisp_View *vw, Lisp_Extent *e, int in_block, int on_cursor)
     struct merge_closure c;
 
     Lisp_Extent *x;
-    bool pointer_extent = FALSE;
+    bool pointer_extent = false;
 
     c.car = invert_all_faces ? FACEFF_INVERT : 0;
     c.background = 0;
@@ -348,7 +348,7 @@ merge_faces(Lisp_View *vw, Lisp_Extent *e, int in_block, int on_cursor)
 		    /* If an inner extent contains the mouse,
 		       then all parents of this extent also
 		       contain the mouse pointer. */
-		    pointer_extent = TRUE;
+		    pointer_extent = true;
 		    break;
 		}
 	    }
@@ -394,7 +394,7 @@ mark_glyph_buf_faces(Lisp_Window *w, glyph_buf *g)
     int id;
 
     for(id = 0; id <= GA_LastFace; id++)
-	w->merged_faces[id].valid = FALSE;
+	w->merged_faces[id].valid = false;
 
     for(row = 0; row < g->rows; row++)
     {
@@ -402,7 +402,7 @@ mark_glyph_buf_faces(Lisp_Window *w, glyph_buf *g)
 	for(col = 0; col < g->cols; col++)
 	{
 	    if(attrs[col] <= GA_LastFace)
-		w->merged_faces[attrs[col]].valid = TRUE;
+		w->merged_faces[attrs[col]].valid = true;
 	    else if (attrs[col] != GA_Garbage)
 		fprintf (stderr, "warning: invalid glyph attr (%d,%d) = %d\n",
 			 row, col, attrs[col]);
@@ -470,7 +470,7 @@ color_prin(repv strm, repv obj)
     sprintf
 #endif
     (buf, "#<color %s>", rep_STR(VCOLOR(obj)->name));
-    rep_stream_puts(strm, buf, -1, FALSE);
+    rep_stream_puts(strm, buf, -1, false);
 }
 
 static void
@@ -566,8 +566,8 @@ faces_init(void)
 	Fset_face_attribute(face, Qbackground, hl);
 	Fset (Qhighlight_face, face);
 
-	return TRUE;
+	return true;
     }
     else
-	return FALSE;
+	return false;
 }

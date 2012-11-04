@@ -67,11 +67,11 @@ static GdkCursor *window_cursor = 0;
 
 /* When true, sys_new_window _won't_ stick the GtkJade widget in a
    containing GtkWindow. */
-static bool new_window_no_frame = FALSE;
+static bool new_window_no_frame = false;
 
 /* When true, sys_new_window _won't_ call gtk_widget_show on the GtkJade
    widget. */
-static bool new_window_no_show = FALSE;
+static bool new_window_no_show = false;
 
 /* Timestamp from a recent event */
 unsigned long gtk_jade_last_event_time;
@@ -328,7 +328,7 @@ gtk_jade_realize (GtkWidget *widget)
 	jade->gc_values.background = VCOLOR(bg)->color;
     jade->gc_values.font = jade->font;
     jade->gc_values.function = GDK_COPY;
-    jade->gc_values.graphics_exposures = TRUE;
+    jade->gc_values.graphics_exposures = true;
     jade->gc_values_mask = (GDK_GC_LINE_WIDTH | GDK_GC_FOREGROUND
 			    | GDK_GC_BACKGROUND | GDK_GC_FONT
 			    | GDK_GC_FUNCTION | GDK_GC_EXPOSURES);
@@ -403,7 +403,7 @@ gtk_jade_expose (GtkWidget *widget, GdkEventExpose *event)
     GtkJade *jade;
     int x, y, width, height;
 
-    g_return_val_if_fail (GTK_IS_JADE (widget), FALSE);
+    g_return_val_if_fail (GTK_IS_JADE (widget), false);
     jade = GTK_JADE (widget);
 
     x = (event->area.x - jade->win->pixel_left) / jade->win->font_width;
@@ -423,7 +423,7 @@ gtk_jade_expose (GtkWidget *widget, GdkEventExpose *event)
     if (event->count == 0)
 	Fredisplay_window (rep_VAL (jade->win), Qnil);
 
-    return FALSE;
+    return false;
 }
 
 static gint
@@ -431,12 +431,12 @@ gtk_jade_visibility_event (GtkWidget *widget, GdkEventVisibility *event)
 {
     GtkJade *jade;
 
-    g_return_val_if_fail (GTK_IS_JADE (widget), FALSE);
+    g_return_val_if_fail (GTK_IS_JADE (widget), false);
     jade = GTK_JADE (widget);
 
     jade->unobscured = (event->state == GDK_VISIBILITY_UNOBSCURED);
 
-    return FALSE;
+    return false;
 }
 
 static gint
@@ -444,10 +444,10 @@ gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
 {
     GtkJade *jade;
     unsigned long code = 0, mods = 0;
-    bool redisplay = FALSE;
-    g_return_val_if_fail (widget != NULL, FALSE);
-    g_return_val_if_fail (GTK_IS_JADE (widget), FALSE);
-    g_return_val_if_fail (event != NULL, FALSE);
+    bool redisplay = false;
+    g_return_val_if_fail (widget != NULL, false);
+    g_return_val_if_fail (GTK_IS_JADE (widget), false);
+    g_return_val_if_fail (event != NULL, false);
     jade = GTK_JADE (widget);
 
     switch ((int) event->type)
@@ -489,41 +489,41 @@ gtk_jade_input_event (GtkWidget *widget, GdkEvent *event)
 	eval_input_event(event, code, mods);
 	undo_end_of_command();
 	GTK_JADE_CALLBACK_POSTFIX;
-	return TRUE;
+	return true;
     }
     else if (redisplay)
     {
 	Fredisplay (Qnil);
-	return TRUE;
+	return true;
     }
     
-    return FALSE;
+    return false;
 }
 
 static gint
 gtk_jade_enter_notify (GtkWidget *widget, GdkEventCrossing *event)
 {
     GtkJade *jade;
-    g_return_val_if_fail (widget != NULL, FALSE);
-    g_return_val_if_fail (GTK_IS_JADE (widget), FALSE);
-    g_return_val_if_fail (event != NULL, FALSE);
+    g_return_val_if_fail (widget != NULL, false);
+    g_return_val_if_fail (GTK_IS_JADE (widget), false);
+    g_return_val_if_fail (event != NULL, false);
     jade = GTK_JADE (widget);
 
     gtk_jade_last_event_time = event->time;
-    return FALSE;
+    return false;
 }
 
 static gint
 gtk_jade_leave_notify (GtkWidget *widget, GdkEventCrossing *event)
 {
     GtkJade *jade;
-    g_return_val_if_fail (widget != NULL, FALSE);
-    g_return_val_if_fail (GTK_IS_JADE (widget), FALSE);
-    g_return_val_if_fail (event != NULL, FALSE);
+    g_return_val_if_fail (widget != NULL, false);
+    g_return_val_if_fail (GTK_IS_JADE (widget), false);
+    g_return_val_if_fail (event != NULL, false);
     jade = GTK_JADE (widget);
 
     gtk_jade_last_event_time = event->time;
-    return FALSE;
+    return false;
 }
 
 static void
@@ -559,7 +559,7 @@ gtk_jade_drag_data_received (GtkWidget *widget, GdkDragContext *context,
 				  Fcons (Freverse (list),
 					 Fcons (rep_VAL (jade->win),
 						Fcons (pos, Qnil)))),
-			   rep_TRUE, 0, 0, 0);
+			   true, 0, 0, 0);
 
     GTK_JADE_CALLBACK_POSTFIX;
 }
@@ -618,7 +618,7 @@ sys_draw_glyphs(Lisp_Window *w, int col, int row, glyph_attr attr, char *str,
 {
     GtkJade *jade = w->w_Window;
     GdkWindow *win = jade->widget.window;
-    bool invert = FALSE;
+    bool invert = false;
     Merged_Face *f;
     int x, y;
 
@@ -724,9 +724,9 @@ sys_update_dimensions(Lisp_Window *w)
 static gint
 window_deleted_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
 {
-    rep_call_with_barrier (Fdelete_window, rep_VAL(data), rep_TRUE, 0, 0, 0);
+    rep_call_with_barrier (Fdelete_window, rep_VAL(data), true, 0, 0, 0);
     GTK_JADE_CALLBACK_POSTFIX;
-    return TRUE;
+    return true;
 }
 
 static void
@@ -743,7 +743,7 @@ focus_in_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
     GTK_WIDGET_SET_FLAGS (widget, GTK_HAS_FOCUS);
     gtk_jade_foreach (GTK_CONTAINER (widget),
 		      (GtkCallback) focus_callback, (gpointer) 1);
-    return TRUE;
+    return true;
 }
 
 static gint
@@ -752,7 +752,7 @@ focus_out_callback (GtkWidget *widget, GdkEvent *ev, gpointer data)
     GTK_WIDGET_UNSET_FLAGS (widget, GTK_HAS_FOCUS);
     gtk_jade_foreach (GTK_CONTAINER(widget),
 		      (GtkCallback) focus_callback, (gpointer) 0);
-    return TRUE;
+    return true;
 }
 
 /* The only thing necessary in W is the font stuff (I think) */
@@ -763,7 +763,7 @@ sys_new_window(Lisp_Window *oldW, Lisp_Window *w, int *dims)
     GtkWidget *frame = 0;
 
     if (batch_mode_p ())
-	new_window_no_show = TRUE;
+	new_window_no_show = true;
 
     if(dims[0] >= 0)
 	x = dims[0];
@@ -901,7 +901,7 @@ bool
 sys_deleting_window_would_exit (Lisp_Window *win)
 {
     if (win->w_Window == 0)
-	return FALSE;
+	return false;
     else
     {
 	GtkWidget *toplevel = (gtk_widget_get_toplevel
@@ -946,11 +946,11 @@ if adding to another container.
 {
     repv win;
 
-    new_window_no_frame = TRUE;
-    new_window_no_show = TRUE;
+    new_window_no_frame = true;
+    new_window_no_show = true;
     win = Fmake_window (rep_LIST_1 (Fcons (Qposition, Fcons (width, height))));
-    new_window_no_frame = FALSE;
-    new_window_no_show = FALSE;
+    new_window_no_frame = false;
+    new_window_no_show = false;
 
     if (win && WINDOWP (win))
     {
@@ -1095,7 +1095,7 @@ async_event_pred (Display *dpy, XEvent *ev, XPointer arg)
 static void
 gtk_jade_handle_async_input (void)
 {
-    bool need_redisplay = FALSE;
+    bool need_redisplay = false;
     if (!redisplay_lock)
     {
 #ifdef HAVE_X11
@@ -1131,7 +1131,7 @@ gtk_jade_handle_async_input (void)
 
 		garbage_glyphs(ev_win, x, y, width, height);
 		if (xev.xexpose.count == 0)
-		    need_redisplay = TRUE;
+		    need_redisplay = true;
 	    }
 	}
 #endif /* HAVE_X11 */

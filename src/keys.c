@@ -57,7 +57,7 @@ DEFSYM(mouse_keymap, "mouse-keymap");
 
 static repv next_keymap_path;
 
-/* TRUE when the Meta qualifier should be added to the next event. */
+/* true when the Meta qualifier should be added to the next event. */
 static bool pending_meta;
 
 /* This doesn't belong here but I couldn't find anywhere else :-( */
@@ -249,7 +249,7 @@ eval_input_callback(repv key)
 		rep_POP_CALL(lc);
 #endif
 		if(cmd == rep_NULL)
-		    return FALSE;
+		    return false;
 	    }
 	}
     }
@@ -259,12 +259,12 @@ eval_input_callback(repv key)
 	next_keymap_path = Fcons(cmd, next_keymap_path
 				 ? next_keymap_path : Qnil);
 	/* Look for more prefix keys */
-	return FALSE;
+	return false;
     }
     if (cmd == Qnil)
-	return FALSE;
+	return false;
     next_keymap_path = rep_NULL;
-    return TRUE;
+    return true;
 }
 
 struct eval_input_data {
@@ -285,13 +285,13 @@ inner_eval_input_event(repv data_)
     event_buf[event_index++] = mods;
     if(event_index == EVENT_BUFSIZ)
 	event_index = 0;
-    printed_this_prefix = FALSE;
+    printed_this_prefix = false;
     if(!rep_NILP(Fsymbol_value (Qesc_means_meta, Qt))
        && !pending_meta
        && (code == esc_code) && (mods == esc_mods))
     {
 	/* Treat this ESC as a Meta-prefix. */
-	pending_meta = TRUE;
+	pending_meta = true;
     }
     else
     {
@@ -300,7 +300,7 @@ inner_eval_input_event(repv data_)
 	if(pending_meta)
 	{
 	    mods |= EV_MOD_META;
-	    pending_meta = FALSE;
+	    pending_meta = false;
 	}
 	current_event[0] = code;
 	current_event[1] = mods;
@@ -418,7 +418,7 @@ inner_eval_input_event(repv data_)
 	{
 	    print_event_prefix();
 	    if(next_keymap_path == rep_NULL && !pending_meta)
-		print_prefix = FALSE;
+		print_prefix = false;
 	}
     }
     if(next_keymap_path == rep_NULL && !pending_meta)
@@ -436,7 +436,7 @@ eval_input_event(void *OSInputMsg, unsigned long code, unsigned long mods)
     data.code = code;
     data.mods = mods;
     return rep_call_with_barrier (inner_eval_input_event,
-				  rep_VAL(&data), rep_TRUE, 0, 0, 0);
+				  rep_VAL(&data), true, 0, 0, 0);
 }
 
 
@@ -518,19 +518,19 @@ lookup_event(unsigned long *code, unsigned long *mods, char *desc)
 	    {
 		*mods |= x->mods;
 		*code = x->code;
-		return TRUE;
+		return true;
 	    }
 	    x++;
 	}
 	if(sys_lookup_code(desc, code, mods))
-	    return TRUE;
+	    return true;
 	else
 	    goto error;
     }
 
 error:
     Fsignal(Qbad_event_desc, rep_LIST_1(rep_string_dup(desc)));
-    return FALSE;
+    return false;
 }
 
 /* Constructs the name of the event defined by CODE and MODS in BUF.  */
@@ -576,7 +576,7 @@ lookup_event_name(char *buf, unsigned long code, unsigned long mods)
 	if(type == x->mods && code == x->code)
 	{
 	    strcpy(end, x->name);
-	    return TRUE;
+	    return true;
 	}
 	x++;
     }
@@ -626,7 +626,7 @@ event to bind to the corresponding COMMAND.
 Returns KEYMAP when successful.
 ::end:: */
 {
-    bool rc = TRUE;
+    bool rc = true;
     repv km, arg1, res = rep_NULL;
     if(!rep_CONSP(args))
 	return rep_NULL;
@@ -653,7 +653,7 @@ Returns KEYMAP when successful.
 	    Fsignal(Qbad_event_desc, rep_LIST_1(arg1));
 	    goto end;
 	}
-	rc = FALSE;
+	rc = false;
 	key = MAKE_KEY(MAKE_EVENT(rep_MAKE_INT(code), rep_MAKE_INT(mods)), rep_CAR(args));
 	if(key != rep_NULL)
 	{
@@ -666,7 +666,7 @@ Returns KEYMAP when successful.
 	    else
 		rep_CDR(km) = Fcons(key, rep_CDR(km));
 	    args = rep_CDR(args);
-	    rc = TRUE;
+	    rc = true;
 	}
 	else
 	    goto end;
@@ -682,7 +682,7 @@ DEFUN("unbind-keys", Funbind_keys, Sunbind_keys, (repv args), rep_SubrN) /*
 unbind-keys KEY-MAP EVENT-DESCRIPTION...
 ::end:: */
 {
-    bool rc = TRUE;
+    bool rc = true;
     repv km, arg1, res = rep_NULL;
     if(!rep_CONSP(args))
 	return rep_NULL;
@@ -711,7 +711,7 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
 	    Fsignal(Qbad_event_desc, rep_LIST_1(arg1));
 	    goto end;
 	}
-	rc = FALSE;
+	rc = false;
 	if(rep_VECTORP(km))
 	    keyp = &rep_VECTI(km, KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE);
 	else
@@ -739,7 +739,7 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
 
 	    rep_TEST_INT; if(rep_INTERRUPTP) return rep_NULL;
 	}
-	rc = TRUE;
+	rc = true;
 	args = rep_CDR(args);
     }
     if(rc)
@@ -923,7 +923,7 @@ Returns t if the ARG is an input event.
 }
 
 /* If necessary, print the name of the current event prefix and return
-   TRUE, else return FALSE.  */
+   true, else return false.  */
 bool
 print_event_prefix(void)
 {
@@ -933,11 +933,11 @@ print_event_prefix(void)
     if((next_keymap_path == rep_NULL && !pending_meta)
        && (!print_prefix || printed_this_prefix))
     {
-	print_prefix = FALSE;
-	return(FALSE);
+	print_prefix = false;
+	return(false);
     }
     if(!print_prefix)
-	print_prefix = TRUE;
+	print_prefix = true;
     for(i = 0; i < event_index; i += 2)
     {
 	if(lookup_event_name(bufp, event_buf[i], event_buf[i+1]))
@@ -955,8 +955,8 @@ print_event_prefix(void)
 	*bufp++ = '.';
     }
     messagen(buf, bufp - buf);
-    printed_this_prefix = TRUE;
-    return(TRUE);
+    printed_this_prefix = true;
+    return(true);
 }
 
 void

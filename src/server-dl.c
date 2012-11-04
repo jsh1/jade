@@ -21,8 +21,6 @@
 #include "jade.h"
 #include "server.h"
 
-#ifdef HAVE_UNIX
-
 #include <fcntl.h>
 #include <string.h>
 #include <sys/types.h>
@@ -148,7 +146,7 @@ server_accept_connection(int unused_fd)
 
 	/* CONFD will inherit the properties of SOCKET-FD, i.e. non-
 	   blocking. Make it block.. */
-	rep_unix_set_fd_blocking(confd);
+	rep_set_fd_blocking(confd);
     }
 }
 
@@ -253,7 +251,7 @@ send us messages.
 	    chmod (namebuf, 0700);
 	    if(listen(socket_fd, 5) == 0)
 	    {
-		rep_unix_set_fd_nonblocking(socket_fd);
+		rep_set_fd_nonblocking(socket_fd);
 		rep_register_input_fd(socket_fd, server_accept_connection);
 		socket_name = rep_string_dup (namebuf);
 		return Qt;
@@ -388,8 +386,6 @@ rep_dl_kill(void)
     client_list = Qnil;
     Fserver_close();
 }
-
-#endif /* HAVE_UNIX */
 
 /*
 ;;;###autoload (autoload 'server-open-p "server")

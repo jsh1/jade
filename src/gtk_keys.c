@@ -81,7 +81,7 @@ translate_event(unsigned long *code, unsigned long *mods, GdkEvent *ev)
     case GDK_KEY_PRESS:
 	if (IsModifierKey (ev->key.keyval))
 	    break;
-	*mods = translate_mods(*mods, ev->key.state & ~all_lock_mask, TRUE);
+	*mods = translate_mods(*mods, ev->key.state & ~all_lock_mask, true);
 	if(*mods & EV_MOD_SHIFT)
 	{
 	    /* Some keys don't have keysym at index 1, if not treat it as
@@ -124,7 +124,7 @@ translate_event(unsigned long *code, unsigned long *mods, GdkEvent *ev)
     case GDK_BUTTON_RELEASE:
 	*code = EV_CODE_MOUSE_UP;
     button:
-	*mods = (EV_TYPE_MOUSE | translate_mods(*mods, ev->button.state & ~all_lock_mask, TRUE));
+	*mods = (EV_TYPE_MOUSE | translate_mods(*mods, ev->button.state & ~all_lock_mask, true));
 	switch(ev->button.button)
 	{
 	case Button1:
@@ -147,7 +147,7 @@ translate_event(unsigned long *code, unsigned long *mods, GdkEvent *ev)
 
     case GDK_MOTION_NOTIFY:
 	*code = EV_CODE_MOUSE_MOVE;
-	*mods = (EV_TYPE_MOUSE | translate_mods(*mods, ev->motion.state & ~all_lock_mask, TRUE));
+	*mods = (EV_TYPE_MOUSE | translate_mods(*mods, ev->motion.state & ~all_lock_mask, true));
 	break;
     }
 }
@@ -249,11 +249,11 @@ sys_lookup_mod(const char *name, unsigned long *mods)
 	if(strcasecmp(name, x->name) == 0)
 	{
 	    *mods |= x->mods;
-	    return TRUE;
+	    return true;
 	}
 	x++;
     }
-    return FALSE;
+    return false;
 }
 
 bool
@@ -266,7 +266,7 @@ sys_lookup_code(const char *name, unsigned long *code, unsigned long *mods)
 	{
 	    *mods |= x->mods;
 	    *code = x->code;
-	    return TRUE;
+	    return true;
 	}
 	x++;
     }
@@ -277,11 +277,11 @@ sys_lookup_code(const char *name, unsigned long *code, unsigned long *mods)
 	{
 	    *mods |= EV_TYPE_KEYBD;
 	    *code = ks;
-	    return TRUE;
+	    return true;
 	}
     }
 
-    return FALSE;
+    return false;
 }
 
 char *
@@ -307,7 +307,7 @@ sys_lookup_code_name(char *buf, unsigned long code, unsigned long type)
 	if(x->mods == type && x->code == code)
 	{
 	    strcpy(buf, x->name);
-	    return TRUE;
+	    return true;
 	}
 	x++;
     }
@@ -316,10 +316,10 @@ sys_lookup_code_name(char *buf, unsigned long code, unsigned long type)
     if(tem != 0)
     {
 	strcpy(buf, tem);
-	return TRUE;
+	return true;
     }
 
-    return FALSE;
+    return false;
 }
 
 /* Return the jade modifier mask used as the meta key. This code
@@ -367,11 +367,11 @@ gtk_find_meta(void)
 		    switch(sym)
 		    {
 		    case XK_Meta_L: case XK_Meta_R:
-			meta_mod = translate_mods(0, 1 << row, FALSE);
+			meta_mod = translate_mods(0, 1 << row, false);
 			break;
 
 		    case XK_Alt_L: case XK_Alt_R:
-			alt_mod = translate_mods(0, 1 << row, FALSE);
+			alt_mod = translate_mods(0, 1 << row, false);
 			break;
 
 		    case XK_Num_Lock:

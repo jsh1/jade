@@ -139,7 +139,7 @@ flip_y (JadeView *view, int y)
 {
     curr_win = _win;
     curr_vw = _win->current_view;
-    rep_call_with_barrier (Fdelete_window, Qnil, rep_TRUE, 0, 0, 0);
+    rep_call_with_barrier (Fdelete_window, Qnil, true, 0, 0, 0);
     mac_needs_redisplay = true;
     return NO;
 }
