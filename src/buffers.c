@@ -171,7 +171,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 	else
 	    oldTx = rep_NULL;
     }
-    tx = rep_ALLOC_CELL(sizeof(Lisp_Buffer));
+    tx = rep_alloc(sizeof(Lisp_Buffer));
     if(tx != NULL)
     {
 	memset(tx, 0, sizeof(Lisp_Buffer));
@@ -203,7 +203,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 	    }
 	    kill_line_list(tx);
 	}
-	rep_FREE_CELL(tx);
+	rep_free(tx);
     }
     return rep_NULL;
 }
@@ -253,7 +253,7 @@ buffer_sweep(void)
 		make_marks_non_resident(tx);
 	    }
 	    kill_line_list(tx);
-	    rep_FREE_CELL(tx);
+	    rep_free(tx);
 	}
 	else
 	{
@@ -1063,7 +1063,7 @@ mark_sweep(void)
 	if(!rep_GC_CELL_MARKEDP(rep_VAL(mk)))
 	{
 	    unchain_mark(mk);
-	    rep_FREE_CELL(mk);
+	    rep_free(mk);
 	}
 	else
 	{
@@ -1179,7 +1179,7 @@ updated as the file changes -- it will always point to the same character
 (for as long as that character exists, anyway).
 ::end:: */
 {
-    repv mk = rep_VAL(rep_ALLOC_CELL(sizeof(Lisp_Mark)));
+    repv mk = rep_VAL(rep_alloc(sizeof(Lisp_Mark)));
     if(mk != rep_NULL)
     {
 	rep_GC_root gc_mk, gc_buf;
@@ -1412,14 +1412,14 @@ buffers_kill(void)
     {
 	Lisp_Buffer *nxttx = tx->next;
 	kill_line_list(tx);
-	rep_FREE_CELL(tx);
+	rep_free(tx);
 	tx = nxttx;
     }
     buffer_chain = NULL;
     while(mk)
     {
 	Lisp_Mark *nxtmk = mk->next_alloc;
-	rep_FREE_CELL(mk);
+	rep_free(mk);
 	mk = nxtmk;
     }
     mark_chain = NULL;

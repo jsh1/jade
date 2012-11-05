@@ -131,7 +131,7 @@ ATTRS is an alist with any of the following pairs:
     else
 	font = def_font_str;
 
-    w = rep_ALLOC_CELL(sizeof(Lisp_Window));
+    w = rep_alloc(sizeof(Lisp_Window));
     if(w != NULL)
     {
 	memset(w, 0, sizeof(Lisp_Window));
@@ -180,7 +180,7 @@ ATTRS is an alist with any of the following pairs:
 	    }
 	    sys_unset_font(w);
 	}
-	rep_FREE_CELL(w);
+	rep_free(w);
     }
     return rep_NULL;
 }
@@ -712,7 +712,7 @@ window_sweep(void)
 	    win_chain = w;
 	}
 	else
-	    rep_FREE_CELL(w);
+	    rep_free(w);
 	w = next;
     }
 }
@@ -849,7 +849,7 @@ windows_kill(void)
     while(w)
     {
 	next = w->next;
-	rep_FREE_CELL(w);
+	rep_free(w);
 	w = next;
     }
     win_chain = NULL;

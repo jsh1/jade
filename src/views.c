@@ -151,7 +151,7 @@ make_view(Lisp_View *sibling, Lisp_Window *parent, Lisp_Buffer *tx,
     }
 
     /* Now the construction of the view proper... */
-    vw = rep_ALLOC_CELL(sizeof(Lisp_View));
+    vw = rep_alloc(sizeof(Lisp_View));
     if(vw != NULL)
     {
 	memset(vw, 0, sizeof(Lisp_View));
@@ -1136,7 +1136,7 @@ view_sweep(void)
 	    view_chain = vw;
 	}
 	else
-	    rep_FREE_CELL(vw);
+	    rep_free(vw);
 	vw = next;
     }
 }
@@ -1258,7 +1258,7 @@ views_kill(void)
     while(vw != 0)
     {
 	Lisp_View *next = vw->next;
-	rep_FREE_CELL(vw);
+	rep_free(vw);
 	vw = next;
     }
     view_chain = NULL;

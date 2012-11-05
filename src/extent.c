@@ -70,7 +70,7 @@ clean_node(Lisp_Extent *e)
 static Lisp_Extent *
 alloc_extent(Lisp_Extent *clonee)
 {
-    Lisp_Extent *x = rep_ALLOC_CELL(sizeof(Lisp_Extent));
+    Lisp_Extent *x = rep_alloc(sizeof(Lisp_Extent));
     if(x == 0)
     {
 	rep_mem_error();
@@ -1609,7 +1609,7 @@ extent_sweep(void)
     {
 	Lisp_Extent *next = e->next;
 	if(!rep_GC_CELL_MARKEDP(rep_VAL(e)))
-	    rep_FREE_CELL(e);
+	    rep_free(e);
 	else
 	{
 	    rep_GC_CLR_CELL(rep_VAL(e));

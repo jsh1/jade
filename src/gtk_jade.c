@@ -1045,7 +1045,7 @@ An integer identifying the cursor to use for editor windows. See
 DEFUN("gtk-last-timestamp", Fgtk_last_timestamp, 
       Sgtk_last_timestamp, (void), rep_Subr0)
 {
-    return rep_MAKE_LONG_INT(gtk_jade_last_event_time);
+    return rep_make_long_int(gtk_jade_last_event_time);
 }
 
 

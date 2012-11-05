@@ -1319,7 +1319,7 @@ SRC is a buffer that buffer's glyph-table will be copied. If SRC is nil the
 default glyph-table will be copied.
 ::end:: */
 {
-    glyph_table_t *newgt = rep_ALLOC_CELL(sizeof(glyph_table_t));
+    glyph_table_t *newgt = rep_alloc(sizeof(glyph_table_t));
     if(newgt)
     {
 	glyph_table_t *srcgt;
@@ -1409,7 +1409,7 @@ glyphtable_sweep(void)
     {
 	glyph_table_t *nxt = gt->gt_Next;
 	if(!rep_GC_CELL_MARKEDP(rep_VAL(gt)) && !(gt->gt_Car & GTF_STATIC))
-	    rep_FREE_CELL(gt);
+	    rep_free(gt);
 	else
 	{
 	    rep_GC_CLR_CELL(rep_VAL(gt));
@@ -1460,7 +1460,7 @@ glyphs_kill(void)
     {
 	glyph_table_t *nxt = gt->gt_Next;
 	if(!(gt->gt_Car & GTF_STATIC))
-	    rep_FREE_CELL(gt);
+	    rep_free(gt);
 	gt = nxt;
     }
     gt_chain = NULL;

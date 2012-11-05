@@ -72,7 +72,7 @@ a new one, its initial state will be to have absolutely no effect.
 	    return rep_VAL(f);
     }
 
-    f = rep_ALLOC_CELL(sizeof(Lisp_Face));
+    f = rep_alloc(sizeof(Lisp_Face));
     if(f == 0)
 	return rep_mem_error();
     f->next = allocated_faces;
@@ -105,7 +105,7 @@ face_sweep(void)
     {
 	Lisp_Face *next = f->next;
 	if(!rep_GC_CELL_MARKEDP(rep_VAL(f)))
-	    rep_FREE_CELL(f);
+	    rep_free(f);
 	else
 	{
 	    rep_GC_CLR_CELL(rep_VAL(f));
@@ -449,7 +449,7 @@ Return the Lisp object defining the color named NAME (a string).
 	    return rep_VAL(c);
     }
 
-    c = rep_ALLOC_CELL(sizeof(Lisp_Color));
+    c = rep_alloc(sizeof(Lisp_Color));
     if(c == 0)
 	return rep_mem_error();
     c->car = color_type;
@@ -484,7 +484,7 @@ color_sweep(void)
 	if(!rep_GC_CELL_MARKEDP(rep_VAL(c)))
 	{
 	    sys_free_color(c);
-	    rep_FREE_CELL(c);
+	    rep_free(c);
 	}
 	else
 	{
