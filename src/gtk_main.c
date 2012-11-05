@@ -222,7 +222,7 @@ sys_init(char *program_name)
 #else
     Fload (rep_string_dup ("gtk"), Qnil, Qnil, Qnil, Qnil);
 #endif
-    if (rep_throw_value == 0)
+    if (!rep_throw_value)
     {
 	/* Find the gtkobj<->lispobj converters */
 	gtk_jade_wrap_gtkobj = rep_find_dl_symbol (Qgtk_feature, "sgtk_wrap_gtkobj");

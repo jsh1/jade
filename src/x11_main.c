@@ -439,7 +439,7 @@ sys_make_color(Lisp_Color *c)
 {
     c->color = 0;
     if(x11_display_list != 0)
-	return x11_make_color_dpy(c, x11_display_list) ? rep_VAL(c) : rep_NULL;
+	return x11_make_color_dpy(c, x11_display_list) ? rep_VAL(c) : 0;
     else
 	return rep_VAL(c);			/* lazy */
 }
@@ -555,7 +555,7 @@ x11_handle_input(int fd, bool synchronous)
     bool need_redisplay = false;
 
     /* Read all events in the input queue. */
-    while(rep_throw_value == rep_NULL)
+    while(!rep_throw_value)
     {
 	XEvent xev;
 	Lisp_Window *oldwin = curr_win, *ev_win;

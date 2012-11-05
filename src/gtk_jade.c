@@ -283,7 +283,7 @@ gtk_jade_realize (GtkWidget *widget)
     GtkJade *jade;
     GdkWindowAttr attributes;
     gint attributes_mask;
-    repv face, fg = rep_NULL, bg = rep_NULL;
+    repv face, fg = 0, bg = 0;
 
     g_return_if_fail (widget != NULL);
     g_return_if_fail (GTK_IS_JADE (widget));
@@ -322,9 +322,9 @@ gtk_jade_realize (GtkWidget *widget)
 
     /* Create gc */
     jade->gc_values.line_width = 0;
-    if (fg != rep_NULL)
+    if (fg != 0)
 	jade->gc_values.foreground = VCOLOR(fg)->color;
-    if (bg != rep_NULL)
+    if (bg != 0)
 	jade->gc_values.background = VCOLOR(bg)->color;
     jade->gc_values.font = jade->font;
     jade->gc_values.function = GDK_COPY;

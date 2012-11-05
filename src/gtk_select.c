@@ -403,7 +403,7 @@ Jade, relinquish ownership.
 	if(selection_info[selno].owner != Qnil)
 	{
 	    gtk_selection_owner_set (0, selection, gtk_jade_last_event_time);
-	    selection_info[selno].owner = rep_NULL;
+	    selection_info[selno].owner = 0;
 	    selection_info[selno].data = Qnil;
 	    return Qt;
 	}

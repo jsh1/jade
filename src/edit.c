@@ -233,7 +233,7 @@ insert_bytes(Lisp_Buffer *tx, const char *text, size_t textLen, repv pos)
 	return make_pos(VCOL(pos) + textLen, VROW(pos));
     }
     else
-	return rep_NULL;
+	return 0;
 }
 
 /* Inserts a string, this routine acts on any '\n' characters that it
@@ -339,7 +339,7 @@ insert_string(Lisp_Buffer *tx, const char *text, size_t textLen, repv pos)
 	}
 	else
 	abort:
-	    return rep_NULL;
+	    return 0;
     }
 
     {
@@ -466,7 +466,7 @@ delete_section(Lisp_Buffer *tx, repv start, repv end)
 		    if(new_line == NULL)
 		    {
 			rep_mem_error();
-			return rep_NULL;
+			return 0;
 		    }
 		    memcpy(new_line, tx->lines[row].ln_Line,
 			   tx->lines[row].ln_Strlen - 1);
@@ -574,7 +574,7 @@ check_pos(Lisp_Buffer *tx, repv pos)
        || VROW(pos) < tx->logical_start)
     {
 	Fsignal(Qinvalid_pos, rep_list_2(rep_VAL(tx), pos));
-	return rep_NULL;
+	return 0;
     }
     if(VCOL(pos) >= tx->lines[VROW(pos)].ln_Strlen)
 	pos = make_pos(tx->lines[VROW(pos)].ln_Strlen - 1, VROW(pos));

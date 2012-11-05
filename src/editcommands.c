@@ -86,7 +86,7 @@ character after the end of the inserted text.
     if(pad_pos(VBUFFER(buff), pos))
     {
 	pos = insert_string(VBUFFER(buff), rep_STR(string), rep_STRING_LEN(string), pos);
-	if(pos != rep_NULL)
+	if(pos != 0)
 	    return pos;
     }
     return(Qnil);
@@ -350,7 +350,7 @@ unchanged.
 	}
 	return(Qt);
     }
-    return rep_NULL;
+    return 0;
 }
 
 DEFUN("get-char", Fget_char, Sget_char, (repv pos, repv tx), rep_Subr2) /*
@@ -404,7 +404,7 @@ Sets the character at position POS in BUFFER to CHARACTER.
 	flag_modification(VBUFFER(tx), pos, end);
 	return(ch);
     }
-    return rep_NULL;
+    return 0;
 }
 
 DEFUN("posp", Fposp, Sposp, (repv arg), rep_Subr1) /*
@@ -456,7 +456,7 @@ empty, ie, blank or only containing spaces.
 	return(Qnil);
     }
     else
-	return rep_NULL;
+	return 0;
 }
 
 DEFUN("indent-pos", Findent_pos, Sindent_pos, (repv pos, repv tx), rep_Subr2) /*
@@ -629,7 +629,7 @@ COLUMN counts from zero.
 	}
 	return(Qnil);
     }
-    return rep_NULL;
+    return 0;
 }
 	    
 DEFUN_INT("clear-buffer", Fclear_buffer, Sclear_buffer, (repv tx), rep_Subr1, "") /*
@@ -678,7 +678,7 @@ is from the beginning of the buffer.
 	return rep_MAKE_INT(offset);
     }
     else
-	return rep_NULL;
+	return 0;
 }
 
 DEFUN("offset-to-pos", Foffset_to_pos, Soffset_to_pos, (repv voffset, repv tx), rep_Subr2) /*

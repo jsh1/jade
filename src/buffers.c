@@ -87,7 +87,7 @@ pos_putc(Lisp_Buffer *tx, repv *pos, int c)
 	tmps[0] = c;
 	tmps[1] = 0;
 	end = insert_string(tx, tmps, 1, *pos);
-	if(end != rep_NULL)
+	if(end != 0)
 	{
 	    *pos = end;
 	    rc = 1;
@@ -102,7 +102,7 @@ pos_puts(Lisp_Buffer *tx, repv *pos, char *buf, intptr_t bufLen)
     if(pad_pos(tx, *pos))
     {
 	repv end = insert_string(tx, buf, bufLen, *pos);
-	if(end != rep_NULL)
+	if(end != 0)
 	{
 	    *pos = end;
 	    return bufLen;
@@ -169,7 +169,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 	if(curr_vw)
 	    oldTx = rep_VAL(curr_vw->tx);
 	else
-	    oldTx = rep_NULL;
+	    oldTx = 0;
     }
     tx = rep_alloc(sizeof(Lisp_Buffer));
     if(tx != NULL)
@@ -193,7 +193,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 		tx->tab_size = 8;
 		tx->last_saved_time = rep_time();
 		tx->undo_list = Qnil;
-		tx->pending_undo_list = rep_NULL;
+		tx->pending_undo_list = 0;
 		tx->did_undo_list = Qnil;
 		tx->saved_cursor_pos = make_pos(0, 0);
 		tx->saved_display_origin = tx->saved_cursor_pos;
@@ -205,7 +205,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 	}
 	rep_free(tx);
     }
-    return rep_NULL;
+    return 0;
 }
 
 static void
@@ -432,7 +432,7 @@ Scan all buffers for one containing the file NAME.
     name = Fcanonical_file_name(name);
     rep_POPGC;
     if(!name || !rep_STRINGP(name))
-	return rep_NULL;
+	return 0;
 
     tx = rep_VAL(buffer_chain);
     while(VBUFFER(tx) != 0)
@@ -641,7 +641,7 @@ Set the name of BUFFER to NAME.
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     VBUFFER(tx)->buffer_name = name;
-    if(VBUFFER(tx)->status_string == rep_NULL
+    if(VBUFFER(tx)->status_string == 0
        || !strncmp("Jade: ", rep_STR(VBUFFER(tx)->status_string), 5))
     {
 	/* Reset the status-id */
@@ -904,7 +904,7 @@ the buffer is created it is set to `Jade: BUFFER-NAME'.
 {
     Lisp_Buffer *tx = curr_vw->tx;
     repv old = tx->status_string ? tx->status_string : Qnil;
-    tx->status_string = rep_STRINGP(val) ? val : rep_NULL;
+    tx->status_string = rep_STRINGP(val) ? val : 0;
     return old;
 }
 
@@ -950,7 +950,7 @@ make_marks_resident(repv newtx)
 {
     repv mk = rep_VAL(non_resident_mark_chain);
     non_resident_mark_chain = NULL;
-    while(mk != rep_NULL)
+    while(mk != 0)
     {
 	repv nxt = rep_VAL(VMARK(mk)->next);
 	
@@ -1180,7 +1180,7 @@ updated as the file changes -- it will always point to the same character
 ::end:: */
 {
     repv mk = rep_VAL(rep_alloc(sizeof(Lisp_Mark)));
-    if(mk != rep_NULL)
+    if(mk != 0)
     {
 	rep_GC_root gc_mk, gc_buf;
 
@@ -1202,7 +1202,7 @@ updated as the file changes -- it will always point to the same character
 	    rep_PUSHGC(gc_buf, buffer);
 	    tem = Fget_file_buffer(buffer);
 	    rep_POPGC; rep_POPGC;
-	    if(tem != rep_NULL && BUFFERP(tem))
+	    if(tem != 0 && BUFFERP(tem))
 		buffer = tem;
 	}
 	if(rep_STRINGP(buffer))
@@ -1264,7 +1264,7 @@ Set the file pointed at by MARK to FILE, a buffer or a file name.
 	rep_PUSHGC(gc_file, file);
 	tem = Fget_file_buffer(file);
 	rep_POPGC; rep_POPGC;
-	if(tem != rep_NULL && BUFFERP(tem))
+	if(tem != 0 && BUFFERP(tem))
 	    file = tem;
     }
     if(BUFFERP(file))

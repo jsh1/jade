@@ -605,7 +605,7 @@ will work reliably however.
 
     extent = alloc_extent(0);
     if(extent == 0)
-	return rep_NULL;
+	return 0;
 
     COPY_VPOS(&extent->start, start);
     COPY_VPOS(&extent->end, end);
@@ -746,7 +746,7 @@ deleted from within the callback function.
 	break;
 
     case 1:
-	return rep_NULL;
+	return 0;
     }
 
     return Qt;
@@ -1106,7 +1106,7 @@ set_local_symbol (repv sym, repv value)
 	return value;
     }
     else
-	return rep_NULL;
+	return 0;
 }
 
 DEFUN("make-local-variable", Fmake_local_variable, Smake_local_variable,

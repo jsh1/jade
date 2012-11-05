@@ -318,7 +318,7 @@ beginning or the end of the buffer is passed, nil is returned.
     else
     {
 	if(!check_pos(VBUFFER(tx), pos))
-	    return rep_NULL;
+	    return 0;
     }
     dist = rep_INTP(count) ? rep_INT(count) : 1;
     if(dist == 0)
@@ -493,7 +493,7 @@ Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
     else
     {
 	if(!check_pos(VBUFFER(tx), pos))
-	    return rep_NULL;
+	    return 0;
     }
     COPY_VPOS(&tem, pos);
     if(find_matching_bracket(&tem, VBUFFER(tx), esc_char))
@@ -509,7 +509,7 @@ Return the glyph position of the mouse, relative to the current window.
 ::end:: */
 {
     repv pos = sys_get_mouse_pos(curr_win);
-    if(pos != rep_NULL)
+    if(pos != 0)
 	return pos;
     else
 	return Qnil;

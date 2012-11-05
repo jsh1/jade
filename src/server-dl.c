@@ -71,7 +71,7 @@ server_handle_request(int fd)
 	   4. if !async add (FILE . SOCK-FD) to list of client files
 	   5. call server-find-file with FILE and LINE */
 	if(read(fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)
-	   || (val = rep_make_string(len + 1)) == rep_NULL
+	   || (val = rep_make_string(len + 1)) == 0
 	   || read(fd, rep_STR(val), len) != len
 	   || read(fd, &tem, sizeof(unsigned long)) != sizeof(unsigned long))
 	    goto io_error;
@@ -96,18 +96,18 @@ server_handle_request(int fd)
 	   4. write length of result-string
 	   5. write LENGTH bytes of result string */
 	if(read(fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)
-	   || (val = rep_make_string(len + 1)) == rep_NULL
+	   || (val = rep_make_string(len + 1)) == 0
 	   || read(fd, rep_STR(val), len) != len)
 	    goto io_error;
 	rep_STR(val)[len] = 0;
 	val = Fread(Fcons(rep_MAKE_INT(0), val));
-	if(val != rep_NULL)
+	if(val != 0)
 	    val = Feval(val);
 	if (req != req_eval_async)
 	{
-	    if(val != rep_NULL)
+	    if(val != 0)
 		val = Fformat(rep_LIST_3(Qnil, rep_VAL(&val_fmt), val));
-	    if(val != rep_NULL && rep_STRINGP(val))
+	    if(val != 0 && rep_STRINGP(val))
 	    {
 		len = rep_STRING_LEN(val);
 		if(write(fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)
@@ -283,7 +283,7 @@ Stops listening for client messages.
 	close(socket_fd);
 	socket_fd = -1;
 	unlink(rep_STR(socket_name));
-	socket_name = rep_NULL;
+	socket_name = 0;
     }
     return(Qt);
 }
@@ -311,7 +311,7 @@ which denotes no errors. Returns nil if the file doesn't have a client.
 	file = Fcanonical_file_name(file);
 	rep_POPGC;
 	if(!file || !rep_STRINGP(file))
-	    return rep_NULL;
+	    return 0;
     }
 
     tmp = client_list;

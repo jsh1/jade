@@ -46,7 +46,7 @@ static void
 coalesce_undo(Lisp_Buffer *tx)
 {
     if(!in_undo
-       && (tx->pending_undo_list != rep_NULL))
+       && (tx->pending_undo_list != 0))
     {
 	repv tmp = Fnreverse(tx->did_undo_list);
 	if(tmp)
@@ -64,7 +64,7 @@ coalesce_undo(Lisp_Buffer *tx)
 					       tx->pending_undo_list));
 	}
 	tx->did_undo_list = Qnil;
-	tx->pending_undo_list = rep_NULL;
+	tx->pending_undo_list = 0;
 	last_undid_tx = NULL;
     }
 }
@@ -121,7 +121,7 @@ undo_record_deletion(Lisp_Buffer *tx, repv start, repv end)
     if((tx->car & TXFF_NO_UNDO) == 0 && !POS_EQUAL_P(start, end))
     {
 	repv string;
-	if((pending_deletion_string != rep_NULL)
+	if((pending_deletion_string != 0)
 	   && (pending_deletion_tx = tx)
 	   && (POS_EQUAL_P(pending_deletion_start, start))
 	   && (POS_EQUAL_P(pending_deletion_end, end)))
@@ -151,7 +151,7 @@ undo_record_deletion(Lisp_Buffer *tx, repv start, repv end)
 	tx->undo_list = Fcons(Fcons(start, string),
 				   tx->undo_list);
     }
-    pending_deletion_string = rep_NULL;
+    pending_deletion_string = 0;
 }
 
 /* Lets the saved deletion be used for more than the undo list. Call
@@ -258,7 +258,7 @@ taken from the prefix argument.
     intptr_t count = rep_INTP(arg) ? rep_INT(arg) : 1;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
-    if(VBUFFER(tx)->pending_undo_list == rep_NULL)
+    if(VBUFFER(tx)->pending_undo_list == 0)
     {
 	/* First call. */
 	VBUFFER(tx)->pending_undo_list = VBUFFER(tx)->undo_list;

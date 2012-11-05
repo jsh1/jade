@@ -334,7 +334,7 @@ that character classes are still case-significant.
 	}
 	return(ret);
     }
-    return rep_NULL;
+    return 0;
 }
 
 DEFUN("re-search-backward", Fre_search_backward, Sre_search_backward, (repv re, repv pos, repv tx, repv nocase_p), rep_Subr4) /*
@@ -371,7 +371,7 @@ that character classes are still case-significant.
 	}
 	return(ret);
     }
-    return rep_NULL;
+    return 0;
 }
 
 DEFUN("search-forward", Fsearch_forward, Ssearch_forward, (repv str, repv pos, repv tx, repv nocasep), rep_Subr4) /*
@@ -421,7 +421,7 @@ match data.
 	}
 	return(Qnil);
     }
-    return rep_NULL;
+    return 0;
 }
 
 DEFUN("search-backward", Fsearch_backward, Ssearch_backward, (repv str, repv pos, repv tx, repv nocasep), rep_Subr4) /*
@@ -471,7 +471,7 @@ match data.
 	}
 	return(Qnil);
     }
-    return rep_NULL;
+    return 0;
 }
 
 DEFUN("char-search-forward", Fchar_search_forward, Schar_search_forward, (repv ch, repv pos, repv tx), rep_Subr3) /*
@@ -495,7 +495,7 @@ with CHAR. Returns the position of the next match or nil.
 	    return make_pos(PCOL(&tem), PROW(&tem));
 	return(Qnil);
     }
-    return rep_NULL;
+    return 0;
 }
 
 DEFUN("char-search-backward", Fchar_search_backward, Schar_search_backward, (repv ch, repv pos, repv tx), rep_Subr3) /*
@@ -519,7 +519,7 @@ with CHAR. Returns the position of the next match or nil.
 	    return make_pos(PCOL(&tem), PROW(&tem));
 	return(Qnil);
     }
-    return rep_NULL;
+    return 0;
 }
 
 DEFUN("looking-at", Flooking_at, Slooking_at, (repv re, repv pos, repv tx, repv nocase_p), rep_Subr4) /*
@@ -551,7 +551,7 @@ Returns t if REGEXP matches the text at POS. Updates the match data.
 	    return res;
 	}
     }
-    return rep_NULL;
+    return 0;
 }
 
 DEFUN("buffer-compare-string", Fbuffer_compare_string, Sbuffer_compare_string,
@@ -597,7 +597,7 @@ the match data.
 	    return Qnil;
     }
     else
-	return rep_NULL;
+	return 0;
 }
 
 void

@@ -1184,7 +1184,7 @@ rendered.
     if(check_line(VBUFFER(tx), pos))
 	return make_pos(glyph_col(VBUFFER(tx), VCOL(pos), VROW(pos)), VROW(pos));
     else
-	return rep_NULL;
+	return 0;
 }
 
 DEFUN("glyph-to-char-pos", Fglyph_to_char_pos, Sglyph_to_char_pos, (repv pos, repv tx), rep_Subr2) /*
@@ -1201,7 +1201,7 @@ position.
     if(check_line(VBUFFER(tx), pos))
 	return make_pos(char_col(VBUFFER(tx), VCOL(pos), VROW(pos)), VROW(pos));
     else
-	return rep_NULL;
+	return 0;
 }
 
 DEFUN("display-to-char-pos", Fdisplay_to_char_pos,
@@ -1258,7 +1258,7 @@ not currently being displayed, return nil.
 	vw = rep_VAL(curr_vw);
     tx = VVIEW(vw)->tx;
     if(!check_line(tx, pos))
-	return rep_NULL;
+	return 0;
     if(POS_LESS_P(pos, VVIEW(vw)->display_origin))
 	return Qnil;
 
@@ -1361,13 +1361,13 @@ for each character CHARACTER in any buffers which use the GLYPH-TABLE.
     if((rep_INT(ch) < 0) || (rep_INT(ch) >= 256))
     {
 	rep_signal_arg_error(ch, 1);
-	return rep_NULL;
+	return 0;
     }
     glyphlen = rep_STRING_LEN(glyph);
     if(glyphlen > 4)
     {
 	rep_signal_arg_error(glyph, 2);
-	return rep_NULL;
+	return 0;
     }
     VGLYPHTAB(gt)->gt_Widths[rep_INT(ch)] = glyphlen;
     if(glyphlen == 0)
@@ -1394,7 +1394,7 @@ GLYPH-TABLE.
     if((rep_INT(ch) < 0) || (rep_INT(ch) >= 256))
     {
 	rep_signal_arg_error(ch, 1);
-	return rep_NULL;
+	return 0;
     }
     return(rep_string_dupn((char *)&VGLYPHTAB(gt)->gt_Glyphs[rep_INT(ch)][0],
 		       VGLYPHTAB(gt)->gt_Widths[rep_INT(ch)]));

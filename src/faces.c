@@ -367,7 +367,7 @@ merge_faces(Lisp_View *vw, Lisp_Extent *e, int in_block, int on_cursor)
     /* Merge in the default-face properties */
     {
 	repv face = Fsymbol_value (Qdefault_face, Qt);
-	if(face != rep_NULL && FACEP(face))
+	if(face != 0 && FACEP(face))
 	    union_face(&c, VFACE(face));
     }
 

@@ -188,7 +188,7 @@ static repv
 inner_main (repv arg)
 {
     repv res = rep_load_environment (rep_string_dup ("jade"));
-    if (res != rep_NULL)
+    if (res != 0)
     {
 	if(!batch_mode_p ())
 	    res = rep_top_level_recursive_edit ();

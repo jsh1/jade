@@ -217,7 +217,7 @@ the buffer (ignoring the current restriction).
     rep_PUSHGC(gc_end, end);
     handler = rep_get_handler_from_file_or_name(&file, rep_op_write_buffer_contents);
     rep_POPGC; rep_POPGC;
-    if(handler == rep_NULL)
+    if(handler == 0)
 	return handler;
 
     if(!POSP(start))
@@ -285,7 +285,7 @@ object to be used. Also removes any restriction on BUFFER.
     repv handler
 	= rep_get_handler_from_file_or_name(&file, rep_op_read_file_contents);
     Lisp_Buffer *tx = curr_vw->tx;
-    if(handler == rep_NULL)
+    if(handler == 0)
 	return handler;
 
     Funrestrict_buffer(rep_VAL(tx));
@@ -294,7 +294,7 @@ object to be used. Also removes any restriction on BUFFER.
     {
 	FILE *fh;
 	intptr_t file_length;
-	repv res = rep_NULL;
+	repv res = 0;
 	repv start;
 
 	if(rep_FILEP(file))
@@ -343,7 +343,7 @@ before the cursor in the current buffer.
 {
     repv handler
 	= rep_get_handler_from_file_or_name(&file, rep_op_insert_file_contents);
-    if(handler == rep_NULL)
+    if(handler == 0)
 	return handler;
     if(rep_NILP(handler))
     {
@@ -354,7 +354,7 @@ before the cursor in the current buffer.
 	repv pos = curr_vw->cursor_pos;
 
 	if (!pad_pos(tx, pos))
-	    return rep_NULL;
+	    return 0;
 
 	if(rep_FILEP(file))
 	    fh = rep_FILE(file)->file.fh;
@@ -365,7 +365,7 @@ before the cursor in the current buffer.
 		return rep_signal_file_error(file);
 	}
 
-	while(pos != rep_NULL && (len = fread(buf, 1, BUFSIZ, fh)) > 0)
+	while(pos != 0 && (len = fread(buf, 1, BUFSIZ, fh)) > 0)
 	    pos = insert_string(tx, buf, len, pos);
 
 	if(!rep_FILEP(file))

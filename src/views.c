@@ -662,7 +662,7 @@ format_mode_value(repv format, Lisp_View *vw, char *buf, intptr_t buf_len)
 		    tem = rep_CAR(rep_CDR(rep_CDR(item)));
 		else
 		    tem = Qnil;
-		if(tem != rep_NULL && !rep_NILP(tem))
+		if(tem != 0 && !rep_NILP(tem))
 		    done = buf_len - format_mode_value(tem, vw, buf, buf_len);
 	    }
 	    buf += done; buf_len -= done;
@@ -1144,7 +1144,7 @@ view_sweep(void)
 static void
 view_mark (repv val)
 {
-    while (val != rep_NULL)
+    while (val != 0)
     {
 	rep_MARKVAL(rep_VAL(VVIEW(val)->tx));
 	rep_MARKVAL(VVIEW(val)->buffer_list);
@@ -1154,7 +1154,7 @@ view_mark (repv val)
 	rep_MARKVAL(VVIEW(val)->block_start);
 	rep_MARKVAL(VVIEW(val)->block_end);
 	val = rep_VAL(VVIEW(val)->next_view);
-	if (val != rep_NULL)
+	if (val != 0)
 	    rep_GC_SET_CELL (val);
     }
 }    

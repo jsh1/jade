@@ -339,7 +339,7 @@ mac_event_loop (void)
 	rep_proc_periodically ();
 
 	/* Check for exceptional conditions. */
-	if(rep_throw_value != rep_NULL)
+	if(rep_throw_value)
 	{
 	    repv result;
 	    if(rep_handle_input_exception (&result))

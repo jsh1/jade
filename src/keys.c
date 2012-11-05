@@ -102,13 +102,13 @@ search_keymap(repv km, unsigned long code, unsigned long mods, bool (*callback)(
     if(rep_VECTORP(km))
     {
 	if(rep_VECT_LEN(km) != KEYTAB_SIZE)
-	    return rep_NULL;
+	    return 0;
 	km = rep_VECTI(km, KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE);
     }
     else if rep_CONSP(km)
 	km = rep_CDR(km);
     else
-	return rep_NULL;
+	return 0;
 
     /* Scan them for a match.. */
     while(rep_CONSP(km))
@@ -129,16 +129,16 @@ search_keymap(repv km, unsigned long code, unsigned long mods, bool (*callback)(
 	    /* An inherited sub-keymap. Start scanning it */
 	    km = rep_CDR(km);
     }
-    return rep_NULL;
+    return 0;
 }
 
 /* Search for a binding of CODE&MODS.  */
 static repv
 lookup_binding(unsigned long code, unsigned long mods, bool (*callback)(repv key))
 {
-    repv k = rep_NULL, nkp = next_keymap_path;
-    next_keymap_path = rep_NULL;
-    if(nkp == rep_NULL || nkp == Qglobal_keymap)
+    repv k = 0, nkp = next_keymap_path;
+    next_keymap_path = 0;
+    if(nkp == 0 || nkp == Qglobal_keymap)
     {
 	repv tem;
 
@@ -217,7 +217,7 @@ lookup_binding(unsigned long code, unsigned long mods, bool (*callback)(repv key
 	}
 	rep_POPGC;
     }
-    return (k != rep_NULL && KEYP(k)) ? KEY_COMMAND(k) : rep_NULL;
+    return (k != 0 && KEYP(k)) ? KEY_COMMAND(k) : 0;
 }
 
 static bool
@@ -248,7 +248,7 @@ eval_input_callback(repv key)
 		rep_POPGC;
 		rep_POP_CALL(lc);
 #endif
-		if(cmd == rep_NULL)
+		if(cmd == 0)
 		    return false;
 	    }
 	}
@@ -263,7 +263,7 @@ eval_input_callback(repv key)
     }
     if (cmd == Qnil)
 	return false;
-    next_keymap_path = rep_NULL;
+    next_keymap_path = 0;
     return true;
 }
 
@@ -306,18 +306,18 @@ inner_eval_input_event(repv data_)
 	current_event[1] = mods;
 	current_os_event = OSInputMsg;
 	cmd = lookup_binding(code, mods, eval_input_callback);
-	if(cmd != rep_NULL)
+	if(cmd != 0)
 	{
 	    /* Found a binding for this event; evaluate it. */
 	    result = Fcall_command(cmd, Qnil);
 	}
-	else if(next_keymap_path != rep_NULL)
+	else if(next_keymap_path != 0)
 	{
 	    /* We already handled some prefixes. */
 	    Fset (Qthis_command, Qkeymap);
 	    result = Qnil;
 	}
-	else if(orig_next_keymap_path != rep_NULL
+	else if(orig_next_keymap_path != 0
 		&& !rep_NILP(orig_next_keymap_path)
 		&& orig_next_keymap_path != Qglobal_keymap)
 	{
@@ -330,7 +330,7 @@ inner_eval_input_event(repv data_)
 	{
 	    /* An unbound key with no prefix keys. */
 	    result = Fcall_hook(Qunbound_key_hook, Qnil, Qor);
-	    if(result != rep_NULL && rep_NILP(result)
+	    if(result != 0 && rep_NILP(result)
 	       && (mods & EV_TYPE_KEYBD) && OSInputMsg)
 	    {
 		/* Try to self-insert */
@@ -343,7 +343,7 @@ inner_eval_input_event(repv data_)
 		    {
 			if(!read_only_pos(vw->tx, vw->cursor_pos))
 			{
-			    repv old_undo_head = rep_NULL;
+			    repv old_undo_head = 0;
 			    Fcall_hook(Qpre_command_hook,
 					  Qnil, Qnil);
 			    if(Fsymbol_value (Qlast_command, Qt) == Qt
@@ -384,7 +384,7 @@ inner_eval_input_event(repv data_)
 						      len, vw->cursor_pos);
 				}
 			    }
-			    if(old_undo_head != rep_NULL)
+			    if(old_undo_head != 0)
 			    {
 				rep_CDR(old_undo_head) = vw->tx->undo_list;
 				vw->tx->undo_list = old_undo_head;
@@ -395,7 +395,7 @@ inner_eval_input_event(repv data_)
 			    result = Qt;
 			}
 			else
-			    result = rep_NULL;
+			    result = 0;
 		    }
 		}
 		else
@@ -417,11 +417,11 @@ inner_eval_input_event(repv data_)
 	if(print_prefix)
 	{
 	    print_event_prefix();
-	    if(next_keymap_path == rep_NULL && !pending_meta)
+	    if(next_keymap_path == 0 && !pending_meta)
 		print_prefix = false;
 	}
     }
-    if(next_keymap_path == rep_NULL && !pending_meta)
+    if(next_keymap_path == 0 && !pending_meta)
 	event_index = 0;
     return(result);
 }
@@ -627,9 +627,9 @@ Returns KEYMAP when successful.
 ::end:: */
 {
     bool rc = true;
-    repv km, arg1, res = rep_NULL;
+    repv km, arg1, res = 0;
     if(!rep_CONSP(args))
-	return rep_NULL;
+	return 0;
     km = rep_CAR(args);
     args = rep_CDR(args);
     while(rc && rep_CONSP(args) && rep_CONSP(rep_CDR(args)))
@@ -655,7 +655,7 @@ Returns KEYMAP when successful.
 	}
 	rc = false;
 	key = MAKE_KEY(MAKE_EVENT(rep_MAKE_INT(code), rep_MAKE_INT(mods)), rep_CAR(args));
-	if(key != rep_NULL)
+	if(key != 0)
 	{
 	    if(rep_VECTORP(km))
 	    {
@@ -683,9 +683,9 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
 ::end:: */
 {
     bool rc = true;
-    repv km, arg1, res = rep_NULL;
+    repv km, arg1, res = 0;
     if(!rep_CONSP(args))
-	return rep_NULL;
+	return 0;
     km = rep_CAR(args);
     if(!((rep_VECTORP(km) && rep_VECT_LEN(km) == KEYTAB_SIZE)
        || rep_CONSP(km)))
@@ -737,7 +737,7 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
 		   the initial keymap. */
 		break;
 
-	    rep_TEST_INT; if(rep_INTERRUPTP) return rep_NULL;
+	    rep_TEST_INT; if(rep_INTERRUPTP) return 0;
 	}
 	rc = true;
 	args = rep_CDR(args);
@@ -880,7 +880,7 @@ Return the command currently associated with the event EVENT.
 				    Qnil));
 	}
     }
-    next_keymap_path = rep_NULL;
+    next_keymap_path = 0;
     return res ? res : Qnil;
 }
 
@@ -930,7 +930,7 @@ print_event_prefix(void)
     int i;
     char buf[256];
     char *bufp = buf;
-    if((next_keymap_path == rep_NULL && !pending_meta)
+    if((next_keymap_path == 0 && !pending_meta)
        && (!print_prefix || printed_this_prefix))
     {
 	print_prefix = false;
@@ -946,7 +946,7 @@ print_event_prefix(void)
 	    *bufp++ = ' ';
 	}
     }
-    if(next_keymap_path != rep_NULL || pending_meta)
+    if(next_keymap_path != 0 || pending_meta)
     {
 	if(bufp > buf)
 	    bufp--;			/* erase the last space */
@@ -972,7 +972,7 @@ keys_init(void)
     rep_INTERN(keymap);
     rep_INTERN_SPECIAL(minor_mode_keymap_alist);
     rep_INTERN(next_keymap_path);
-    next_keymap_path = rep_NULL;
+    next_keymap_path = 0;
     rep_mark_static(&next_keymap_path);
     rep_INTERN(mouse_keymap);
 

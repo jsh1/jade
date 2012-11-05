@@ -585,7 +585,7 @@ sys_get_mouse_pos(Lisp_Window *w)
 			    (y - w->pixel_top) / w->font_height);
 	}
 	else
-	    return rep_NULL;
+	    return 0;
     }
     else
 	return make_pos(x11_current_mouse_x, x11_current_mouse_y);

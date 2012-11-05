@@ -97,7 +97,7 @@ ATTRS is an alist with any of the following pairs:
 
     tem = Fassq (Qbuffer, attrs);
     if (!tem)
-	return rep_NULL;
+	return 0;
     if (tem != Qnil)
 	tx = rep_CDR(tem);
     else
@@ -105,7 +105,7 @@ ATTRS is an alist with any of the following pairs:
 
     tem = Fassq (Qposition, attrs);
     if (!tem)
-	return rep_NULL;
+	return 0;
     if (tem != Qnil && rep_CONSP(rep_CDR(tem)))
     {
 	dims[0] = rep_INT(rep_CADR(tem));
@@ -114,7 +114,7 @@ ATTRS is an alist with any of the following pairs:
 
     tem = Fassq (Qdimensions, attrs);
     if (!tem)
-	return rep_NULL;
+	return 0;
     if (tem != Qnil && rep_CONSP(rep_CDR(tem)))
     {
 	dims[2] = rep_INT(rep_CADR(tem));
@@ -123,7 +123,7 @@ ATTRS is an alist with any of the following pairs:
 
     tem = Fassq (Qfont, attrs);
     if (!tem)
-	return rep_NULL;
+	return 0;
     if (tem != Qnil)
 	font = rep_CDR(tem);
     else if (curr_win != 0)
@@ -182,7 +182,7 @@ ATTRS is an alist with any of the following pairs:
 	}
 	rep_free(w);
     }
-    return rep_NULL;
+    return 0;
 }
 
 /* Close window W. */
@@ -611,7 +611,7 @@ bottom order, ending with the mini-buffer.
     for(vw = VWINDOW(win)->view_list; vw != 0; vw = vw->next_view)
     {
 	if(!(*ptr = Fcons(rep_VAL(vw), Qnil)))
-	    return rep_NULL;
+	    return 0;
 	ptr = &rep_CDR(*ptr);
     }
     return res;

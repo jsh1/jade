@@ -61,7 +61,7 @@ DEFSYM(current_prefix_arg, "current-prefix-arg");
 static repv
 interactive_spec(repv cmd)
 {
-    repv fun, spec = rep_NULL;
+    repv fun, spec = 0;
     if(rep_SYMBOLP(cmd))
 	cmd = Fsymbol_value(cmd, Qt);
 again:
@@ -81,8 +81,8 @@ again:
 	    {
 		/* A lambda expression, test its first proper form. */
 		fun = Fnthcdr(rep_MAKE_INT(2), fun);
-		if(fun == rep_NULL)
-		    return rep_NULL;
+		if(fun == 0)
+		    return 0;
 		if(rep_CONSP(fun)
 		   && (rep_STRINGP(rep_CAR(fun)) || rep_INTP(rep_CAR(fun)))
 		   && rep_CONSP(rep_CDR(fun)))
@@ -114,7 +114,7 @@ again:
 		cmd = rep_load_autoload(cmd);
 		rep_POP_CALL(lc);
 #endif
-		if(cmd != rep_NULL)
+		if(cmd != 0)
 		    goto again;
 	    }
 	}
@@ -141,7 +141,7 @@ current-prefix-arg. This is used in call-command's interactive spec so that
 any entered arg is given to the invoked COMMAND.
 ::end:: */
 {
-    repv res = rep_NULL;
+    repv res = 0;
     Fset (Qthis_command, cmd);
 
     /* Move the prefix arg. */
@@ -162,7 +162,7 @@ any entered arg is given to the invoked COMMAND.
 	rep_GC_root gc_cmd;
 	bool clear_block = false, goto_result = false, set_before_goto = false;
 
-	if(int_spec == rep_NULL)
+	if(int_spec == 0)
 	{
 	    Fsignal(Qerror, rep_list_2(rep_VAL(&not_command), cmd));
 	    goto exit;
@@ -280,7 +280,7 @@ any entered arg is given to the invoked COMMAND.
 			                 : Fblock_end(Qnil);
 			if(!arg || rep_NILP(arg))
 			{
-			    arg = rep_NULL;
+			    arg = 0;
 			    Fsignal(Qerror, rep_LIST_1(rep_VAL(&no_block)));
 			}
 			break;
@@ -324,18 +324,18 @@ any entered arg is given to the invoked COMMAND.
 			can_be_nil = true;
 			break;
 		    default:
-			arg = rep_NULL;
+			arg = 0;
 			Fsignal(Qinteractive, rep_list_2(cmd, int_spec));
 		    }
 		    if(!arg)
 		    {
-			args = rep_NULL;
+			args = 0;
 			break;
 		    }
 		    if(!can_be_nil && rep_NILP(arg))
 		    {
 			Fsignal(Qerror, rep_list_2(rep_VAL(&nil_arg), cmd));
-			args = rep_NULL;
+			args = 0;
 			break;
 		    }
 		}
@@ -360,7 +360,7 @@ any entered arg is given to the invoked COMMAND.
 	}
 	rep_POPGC;
 
-	if(goto_result && res != rep_NULL && POSP(res))
+	if(goto_result && res != 0 && POSP(res))
 	{
 	    if(set_before_goto)
 	    {
@@ -502,7 +502,7 @@ Returns t if COMMAND may be called interactively.
     if(!rep_VOIDP(cmd) && !rep_NILP(cmd))
     {
 	if((((rep_TYPE(cmd) >= rep_Subr0) && (rep_TYPE(cmd) <= rep_SubrN))
-	    && (rep_SUBR(cmd)->int_spec != rep_NULL))
+	    && (rep_SUBR(cmd)->int_spec != 0))
 	   || (rep_COMPILEDP(cmd) && !rep_NILP(rep_COMPILED_INTERACTIVE(cmd))))
 	    return(Qt);
 	else if(rep_CONSP(cmd))
@@ -510,15 +510,15 @@ Returns t if COMMAND may be called interactively.
 	    if(rep_CAR(cmd) == Qautoload)
 	    {
 		cmd = Fnth(rep_MAKE_INT(3), cmd);
-		if(cmd != rep_NULL && !rep_NILP(cmd))
+		if(cmd != 0 && !rep_NILP(cmd))
 		    return(Qt);
 	    }
 	    else if(rep_CAR(cmd) == Qlambda)
 	    {
 		/* A lambda expression, test its first proper form. */
 		cmd = Fnthcdr(rep_MAKE_INT(2), cmd);
-		if(cmd == rep_NULL)
-		    return rep_NULL;
+		if(cmd == 0)
+		    return 0;
 		if(rep_CONSP(cmd)
 		   && (rep_STRINGP(rep_CAR(cmd)) || rep_INTP(rep_CAR(cmd)))
 		   && rep_CONSP(rep_CDR(cmd)))
