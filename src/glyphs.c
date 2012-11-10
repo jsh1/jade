@@ -463,8 +463,7 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 	    {
 		while(glyph_row < last_row && src_len-- > 0)
 		{
-		    unsigned int c;
-		    uint8_t *ptr;
+		    uint8_t c, *ptr;
 		    int width;
 
 		    CHECK_EXTENT();
@@ -507,8 +506,7 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 	    {
 		while(real_glyph_col < vw->width && src_len-- > 0)
 		{
-		    unsigned int c;
-		    uint8_t *ptr;
+		    uint8_t c, *ptr;
 		    int width;
 
 		    CHECK_EXTENT();
@@ -993,7 +991,7 @@ uncached_string_glyph_length(Lisp_Buffer *tx, const char *src, intptr_t srcLen)
     width_table = &VGLYPHTAB(gt)->gt_Widths;
     for(w = 0; srcLen-- > 0;)
     {
-	unsigned int c = *src++;
+	uint8_t c = *src++;
 	int w1 = (*width_table)[c];
 	if(w1 != 0)
 	    w += w1;
@@ -1115,7 +1113,7 @@ char_col(Lisp_Buffer *tx, intptr_t col, intptr_t linenum)
     width_table = &VGLYPHTAB(gt)->gt_Widths;
     while((w < col) && (srclen-- > 0))
     {
-	unsigned int c = *src++;
+	uint8_t c = *src++;
 	int w1 = (*width_table)[c];
 	if(w1 == 0)
 	    w += tx->tab_size - (w % tx->tab_size);

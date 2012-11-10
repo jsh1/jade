@@ -1,3 +1,9 @@
+2012-11-10  John Harper  <jsh@unfactored.org>
+
+	* undo.c, redisplay.c, mac_windows.m, glyphs.c, editcommands.c:
+	fix some sign-extension-and-overflow issues introduced when
+	eliminating u_char, and eliminate the remaining uses of u_char
+
 2012-11-03  John Harper  <jsh@unfactored.org>
 
 	* windows.c, views.c, undo.c, regsub.c, redisplay.c,

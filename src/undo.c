@@ -297,7 +297,8 @@ taken from the prefix argument.
 	    {
 		/* A deleted character */
 		repv tmp = rep_make_string(2);
-		((u_char *)rep_STR(tmp))[0] = (unsigned int)rep_INT(rep_CDR(item));
+		uint8_t c = rep_INT(rep_CDR(item));
+		rep_STR(tmp)[0] = c;
 		rep_STR(tmp)[1] = 0;
 		tmp = Finsert(tmp, rep_CAR(item), tx);
 		if(tmp && !rep_NILP(tmp))

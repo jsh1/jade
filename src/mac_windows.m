@@ -514,9 +514,10 @@ sys_draw_glyphs(Lisp_Window *w, int col, int row, glyph_attr attr, char *str,
 
 	for (i = 0; i < len; i++)
 	{
+	    uint8_t c = str[i];
 	    pt[i].x = x + w->font_width * i;
 	    pt[i].y = y - view->_font_ascent;
-	    glyphs[i] = view->_glyph_table[((u_char *)str)[i]];
+	    glyphs[i] = view->_glyph_table[c];
 	}
 
 	CGContextShowGlyphsAtPositions (ctx, glyphs, pt, len);

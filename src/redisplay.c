@@ -84,7 +84,7 @@ alloc_glyph_buf(intptr_t cols, intptr_t rows)
     else
     {
 	/* Initialise pointers */
-	u_char *p = ((u_char *)g) + sizeof(glyph_buf);
+	uint8_t *p = ((uint8_t *)g) + sizeof(glyph_buf);
 	intptr_t i;
 	g->cols = cols;
 	g->rows = rows;
@@ -357,7 +357,7 @@ dump_script(struct edit_script *start)
 }
 
 static void
-dump_glyph_line (u_char *data, intptr_t length)
+dump_glyph_line (uint8_t *data, intptr_t length)
 {
     fputs ("{ ", stderr);
     fwrite (data, length, 1, stderr);

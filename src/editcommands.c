@@ -336,7 +336,7 @@ unchanged.
 	    str = VBUFFER(tx)->lines[linenum].ln_Line + col;
 	    while(col++ < llen)
 	    {
-		unsigned int c = *str;
+		uint8_t c = *str;
 		*str++ = (c < tablen) ? rep_STR(table)[c] : c;
 	    }
 	    linenum++;
@@ -345,7 +345,7 @@ unchanged.
 	str = VBUFFER(tx)->lines[linenum].ln_Line + col;
 	while(col++ < VCOL(end))
 	{
-	    unsigned int c = *str;
+	    uint8_t c = *str;
 	    *str++ = (c < tablen) ? rep_STR(table)[c] : c;
 	}
 	return(Qt);
