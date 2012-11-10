@@ -171,7 +171,7 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 	repv glyph_tab = Fbuffer_symbol_value(Qglyph_table,
 					      vw->display_origin,
 					      rep_VAL(vw->tx), Qt);
-	glyph_attr attr = 0;
+	uint8_t attr = 0;
 	int tab_size = vw->tx->tab_size;
 	intptr_t first_col, first_row, first_char_col;
 	int glyph_row, last_row, char_row;
@@ -274,8 +274,8 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 	{
 	    /* Fill in the glyphs for CHAR_ROW */
 
-	    glyph_code *codes = w->new_content->codes[glyph_row];
-	    glyph_attr *attrs = w->new_content->attrs[glyph_row];
+	    uint8_t *codes = w->new_content->codes[glyph_row];
+	    uint8_t *attrs = w->new_content->attrs[glyph_row];
 
 	    char *src = vw->tx->lines[char_row].ln_Line;
 	    intptr_t src_len = vw->tx->lines[char_row].ln_Strlen - 1;
@@ -598,8 +598,7 @@ make_window_glyphs(glyph_buf *g, Lisp_Window *w)
 	if((vw->car & VWFF_MINIBUF) == 0)
 	{
 	    repv face;
-	    glyph_code *codes;
-	    glyph_attr *attrs;
+	    uint8_t *codes, *attrs;
 
 	    face = Fsymbol_value (Qmodeline_face, Qt);
 	    if(FACEP(face))
@@ -628,7 +627,7 @@ make_message_glyphs(glyph_buf *g, Lisp_Window *w)
     /* TODO: use glyph table to output message */
 
     repv face;
-    glyph_attr attr;
+    uint8_t attr;
 
     int msg_len = w->message_length;
     char *msg = w->message;

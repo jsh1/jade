@@ -613,7 +613,7 @@ face_to_gc(GtkJade *jade, Merged_Face *f, bool invert)
 }
 
 void
-sys_draw_glyphs(Lisp_Window *w, int col, int row, glyph_attr attr, char *str,
+sys_draw_glyphs(Lisp_Window *w, int col, int row, uint8_t attr, char *str,
 		int len, bool all_spaces)
 {
     GtkJade *jade = w->w_Window;

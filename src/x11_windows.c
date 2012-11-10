@@ -345,7 +345,7 @@ face_to_gc(Lisp_Window *w, Merged_Face *f, bool invert)
 }
 
 void
-sys_draw_glyphs(Lisp_Window *w, int col, int row, glyph_attr attr, char *str,
+sys_draw_glyphs(Lisp_Window *w, int col, int row, uint8_t attr, char *str,
 		int len, bool all_spaces)
 {
     bool invert = false;

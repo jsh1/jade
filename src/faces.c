@@ -398,7 +398,7 @@ mark_glyph_buf_faces(Lisp_Window *w, glyph_buf *g)
 
     for(row = 0; row < g->rows; row++)
     {
-	glyph_attr *attrs = g->attrs[row];
+	uint8_t *attrs = g->attrs[row];
 	for(col = 0; col < g->cols; col++)
 	{
 	    if(attrs[col] <= GA_LastFace)

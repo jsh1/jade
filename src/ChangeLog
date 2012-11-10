@@ -1,5 +1,10 @@
 2012-11-10  John Harper  <jsh@unfactored.org>
 
+	* x11_windows.c, redisplay.c, mac_windows.m, jade_subrs.h,
+	gtk_jade.c, glyphs.c, faces.c, edit.h: remove unnecessary
+	glyph_code and glyph_attr typedefs; glyph buffer hashes are now
+	64-bit on 64-bit systems
+
 	* server-dl.c, jadeclient.c: clean this up, use sensible types
 
 	* undo.c, redisplay.c, mac_windows.m, glyphs.c, editcommands.c:

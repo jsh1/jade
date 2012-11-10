@@ -73,11 +73,10 @@ glyph_buf *
 alloc_glyph_buf(intptr_t cols, intptr_t rows)
 {
     size_t size = (sizeof(glyph_buf)
-		   + sizeof(glyph_code *) * rows
-		   + sizeof(glyph_attr *) * rows
-		   + sizeof(uint32_t) * rows
-		   + sizeof(glyph_code) * rows * cols
-		   + sizeof(glyph_attr) * rows * cols);
+		   + sizeof(uint8_t *) * rows
+		   + sizeof(uint8_t *) * rows
+		   + sizeof(uintptr_t) * rows
+		   + sizeof(uint8_t) * rows * cols * 2);
     glyph_buf *g = rep_alloc(size);
     if(g == 0)
 	abort();
@@ -89,18 +88,18 @@ alloc_glyph_buf(intptr_t cols, intptr_t rows)
 	g->cols = cols;
 	g->rows = rows;
 	g->codes = (void *)p;
-	p += sizeof(glyph_code *) * rows;
+	p += sizeof(uint8_t *) * rows;
 	g->attrs = (void *)p;
-	p += sizeof(glyph_attr *) * rows;
+	p += sizeof(uint8_t *) * rows;
 	g->hashes = (void *)p;
-	p += sizeof(uint32_t) * rows;
+	p += sizeof(uintptr_t) * rows;
 	for(i = 0; i < rows; i++)
 	{
-	    memset (p, 0, cols * (sizeof (glyph_code) + sizeof (glyph_attr)));
+	    memset (p, 0, cols * sizeof(uint8_t) * 2);
 	    g->codes[i] = p;
-	    p += sizeof(glyph_code) * cols;
+	    p += sizeof(uint8_t) * cols;
 	    g->attrs[i] = p;
-	    p += sizeof(glyph_attr) * cols;
+	    p += sizeof(uint8_t) * cols;
 	}
     }
     return g;
@@ -117,21 +116,25 @@ void
 copy_glyph_buf(glyph_buf *dst, glyph_buf *src)
 {
     memcpy(dst->codes[0], src->codes[0],
-	   (sizeof(glyph_code) + sizeof(glyph_attr)) * dst->rows * dst->cols);
-    memcpy(dst->hashes, src->hashes, sizeof(uint32_t) * dst->rows);
+	   sizeof(uint8_t) * dst->rows * dst->cols * 2);
+    memcpy(dst->hashes, src->hashes, sizeof(dst->hashes[0]) * dst->rows);
 }
 
 /* Compute and return the hash code of line ROW in buffer G. */
-static inline uint32_t
+static inline uintptr_t
 hash_glyph_row(glyph_buf *g, intptr_t row)
 {
-    uint32_t value = 0;
+    uintptr_t value = 0;
     intptr_t togo = g->cols;
-    glyph_code *codes = g->codes[row];
-    glyph_attr *attrs = g->attrs[row];
+    uint8_t *codes = g->codes[row];
+    uint8_t *attrs = g->attrs[row];
 
     while(togo-- > 0)
-	value = (value * 33) + *codes++ + (*attrs++ << 8);
+    {
+	uintptr_t tem = *attrs++;
+	tem = (tem << 7) | *codes++;
+	value = (value * 33) + tem;
+    }
 
     return value;
 }
@@ -158,7 +161,7 @@ garbage_glyphs(Lisp_Window *w, intptr_t x, intptr_t y,
 	height = g->rows - y;
     while(height > 0)
     {
-	memset(g->attrs[y] + x * sizeof(glyph_attr), GA_Garbage, width);
+	memset(g->attrs[y] + x * sizeof(uint8_t), GA_Garbage, width);
 	g->hashes[y] = hash_glyph_row(g, y);
 	y++; height--;
     }
@@ -168,15 +171,14 @@ garbage_glyphs(Lisp_Window *w, intptr_t x, intptr_t y,
    buffer G2 (matching both codes and attributes). The hash arrays should
    have been filled in. In this function L1 and L2 count from zero.. */
 static inline bool
-compare_lines(glyph_buf *g1, glyph_buf *g2, intptr_t line1,
-	      intptr_t line2)
+compare_lines(glyph_buf *g1, glyph_buf *g2, intptr_t line1, intptr_t line2)
 {
 #if COMPARE_FAST_AND_LOOSE
     return g1->hashes[line1] == g2->hashes[line2];
 #else
     return (g1->hashes[line1] == g2->hashes[line2]
 	    && !memcmp(g1->codes[line1], g2->codes[line1],
-		       g1->cols * (sizeof(glyph_code) + sizeof(glyph_attr))));
+		       g1->cols * sizeof(uint8_t) * 2));
 #endif
 }
 
@@ -192,10 +194,10 @@ redisplay_do_draw(Lisp_Window *w, glyph_buf *old_g,
 {
     /* Draw LINE from NEW-G. OLD-G[LINE] _will_ reflect the currently
        displayed contents of LINE. */
-    glyph_code *old_codes = old_g->codes[line-1];
-    glyph_code *new_codes = new_g->codes[line-1];
-    glyph_attr *old_attrs = old_g->attrs[line-1];
-    glyph_attr *new_attrs = new_g->attrs[line-1];
+    uint8_t *old_codes = old_g->codes[line-1];
+    uint8_t *new_codes = new_g->codes[line-1];
+    uint8_t *old_attrs = old_g->attrs[line-1];
+    uint8_t *new_attrs = new_g->attrs[line-1];
 
     intptr_t prefix, suffix;
 
@@ -229,7 +231,7 @@ redisplay_do_draw(Lisp_Window *w, glyph_buf *old_g,
        just fill or clear a rectangle, instead of drawing the text) */
     while(prefix < suffix)
     {
-	glyph_attr attr = new_attrs[prefix];
+	uint8_t attr = new_attrs[prefix];
 	intptr_t end, len;
 	bool all_spaces = true;
 
@@ -270,9 +272,9 @@ redisplay_do_copy(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g,
     }
     
     memmove(old_g->codes[dst_line-1], old_g->codes[src_line-1],
-	    (sizeof(glyph_code) + sizeof(glyph_attr)) * n_lines * old_g->cols);
+	    sizeof(uint8_t) * n_lines * old_g->cols * 2);
     memmove(old_g->hashes + (dst_line-1), old_g->hashes + (src_line-1),
-	    sizeof(uint32_t) * n_lines);
+	    sizeof(old_g->hashes[0]) * n_lines);
 }
 
 
@@ -810,7 +812,7 @@ redisplay_message(Lisp_Window *w)
     /* Copy existing contents of the message to new_content */
     memcpy(w->new_content->codes[w->row_count - 1],
 	   w->content->codes[w->row_count - 1],
-	   w->column_count * (sizeof(glyph_code) + sizeof(glyph_attr)));
+	   w->column_count * sizeof(uint8_t) * 2);
     w->new_content->hashes[w->row_count-1] = w->content->hashes[w->row_count-1];
 
     make_message_glyphs(w->content, w);

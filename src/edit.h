@@ -361,9 +361,6 @@ typedef struct lisp_view {
 
 /* Windows */
 
-typedef uint8_t glyph_code;
-typedef uint8_t glyph_attr;
-
 enum Glyph_Attrs {
     GA_LastFace = 63,			/* max faces per window */
     GA_Garbage = 255,
@@ -371,9 +368,9 @@ enum Glyph_Attrs {
 
 typedef struct {
     int cols, rows;
-    glyph_code **codes;			/* ROWS glyph codes */
-    glyph_attr **attrs;			/* ROWS glyph attrs */
-    uint32_t *hashes;			/* ROWS hash values */
+    uint8_t **codes;			/* ROWS glyph codes */
+    uint8_t **attrs;			/* ROWS glyph attrs */
+    uintptr_t *hashes;			/* ROWS hash values */
 
     /* Note that attrs[i] follows immediately after codes[i], so that
        all data for a line can be copied by a single call to memcpy() */

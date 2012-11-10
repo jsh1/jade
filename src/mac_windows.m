@@ -427,7 +427,7 @@ sys_end_redisplay (Lisp_Window *w)
 }
 
 void
-sys_draw_glyphs(Lisp_Window *w, int col, int row, glyph_attr attr, char *str,
+sys_draw_glyphs(Lisp_Window *w, int col, int row, uint8_t attr, char *str,
 		int len, bool all_spaces)
 {
     JadeView *view = w->w_Window;
