@@ -1,5 +1,7 @@
 2012-11-10  John Harper  <jsh@unfactored.org>
 
+	* server-dl.c, jadeclient.c: clean this up, use sensible types
+
 	* undo.c, redisplay.c, mac_windows.m, glyphs.c, editcommands.c:
 	fix some sign-extension-and-overflow issues introduced when
 	eliminating u_char, and eliminate the remaining uses of u_char

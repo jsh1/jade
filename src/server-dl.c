@@ -55,12 +55,14 @@ DEFSTRING(val_fmt, "%S");
 static void
 server_handle_request(int fd)
 {
-    u_char req;
-    if(read(fd, &req, 1) != 1)
+    uint8_t req;
+    if(read(fd, &req, sizeof(req)) != sizeof(req))
 	goto disconnect;
+
     switch(req)
     {
-	unsigned long len, tem;
+	size_t len;
+	uintptr_t line;
 	repv val;
 
     case req_find_file:
@@ -70,16 +72,16 @@ server_handle_request(int fd)
 	   3. read the line number
 	   4. if !async add (FILE . SOCK-FD) to list of client files
 	   5. call server-find-file with FILE and LINE */
-	if(read(fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)
+	if(read(fd, &len, sizeof(len)) != sizeof(len)
 	   || (val = rep_make_string(len + 1)) == 0
 	   || read(fd, rep_STR(val), len) != len
-	   || read(fd, &tem, sizeof(unsigned long)) != sizeof(unsigned long))
+	   || read(fd, &line, sizeof(line)) != sizeof(line))
 	    goto io_error;
 	rep_STR(val)[len] = 0;
 	if (req != req_find_file_async)
 	    client_list = Fcons(Fcons(val, rep_MAKE_INT(fd)), client_list);
 	rep_call_lisp2(Fsymbol_value(Qserver_find_file, Qt),
-		       val, rep_MAKE_INT(tem));
+		       val, rep_make_long_int(line));
 	if (req != req_find_file_async)
 	{
 	    /* Block any more input on this fd until we've replied to
@@ -95,7 +97,7 @@ server_handle_request(int fd)
 	   3. eval and print FORM
 	   4. write length of result-string
 	   5. write LENGTH bytes of result string */
-	if(read(fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)
+	if(read(fd, &len, sizeof(len)) != sizeof(len)
 	   || (val = rep_make_string(len + 1)) == 0
 	   || read(fd, rep_STR(val), len) != len)
 	    goto io_error;
@@ -110,14 +112,14 @@ server_handle_request(int fd)
 	    if(val != 0 && rep_STRINGP(val))
 	    {
 		len = rep_STRING_LEN(val);
-		if(write(fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)
+		if(write(fd, &len, sizeof(len)) != sizeof(len)
 		   || write(fd, rep_STR(val), len) != len)
 		    goto io_error;
 	    }
 	    else
 	    {
 		len = 0;
-		if(write(fd, &len, sizeof(unsigned long)) != sizeof(unsigned long))
+		if(write(fd, &len, sizeof(len)) != sizeof(len))
 		    goto io_error;
 	    }
 	}
@@ -325,7 +327,7 @@ which denotes no errors. Returns nil if the file doesn't have a client.
 	{
 	    /* Send the result to our client. */
 	    int con_fd = rep_INT(rep_CDR(car));
-	    unsigned long result = rep_INTP(rc) ? rep_INT(rc) : 0;
+	    uintptr_t result = rep_get_long_uint(rc);
 	    if(write(con_fd, &result, sizeof(result)) != sizeof(result))
 		res = rep_signal_file_error(file);
 	    else

@@ -97,19 +97,19 @@ static void
 disconnect_from_jade(int sock_fd)
 {
     /* Overkill really. */
-    u_char req = req_end_of_session;
-    write(sock_fd, &req, 1);
+    uint8_t req = req_end_of_session;
+    write(sock_fd, &req, sizeof(req));
     close(sock_fd);
 }
 
 static unsigned long
-find_file(int sock_fd, char *arg, unsigned long linenum)
+find_file(int sock_fd, char *arg, uintptr_t linenum)
 {
     char buf[PATH_MAX];
     char *filename;
-    unsigned long filename_len;
-    u_char req = !opt_quiet ? req_find_file : req_find_file_async;
-    unsigned long result = 0;
+    size_t filename_len;
+    uint8_t req = !opt_quiet ? req_find_file : req_find_file_async;
+    uintptr_t result = 0;
 
     /* Make sure the filename is absolute; the server could have
        a different working directory to us.  */
@@ -134,19 +134,18 @@ find_file(int sock_fd, char *arg, unsigned long linenum)
     else
 	filename = arg;
 
-    /* Protocol is;
-		>req_find_file:1, >FILE-NAME-LEN:4,
-		>FILE-NAME:?, >LINE:4, <RES:4
-       all in the local byte-order. */
+    /* Protocol input is [req_find_file:uint8_t, FILE-NAME-LEN:size_t,
+       FILE-NAME:*, LINE:uintptr_t], output is [RES:uintptr_t], all in
+       the local byte-order. */
 
     filename_len = strlen(filename);
 
-    if(write(sock_fd, &req, 1) != 1
-       || write(sock_fd, &filename_len, sizeof(unsigned long)) != sizeof(unsigned long)
+    if(write(sock_fd, &req, sizeof(req)) != sizeof(req)
+       || write(sock_fd, &filename_len, sizeof(filename_len)) != sizeof(filename_len)
        || write(sock_fd, filename, filename_len) != filename_len
-       || write(sock_fd, &linenum, sizeof(unsigned long)) != sizeof(unsigned long)
+       || write(sock_fd, &linenum, sizeof(linenum)) != sizeof(linenum)
        || (req != req_find_file_async
-	   && read(sock_fd, &result, sizeof(unsigned long)) != sizeof(unsigned long)))
+	   && read(sock_fd, &result, sizeof(result)) != sizeof(result)))
     {
 	perror("find_file");
 	return 10;
@@ -157,23 +156,27 @@ find_file(int sock_fd, char *arg, unsigned long linenum)
 static unsigned long
 eval_lisp_form(int sock_fd, char *form)
 {
-    /* Protocol is; >req_eval:1, >FORM-LEN:4, >FORM:?, <RES-LEN:4, <RES:?
-       in the local byte-order. */
-    u_char req = !opt_quiet ? req_eval : req_eval_async;
-    unsigned long len = strlen(form);
+    /* Protocol input is [req_eval:uint8_t FORM-LEN:size_t FORM-STR:*],
+       output is [RES-LEN:size_t, RES-STR:*] in the local byte-order. */
+
+    uint8_t req = !opt_quiet ? req_eval : req_eval_async;
+    size_t len = strlen(form);
     char *result;
 
-    if(write(sock_fd, &req, 1) != 1
-       || write(sock_fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)
-       || write(sock_fd, form, len) != len
-       || (req != req_eval_async
-	   && read(sock_fd, &len, sizeof(unsigned long)) != sizeof(unsigned long)))
+    if(write(sock_fd, &req, sizeof(req)) != sizeof(req)
+       || write(sock_fd, &len, sizeof(len)) != sizeof(len)
+       || write(sock_fd, form, len) != len)
     {
 	perror("eval_req");
 	return 10;
     }
     if(req != req_eval_async)
     {
+	if (read(sock_fd, &len, sizeof(len)) != sizeof(len))
+	{
+	    perror("eval_req");
+	    return 10;
+	}
 	if(len > 0)
 	{
 	    result = malloc(len + 1);
