@@ -33,9 +33,9 @@
    executing regular expressions. */
 
 /* Set POS to the position of the first char in TX from POS that is in
-   the set of characters CHARS. Returns non-zero if such a character was
-   found, zero if not (POS undefined in this case). */
-int
+   the set of characters CHARS. Returns true if such a character was
+   found, false if not (POS undefined in this case). */
+bool
 buffer_strpbrk(Lisp_Buffer *tx, Pos *pos, const char *chars)
 {
     LINE *line = tx->lines + PROW(pos);
@@ -54,22 +54,22 @@ buffer_strpbrk(Lisp_Buffer *tx, Pos *pos, const char *chars)
 	if(ptr != NULL)
 	{
 	    PCOL(pos) = ptr - line->ln_Line;
-	    return 1;
+	    return true;
 	}
 	else if(chars_has_newline)
 	{
 	    PCOL(pos) = line->ln_Strlen - 1;
-	    return 1;
+	    return true;
 	}
 	PCOL(pos) = 0;
 	PROW(pos)++;
 	line++;
     }
-    return 0;
+    return false;
 }
 
 /* Same as buffer_strpbrk() but searches backwards. */
-int
+bool
 buffer_reverse_strpbrk(Lisp_Buffer *tx, Pos *pos, const char *chars)
 {
     LINE *line = tx->lines + PROW(pos);
@@ -79,7 +79,7 @@ buffer_reverse_strpbrk(Lisp_Buffer *tx, Pos *pos, const char *chars)
     {
 	PCOL(pos) = line->ln_Strlen - 1;
 	if(chars_has_newline)
-	    return 1;
+	    return true;
     }
     while(1)
     {
@@ -89,22 +89,21 @@ buffer_reverse_strpbrk(Lisp_Buffer *tx, Pos *pos, const char *chars)
 	    if(strchr(chars, *match) != NULL)
 	    {
 		PCOL(pos) = match - line->ln_Line;
-		return 1;
+		return true;
 	    }
 	    match--;
 	}
 	line--;
 	if(--PROW(pos) < tx->logical_start)
-	    return 0;
+	    return false;
 	PCOL(pos) = line->ln_Strlen - 1;
 	if(chars_has_newline)
-	    return 1;
+	    return true;
     }
 }
 
-/* Set POS to the first character C in TX from POS. Returns non-zero for
-   success. */
-int
+/* Set POS to the first character C in TX from POS. */
+bool
 buffer_strchr(Lisp_Buffer *tx, Pos *pos, char c)
 {
     LINE *line = tx->lines + PROW(pos);
@@ -120,12 +119,12 @@ buffer_strchr(Lisp_Buffer *tx, Pos *pos, char c)
 	if(PROW(pos) < tx->logical_end - 1)
 	{
 	    PCOL(pos) = tx->lines[PROW(pos)].ln_Strlen - 1;
-	    return 1;
+	    return true;
 	}
 	else
 	{
 	    /* no newline at end of buffer. */
-	    return 0;
+	    return false;
 	}
     }
     else
@@ -136,18 +135,18 @@ buffer_strchr(Lisp_Buffer *tx, Pos *pos, char c)
 	    if(match)
 	    {
 		PCOL(pos) = match - line->ln_Line;
-		return 1;
+		return true;
 	    }
 	    PROW(pos)++;
 	    PCOL(pos) = 0;
 	    line++;
 	}
-	return 0;
+	return false;
     }
 }
 
 /* Same as buffer_strchr() but searches backwards. */
-int
+bool
 buffer_reverse_strchr(Lisp_Buffer *tx, Pos *pos, char c)
 {
     LINE *line = tx->lines + PROW(pos);
@@ -158,15 +157,15 @@ buffer_reverse_strchr(Lisp_Buffer *tx, Pos *pos, char c)
     if(c == '\n')
     {
 	if(PCOL(pos) == line->ln_Strlen - 1)
-	    return 1;
+	    return true;
 	if(PROW(pos) == tx->logical_start)
-	    return 0;
+	    return false;
 	else
 	{
 	    line--;
 	    PROW(pos)--;
 	    PCOL(pos) = line->ln_Strlen - 1;
-	    return 1;
+	    return true;
 	}
     }
     else
@@ -179,12 +178,12 @@ buffer_reverse_strchr(Lisp_Buffer *tx, Pos *pos, char c)
 		if(*match == c)
 		{
 		    PCOL(pos) = match - line->ln_Line;
-		    return 1;
+		    return true;
 		}
 		match--;
 	    }
 	    if(PROW(pos) == tx->logical_start)
-		return 0;
+		return false;
 	    line--;
 	    PROW(pos)--;
 	    PCOL(pos) = line->ln_Strlen - 1;
@@ -195,13 +194,13 @@ buffer_reverse_strchr(Lisp_Buffer *tx, Pos *pos, char c)
 /* Compares the string STR to the contents of TX at POS using the function
    CMPFN to do the comparison (must be a pointer to either strncmp() or
    strncasecmp(), or something with the same interface).
-   Returns 0 for false, 1 for true. Leaves POS at the end of the match
-   if it returns true. */
+   Leaves POS at the end of the match if it returns true. */
 /* The argument CMPFN is declared void * to hopefully avoid irksome
    compiler warnings. */
 #define CMPFN ((int (*)(const char *, const char *, size_t))cmpfn)
-int
-buffer_compare_n(Lisp_Buffer *tx, Pos *pos, const char *str, int n, void *cmpfn)
+bool
+buffer_compare_n(Lisp_Buffer *tx, Pos *pos,
+		 const char *str, int n, void *cmpfn)
 {
     LINE *line = tx->lines + PROW(pos);
 
@@ -225,26 +224,26 @@ buffer_compare_n(Lisp_Buffer *tx, Pos *pos, const char *str, int n, void *cmpfn)
 	if(len > 0)
 	{
 	    if(CMPFN(line->ln_Line + PCOL(pos), str, len) != 0)
-		return 0;
+		return false;
 	    PCOL(pos) += len;
 	    n -= len;
 	    if(len == 0 || chunk == NULL)
-		return 1;	/* looked at all n */
+		return true;	/* looked at all n */
 	}
 	if(PCOL(pos) != line->ln_Strlen - 1)
-	    return 0;
+	    return false;
 	n--;
 	PCOL(pos) = 0;
 	PROW(pos)++;
 	line++;
 	str = chunk + 1;
     }
-    return n == 0 ? 1 : 0;
+    return n == 0;
 }
 
-/* Move POS forward COUNT characters in TX. Returns non-zero if the end
+/* Move POS forward COUNT characters in TX. Returns true if the end
    of the buffer wasn't reached. */
-int
+bool
 forward_char(intptr_t count, Lisp_Buffer *tx, Pos *pos)
 {
     LINE *line = tx->lines + PROW(pos);
@@ -262,17 +261,17 @@ forward_char(intptr_t count, Lisp_Buffer *tx, Pos *pos)
 	    count -= line->ln_Strlen - PCOL(pos);
 	    PROW(pos)++;
 	    if(PROW(pos) >= tx->logical_end)
-		return 0;
+		return false;
 	    line++;
 	    PCOL(pos) = 0;
 	}
     }
-    return 1;
+    return true;
 }
 
-/* Move POS backward COUNT characters in TX. Returns non-zero if the start
+/* Move POS backward COUNT characters in TX. Returns true if the start
    of the buffer wasn't reached. */
-int
+bool
 backward_char(intptr_t count, Lisp_Buffer *tx, Pos *pos)
 {
     LINE *line = tx->lines + PROW(pos);
@@ -288,12 +287,12 @@ backward_char(intptr_t count, Lisp_Buffer *tx, Pos *pos)
 	    count -= PCOL(pos) + 1; /* `+ 1' for the assumed '\n' */
 	    PROW(pos)--;
 	    if(PROW(pos) < tx->logical_start)
-		return 0;
+		return false;
 	    line--;
 	    PCOL(pos) = line->ln_Strlen - 1;
 	}
     }
-    return 1;
+    return true;
 }
 
 

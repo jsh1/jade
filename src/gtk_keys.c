@@ -152,13 +152,13 @@ translate_event(unsigned long *code, unsigned long *mods, GdkEvent *ev)
     }
 }
 
-int
-cook_key(void *event, char *buf, int buflen)
+size_t
+cook_key(void *event, char *buf, size_t buflen)
 {
     GdkEvent *ev = event;
     if (ev->type == GDK_KEY_PRESS)
     {
-	int actual_length = MIN (buflen - 1, ev->key.length);
+	size_t actual_length = MIN (buflen - 1, ev->key.length);
 	memcpy (buf, ev->key.string, actual_length);
 	buf[actual_length] = 0;
 	return actual_length;

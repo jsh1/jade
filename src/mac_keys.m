@@ -105,13 +105,13 @@ sys_translate_event(unsigned long *code, unsigned long *mods, void *ev_)
     }
 }
 
-int
-sys_cook_key(void *event, char *buf, int buflen)
+size_t
+sys_cook_key(void *event, char *buf, size_t buflen)
 {
     NSEvent *ev = event;
     NSAutoreleasePool *pool;
     const char *str;
-    int actual_length;
+    size_t actual_length;
 
     if ([ev type] != NSKeyDown)
 	return 0;

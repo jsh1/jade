@@ -677,31 +677,31 @@ sys_kill_window(Lisp_Window *w)
     window_count--;
 }
 
-int
+bool
 sys_sleep_win(Lisp_Window *w)
 {
     OBJC_BEGIN
     [[(JadeView *)w->w_Window window] miniaturize:nil];
     OBJC_END
-    return 1;
+    return true;
 }
 
-int
+bool
 sys_unsleep_win(Lisp_Window *w)
 {
     OBJC_BEGIN
     [[(JadeView *)w->w_Window window] deminiaturize:nil];
     OBJC_END
-    return 1;
+    return true;
 }
 
-int
+bool
 sys_set_font(Lisp_Window *w)
 {
-    int ret = 0;
+    bool ret = false;
 
     if (w->w_Window == WINDOW_NIL)
-	ret = 1;
+	ret = true;
     else
     {
 	OBJC_BEGIN
@@ -756,14 +756,14 @@ sys_deleting_window_would_exit (Lisp_Window *win)
     return window_count == 1;
 }
 
-int
+bool
 sys_window_has_focus (Lisp_Window *win)
 {
     JadeView *view = win->w_Window;
     return mac_app_is_active && view->_has_focus;
 }
 
-int
+bool
 sys_window_realized (Lisp_Window *win)
 {
     JadeView *view = win->w_Window;

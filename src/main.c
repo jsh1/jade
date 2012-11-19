@@ -75,7 +75,7 @@ static void
 on_termination (void)
 {
     /* Autosave all buffers */
-    while(auto_save_buffers(true) > 0)
+    while(auto_save_buffers(true))
 	;
 }
 

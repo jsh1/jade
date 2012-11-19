@@ -153,14 +153,14 @@ gtk_jade_init (GtkJade *jade)
     jade->unobscured = 0;
 }
 
-int
+bool
 gtk_jade_set_font (GtkJade *jade)
 {
     GdkFont *font = gdk_font_load (rep_STR (jade->win->font_name));
     if (font == 0)
 	font = gdk_font_load (DEFAULT_FONT);
     if (font == 0)
-	return 0;
+	return false;
 
     if (jade->font != 0)
 	gdk_font_unref (jade->font);
@@ -213,7 +213,7 @@ gtk_jade_set_font (GtkJade *jade)
 	sys_update_dimensions (jade->win);
 	update_window_dimensions (jade->win);
     }
-    return 1;
+    return true;
 }
 
 void
@@ -839,23 +839,23 @@ sys_kill_window(Lisp_Window *w)
     w->w_Window = WINDOW_NIL;
 }
 
-int
+bool
 sys_sleep_win(Lisp_Window *w)
 {
-    return 1;
+    return true;
 }
 
-int
+bool
 sys_unsleep_win(Lisp_Window *w)
 {
-    return 1;
+    return true;
 }
 
-int
+bool
 sys_set_font(Lisp_Window *w)
 {
     if (w->w_Window == WINDOW_NIL)
-	return 1;
+	return true;
     else
 	return gtk_jade_set_font (w->w_Window);
 	

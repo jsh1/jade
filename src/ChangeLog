@@ -1,3 +1,9 @@
+2012-11-18  John Harper  <jsh@unfactored.org>
+
+	* x11_windows.c, x11_keys.c, main.c, mac_windows.m, mac_keys.m,
+	keys.c, jade_subrs.h, gtk_keys.c, gtk_jade.c, find.c,
+	buffers.c: misc cleanup
+
 2012-11-10  John Harper  <jsh@unfactored.org>
 
 	* x11_windows.c, redisplay.c, mac_windows.m, jade_subrs.h,

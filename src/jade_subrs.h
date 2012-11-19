@@ -26,7 +26,7 @@ extern Lisp_Buffer *first_buffer(void);
 extern Lisp_Buffer *swap_buffers(Lisp_View *, Lisp_Buffer *);
 extern repv *get_buffer_cursor_ptr(Lisp_Buffer *tx);
 extern repv get_buffer_cursor(Lisp_Buffer *);
-extern int auto_save_buffers(bool);
+extern bool auto_save_buffers(bool);
 extern void kill_buffer_local_variables(Lisp_Buffer *tx);
 extern void buffers_init(void);
 extern void buffers_kill(void);
@@ -235,14 +235,15 @@ extern repv Finsert_file_contents(repv);
 extern void files_init(void);
 
 /* from find.c */
-extern int buffer_strpbrk(Lisp_Buffer *tx, Pos *pos, const char *chars);
-extern int buffer_reverse_strpbrk(Lisp_Buffer *tx, Pos *pos, const char *chars);
-extern int buffer_strchr(Lisp_Buffer *tx, Pos *pos, char c);
-extern int buffer_reverse_strchr(Lisp_Buffer *tx, Pos *pos, char c);
-extern int buffer_compare_n(Lisp_Buffer *tx, Pos *pos, const char *str,
-			    int n, void *cmpfn);
-extern int forward_char(long count, Lisp_Buffer *tx, Pos *pos);
-extern int backward_char(long count, Lisp_Buffer *tx, Pos *pos);
+extern bool buffer_strpbrk(Lisp_Buffer *tx, Pos *pos, const char *chars);
+extern bool buffer_reverse_strpbrk(Lisp_Buffer *tx, Pos *pos,
+				   const char *chars);
+extern bool buffer_strchr(Lisp_Buffer *tx, Pos *pos, char c);
+extern bool buffer_reverse_strchr(Lisp_Buffer *tx, Pos *pos, char c);
+extern bool buffer_compare_n(Lisp_Buffer *tx, Pos *pos, const char *str,
+			     int n, void *cmpfn);
+extern bool forward_char(long count, Lisp_Buffer *tx, Pos *pos);
+extern bool backward_char(long count, Lisp_Buffer *tx, Pos *pos);
 extern void find_init(void);
 extern repv Fre_search_forward(repv re, repv pos, repv tx, repv nocase_p);
 extern repv Fre_search_backward(repv re, repv pos, repv tx, repv nocase_p);
@@ -459,7 +460,7 @@ extern repv Fset_font(repv fontname, repv win);
 
 /* from gtk_keys.c */
 extern void translate_event(unsigned long *, unsigned long *, GdkEvent *);
-extern int sys_cook_key(void *, char *, int);
+extern size_t sys_cook_key(void *, char *, size_t);
 extern bool sys_lookup_mod(const char *name, unsigned long *mods);
 extern bool sys_lookup_code(const char *name, unsigned long *code, unsigned long *mods);
 extern char *sys_lookup_mod_name(char *buf, unsigned long mod);
@@ -500,17 +501,17 @@ extern void gtk_misc_init(void);
 extern unsigned long gtk_jade_last_event_time;
 extern GtkWidget *gtk_jade_new (Lisp_Window *win, int width, int height);
 extern guint gtk_jade_get_type (void);
-extern int gtk_jade_set_font (GtkJade *jade);
+extern bool gtk_jade_set_font (GtkJade *jade);
 extern void gtk_jade_get_size (GtkJade *jade, gint *widthp, gint *heightp);
 extern void sys_draw_glyphs(Lisp_Window *, int, int, uint8_t, char *, int, bool);
 extern void sys_recolor_cursor(repv face);
 extern void sys_update_dimensions(Lisp_Window *);
 extern GtkJade *sys_new_window(Lisp_Window *, Lisp_Window *, int *);
 extern void sys_kill_window(Lisp_Window *);
-extern int sys_set_font(Lisp_Window *);
+extern bool sys_set_font(Lisp_Window *);
 extern void sys_unset_font(Lisp_Window *);
-extern int sys_sleep_win(Lisp_Window *);
-extern int sys_unsleep_win(Lisp_Window *);
+extern bool sys_sleep_win(Lisp_Window *);
+extern bool sys_unsleep_win(Lisp_Window *);
 extern void sys_activate_win(Lisp_Window *);
 extern void sys_set_win_name(Lisp_Window *win, char *name);
 extern void sys_set_win_pos(Lisp_Window *, long, long, long, long);
@@ -544,14 +545,14 @@ extern void sys_recolor_cursor(repv face);
 extern void sys_update_dimensions(Lisp_Window *);
 extern void *sys_new_window(Lisp_Window *, Lisp_Window *, int *);
 extern void sys_kill_window(Lisp_Window *);
-extern int sys_sleep_win(Lisp_Window *);
-extern int sys_unsleep_win(Lisp_Window *);
+extern bool sys_sleep_win(Lisp_Window *);
+extern bool sys_unsleep_win(Lisp_Window *);
 extern void sys_activate_win(Lisp_Window *);
 extern void sys_set_win_name(Lisp_Window *win, char *name);
 extern void sys_set_win_pos(Lisp_Window *, long, long, long, long);
 extern bool sys_deleting_window_would_exit (Lisp_Window *w);
-extern int sys_window_has_focus (Lisp_Window *);
-extern int sys_window_realized (Lisp_Window *);
+extern bool sys_window_has_focus (Lisp_Window *);
+extern bool sys_window_realized (Lisp_Window *);
 extern repv sys_get_mouse_pos(Lisp_Window *);
 extern repv Fflush_output(void);
 extern void sys_windows_init(void);
@@ -559,13 +560,13 @@ extern void sys_windows_init(void);
 /* from mac_keys.m */
 extern unsigned long esc_code, esc_mods;
 extern void sys_translate_event(unsigned long *, unsigned long *, void *);
-extern int sys_cook_key(void *, char *, int);
+extern size_t sys_cook_key(void *, char *, size_t);
 extern bool sys_lookup_mod(const char *, unsigned long *);
 extern bool sys_lookup_code(const char *, unsigned long *, unsigned long *);
 extern char *sys_lookup_mod_name(char *, unsigned long);
 extern bool sys_lookup_code_name(char *, unsigned long, unsigned long);
 extern unsigned long mac_find_meta(void);
-extern int sys_set_font(Lisp_Window *);
+extern bool sys_set_font(Lisp_Window *);
 extern void sys_unset_font(Lisp_Window *);
 
 /* from mac_runloop.m */
@@ -578,7 +579,7 @@ extern void mac_runloop_init (void);
 /* from x11_keys.c */
 extern void translate_event(unsigned long *, unsigned long *, XEvent *,
 			    struct x11_display *);
-extern int sys_cook_key(void *, char *, int);
+extern size_t sys_cook_key(void *, char *, size_t);
 extern bool sys_lookup_mod(const char *name, unsigned long *mods);
 extern bool sys_lookup_code(const char *name, unsigned long *code, unsigned long *mods);
 extern char *sys_lookup_mod_name(char *buf, unsigned long mod);
@@ -626,8 +627,8 @@ extern repv Fx11_get_selection(repv sel);
 extern repv Fx11_lose_selection(repv sel);
 
 /* from x11_windows.c */
-extern int sys_sleep_win(Lisp_Window *);
-extern int sys_unsleep_win(Lisp_Window *);
+extern bool sys_sleep_win(Lisp_Window *);
+extern bool sys_unsleep_win(Lisp_Window *);
 extern void sys_update_dimensions(Lisp_Window *);
 extern void x11_update_dimensions(Lisp_Window *, int, int);
 extern Window sys_new_window(Lisp_Window *, Lisp_Window *, int *);
@@ -637,7 +638,7 @@ extern void sys_set_win_name(Lisp_Window *win, char *name);
 extern void sys_set_win_pos(Lisp_Window *, long, long, long, long);
 extern Lisp_Window *x11_find_window(Window);
 extern void sys_draw_glyphs(Lisp_Window *, int, int, uint8_t, char *, int, bool);
-extern int sys_set_font(Lisp_Window *);
+extern bool sys_set_font(Lisp_Window *);
 extern void sys_unset_font(Lisp_Window *);
 extern repv sys_get_mouse_pos(Lisp_Window *);
 extern bool sys_deleting_window_would_exit (Lisp_Window *w);

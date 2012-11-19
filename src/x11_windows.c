@@ -37,7 +37,7 @@ static XWMHints wm_hints;
 static struct x11_display *pending_display;
 
 /* Let the window-manager handle all iconifying... */
-int
+bool
 sys_sleep_win(Lisp_Window *w)
 {
     if((w->car & WINFF_SLEEPING) == 0)
@@ -49,7 +49,7 @@ sys_sleep_win(Lisp_Window *w)
     return(true);
 }
 
-int
+bool
 sys_unsleep_win(Lisp_Window *w)
 {
     if(w->car & WINFF_SLEEPING)
@@ -414,7 +414,7 @@ sys_draw_glyphs(Lisp_Window *w, int col, int row, uint8_t attr, char *str,
     }
 }
 
-int
+bool
 sys_set_font(Lisp_Window *w)
 {
 #ifndef HAVE_X11_XFT_XFT_H

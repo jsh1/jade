@@ -499,13 +499,11 @@ get_buffer_cursor(Lisp_Buffer *tx)
     return *get_buffer_cursor_ptr(tx);
 }
 
-/* returns the number of buffers saved.
-   (maybe should only save one buffer at a time, then wait to be called
-   again to save next in line? This could be less intrusive: yes.)
+/* Returns true if a buffer was saved, in which case calling the
+   function again may save another buffer. If force_save is true, don't
+   worry about the time between saves, just save the next buffer */
 
-   If force_save is true, don't worry about the time between saves,
-   just save the next buffer */
-int
+bool
 auto_save_buffers(bool force_save)
 {
     /*
@@ -535,13 +533,13 @@ auto_save_buffers(bool force_save)
 		tx->last_saved_time = time;
 		tx->last_saved_change_count = tx->change_count;
 		Exclusion = false;
-		return(1);
+		return true;
 	    }
 	    tx = tx->next;
 	}
 	Exclusion = false;
     }
-    return(0);
+    return false;
 }
 
 DEFUN("current-buffer", Fcurrent_buffer, Scurrent_buffer, (repv vw), rep_Subr1) /*

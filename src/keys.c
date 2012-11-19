@@ -276,7 +276,6 @@ static repv
 inner_eval_input_event(repv data_)
 {
     struct eval_input_data *data = (struct eval_input_data *) rep_PTR(data_);
-    void *OSInputMsg = data->osinput;
     unsigned long code = data->code;
     unsigned long mods = data->mods;
 
@@ -304,7 +303,7 @@ inner_eval_input_event(repv data_)
 	}
 	current_event[0] = code;
 	current_event[1] = mods;
-	current_os_event = OSInputMsg;
+	current_os_event = data->osinput;
 	cmd = lookup_binding(code, mods, eval_input_callback);
 	if(cmd != 0)
 	{
@@ -331,77 +330,70 @@ inner_eval_input_event(repv data_)
 	    /* An unbound key with no prefix keys. */
 	    result = Fcall_hook(Qunbound_key_hook, Qnil, Qor);
 	    if(result != 0 && rep_NILP(result)
-	       && (mods & EV_TYPE_KEYBD) && OSInputMsg)
+	       && (mods & EV_TYPE_KEYBD) && data->osinput)
 	    {
 		/* Try to self-insert */
 		char buff[256];
-		int len;
-		if((len = sys_cook_key(OSInputMsg, buff, 256 - 1)) >= 0)
+		size_t len;
+		len = sys_cook_key(data->osinput, buff, 256 - 1);
+		if(len > 0)
 		{
 		    buff[len] = 0;
-		    if(len > 0)
+		    if(!read_only_pos(vw->tx, vw->cursor_pos))
 		    {
-			if(!read_only_pos(vw->tx, vw->cursor_pos))
+			repv old_undo_head = 0;
+			Fcall_hook(Qpre_command_hook, Qnil, Qnil);
+			if(Fsymbol_value (Qlast_command, Qt) == Qt
+			   && rep_CONSP(vw->tx->undo_list)
+			   && rep_NILP(rep_CAR(vw->tx->undo_list)))
 			{
-			    repv old_undo_head = 0;
-			    Fcall_hook(Qpre_command_hook,
-					  Qnil, Qnil);
-			    if(Fsymbol_value (Qlast_command, Qt) == Qt
-			       && rep_CONSP(vw->tx->undo_list)
-			       && rep_NILP(rep_CAR(vw->tx->undo_list)))
+			    /* Last command was also an insertion, fix it
+			       so that the undo information is merged. */
+			    old_undo_head = vw->tx->undo_list;
+			    vw->tx->undo_list = rep_CDR(vw->tx->undo_list);
+			}
+			if(pad_cursor(vw))
+			{
+			    repv arg = (Fprefix_numeric_argument
+					(Fsymbol_value (Qprefix_arg, Qt)));
+			    if(!rep_INTP(arg) || rep_INT(arg) < 1)
+				Fbeep();
+			    else if(rep_INT(arg) == 1)
 			    {
-				/* Last command was also an insertion,
-				   fix it so that the undo information
-				   is merged. */
-				old_undo_head = vw->tx->undo_list;
-				vw->tx->undo_list
-				    = rep_CDR(vw->tx->undo_list);
+				insert_string(vw->tx, buff,
+					      len, vw->cursor_pos);
 			    }
-			    if(pad_cursor(vw))
+			    else if(len == 1
+				    && rep_INT(arg) < sizeof(buff) - 1)
 			    {
-				repv arg = (Fprefix_numeric_argument
-					    (Fsymbol_value (Qprefix_arg, Qt)));
-				if(!rep_INTP(arg) || rep_INT(arg) < 1)
-				    Fbeep();
-				else if(rep_INT(arg) == 1)
+				/* Inserting a single char, more than
+				   once, build a string of them. */
+				memset(buff, buff[0], rep_INT(arg));
+				insert_string(vw->tx, buff,
+					      rep_INT(arg), vw->cursor_pos);
+			    }
+			    else
+			    {
+				/* Do a looping insertion */
+				int i = rep_INT(arg);
+				while(i-- > 0)
+				{
 				    insert_string(vw->tx, buff,
 						  len, vw->cursor_pos);
-				else if(len == 1
-					&& rep_INT(arg) < sizeof(buff) - 1)
-				{
-				    /* Inserting a single char, more than
-				       once, build a string of them. */
-				    memset(buff, buff[0], rep_INT(arg));
-				    insert_string(vw->tx, buff,
-						  rep_INT(arg), vw->cursor_pos);
-				}
-				else
-				{
-				    /* Do a looping insertion */
-				    int i = rep_INT(arg);
-				    while(i-- > 0)
-					insert_string(vw->tx, buff,
-						      len, vw->cursor_pos);
 				}
 			    }
-			    if(old_undo_head != 0)
-			    {
-				rep_CDR(old_undo_head) = vw->tx->undo_list;
-				vw->tx->undo_list = old_undo_head;
-			    }
-			    Fcall_hook(Qpost_command_hook,
-					  Qnil, Qnil);
-			    Fset (Qlast_command, Qt);
-			    result = Qt;
 			}
-			else
-			    result = 0;
+			if(old_undo_head != 0)
+			{
+			    rep_CDR(old_undo_head) = vw->tx->undo_list;
+			    vw->tx->undo_list = old_undo_head;
+			}
+			Fcall_hook(Qpost_command_hook, Qnil, Qnil);
+			Fset (Qlast_command, Qt);
+			result = Qt;
 		    }
-		}
-		else
-		{
-		    (*rep_message_fun)(rep_message,
-				       "error: key translation screwup");
+		    else
+			result = 0;
 		}
 		/* Remove prefix arg. */
 		Fset (Qprefix_arg, Qnil);
@@ -429,10 +421,10 @@ inner_eval_input_event(repv data_)
 /* Process the event CODE+MODS. OS-INPUT-MSG is the raw input event
    from the window-system, this is only used to cook a string from.  */
 repv
-eval_input_event(void *OSInputMsg, unsigned long code, unsigned long mods)
+eval_input_event(void *osinput, unsigned long code, unsigned long mods)
 {
     struct eval_input_data data;
-    data.osinput = OSInputMsg;
+    data.osinput = osinput;
     data.code = code;
     data.mods = mods;
     return rep_call_with_barrier (inner_eval_input_event,
