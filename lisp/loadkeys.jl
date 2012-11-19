@@ -180,7 +180,8 @@ of SYMBOL is non-nil, KEYMAP is used to search for bindings.")
   "\)"		'blinking-insert
   "}"		'blinking-insert
   "]"		'blinking-insert
-  "C-M-\\" 'indent-area
+  "C-\\"	'indent-area
+  "C-M-\\"	'indent-defun
   "Button1-Click1" 'mouse-select
   "C-Button1-Click1" 'mouse-select
   "Button1-Click2" 'mouse-double-select

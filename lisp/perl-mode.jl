@@ -59,7 +59,7 @@ contain.")
 Major mode for editing Perl source code. Local keybindings are:\n
 \\{perl-mode-keymap}"
   (interactive)
-  (and major-mode-kill (funcall major-mode-kill))
+  (and major-mode-kill (major-mode-kill))
   (setq mode-name "Perl"
 	major-mode 'perl-mode
 	major-mode-kill kill-all-local-variables

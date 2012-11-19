@@ -61,12 +61,12 @@ non-nil, then the external viewer is invoked."
   (if call-external
     (find-url-external url)
     (catch 'foo
-      (mapc #'(lambda (cell)
-		(when (string-match (car cell) url nil t)
-		  (throw 'foo (funcall (cdr cell) url))))
+      (mapc (lambda (cell)
+	      (when (string-match (car cell) url nil t)
+		(throw 'foo ((cdr cell) url))))
 	    find-url-alist)
       ;; Call default function
-      (funcall find-url-default url))))
+      (find-url-default url))))
 
 ;;;###autoload
 (defun find-file-as-url (filename)
@@ -238,11 +238,11 @@ a buffer."
 	(progn
 	  (set-process-function
 	   (cdr cell)
-	   #'(lambda (p)
-	       (declare (unused p))
-	       (setq find-url-processes (delq cell find-url-processes))
-	       (message "[wget exited]")))
-	  (funcall (if kill kill-process interrupt-process) (cdr cell)))
+	   (lambda (p)
+	     (declare (unused p))
+	     (setq find-url-processes (delq cell find-url-processes))
+	     (message "[wget exited]")))
+	  ((if kill kill-process interrupt-process) (cdr cell)))
       (message "[No wget for that URL]"))))
 
 

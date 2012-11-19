@@ -372,7 +372,7 @@ the git command waiting for it can be invoked."
   (let ((function git-callback-function)
 	(msg (copy-area (start-of-buffer) (cursor-pos))))
     (kill-buffer (current-buffer))
-    (funcall function msg)))
+    (function msg)))
 
 
 ;; Entry points

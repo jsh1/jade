@@ -88,8 +88,8 @@ prefix argument."
   (interactive
    (let
        ((arg current-prefix-arg))
-     (list (intern (prompt-from-list (mapcar #'(lambda (x)
-						 (symbol-name (car x)))
+     (list (intern (prompt-from-list (mapcar (lambda (x)
+					       (symbol-name (car x)))
 					     latin-1-char-alist)
 				     "Latin 1 character:"))
 	   (prefix-numeric-argument arg))))

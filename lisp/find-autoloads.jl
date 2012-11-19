@@ -69,7 +69,7 @@
 			"^[; \t]*###autoload[\t ]*(.*)$" p buf))
 	(setq form (expand-last-match "\\1"))
 	(when (and form (not (equal "" form)))
-	  (funcall line-fun form)
+	  (line-fun form)
 	  (setq count (1+ count))
 	  (message form t))
 	(setq p (forward-line 1 p))
@@ -94,7 +94,7 @@
 				      (expand-last-match "\\1")
 				      (expand-last-match "\\2") module)))
 		  (t (throw 'next)))
-	    (when (and form (funcall line-fun form))
+	    (when (and form (line-fun form))
 	      (setq count (1+ count))
 	      (message form t))
 	    (with-buffer buf

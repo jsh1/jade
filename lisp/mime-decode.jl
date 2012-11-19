@@ -46,17 +46,17 @@ still given a highlighted header.")
 
 (defvar mime-xfer-encodings-alist
   (list (list 'base64
-	      #'(lambda (in out)
-		  (mime-decode-mmencode in out mime-encode-base64 t t))
-	      #'(lambda (in out)
-		  (mime-decode-mmencode in out mime-decode-base64 nil t)))
+	      (lambda (in out)
+		(mime-decode-mmencode in out mime-encode-base64 t t))
+	      (lambda (in out)
+		(mime-decode-mmencode in out mime-decode-base64 nil t)))
 	(list 'quoted-printable
-	      #'(lambda (in out)
-		  (mime-decode-mmencode
-		   in out mime-encode-quoted-printable t nil))
-	      #'(lambda (in out)
-		  (mime-decode-mmencode
-		   in out mime-decode-quoted-printable nil nil))))
+	      (lambda (in out)
+		(mime-decode-mmencode
+		 in out mime-encode-quoted-printable t nil))
+	      (lambda (in out)
+		(mime-decode-mmencode
+		 in out mime-decode-quoted-printable nil nil))))
   "Alist of (ENCODING ENCODER DECODER) where ENCODER and DECODER are
 functions that operate as filters on their argument streams.")
 
@@ -185,7 +185,7 @@ external mmencode program, otherwise handle locally.")
 ;; Handle using mmencode if necessary
 (defun mime-decode-mmencode (input output fallback encode base64)
   (unless mmencode-program
-    (funcall fallback input output))
+    (fallback input output))
   (let
       (buffer start end)
     (cond ((bufferp input)
@@ -223,7 +223,7 @@ external mmencode program, otherwise handle locally.")
 	     ;; assume that mmencode couldn't be called
 	     (setq mmencode-program nil)))))
       ;; use the `software' coder
-      (funcall fallback input output))))
+      (fallback input output))))
 
 ;; Decode all of SRC-BUFFER to the stream OUTPUT, according to the mime
 ;; content-transfer-encoding ENCODING (a symbol)
@@ -236,8 +236,7 @@ external mmencode program, otherwise handle locally.")
 				 (end-of-buffer src-buffer)
 				 src-buffer))
       ;; apply the decoder
-      (funcall (nth 2 tem)
-	       (cons src-buffer (start-of-buffer src-buffer)) output))))
+      ((nth 2 tem) (cons src-buffer (start-of-buffer src-buffer)) output))))
 
 (defun mime-decode-string (encoding source output)
   (let
@@ -246,7 +245,7 @@ external mmencode program, otherwise handle locally.")
 	;; Just copy verbatim
 	(write output source)
       ;; apply the decoder
-      (funcall (nth 2 tem) (make-string-input-stream source) output))))
+      ((nth 2 tem) (make-string-input-stream source) output))))
 
 ;; Decode from the start of SRC-BUFFER to the cursor in the current buffer.
 ;; CONTENT-TYPE is the parsed content type of the message. CONTENT-XFER-ENC
@@ -361,18 +360,17 @@ external mmencode program, otherwise handle locally.")
 	    ;; most specific to least specific
 	    (setq parts
 		  (catch 'foo
-		    (mapc #'(lambda (part)
-			      (let
-				  ((type (nth 3 part)))
-				(cond ((and (eq (car type) 'text)
-					    (eq (cadr type) 'html))
-				       ;; I hate HTML email, only choose
-				       ;; this if no lesser representation
-				       (when (null (cdr (memq part parts)))
-					 (throw 'foo (list part))))
-				      ((memq (car type)
-					     '(multipart message text))
-				       (throw 'foo (list part)))))) parts)
+		    (mapc (lambda (part)
+			    (let ((type (nth 3 part)))
+			      (cond ((and (eq (car type) 'text)
+					  (eq (cadr type) 'html))
+				     ;; I hate HTML email, only choose
+				     ;; this if no lesser representation
+				     (when (null (cdr (memq part parts)))
+				       (throw 'foo (list part))))
+				    ((memq (car type)
+					   '(multipart message text))
+				     (throw 'foo (list part)))))) parts)
 		    nil))
 	  (setq parts (nreverse parts)))
 	(while parts
@@ -463,7 +461,7 @@ interactively the MIME part under the cursor is used."
        (viewer (cdr (assq (car content-type) mime-viewer-alist))))
     (cond
      ((functionp viewer)
-      (funcall viewer extent))
+      (viewer extent))
      ((stringp viewer)
       (let*
 	  ((file (make-temp-name))
@@ -528,9 +526,9 @@ interactively the MIME part under the cursor is used."
       (when tem
 	(setq start (extent-end tem)))
       (goto (catch 'foo
-	      (map-extents #'(lambda (e)
-			       (when (extent-get e 'content-type)
-				 (throw 'foo (extent-start e))))
+	      (map-extents (lambda (e)
+			     (when (extent-get e 'content-type)
+			       (throw 'foo (extent-start e))))
 			   start (end-of-buffer)))))
     (setq count (1- count)))
   (while (< count 0)
@@ -544,9 +542,9 @@ interactively the MIME part under the cursor is used."
 	(setq end (forward-char -1 (extent-start tem))))
       (goto (let
 		(final)
-	      (map-extents #'(lambda (e)
-			       (when (extent-get e 'content-type)
-				 (setq final (extent-start e))))
+	      (map-extents (lambda (e)
+			     (when (extent-get e 'content-type)
+			       (setq final (extent-start e))))
 			   (start-of-buffer) end)
 	      final)))
     (setq count (1+ count))))

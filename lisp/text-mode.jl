@@ -45,7 +45,7 @@
 \\{text-mode-keymap}"
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (setq mode-name "Text"
 	major-mode 'text-mode
 	local-keymap 'text-mode-keymap)
@@ -59,7 +59,7 @@ previous line, then works as normal. Local bindings in this mode are:\n
 \\{text-mode-keymap}"
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (setq mode-name "Indented Text"
 	major-mode 'indented-text-mode
 	local-keymap 'text-mode-indent-keymap)

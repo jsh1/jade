@@ -28,7 +28,7 @@
 ;;; already installed and if so remove it:
 ;;;
 ;;;  (when major-mode-kill
-;;;    (funcall major-mode-kill))
+;;;    (major-mode-kill))
 ;;;
 ;;; Now the new mode is free to install itself; generally this entails
 ;;; setting at least the `mode-name' and `major-mode-kill' variables
@@ -226,18 +226,17 @@ of the defun is assumed instead.")
 					interpreter-mode-alist t)))
 			     (cdr (assoc-regexp
 				   (buffer-file-name) auto-mode-alist t)))))))
-  (let
-      ((fun (or major-mode default-major-mode)))
+  (let ((fun (or major-mode default-major-mode)))
     (when (symbolp fun)
       (setq fun (symbol-value fun)))
-    (funcall fun)))
+    (fun)))
 
 (defun fundamental-mode ()
   "Remove the major mode being used to edit the current buffer, the
 fundamental mode is used instead."
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill)))
+    (major-mode-kill)))
 
 
 ;; Comment handling
@@ -254,7 +253,7 @@ comment should be written. This may or not be defined by each major mode."
       (find-comment-pos)
       (insert mode-comment-header)))
    (mode-comment-fun
-    (funcall mode-comment-fun))
+    (mode-comment-fun))
    (t
     (error "No defined method for inserting comments in this buffer"))))
 
@@ -278,7 +277,7 @@ END."
   (unless mode-indent-line
     (error "No method for indenting lines in this buffer"))
   (while (< start end)
-    (funcall mode-indent-line start)
+    (mode-indent-line start)
     (setq start (forward-line 1 start))))
 
 (defvar newline-and-indent ()
@@ -289,14 +288,14 @@ or insert a tab."
   (if (null mode-indent-line)
       (insert "\n\t")
     (insert "\n")
-    (funcall mode-indent-line)))
+    (mode-indent-line)))
 
 (defun indent-line ()
   "Indent the current line."
   (interactive)
   (if mode-indent-line
       (let
-	  ((p (funcall mode-indent-line)))
+	  ((p (mode-indent-line)))
 	(when (and (posp p) (< (char-to-glyph-pos (cursor-pos)) p))
 	  (goto-glyph p))
 	(when (> (glyph-to-char-pos p) (end-of-line))
@@ -310,29 +309,27 @@ or insert a tab."
   "Find the end of the NUMBER'th next expression."
   (interactive "@p")
   (cond ((> number 0)
-	 (funcall (or mode-forward-exp forward-word) number p))
+	 ((or mode-forward-exp forward-word) number p))
 	((< number 0)
-	 (funcall (or mode-backward-exp backward-word) (- number) p))))
+	 ((or mode-backward-exp backward-word) (- number) p))))
 
 (defun backward-exp (#!optional number p)
   "Find the start of the NUMBER'th previous expression."
   (interactive "@p")
   (cond ((> number 0)
-	 (funcall (or mode-backward-exp backward-word) number p))
+	 ((or mode-backward-exp backward-word) number p))
 	((< number 0)
-	 (funcall (or mode-forward-exp forward-word) (- number) p))))
+	 ((or mode-forward-exp forward-word) (- number) p))))
 
 (defun kill-exp (#!optional number)
   "Kill the next NUMBER expressions."
   (interactive "p")
-  (kill-area (cursor-pos) (funcall (or mode-forward-exp forward-word)
-				   number)))
+  (kill-area (cursor-pos) ((or mode-forward-exp forward-word) number)))
 
 (defun backward-kill-exp (#!optional number)
   "Kills from the start of this NUMBER'th previous expression to the cursor."
   (interactive "p")
-  (kill-area (funcall (or mode-backward-exp backward-word) number)
-	     (cursor-pos)))
+  (kill-area ((or mode-backward-exp backward-word) number) (cursor-pos)))
 
 (defun transpose-exps (count)
   "Move the expression before the cursor COUNT expressions forwards."
@@ -391,6 +388,16 @@ or insert a tab."
     (when (and start end)
       (mark-block (or (and (re-search-backward "^[ \t\f]*\n" start)
 			   (match-end)) start) end))))
+
+(defun indent-defun ()
+  "Indent the current function."
+  (interactive)
+  (let ((start (start-of-defun))
+	(end (end-of-defun)))
+    (when (and start end)
+      (indent-area (or (and (re-search-backward "^[ \t\f]*\n" start)
+			    (match-end)) start)
+		   (if (search-forward "\n" end) (match-end) end)))))
 
 
 ;; Generic expression handling

@@ -64,7 +64,7 @@ to display it, assuming that it's inserted at column zero.")
    ((stringp fill-prefix)
     (insert fill-prefix p))
    ((functionp fill-prefix)
-    (funcall fill-prefix 'insert p))))
+    (fill-prefix 'insert p))))
 
 ;; Delete the fill-prefix from POS
 (defun fill-delete-prefix (p)
@@ -73,7 +73,7 @@ to display it, assuming that it's inserted at column zero.")
     (when (buffer-compare-string fill-prefix p)
       (delete-area (match-start) (match-end))))
    ((functionp fill-prefix)
-    (funcall fill-prefix 'delete p))))
+    (fill-prefix 'delete p))))
 
 ;; Return the width of the fill-prefix that would be inserted at POS
 (defun fill-get-prefix-width (p)
@@ -81,7 +81,7 @@ to display it, assuming that it's inserted at column zero.")
    ((stringp fill-prefix)
     fill-prefix-width)
    ((functionp fill-prefix)
-    (funcall fill-prefix 'width p))))
+    (fill-prefix 'width p))))
 
 
 ;; Filling functions

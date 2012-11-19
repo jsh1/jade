@@ -342,7 +342,7 @@ commands. There is no limit to the number of processes you may run at once."
 		 (looking-at shell-prompt-regexp (start-of-line)))
 	(delete-area (match-start) (match-end))
 	(setq gdb-delete-prompt nil))
-      (setq new-frame (funcall gdb-input-filter data)))
+      (setq new-frame (gdb-input-filter data)))
     (when new-frame
       (setq gdb-last-buffer buffer)
       ;; Now redisplay the frame and its highlight

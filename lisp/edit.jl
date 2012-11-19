@@ -467,24 +467,24 @@ backwards. When called interactively the cursor is set to the position."
   "If a block is marked in the current window, return the text it contains and
 unmark the block."
   (when (blockp)
-    (prog1 (funcall (if (rect-blocks-p) copy-rectangle copy-area)
-		    (block-start) (block-end))
+    (prog1 ((if (rect-blocks-p) copy-rectangle copy-area)
+	    (block-start) (block-end))
       (block-kill))))
 
 (defun cut-block ()
   "Similar to `copy-block' except the block is cut (copied then deleted) from
 the buffer."
   (when (blockp)
-    (prog1 (funcall (if (rect-blocks-p) cut-rectangle cut-area)
-		    (block-start) (block-end))
+    (prog1 ((if (rect-blocks-p) cut-rectangle cut-area)
+	    (block-start) (block-end))
       (block-kill))))
 
 (defun delete-block ()
   "Deletes the block marked in the current window (if one exists)."
   (interactive)
   (when (blockp)
-    (funcall (if (rect-blocks-p) delete-rectangle delete-area)
-	     (block-start) (block-end))
+    ((if (rect-blocks-p) delete-rectangle delete-area)
+     (block-start) (block-end))
     (block-kill)))
 
 (defun toggle-rect-blocks ()
@@ -683,8 +683,8 @@ next string in the kill ring."
 	;; work as you'd expect...
 	(set-buffer-undo-list nil)
 	(goto yank-last-start)
-	(funcall (if (eq last-command 'yank) insert insert-rectangle)
-		 (killed-string yank-last-item))
+	((if (eq last-command 'yank) insert insert-rectangle)
+	 (killed-string yank-last-item))
 	(setq this-command last-command))
     (error "Can't yank (last command wasn't yank, or no undo info)")))
 
@@ -701,18 +701,18 @@ over the COUNT following items."
       (start1 start2 end1 end2)
     (while (> count 0)
       ;; go forwards
-      (setq start1 (funcall backward-item 1)
-	    end1 (funcall forward-item 1 start1)
-	    end2 (funcall forward-item 1 end1)
-	    start2 (funcall backward-item 1 end2))
+      (setq start1 (backward-item 1)
+	    end1 (forward-item 1 start1)
+	    end2 (forward-item 1 end1)
+	    start2 (backward-item 1 end2))
       (transpose-1 start1 end1 start2 end2)
       (setq count (1- count)))
     (while (< count 0)
       ;; go backwards
-      (setq start1 (funcall backward-item 1)
-	    end1 (funcall forward-item 1 start1)
-	    start2 (funcall backward-item 1 start1)
-	    end2 (funcall forward-item 1 start2))
+      (setq start1 (backward-item 1)
+	    end1 (forward-item 1 start1)
+	    start2 (backward-item 1 start1)
+	    end2 (forward-item 1 start2))
       (transpose-1 start1 end1 start2 end2)
       (setq count (1+ count)))))
 
@@ -875,7 +875,7 @@ deleted."
   "Toggle the current buffer between being writable and read-only."
   (interactive)
   (if toggle-read-only-function
-      (funcall toggle-read-only-function)
+      (toggle-read-only-function)
     (set-buffer-read-only nil (not (buffer-read-only-p)))))
 
 (defun top-of-buffer ()
@@ -970,7 +970,7 @@ from the innermost outwards."
     `(let
 	 ((,e (get-extent ,position ,buffer)))
        (while ,e
-	 (funcall ,function ,e)
+	 (,function ,e)
 	 (setq ,e (extent-parent ,e))))))
 
 

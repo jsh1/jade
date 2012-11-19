@@ -127,18 +127,18 @@
    (lambda (x)
      (bind-keys k
       (car x)
-      (eval `#'(lambda ()
-	    (interactive)
-	    (if (/= (buffer-name) "*isearch*")
-		(insert ,(make-string 1 (car (lookup-event (cdr x)))))
+      (eval
+       `(lambda ()
+	  (interactive)
+	  (if (/= (buffer-name) "*isearch*")
+	      (insert ,(make-string 1 (car (lookup-event (cdr x)))))
 					; Let's handle increment-search mode
-	      (let
-		  ((old-c-e-s current-event-string))
-		(setq current-event-string (lambda ()
-					     ,(make-string
-					       1 (car (lookup-event (cdr x))))))
-		(call-hook 'unbound-key-hook)
-		(setq current-event-string old-c-e-s)))))))
+	    (let ((old-c-e-s current-event-string))
+	      (setq current-event-string (lambda ()
+					   ,(make-string
+					     1 (car (lookup-event (cdr x))))))
+	      (call-hook 'unbound-key-hook)
+	      (setq current-event-string old-c-e-s)))))))
    jcuken-key-alist)
   k)
 "Cyrillic minor mode keymap")

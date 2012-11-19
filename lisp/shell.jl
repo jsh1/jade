@@ -180,7 +180,7 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
   (unless (stringp output)
     (setq output (make-string 1 output)))
   (when shell-output-filter
-    (setq output (funcall shell-output-filter output)))
+    (setq output (shell-output-filter output)))
   (when output
     (insert output)
     (when (and shell-output-limit (> (buffer-length) shell-output-limit))
@@ -218,8 +218,8 @@ last in the buffer the current command is copied to the end of the buffer."
 	(progn
 	  (insert "\n")
 	  (write shell-process
-		 (funcall (if shell-echos cut-area copy-area)
-			  shell-last-output (cursor-pos))))
+		 ((if shell-echos cut-area copy-area)
+		  shell-last-output (cursor-pos))))
       ;; Try to identify a command on the current line
       (let
 	  ((start (if (looking-at shell-prompt-regexp (start-of-line))
@@ -232,8 +232,8 @@ last in the buffer the current command is copied to the end of the buffer."
 	      (when shell-whole-line
 		(goto (end-of-line)))
 	      (insert "\n")
-	      (setq cmdstr (funcall (if shell-echos cut-area copy-area)
-				    start (cursor-pos))))
+	      (setq cmdstr ((if shell-echos cut-area copy-area)
+			    start (cursor-pos))))
 	  ;; copy the command at this line to the end of the buffer
 	  (setq cmdstr (copy-area start (forward-line 1 (start-of-line))))
 	  (set-auto-mark)

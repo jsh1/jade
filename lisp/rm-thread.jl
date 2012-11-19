@@ -61,36 +61,36 @@ threaded.")
 
 (defvar rm-sort-predicates
   (list (cons 'location
-	      #'(lambda (x y)
-		  (< (rm-get-msg-field x rm-msg-mark)
-		     (rm-get-msg-field y rm-msg-mark))))
+	      (lambda (x y)
+		(< (rm-get-msg-field x rm-msg-mark)
+		   (rm-get-msg-field y rm-msg-mark))))
 	(cons 'date
-	      #'(lambda (x y)
-		  (let
-		      ((dx (rm-get-date-vector x))
-		       (dy (rm-get-date-vector y)))
-		    ;; Date-less messages earlier than dated messages
-		    (if (and dx dy)
-			(< (aref dx date-vec-epoch-time)
-			   (aref dy date-vec-epoch-time))
-		      dy))))
+	      (lambda (x y)
+		(let
+		    ((dx (rm-get-date-vector x))
+		     (dy (rm-get-date-vector y)))
+		  ;; Date-less messages earlier than dated messages
+		  (if (and dx dy)
+		      (< (aref dx date-vec-epoch-time)
+			 (aref dy date-vec-epoch-time))
+		    dy))))
 	(cons 'subject
-	      #'(lambda (x y)
-		  (< (rm-get-actual-subject x) (rm-get-actual-subject y))))
+	      (lambda (x y)
+		(< (rm-get-actual-subject x) (rm-get-actual-subject y))))
 	(cons 'sender
-	      #'(lambda (x y)
-		  (< (rm-get-senders x) (rm-get-senders y))))
+	      (lambda (x y)
+		(< (rm-get-senders x) (rm-get-senders y))))
 	(cons 'recipients
-	      #'(lambda (x y)
-		  (< (rm-get-recipients x) (rm-get-recipients y))))
+	      (lambda (x y)
+		(< (rm-get-recipients x) (rm-get-recipients y))))
 	(cons 'score
-	      #'(lambda (x y)
-		  (< (or (rm-message-get x 'score) 0)
-		     (or (rm-message-get y 'score) 0))))
+	      (lambda (x y)
+		(< (or (rm-message-get x 'score) 0)
+		   (or (rm-message-get y 'score) 0))))
 	(cons 'lines
-	      #'(lambda (x y)
-		  (< (rm-get-msg-field x rm-msg-total-lines)
-		     (rm-get-msg-field y rm-msg-total-lines)))))
+	      (lambda (x y)
+		(< (rm-get-msg-field x rm-msg-total-lines)
+		   (rm-get-msg-field y rm-msg-total-lines)))))
   "List of (SORT-TYPE . PREDICATE) defining functions that can be used to
 order messages. Each PREDICATE may be called with two arguments, the two
 messages to be ordered. It should return t when the first message should
@@ -115,71 +115,71 @@ be shown before the second.")
 			       folder rm-folder-after-list))))
       (mapc
        ;; Called for a list of messages
-       #'(lambda (message-list)
-	   (mapc
-	    ;; Called for a single message
-	    #'(lambda (msg)
-		;; Called for each message. Basic strategy is to
-		;; keep creating new threads, trying to join them up
-		;; as we go (to cope with disordered messages)
-		(let
-		    ((message-id (rm-get-message-id msg))
-		     (references (cons (rm-get-in-reply-to msg)
-				       (rm-get-references msg)))
-		     (tied-threads nil))
-		  (mapc
-		   ;; Called for a single thread of messages
-		   #'(lambda (thread)
-		       (catch 'thread
-			 (mapc
-			  ;; Called for a single message in the thread
-			  #'(lambda (thread-message)
-			      ;; Should really look for an intersection in
-			      ;; the References headers?
-			      (when (or (and rm-thread-using-subject
-					     (string= (rm-get-actual-subject
-						       msg)
-						      (rm-get-actual-subject
-						       thread-message)))
-					(memq (rm-get-message-id
-					       thread-message) references)
-					(eq message-id (rm-get-in-reply-to
-							thread-message))
-					(memq message-id (rm-get-references
-							  thread-message)))
-				;; Note where we should thread the MESSAGE
-				(setq tied-threads (cons thread tied-threads))
-				;; Don't need to scan this THREAD anymore
-				(throw 'thread nil)))
-			  thread)))
-		   threads)
-		  (if tied-threads
-		      ;; Link all of TIED-THREADS into one, and add MESSAGE
-		      (progn
-			;; Delete the threads being tied..
-			(setq threads (delete-if #'(lambda (x)
-						     (memq x tied-threads))
-						 threads))
-			;; ..then cons them onto the head as one
-			(setq threads (cons (apply nconc (list msg)
-						   tied-threads)
-					    threads)))
-		    ;; No thread for MESSAGE, start a new one
-		    (setq threads (cons (list msg) threads)))))
-	    message-list))
+       (lambda (message-list)
+	 (mapc
+	  ;; Called for a single message
+	  (lambda (msg)
+	    ;; Called for each message. Basic strategy is to
+	    ;; keep creating new threads, trying to join them up
+	    ;; as we go (to cope with disordered messages)
+	    (let
+		((message-id (rm-get-message-id msg))
+		 (references (cons (rm-get-in-reply-to msg)
+				   (rm-get-references msg)))
+		 (tied-threads nil))
+	      (mapc
+	       ;; Called for a single thread of messages
+	       (lambda (thread)
+		 (catch 'thread
+		   (mapc
+		    ;; Called for a single message in the thread
+		    (lambda (thread-message)
+		      ;; Should really look for an intersection in
+		      ;; the References headers?
+		      (when (or (and rm-thread-using-subject
+				     (string= (rm-get-actual-subject
+					       msg)
+					      (rm-get-actual-subject
+					       thread-message)))
+				(memq (rm-get-message-id
+				       thread-message) references)
+				(eq message-id (rm-get-in-reply-to
+						thread-message))
+				(memq message-id (rm-get-references
+						  thread-message)))
+			;; Note where we should thread the MESSAGE
+			(setq tied-threads (cons thread tied-threads))
+			;; Don't need to scan this THREAD anymore
+			(throw 'thread nil)))
+		    thread)))
+	       threads)
+	      (if tied-threads
+		  ;; Link all of TIED-THREADS into one, and add MESSAGE
+		  (progn
+		    ;; Delete the threads being tied..
+		    (setq threads (delete-if (lambda (x)
+					       (memq x tied-threads))
+					     threads))
+		    ;; ..then cons them onto the head as one
+		    (setq threads (cons (apply nconc (list msg)
+					       tied-threads)
+					threads)))
+		;; No thread for MESSAGE, start a new one
+		(setq threads (cons (list msg) threads)))))
+	  message-list))
        message-lists)
       ;; First sort the messages in each thread
       (let
 	  ((rm-pred (cdr (assq rm-intra-thread-sort-key rm-sort-predicates))))
 	(setq threads (mapcar
-		       #'(lambda (thread)
-			   (sort thread rm-pred))
+		       (lambda (thread)
+			 (sort thread rm-pred))
 		       threads)))
       ;; Then sort the threads themselves
       (let
 	  ((rm-pred (cdr (assq rm-inter-thread-sort-key rm-sort-predicates))))
-	(setq threads (sort threads #'(lambda (x y)
-					(funcall rm-pred (car x) (car y))))))
+	(setq threads (sort threads (lambda (x y)
+				      (rm-pred (car x) (car y))))))
       ;; Ok, so we now have a list of THREADS, spit them out as the
       ;; list(s) of messages?
       ;; [no infinite regress]
@@ -230,8 +230,8 @@ the raw prefix argument."
        ((arg current-prefix-arg))
      (list (rm-current-folder)
 	   (intern (prompt-from-list
-		    (mapcar #'(lambda (p)
-				(symbol-name (car p))) rm-sort-predicates)
+		    (mapcar (lambda (p)
+			      (symbol-name (car p))) rm-sort-predicates)
 		    "Sort key:"))
 	   arg)))
   (unless (atom key)
@@ -255,8 +255,8 @@ the raw prefix argument."
 			     (rm-get-folder-field
 			      folder rm-folder-after-list))
 		      (if reversed
-			  #'(lambda (x y)
-			      (not (funcall rm-sort-pred x y)))
+			  (lambda (x y)
+			    (not (rm-sort-pred x y)))
 			rm-sort-pred)))))
     (rm-set-folder-field folder rm-folder-sort-key
 			 (if reversed (cons -1 key) key))

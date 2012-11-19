@@ -98,10 +98,10 @@
 	    local-keymap html-display-map
 	    local-ctrl-c-keymap html-display-c-c-map
 	    popup-local-menus html-display-menus)
-      (map-extents #'(lambda (e)
-		       (when (html-display-extent-is-link-p e)
-			 (extent-put e 'popup-menus html-display-link-menus)
-			 (extent-put e 'mouse-face active-face)))
+      (map-extents (lambda (e)
+		     (when (html-display-extent-is-link-p e)
+		       (extent-put e 'popup-menus html-display-link-menus)
+		       (extent-put e 'mouse-face active-face)))
 		   (start-of-buffer) (end-of-buffer))
       (call-hook 'html-display-hook))))
 
@@ -118,21 +118,21 @@
 (defun html-display-quit ()
   (interactive)
   (let
-      ((html-buffers (filter #'(lambda (b)
-				 (with-buffer b
-				   (eq major-mode 'html-display-mode)))
+      ((html-buffers (filter (lambda (b)
+			       (with-buffer b
+				 (eq major-mode 'html-display-mode)))
 			     (buffer-list))))
     (mapc kill-buffer html-buffers)))
 
 (defun html-display-find-url (url)
   (catch 'exit
-    (mapc #'(lambda (b)
-	      (with-buffer b
-		(when (and html-display-details
-			   (assq 'url html-display-details)
-			   (string=
-			    url (cdr (assq 'url html-display-details))))
-		  (throw 'exit b)))) (all-buffers))
+    (mapc (lambda (b)
+	    (with-buffer b
+	      (when (and html-display-details
+			 (assq 'url html-display-details)
+			 (string=
+			  url (cdr (assq 'url html-display-details))))
+		(throw 'exit b)))) (all-buffers))
     nil))
 
 
@@ -153,9 +153,9 @@
       (when tem
 	(setq start (extent-end tem)))
       (goto (catch 'foo
-	      (map-extents #'(lambda (e)
-			       (when (html-display-extent-is-link-p e)
-				 (throw 'foo (extent-start e))))
+	      (map-extents (lambda (e)
+			     (when (html-display-extent-is-link-p e)
+			       (throw 'foo (extent-start e))))
 			   start (end-of-buffer)))))
     (setq count (1- count)))
   (while (< count 0)
@@ -167,9 +167,9 @@
 	(setq end (forward-char -1 (extent-start tem))))
       (goto (let
 		(final)
-	      (map-extents #'(lambda (e)
-			       (when (html-display-extent-is-link-p e)
-				 (setq final (extent-start e))))
+	      (map-extents (lambda (e)
+			     (when (html-display-extent-is-link-p e)
+			       (setq final (extent-start e))))
 			   (start-of-buffer) end)
 	      final)))
     (setq count (1+ count)))

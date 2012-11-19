@@ -138,7 +138,7 @@ Commands defined by this mode are:\n
 \\{c-mode-keymap}\\{c-mode-ctrl-c-keymap,Ctrl-c}"
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (when c-style
     (let ((style (cdr (assoc c-style c-styles))))
       (when style

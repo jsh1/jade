@@ -181,11 +181,11 @@ contain its definition as a function."
 	  (let
 	      ((compiler (get fun 'rm-rule-compiler)))
 	    (if compiler
-		(macroexpand (funcall compiler input))
+		(macroexpand (compiler input))
 	      (cons (or (get fun 'rm-rule-function)
 			(error "Unknown operator in rule: %s" fun))
-		    (mapcar #'(lambda (x)
-				(macroexpand (rm-make-rule-body x)))
+		    (mapcar (lambda (x)
+			      (macroexpand (rm-make-rule-body x)))
 			    (cdr input))))))
 	 ((listp fun)
 	  (mapcar rm-make-rule-body input))
@@ -201,8 +201,8 @@ contain its definition as a function."
 		rule
 	      (symbol-value (or (get rule 'rm-rule-function)
 				(error "No rule called %s" rule))))))
-    (filter #'(lambda (rm-rule-message)
-		(funcall fun)) messages)))
+    (filter (lambda (rm-rule-message)
+	      (fun)) messages)))
 
 ;; Apply the message RM-RULE-MESSAGE to RULE, returning t if it matches
 ;;;###autoload
@@ -212,16 +212,16 @@ contain its definition as a function."
 		rule
 	      (symbol-value (or (get rule 'rm-rule-function)
 				(error "No rule called %s" rule))))))
-    (funcall fun)))
+    (fun)))
 
 ;; Apply the message MESSAGE to the list of rules RULE-LIST. Return t if
 ;; any rule matches (without testing any remaining rules)
 ;;;###autoload
 (defun rm-apply-rules (rule-list msg)
   (catch 'exit
-    (mapc #'(lambda (r)
-	      (and (rm-apply-rule r msg)
-		   (throw 'exit t))) rule-list)))
+    (mapc (lambda (r)
+	    (and (rm-apply-rule r msg)
+		 (throw 'exit t))) rule-list)))
 
 ;; Combine RULE1 and RULE2 into a single anonymous rule, combination
 ;; is done by OP, one of `and', `or', `progn'. Defaults to `and'.
@@ -303,15 +303,15 @@ contain its definition as a function."
 	;; this will be slooow!
 	(setq date (rm-parse-date date)))
       (setq msg-date (aref msg-date date-vec-epoch-time))
-      (funcall (if after > <)
-	       msg-date
-	       (if (eq (car date) 'absolute)
-		   (cdr date)
-		 (let
-		     ((current (current-time)))
-		   (rplaca current (- (car current) (nth 1 date)))
-		   (rplacd current (- (cdr current) (nthcdr 2 date)))
-		   (fix-time current)))))))
+      ((if after > <)
+       msg-date
+       (if (eq (car date) 'absolute)
+	   (cdr date)
+	 (let
+	     ((current (current-time)))
+	   (rplaca current (- (car current) (nth 1 date)))
+	   (rplacd current (- (cdr current) (nthcdr 2 date)))
+	   (fix-time current)))))))
 
 ;; (mailbox FOLDER-REGEXP)
 (put 'mailbox 'rm-rule-function 'rm-rule:mailbox)
@@ -325,12 +325,12 @@ contain its definition as a function."
 (put 'recipient 'rm-rule-function 'rm-rule:recipient)
 (defun rm-rule:recipient (name)
   (catch 'return
-    (mapc #'(lambda (cell)
-	      (when (or (and (car cell) (string-match name (car cell)
-						      nil rm-rule-fold-case))
-			(and (cdr cell) (string-match name (cdr cell)
-						      nil rm-rule-fold-case)))
-		(throw 'return t)))
+    (mapc (lambda (cell)
+	    (when (or (and (car cell) (string-match name (car cell)
+						    nil rm-rule-fold-case))
+		      (and (cdr cell) (string-match name (cdr cell)
+						    nil rm-rule-fold-case)))
+	      (throw 'return t)))
 	  (rm-get-recipients rm-rule-message))
     nil))
 
@@ -338,12 +338,12 @@ contain its definition as a function."
 (put 'sender 'rm-rule-function 'rm-rule:sender)
 (defun rm-rule:sender (name)
   (catch 'return
-    (mapc #'(lambda (cell)
-	      (when (or (and (car cell) (string-match name (car cell)
-						      nil rm-rule-fold-case))
-			(and (cdr cell) (string-match name (cdr cell)
-						      nil rm-rule-fold-case)))
-		(throw 'return t)))
+    (mapc (lambda (cell)
+	    (when (or (and (car cell) (string-match name (car cell)
+						    nil rm-rule-fold-case))
+		      (and (cdr cell) (string-match name (cdr cell)
+						    nil rm-rule-fold-case)))
+	      (throw 'return t)))
 	  (rm-get-senders rm-rule-message))
     nil))
 
@@ -434,17 +434,16 @@ contain its definition as a function."
 
 ;;;###autoload
 (defun rm-prompt-for-rule (#!optional title)
-  (let
-      ((prompt-history rm-rule-history)
-       (rule (prompt-for-symbol (or title
-				    "Restriction rule (`lambda' for anonymous rule):")
-				#'(lambda (sym)
-				    (or (eq sym 'new)
-					(eq sym 'lambda)
-					(eq sym nil)
-					(let
-					    ((fun (rm-rule-symbol sym)))
-					  (boundp fun)))))))
+  (let ((prompt-history rm-rule-history)
+	(rule (prompt-for-symbol (or title
+				     "Restriction rule (`lambda' for anonymous rule):")
+				 (lambda (sym)
+				   (or (eq sym 'new)
+				       (eq sym 'lambda)
+				       (eq sym nil)
+				       (let
+					   ((fun (rm-rule-symbol sym)))
+					 (boundp fun)))))))
     (cond ((eq rule 'new)
 	   (call-command 'define-rule))
 	  ((eq rule 'lambda)

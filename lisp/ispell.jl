@@ -123,7 +123,7 @@ results have been received.")
 	((line (substring ispell-pending-output 0 (match-end))))
       (setq ispell-pending-output (substring ispell-pending-output
 					     (match-end)))
-      (funcall ispell-line-callback line))))
+      (ispell-line-callback line))))
 
 ;; Start the ispell-process if it isn't already
 (defun ispell-start-process ()
@@ -170,10 +170,10 @@ results have been received.")
 (defun ispell-read-line ()
   (let*
       ((ispell-read-line-out nil)
-       (ispell-line-callback #'(lambda (l)
-				 (setq ispell-read-line-out l)
-				 ;; Only want the first line
-				 (setq ispell-line-callback nil))))
+       (ispell-line-callback (lambda (l)
+			       (setq ispell-read-line-out l)
+			       ;; Only want the first line
+			       (setq ispell-line-callback nil))))
     ;; Flush any pending output
     (ispell-output-filter nil)
     (while (and (not ispell-read-line-out)
@@ -238,8 +238,7 @@ results have been received.")
 		;; Word spelt ok
 		(setq start w-end)
 	      ;; Not ok
-	      (setq start (funcall function word response
-				   w-start w-end))))
+	      (setq start (function word response w-start w-end))))
 	;; Can't find word
 	(setq start end)))))
 
@@ -444,9 +443,9 @@ for. When called interactively, spell-check the current block."
 		 (list (start-of-buffer) (end-of-buffer))))
   (let
       (extents)
-    (map-extents #'(lambda (e)
-		     (when (eq (extent-get e 'face) ispell-misspelt-face)
-		       (setq extents (cons e extents)))) start end)
+    (map-extents (lambda (e)
+		   (when (eq (extent-get e 'face) ispell-misspelt-face)
+		     (setq extents (cons e extents)))) start end)
     (mapc delete-extent extents)))
 
 ;; Returns the end of the checked region
@@ -462,16 +461,15 @@ whole of the buffer (if no block)."
 		   (list (block-start) (block-end))
 		 (list (start-of-buffer) (end-of-buffer))))
   (let
-      ((failure-fun #'(lambda (word response wstart wend)
-			(declare (unused word response))
-			(let
-			    ((e (make-extent
-				 wstart wend
-				 (list 'face ispell-misspelt-face
-				       'mouse-face active-face))))
-			  (extent-set e 'ispell-misspelt t)
-			  (extent-put e 'popup-menus ispell-minor-menus)
-			  wend))))
+      ((failure-fun (lambda (word response wstart wend)
+		      (declare (unused word response))
+		      (let ((e (make-extent
+				wstart wend
+				(list 'face ispell-misspelt-face
+				      'mouse-face active-face))))
+			(extent-set e 'ispell-misspelt t)
+			(extent-put e 'popup-menus ispell-minor-menus)
+			wend))))
     (if (not abort-on-input)
 	;; Just scan the whole thing in one chunk
 	(progn
@@ -551,10 +549,10 @@ the cursor is placed in a misspelt word; they are,
     (add-hook 'idle-hook ispell-idle-function)))
 
 (defun ispell-invalidate-past-scans ()
-  (mapc #'(lambda (b)
-	    (with-buffer b
-	      (when ispell-minor-mode-last-scan
-		(aset ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
+  (mapc (lambda (b)
+	  (with-buffer b
+	    (when ispell-minor-mode-last-scan
+	      (aset ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
 	(buffer-list)))
 
 ;; Return the string of the misspelt word under point, or nil

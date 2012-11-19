@@ -144,7 +144,7 @@ being sent."
 Major mode for composing and sending mail messages. Local bindings are:\n
 \\{send-mail-c-keymap,Ctrl-c}"
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (setq mode-name "Mail"
 	major-mode 'send-mail-mode
 	major-mode-kill send-mail-mode-kill
@@ -286,7 +286,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
       (error "Quit")))
   (message "Sending..." t)
   (call-hook 'mail-send-hook)
-  (funcall mail-send-function)
+  (mail-send-function)
   (format t "done")
   (set-buffer-read-only (current-buffer) t)
   (set-buffer-modified (current-buffer) nil)
@@ -375,8 +375,8 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 		(write-buffer-contents file))
 	    (close-file file)
 	    ;; Undo any ^From_ mangling
-	    (mapc #'(lambda (p)
-		      (delete-area p (forward-char 1 p))) quoted-froms)
+	    (mapc (lambda (p)
+		    (delete-area p (forward-char 1 p))) quoted-froms)
 	    (restrict-buffer (start-of-buffer) header-end)))))
 
     ;; Build a list of addresses the message should be sent to and

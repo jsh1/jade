@@ -166,9 +166,9 @@ are only set if they don't already have a value."
 		   (cons 'vlink-color html-style-vlink-color))))
     (setq html-style-current html-style-default)
     ;; Merge in file-subst variables that aren't already set
-    (mapc #'(lambda (cell)
-	      (unless (assq (car cell) file-subst-vars)
-		(file-subst-set (car cell) (cdr cell)))) vars)))
+    (mapc (lambda (cell)
+	    (unless (assq (car cell) file-subst-vars)
+	      (file-subst-set (car cell) (cdr cell)))) vars)))
 
 (defmacro html-style-get (tag)
   "Return the html template for TAG."

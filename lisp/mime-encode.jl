@@ -146,18 +146,18 @@
 ;; Encoding composed message to MIME
 
 (defun mime-encode-params (params)
-  (mapc #'(lambda (param)
-	    (insert ";")
-	    (if (>= (+ (pos-col (char-to-glyph-pos))
-		       (length (symbol-name (car param)))
-		       (length (cdr param)) 2)
-		    mail-fill-column)
-		(insert "\n\t")
-	      (insert " "))
-	    (format (current-buffer) "%s=" (car param))
-	    (if (string-match (concat ?^ mime-token-re ?$) (cdr param))
-		(insert (cdr param))
-	      (format (current-buffer) "\"%s\"" (cdr param))))
+  (mapc (lambda (param)
+	  (insert ";")
+	  (if (>= (+ (pos-col (char-to-glyph-pos))
+		     (length (symbol-name (car param)))
+		     (length (cdr param)) 2)
+		  mail-fill-column)
+	      (insert "\n\t")
+	    (insert " "))
+	  (format (current-buffer) "%s=" (car param))
+	  (if (string-match (concat ?^ mime-token-re ?$) (cdr param))
+	      (insert (cdr param))
+	    (format (current-buffer) "\"%s\"" (cdr param))))
 	params))
 
 (defun mime-encode-content-type (content-type)
@@ -179,7 +179,7 @@
     (if (null cell)
 	;; No encoding method, copy verbatim
 	(copy-stream input output)
-      (funcall (nth 1 cell) input output))))
+      ((nth 1 cell) input output))))
 
 (defun mime-encode-make-boundary ()
   (let
@@ -196,9 +196,9 @@
 (defun mime-encode-message ()
   ;; First see if there actually are any attachments
   (when (catch 'foo
-	  (map-extents #'(lambda (e)
-			   (and (extent-get e 'content-type)
-				(throw 'foo t)))
+	  (map-extents (lambda (e)
+			 (and (extent-get e 'content-type)
+			      (throw 'foo t)))
 		       (start-of-buffer) (end-of-buffer)))
     ;; There are, so work through them in turn
     (let
@@ -221,14 +221,14 @@
 	  (attachments next-start)
 	;; First locate all attachments (can't delete extents while
 	;; map-extent'ing)
-	(map-extents #'(lambda (e)
-			 (when (extent-get e 'content-type)
-			   ;; Found an attachment
-			   (setq attachments
-				 (cons (list* 'start (extent-start e)
-					      'end (extent-end e)
-					      (extent-plist e)) attachments))
-			   (set-extent-plist e nil)))
+	(map-extents (lambda (e)
+		       (when (extent-get e 'content-type)
+			 ;; Found an attachment
+			 (setq attachments
+			       (cons (list* 'start (extent-start e)
+					    'end (extent-end e)
+					    (extent-plist e)) attachments))
+			 (set-extent-plist e nil)))
 		     (start-of-buffer) (end-of-buffer))
 	;; Then convert them to MIME format
 	;; Working from bottom to top of the buffer to avoid screwing with
@@ -293,8 +293,8 @@
 	(setq boundary-string (mime-encode-make-boundary))
 	(when (search-forward boundary-string (start-of-buffer))
 	  (setq boundary-string nil)))
-      (mapc #'(lambda (m)
-		(insert boundary-string (mark-pos m))) boundaries))))
+      (mapc (lambda (m)
+	      (insert boundary-string (mark-pos m))) boundaries))))
 
 
 ;; Misc commands

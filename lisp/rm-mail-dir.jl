@@ -32,7 +32,7 @@
 ;; Prevent warnings
 (eval-when-compile (require 'rm-summary))
 
-(defvar rm-mail-dir-auto-scan-hook (list #'(lambda () t))
+(defvar rm-mail-dir-auto-scan-hook (list (lambda () t))
   "Hook called before a mail message is automatically scanned for addresses
 to add to the address book. If any function in this hook returns nil, the
 message isn't scanned.")
@@ -41,20 +41,20 @@ message isn't scanned.")
 (defun rm-mail-dir-scanner (rm-message folder #!optional all-addresses force)
   (declare (unused folder))
   (call-hook 'rm-mail-dir-auto-scan-hook (list rm-message) 'and)
-  (mapc #'(lambda (cell)
+  (mapc (lambda (cell)
+	  (when (and (car cell) (or (cdr cell) force))
+	    (mail-dir-scan-function
+	     (car cell) (or (cdr cell)
+			    (prompt-for-mail-full-name
+			     (concat "Name of <" (car cell) ">:") t)))))
+	(rm-get-senders rm-message))
+  (when all-addresses
+    (mapc (lambda (cell)
 	    (when (and (car cell) (or (cdr cell) force))
 	      (mail-dir-scan-function
 	       (car cell) (or (cdr cell)
 			      (prompt-for-mail-full-name
 			       (concat "Name of <" (car cell) ">:") t)))))
-	(rm-get-senders rm-message))
-  (when all-addresses
-    (mapc #'(lambda (cell)
-	      (when (and (car cell) (or (cdr cell) force))
-		(mail-dir-scan-function
-		 (car cell) (or (cdr cell)
-				(prompt-for-mail-full-name
-				 (concat "Name of <" (car cell) ">:") t)))))
 	  (rm-get-recipients rm-message)))
   t)
 (add-hook 'rm-display-message-hook rm-mail-dir-scanner)
@@ -70,8 +70,8 @@ interactively a prefix argument denotes ALL-ADDRESSES."
        (mail-dir-prompt-when-scanning nil)
        (folder (rm-current-folder))
        (messages (rm-command-items folder)))
-    (mapc #'(lambda (m)
-	      (rm-mail-dir-scanner m folder all-addresses t)) messages)))
+    (mapc (lambda (m)
+	    (rm-mail-dir-scanner m folder all-addresses t)) messages)))
 
 ;; Bind to read-mail keymap
 (bind-keys rm-keymap

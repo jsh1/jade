@@ -78,16 +78,16 @@ considered as referring to the same day.")
       (indented-text-mode))
     (when (or file-list function-list)
       (when file-list
-	(mapc #'(lambda (f)
-		  (insert (change-log-shorten-file f log-file))
-		  (insert ", ")) file-list)
+	(mapc (lambda (f)
+		(insert (change-log-shorten-file f log-file))
+		(insert ", ")) file-list)
 	(backspace-char 2)
 	(insert " "))
       (when function-list
 	(insert "\(")
-	(mapc #'(lambda (f)
-		  (insert f)
-		  (insert " ")) function-list)
+	(mapc (lambda (f)
+		(insert f)
+		(insert " ")) function-list)
 	(backspace-char 1)
 	(insert "\) "))
       (backspace-char 1)
@@ -107,7 +107,7 @@ considered as referring to the same day.")
   "Major mode for editing ChangeLogs."
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (require 'text-mode)
   (setq mode-name "ChangeLog"
 	major-mode 'changelog-mode

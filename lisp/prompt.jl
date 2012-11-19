@@ -180,7 +180,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
       ((line (copy-area (extent-end prompt-title-extent) (end-of-buffer))))
     (if (or (not prompt-validate-function)
 	    (let
-		((res (funcall prompt-validate-function line)))
+		((res (prompt-validate-function line)))
 	      (when (and res (not (eq res t)))
 		(setq line res))
 	      res))
@@ -204,7 +204,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	      ;; restore the original context
 	      (comp-list (with-view prompt-original-view
 			   (with-buffer prompt-original-buffer
-			     (funcall prompt-completion-function word)))))
+			     (prompt-completion-function word)))))
 	   (completion-insert comp-list word only-display)))))
 
 (defun prompt-list-completions ()
@@ -270,12 +270,12 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 
 (defun prompt-validate-symbol (name)
   (and (or (not prompt-symbol-predicate)
-	   (funcall prompt-symbol-predicate (intern name)))
+	   (prompt-symbol-predicate (intern name)))
        name))
 
 (defun prompt-complete-buffer (word)
-  (delete-if-not #'(lambda (b)
-		     (string-head-eq b word))
+  (delete-if-not (lambda (b)
+		   (string-head-eq b word))
 		 (mapcar buffer-name (buffer-list))))
 
 (defun prompt-validate-buffer (name)
@@ -291,18 +291,17 @@ is rejected.")
   (setq prompt-file-exclude (concat prompt-file-exclude "|^\\.(\\.|)$")))
 
 (defun prompt-complete-filename (word)
-  (let*
-      ((path (file-name-directory word))
-       (file (file-name-nondirectory word))
-       (files (directory-files path)))
-    (mapcar #'(lambda (x) 
-		(let ((y (concat path x)))
-		  (when (file-directory-p y)
-		    (setq y (concat y ?/)))
-		  y))
-	    (delete-if #'(lambda (f)
-			   (or (not (string-head-eq f file))
-			       (string-match prompt-file-exclude f)))
+  (let* ((path (file-name-directory word))
+	 (file (file-name-nondirectory word))
+	 (files (directory-files path)))
+    (mapcar (lambda (x)
+	      (let ((y (concat path x)))
+		(when (file-directory-p y)
+		  (setq y (concat y ?/)))
+		y))
+	    (delete-if (lambda (f)
+			 (or (not (string-head-eq f file))
+			     (string-match prompt-file-exclude f)))
 		       files))))
 
 (defun prompt-validate-filename (name)
@@ -310,22 +309,20 @@ is rejected.")
 
 (defun prompt-complete-directory (word)
   (setq word (expand-file-name word))
-  (let
-      ((path (file-name-directory word))
-       (file (file-name-nondirectory word)))
-    (delq nil (mapcar #'(lambda (x)
-			  (when (file-directory-p (concat path x))
-			    (concat path x ?/)))
-		      (delete-if #'(lambda (f)
-				     (not (string-head-eq f file)))
+  (let ((path (file-name-directory word))
+	(file (file-name-nondirectory word)))
+    (delq nil (mapcar (lambda (x)
+			(when (file-directory-p (concat path x))
+			  (concat path x ?/)))
+		      (delete-if (lambda (f)
+				   (not (string-head-eq f file)))
 				 (directory-files path))))))
 
 (defun prompt-validate-directory (name)
   (and (file-directory-p name) t))
 
 (defun prompt-abbreviate-filename (name)
-  (let
-      ((abbrev (file-name-nondirectory name)))
+  (let ((abbrev (file-name-nondirectory name)))
     (if (string= abbrev "")
 	(file-name-as-directory
 	 (file-name-nondirectory (directory-file-name name)))
@@ -440,16 +437,15 @@ with it."
   "Prompt for a lisp object."
   (unless (stringp title)
     (setq title "Enter a Lisp object:"))
-  (let
-      ((prompt-completion-function t)
-       (prompt-validate-function nil)
-       (prompt-symbol-predicate nil)
-       (before-prompt-hook
-	(cons #'(lambda ()
-		  (lisp-mode)
-		  ;; This is something of a kludge
-		  (setq local-keymap 'prompt-keymap))
-	      before-prompt-hook)))
+  (let ((prompt-completion-function t)
+	(prompt-validate-function nil)
+	(prompt-symbol-predicate nil)
+	(before-prompt-hook
+	 (cons (lambda ()
+		 (lisp-mode)
+		 ;; This is something of a kludge
+		 (setq local-keymap 'prompt-keymap))
+	       before-prompt-hook)))
     (read-from-string (prompt title start))))
 
 ;;;###autoload
@@ -570,15 +566,15 @@ The function returns t only if _all_ of the inputs were answered with yes."
 			 (let*
 			     ((q (if (stringp question)
 				     (format nil question (car inputs))
-				   (funcall question (car inputs))))
+				   (question (car inputs))))
 			      (a (y-or-n-p q map-y-or-n-keymap
 					   "(y, n, !, q)")))
 			   (if a
-			       (funcall callback (car inputs))
+			       (callback (car inputs))
 			     (setq all-t nil))
 			   (setq inputs (cdr inputs))))))
       ;; User answered with "!", so loop over all remaining inputs
       (while inputs
-	(funcall callback (car inputs))
+	(callback (car inputs))
 	(setq inputs (cdr inputs))))
     all-t))

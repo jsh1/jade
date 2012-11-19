@@ -205,11 +205,11 @@ include any parenthesised expressions!")
 				    (cons (cdr (car tem)))))))
 	(setq tem (cdr tem)))
       ;; Ensure that inbox names are absolute
-      (mapcar #'(lambda (inbox)
-		  (if (or (file-name-absolute-p inbox)
-			  (string-looking-at "^po:" inbox))
-		      inbox
-		    (expand-file-name inbox mail-folder-dir))) lst)))))
+      (mapcar (lambda (inbox)
+		(if (or (file-name-absolute-p inbox)
+			(string-looking-at "^po:" inbox))
+		    inbox
+		  (expand-file-name inbox mail-folder-dir))) lst)))))
 
 ;; History list of prompt-for-folder
 (defvar mail-prompt-history (make-ring))

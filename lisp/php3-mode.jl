@@ -60,9 +60,9 @@ a second or more, providing the buffer has been modified since the previous
 scan."
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill))
+    (major-mode-kill))
   (when php3-mode-major
-    (funcall php3-mode-major))
+    (php3-mode-major))
   (setq php3-mode-major-kill major-mode-kill)
   (setq mode-name "PHP3")
   (setq major-mode 'php3-mode)
@@ -77,7 +77,7 @@ scan."
 (defun php3-mode-kill ()
   (php3-mode-delete-minors)
   (when php3-mode-major-kill
-    (funcall php3-mode-major-kill))
+    (php3-mode-major-kill))
   (kill-all-local-variables))
 
 (defun php3-mode-make-minor ()
@@ -104,9 +104,9 @@ Give any such regions minor-major modes."
 		    (setq start (match-end)))))
 	(when (and start
 		   (catch 'foo
-		     (map-extents #'(lambda (e)
-				      (when (extent-get e 'minor-major)
-					(throw 'foo nil))) start end)
+		     (map-extents (lambda (e)
+				    (when (extent-get e 'minor-major)
+				      (throw 'foo nil))) start end)
 		     t))
 	  (extent-put (minor-major-mode php3-mode-minor start end)
 		      'rear-sticky nil))
@@ -124,8 +124,8 @@ Give any such regions minor-major modes."
   (interactive)
   (let
       (extents)
-    (map-extents #'(lambda (e)
-		     (when (eq (extent-get e 'minor-major) php3-mode-minor)
-		       (setq extents (cons e extents))))
+    (map-extents (lambda (e)
+		   (when (eq (extent-get e 'minor-major) php3-mode-minor)
+		     (setq extents (cons e extents))))
 		 (start-of-buffer) (end-of-buffer))
     (mapc delete-extent extents)))

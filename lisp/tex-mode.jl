@@ -65,7 +65,7 @@ Local bindings in this mode are:\n
 \\{tex-keymap}\\{tex-ctrl-c-keymap,C-c}"
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (setq mode-name "TeX"
 	major-mode 'tex-mode
 	major-mode-kill tex-mode-kill

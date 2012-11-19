@@ -28,12 +28,11 @@
 
 ;; Called from the rm-display-message-hook
 (defun rm-make-message-links (msg folder)
-  (mapc #'(lambda (cell)
-	    (let
-		((point (start-of-buffer)))
-	      (while (re-search-forward (car cell) point nil t)
-		(setq point (forward-line 1 (match-start)))
-		(funcall (cdr cell) (match-start) msg folder))))
+  (mapc (lambda (cell)
+	  (let ((point (start-of-buffer)))
+	    (while (re-search-forward (car cell) point nil t)
+	      (setq point (forward-line 1 (match-start)))
+	      ((cdr cell) (match-start) msg folder))))
 	rm-msg-links-alist))
 
 (defun rm-msg-links-make-extent (point)

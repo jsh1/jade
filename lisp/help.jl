@@ -229,17 +229,17 @@ strings of modes may contain any of these expansions."
 			    out))))
 	 ((= type ?\})
 	  ;; print-keymap SYMBOL
-	  (map-keymap #'(lambda (k prefix)
-			  (setq out (cons (format nil "%-24s %S\n"
-						  (concat "  "
-							  arg
-							  (if (string= arg "")
-							      "" " ")
-							  (or prefix "")
-							  (if prefix " " "")
-							  (event-name (cdr k)))
-						  (car k))
-					  out)))
+	  (map-keymap (lambda (k prefix)
+			(setq out (cons (format nil "%-24s %S\n"
+						(concat "  "
+							arg
+							(if (string= arg "")
+							    "" " ")
+							(or prefix "")
+							(if prefix " " "")
+							(event-name (cdr k)))
+						(car k))
+					out)))
 		      (symbol-value symbol)))
 	 ((= type ?\>)
 	  ;; next where-is is relative to keymap SYMBOL

@@ -156,25 +156,24 @@ Type \\[mds-edit-commit] to finalise the edits. The full list of local keybindin
     (unless mds-edit-item
       (error "This item has no name: %s" item))
     (format buffer "name: %S\n" mds-edit-item)
-    (mapc #'(lambda (cell)
-	      (unless (eq (car cell) ':name)
-		(format buffer "%s: "
-			(substring (symbol-name (car cell)) 1))
-		(if (listp (cdr cell))
-		    (progn
-		      (insert "\(")
-		      (let
-			  ((first t)
-			   (indent (pos-col (char-to-glyph-pos))))
-			(mapc #'(lambda (e)
-				  (unless first
-				    (insert "\n")
-				    (indent-to indent))
-				  (prin1 e buffer)
-				  (setq first nil)) (cdr cell)))
-		      (insert "\)\n"))
-		  (prin1 (cdr cell) buffer)
-		  (insert "\n")))) item)
+    (mapc (lambda (cell)
+	    (unless (eq (car cell) ':name)
+	      (format buffer "%s: "
+		      (substring (symbol-name (car cell)) 1))
+	      (if (listp (cdr cell))
+		  (progn
+		    (insert "\(")
+		    (let ((first t)
+			  (indent (pos-col (char-to-glyph-pos))))
+		      (mapc (lambda (e)
+			      (unless first
+				(insert "\n")
+				(indent-to indent))
+			      (prin1 e buffer)
+			      (setq first nil)) (cdr cell)))
+		    (insert "\)\n"))
+		(prin1 (cdr cell) buffer)
+		(insert "\n")))) item)
     (set-buffer-modified nil nil)
     (set-buffer-undo-list nil)
     (message "Type `C-c C-c' to commit edits")))

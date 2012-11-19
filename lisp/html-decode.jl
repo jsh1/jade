@@ -174,17 +174,17 @@ of the document, currently only `title' and `base' keys are defined."
 	;; Found the next tag, output everything from POINT to END
 	;; using the current style.
 	(if html-decode-display
-	    (funcall html-decode-display
-		     (prog1 html-decode-point (setq html-decode-point end))
-		     end source dest)
+	    (html-decode-display
+	     (prog1 html-decode-point (setq html-decode-point end))
+	     end source dest)
 	  (setq html-decode-point end)))
       (unless (equal end (end-of-buffer source))
 	;; Then decode the command
 	(setq tag (html-decode-tag html-decode-point source))
 	(setq html-decode-point (car tag))
 	(setq tag (cdr tag))
-	(funcall (or (and (car tag) (get (car tag) 'html-decode-fun))
-		     html-decode-unknown-tag) tag dest)))
+	((or (and (car tag) (get (car tag) 'html-decode-fun))
+	     html-decode-unknown-tag) tag dest)))
     (html-decode-add-pending 'line)
     (html-decode-output-pending dest)
     (nconc (and html-decode-title (list (cons 'title html-decode-title)))

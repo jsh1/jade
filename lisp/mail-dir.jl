@@ -138,17 +138,17 @@ definitions will be added to any existing definitions."
       (rplacd cell (delete value (cdr cell))))))
 
 (defun md-delete-field (record field)
-  (mapc #'(lambda (cell)
-	    (when (eq (car cell) field)
-	      ;; Not possible to delete the whole thing. So just
-	      ;; clear out the field's contents
-	      (rplacd cell nil))) record))
+  (mapc (lambda (cell)
+	  (when (eq (car cell) field)
+	    ;; Not possible to delete the whole thing. So just
+	    ;; clear out the field's contents
+	    (rplacd cell nil))) record))
 
 (defun md-get-record (field key)
   (catch 'out
-    (mapc #'(lambda (r)
-	      (when (member key (md-get-field r field))
-		(throw 'out r))) mail-address-list)))
+    (mapc (lambda (r)
+	    (when (member key (md-get-field r field))
+	      (throw 'out r))) mail-address-list)))
 
 (defun md-add-record (field value)
   (let
@@ -163,10 +163,10 @@ definitions will be added to any existing definitions."
 
 ;; Return a flattened list of all fields matching FIELD
 (defun md-get-all-fields (field #!optional required)
-  (apply append (mapcar #'(lambda (r)
-			    (when (or (not required)
-				      (md-get-field r required))
-			      (md-get-field r field)))
+  (apply append (mapcar (lambda (r)
+			  (when (or (not required)
+				    (md-get-field r required))
+			    (md-get-field r field)))
 			mail-address-list)))
 
 (defun md-field-exists-p (key-field key field)
@@ -319,11 +319,11 @@ entity NAME."
 					     name)))))
      ((setq field (md-get-field record ':net-alias))
       (mail-insert-address-list
-       (mapcar #'(lambda (a)
-		   (condition-case nil
-		       (cons a (get-mail-name-from-address a))
-		     (error
-		      (cons a nil)))) field)))
+       (mapcar (lambda (a)
+		 (condition-case nil
+		     (cons a (get-mail-name-from-address a))
+		   (error
+		    (cons a nil)))) field)))
      (t
       (error "Nothing to insert in record: %s" record)))))
 
@@ -356,6 +356,6 @@ mail directory. Also see the variables `mail-dir-scan-messages' and
   (load-mail-directory mail-directory-file))
 
 (add-hook 'before-exit-hook
-	  #'(lambda ()
-	      (when mail-directory-modified
-		(save-mail-directory mail-directory-file))))
+	  (lambda ()
+	    (when mail-directory-modified
+	      (save-mail-directory mail-directory-file))))

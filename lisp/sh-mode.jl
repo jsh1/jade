@@ -37,7 +37,7 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
 \\{sh-keymap}"
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (setq mode-name "sh"
 	major-mode 'sh-mode
 	major-mode-kill kill-all-local-variables

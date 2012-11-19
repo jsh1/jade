@@ -100,14 +100,13 @@ the `file-subst-map-regexp' variable.
 Files are only built if FORCE is non-nil or the output file is older
 than the input file (or it doesn't exist). No files are saved, they're
 left in editor buffers."
-  (mapc #'(lambda (f)
-	    (let
-		((out (if (string-match (or regexp file-subst-map-regexp) f)
-			  (substring f (match-start 1) (match-end 1))
-			(prompt-for-string
+  (mapc (lambda (f)
+	  (let ((out (if (string-match (or regexp file-subst-map-regexp) f)
+			 (substring f (match-start 1) (match-end 1))
+		       (prompt-for-string
 			 (format nil "Output file for `%s'" f) f))))
-	      (when (or force (file-newer-than-file-p f out))
-		(file-subst f out))))
+	    (when (or force (file-newer-than-file-p f out))
+	      (file-subst f out))))
 	file-list))
 
 (defun file-subst-set (var value)

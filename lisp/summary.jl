@@ -139,7 +139,7 @@ assoc is needed.")
 This major mode provides a generic menu capability. It allows lists of
 items to be displayed and manipulated."
   (when major-mode-kill
-    (funcall major-mode-kill))
+    (major-mode-kill))
   (setq summary-functions (copy-sequence functions)
 	summary-pending-ops nil
 	summary-first-line (start-of-line (end-of-buffer))
@@ -229,17 +229,17 @@ isn't displayed in the summary."
        (end (pos (max (car (view-dimensions)) (line-length start))
 		 (pos-line start)))
        extents)
-    (map-extents #'(lambda (e)
-		     (when (extent-get e 'summary-highlight)
-		       (setq extents (cons e extents))))
-		   (start-of-buffer) (extent-end (extent-root)))
+    (map-extents (lambda (e)
+		   (when (extent-get e 'summary-highlight)
+		     (setq extents (cons e extents))))
+		 (start-of-buffer) (extent-end (extent-root)))
     (mapc delete-extent extents)
     (make-extent start end
 		 (list 'face highlight-face 'summary-highlight t))))
 
 (defmacro summary-get-pending-ops (item)
   "Return the list of operations pending on ITEM."
-  (list 'funcall 'summary-assoc-item-function item 'summary-pending-ops))
+  (list 'summary-assoc-item-function item 'summary-pending-ops))
 
 (defun summary-add-pending-op (item op)
   "Add OP to the list of operations to call on ITEM at a later date."
@@ -279,8 +279,8 @@ isn't displayed in the summary."
       ((old-ops summary-pending-ops))
     (setq summary-pending-ops nil)
     (when (summary-function-exists-p 'after-marking)
-      (mapc #'(lambda (cell)
-		(summary-dispatch 'after-marking (car cell))) old-ops))
+      (mapc (lambda (cell)
+	      (summary-dispatch 'after-marking (car cell))) old-ops))
     (summary-update)))
 
 (defun summary-update ()
@@ -433,9 +433,9 @@ item."
 (defun summary-mark-if (pred #!optional op)
   "Mark all items that satisfy the predicate function PRED, optionally
 using tag OP (by default the `mark' tag)."
-  (mapc #'(lambda (x)
-	    (when (funcall pred x)
-	      (summary-mark-item (or op 'mark) x)))
+  (mapc (lambda (x)
+	  (when (pred x)
+	    (summary-mark-item (or op 'mark) x)))
 	summary-items))
 
 (defun summary-mark-delete (#!optional item count)
@@ -449,18 +449,18 @@ using tag OP (by default the `mark' tag)."
   "Map FUNCTION over all marked items in the current buffer. Unless
 PRESERVE-MARKS is t, all marks are unset. FUNCTION is called as
 (FUNCTION MARKED-ITEM)."
-  (mapc #'(lambda (o)
-	    (when (memq 'mark (cdr o))
-	      (unless preserve-marks
-		(rplacd o (delq 'mark (cdr o))))
-	      (funcall function (car o))))
+  (mapc (lambda (o)
+	  (when (memq 'mark (cdr o))
+	    (unless preserve-marks
+	      (rplacd o (delq 'mark (cdr o))))
+	    (function (car o))))
 	summary-pending-ops))
 
 (defun summary-command-items ()
   "Return a list of items from the current summary buffer. Either all marked
 items, or if no items are marked, the item under the cursor."
-  (or (filter #'(lambda (x)
-		  (memq 'mark (summary-get-pending-ops x)))
+  (or (filter (lambda (x)
+		(memq 'mark (summary-get-pending-ops x)))
 	      summary-items)
       (let
 	  ((arg (prefix-numeric-argument current-prefix-arg))

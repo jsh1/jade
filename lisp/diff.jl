@@ -167,9 +167,9 @@ command for more details."
 
 (defun diff-configure-views (src-range dst-range)
   (when (> (window-view-count) 3)
-    (mapc #'(lambda (v)
-	      (unless (minibuffer-view-p v)
-		(delete-view v)))
+    (mapc (lambda (v)
+	    (unless (minibuffer-view-p v)
+	      (delete-view v)))
 	  (nthcdr 2 (window-view-list))))
   (when (<= (window-view-count) 2)
     (split-view (car (window-view-list))))

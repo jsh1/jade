@@ -115,7 +115,7 @@
 					(error "Unknown context found"))
 				 ((looking-at (caar x) token-pos)
 				  (setq current-context (eval (cadar x)))
-				  (funcall (eval (caddar x)) token-pos))
+				  ((eval (caddar x)) token-pos))
 				 (t 
 				  (iter (cdr x)))))))
 			  (iter python-context-tokens)))
@@ -247,7 +247,7 @@ Commands defined by this mode are:\n
 \\{python-mode-keymap}\\{python-mode-ctrl-c-keymap,Ctrl-c}"
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (setq mode-name "Python"
 	major-mode 'python-mode
 	major-mode-kill kill-all-local-variables

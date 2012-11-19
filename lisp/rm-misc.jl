@@ -42,7 +42,7 @@ message formatting characters are available.")
   (let*
       ((folder (rm-current-folder))
        (msg (or (rm-get-folder-field folder rm-folder-current-msg)
-		    (error "No current message")))
+		(error "No current message")))
        (subject (rm-get-subject msg))
        (to (or (and (not ignore-replyto)
 		    (let
@@ -57,14 +57,14 @@ message formatting characters are available.")
 	       (rm-get-sender msg)))
        (cc (if followup-p
 	       ;; Only include addresses not in the TO
-	       (filter #'(lambda (addr)
-			   (catch 'foo
-			     (mapc #'(lambda (addr2)
-				       (and (mail-compare-addresses addr addr2)
-					    (throw 'foo nil)))
-				   ;; also include the user's address
-				   (cons user-mail-address to))
-			     t)) (rm-get-recipients msg))))
+	       (filter (lambda (addr)
+			 (catch 'foo
+			   (mapc (lambda (addr2)
+				   (and (mail-compare-addresses addr addr2)
+					(throw 'foo nil)))
+				 ;; also include the user's address
+				 (cons user-mail-address to))
+			   t)) (rm-get-recipients msg))))
        (msg-id (rm-get-msg-header msg "Message-Id"))
        (references (append (rm-get-msg-header msg "References" t t)
 			   (and msg-id (list msg-id)))))
@@ -75,9 +75,9 @@ message formatting characters are available.")
 	((fun (lambda (cell)
 		(mail-format-address (car cell) (cdr cell)))))
       (mail-setup (mapcar fun to) subject msg-id (mapcar fun cc) references
-		  (list (cons #'(lambda (f m)
-				  (declare (unused f))
-				  (rm-message-put m 'replied t))
+		  (list (cons (lambda (f m)
+				(declare (unused f))
+				(rm-message-put m 'replied t))
 			      (list folder msg)))))
     (if to
 	(send-mail-go-text)
@@ -151,12 +151,12 @@ arg TO specifies who to send it to."
        (subject (rm-get-subject msg))
        start tem)
     (mail-setup to subject nil nil nil
-		(list (cons #'(lambda (f m)
-				(rm-message-put m 'forwarded t)
-				(when (rm-get-folder-field
-				       f rm-folder-summary)
-				  (rm-with-summary f
-				    (summary-update-item m))))
+		(list (cons (lambda (f m)
+			      (rm-message-put m 'forwarded t)
+			      (when (rm-get-folder-field
+				     f rm-folder-summary)
+				(rm-with-summary f
+				  (summary-update-item m))))
 			    (list folder msg))))
     (insert "----- begin forwarded message -----\n")
     (setq start (cursor-pos))

@@ -54,7 +54,7 @@ Local bindings in this mode are:\n
 \\{texinfo-ctrl-c-ctrl-c-keymap,Ctrl-c Ctrl-c}"
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (setq mode-name "Texinfo"
 	major-mode 'texinfo-mode
 	major-mode-kill texinfo-mode-kill

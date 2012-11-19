@@ -99,7 +99,7 @@ bindings is:\n
       (setq major-mode 'dired-mode))))
 
 (defun dired-list ()
-  (sort (funcall dired-directory-files default-directory)))
+  (sort (dired-directory-files default-directory)))
 
 (defun dired-print (item)
   (let*
@@ -124,10 +124,10 @@ bindings is:\n
   (map-y-or-n-p "Really delete file `%s'?"
 		(prog1 dired-delete-cache
 		  (setq dired-delete-cache nil))
-		#'(lambda (f)
-		    (if (file-directory-p f)
-			(delete-directory f)
-		      (delete-file f)))))
+		(lambda (f)
+		  (if (file-directory-p f)
+		      (delete-directory f)
+		    (delete-file f)))))
 (defvar dired-functions
   (list (cons 'print dired-print)
 	(cons 'after-move (lambda ()
@@ -149,7 +149,7 @@ bindings is:\n
 
 (defun dired-mark-by-regexp (regexp #!optional op)
   (interactive "sMark files matching regexp:")
-  (summary-mark-if #'(lambda (f) (string-match regexp f)) op))
+  (summary-mark-if (lambda (f) (string-match regexp f)) op))
 
 (defun dired-delete-by-regexp (regexp)
   (interactive "sDelete files matching regexp:")
@@ -172,10 +172,8 @@ bindings is:\n
 
 (defun dired-find-file (files root)
   (interactive (list (summary-command-items) default-directory))
-  (let
-      ((root default-directory))
-    (mapc #'(lambda (f)
-	      (find-file (expand-file-name f root))) files)))
+  (mapc (lambda (f)
+	  (find-file (expand-file-name f root))) files))
 
 (defun dired-find-file-other-view (files root)
   (interactive (list (summary-command-items) default-directory))
@@ -205,8 +203,8 @@ the location is the name of a file to copy to."
 	  ((dest (prompt-for-directory "Destination directory:" t)))
 	(when (file-name= default-directory dest)
 	  (error "Can't copy to source directory!"))
-	(mapc #'(lambda (f)
-		  (copy-file f (expand-file-name f dest))) files)))))
+	(mapc (lambda (f)
+		(copy-file f (expand-file-name f dest))) files)))))
 
 (defun dired-do-rename ()
 "Rename all selected files. If more than one file is selected, the specified
@@ -220,8 +218,8 @@ the new name for the file."
 						  nil nil (car files)))
       (let
 	  ((dest (prompt-for-directory "Destination directory:" t)))
-	(mapc #'(lambda (f)
-		  (rename-file f (expand-file-name f dest))) files)))
+	(mapc (lambda (f)
+		(rename-file f (expand-file-name f dest))) files)))
     (summary-update)))
 
 (defun dired-create-directory (dir)

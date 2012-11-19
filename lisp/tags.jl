@@ -227,7 +227,7 @@ move back to the previously found tag."
 	    (setq kill-this-buffer t)))
 	(unless point
 	  (setq point (start-of-buffer buffer)))
-	(funcall function buffer point)
+	(function buffer point)
 	(when (and kill-this-buffer (not (buffer-modified-p buffer)))
 	  (kill-buffer buffer))
 	(setq buffer nil)
@@ -244,14 +244,14 @@ regular expression REGEXP. Further matches may be found though the use of the
   (setq tags-continue-command nil)
   (catch 'out
     (tags-map-buffers
-     #'(lambda (buffer point)
-	 (message (format nil "Searching `%s'..." (buffer-file-name buffer)) t)
-	 (when (re-search-forward regexp point buffer case-fold-search)
-	   (goto-buffer buffer)
-	   (goto (match-start))
-	   (setq tags-continue-command
-		 `(,tags-search ,regexp ,(make-mark (match-end))))
-	   (throw 'out t)))
+     (lambda (buffer point)
+       (message (format nil "Searching `%s'..." (buffer-file-name buffer)) t)
+       (when (re-search-forward regexp point buffer case-fold-search)
+	 (goto-buffer buffer)
+	 (goto (match-start))
+	 (setq tags-continue-command
+	       `(,tags-search ,regexp ,(make-mark (match-end))))
+	 (throw 'out t)))
      mark)
     (message "[No matches]")))
 
@@ -267,22 +267,22 @@ may be found though the use of the `tags-loop-continue' function."
     (let
 	((do-all nil))
       (tags-map-buffers
-       #'(lambda (buffer point)
-	   (message
-	    (format nil "Searching `%s'..." (buffer-file-name buffer)) t)
-	   (when (re-search-forward from point buffer case-fold-search)
-	     (with-buffer buffer
-	       (goto (match-start))
-	       (if do-all
-		   (while (re-search-forward from nil nil case-fold-search)
-		     (goto (replace-last-match to)))
-		 (setq point (query-replace from to))
-		 (cond ((eq point 'rest)
-			(setq do-all t))
-		       ((null point)
-			(setq tags-continue-command
-			      `(,tags-query-replace ,from ,to ,(make-mark)))
-			(throw 'out t)))))))
+       (lambda (buffer point)
+	 (message
+	  (format nil "Searching `%s'..." (buffer-file-name buffer)) t)
+	 (when (re-search-forward from point buffer case-fold-search)
+	   (with-buffer buffer
+	     (goto (match-start))
+	     (if do-all
+		 (while (re-search-forward from nil nil case-fold-search)
+		   (goto (replace-last-match to)))
+	       (setq point (query-replace from to))
+	       (cond ((eq point 'rest)
+		      (setq do-all t))
+		     ((null point)
+		      (setq tags-continue-command
+			    `(,tags-query-replace ,from ,to ,(make-mark)))
+		      (throw 'out t)))))))
        mark))))
 
 (defun tags-loop-continue ()

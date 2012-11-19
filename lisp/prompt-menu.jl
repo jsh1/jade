@@ -26,40 +26,40 @@
 (defun prompt-menu-create-menu (spec)
   (let
       (menu)
-    (mapc #'(lambda (cell)
-	      (let
-		  (label item)
-		(when (and cell (symbolp (car cell)))
-		  (setq cell (symbol-value (car cell))))
-		(unless (null cell)
-		  (setq label (car cell))
-		  (if (functionp (cdr cell))
-		      (setq cell (funcall (cdr cell)))
-		    (setq cell (cdr cell)))
-		  (cond
-		   ((functionp (car cell))
-		    (setq item (list* 'command label (car cell))))
-		   ((consp (car cell))
-		    (setq item (list* 'sub label
-				      (prompt-menu-create-menu cell))))
-		   ((eq (car cell) t)
-		    (setq item (list* 'function label (nth 1 cell))))))
-		(when item
-		  (setq menu (cons item menu)))))
+    (mapc (lambda (cell)
+	    (let
+		(label item)
+	      (when (and cell (symbolp (car cell)))
+		(setq cell (symbol-value (car cell))))
+	      (unless (null cell)
+		(setq label (car cell))
+		(if (functionp (cdr cell))
+		    (setq cell ((cdr cell)))
+		  (setq cell (cdr cell)))
+		(cond
+		 ((functionp (car cell))
+		  (setq item (list* 'command label (car cell))))
+		 ((consp (car cell))
+		  (setq item (list* 'sub label
+				    (prompt-menu-create-menu cell))))
+		 ((eq (car cell) t)
+		  (setq item (list* 'function label (nth 1 cell))))))
+	      (when item
+		(setq menu (cons item menu)))))
 	  spec)
     (nreverse menu)))
 
 (defun prompt-menu-find (tree item)
   (catch 'return
-    (mapc #'(lambda (x)
-	      (when (string-match
-		     (concat ?^ (quote-regexp (nth 1 x)) ?$) item nil t)
-		(throw 'return x))) tree)
+    (mapc (lambda (x)
+	    (when (string-match
+		   (concat ?^ (quote-regexp (nth 1 x)) ?$) item nil t)
+	      (throw 'return x))) tree)
     nil))
 
 (defun prompt-menu-prompt (tree title)
   (let*
-      ((lst (mapcar #'(lambda (x) (car (cdr x))) tree))
+      ((lst (mapcar (lambda (x) (car (cdr x))) tree))
        (choice (prompt-from-list lst (concat title ?:))))
     (while choice
       (setq choice (or (prompt-menu-find tree choice)
@@ -81,4 +81,4 @@
       (cond ((eq (car item) 'command)
 	     (popup-menu-dispatch-command (nthcdr 2 item)))
 	    ((eq (car item) 'function)
-	     (funcall (nthcdr 2 item)))))))
+	     ((nthcdr 2 item)))))))

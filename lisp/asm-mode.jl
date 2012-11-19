@@ -39,7 +39,7 @@ Major mode for editing generic assembler source. Special commands are:\n
 \\{asm-keymap}"
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (setq mode-name "Assembler"
 	major-mode 'asm-mode
 	major-mode-kill asm-mode-kill
@@ -55,7 +55,7 @@ being assembled. Currently this only differs from asm-mode in the comments
 it inserts."
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (require 'c-mode)
   (setq mode-name "Assembler-CPP"
 	major-mode 'asm-cpp-mode

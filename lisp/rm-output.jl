@@ -90,8 +90,8 @@ folder's file."
 	((real-dest (or (get-file-buffer dest)
 			(open-file dest 'append))))
       (unwind-protect
-	  (mapc #'(lambda (m)
-		    (rm-output-message m real-dest)) messages)
+	  (mapc (lambda (m)
+		  (rm-output-message m real-dest)) messages)
 	(when (filep real-dest)
 	  (close-file real-dest))))
     (rm-redisplay-folder folder)))
@@ -102,19 +102,18 @@ folder's file."
 `rm-auto-archive-alist'."
   (interactive (list (rm-current-folder) current-prefix-arg))
   (rm-map-messages
-   #'(lambda (m)
-       (catch 'saved
-	 (mapc #'(lambda (cell)
-		   (when (rm-apply-rule (car cell) m)
-		     (let
-			 ((dest (or (get-file-buffer (cdr cell))
-				    (open-file (cdr cell) 'append))))
-		       (unwind-protect
-			   (rm-output-message m dest)
-			 (when (filep dest)
-			   (close-file dest))))
-		     (throw 'saved t)))
-	       rm-auto-archive-alist)))
+   (lambda (m)
+     (catch 'saved
+       (mapc (lambda (cell)
+	       (when (rm-apply-rule (car cell) m)
+		 (let ((dest (or (get-file-buffer (cdr cell))
+				 (open-file (cdr cell) 'append))))
+		   (unwind-protect
+		       (rm-output-message m dest)
+		     (when (filep dest)
+		       (close-file dest))))
+		 (throw 'saved t)))
+	     rm-auto-archive-alist)))
    folder)
   (rm-redisplay-folder folder))
 
@@ -124,13 +123,12 @@ folder's file."
   (interactive (list (rm-current-folder)
 		     (rm-prompt-for-rule "Rule to archive by:")
 		     (prompt-for-folder "Archive to mailbox:")))
-  (let
-      ((dest (or (get-file-buffer mailbox)
-		 (open-file mailbox 'append))))
+  (let ((dest (or (get-file-buffer mailbox)
+		  (open-file mailbox 'append))))
     (unwind-protect
-	(rm-map-messages #'(lambda (m)
-			     (when (rm-apply-rule rule m)
-			       (rm-output-message m dest)))
+	(rm-map-messages (lambda (m)
+			   (when (rm-apply-rule rule m)
+			     (rm-output-message m dest)))
 			 folder)
       (when (filep dest)
 	(close-file dest))))

@@ -62,7 +62,7 @@ a second or more, providing the buffer has been modified since the previous
 scan."
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill))
+    (major-mode-kill))
   (setq mode-name "Yacc"
 	major-mode 'yacc-mode
 	major-mode-kill yacc-mode-kill
@@ -139,8 +139,8 @@ mode."
   (interactive)
   (let
       (extents)
-    (map-extents #'(lambda (e)
-		     (when (eq (extent-get e 'minor-major) 'c-mode)
-		       (setq extents (cons e extents))))
+    (map-extents (lambda (e)
+		   (when (eq (extent-get e 'minor-major) 'c-mode)
+		     (setq extents (cons e extents))))
 		 (start-of-buffer) (end-of-buffer))
     (mapc delete-extent extents)))

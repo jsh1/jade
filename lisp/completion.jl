@@ -46,10 +46,10 @@ matching strings.")
 
 (defun completion-find-view ()
   (catch 'return
-    (mapc #'(lambda (v)
-	      (and (string-match "^\\*completions\\*"
-				 (buffer-name (current-buffer v)))
-		   (throw 'return v)))
+    (mapc (lambda (v)
+	    (and (string-match "^\\*completions\\*"
+			       (buffer-name (current-buffer v)))
+		 (throw 'return v)))
 	  (window-view-list))
     nil))
 
@@ -82,19 +82,19 @@ matching strings.")
 ;; Display a list of completions in a *completions* buffer in the
 ;; current window
 (defun completion-list (completions)
-  (setq completions (funcall (if completion-sorted-lists sort identity)
-			     (if completion-abbrev-function
-				 (mapcar completion-abbrev-function
-					 completions)
-			       (copy-sequence completions))))
+  (setq completions ((if completion-sorted-lists sort identity)
+		     (if completion-abbrev-function
+			 (mapcar completion-abbrev-function
+				 completions)
+		       (copy-sequence completions))))
   (let*
       ((max-width 0)
        column-width columns
        (view (completion-setup-view))
        (view-width (car (view-dimensions view))))
-    (mapc #'(lambda (c)
-	      (and (> (length c) max-width)
-		   (setq max-width (length c)))) completions)
+    (mapc (lambda (c)
+	    (and (> (length c) max-width)
+		 (setq max-width (length c)))) completions)
     (if (= max-width view-width)
 	(setq columns 1
 	      column-width view-width)
@@ -168,8 +168,8 @@ don't insert anything, just display the list of possible completions."
        (w-end (cursor-pos))
        (word (copy-area (forward-exp -1) (cursor-pos)))
        (completions (sort
-		     (apply nconc (mapcar #'(lambda (h)
-					      (funcall h word w-start w-end))
+		     (apply nconc (mapcar (lambda (h)
+					    (h word w-start w-end))
 					  completion-hooks)))))
     ;; remove duplicates
     (when completions

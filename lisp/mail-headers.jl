@@ -297,8 +297,8 @@
     addr))
 
 (defun mail-insert-address-list (lst #!optional no-commas)
-  (mail-insert-list (mapcar #'(lambda (cell)
-				(mail-format-address (car cell) (cdr cell)))
+  (mail-insert-list (mapcar (lambda (cell)
+			      (mail-format-address (car cell) (cdr cell)))
 			    lst) no-commas))
 
 ;; For a string from the Subject: header of a message, strip off any re:
@@ -321,9 +321,9 @@
 (defun mail-union-addresses (x y)
   (when y
     (setq x (copy-sequence x))
-    (mapc #'(lambda (a)
-	      (unless (assoc (car a) x)
-		(setq x (nconc x (list a))))) y))
+    (mapc (lambda (a)
+	    (unless (assoc (car a) x)
+	      (setq x (nconc x (list a))))) y))
   x)
 
 (defun make-message-id ()

@@ -131,14 +131,14 @@ When called interactively, BUFFER is prompted for."
   (when (and buffer (check-changes buffer))
     (with-buffer buffer
       (call-hook 'kill-buffer-hook (list buffer)))
-    (mapc #'(lambda (w)
-	      (mapc #'(lambda (v)
-			(with-view v
-			  (set-buffer-list (delq buffer (buffer-list)))
-			  (when (eq (current-buffer) buffer)
-			    (set-current-buffer (or (car (buffer-list))
-						    default-buffer)))))
-		    (window-view-list w)))
+    (mapc (lambda (w)
+	    (mapc (lambda (v)
+		    (with-view v
+		      (set-buffer-list (delq buffer (buffer-list)))
+		      (when (eq (current-buffer) buffer)
+			(set-current-buffer (or (car (buffer-list))
+						default-buffer)))))
+		  (window-view-list w)))
 	  (window-list))))
 
 (defun kill-current-buffer ()
@@ -149,14 +149,14 @@ When called interactively, BUFFER is prompted for."
 (defun add-buffer (buffer)
   "Make sure that BUFFER is in the `buffer-list' of all open windows. It gets
 put at the end of the list if it's not already in a member."
-  (mapc #'(lambda (w)
-	    (mapc #'(lambda (v)
-		      (unless (minibuffer-view-p v)
-			(with-view v
-			  (unless (memq buffer (buffer-list))
-			    (set-buffer-list (append (buffer-list)
-						     (cons buffer nil)))))))
-		  (window-view-list w)))
+  (mapc (lambda (w)
+	  (mapc (lambda (v)
+		  (unless (minibuffer-view-p v)
+		    (with-view v
+		      (unless (memq buffer (buffer-list))
+			(set-buffer-list (append (buffer-list)
+						 (cons buffer nil)))))))
+		(window-view-list w)))
 	(window-list)))
 
 (defun bury-buffer (#!optional buffer all-views)
@@ -171,16 +171,16 @@ buried in each view though)."
       ((lst (if all-views
 		 (window-list)
 	       (cons (current-window) nil))))
-    (mapc #'(lambda (w)
-	      (mapc #'(lambda (v)
-			(unless (minibuffer-view-p v)
-			  (with-view v
-			    (set-buffer-list (nconc (delq buffer (buffer-list))
-						    (cons buffer nil)))
-			    (set-current-buffer (car (buffer-list))))))
-		    (if all-views
-			(window-view-list w)
-		      (list (current-view)))))
+    (mapc (lambda (w)
+	    (mapc (lambda (v)
+		    (unless (minibuffer-view-p v)
+		      (with-view v
+			(set-buffer-list (nconc (delq buffer (buffer-list))
+						(cons buffer nil)))
+			(set-current-buffer (car (buffer-list))))))
+		  (if all-views
+		      (window-view-list w)
+		    (list (current-view)))))
 	  lst)))
 
 (defun switch-to-buffer ()
@@ -487,7 +487,7 @@ be lost after confirmation from the user."
 	   (window-line (pos-line (char-to-display-pos old-pos))))
 	(clear-buffer)
 	(when major-mode-kill
-	  (funcall major-mode-kill))
+	  (major-mode-kill))
 	(kill-all-local-variables)
 	(read-file-into-buffer (buffer-file-name buffer))
 	;; Try to restore the cursor to it's original position
@@ -509,8 +509,8 @@ be lost after confirmation from the user."
   (interactive)
   (let ((buffers (filter buffer-file-name (buffer-list))))
     (if buffers
-	(map-y-or-n-p #'(lambda (x)
-			  (format nil "Revert buffer %s" (buffer-name x)))
+	(map-y-or-n-p (lambda (x)
+			(format nil "Revert buffer %s" (buffer-name x)))
 		      buffers revert-buffer)
       (message "[No buffers to revert]"))))
 
@@ -519,13 +519,13 @@ be lost after confirmation from the user."
 buffers exist on exit."
   (interactive)
   (let
-      ((unsaved-buffers (filter #'(lambda (b)
-				    (and (buffer-modified-p b)
-					 (buffer-file-name b)))
+      ((unsaved-buffers (filter (lambda (b)
+				  (and (buffer-modified-p b)
+				       (buffer-file-name b)))
 				(buffer-list))))
     (if unsaved-buffers
-	(map-y-or-n-p #'(lambda (x)
-			  (format nil "Save file %s" (buffer-file-name x)))
+	(map-y-or-n-p (lambda (x)
+			(format nil "Save file %s" (buffer-file-name x)))
 		      unsaved-buffers
 		      save-file)
       (message "[No modified buffers]"))))

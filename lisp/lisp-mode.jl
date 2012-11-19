@@ -36,7 +36,7 @@ Major mode for editing Lisp source. Local bindings in this mode are:\n
 \\{lisp-mode-keymap}"
   (interactive)
   (when major-mode-kill
-    (funcall major-mode-kill (current-buffer)))
+    (major-mode-kill (current-buffer)))
   (setq mode-name "Lisp"
 	major-mode 'lisp-mode
 	major-mode-kill kill-all-local-variables

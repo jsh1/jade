@@ -51,11 +51,11 @@ keymaps, i.e. all prefix keys are ignored.")
 	(setq maps (cons local-keymap maps)))
       (when global-keymap
 	(setq maps (cons global-keymap maps)))
-      (mapcar #'(lambda (km)
-		  (if (symbolp km)
-		      ;; dereference the symbol in the correct buffer
-		      (symbol-value km)
-		    km))
+      (mapcar (lambda (km)
+		(if (symbolp km)
+		    ;; dereference the symbol in the correct buffer
+		    (symbol-value km)
+		  km))
 	      (nreverse maps)))))
 
 ;;;###autoload
@@ -97,33 +97,31 @@ binding, or nil if there was no prefix."
 
 ;; Map over a single list of keybindings
 (defun km-map-keylist (keylist fun buffer)
-  (mapc #'(lambda (k)
-	    (cond
-	     ((eq k 'keymap))		;An inherited sparse keymap
-	     ((or (and (symbolp (car k))
-		       (keymapp (symbol-value (car k) t)))
-		  (eq (car (car k)) 'next-keymap-path))
-	      ;; A prefix key
-	      (when map-keymap-recursively
-		(let
-		    ((this-list (if (symbolp (car k))
+  (mapc (lambda (k)
+	  (cond
+	   ((eq k 'keymap))		;An inherited sparse keymap
+	    ((or (and (symbolp (car k))
+		      (keymapp (symbol-value (car k) t)))
+		 (eq (car (car k)) 'next-keymap-path))
+	     ;; A prefix key
+	     (when map-keymap-recursively
+	       (let ((this-list (if (symbolp (car k))
 				    (list (with-buffer buffer
 					    (symbol-value (car k) t)))
 				  (with-buffer buffer (eval (nth 1 (car k))))))
 		     (event-str (event-name (cdr k))))
-		  (when (listp this-list)
-		    ;; Another keymap-list, add it to the list of those waiting
-		    (let*
-			((new-str (concat km-prefix-string
-					  (if km-prefix-string ?\ )
-					  event-str))
-			 (new-list (mapcar #'(lambda (km)
-					       (cons km new-str)) this-list)))
-		      (setq km-keymap-list (append km-keymap-list
-						   new-list)))))))
-	      (t
-	       ;; A normal binding
-	       (fun k km-prefix-string))))
+		 (when (listp this-list)
+		   ;; Another keymap-list, add it to the list of those waiting
+		   (let* ((new-str (concat km-prefix-string
+					   (if km-prefix-string ?\ )
+					   event-str))
+			  (new-list (mapcar (lambda (km)
+					      (cons km new-str)) this-list)))
+		     (setq km-keymap-list (append km-keymap-list
+						  new-list)))))))
+	    (t
+	     ;; A normal binding
+	     (fun k km-prefix-string))))
 	keylist))
 
 
@@ -136,10 +134,10 @@ in the keybindings under the keymap or list of keymaps KEYMAP. When KEYMAP
 is nil, the currently active keymaps used, i.e. all key bindings currently
 in effect."
   (interactive "COld command:\nCReplacement command:")
-  (map-keymap #'(lambda (k pfx)
-		  (declare (unused pfx))
-		  (when (eq (car k) olddef)
-		    (rplaca k newdef))) keymap))
+  (map-keymap (lambda (k pfx)
+		(declare (unused pfx))
+		(when (eq (car k) olddef)
+		  (rplaca k newdef))) keymap))
 
 
 ;; Adding bindings to a feature that may not yet be loaded
@@ -164,13 +162,13 @@ for the bindings to be installed if and when it is."
   (insert "Binding\n---------")
   (indent-to 24)
   (insert "-------\n\n")
-  (map-keymap #'(lambda (k prefix)
-		  (format (current-buffer) "%s%s%s "
-			  (or prefix "")
-			  (if prefix " " "")
-			  (event-name (cdr k)))
-		  (indent-to 24)
-		  (format (current-buffer) "%S\n" (car k)))
+  (map-keymap (lambda (k prefix)
+		(format (current-buffer) "%s%s%s "
+			(or prefix "")
+			(if prefix " " "")
+			(event-name (cdr k)))
+		(indent-to 24)
+		(format (current-buffer) "%S\n" (car k)))
 	      keymap buffer))
 
 
@@ -183,12 +181,12 @@ for the bindings to be installed if and when it is."
   (interactive "CWhere is command:\n\n\nt")
   (let
       ((km-where-is-results nil))
-    (map-keymap #'(lambda (k pfx)
-		    (when (eq (car k) command)
-		      (setq km-where-is-results
-			    (cons (concat pfx (and pfx " ")
-					  (event-name (cdr k)))
-				  km-where-is-results))))
+    (map-keymap (lambda (k pfx)
+		  (when (eq (car k) command)
+		    (setq km-where-is-results
+			  (cons (concat pfx (and pfx " ")
+					(event-name (cdr k)))
+				km-where-is-results))))
 		keymap buffer)
     (when output
       (message (format nil "`%s' is on %s" command
