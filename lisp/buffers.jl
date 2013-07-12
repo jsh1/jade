@@ -383,7 +383,8 @@ that it is associated with."
   (unless (call-hook 'write-file-hook (list name buffer) 'or)
     (let
 	((modes (when (file-exists-p name) (file-modes name))))
-      (backup-file name)
+      (with-buffer buffer
+	(backup-file name))
       (when (with-buffer buffer
 	      (write-buffer-contents name))
 	(when modes

@@ -1,3 +1,9 @@
+2013-07-12  John Harper  <jsh@unfactored.org>
+
+	* buffers.jl (write-file): push file's buffer when calling
+	backup-file so that it reads make-backup-files variable from a
+	useful environment
+
 2012-02-21  John Harper  <jsh@unfactored.org>
 
 	* modes.jl: files with .cc extension are C++ code
