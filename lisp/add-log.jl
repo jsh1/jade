@@ -40,12 +40,16 @@ considered as referring to the same day.")
 
 ;;;###autoload
 (defun find-change-log-file (directory)
-  (when (and directory (file-directory-p directory))
-    (if (file-exists-p (expand-file-name change-log-file directory))
-	;; expand twice to make absolute
-	(expand-file-name (expand-file-name change-log-file directory))
-      (find-change-log-file
-       (expand-file-name ".." directory)))))
+  (let loop ((dir directory))
+    (when (and dir (file-directory-p dir))
+      (let ((file (expand-file-name change-log-file dir)))
+	(if (file-exists-p file)
+	    ;; expand twice to make absolute
+	    (expand-file-name file)
+	  (let ((parent (expand-file-name ".." dir)))
+	    ;; XXX hack to avoid growing ~/../../.. ad infinitum
+	    (when (< (length parent) (length dir))
+	      (loop parent))))))))
 
 ;;;###autoload
 (defun add-change-log-entry (#!optional log-file file-list function-list)

@@ -1,3 +1,10 @@
+2014-05-23  John Harper  <jsh@unfactored.org>
+
+	* add-log.jl (find-change-log-file): rewrote this using
+	named-let and added an extra check to avoid an infinite loop
+	(once reaching the root, we just keep on going, as "/.." == "/"
+	as far as the filesystem is concerned)
+
 2013-07-12  John Harper  <jsh@unfactored.org>
 
 	* buffers.jl (write-file): push file's buffer when calling
