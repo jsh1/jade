@@ -1,3 +1,7 @@
+2014-05-23  John Harper  <jsh@unfactored.org>
+
+	* server-dl.c: removed unused string definition
+
 2012-11-18  John Harper  <jsh@unfactored.org>
 
 	* x11_windows.c, x11_keys.c, main.c, mac_windows.m, mac_keys.m,

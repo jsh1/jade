@@ -164,8 +164,6 @@ t if the edit-server is open.
     return(Qnil);
 }
 
-DEFSTRING(no_name, "Can't make socket name");
-
 DEFUN_INT("server-open", Fserver_open, Sserver_open, (void), rep_Subr0, "") /*
 ::doc:server-open::
 server-open
