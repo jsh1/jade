@@ -21,7 +21,7 @@
 #define JADE_MAC_DEFS_H
 
 /* standard font */
-#define DEFAULT_FONT "Monaco"
+#define DEFAULT_FONT "Menlo"
 
 /* Definitions for Lisp WIN object */
 
