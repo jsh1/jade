@@ -1,3 +1,8 @@
+2015-05-24  John Harper  <jsh@unfactored.org>
+
+	* mac_windows.m (setFont): resize window to match the number of
+	rows and columns it had with the previous font
+
 2014-05-23  John Harper  <jsh@unfactored.org>
 
 	* server-dl.c: removed unused string definition

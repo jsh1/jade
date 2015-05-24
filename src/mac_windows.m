@@ -125,6 +125,10 @@ flip_y (JadeView *view, int y)
 
     if (sys_window_realized (_win))
     {
+	CGFloat w = _win->column_count * _win->font_width;
+	CGFloat h = _win->row_count * _win->font_height;
+	NSWindow *window = [(JadeView *)_win->w_Window window];
+	[window setContentSize:NSMakeSize(w, h)];
 	sys_update_dimensions (_win);
 	update_window_dimensions (_win);
     }
