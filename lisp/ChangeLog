@@ -1,3 +1,10 @@
+2015-05-24  John Harper  <jsh@unfactored.org>
+
+	* modes.jl, javascript-mode.jl, autoload.jl: added a trivial
+	javascript-mode, c-mode with 2-space indents by default and
+	label indent removed (no gotos, and conflicts with object
+	syntax)
+
 2014-05-23  John Harper  <jsh@unfactored.org>
 
 	* add-log.jl (find-change-log-file): rewrote this using

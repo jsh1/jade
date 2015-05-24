@@ -271,4 +271,5 @@
 (autoload 'git-undo-modification "git" t)
 (autoload 'git-tag "git" t)
 (autoload 'git-next-conflict-marker "git" t)
+(autoload 'javascript-mode "javascript-mode" t)
 ;;; ::autoload-end::

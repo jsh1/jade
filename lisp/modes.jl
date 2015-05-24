@@ -82,6 +82,7 @@
     ("ChangeLog$" . changelog-mode)
     ("\\.sh$|^sh(ell)?$" . sh-mode)
     ("\\.p[lm]$|^perl$" . perl-mode)
+    ("\\.js$" . javascript-mode)
     ("\\.y$|^yacc$" . yacc-mode)
     ("\\.(m|mm)$|^objective-c$" . objective-c-mode))
   "List of all major modes which can be enabled by loading a file into
