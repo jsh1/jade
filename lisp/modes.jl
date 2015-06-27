@@ -70,7 +70,7 @@
 
 (defvar auto-mode-alist
   '(("\\.(c|h|cpp|cc)$|^c$" . c-mode)
-    ("\\.jl$|^.jaderc$|^lisp$" . lisp-mode)
+    ("\\.(jl|lisp|scm)$|^.jaderc$|^lisp$" . lisp-mode)
     ("\\.(te?xt|doc|article|letter)$" . text-mode)
     ("^(text|(.*/|)draft)$" . text-mode)
     ("^indented-text$" . indented-text-mode)
