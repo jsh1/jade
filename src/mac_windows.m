@@ -643,6 +643,7 @@ sys_new_window(Lisp_Window *oldW, Lisp_Window *w, int *dims)
     [window setOpaque:YES];
     [window setDelegate:(id)view];
     [window setContentResizeIncrements:NSMakeSize (w->font_width, w->font_height)];
+    [window setCollectionBehavior:NSWindowCollectionBehaviorManaged | NSWindowCollectionBehaviorParticipatesInCycle | NSWindowCollectionBehaviorFullScreenPrimary];
     [[NSNotificationCenter defaultCenter] addObserver:view
      selector:@selector(windowDidResize:)
      name:NSWindowDidResizeNotification object:view];
