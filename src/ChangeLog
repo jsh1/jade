@@ -1,3 +1,7 @@
+2015-06-27  John Harper  <jsh@unfactored.org>
+
+	* housekeeping.c (adjust_marks_sub_y): fix macros
+
 2015-05-24  John Harper  <jsh@unfactored.org>
 
 	* mac_windows.m (setFont): resize window to match the number of

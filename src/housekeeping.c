@@ -207,20 +207,24 @@ adjust_marks_sub_y(Lisp_Buffer *tx, intptr_t suby, intptr_t ypos)
     } while(0)
 
 #define UPD(p)					\
-    if(p && VROW(p) >= ypos)			\
-    {						\
-	intptr_t row = VROW(p) - suby;	\
-	if(row < ypos)				\
-	    (p) = make_pos(0, ypos);		\
-	else					\
-	    (p) = make_pos(VCOL(p), row);	\
+    do {					\
+	if(p && VROW(p) >= ypos)		\
+	{					\
+	    intptr_t row = VROW(p) - suby;	\
+	    if(row < ypos)			\
+		(p) = make_pos(0, ypos);	\
+	    else				\
+		(p) = make_pos(VCOL(p), row);	\
+	}					\
     } while(0)
 
 #define UPD1(p)						\
-    if(p && VROW(p) >= ypos)				\
-    {							\
-	intptr_t row = VROW(p) - suby;		\
-	(p) = make_pos(VCOL(p), MAX(row, ypos));	\
+    do {						\
+	if(p && VROW(p) >= ypos)			\
+	{						\
+	    intptr_t row = VROW(p) - suby;		\
+	    (p) = make_pos(VCOL(p), MAX(row, ypos));	\
+	}						\
     } while(0)
 
     for(thisvw = view_chain; thisvw; thisvw = thisvw->next)
