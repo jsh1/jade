@@ -9,7 +9,7 @@ if [ -f configure.in ]; then
   fi
 
   echo "Running libtoolize"
-  libtoolize --install || exit 1
+  libtoolize --install || glibtoolize --install || exit 1
 
   echo "Running aclocal $ACLOCAL_FLAGS"
   aclocal $ACLOCAL_FLAGS || exit 1
