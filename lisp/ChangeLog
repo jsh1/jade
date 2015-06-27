@@ -1,5 +1,7 @@
 2015-06-27  John Harper  <jsh@unfactored.org>
 
+	* lisp-mode.jl: set indentation style for define-macro
+
 	* modes.jl (auto-mode-alist): use lisp-mode for .scm files
 
 2015-05-24  John Harper  <jsh@unfactored.org>

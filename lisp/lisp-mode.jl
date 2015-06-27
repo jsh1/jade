@@ -318,6 +318,7 @@ in the status line."
 (put 'define-record-type 'lisp-indent 'defun)
 (put 'define-record-discloser 'lisp-indent 'defun)
 (put 'define-self-test 'lisp-indent 'defun)
+(put 'define-macro 'lisp-indent 1)
 
 ;; Now lisp-mode is loaded we may as well make the *jade* buffer use it
 (with-buffer default-buffer
