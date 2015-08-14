@@ -427,8 +427,7 @@ eval_input_event(void *osinput, unsigned long code, unsigned long mods)
     data.osinput = osinput;
     data.code = code;
     data.mods = mods;
-    return rep_call_with_barrier (inner_eval_input_event,
-				  rep_VAL(&data), true, 0, 0, 0);
+    return inner_eval_input_event(rep_VAL(&data));
 }
 
 

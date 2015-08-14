@@ -172,8 +172,7 @@ mac_source_perform (void *info)
 	char c = 1;
 	write (input_pipe[1], &c, 1);
 	OSAtomicDecrement32 (&d->pending);
-	rep_call_with_barrier (inner_input_callback,
-			       rep_VAL(d), true, 0, 0, 0);
+	inner_input_callback(rep_VAL(d));
 	mac_needs_redisplay = true;
     }
     else
@@ -271,11 +270,8 @@ set_timeout (int timeout_msecs)
 {
     if (context != 0)
     {
-	int max_sleep = rep_max_sleep_for ();
-
 	context->this_timeout_msecs = timeout_msecs;
-	context->actual_timeout_msecs = MIN (context->this_timeout_msecs,
-					     max_sleep);
+	context->actual_timeout_msecs = context->this_timeout_msecs;
 
 	CFAbsoluteTime abs_t = (CFAbsoluteTimeGetCurrent ()
 				+ context->actual_timeout_msecs / 1000.);
@@ -318,8 +314,7 @@ mac_event_loop (void)
 	    if (d->pending != 0)
 	    {
 		OSAtomicDecrement32 (&d->pending);
-		rep_call_with_barrier (inner_input_callback,
-				       rep_VAL(d), true, 0, 0, 0);
+		inner_input_callback(rep_VAL(d));
 		/* callout may have modified inputs list. */
 		goto again;
 	    }

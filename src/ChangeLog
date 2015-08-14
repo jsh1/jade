@@ -1,3 +1,8 @@
+2015-08-14  John Harper  <jsh@unfactored.org>
+
+	* x11_main.c, main.c, mac_windows.m, mac_runloop.m, keys.c,
+	gtk_jade.c: updated for removal of continuations from librep
+
 2015-06-27  John Harper  <jsh@unfactored.org>
 
 	* mac_windows.m (sys_new_window): set NSWindow

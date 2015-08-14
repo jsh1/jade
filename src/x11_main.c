@@ -672,8 +672,7 @@ x11_handle_input(int fd, bool synchronous)
 		    curr_win = ev_win;
 		    if(ev_win != oldwin)
 			curr_vw = curr_win->current_view;
-		    rep_call_with_barrier (Fdelete_window, Qnil,
-					   true, 0, 0, 0);
+		    Fdelete_window(Qnil);
 		    xdisplay = 0;
 		}
 		need_redisplay = true;

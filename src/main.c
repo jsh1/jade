@@ -222,7 +222,7 @@ main(int argc, char **argv)
     {
 	jade_symbols();
 
-	rep_call_with_barrier (inner_main, Qnil, true, 0, 0, 0);
+	inner_main(Qnil);
 
 	rc = rep_top_level_exit ();
 
