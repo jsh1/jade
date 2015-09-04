@@ -59,9 +59,9 @@ sent to it.")
 ;; Functions
 
 ;; Initialise a telnet buffer. ARGS is the process arg list, DIR the
-;; new value of default-directory
+;; new value of *default-directory*
 (defun telnet-init (host arg dir use-rlogin)
-  (setq default-directory dir
+  (setq *default-directory* dir
 	shell-program (if use-rlogin rlogin-program telnet-program)
 	telnet-using-rlogin use-rlogin
 	shell-prompt-regexp telnet-prompt-regexp
@@ -97,7 +97,7 @@ prompted for if a prefix argument is given."
 		       host)
 		     "*"))
        (buffer (get-buffer name))
-       (dir default-directory))
+       (dir *default-directory*))
     (goto-other-view)
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
@@ -133,7 +133,7 @@ given. See the `telnet' function for more details."
     (setq output (concat (substring output 0 (match-start))
 			 (substring output (match-end)))))
   ;; Look for password prompts
-  (when (and (or (eq telnet-grab-passwords t)
+  (when (and (or (eq? telnet-grab-passwords t)
 		 (< (pos-line (cursor-pos)) telnet-grab-passwords))
 	     (string-match telnet-password-regexp output nil t))
     ;; Found a password, cancelling the prompt will _not_ send anything,

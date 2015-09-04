@@ -68,7 +68,7 @@
       (while (setq p (re-search-forward
 			"^[; \t]*###autoload[\t ]*(.*)$" p buf))
 	(setq form (expand-last-match "\\1"))
-	(when (and form (not (equal "" form)))
+	(when (and form (not (equal? "" form)))
 	  (line-fun form)
 	  (setq count (1+ count))
 	  (message form t))
@@ -84,7 +84,7 @@
 					      ;; Can be called as a command
 					      "(autoload%s '%s %S t)"
 					    "(autoload%s '%s %S)")
-				      (if (eq (car form) 'defmacro)
+				      (if (eq? (car form) 'defmacro)
 					  "-macro" "")
 				      (nth 1 form) short-file-name)))
 		  ((and local-finder

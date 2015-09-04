@@ -75,8 +75,8 @@ scan."
 	local-keymap 'yacc-mode-keymap)
   (call-hook 'yacc-mode-hook)
   (when yacc-mode-scan-when-idle
-    (make-local-variable 'idle-hook)
-    (add-hook 'idle-hook yacc-mode-idle-function))
+    (make-local-variable '*idle-hook*)
+    (add-hook '*idle-hook* yacc-mode-idle-function))
   (yacc-mode-make-c-minor))
 
 (defun yacc-mode-kill ()
@@ -96,16 +96,16 @@ Give any such regions minor-major c-modes."
 	  (let
 	      ((start (match-end)))
 	    (when (re-search-forward "^%}" start)
-	      (unless (eq (buffer-get 'minor-major start) 'c-mode)
+	      (unless (eq? (buffer-get 'minor-major start) 'c-mode)
 		(extent-put (minor-major-mode 'c-mode start (match-start))
 			    'front-sticky t)))))
 	(when (and (re-search-forward "^%%" (start-of-buffer))
 		   (setq rules-start (match-end))
 		   (setq rules-end (re-search-forward "^%%" (match-end))))
-	  (unless (eq (buffer-get 'minor-major (match-end)) 'c-mode)
+	  (unless (eq? (buffer-get 'minor-major (match-end)) 'c-mode)
 	    (extent-put (minor-major-mode 'c-mode (match-end) (end-of-buffer))
 			'front-sticky t))))
-      (when (eq yacc-mode-c-minor t)
+      (when (eq? yacc-mode-c-minor t)
 	;; Scan all rules for C actions
 	(save-restriction
 	  (restrict-buffer (or rules-start (start-of-buffer))
@@ -118,7 +118,7 @@ Give any such regions minor-major c-modes."
 		  ((start (match-start 1))
 		   end)
 		(setq tem (match-end))
-		(when (and (not (eq (buffer-get 'minor-major tem) 'c-mode))
+		(when (and (not (eq? (buffer-get 'minor-major tem) 'c-mode))
 			   (setq end (condition-case nil
 					 (c-forward-exp 1 start)
 				       (error))))
@@ -140,7 +140,7 @@ mode."
   (let
       (extents)
     (map-extents (lambda (e)
-		   (when (eq (extent-get e 'minor-major) 'c-mode)
+		   (when (eq? (extent-get e 'minor-major) 'c-mode)
 		     (setq extents (cons e extents))))
 		 (start-of-buffer) (end-of-buffer))
     (mapc delete-extent extents)))

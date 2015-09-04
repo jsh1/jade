@@ -589,7 +589,7 @@ Create and return a new extent in the current buffer from START to END.
 It's property list is initially set to PLIST. It will have no local
 variables.
 
-Note that an extent may not always be `eq' to itself. The `equal' comparison
+Note that an extent may not always be `eq?' to itself. The `equal?' comparison
 will work reliably however.
 ::end:: */
 {
@@ -1661,10 +1661,15 @@ extent_cmp(repv e1, repv e2)
 void
 extent_init(void)
 {
-    extent_type = rep_register_new_type ("extent", extent_cmp,
-					 extent_prin, extent_prin,
-					 extent_sweep, extent_mark,
-					 0, 0, 0, 0, 0, 0, 0);
+    static rep_type extent = {
+	.name = "extent",
+	.compare = extent_cmp,
+	.print = extent_prin,
+	.sweep = extent_sweep,
+	.mark = extent_mark,
+    };
+
+    extent_type = rep_define_type(&extent);
 
     rep_ADD_SUBR(Smake_extent);
     rep_ADD_SUBR(Sdelete_extent);

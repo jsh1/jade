@@ -73,7 +73,7 @@ Finally, note that the string \"@@\" expands to a single @ character."
     (clear-buffer)
     (insert-file-contents input-file)
     (while (setq p (re-search-forward file-subst-regexp p))
-      (if (equal (match-start 1) (match-end 1))
+      (if (equal? (match-start 1) (match-end 1))
 	  ;; Null expansion, shortcut for @
 	  (progn
 	    (delete-area p (match-start 1))
@@ -84,10 +84,10 @@ Finally, note that the string \"@@\" expands to a single @ character."
 						 (match-end 1)))))
 	  (delete-area p (match-end))
 	  (goto p)
-	  (setq value (if (and (symbolp value) (assq value file-subst-vars))
+	  (setq value (if (and (symbol? value) (assq value file-subst-vars))
 			  (cdr (assq value file-subst-vars))
 			(eval value)))
-	  (when (or (stringp value) (numberp value))
+	  (when (or (string? value) (number? value))
 	    (goto p)
 	    (princ value output-buffer)))))))
 
@@ -105,7 +105,7 @@ left in editor buffers."
 			 (substring f (match-start 1) (match-end 1))
 		       (prompt-for-string
 			 (format nil "Output file for `%s'" f) f))))
-	    (when (or force (file-newer-than-file-p f out))
+	    (when (or force (file-newer-than-file? f out))
 	      (file-subst f out))))
 	file-list))
 

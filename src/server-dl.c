@@ -73,7 +73,7 @@ server_handle_request(int fd)
 	   4. if !async add (FILE . SOCK-FD) to list of client files
 	   5. call server-find-file with FILE and LINE */
 	if(read(fd, &len, sizeof(len)) != sizeof(len)
-	   || (val = rep_make_string(len + 1)) == 0
+	   || (val = rep_allocate_string(len + 1)) == 0
 	   || read(fd, rep_STR(val), len) != len
 	   || read(fd, &line, sizeof(line)) != sizeof(line))
 	    goto io_error;
@@ -98,7 +98,7 @@ server_handle_request(int fd)
 	   4. write length of result-string
 	   5. write LENGTH bytes of result string */
 	if(read(fd, &len, sizeof(len)) != sizeof(len)
-	   || (val = rep_make_string(len + 1)) == 0
+	   || (val = rep_allocate_string(len + 1)) == 0
 	   || read(fd, rep_STR(val), len) != len)
 	    goto io_error;
 	rep_STR(val)[len] = 0;
@@ -253,7 +253,7 @@ send us messages.
 	    {
 		rep_set_fd_nonblocking(socket_fd);
 		rep_register_input_fd(socket_fd, server_accept_connection);
-		socket_name = rep_string_dup (namebuf);
+		socket_name = rep_string_copy (namebuf);
 		return Qt;
 	    }
 	    else

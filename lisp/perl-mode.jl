@@ -89,7 +89,7 @@ Major mode for editing Perl source code. Local keybindings are:\n
 	(setq exp-ind (indent-pos exp-pos))
       (setq exp-ind (char-to-glyph-pos exp-pos)))
 
-    (unless (or (equal (indent-pos exp-pos) exp-ind)
+    (unless (or (equal? (indent-pos exp-pos) exp-ind)
 		(memq (get-char (forward-char -1 exp-pos)) '(?\( ?\{ ?\[)))
       (when (and (looking-at "^[\t ]*([^][(){}$@\"'a-zA-Z0-9_\t ]+)"
 			     (start-of-line exp-pos))
@@ -102,7 +102,7 @@ Major mode for editing Perl source code. Local keybindings are:\n
     (cond
      ((= (get-char exp-pos) ?\})
       ;; A closing brace
-      (unless (zerop (pos-col exp-pos))
+      (unless (zero? (pos-col exp-pos))
 	(setq exp-ind (left-char (+ perl-body-indent
 				    perl-brace-indent) exp-ind))))
 

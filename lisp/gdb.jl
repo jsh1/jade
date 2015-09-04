@@ -135,13 +135,13 @@ There is no limit to the number of gdb processes you may run at once."
   (interactive "sArguments to gdb:")
   (let*
       ((buffer (get-buffer "*gdb*"))
-       (directory default-directory))
+       (directory *default-directory*))
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(setq buffer (open-buffer "*gdb*" t))
       (clear-buffer buffer))
     (goto-buffer buffer)
     (kill-all-local-variables)
-    (setq default-directory directory
+    (setq *default-directory* directory
 	  shell-program-args (list "-c" (concat gdb-program
 						" -fullname " args))
 	  shell-prompt-regexp "^(\\(gdb\\) *|.*\\(.+\\) *|.+---)"
@@ -191,7 +191,7 @@ with `Ctrl-x Ctrl-a'.")
       (setq gdb-last-frame (cons (expand-file-name
 				  (substring data (match-start 1)
 					     (match-end 1))
-				  default-directory)
+				  *default-directory*)
 				 (1- (read (cons 0 (substring
 						    data
 						    (match-start 2)
@@ -216,13 +216,13 @@ commands. There is no limit to the number of processes you may run at once."
   (interactive "sArguments to perl:")
   (let*
       ((buffer (get-buffer "*perldb*"))
-       (directory default-directory))
+       (directory *default-directory*))
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(setq buffer (open-buffer "*perldb*" t))
       (clear-buffer buffer))
     (goto-buffer buffer)
     (kill-all-local-variables)
-    (setq default-directory directory
+    (setq *default-directory* directory
 	  shell-program-args (list "-c" (concat perl-program " -d "
 						args " -emacs"))
 	  shell-prompt-regexp "^ *DB<+[0-9]+>+ *"
@@ -271,13 +271,13 @@ commands. There is no limit to the number of processes you may run at once."
   (interactive "sArguments to rep:")
   (let*
       ((buffer (get-buffer "*rep-db*"))
-       (directory default-directory))
+       (directory *default-directory*))
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(setq buffer (open-buffer "*rep-db*" t))
       (clear-buffer buffer))
     (goto-buffer buffer)
     (kill-all-local-variables)
-    (setq default-directory directory
+    (setq *default-directory* directory
 	  shell-program-args (list "-c" (concat rep-program
 						" --debug --emacs-debug "
 						args))
@@ -356,7 +356,7 @@ commands. There is no limit to the number of processes you may run at once."
 	  (find-file (car frame))
 	  (gdb-highlight-line line-pos)
 	  (goto (glyph-to-char-pos (indent-pos line-pos)))
-	  (when (or gdb-auto-centre (not (eq old-buf (current-buffer))))
+	  (when (or gdb-auto-centre (not (eq? old-buf (current-buffer))))
 	    (center-display)))))))
 
 (defun gdb-redisplay-frame ()
@@ -388,7 +388,7 @@ commands. There is no limit to the number of processes you may run at once."
   (unless shell-process
     (when gdb-frame-extent
       (delete-extent gdb-frame-extent))
-    (when (eq gdb-last-buffer (current-buffer))
+    (when (eq? gdb-last-buffer (current-buffer))
       ;; Ensure the buffer can be gc'd in the future
       (setq gdb-last-buffer nil))))
 

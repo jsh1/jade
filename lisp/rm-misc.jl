@@ -47,7 +47,7 @@ message formatting characters are available.")
        (to (or (and (not ignore-replyto)
 		    (let
 			((replyto (rm-get-msg-header msg "Reply-To" t)))
-		      (when (stringp mail-ignored-reply-tos)
+		      (when (string? mail-ignored-reply-tos)
 			(setq replyto (delete-if
 				       (lambda (m)
 					 (string-match
@@ -178,7 +178,7 @@ arg TO specifies who to send it to."
     (while (looking-at "^[\t ]*$")
       (delete-area (forward-char -1 (match-start)) (match-end)))
     (insert "\n----- end forwarded message -----\n")
-    (if (null to)
+    (if (null? to)
 	(send-mail-go-to)
       (send-mail-go-text))
     (set-buffer-modified nil nil)))
@@ -235,7 +235,7 @@ arg TO specifies who to send it to."
 	      (message "Ignoring nonsense message!")
 	    ;; Enforce the "\n\n" rule between messages
 	    (goto (end-of-buffer))
-	    (unless (zerop (1- (buffer-length)))
+	    (unless (zero? (1- (buffer-length)))
 	      (insert "\n"))
 	    (setq output-pos (cursor-pos))
 	    (insert (copy-area start input-pos))
@@ -281,11 +281,11 @@ of the folder. Prompts for the digest type, RFC-934 or RFC-1153."
 					"Type of digest (`rfc934' or `rfc1153'):"
 					(and tem (symbol-name tem)))))
     (cond
-     ((eq tem 'rfc934)
+     ((eq? tem 'rfc934)
       (rm-really-burst-message rm-rfc934-preamble-sep
 			       rm-rfc934-message-sep
 			       rm-rfc934-stuffed-re))
-     ((eq tem 'rfc1153)
+     ((eq? tem 'rfc1153)
       (rm-really-burst-message rm-rfc1153-preamble-sep
 			       rm-rfc1153-message-sep
 			       rm-rfc1153-stuffed-re))

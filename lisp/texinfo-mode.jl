@@ -83,9 +83,9 @@ Local bindings in this mode are:\n
 |defivar|defop|defmethod|deftp|display|enumerate|example|flushleft|flushright\
 |format|ftable|group|ifclear|ifinfo|ifset|iftex|ignore|itemize|lisp|menu\
 |quotation|smallexample|smalllisp|table|tex|titlepage|vtable)" p)
-	    (if (equal (match-start 1) (match-end 1))
+	    (if (equal? (match-start 1) (match-end 1))
 		;; no end
-		(if (zerop depth)
+		(if (zero? depth)
 		    (throw 'foo t)
 		  (setq depth (1- depth)))
 	      (setq depth (1+ depth)))

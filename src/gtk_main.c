@@ -87,7 +87,7 @@ get_resources(char *prog_name)
 	default_ml_color = s;
     if((s = XGetDefault(gdk_display, prog_name, "font"))
        || (s = XGetDefault(gdk_display, "Jade", "Font")))
-	def_font_str = rep_string_dup(s);
+	def_font_str = rep_string_copy(s);
 }
 #endif
 
@@ -197,7 +197,7 @@ sys_init(char *program_name)
     last = &head;
     while(argc > 0)
     {
-	*last = Fcons(rep_string_dup(*argv), Qnil);
+	*last = Fcons(rep_string_copy(*argv), Qnil);
 	last = &rep_CDR(*last);
 	argc--;
 	argv++;
@@ -220,7 +220,7 @@ sys_init(char *program_name)
 #if rep_INTERFACE >= 9
     Frequire (Qgtk_feature);
 #else
-    Fload (rep_string_dup ("gtk"), Qnil, Qnil, Qnil, Qnil);
+    Fload (rep_string_copy ("gtk"), Qnil, Qnil, Qnil, Qnil);
 #endif
     if (!rep_throw_value)
     {

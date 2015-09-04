@@ -74,15 +74,15 @@
   (let
       ((start (cursor-pos))
        extent)
-    (unless (listp content-type)
-      (setq content-type (if (stringp content-type)
+    (unless (list? content-type)
+      (setq content-type (if (string? content-type)
 			     (condition-case nil
 				 (mime-decode-content-type content-type)
 			       (error
 				(list 'application 'octet-stream)))
 			   (list 'application 'octet-stream))))
     (cond
-     ((eq major-mode 'send-mail-mode)
+     ((eq? major-mode 'send-mail-mode)
       (unless (in-hook-p 'mail-send-hook mime-encode-message)
 	(make-local-variable 'mail-send-hook)
 	(add-hook 'mail-send-hook mime-encode-message)))
@@ -111,7 +111,7 @@
 		      "application/octet-stream")))
       (setq content-type (prompt-for-string
 			  (format nil "Content type (default: %s):" default)))
-      (unless (and (stringp content-type) (not (string= content-type "")))
+      (unless (and (string? content-type) (not (string=? content-type "")))
 	(setq content-type default))))
   (mime-encode-insert content-type
 		      (list (if inline 'inline 'attachment)
@@ -135,7 +135,7 @@
 	(setq content-type (prompt-for-string
 			    (format nil "Content type (default: %s):"
 				    default)))
-	(unless (and (stringp content-type) (not (string= content-type "")))
+	(unless (and (string? content-type) (not (string=? content-type "")))
 	  (setq content-type default))))
     (mime-encode-insert content-type
 			(list (if inline 'inline 'attachment)
@@ -176,7 +176,7 @@
     (setq output (current-buffer)))
   (let
       ((cell (assq encoding mime-xfer-encodings-alist)))
-    (if (null cell)
+    (if (null? cell)
 	;; No encoding method, copy verbatim
 	(copy-stream input output)
       ((nth 1 cell) input output))))
@@ -240,7 +240,7 @@
 	       (end (car (cdr (memq 'end att))))
 	       (content-type (car (cdr (memq 'content-type att))))
 	       (content-disp (car (cdr (memq 'content-disp att))))
-	       (content-xfer-enc (if (eq (car content-type) 'text)
+	       (content-xfer-enc (if (eq? (car content-type) 'text)
 				     'quoted-printable 'base64))
 	       (source (car (cdr (memq 'content-source att)))))
 	    ;; if necessary mark the start of the following body part
@@ -253,7 +253,7 @@
 	      (insert "\n"))
 	    (goto start)
 	    (delete-area start end)
-	    (unless (zerop (pos-col (cursor-pos)))
+	    (unless (zero? (pos-col (cursor-pos)))
 	      (insert "\n"))
 	    (insert "--\n")
 	    (setq boundaries (cons (make-mark (forward-char -1))
@@ -264,7 +264,7 @@
 		    content-xfer-enc)
 	    (insert "\n")
 	    (cond
-	     ((stringp source)
+	     ((string? source)
 	      ;; Assume SOURCE is a file name
 	      (let
 		  ((file (open-file source 'read)))
@@ -284,12 +284,12 @@
 	    (setq attachments (cdr attachments)))))
       ;; Add the trailing boundary
       (goto (end-of-buffer))
-      (unless (zerop (pos-col (cursor-pos)))
+      (unless (zero? (pos-col (cursor-pos)))
 	(insert "\n"))
       (insert "----\n")
       (setq boundaries (cons (make-mark (forward-char -3)) boundaries))
       ;; Now compute the boundary string and insert it wherever required
-      (while (null boundary-string)
+      (while (null? boundary-string)
 	(setq boundary-string (mime-encode-make-boundary))
 	(when (search-forward boundary-string (start-of-buffer))
 	  (setq boundary-string nil)))

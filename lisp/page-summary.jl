@@ -42,7 +42,7 @@ first group of non-empty lines is displayed."
 	(unrestrict-buffer)
 	(clear-buffer output)
 	(while (< point (end-of-buffer))
-	  (unless (equal point (start-of-buffer))
+	  (unless (equal? point (start-of-buffer))
 	    (setq point (start-of-line (forward-line 1 point))))
 	  (let
 	      ((start point))

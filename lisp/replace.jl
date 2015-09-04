@@ -39,9 +39,9 @@ character following the insertion."
       ((old (copy-area (match-start) (match-end)))
        (new (expand-last-match template)))
     (when replace-preserve-case
-      (cond ((string-upper-case-p old)
+      (cond ((string-upper-case? old)
 	     (setq new (string-upcase new)))
-	    ((string-capitalized-p old)
+	    ((string-capitalized? old)
 	     (setq new (capitalize-string new)))))
     (delete-area (match-start) (match-end))
     (insert new (match-start))))
@@ -196,7 +196,7 @@ type one of the following special commands,\n
        match)
     (add-hook 'unbound-key-hook query-replace-unbound-key-fun)
     (unwind-protect
-	(while (and (eq query-replace-alive t)
+	(while (and (eq? query-replace-alive t)
 		    (setq match (re-search-forward
 				 query-replace-from nil nil case-fold-search)))
 	  (goto match)

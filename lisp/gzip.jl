@@ -67,11 +67,11 @@ match well-known suffixes."
 
 ;; Uncompress FILE-NAME into the current buffer
 (defun gzip-uncompress (file-name rule)
-  (when (file-exists-p file-name)
+  (when (file-exists? file-name)
     (let
 	((proc (make-process (current-buffer))))
       (message (concat "Uncompressing `" file-name "'") t)
-      (unless (zerop (apply call-process proc file-name (nth 1 rule)))
+      (unless (zero? (apply call-process proc file-name (nth 1 rule)))
 	(signal 'file-error (list "Can't uncompress file" file-name))))))
     
 ;; In the read-file-hook
@@ -86,7 +86,7 @@ match well-known suffixes."
 	  (goto old-pos)
 	  (setq buffer-file-modtime (file-modtime file-name))
 	  (set-buffer-file-name buffer file-name)
-	  (setq default-directory (file-name-directory file-name)))
+	  (setq *default-directory* (file-name-directory file-name)))
 	t))))
 
 ;; In insert-file-hook
@@ -102,7 +102,7 @@ match well-known suffixes."
       ((rule (gzip-file-rule file-name)))
     (when rule
       (let
-	  ((modes (when (file-exists-p file-name) (file-modes file-name)))
+	  ((modes (when (file-exists? file-name) (file-modes file-name)))
 	   (tmp-name (make-temp-name))
 	   dst-file proc)
 	(backup-file file-name)

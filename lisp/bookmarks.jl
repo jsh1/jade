@@ -66,7 +66,7 @@
   (interactive)
   (goto-other-view)
   (goto-buffer (open-buffer "*bookmarks*"))
-  (if (eq major-mode 'summary-mode)
+  (if (eq? major-mode 'summary-mode)
       (summary-update)
     (clear-buffer)
     (insert "Bookmark Summary:\n\n  Name")

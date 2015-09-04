@@ -238,7 +238,7 @@ for the list of formatting options available.")
 	    ((total-lines (cdr (window-dimensions)))
 	     (summary-lines (quotient (* (- total-lines 3)
 					 mail-summary-percent) 100)))
-	  (if (eq mail-display-summary 'bottom)
+	  (if (eq? mail-display-summary 'bottom)
 	      ;; Summary at bottom
 	      (progn
 		(setq mail-view (prog1 summary-view
@@ -252,14 +252,14 @@ for the list of formatting options available.")
     (goto-buffer summary-buffer)
     ;; Ensure that rm-open-folders has the correct view
     (mapc (lambda (cell)
-	    (when (and (eq (cdr cell) folder)
+	    (when (and (eq? (cdr cell) folder)
 		       (or (not (viewp (car cell)))
-			   (eq (car cell) summary-view)))
+			   (eq? (car cell) summary-view)))
 	      (setcar cell mail-view))) rm-open-folders)
     mail-view))
 
 (defun rm-summary-list ()
-  (if (eq (rm-get-folder-field rm-summary-folder rm-folder-cached-list)
+  (if (eq? (rm-get-folder-field rm-summary-folder rm-folder-cached-list)
 	  'invalid)
       (rm-set-folder-field
        rm-summary-folder rm-folder-cached-list
@@ -327,7 +327,7 @@ for the list of formatting options available.")
 (defun rm-summary-after-marking (msg)
   (rm-invalidate-summary msg)
   (if (and rm-move-after-deleting
-	   (eq (rm-get-folder-field rm-summary-folder rm-folder-current-msg)
+	   (eq? (rm-get-folder-field rm-summary-folder rm-folder-current-msg)
 	       msg))
       (when (rm-get-folder-field rm-summary-folder rm-folder-after-list)
 	(rm-with-folder

@@ -24,7 +24,7 @@
 (defmacro defface (name #!optional doc #!rest forms)
   "Create a face called NAME, the Lisp FORMS are evaluated to initialise it.
 If the symbol NAME is already bound, only the documentation property is set."
-  `(or (prog1 (boundp ',name)
+  `(or (prog1 (bound? ',name)
 	 (defvar ,name (make-face ,(symbol-name name)) ,doc))
        (progn ,@forms)))
 
@@ -84,7 +84,7 @@ reinstall the original window as the current one."
        next)
     (while (> (window-view-count) 2)
       (setq next (next-view doomed))
-      (unless (or (eq doomed view) (minibuffer-view-p doomed))
+      (unless (or (eq? doomed view) (minibuffer-view-p doomed))
 	(delete-view doomed))
       (setq doomed next))))
 
@@ -111,7 +111,7 @@ or if it is the symbol t the size of the other view won't be changed."
 	 total desired)
       (when (minibuffer-view-p view)
 	(setq view (previous-view)))
-      (unless (eq lines t)
+      (unless (eq? lines t)
 	(setq total (+ (cdr (view-dimensions))
 		       (cdr (view-dimensions view)))
 	      desired (or lines (quotient total 2)))
@@ -174,7 +174,7 @@ it so that the buffer just fits the view."
   (interactive)
   (if (<= (window-view-count) 2)
       (error "Can't resize a single view")
-    (when (equal (view-origin) (start-of-buffer))
+    (when (equal? (view-origin) (start-of-buffer))
       (let
 	  ((view-rows (cdr (view-dimensions)))
 	   (end (char-to-display-pos (end-of-buffer))))

@@ -84,6 +84,11 @@ contain.")
      (c-brace-indent . -4)
      (c-case-indent . -4)
      (c-label-indent . -4))
+    (bsd2
+     (c-body-indent . 2)
+     (c-brace-indent . -2)
+     (c-case-indent . -2)
+     (c-label-indent . -2))
     (gnu
      (c-body-indent . 2)
      (c-brace-indent . 0)
@@ -204,7 +209,7 @@ Commands defined by this mode are:\n
     (condition-case nil
 	(while (setq p (c-backward-exp 1 p (not skip-blocks)))
 	  (cond
-	   ((null back-1-pos)
+	   ((null? back-1-pos)
 	    (unless (= (get-char p) #\{)
 	      (setq back-1-pos p)))
 	   ((/= (pos-line back-1-pos) (pos-line p))
@@ -226,7 +231,7 @@ Commands defined by this mode are:\n
       (setq depth (1+ depth)))
      ((looking-at "if" p)
       (setq depth (1- depth)))))
-  (when (zerop depth)
+  (when (zero? depth)
     p))
 
 ;; Work out where to indent LINE-POS to.
@@ -248,7 +253,7 @@ Commands defined by this mode are:\n
 	  (setq exp-pos (match-start))))
       (setq exp-ind (char-to-glyph-pos exp-pos))
 
-      (unless (or (equal (indent-pos exp-pos) exp-ind)
+      (unless (or (equal? (indent-pos exp-pos) exp-ind)
 		  (memq (get-char (forward-char -1 exp-pos)) '(?\( ?\{ ?\[)))
 	(when (and (looking-at "^[\t ]*([^][(){}\"'a-zA-Z0-9_\t ]+)"
 			       (start-of-line exp-pos))
@@ -261,7 +266,7 @@ Commands defined by this mode are:\n
       (cond
        ((= (get-char exp-pos) ?\})
 	;; A closing brace
-	(unless (zerop (pos-col exp-pos))
+	(unless (zero? (pos-col exp-pos))
 	  (setq exp-ind (left-char (+ c-body-indent c-brace-indent) exp-ind))))
 
        ((looking-at ".*{" exp-pos)
@@ -374,7 +379,7 @@ Commands defined by this mode are:\n
       ;; Skip weird stuff
       (while (looking-at "[!*~&<>/+%?:^-]+" p)
 	(setq p (match-end))
-	(when (equal p (end-of-line p))
+	(when (equal? p (end-of-line p))
 	  (setq p (forward-char 1 p))))
       (let
 	  ((c (get-char p)))
@@ -418,7 +423,7 @@ Commands defined by this mode are:\n
        tmp)
     (while (> number 0)
       ;; skip preceding white space
-      (when (or (equal p (start-of-buffer))
+      (when (or (equal? p (start-of-buffer))
 		(not (setq p (re-search-backward "[^\t\f\n ]"
 						 (forward-char -1 p)))))
 	(error "No expression!"))
@@ -427,7 +432,7 @@ Commands defined by this mode are:\n
 	;; comment to skip
 	(unless (setq tmp (re-search-backward "/\\*" tmp))
 	  (error "Comment doesn't start!"))
-	(when (or (equal tmp (start-of-buffer))
+	(when (or (equal? tmp (start-of-buffer))
 		  (not (setq tmp (re-search-backward "[^\t\f\n ]"
 						   (forward-char -1 tmp)))))
 	  (error "Beginning of buffer"))

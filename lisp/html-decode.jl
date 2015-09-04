@@ -178,7 +178,7 @@ of the document, currently only `title' and `base' keys are defined."
 	     (prog1 html-decode-point (setq html-decode-point end))
 	     end source dest)
 	  (setq html-decode-point end)))
-      (unless (equal end (end-of-buffer source))
+      (unless (equal? end (end-of-buffer source))
 	;; Then decode the command
 	(setq tag (html-decode-tag html-decode-point source))
 	(setq html-decode-point (car tag))
@@ -235,7 +235,7 @@ of the document, currently only `title' and `base' keys are defined."
       ((original (with-buffer dest (cursor-pos)))
        tem)
     (cond
-     ((eq html-decode-fill nil)
+     ((eq? html-decode-fill nil)
       ;; <pre> text
       ;; XXX should really indent each line by html-decode-indent
       (insert (html-decode-string (copy-area start end source)) nil dest))
@@ -249,7 +249,7 @@ of the document, currently only `title' and `base' keys are defined."
 	(while (looking-at "([^< \t\r\f\n]+)([ \t\r\f\n]*)" start source)
 	  (setq word-end (min (match-end 1) end))
 	  (setq next-word (match-end))
-	  (setq spaces (not (equal (match-start 2) (match-end 2))))
+	  (setq spaces (not (equal? (match-start 2) (match-end 2))))
 	  (setq string (html-decode-string (copy-area start word-end source)))
 	  (when (and (> (+ col (length string)) html-decode-width)
 		     (/= col html-decode-indent))
@@ -258,7 +258,7 @@ of the document, currently only `title' and `base' keys are defined."
 	    (insert "\n" nil dest)
 	    (setq pending-spaces nil)
 	    (setq col 0)
-	    (when (equal original tem)
+	    (when (equal? original tem)
 	      (setq tem (with-buffer dest (cursor-pos)))
 	      (html-decode-patch-starts original tem html-decode-stack)
 	      (setq original tem))
@@ -266,11 +266,11 @@ of the document, currently only `title' and `base' keys are defined."
 	      (with-buffer dest
 		(html-decode-justify-line html-decode-fill (forward-line -1)))
 	      (setq html-decode-pending-fill nil)))
-	  (when (and (zerop col) (not (zerop html-decode-indent)))
+	  (when (and (zero? col) (not (zero? html-decode-indent)))
 	    (with-buffer dest
 	      (setq tem (cursor-pos))
 	      (indent-to html-decode-indent)
-	      (when (equal original tem)
+	      (when (equal? original tem)
 		(setq tem (cursor-pos))
 		(html-decode-patch-starts original tem html-decode-stack)
 		(setq original tem)))
@@ -302,7 +302,7 @@ of the document, currently only `title' and `base' keys are defined."
     (cond
      ((looking-at "<[ \t\r\n\f]*(/?)[ \t\r\n\f]*([a-zA-Z0-9_-]+)[ \t\r\n\f]*"
 		  point source)
-      (setq entering (equal (match-end 1) (match-start 1)))
+      (setq entering (equal? (match-end 1) (match-start 1)))
       (setq name (intern (translate-string (expand-last-match "\\2")
 					   downcase-table)))
       (setq point (match-end))
@@ -310,11 +310,11 @@ of the document, currently only `title' and `base' keys are defined."
 		 ;; bugzilla generates such shit as `<FONT ="+3">'
 		 (looking-at "[ \t\r\n\f]*()(=[ \t\r\n\f]*)" point source))
 	(let ((token (expand-last-match "\\1")))
-	  (if (string= token "")
+	  (if (string=? token "")
 	      (setq tem nil)
 	    (setq tem (intern (translate-string token downcase-table)))))
 	(setq point (match-end))
-	(unless (equal (match-start 2) (match-end 2))
+	(unless (equal? (match-start 2) (match-end 2))
 	  (if (or (= (get-char point source) ?\")
 		  (= (get-char point source) ?\'))
 	      (let
@@ -355,11 +355,11 @@ of the document, currently only `title' and `base' keys are defined."
 	(error "No closing greater-than character %s, %s" point source))
     ;; XXX kludge so we don't lose anything following <pre> tag
     ;; XXX or lose EOLs within <pre> blocks
-    (if (and (not (and (eq name 'pre) entering))
-	     (not (eq html-decode-fill nil)))
+    (if (and (not (and (eq? name 'pre) entering))
+	     (not (eq? html-decode-fill nil)))
 	(progn
 	  (setq point (match-end))
-	  (when (not (equal (match-start 1) (match-end 1)))
+	  (when (not (equal? (match-start 1) (match-end 1)))
 	    (html-decode-add-pending 'space)))
       (setq point (match-start 1)))
     (list* point name entering (nreverse params))))
@@ -429,7 +429,7 @@ of the document, currently only `title' and `base' keys are defined."
 		   html-decode-optional-close-tags))
     ;; Close the trailing optional tags
     (html-decode-pop-optional tag dest))
-  (if (not (eq (car tag) (nth 2 (car html-decode-stack))))
+  (if (not (eq? (car tag) (nth 2 (car html-decode-stack))))
       (and html-decode-echo-warnings
 	   (format (stderr-file)
 		   "warning: badly nested HTML: %s, %s, %s, %s\n"
@@ -468,7 +468,7 @@ of the document, currently only `title' and `base' keys are defined."
       (while (and html-decode-stack
 		  (memq (nth 2 frame) html-decode-optional-close-tags))
 	(html-decode-close-frame (car tag) dest)
-	(when (eq (nth 2 frame) (car tag))
+	(when (eq? (nth 2 frame) (car tag))
 	  (throw 'foo t))
 	(setq frame (car html-decode-stack))))))
 
@@ -492,25 +492,25 @@ of the document, currently only `title' and `base' keys are defined."
     (let
 	((original (with-buffer dest (cursor-pos)))
 	 new)
-      (unless (or (null html-decode-pending) (eq html-decode-pending 'space))
+      (unless (or (null? html-decode-pending) (eq? html-decode-pending 'space))
 	(when html-decode-pending-fill
 	  (with-buffer dest
 	    (html-decode-justify-line html-decode-fill))
 	  (setq html-decode-pending-fill nil)))
       (cond
-       ((eq html-decode-pending 'space)
+       ((eq? html-decode-pending 'space)
 	(setq new (insert " " nil dest)))
-       ((eq html-decode-pending 'line)
+       ((eq? html-decode-pending 'line)
 	(with-buffer dest
 	  (setq new (insert "\n"))))
-       ((eq html-decode-pending 'paragraph)
+       ((eq? html-decode-pending 'paragraph)
 	(with-buffer dest
 	  (setq new (insert "\n\n")))))
       (when html-decode-list-pending
 	(with-buffer dest
 	  (html-decode-insert-list html-decode-list-type
 				   html-decode-list-id)
-	  (if (integerp html-decode-list-id)
+	  (if (integer? html-decode-list-id)
 	      (setq html-decode-list-id (1+ html-decode-list-id))
 	    (setq html-decode-list-id nil))
 	  (setq new (cursor-pos))))
@@ -528,7 +528,7 @@ of the document, currently only `title' and `base' keys are defined."
   ;; XXX html-decode-push-env is the position in the output
   (catch 'foo
     (mapc (lambda (frame)
-	    (if (equal old (nth (+ 4 1) frame))
+	    (if (equal? old (nth (+ 4 1) frame))
 		;; a match, so update it to the new position
 		(rplaca (nthcdr (+ 4 1) frame) new)
 	      ;; no others can have either, so abort
@@ -542,7 +542,7 @@ of the document, currently only `title' and `base' keys are defined."
 
 ;; Justify the line at POS, according to FILL-TYPE
 (defun html-decode-justify-line (fill-type #!optional p)
-  (unless (or (null fill-type) (eq fill-type 'left))
+  (unless (or (null? fill-type) (eq? fill-type 'left))
     (let*
 	((spos (indent-pos p))
 	 (epos (char-to-glyph-pos (re-search-forward
@@ -556,10 +556,10 @@ of the document, currently only `title' and `base' keys are defined."
 	(set-indent-pos (start-of-line p)))
        (t
 	(cond
-	 ((eq fill-type 'center)
+	 ((eq? fill-type 'center)
 	  (set-indent-pos (pos (quotient (- html-decode-width len) 2)
 			       (pos-line spos))))
-	 ((eq fill-type 'right)
+	 ((eq? fill-type 'right)
 	  (set-indent-pos (pos (- html-decode-width len)
 			       (pos-line spos))))))))))
 
@@ -567,15 +567,15 @@ of the document, currently only `title' and `base' keys are defined."
 ;; entry in the current list
 (defun html-decode-insert-list (type id)
   (cond
-   ((eq type 'ul)
+   ((eq? type 'ul)
     (indent-to (- html-decode-indent 2))
     (insert "* ")
     (setq html-decode-pending-fill t))
-   ((eq type 'ol)
+   ((eq? type 'ol)
     (indent-to (- html-decode-indent 2))
     (format (current-buffer) "%d. " id)
     (setq html-decode-pending-fill t))
-   ((eq type 'dl)
+   ((eq? type 'dl)
     (indent-to (- html-decode-indent html-decode-dl-indent))
     (insert id)
     (when (> (length id) html-decode-dl-indent)
@@ -825,7 +825,7 @@ of the document, currently only `title' and `base' keys are defined."
     (html-decode-add-env 'html-decode-list-depth))
   (html-decode-tag-with tag dest
       (progn
-	(if (zerop html-decode-list-depth)
+	(if (zero? html-decode-list-depth)
 	    (html-decode-add-pending 'paragraph)
 	  (html-decode-add-pending 'line))
 	(setq html-decode-list-type (car tag))
@@ -835,7 +835,7 @@ of the document, currently only `title' and `base' keys are defined."
 				    html-decode-list-indent)))
     (lambda (name params dest start)
       (declare (unused name params dest start))
-      (if (zerop html-decode-list-depth)
+      (if (zero? html-decode-list-depth)
 	  (html-decode-add-pending 'paragraph)
 	(html-decode-add-pending 'line)))))
 
@@ -856,13 +856,13 @@ of the document, currently only `title' and `base' keys are defined."
 
 (defun html-decode:dl (tag dest)
   (html-decode-tag-with tag dest
-      (if (zerop html-decode-list-depth)
+      (if (zero? html-decode-list-depth)
 	  (html-decode-add-pending 'paragraph)
 	;; XXX Should only do this if column is too wide
 	(html-decode-add-pending 'line))
     (lambda (name params dest start)
       (declare (unused name params dest start))
-      (if (zerop html-decode-list-depth)
+      (if (zero? html-decode-list-depth)
 	  (html-decode-add-pending 'paragraph)
 	(html-decode-add-pending 'line)))))
 (put 'dl 'html-decode-fun html-decode:dl)

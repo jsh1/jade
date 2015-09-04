@@ -141,7 +141,7 @@ get_resources(struct x11_display *xdisplay)
 	default_ml_color = s;
     if((s = XGetDefault(xdisplay->display, prog_name, "font"))
        || (s = XGetDefault(xdisplay->display, "Jade", "Font")))
-	def_font_str = rep_string_dup(s);
+	def_font_str = rep_string_copy(s);
     if((s = XGetDefault(xdisplay->display, prog_name, "visual"))
        || (s = XGetDefault(xdisplay->display, "Jade", "Visual")))
 	visual_name = s;

@@ -168,7 +168,7 @@ that each of the FILENAMES contains no directory specifiers."
 				(git-file-get-filename (car files))) nil)))
     (setq files (cdr files))
     (while files
-      (if (string= (git-file-get-dirname (car files)) (car (car dir-files)))
+      (if (string=? (git-file-get-dirname (car files)) (car (car dir-files)))
 	  (setcdr (car dir-files) (cons (git-file-get-filename (car files))
 					(cdr (car dir-files))))
 	(setq dir-files (cons (list (git-file-get-dirname (car files))
@@ -229,13 +229,13 @@ that each of the FILENAMES contains no directory specifiers."
 	  git-update-in-progress nil)
     (with-buffer buffer
       (if (and (git-buffer-p)
-	       (file-name= default-directory git-default-directory))
+	       (file-name= *default-directory* git-default-directory))
 	  ;; Already initialised as a summary buffer
 	  (summary-update)
 	(clear-buffer)
 	(format (current-buffer) "[GIT] %s:\n\n   %12s %12s\n"
 		git-default-directory "index" "tree")
-	(setq default-directory git-default-directory)
+	(setq *default-directory* git-default-directory)
 	(summary-mode "git" git-summary-functions git-keymap)
 	(setq major-mode 'git-summary-mode)))
     (unless (git-buffer-p)
@@ -248,7 +248,7 @@ that each of the FILENAMES contains no directory specifiers."
 
 (defun git-error-if-updating ()
   (and git-update-in-progress
-       (process-in-use-p git-update-in-progress)
+       (process-in-use? git-update-in-progress)
        (error "git update in progress")))
 
 (defun git-update-file-list ()
@@ -299,7 +299,7 @@ Finally, unless the git-command-dont-clear-output parameter is non-nil, the
 			    (cdr (assoc command git-option-alist))
 			    command-opts))
 	  (process (make-process (or git-command-output-stream output)
-				 (and (functionp git-command-async)
+				 (and (function? git-command-async)
 				      git-command-async)
 				 (or git-command-directory
 				     git-default-directory))))
@@ -309,7 +309,7 @@ Finally, unless the git-command-dont-clear-output parameter is non-nil, the
 		       (if git-command-async "Start" "Call") arg-list) t)
       (unless (or (if git-command-async
 		      (apply start-process process git-program arg-list)
-		    (zerop (apply call-process process nil
+		    (zero? (apply call-process process nil
 				  git-program arg-list)))
 		  git-command-ignore-errors)
 	(error "whilst running git")))))
@@ -319,7 +319,7 @@ Finally, unless the git-command-dont-clear-output parameter is non-nil, the
 don't ask for confirmation and kill instead of interrupting."
   (interactive)
   (let ((processes (filter (lambda (p)
-			     (string= (process-prog p) git-program))
+			     (string=? (process-prog p) git-program))
 			   (active-processes))))
     (if processes
 	(if force
@@ -332,7 +332,7 @@ don't ask for confirmation and kill instead of interrupting."
 
 (defmacro git-buffer-p ()
   "Return t if the current buffer is the git summary buffer."
-  '(eq major-mode 'git-summary-mode))
+  '(eq? major-mode 'git-summary-mode))
 
 (defun git-show-output-buffer (#!optional activate)
   "Ensure that the `*git-output*' buffer is visible in the current window,
@@ -340,7 +340,7 @@ probably in the other view. If ACTIVATE is non-nil, the view displaying the
 buffer will be activated."
   (let ((buffer (git-output-buffer)))
     (unless (with-buffer buffer
-	      (equal (start-of-buffer) (end-of-buffer)))
+	      (equal? (start-of-buffer) (end-of-buffer)))
       (let ((view (or (get-buffer-view buffer) (other-view)))
 	    (original-buffer (current-buffer)))
 	(with-view view
@@ -385,7 +385,7 @@ function for a list of the commands available for manipulating these files.
 
 When called interactively, DIRECTORY is prompted for."
   (interactive "DWorking directory:")
-  (unless (file-directory-p directory)
+  (unless (file-directory? directory)
     (error "%S is not a directory" directory))
   (setq directory (directory-file-name (expand-file-name directory)))
   (setq git-default-directory directory
@@ -400,13 +400,13 @@ When called interactively, DIRECTORY is prompted for."
 
 ;;;###autoload
 (defun git-update-parent ()
-  "Run `git-update' in the parent of the `default-directory'."
+  "Run `git-update' in the parent of the `*default-directory*'."
   (interactive)
   (git-update ".."))
 
 ;;;###autoload
 (defun git-update-pwd ()
-  "Run `git-update' in the `default-directory'."
+  "Run `git-update' in the `*default-directory*'."
   (interactive)
   (git-update "."))
 
@@ -462,7 +462,7 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
 	    (git-file-get-fullname item))))
 
 (defun git-summary-select (item)
-  (if (file-directory-p (git-file-get-fullname item))
+  (if (file-directory? (git-file-get-fullname item))
       (git-update (git-file-get-fullname item))
     (find-file (git-file-get-fullname item))))
 
@@ -523,7 +523,7 @@ operated on by the current git mode command."
 		git-file-list)
 	;; This file isn't in the git-file-list, so make our own structure
 	(list (git-make-file-struct
-	       (or (local-file-name (directory-file-name default-directory))
+	       (or (local-file-name (directory-file-name *default-directory*))
 		   (error "Can only run git on local files"))
 	       (file-name-nondirectory (buffer-file-name))
 	       (local-file-name (buffer-file-name)) 'unchanged 'unchanged)))))
@@ -593,7 +593,7 @@ do that."
   (let ((files (git-command-get-filenames)))
     (map-y-or-n-p "Really delete file `%s'?" files delete-file)
     ;; Remove any files that the user answered negatively to
-    (setq files (delete-if file-exists-p files))
+    (setq files (delete-if file-exists? files))
     (when files
       (git-command nil "rm" (if force
 				(list* "-f" "--" files)
@@ -627,13 +627,13 @@ commit them under."
 special case, if a directory is named in FILENAMES, any buffers editing
 files under that directory are also reverted."
   (mapc (lambda (f)
-	  (if (file-directory-p f)
+	  (if (file-directory? f)
 	      ;; Try to revert _anything_ under directory F
 	      (let ((canon-f (canonical-file-name
 			      (file-name-as-directory f))))
 		(mapc (lambda (b)
-			(when (and (not (string= (buffer-file-name b) ""))
-				   (string-head-eq (canonical-file-name
+			(when (and (not (string=? (buffer-file-name b) ""))
+				   (string-prefix? (canonical-file-name
 						    (buffer-file-name))
 						   canon-f))
 			  (revert-buffer b)))
@@ -679,7 +679,7 @@ files in the corresponding working directories."
 		    (unless (re-search-forward
 			     (concat #\^ (quote-regexp f) #\$)
 			     (start-of-buffer))
-		      (unless (zerop (pos-col (cursor-pos)))
+		      (unless (zero? (pos-col (cursor-pos)))
 			(insert "\n"))
 		      (insert f)
 		      (insert "\n")))
@@ -751,9 +751,9 @@ files."
   (let ((git-command-ignore-errors t)
 	(git-command-async (lambda ()
 			     (git-show-output-buffer))))
-    (git-command nil "diff" (nconc (and rev1 (not (string= "" rev1))
+    (git-command nil "diff" (nconc (and rev1 (not (string=? "" rev1))
 					(list (concat "-r" rev1)))
-				   (and rev2 (not (string= "" rev2))
+				   (and rev2 (not (string=? "" rev2))
 					(list (concat "-r" rev2)))
 				   (git-command-get-filenames)))))
 
@@ -765,7 +765,7 @@ backup file (created by a merge with conflicts.)"
   (save-some-buffers)
   (let ((working-file (git-command-get-filenames))
 	back-file)
-    (unless (eq (cdr working-file) nil)
+    (unless (eq? (cdr working-file) nil)
       (message "[Ignoring all but the first file!]" t)
       ;; Give them time to read the message..
       (sleep-for 1))
@@ -775,7 +775,7 @@ backup file (created by a merge with conflicts.)"
     ;; So do it the rude way..
     (let* ((head (concat ".#" (file-name-nondirectory working-file) "."))
 	   (possibilities (filter (lambda (f)
-				    (string-head-eq f head))
+				    (string-prefix? f head))
 				  (directory-files
 				   (file-name-directory working-file)))))
       (unless possibilities

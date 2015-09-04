@@ -31,7 +31,7 @@
     (while (and (< index (length text))
 		(string-match "[^\n]*" text index))
       (setq sub-string (substring text (match-start) (match-end))
-	    index (if (equal (aref text (match-end)) ?\n)
+	    index (if (equal? (aref text (match-end)) ?\n)
 		      (1+ (match-end))
 		    (match-end)))
       (insert sub-string p)

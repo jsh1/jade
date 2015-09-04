@@ -249,10 +249,10 @@ RULE is the message restriction rule to apply."
     ;; Add the new folder
     (setq rm-open-folders (cons (cons (current-view) folder) rm-open-folders))
     (mapc (lambda (box)
-	    (unless (file-exists-p box)
+	    (unless (file-exists? box)
 	      (setq box (expand-file-name box mail-folder-dir)))
 	    (rm-add-mailbox box folder t))
-	  (if (listp boxes) boxes (list boxes)))
+	  (if (list? boxes) boxes (list boxes)))
     (rm-display-current-message folder t)
     (when mail-display-summary
       (rm-summarize folder))))
@@ -297,7 +297,7 @@ RULE is the message restriction rule to apply."
   "Read-Mail Mode:\n
 Major mode for viewing mail folders. Local bindings are:\n
 \\{rm-keymap}"
-  (unless (eq major-mode 'read-mail-mode)
+  (unless (eq? major-mode 'read-mail-mode)
     (when major-mode-kill
       (major-mode-kill (current-buffer)))
     (setq rm-open-mailboxes (cons (current-buffer) rm-open-mailboxes)
@@ -382,7 +382,7 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Return t if OBJECT is a folder
 (defun rm-folder-p (object)
-  (and (vectorp object) (eq (aref object rm-folder-type) 'folder)))
+  (and (vector? object) (eq? (aref object rm-folder-type) 'folder)))
 
 (defun rm-rebuild-folder (folder)
   (rm-install-messages
@@ -400,13 +400,13 @@ key, the car the order to sort in, a positive or negative integer.")
        (index 0))
     (rm-set-folder-field folder rm-folder-message-count (length all))
     (rm-set-folder-field folder rm-folder-cached-list 'invalid)
-    (if (or (null current) (not (memq current all)))
+    (if (or (null? current) (not (memq current all)))
 	(setq before (nreverse all)
 	      current (car before)
 	      before (cdr before)
 	      after nil
 	      index (length before))
-      (while (not (eq (car after) current))
+      (while (not (eq? (car after) current))
 	(setq after (prog1
 			(cdr after)
 		      (rplacd after before)
@@ -527,7 +527,7 @@ key, the car the order to sort in, a positive or negative integer.")
 	(while lst
 	  (setq id (rm-get-message-id (car lst)))
 	  (mapc (lambda (m)
-		  (when (string= id (rm-get-message-id m))
+		  (when (string=? id (rm-get-message-id m))
 		    (mapc (lambda (r)
 			    (rm-apply-rule r m)) rm-duplicate-rules)))
 		(cdr lst))
@@ -536,7 +536,7 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Return the folder being displayed in the current view
 (defun rm-current-folder ()
-  (or (and (boundp 'rm-summary-folder) rm-summary-folder)
+  (or (and (bound? 'rm-summary-folder) rm-summary-folder)
       rm-proxy-folder
       (cdr (assq (current-view) rm-open-folders))))
 
@@ -553,7 +553,7 @@ key, the car the order to sort in, a positive or negative integer.")
   (unrestrict-buffer)
   (when msgs
     (with-buffer buffer
-      (unless (eq rm-buffer-messages 'invalid)
+      (unless (eq? rm-buffer-messages 'invalid)
 	(setq rm-buffer-messages (nconc rm-buffer-messages msgs))))
     (mapc (lambda (cell)
 	    (when (memq buffer (rm-get-folder-field
@@ -596,7 +596,7 @@ key, the car the order to sort in, a positive or negative integer.")
   (let ((cell (assq prop (rm-get-msg-field msg rm-msg-plist)))
 	(modified t))
     (if cell
-	(if (eq (cdr cell) value)
+	(if (eq? (cdr cell) value)
 	    (setq modified nil)
 	  (rplacd cell value))
       (rm-set-msg-field msg rm-msg-plist
@@ -617,7 +617,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Call (FUNCTION MSG FOLDER) for all FOLDERS containing MSG
 (defun rm-map-msg-folders (fun msg)
   (mapc (lambda (cell)
-	  (when (or (eq msg (rm-get-folder-field (cdr cell)
+	  (when (or (eq? msg (rm-get-folder-field (cdr cell)
 						 rm-folder-current-msg))
 		    (memq msg (rm-get-folder-field (cdr cell)
 						   rm-folder-before-list))
@@ -701,14 +701,14 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Doesn't fix the variables defining some of the positions in the current
 ;; message.
 (defun rm-make-message-current (folder msg)
-  (unless (eq msg (rm-get-folder-field folder rm-folder-current-msg))
+  (unless (eq? msg (rm-get-folder-field folder rm-folder-current-msg))
     (if (memq msg (rm-get-folder-field folder rm-folder-after-list))
 	;; Move forwards
-	(while (not (eq (rm-get-folder-field folder rm-folder-current-msg)
+	(while (not (eq? (rm-get-folder-field folder rm-folder-current-msg)
 			msg))
 	  (rm-move-forwards folder))
       ;; Move backwards
-      (while (not (eq (rm-get-folder-field folder rm-folder-current-msg) msg))
+      (while (not (eq? (rm-get-folder-field folder rm-folder-current-msg) msg))
 	(rm-move-backwards folder)))))
 
 
@@ -724,7 +724,7 @@ key, the car the order to sort in, a positive or negative integer.")
   (let
       ((buffer (get-file-buffer box)))
     (with-buffer buffer
-      (when (eq rm-buffer-messages 'invalid)
+      (when (eq? rm-buffer-messages 'invalid)
 	(save-restriction
 	  (unrestrict-buffer)
 	  (let
@@ -765,7 +765,7 @@ key, the car the order to sort in, a positive or negative integer.")
       (rm-message-put msg 'replied t))
     (unrestrict-buffer)
     ;; Find the total number of lines in the message
-    (if (null end)
+    (if (null? end)
 	(setq p (end-of-buffer))
       ;; Find the start of the next message
       (setq p (forward-line 1 start))
@@ -793,7 +793,7 @@ key, the car the order to sort in, a positive or negative integer.")
 			  (- (pos-line (or end (end-of-buffer)))
 			     (pos-line start)))
 	;; Find the total number of lines in the message
-	(if (null end)
+	(if (null? end)
 	    (setq p (end-of-buffer))
 	  ;; Find the start of the next message
 	  (setq p (forward-line 1 start))
@@ -809,7 +809,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Returns t if POS is the start of a message. Munges the regexp history
 (defun rm-message-start-p (p)
   (and (looking-at mail-message-start p)
-       (or (equal p (start-of-buffer))
+       (or (equal? p (start-of-buffer))
 	   (looking-at "\n\n" (forward-char -2 (match-start))))))
 
 ;; Returns the position of the start of the last line in MSG.
@@ -838,7 +838,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Updates the flags embedded in the message headers of BUFFER
 (defun rm-update-flags (buffer)
   (with-buffer buffer
-    (unless (or (eq rm-buffer-messages 'invalid)
+    (unless (or (eq? rm-buffer-messages 'invalid)
 		rm-buffer-read-only)
       (save-restriction
 	(let ((inhibit-read-only t)
@@ -849,7 +849,7 @@ key, the car the order to sort in, a positive or negative integer.")
 		  (when (re-search-forward "^$" start)
 		    (restrict-buffer start (match-end)))
 		  (let ((lines-added 0)
-			(print-escape t)
+			(*print-escape* t)
 			tem)
 		    ;; First put flags into X-Jade-Flags-v1 header
 		    (let ((flags
@@ -866,7 +866,7 @@ key, the car the order to sort in, a positive or negative integer.")
 			     start nil t)
 			    (progn
 			      (setq tem (match-start 1))
-			      (when (equal (read (cons (current-buffer) tem))
+			      (when (equal? (read (cons (current-buffer) tem))
 					   flags)
 				;; don't bother
 				(throw 'flags nil))
@@ -881,7 +881,7 @@ key, the car the order to sort in, a positive or negative integer.")
 		    (let ((cache-items
 			   (delete-if
 			    (lambda (x)
-			      (null (memq (car x) rm-saved-cache-tags)))
+			      (null? (memq (car x) rm-saved-cache-tags)))
 			    (copy-sequence
 			     (rm-get-msg-field msg rm-msg-cache)))))
 		      (catch 'cache
@@ -890,7 +890,7 @@ key, the car the order to sort in, a positive or negative integer.")
 			     start nil t)
 			    (progn
 			      (setq tem (match-start 1))
-			      (when (equal cache-items
+			      (when (equal? cache-items
 					   (read
 					    (cons (current-buffer) tem)))
 				;; don't bother
@@ -985,7 +985,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; no NAME, look in the mail-directory if available
 (defun rm-get-address-name (addr)
   (or (cdr addr)
-      (and (featurep 'mail-dir)
+      (and (feature? 'mail-dir)
 	   ;; get-mail-name-.. signals an error if it can't find the address
 	   (condition-case nil
 	       (get-mail-name-from-address (car addr))
@@ -1003,7 +1003,7 @@ key, the car the order to sort in, a positive or negative integer.")
     (if current
 	(progn
 	  (setq mark (rm-get-msg-field current rm-msg-mark))
-	  (when (eq rm-proxy-folder folder)
+	  (when (eq? rm-proxy-folder folder)
 	    (kill-current-buffer))
 	  (goto-buffer (mark-file mark))
 	  (unrestrict-buffer)
@@ -1040,7 +1040,7 @@ key, the car the order to sort in, a positive or negative integer.")
 	      ;; If the current buffer isn't the folder anymore, assume
 	      ;; that something in the hook created an edited copy of the
 	      ;; message into the new current buffer.
-	      (unless (eq (current-buffer) (mark-file mark))
+	      (unless (eq? (current-buffer) (mark-file mark))
 		(setq rm-proxy-folder folder
 		      major-mode 'read-mail-mode
 		      local-keymap 'rm-keymap)
@@ -1120,7 +1120,7 @@ key, the car the order to sort in, a positive or negative integer.")
 		   (> next-hdr current-hdr))
 	  (setq first-visible (insert (cut-area current-hdr next-hdr)
 				      first-visible))
-	  (if (not (zerop (pos-col first-visible)))
+	  (if (not (zero? (pos-col first-visible)))
 	      ;; Last insertion didn't add a trailing newline. This
 	      ;; means that the end of the headers has been reached!
 	      (setq first-visible (insert "\n" first-visible)
@@ -1132,7 +1132,7 @@ key, the car the order to sort in, a positive or negative integer.")
   (catch 'return
     (rm-map-messages (lambda (m)
 		       (let ((this-id (rm-get-message-id m)))
-			 (when (string= id this-id)
+			 (when (string=? id this-id)
 			   (throw 'return m)))) folder)
     nil))
 
@@ -1151,15 +1151,15 @@ key, the car the order to sort in, a positive or negative integer.")
 	   (let ((inhibit-read-only t)
 		 (start (mark-pos (rm-get-msg-field msg rm-msg-mark)))
 		 (end (rm-message-end msg)))
-	     (if (not (equal end (end-of-buffer)))
+	     (if (not (equal? end (end-of-buffer)))
 		 ;; Now this points to the first character of the next message
 		 (setq end (forward-line 1 end))
 	       ;; If there's a message preceding this one, we want to delete the
 	       ;; newline between them as well.
-	       (unless (equal start (start-of-buffer))
+	       (unless (equal? start (start-of-buffer))
 		 (setq start (forward-line -1 start))))
 	     (delete-area start end)
-	     (unless (eq rm-buffer-messages 'invalid)
+	     (unless (eq? rm-buffer-messages 'invalid)
 	       (setq rm-buffer-messages (delq msg rm-buffer-messages)))
 	     ;; Delete this message from any folders containing it
 	     (rm-map-msg-folders
@@ -1174,9 +1174,9 @@ key, the car the order to sort in, a positive or negative integer.")
 		       (before (rm-get-folder-field folder rm-folder-before-list))
 		       (index (rm-get-folder-field folder rm-folder-current-index)))
 		  (cond
-		   ((eq msg current)
+		   ((eq? msg current)
 		    ;; Deleting the current message
-		    (if (and before (or go-backwards-p (null after)))
+		    (if (and before (or go-backwards-p (null? after)))
 			(setq current (car before)
 			      before (cdr before)
 			      index (1- index))
@@ -1210,7 +1210,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Returns t if everything went ok, nil otherwise.
 (defun rm-append-save-and-delete-file (file)
   (goto (end-of-buffer))
-  (unless (zerop (1- (buffer-length)))
+  (unless (zero? (1- (buffer-length)))
     ;; Unless this is going to be the first message
     (insert "\n"))
   (and (insert-file file)
@@ -1233,16 +1233,16 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; Doesn't rebuild the folder(s) message list
 (defun rm-append-inbox (inbox)
   (cond
-   ((or (null movemail-program)
-	(not (file-exists-p movemail-program)))
+   ((or (null? movemail-program)
+	(not (file-exists? movemail-program)))
     (error "The variable `movemail-program' is invalid"))
-   ((not (eq major-mode 'read-mail-mode))
+   ((not (eq? major-mode 'read-mail-mode))
     (error "Current buffer isn't a mailbox"))
    (rm-buffer-read-only
     (error "Read-only mailbox"))
    (t
     ;; Ensure the buffer is already parsed. We need this later
-    (when (eq rm-buffer-messages 'invalid)
+    (when (eq? rm-buffer-messages 'invalid)
       (rm-parse-mailbox (buffer-file-name)))
     (save-restriction
       (unrestrict-buffer)
@@ -1253,8 +1253,8 @@ key, the car the order to sort in, a positive or negative integer.")
 	(when (string-looking-at "^(po:[^ ]+) +(.+)$" inbox)
 	  (setq real-inbox (expand-last-match "\\1"))
 	  (setq password (expand-last-match "\\2")))
-	(unless (or (file-name-absolute-p real-inbox)
-		    (file-exists-p real-inbox)
+	(unless (or (file-name-absolute? real-inbox)
+		    (file-exists? real-inbox)
 		    (string-looking-at "^po:" real-inbox))
 	  (setq real-inbox (expand-file-name real-inbox mail-folder-dir)))
 	(let*
@@ -1271,7 +1271,7 @@ key, the car the order to sort in, a positive or negative integer.")
 	     (count 0)
 	     (inhibit-read-only t))
 	  ;; First look for messages left in the .newmail-FOO file from last time
-	  (when (and (file-exists-p tofile)
+	  (when (and (file-exists? tofile)
 		     (> (file-size tofile) 0))
 	    (message (concat "Using messages left in " tofile) t)
 	    (setq keep-going (or (rm-append-save-and-delete-file tofile)
@@ -1280,17 +1280,17 @@ key, the car the order to sort in, a positive or negative integer.")
 	  ;; Then if that didn't fail horrendously, look for mail in the INBOX
 	  (when keep-going
 	    (cond
-	     ((not (or (file-exists-p real-inbox)
+	     ((not (or (file-exists? real-inbox)
 		       (string-looking-at "^po:" real-inbox)))
 	      (error "Inbox file doesn't exist" real-inbox))
 	     (t
-	      (if (zerop (call-process proc nil movemail-program
+	      (if (zero? (call-process proc nil movemail-program
 				       (if (string-looking-at "^po:" real-inbox)
 					   real-inbox
 					 (local-file-name real-inbox))
 				       tofile password))
 		  ;; Now the temporary file contains the new messages
-		  (setq keep-going (or (or (not (file-exists-p tofile))
+		  (setq keep-going (or (or (not (file-exists? tofile))
 					   (rm-append-save-and-delete-file tofile))
 				       keep-going)
 			need-to-parse t)
@@ -1325,11 +1325,11 @@ key, the car the order to sort in, a positive or negative integer.")
 	file
 	(file-count 0))
     (with-buffer buffer
-      (while (and inboxes (numberp file-count))
+      (while (and inboxes (number? file-count))
 	(setq file (car inboxes)
 	      inboxes (cdr inboxes))
 	(setq file-count (rm-append-inbox file))
-	(when (numberp file-count)
+	(when (number? file-count)
 	  (setq count (+ count file-count))))
       (call-hook 'rm-after-import-hook))
     (if (> count 0)
@@ -1477,7 +1477,7 @@ key, the car the order to sort in, a positive or negative integer.")
 (defun rm-format (fmt msg)
   (let
       ((arg-list (cons msg nil))
-       (format-hooks-alist rm-format-alist))
+       (*format-hooks-alist* rm-format-alist))
     (rplacd arg-list arg-list)
     (apply format nil fmt arg-list)))
 
@@ -1564,7 +1564,7 @@ current message."
       ((folder (rm-current-folder))
        (visible-start (rm-message-first-visible))
        (current (rm-get-folder-field folder rm-folder-current-msg)))
-    (restrict-buffer (if (equal (restriction-start) visible-start)
+    (restrict-buffer (if (equal? (restriction-start) visible-start)
 			 (mark-pos (rm-get-msg-field current rm-msg-mark))
 		       visible-start)
 		     (rm-message-end current))
@@ -1624,7 +1624,7 @@ ready for deletion."
 	 (current (rm-get-folder-field folder rm-folder-current-msg))
 	 (kill-subject (rm-get-actual-subject current)))
     (rm-map-messages (lambda (m)
-		       (when (string= kill-subject (rm-get-actual-subject m))
+		       (when (string=? kill-subject (rm-get-actual-subject m))
 			 (rm-message-put m 'deleted t))) folder)))
 
 (defun rm-pipe-message (command #!optional ignore-headers)
@@ -1659,5 +1659,5 @@ buffer will not be deleted, so it may be saved later."
 	    (rm-close-mailbox box (not really-save)))
 	  (rm-get-folder-field folder rm-folder-boxes))
     (setq rm-open-folders (delete-if (lambda (cell)
-				       (eq (cdr cell) folder))
+				       (eq? (cdr cell) folder))
 				     rm-open-folders))))

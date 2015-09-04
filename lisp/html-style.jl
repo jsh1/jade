@@ -222,7 +222,7 @@ identifying the current revision of the html file."
 (defun html-style-title (title #!optional anchor)
   "Insert a break, a heading, and the start of a new section, in the body of
 an html file."
-  (when (eq anchor t)
+  (when (eq? anchor t)
     (setq anchor title))
   (file-subst-set 'title title)
   (html-style-insert 'section-end)

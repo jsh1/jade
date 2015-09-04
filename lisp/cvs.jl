@@ -161,7 +161,7 @@ that each of the FILENAMES contains no directory specifiers."
 				(cvs-file-get-filename (car files))) nil)))
     (setq files (cdr files))
     (while files
-      (if (string= (cvs-file-get-dirname (car files)) (car (car dir-files)))
+      (if (string=? (cvs-file-get-dirname (car files)) (car (car dir-files)))
 	  (setcdr (car dir-files) (cons (cvs-file-get-filename (car files))
 					(cdr (car dir-files))))
 	(setq dir-files (cons (list (cvs-file-get-dirname (car files))
@@ -220,12 +220,12 @@ that each of the FILENAMES contains no directory specifiers."
 	  cvs-update-in-progress nil)
     (with-buffer buffer
       (if (and (cvs-buffer-p)
-	       (file-name= default-directory cvs-default-directory))
+	       (file-name= *default-directory* cvs-default-directory))
 	  ;; Already initialised as a summary buffer
 	  (summary-update)
 	(clear-buffer)
 	(format (current-buffer) "[CVS] %s:\n\n" cvs-default-directory)
-	(setq default-directory cvs-default-directory)
+	(setq *default-directory* cvs-default-directory)
 	(summary-mode "CVS" cvs-summary-functions cvs-keymap)
 	(setq major-mode 'cvs-summary-mode)))
     (unless (cvs-buffer-p)
@@ -238,7 +238,7 @@ that each of the FILENAMES contains no directory specifiers."
 
 (defun cvs-error-if-updating ()
   (and cvs-update-in-progress
-       (process-in-use-p cvs-update-in-progress)
+       (process-in-use? cvs-update-in-progress)
        (error "CVS update in progress")))
 
 (defun cvs-update-file-list ()
@@ -289,7 +289,7 @@ Finally, unless the cvs-command-dont-clear-output parameter is non-nil, the
 			    (cdr (assoc command cvs-option-alist))
 			    command-opts))
 	  (process (make-process (or cvs-command-output-stream output)
-				 (and (functionp cvs-command-async)
+				 (and (function? cvs-command-async)
 				      cvs-command-async)
 				 (or cvs-command-directory
 				     cvs-default-directory))))
@@ -299,7 +299,7 @@ Finally, unless the cvs-command-dont-clear-output parameter is non-nil, the
 		       (if cvs-command-async "Start" "Call") arg-list) t)
       (unless (or (if cvs-command-async
 		      (apply start-process process cvs-program arg-list)
-		    (zerop (apply call-process process nil
+		    (zero? (apply call-process process nil
 				  cvs-program arg-list)))
 		  cvs-command-ignore-errors)
 	(error "whilst running cvs")))))
@@ -309,7 +309,7 @@ Finally, unless the cvs-command-dont-clear-output parameter is non-nil, the
 don't ask for confirmation and kill instead of interrupting."
   (interactive)
   (let ((processes (filter (lambda (p)
-			     (string= (process-prog p) cvs-program))
+			     (string=? (process-prog p) cvs-program))
 			   (active-processes))))
     (if processes
 	(if force
@@ -322,7 +322,7 @@ don't ask for confirmation and kill instead of interrupting."
 
 (defmacro cvs-buffer-p ()
   "Return t if the current buffer is the CVS summary buffer."
-  '(eq major-mode 'cvs-summary-mode))
+  '(eq? major-mode 'cvs-summary-mode))
 
 (defun cvs-show-output-buffer (#!optional activate)
   "Ensure that the `*cvs-output*' buffer is visible in the current window,
@@ -330,7 +330,7 @@ probably in the other view. If ACTIVATE is non-nil, the view displaying the
 buffer will be activated."
   (let ((buffer (cvs-output-buffer)))
     (unless (with-buffer buffer
-	      (equal (start-of-buffer) (end-of-buffer)))
+	      (equal? (start-of-buffer) (end-of-buffer)))
       (let ((view (or (get-buffer-view buffer) (other-view)))
 	    (original-buffer (current-buffer)))
 	(with-view view
@@ -388,7 +388,7 @@ function for a list of the commands available for manipulating these files.
 
 When called interactively, DIRECTORY is prompted for."
   (interactive "DWorking directory:")
-  (unless (file-directory-p directory)
+  (unless (file-directory? directory)
     (error "%S is not a directory" directory))
   (setq directory (directory-file-name (expand-file-name directory)))
   (setq cvs-default-directory directory
@@ -403,13 +403,13 @@ When called interactively, DIRECTORY is prompted for."
 
 ;;;###autoload
 (defun cvs-update-parent ()
-  "Run `cvs-update' in the parent of the `default-directory'."
+  "Run `cvs-update' in the parent of the `*default-directory*'."
   (interactive)
   (cvs-update ".."))
 
 ;;;###autoload
 (defun cvs-update-pwd ()
-  "Run `cvs-update' in the `default-directory'."
+  "Run `cvs-update' in the `*default-directory*'."
   (interactive)
   (cvs-update "."))
 
@@ -461,7 +461,7 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
 	    (cvs-file-get-fullname item))))
 
 (defun cvs-summary-select (item)
-  (if (file-directory-p (cvs-file-get-fullname item))
+  (if (file-directory? (cvs-file-get-fullname item))
       (cvs-update (cvs-file-get-fullname item))
     (find-file (cvs-file-get-fullname item))))
 
@@ -520,7 +520,7 @@ operated on by the current CVS mode command."
 		cvs-file-list)
 	;; This file isn't in the cvs-file-list, so make our own structure
 	(list (cvs-make-file-struct
-	       (or (local-file-name (directory-file-name default-directory))
+	       (or (local-file-name (directory-file-name *default-directory*))
 		   (error "Can only run CVS on local files"))
 	       (file-name-nondirectory (buffer-file-name))
 	       (local-file-name (buffer-file-name)) 'unchanged)))))
@@ -587,7 +587,7 @@ do that."
   (let ((files (cvs-command-get-filenames)))
     (map-y-or-n-p "Really delete file `%s'?" files delete-file)
     ;; Remove any files that the user answered negatively to
-    (setq files (delete-if file-exists-p files))
+    (setq files (delete-if file-exists? files))
     (when files
       (cvs-command nil "remove" (cvs-command-get-filenames))
       (cvs-show-output-buffer)
@@ -630,13 +630,13 @@ If a prefix argument is given, the directory to commit in is prompted for."
 special case, if a directory is named in FILENAMES, any buffers editing
 files under that directory are also reverted."
   (mapc (lambda (f)
-	  (if (file-directory-p f)
+	  (if (file-directory? f)
 	      ;; Try to revert _anything_ under directory F
 	      (let ((canon-f (canonical-file-name
 			      (file-name-as-directory f))))
 		(mapc (lambda (b)
-			(when (and (not (string= (buffer-file-name b) ""))
-				   (string-head-eq (canonical-file-name
+			(when (and (not (string=? (buffer-file-name b) ""))
+				   (string-prefix? (canonical-file-name
 						    (buffer-file-name))
 						   canon-f))
 			  (revert-buffer b)))
@@ -670,7 +670,7 @@ files in the corresponding working directories."
 	    (mapc (lambda (f)
 		    (unless (re-search-forward (concat ?^ (quote-regexp f) ?$)
 					       (start-of-buffer))
-		      (unless (zerop (pos-col (cursor-pos)))
+		      (unless (zero? (pos-col (cursor-pos)))
 			(insert "\n"))
 		      (insert f)
 		      (insert "\n")))
@@ -720,9 +720,9 @@ be entered."
   (let ((cvs-command-ignore-errors t)
 	(cvs-command-async (lambda ()
 			     (cvs-show-output-buffer))))
-    (cvs-command nil "diff" (nconc (and rev1 (not (string= "" rev1))
+    (cvs-command nil "diff" (nconc (and rev1 (not (string=? "" rev1))
 					(list (concat "-r" rev1)))
-				   (and rev2 (not (string= "" rev2))
+				   (and rev2 (not (string=? "" rev2))
 					(list (concat "-r" rev2)))
 				   (cvs-command-get-filenames)))))
 
@@ -734,7 +734,7 @@ backup file (created by a merge with conflicts.)"
   (save-some-buffers)
   (let ((working-file (cvs-command-get-filenames))
 	back-file)
-    (unless (eq (cdr working-file) nil)
+    (unless (eq? (cdr working-file) nil)
       (message "[Ignoring all but the first file!]" t)
       ;; Give them time to read the message..
       (sleep-for 1))
@@ -744,7 +744,7 @@ backup file (created by a merge with conflicts.)"
     ;; So do it the rude way..
     (let* ((head (concat ".#" (file-name-nondirectory working-file) "."))
 	   (possibilities (filter (lambda (f)
-				    (string-head-eq f head))
+				    (string-prefix? f head))
 				  (directory-files
 				   (file-name-directory working-file)))))
       (unless possibilities
@@ -762,7 +762,7 @@ works by deleting the local copy, before updating it from the repository."
   (let ((files (cvs-command-get-filenames)))
     (map-y-or-n-p "Really lose changes to `%s'?" files delete-file)
     ;; Remove any files that the user answered negatively to
-    (setq files (delete-if file-exists-p files))
+    (setq files (delete-if file-exists? files))
     (if (cvs-buffer-p)
 	;; Ensure that cvs-revert isn't called until the
 	;; update has completed

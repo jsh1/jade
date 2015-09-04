@@ -92,7 +92,7 @@ two arguments, the start and end of the inserted text.")
   "String to prepend to subject of replied messages.")
 
 (defvar mail-re-regexp "^[\t ]*(Re([[(][0-9]+[])]|\\^[0-9]+)?:[\t ]*)*"
-  "This matches most forms of "Re: SUBJECT" strings, leaving SUBJECT
+  "This matches most forms of \"Re: SUBJECT\" strings, leaving SUBJECT
 starting at the end of the first substring")
 
 (defvar mail-yank-prefix ">"
@@ -184,11 +184,11 @@ include any parenthesised expressions!")
 ;; Return a list of inboxes for the mail folder FOLDER
 (defun mail-find-inboxes (folder)
   (cond
-   ((null mail-spool-files)
+   ((null? mail-spool-files)
     nil)
-   ((stringp mail-spool-files)
+   ((string? mail-spool-files)
     (list mail-spool-files))
-   ((and (consp mail-spool-files) (stringp (car mail-spool-files)))
+   ((and (pair? mail-spool-files) (string? (car mail-spool-files)))
     mail-spool-files)
    (t
     ;; Must be a list of lists.
@@ -196,17 +196,17 @@ include any parenthesised expressions!")
 	((tem mail-spool-files)
 	 lst)
       (while tem
-	(when (or (and (file-name-absolute-p (car (car tem)))
+	(when (or (and (file-name-absolute? (car (car tem)))
 		       (file-name= folder (car (car tem))))
 		  (file-name= folder (expand-file-name (car (car tem))
 						       mail-folder-dir)))
-	  (setq lst (append lst (if (consp (cdr (car tem)))
+	  (setq lst (append lst (if (pair? (cdr (car tem)))
 				      (cdr (car tem))
 				    (cons (cdr (car tem)))))))
 	(setq tem (cdr tem)))
       ;; Ensure that inbox names are absolute
       (mapcar (lambda (inbox)
-		(if (or (file-name-absolute-p inbox)
+		(if (or (file-name-absolute? inbox)
 			(string-looking-at "^po:" inbox))
 		    inbox
 		  (expand-file-name inbox mail-folder-dir))) lst)))))

@@ -19,9 +19,9 @@
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (defun dired-read-file-hook (filename buffer)
-  (when (file-directory-p filename)
+  (when (file-directory? filename)
     (with-buffer buffer
-      (setq default-directory (file-name-as-directory filename))
+      (setq *default-directory* (file-name-as-directory filename))
       (set-buffer-file-name buffer (directory-file-name filename))
       (setq buffer-file-modtime (file-modtime filename))
       (dired-mode)
@@ -29,11 +29,11 @@
 
 (defun dired-write-file-hook (filename buffer)
   (declare (unused buffer))
-  (and (file-directory-p filename)
+  (and (file-directory? filename)
        (error "Can't write to directories, %s" filename)))
 
 (defun dired-insert-file-hook (filename)
-  (and (file-directory-p filename)
+  (and (file-directory? filename)
        (error "Can't insert directories, %s" filename)))
 
 (add-hook 'read-file-hook dired-read-file-hook)

@@ -676,7 +676,7 @@ patch_display(Lisp_Window *w, glyph_buf *old_g, glyph_buf *new_g)
 /* Putting it all together */
 
 DEFUN_INT ("redisplay-window", Fredisplay_window, Sredisplay_window,
-	   (repv win, repv arg), rep_Subr2, rep_DS_NL "P") /*
+	   (repv win, repv arg), rep_Subr2, "\nP") /*
 ::doc:redisplay-window::
 redisplay-window [WINDOW] [FORCE]
 

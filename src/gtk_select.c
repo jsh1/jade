@@ -237,7 +237,7 @@ If the selection currently has no value, nil is returned.
 		    long tlen = section_length(VBUFFER(selection_info[selno].data),
 					       selection_info[selno].start,
 					       selection_info[selno].end);
-		    res = rep_make_string(tlen + 1);
+		    res = rep_allocate_string(tlen + 1);
 		    if(res)
 		    {
 			copy_section(VBUFFER(selection_info[selno].data),
@@ -279,7 +279,7 @@ If the selection currently has no value, nil is returned.
 			&& ret_type != GDK_NONE
 			&& ret_format == 8)
 		    {
-			res = rep_string_dupn (data, len);
+			res = rep_string_copy_n (data, len);
 		    }
 		    if (data != 0)
 			g_free (data);

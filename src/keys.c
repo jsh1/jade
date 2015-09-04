@@ -60,21 +60,11 @@ static repv next_keymap_path;
 /* true when the Meta qualifier should be added to the next event. */
 static bool pending_meta;
 
-/* This doesn't belong here but I couldn't find anywhere else :-( */
-DEFSYM(idle_hook, "idle-hook");
-
 /* Some doc strings
 ::doc:esc-means-meta::
 When this variable is non-nil the `ESC' key means that the next event
 is qualified by the `Meta' modifier.
 This feature is included mainly for compatibility with GNU Emacs.
-::end::
-::doc:idle-hook::
-This hook gets evaluated every second while the editor is idle. Don't depend
-on how regularly this gets called, any events from the window-system will
-delay it. Also, auto-saving files and garbage-collection take precedence
-when there's idle time available. Use this hook sparingly, or for short
-periods only!
 ::end::
 */
 
@@ -227,9 +217,9 @@ eval_input_callback(repv key)
     if(rep_SYMBOLP(cmd))
     {
 	cmd = Fsymbol_value (cmd, Qt);
-	if (rep_FUNARGP(cmd))
+	if (rep_CLOSUREP(cmd))
 	{
-	    repv fun = rep_FUNARG(cmd)->fun;
+	    repv fun = rep_CLOSURE(cmd)->fun;
 	    if(rep_CONSP(fun) && rep_CAR(fun) == Qautoload)
 	    {
 		/* An autoload, try to load it. */
@@ -242,7 +232,7 @@ eval_input_callback(repv key)
 		struct rep_Call lc;
 		lc.fun = lc.args = lc.args_evalled_p = Qnil;
 		rep_PUSH_CALL(lc);
-		rep_USE_FUNARG(cmd);
+		rep_USE_CLOSURE(cmd);
 		rep_PUSHGC(gc_key, key);
 		cmd = rep_load_autoload(cmd);
 		rep_POPGC;
@@ -520,7 +510,7 @@ lookup_event(unsigned long *code, unsigned long *mods, char *desc)
     }
 
 error:
-    Fsignal(Qbad_event_desc, rep_LIST_1(rep_string_dup(desc)));
+    Fsignal(Qbad_event_desc, rep_LIST_1(rep_string_copy(desc)));
     return false;
 }
 
@@ -780,7 +770,7 @@ a Lisp function hadn't been called instead.
 	return(Fsignal(Qerror, rep_LIST_1(rep_VAL(&not_in_handler))));
     len = sys_cook_key(current_os_event, buff, 256 - 1);
     if(len > 0)
-	return(rep_string_dupn(buff, len));
+	return(rep_string_copy_n(buff, len));
     return(rep_null_string());
 }
 
@@ -824,7 +814,7 @@ Returns a string naming the event EVENT.
 	return rep_signal_arg_error(ev, 1);
 
     if(lookup_event_name(buf, rep_INT(EVENT_CODE(ev)), rep_INT(EVENT_MODS(ev))))
-	return rep_string_dup(buf);
+	return rep_string_copy(buf);
     else
 	return Qnil;
 }
@@ -959,7 +949,6 @@ keys_init(void)
     rep_INTERN_SPECIAL(unbound_key_hook);
     rep_INTERN_SPECIAL(esc_means_meta);
     Fset (Qesc_means_meta, Qt);
-    rep_INTERN_SPECIAL(idle_hook);
     rep_INTERN(keymap);
     rep_INTERN_SPECIAL(minor_mode_keymap_alist);
     rep_INTERN(next_keymap_path);

@@ -507,15 +507,24 @@ color_mark (repv val)
 bool
 faces_init(void)
 {
-    repv face, fg, bg, bl, hl, ml;
+    static rep_type face = {
+	.name = "face",
+	.print = face_prin,
+	.sweep = face_sweep,
+	.mark = face_mark,
+    };
 
-    face_type = rep_register_new_type ("face", 0, face_prin, face_prin,
-				       face_sweep, face_mark,
-				       0, 0, 0, 0, 0, 0, 0);
+    static rep_type color = {
+	.name = "color",
+	.print = color_prin,
+	.sweep = color_sweep,
+	.mark = color_mark,
+    };
 
-    color_type = rep_register_new_type ("color", 0, color_prin, color_prin,
-					color_sweep, color_mark,
-					0, 0, 0, 0, 0, 0, 0);
+    repv fg, bg, bl, hl, ml;
+
+    face_type = rep_define_type(&face);
+    color_type = rep_define_type(&color);
 
     rep_ADD_SUBR(Smake_face);
     rep_ADD_SUBR(Sset_face_attribute);
@@ -538,14 +547,16 @@ faces_init(void)
     rep_INTERN(face);
     rep_INTERN(mouse_face);
 
-    fg = Fget_color(rep_string_dup(default_fg_color));
-    bg = Fget_color(rep_string_dup(default_bg_color));
-    bl = Fget_color(rep_string_dup(default_block_color));
-    hl = Fget_color(rep_string_dup(default_hl_color));
-    ml = Fget_color(rep_string_dup(default_ml_color));
+    fg = Fget_color(rep_string_copy(default_fg_color));
+    bg = Fget_color(rep_string_copy(default_bg_color));
+    bl = Fget_color(rep_string_copy(default_block_color));
+    hl = Fget_color(rep_string_copy(default_hl_color));
+    ml = Fget_color(rep_string_copy(default_ml_color));
 
     if(fg && bg && bl && hl && ml)
     {
+	repv face;
+
 	face = Fmake_face(rep_SYM(Qdefault_face)->name);
 	Fset_face_attribute(face, Qforeground, fg);
 	Fset_face_attribute(face, Qbackground, bg);

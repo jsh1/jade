@@ -165,7 +165,7 @@
 		    (progn
 		      (if initial
 			  (gtk-file-selection-set-filename fs initial)
-			(gtk-file-selection-set-filename fs default-directory))
+			(gtk-file-selection-set-filename fs *default-directory*))
 		      (gtk-signal-connect (gtk-file-selection-cancel-button fs)
 					  "clicked"
 					  #'(lambda () (throw 'exit nil)))
@@ -179,14 +179,14 @@
 		      (gtk-widget-show fs)
 		      (while t
 			(setq file (catch 'got (recursive-edit)))
-			(if (or (null predicate)
+			(if (or (null? predicate)
 				(funcall predicate file))
 			    (throw 'exit file)
 			  (message
 			   (format nil "Filename must satisfy %s" predicate) t)
 			  (beep))))
 		  (gtk-widget-destroy fs))))))
-    (when (and sel (string= sel ""))
+    (when (and sel (string=? sel ""))
       (setq sel default))
     sel))
 
@@ -194,9 +194,9 @@
 ;; Overriding the standard Jade prompt functions
 
 (defun gtk-prompt-with-gtk-p ()
-  (or (eq gtk-prompt-enable t)
-      (and (eq gtk-prompt-enable 'mouse) current-command-from-mouse)
-      (and (consp gtk-prompt-enable) (memq this-command gtk-prompt-enable))))
+  (or (eq? gtk-prompt-enable t)
+      (and (eq? gtk-prompt-enable 'mouse) current-command-from-mouse)
+      (and (pair? gtk-prompt-enable) (memq this-command gtk-prompt-enable))))
 
 (defun yes-or-no-p (question #!rest args)
   (if (gtk-prompt-with-gtk-p)
@@ -212,17 +212,17 @@
   (if (gtk-prompt-with-gtk-p)
       (let
 	  ((all-t t))
-	(when (eq 'all-t (catch 'map
+	(when (eq? 'all-t (catch 'map
 			   (while inputs
 			     (let*
-				 ((q (if (stringp question)
+				 ((q (if (string? question)
 					 (format nil question (car inputs))
 				       (funcall question (car inputs))))
 				  (a (gtk-prompt-dialog
 				      q '("Yes" . t) '("No" . nil)
 				      '("Yes to all" . all-t)
 				      '("Quit" . quit))))
-			       (cond ((or (eq a 'all-t) (eq a 'quit))
+			       (cond ((or (eq? a 'all-t) (eq? a 'quit))
 				      (throw 'map a))
 				     (a
 				      (funcall callback (car inputs)))
@@ -251,19 +251,19 @@
       (gtk-prompt-for-file title start default
 			   (if existing
 			       #'(lambda (f)
-				   (and (file-exists-p f)
-					(not (file-directory-p f))))
+				   (and (file-exists? f)
+					(not (file-directory? f))))
 			     #'(lambda (f)
-				 (not (file-directory-p f)))))
+				 (not (file-directory? f)))))
     (apply gtk-prompt-old-prompt-for-file title existing start default args)))
 
 (defun prompt-for-directory (#!optional title existing start default #!rest args)
   (if (gtk-prompt-with-gtk-p)
       (gtk-prompt-for-file title start default
 			   (if existing
-			       'file-directory-p
+			       'file-directory?
 			     #'(lambda (f)
-				 (or (not (file-exists-p f))
-				     (file-directory-p f)))))
+				 (or (not (file-exists? f))
+				     (file-directory? f)))))
     (apply gtk-prompt-old-prompt-for-directory
 	   title existing start default args)))

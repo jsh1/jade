@@ -128,7 +128,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
        (prompt-history-index 0)
        (prompt-history-top nil)
        prompt-title-extent prompt-original-size result)
-    (unless (stringp prompt-title)
+    (unless (string? prompt-title)
       (setq prompt-title "Enter string:"))
     (unless (string-match " $" prompt-title)
       (setq prompt-title (concat prompt-title ? )))
@@ -149,7 +149,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	    (set-buffer-undo-list nil)
 	    (when prompt-glyph-table
 	      (setq glyph-table prompt-glyph-table))
-	    (when (stringp start)
+	    (when (string? start)
 	      (insert start)
 	      ;; Make this a separate undo operation
 	      (set-buffer-undo-list (cons nil (buffer-undo-list))))
@@ -158,10 +158,10 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	    (call-hook 'before-prompt-hook)
 	    (setq result (catch 'prompt (recursive-edit)))
 	    (when (and result prompt-history
-		       (stringp result)
-		       (not (string= result ""))
-		       (or (zerop (ring-size prompt-history))
-			   (not (equal (get-from-ring prompt-history)
+		       (string? result)
+		       (not (string=? result ""))
+		       (or (zero? (ring-size prompt-history))
+			   (not (equal? (get-from-ring prompt-history)
 				       result))))
 	      (add-to-ring prompt-history result)))
 	  (with-view (minibuffer-view)
@@ -181,7 +181,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
     (if (or (not prompt-validate-function)
 	    (let
 		((res (prompt-validate-function line)))
-	      (when (and res (not (eq res t)))
+	      (when (and res (not (eq? res t)))
 		(setq line res))
 	      res))
 	(throw 'prompt line)
@@ -192,9 +192,9 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 
 (defun prompt-complete (#!optional only-display)
   (interactive)
-  (cond ((null prompt-completion-function)
+  (cond ((null? prompt-completion-function)
 	 (prompt-message "[No completion function]"))
-	((eq prompt-completion-function t)
+	((eq? prompt-completion-function t)
 	 (complete-at-point only-display))
 	(t
 	 (let*
@@ -222,7 +222,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
     (error "No history for this prompt"))
   (cond
    ((or (= prompt-history-index -1)
-	(and (= prompt-history-index 0) (null prompt-default-value)))
+	(and (= prompt-history-index 0) (null? prompt-default-value)))
     (error "No next item"))
    ((= prompt-history-index 0)
     (setq prompt-history-top (copy-area (extent-end prompt-title-extent)
@@ -246,7 +246,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
     (insert prompt-history-top))
    ((and (>= prompt-history-index 0)
 	 (> (ring-size prompt-history) prompt-history-index))
-    (when (zerop prompt-history-index)
+    (when (zero? prompt-history-index)
       (setq prompt-history-top (copy-area (extent-end prompt-title-extent)
 					  (end-of-buffer))))
     (delete-area (extent-end prompt-title-extent) (end-of-buffer))
@@ -257,7 +257,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 
 (defun prompt-start-of-line ()
   (interactive "@")
-  (if (zerop (pos-line (cursor-pos)))
+  (if (zero? (pos-line (cursor-pos)))
       (extent-end prompt-title-extent)
     (start-of-line)))
 
@@ -275,20 +275,16 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 
 (defun prompt-complete-buffer (word)
   (delete-if-not (lambda (b)
-		   (string-head-eq b word))
+		   (string-prefix? b word))
 		 (mapcar buffer-name (buffer-list))))
 
 (defun prompt-validate-buffer (name)
-  (and (or (equal name "")
+  (and (or (equal? name "")
 	   (get-buffer name)) t))
 
-(defvar prompt-file-exclude '"\\.(o|jlc|x)$|~$|^#.*#$"
+(defvar prompt-file-exclude '"\\.(o|jlc|x)$|~$|^#.*#|^\\.(\\.|)$$"
   "A regexp, if it matches the file being considered for completion, the file
 is rejected.")
-
-;; Ignore the `.' and `..' directory entries in UNIX
-(when (eq operating-system 'unix)
-  (setq prompt-file-exclude (concat prompt-file-exclude "|^\\.(\\.|)$")))
 
 (defun prompt-complete-filename (word)
   (let* ((path (file-name-directory word))
@@ -296,34 +292,34 @@ is rejected.")
 	 (files (directory-files path)))
     (mapcar (lambda (x)
 	      (let ((y (concat path x)))
-		(when (file-directory-p y)
+		(when (file-directory? y)
 		  (setq y (concat y ?/)))
 		y))
 	    (delete-if (lambda (f)
-			 (or (not (string-head-eq f file))
+			 (or (not (string-prefix? f file))
 			     (string-match prompt-file-exclude f)))
 		       files))))
 
 (defun prompt-validate-filename (name)
-  (and (file-exists-p name) t))
+  (and (file-exists? name) t))
 
 (defun prompt-complete-directory (word)
   (setq word (expand-file-name word))
   (let ((path (file-name-directory word))
 	(file (file-name-nondirectory word)))
     (delq nil (mapcar (lambda (x)
-			(when (file-directory-p (concat path x))
+			(when (file-directory? (concat path x))
 			  (concat path x ?/)))
 		      (delete-if (lambda (f)
-				   (not (string-head-eq f file)))
+				   (not (string-prefix? f file)))
 				 (directory-files path))))))
 
 (defun prompt-validate-directory (name)
-  (and (file-directory-p name) t))
+  (and (file-directory? name) t))
 
 (defun prompt-abbreviate-filename (name)
   (let ((abbrev (file-name-nondirectory name)))
-    (if (string= abbrev "")
+    (if (string=? abbrev "")
 	(file-name-as-directory
 	 (file-name-nondirectory (directory-file-name name)))
       abbrev)))
@@ -340,7 +336,7 @@ is rejected.")
     dst))
 
 (defun prompt-validate-from-list (name)
-  (if (null prompt-list-fold-case)
+  (if (null? prompt-list-fold-case)
       ;; Make sure it returns the *symbol* t
       (and (member name prompt-list) t)
     (let
@@ -359,11 +355,11 @@ is rejected.")
 (defun prompt-for-file (#!optional title existing start default history-list)
   "Prompt for a file, if EXISTING is t only files which exist are
 allowed to be entered."
-  (unless (stringp title)
+  (unless (string? title)
     (setq title "Enter filename:"))
-  (setq start (if (stringp start)
+  (setq start (if (string? start)
 		  (expand-file-name start)
-		(file-name-as-directory default-directory)))
+		(file-name-as-directory *default-directory*)))
   (let*
       ((prompt-completion-function prompt-complete-filename)
        (prompt-validate-function (if existing
@@ -373,7 +369,7 @@ allowed to be entered."
        (prompt-default-value (and default (expand-file-name default)))
        (completion-abbrev-function prompt-abbreviate-filename)
        (str (prompt title start)))
-    (when (and (string= str "") default)
+    (when (and (string=? str "") default)
       (setq str default))
     str))
 
@@ -381,10 +377,10 @@ allowed to be entered."
 (defun prompt-for-directory (#!optional title existing start default)
   "Prompt for a directory, if EXISTING is t only files which exist are
 allowed to be entered."
-  (unless (stringp title)
+  (unless (string? title)
     (setq title "Enter filename:"))
-  (unless (stringp start)
-    (setq start (file-name-as-directory default-directory)))
+  (unless (string? start)
+    (setq start (file-name-as-directory *default-directory*)))
   (let*
       ((prompt-completion-function prompt-complete-directory)
        (prompt-validate-function (if existing
@@ -394,7 +390,7 @@ allowed to be entered."
        (prompt-default-value (and default (expand-file-name default)))
        (completion-abbrev-function prompt-abbreviate-filename)
        (str (prompt title start)))
-    (when (and (string= str "") default)
+    (when (and (string=? str "") default)
       (setq str default))
     str))
 
@@ -404,7 +400,7 @@ allowed to be entered."
 otherwise if EXISTING is nil the buffer will be created if it doesn't
 exist already. DEFAULT is the value to return if the user enters the null
 string, if nil the current buffer is returned."
-  (unless (stringp title)
+  (unless (string? title)
     (setq title "Enter buffer name:"))
   (let*
       ((prompt-completion-function prompt-complete-buffer)
@@ -413,7 +409,7 @@ string, if nil the current buffer is returned."
 				   nil))
        (prompt-default-value (buffer-name (or default (current-buffer))))
        (buf (prompt title)))
-    (if (equal buf "")
+    (if (equal? buf "")
 	(or default (current-buffer))
       (or (get-buffer buf)
 	  (when (not existing)
@@ -423,7 +419,7 @@ string, if nil the current buffer is returned."
 (defun prompt-for-symbol (#!optional title pred start)
   "Prompt for an existing symbol. If PRED is given the symbol must agree
 with it."
-  (unless (stringp title)
+  (unless (string? title)
     (setq title "Enter name of symbol:"))
   (let
       ((prompt-symbol-predicate pred)
@@ -435,7 +431,7 @@ with it."
 ;;;###autoload
 (defun prompt-for-lisp (#!optional title start)
   "Prompt for a lisp object."
-  (unless (stringp title)
+  (unless (string? title)
     (setq title "Enter a Lisp object:"))
   (let ((prompt-completion-function t)
 	(prompt-validate-function nil)
@@ -453,18 +449,18 @@ with it."
   "Prompt for a function."
   (prompt-for-symbol (or title "Enter name of function:")
 		     (lambda (x)
-		       (and (boundp x)
+		       (and (bound? x)
 			    (let
 				((value (symbol-value x)))
-			      (or (functionp value)
-				  (macrop value)
-				  (special-form-p value)))))
+			      (or (function? value)
+				  (macro? value)
+				  (special-form? value)))))
 		     start))
 
 ;;;###autoload
 (defun prompt-for-variable (#!optional title start)
   "Prompt for a variable."
-  (prompt-for-symbol (or title "Enter name of variable:") boundp start))
+  (prompt-for-symbol (or title "Enter name of variable:") bound? start))
 
 ;;;###autoload
 (defun prompt-for-command (#!optional title start)
@@ -497,7 +493,7 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
 (defun prompt-for-number (#!optional title)
   (let
       (num)
-    (while (not (numberp num))
+    (while (not (number? num))
       (setq num (read-from-string (prompt (or title "Enter number: ")))))
     num))
 
@@ -514,7 +510,7 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
   "Prompts the user for a yes or no answer to QUESTION, returns t for yes."
   (let*
       ((answer (prompt (concat question " (yes or no) "))))
-    (string= "yes" answer)))
+    (string=? "yes" answer)))
 
 (defvar y-or-n-keymap
   (bind-keys (make-sparse-keymap)
@@ -561,10 +557,10 @@ answer is `no', no function is called.
 The function returns t only if _all_ of the inputs were answered with yes."
   (let
       ((all-t t))
-    (when (eq 'all-t (catch 'map
+    (when (eq? 'all-t (catch 'map
 		       (while inputs
 			 (let*
-			     ((q (if (stringp question)
+			     ((q (if (string? question)
 				     (format nil question (car inputs))
 				   (question (car inputs))))
 			      (a (y-or-n-p q map-y-or-n-keymap

@@ -173,11 +173,11 @@ contain its definition as a function."
 
 ;; Translate all functions called in INPUT to their rule-based versions
 (defun rm-make-rule-body (input)
-  (if (listp input)
+  (if (list? input)
       (let
 	  ((fun (car input)))
 	(cond
-	 ((symbolp fun)
+	 ((symbol? fun)
 	  (let
 	      ((compiler (get fun 'rm-rule-compiler)))
 	    (if compiler
@@ -187,7 +187,7 @@ contain its definition as a function."
 		    (mapcar (lambda (x)
 			      (macroexpand (rm-make-rule-body x)))
 			    (cdr input))))))
-	 ((listp fun)
+	 ((list? fun)
 	  (mapcar rm-make-rule-body input))
 	 (t
 	  input)))
@@ -197,7 +197,7 @@ contain its definition as a function."
 ;;;###autoload
 (defun rm-filter-by-rule (messages rule)
   (let
-      ((fun (if (functionp rule)
+      ((fun (if (function? rule)
 		rule
 	      (symbol-value (or (get rule 'rm-rule-function)
 				(error "No rule called %s" rule))))))
@@ -208,7 +208,7 @@ contain its definition as a function."
 ;;;###autoload
 (defun rm-apply-rule (rule rm-rule-message)
   (let
-      ((fun (if (functionp rule)
+      ((fun (if (function? rule)
 		rule
 	      (symbol-value (or (get rule 'rm-rule-function)
 				(error "No rule called %s" rule))))))
@@ -228,10 +228,10 @@ contain its definition as a function."
 (defun rm-combine-rules (rule1 rule2 #!optional op)
   (unless op (setq op 'and))
   (or (memq op '(and or progn)) (error "Unknown combinator: %s" op))
-  (let ((rule-1-fun (if (functionp rule1)
+  (let ((rule-1-fun (if (function? rule1)
 			rule1
 		      (symbol-value (get rule1 'rm-rule-function))))
-	(rule-2-fun (if (functionp rule2)
+	(rule-2-fun (if (function? rule2)
 			rule2
 		      (symbol-value (get rule2 'rm-rule-function)))))
     (lambda ()
@@ -288,9 +288,9 @@ contain its definition as a function."
 (defun rm-compile-sent-x (form)
   (let
       ((date (nth 1 form)))
-    (when (stringp date)
+    (when (string? date)
       (setq date (list 'quote (rm-parse-date date))))
-    (list 'rm-rule-sent-date date (eq (car form) 'sent-after))))
+    (list 'rm-rule-sent-date date (eq? (car form) 'sent-after))))
 (put 'sent-after 'rm-rule-compiler rm-compile-sent-x)
 (put 'sent-before 'rm-rule-compiler rm-compile-sent-x)
 
@@ -299,13 +299,13 @@ contain its definition as a function."
   (let
       ((msg-date (rm-get-date-vector rm-rule-message)))
     (when msg-date
-      (unless (consp date)
+      (unless (pair? date)
 	;; this will be slooow!
 	(setq date (rm-parse-date date)))
       (setq msg-date (aref msg-date date-vec-epoch-time))
       ((if after > <)
        msg-date
-       (if (eq (car date) 'absolute)
+       (if (eq? (car date) 'absolute)
 	   (cdr date)
 	 (let
 	     ((current (current-time)))
@@ -438,15 +438,15 @@ contain its definition as a function."
 	(rule (prompt-for-symbol (or title
 				     "Restriction rule (`lambda' for anonymous rule):")
 				 (lambda (sym)
-				   (or (eq sym 'new)
-				       (eq sym 'lambda)
-				       (eq sym nil)
+				   (or (eq? sym 'new)
+				       (eq? sym 'lambda)
+				       (eq? sym nil)
 				       (let
 					   ((fun (rm-rule-symbol sym)))
-					 (boundp fun)))))))
-    (cond ((eq rule 'new)
+					 (bound? fun)))))))
+    (cond ((eq? rule 'new)
 	   (call-command 'define-rule))
-	  ((eq rule 'lambda)
+	  ((eq? rule 'lambda)
 	   (rm-prompt-for-anon-rule))
 	  (t
 	   rule))))

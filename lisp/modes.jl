@@ -228,7 +228,7 @@ of the defun is assumed instead.")
 			     (cdr (assoc-regexp
 				   (buffer-file-name) auto-mode-alist t)))))))
   (let ((fun (or major-mode default-major-mode)))
-    (when (symbolp fun)
+    (when (symbol? fun)
       (setq fun (symbol-value fun)))
     (fun)))
 
@@ -281,12 +281,11 @@ END."
     (mode-indent-line start)
     (setq start (forward-line 1 start))))
 
-(defvar newline-and-indent ()
-  "(newline-and-indent)
-Insert a newline then either call this buffer's `mode-indent-line' function
+(defun newline-and-indent ()
+  "Insert a newline then either call this buffer's `mode-indent-line' function
 or insert a tab."
   (interactive)
-  (if (null mode-indent-line)
+  (if (null? mode-indent-line)
       (insert "\n\t")
     (insert "\n")
     (mode-indent-line)))
@@ -410,7 +409,7 @@ or insert a tab."
   (unless p
     (setq p (cursor-pos)))
   (let
-      ((ws-re (if (null generic-exp-comment-string)
+      ((ws-re (if (null? generic-exp-comment-string)
 		  "[\t\f\n ]+"
 		(concat "([\t\f\n ]+|("
 			(quote-regexp generic-exp-comment-string)

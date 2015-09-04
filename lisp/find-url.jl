@@ -135,20 +135,20 @@ a buffer."
 	 (passwd (expand-last-match "\\4"))
 	 (host (expand-last-match "\\5"))
 	 (file (expand-last-match "\\6")))
-      (when (and (not (string= user ""))
-		 (not (string= passwd "")))
+      (when (and (not (string=? user ""))
+		 (not (string=? passwd "")))
 	(require 'rep.io.file-handlers.remote.ftp)
 	(remote-ftp-add-passwd user host passwd))
       ;; XXX What if the method of retrieving files from HOST isn't FTP?
-      (find-file (concat ?/ (if (string= user "") "anonymous" user)
+      (find-file (concat ?/ (if (string=? user "") "anonymous" user)
 			 ?@ host ?: file))
       (find-url-magic-buffer url))))
 
 (defun find-url-http-loaded (process url anchor view output errors)
   (require 'mail-headers)
-  (unless (process-in-use-p process)
+  (unless (process-in-use? process)
     (setq find-url-processes (delete (cons url process) find-url-processes))
-    (if (zerop (process-exit-value process))
+    (if (zero? (process-exit-value process))
 	;; Success
 	(let
 	    (content-type)
@@ -193,7 +193,7 @@ a buffer."
 	  (setq load-url (expand-last-match "\\1"))
 	  (setq anchor (expand-last-match "\\2")))
       (setq load-url url))
-    (when (boundp 'html-display-find-url)
+    (when (bound? 'html-display-find-url)
       (setq buffer (html-display-find-url url)))
     (if buffer
 	(progn

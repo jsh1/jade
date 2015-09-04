@@ -56,31 +56,31 @@ to display it, assuming that it's inserted at column zero.")
 
 ;; Returns t if we may need to deal with a fill prefix
 (defmacro fill-has-prefix-p ()
-  '(or (stringp fill-prefix) (functionp fill-prefix)))
+  '(or (string? fill-prefix) (function? fill-prefix)))
 
 ;; Insert the fill-prefix before the cursor
 (defun fill-insert-prefix (p)
   (cond
-   ((stringp fill-prefix)
+   ((string? fill-prefix)
     (insert fill-prefix p))
-   ((functionp fill-prefix)
+   ((function? fill-prefix)
     (fill-prefix 'insert p))))
 
 ;; Delete the fill-prefix from POS
 (defun fill-delete-prefix (p)
   (cond
-   ((stringp fill-prefix)
+   ((string? fill-prefix)
     (when (buffer-compare-string fill-prefix p)
       (delete-area (match-start) (match-end))))
-   ((functionp fill-prefix)
+   ((function? fill-prefix)
     (fill-prefix 'delete p))))
 
 ;; Return the width of the fill-prefix that would be inserted at POS
 (defun fill-get-prefix-width (p)
   (cond
-   ((stringp fill-prefix)
+   ((string? fill-prefix)
     fill-prefix-width)
-   ((functionp fill-prefix)
+   ((function? fill-prefix)
     (fill-prefix 'width p))))
 
 
@@ -91,7 +91,7 @@ to display it, assuming that it's inserted at column zero.")
   "Sets the column number for filling to (the variable `fill-column') to
 COLUMN or the current column."
   (interactive)
-  (setq fill-column (if (numberp column)
+  (setq fill-column (if (number? column)
 			column 
 		      (1+ (pos-col (char-to-glyph-pos (cursor-pos))))))
   (format t "Fill column set to %d." fill-column))
@@ -101,7 +101,7 @@ COLUMN or the current column."
   "Sets the fill prefix to the string between the start of the current line
 and POS. When called interactively, POS is bound to the cursor position."
   (interactive "d")
-  (if (functionp fill-prefix)
+  (if (function? fill-prefix)
       (error "Fill prefix is defined by a function in this buffer")
     (setq fill-prefix (copy-area (start-of-line p) p)
 	  fill-prefix-width (pos-col (char-to-glyph-pos p)))

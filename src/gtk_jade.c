@@ -550,7 +550,7 @@ gtk_jade_drag_data_received (GtkWidget *widget, GdkDragContext *context,
 	char *end = data + strcspn (data, "\r\n");
 	if (end == data)
 	    end = data + strlen (data);
-	list = Fcons (rep_string_dupn (data, end - data), list);
+	list = Fcons (rep_string_copy_n (data, end - data), list);
 	data = end + strspn (end, "\r\n");
     }
 
@@ -1010,7 +1010,7 @@ DEFUN ("make-window-on-display", Fmake_window_on_display,
 	return Fmake_window (Qnil);
     }
     else
-	return Fsignal (Qerror, rep_list_2 (rep_string_dup
+	return Fsignal (Qerror, rep_list_2 (rep_string_copy
 					    ("can't connect to display"),
 					    display));
 }

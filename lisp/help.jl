@@ -60,7 +60,7 @@ Major mode for displaying online help. Local bindings are:\n
   (let
       ((buffer (open-buffer "*Help*")))
     (with-buffer buffer
-      (unless (eq major-mode 'help-setup)
+      (unless (eq? major-mode 'help-setup)
 	(setq local-keymap 'help-keymap
 	      mode-name "Help"
 	      major-mode 'help-setup)
@@ -69,13 +69,13 @@ Major mode for displaying online help. Local bindings are:\n
     buffer))
 
 ;; Setup the help-buffer for insertion of the help text
-;; standard-output is bound to the correct output stream
+;; *standard-output* is bound to the correct output stream
 (defmacro help-wrapper (#!rest forms)
   `(with-view (other-view)
      (goto-buffer (help-setup))
      (clear-buffer)
      (let
-	 ((standard-output (current-buffer))
+	 ((*standard-output* (current-buffer))
 	  (inhibit-read-only t))
        (progn ,@forms)
        (goto (start-of-buffer))
@@ -124,19 +124,19 @@ w   `where-is'
 (defun apropos-function (regexp #!optional all-functions)
   (interactive "sRegular expression:\nP")
   (help-wrapper
-   (format standard-output "Apropos %s `%s':\n\n"
+   (format *standard-output* "Apropos %s `%s':\n\n"
 	   (if all-functions "function" "command") regexp)
    (apropos-output (apropos regexp (if all-functions
 				       (lambda (s)
-					 (and (boundp s)
-					      (functionp (symbol-value s))))
+					 (and (bound? s)
+					      (function? (symbol-value s))))
 				     commandp)))))
 
 (defun apropos-variable (regexp)
   (interactive "sRegular expression:")
   (help-wrapper
-   (format standard-output "Apropos variable `%s':\n" regexp)
-   (apropos-output (apropos regexp 'boundp))))
+   (format *standard-output* "Apropos variable `%s':\n" regexp)
+   (apropos-output (apropos regexp 'bound?))))
 
 (defun describe-keymap ()
   "Print the full contents of the current keymap (and the keymaps that
@@ -161,7 +161,7 @@ it leads to)."
      (insert "\n"))))
 
 (defun describe-variable-1 (var #!optional in-buffer)
-  (format standard-output
+  (format *standard-output*
 	  "\nVariable: %s\nCurrent value: %S\n\n"
 	  (symbol-name var)
 	  (with-buffer (or in-buffer (current-buffer)) (symbol-value var t))))
@@ -174,7 +174,7 @@ it leads to)."
        (old-buf (current-buffer)))
     (help-wrapper
      (describe-variable-1 var old-buf)
-     (format standard-output "%s\n" (or doc "Undocumented.")))))
+     (format *standard-output* "%s\n" (or doc "Undocumented.")))))
 
 ;;;###autoload
 (defun describe-mode ()
@@ -186,8 +186,8 @@ it leads to)."
     (when doc
       (setq doc (substitute-command-keys doc)))
     (help-wrapper
-     (when (stringp doc)
-       (format standard-output "\n%s\n" doc)))))
+     (when (string? doc)
+       (format *standard-output* "\n%s\n" doc)))))
 
 ;;;###autoload
 (defun substitute-command-keys (string)
@@ -211,7 +211,7 @@ strings of modes may contain any of these expansions."
       ((out nil)
        (point 0)
        (whereis-rel nil)
-       (print-escape t))
+       (*print-escape* t))
     (while (string-match "\\\\[[{<]([^]}>,]+)(,([^]}>]+))?[]}>]" string point)
       (setq out (cons (substring string point (match-start)) out)
 	    point (match-end))
@@ -233,7 +233,7 @@ strings of modes may contain any of these expansions."
 			(setq out (cons (format nil "%-24s %S\n"
 						(concat "  "
 							arg
-							(if (string= arg "")
+							(if (string=? arg "")
 							    "" " ")
 							(or prefix "")
 							(if prefix " " "")

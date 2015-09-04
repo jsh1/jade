@@ -190,7 +190,7 @@ direction."
 	((posp next)
 	 (isearch-goto next)
 	 (setq isearch-failing nil))
-	((null next)
+	((null? next)
 	 (setq isearch-failing t)
 	 (beep))))))
 
@@ -331,7 +331,7 @@ direction."
   
 (defun isearch-next-forward ()
   (interactive)
-  (if (and (equal (car (car isearch-trace)) "") isearch-last-match)
+  (if (and (equal? (car (car isearch-trace)) "") isearch-last-match)
       (progn
 	(isearch-push-string isearch-last-match)
 	(isearch-title))
@@ -349,7 +349,7 @@ direction."
 	  (isearch-push-match (with-view isearch-view (cursor-pos)))
 	  (setq isearch-failing nil)
 	  (isearch-goto next))
-	((null next)
+	((null? next)
 	  (setq isearch-failing t)
 	  (beep)))
       (setq isearch-forwards t)
@@ -357,7 +357,7 @@ direction."
 
 (defun isearch-next-backward ()
   (interactive)
-  (if (and (equal (car (car isearch-trace)) "") isearch-last-match)
+  (if (and (equal? (car (car isearch-trace)) "") isearch-last-match)
       (progn
 	(isearch-push-string isearch-last-match)
 	(isearch-title))
@@ -375,7 +375,7 @@ direction."
 	(isearch-push-match (with-view isearch-view (cursor-pos)))
 	(setq isearch-failing nil)
 	(isearch-goto next))
-       ((null next)
+       ((null? next)
 	(setq isearch-failing t)
 	(beep)))
       (setq isearch-forwards nil)

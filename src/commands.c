@@ -65,16 +65,16 @@ interactive_spec(repv cmd)
     if(rep_SYMBOLP(cmd))
 	cmd = Fsymbol_value(cmd, Qt);
 again:
-    if (rep_FUNARGP(cmd))
-	fun = rep_FUNARG(cmd)->fun;
+    if (rep_CLOSUREP(cmd))
+	fun = rep_CLOSURE(cmd)->fun;
     else
 	fun = cmd;
     if(!rep_VOIDP(fun) && !rep_NILP(fun))
     {
 	if((rep_TYPE(fun) >= rep_Subr0) && (rep_TYPE(fun) <= rep_SubrN))
 	    spec = rep_SUBR(fun)->int_spec;
-	else if(rep_COMPILEDP(fun))
-	    spec = rep_COMPILED_INTERACTIVE(fun);
+	else if(rep_BYTECODEP(fun))
+	    spec = rep_BYTECODE_INTERACTIVE(fun);
 	else if(rep_CONSP(fun))
 	{
 	    if(rep_CAR(fun) == Qlambda)
@@ -101,7 +101,7 @@ again:
 		    }
 		}
 	    }
-	    else if(rep_CAR(fun) == Qautoload && rep_FUNARGP(cmd))
+	    else if(rep_CAR(fun) == Qautoload && rep_CLOSUREP(cmd))
 	    {
 		/* An autoload, load it then try again. */
 #if rep_INTERFACE >= 9
@@ -110,7 +110,7 @@ again:
 		struct rep_Call lc;
 		lc.fun = lc.args = lc.args_evalled_p = Qnil;
 		rep_PUSH_CALL(lc);
-		rep_USE_FUNARG(cmd);
+		rep_USE_CLOSURE(cmd);
 		cmd = rep_load_autoload(cmd);
 		rep_POP_CALL(lc);
 #endif
@@ -125,7 +125,7 @@ again:
 DEFSTRING(no_block, "No block marked");
 DEFSTRING(nil_arg, "Nil argument to command");
 DEFSTRING(not_command, "Not a command");
-DEFUN_INT("call-command", Fcall_command, Scall_command, (repv cmd, repv Farg), rep_Subr2, "CEnter command:" rep_DS_NL "P") /*
+DEFUN_INT("call-command", Fcall_command, Scall_command, (repv cmd, repv Farg), rep_Subr2, "CEnter command:\nP") /*
 ::doc:call-command::
 call-command COMMAND [PREFIX-ARG]
 
@@ -152,7 +152,7 @@ any entered arg is given to the invoked COMMAND.
 
     Fcall_hook(Qpre_command_hook, Qnil, Qnil);
 
-    if(rep_SYMBOLP(cmd) || rep_FUNARGP(cmd))
+    if(rep_SYMBOLP(cmd) || rep_CLOSUREP(cmd))
     {
 	/* A named command; call it properly taking note of any interactive
 	   declaration. */
@@ -225,14 +225,14 @@ any entered arg is given to the invoked COMMAND.
 					     (spec_str - rep_STR(int_spec)));
 			if(!end)
 			    end = rep_STR(int_spec) + rep_STRING_LEN(int_spec);
-			prompt = rep_string_dupn(spec_str, end - spec_str);
+			prompt = rep_string_copy_n(spec_str, end - spec_str);
 			if(memchr(spec_str, '%', end - spec_str))
 			{
 			    /* Format characters; format it. */
 			    prompt = Fformat(Fcons(Qnil,
 							 Fcons(prompt, args)));
 			    if(!prompt || !rep_STRINGP(prompt))
-				prompt = rep_string_dupn(spec_str, end - spec_str);
+				prompt = rep_string_copy_n(spec_str, end - spec_str);
 			}
 			spec_str = *end ? end + 1 : end;
 		    }
@@ -356,7 +356,7 @@ any entered arg is given to the invoked COMMAND.
 	{
 	    if (rep_SYMBOLP(cmd))
 		cmd = Fsymbol_value (cmd, Qt);
-	    res = rep_funcall(cmd, args, false);
+	    res = rep_apply(cmd, args);
 	}
 	rep_POPGC;
 
@@ -497,13 +497,13 @@ Returns t if COMMAND may be called interactively.
 {
     if(rep_SYMBOLP(cmd))
 	cmd = Fsymbol_value(cmd, Qt);
-    if (rep_FUNARGP(cmd))
-	cmd = rep_FUNARG(cmd)->fun;
+    if (rep_CLOSUREP(cmd))
+	cmd = rep_CLOSURE(cmd)->fun;
     if(!rep_VOIDP(cmd) && !rep_NILP(cmd))
     {
 	if((((rep_TYPE(cmd) >= rep_Subr0) && (rep_TYPE(cmd) <= rep_SubrN))
 	    && (rep_SUBR(cmd)->int_spec != 0))
-	   || (rep_COMPILEDP(cmd) && !rep_NILP(rep_COMPILED_INTERACTIVE(cmd))))
+	   || (rep_BYTECODEP(cmd) && !rep_NILP(rep_BYTECODE_INTERACTIVE(cmd))))
 	    return(Qt);
 	else if(rep_CONSP(cmd))
 	{
@@ -559,7 +559,8 @@ commands_init(void)
     rep_INTERN(read_event);
     rep_INTERN(set_auto_mark);
 
-    rep_INTERN(interactive); rep_ERROR(interactive);
+    rep_INTERN(interactive);
+    rep_DEFINE_ERROR(interactive);
 
     rep_INTERN_SPECIAL(pre_command_hook);
     rep_INTERN_SPECIAL(post_command_hook);

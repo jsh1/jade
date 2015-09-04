@@ -54,15 +54,15 @@ being sent."
   (setq send-mail-actions actions)
   (insert "To: ")
   (cond
-   ((stringp to)
+   ((string? to)
     (insert to))
-   ((consp to)
+   ((pair? to)
     (mail-insert-list to)))
   (insert "\n")
   (cond
-   ((stringp cc)
+   ((string? cc)
     (format (current-buffer) "CC: %s\n" cc))
-   ((consp cc)
+   ((pair? cc)
     (insert "CC: ")
     (mail-insert-list cc)
     (insert "\n")))
@@ -81,14 +81,14 @@ being sent."
     (format (current-buffer) "Reply-to: %s\n" mail-default-reply-to))
   (when mail-self-blind
     (catch 'no-bcc
-      (when (stringp mail-self-blind)
+      (when (string? mail-self-blind)
 	;; a regexp, only bcc if no recipient addresses match mail-self-blind
 	(mapc (lambda (addr)
 		(when (string-match mail-self-blind
-				    (if (stringp addr) addr (car addr)))
+				    (if (string? addr) addr (car addr)))
 		  (throw 'no-bcc t)))
-	      (append (if (listp to) to (list to))
-		      (if (listp cc) cc (list cc)))))
+	      (append (if (list? to) to (list to))
+		      (if (list? cc) cc (list cc)))))
       ;; okay, so insert the bcc line
       (format (current-buffer) "BCC: %s\n" user-mail-address)))
   (when mail-archive-file-name
@@ -98,9 +98,9 @@ being sent."
     (let
 	((old (cursor-pos)))
       (insert "\n\n-- \n")
-      (if (eq mail-signature t)
+      (if (eq? mail-signature t)
 	  (when (and mail-signature-file
-		     (file-exists-p mail-signature-file))
+		     (file-exists? mail-signature-file))
 	    (insert-file mail-signature-file))
 	(insert mail-signature))
       (when (/= (pos-col (cursor-pos)) 0)
@@ -109,9 +109,9 @@ being sent."
   (set-buffer-modified (current-buffer) nil)
   (set-buffer-undo-list nil)
   (send-mail-mode)
-  (cond ((null to)
+  (cond ((null? to)
 	 (send-mail-go-to))
-	((null subject)
+	((null? subject)
 	 (send-mail-go-subject))
 	(t
 	 (send-mail-go-text))))
@@ -213,7 +213,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 (defun send-mail-signature ()
   "Insert the contents of the mail-signature-file as the message's signature."
   (interactive)
-  (if (and mail-signature-file (file-exists-p mail-signature-file))
+  (if (and mail-signature-file (file-exists? mail-signature-file))
       (let
 	  ((p (search-backward "\n\n-- \n" (end-of-buffer)))
 	   (old-pos (cursor-pos)))
@@ -270,7 +270,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
       ((start (or (re-search-forward "^\s*$" (start-of-buffer))
 		  (end-of-buffer)))
        end)
-    (unless (zerop (pos-col start))
+    (unless (zero? (pos-col start))
       (setq start (insert "\n" start)))
     (setq end (insert "\n" (insert mail-header-separator start)))
     ;; make the separator read-only
@@ -280,7 +280,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 (defun send-mail-send ()
   "Send the mail message in the current buffer."
   (interactive)
-  (when (or (not (string= (buffer-name) "*mail*"))
+  (when (or (not (string=? (buffer-name) "*mail*"))
 	    (buffer-read-only-p))
     (unless (y-or-n-p "Really send this buffer as a mail message?")
       (error "Quit")))
@@ -367,7 +367,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 	  (unwind-protect
 	      (progn
 		(setq file (open-file filename 'append))
-		(unless (zerop (file-size filename))
+		(unless (zero? (file-size filename))
 		  (write file "\n\n"))
 		;; Need timezone as well
 		(format file "From %s %s\n" (user-login-name)
@@ -421,7 +421,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 (defun sendmail-send-it (normal-addresses resent-addresses temp-buffer)
   (declare (unused normal-addresses))
   (let ((proc (make-process temp-buffer)))
-    (or (zerop (apply call-process-area proc
+    (or (zero? (apply call-process-area proc
 		      (start-of-buffer) (end-of-buffer) nil
 		      (nconc (list (or sendmail-program "/usr/lib/sendmail")
 				   ;; Dot doesn't specify end-of-message
@@ -453,7 +453,7 @@ it can be completed and sent out."
   (interactive
    (list (prompt-for-file "Save message to file:" nil mail-drafts-directory)))
   (or filename (error "No file specified"))
-  (when (or (not (string= (buffer-name) "*mail*"))
+  (when (or (not (string=? (buffer-name) "*mail*"))
 	    (buffer-read-only-p))
     (unless (y-or-n-p "Is this buffer really a mail message?")
       (error "Quit")))

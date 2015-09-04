@@ -367,10 +367,10 @@ extern int regexec_reverse_buffer(rep_regexp *prog, Lisp_Buffer *tx, repv start,
 extern int regmatch_buffer(rep_regexp *prog, Lisp_Buffer *tx, repv start, int flags);
 
 /* from regsub.c */
-extern void jade_regsub(int lasttype, rep_regsubs *matches,
-			char *source, char *dest, void *data);
-extern size_t jade_regsublen(int lasttype, rep_regsubs *matches,
-			     char *source, void *data);
+extern void jade_regsub(int last_type, rep_regsubs *matches,
+			const char *source, char *dest, void *data);
+extern size_t jade_regsublen(int last_type, rep_regsubs *matches,
+			     const char *source, void *data);
 
 /* from undo.c */
 extern void undo_record_unmodified(Lisp_Buffer *tx);

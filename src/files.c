@@ -197,7 +197,7 @@ abortmem:
 
 DEFUN_INT("write-buffer-contents", Fwrite_buffer_contents,
 	  Swrite_buffer_contents, (repv file, repv start, repv end),
-	  rep_Subr3, "-FWrite block to file:" rep_DS_NL "m" rep_DS_NL "M") /*
+	  rep_Subr3, "-FWrite block to file:\nm\nM") /*
 ::doc:write-buffer-contents::
 write-buffer-contents FILE-OR-NAME [START] [END]
 

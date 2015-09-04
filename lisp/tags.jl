@@ -81,7 +81,7 @@ prefix argument greater than one says to find the next tag using the same
 string that the last tag was found with; a negative prefix arg says to
 move back to the previously found tag."
   (interactive
-   (list (if (null current-prefix-arg)
+   (list (if (null? current-prefix-arg)
 	     ;; Find a new tag
 	     (or (prompt-for-string "Find tag:" (symbol-at-point))
 		 (error "No tag specified"))
@@ -98,15 +98,15 @@ move back to the previously found tag."
 	 (original-mark (make-mark))
 	 start)
       (cond
-       ((eq name 'pop)
+       ((eq? name 'pop)
 	(pop-tag-mark)
 	(throw 'return (cursor-pos)))
-       ((eq name 'push)
+       ((eq? name 'push)
 	(setq name tags-last-found
 	      start tags-last-found-pos)))
       (while (setq start (search-forward name (or start (pos 0 0))
 					 tags-buffer tags-fold-case))
-	(if (or (zerop (pos-line start))
+	(if (or (zero? (pos-line start))
 		(= ?\f (get-char (forward-char -1 (start-of-line start)
 					       tags-buffer) tags-buffer)))
 	    ;; We're looking at the filename, not a tag, continue searching
@@ -118,7 +118,7 @@ move back to the previously found tag."
 			      (error "Can't find start of tags section"))
 			  (expand-file-name
 			   (expand-last-match "\\1")
-			   (with-buffer tags-buffer default-directory))))
+			   (with-buffer tags-buffer *default-directory*))))
 	       tag-pos tag-line tag-name)
 	    ;; This switches to the new file's buffer
 	    (or (find-file file)
@@ -131,7 +131,7 @@ move back to the previously found tag."
 						 (match-end 4) tags-buffer))))
 		  tag-line (copy-area (match-start 1)
 				      (match-end 1) tags-buffer)
-		  tag-name (if (null (match-start 3))
+		  tag-name (if (null? (match-start 3))
 			       ;; No definitive name
 			       tag-line
 			     (copy-area (match-start 3) (match-end 3)
@@ -158,7 +158,7 @@ move back to the previously found tag."
 (defun pop-tag-mark ()
   "Return to the buffer and position from which the last tag was found."
   (interactive)
-  (if (null tags-marks)
+  (if (null? tags-marks)
       (message "[No more tag marks]")
     (goto-mark (car tags-marks))
     (setq tags-marks (cdr tags-marks))))
@@ -195,7 +195,7 @@ move back to the previously found tag."
 	  (when (string-match
 		 (concat ?^ (quote-regexp
 			     (file-name-as-directory
-			      (canonical-file-name default-directory)))
+			      (canonical-file-name *default-directory*)))
 			 "(.*)$")
 		 (canonical-file-name current-file))
 	    (setq current-file (expand-last-match "\\1")))
@@ -277,9 +277,9 @@ may be found though the use of the `tags-loop-continue' function."
 		 (while (re-search-forward from nil nil case-fold-search)
 		   (goto (replace-last-match to)))
 	       (setq point (query-replace from to))
-	       (cond ((eq point 'rest)
+	       (cond ((eq? point 'rest)
 		      (setq do-all t))
-		     ((null point)
+		     ((null? point)
 		      (setq tags-continue-command
 			    `(,tags-query-replace ,from ,to ,(make-mark)))
 		      (throw 'out t)))))))

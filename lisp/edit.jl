@@ -103,7 +103,7 @@ the auto-mark of the current buffer will be updated before the move."
 	 (p (mark-pos mark)))
       (unless dont-set-auto
 	(set-auto-mark))
-      (if (stringp file)
+      (if (string? file)
 	  (find-file file)
 	(goto-buffer file))
       (goto p))))
@@ -128,7 +128,7 @@ position (buffer and cursor-pos) to the old value of `auto-mark'."
       ((a-m-file (mark-file auto-mark))
        (a-m-pos (mark-pos auto-mark)))
     (set-auto-mark)
-    (if (stringp a-m-file)
+    (if (string? a-m-file)
 	(find-file a-m-file)
       (goto-buffer a-m-file))
     (goto a-m-pos)))
@@ -177,8 +177,8 @@ to one line from the cursor)."
   "Return the position of the line COUNT lines below the cursor, adjusting
 the column position to preserve the original position."
   (interactive "@p")
-  (unless (and (eq last-command 'next-line)
-	       (eq goal-view (current-view)))
+  (unless (and (eq? last-command 'next-line)
+	       (eq? goal-view (current-view)))
     ;; Set new goal
     (setq goal-column (pos-col (char-to-glyph-pos (cursor-pos)))
 	  goal-view (current-view)))
@@ -209,7 +209,7 @@ the next line."
        (start (cursor-pos))
        end)
     (cond
-     ((null arg)
+     ((null? arg)
       (setq end (if (>= start (end-of-line))
 		    (start-of-line (forward-line))
 		  (end-of-line))))
@@ -228,7 +228,7 @@ the next line."
 (defun backward-kill-line ()
   "Kill from the cursor to the start of the line."
   (interactive)
-  (kill-area (if (zerop (pos-col (cursor-pos)))
+  (kill-area (if (zero? (pos-col (cursor-pos)))
 		 (forward-char -1)
 	       (start-of-line))
 	     (cursor-pos)))
@@ -245,7 +245,7 @@ displayed view. If ARG is positive, the ARG'th row from the top of the view
 will be found, if ARG is negative rows from the bottom of the view are
 counted."
   (interactive "P")
-  (goto (display-to-char-pos (pos 0 (if (null arg)
+  (goto (display-to-char-pos (pos 0 (if (null? arg)
 					(quotient (cdr (view-dimensions)) 2)
 				      (let
 					  ((line (prefix-numeric-argument
@@ -352,7 +352,7 @@ interactively, the cursor is set to this position."
       ;; Search for the next separator or start
       (if (re-search-forward sep-or-start (forward-char 1 p))
 	  (setq count (1- count)
-		p (if (zerop count) (match-start) (match-end)))
+		p (if (zero? count) (match-start) (match-end)))
 	(setq p (end-of-buffer)
 	      count 0)))
     ;; Negative arguments
@@ -561,7 +561,7 @@ rest lower-case."
 auto-mark"
   (interactive)
   (block-kill)
-  (when (eq (mark-file auto-mark) (current-buffer))
+  (when (eq? (mark-file auto-mark) (current-buffer))
     (let
 	((curs (cursor-pos)))
       (cond
@@ -582,8 +582,8 @@ auto-mark"
 (defun kill-string (string)
   "Adds STRING to the kill storage. If the last command also kill'ed something
 the string is added to."
-  (when (and (stringp string) (not (string= string "")))
-    (if (eq last-command 'kill)
+  (when (and (string? string) (not (string=? string "")))
+    (if (eq? last-command 'kill)
 	(set-ring-head kill-ring (if (>= (cursor-pos) kill-last-cursor)
 				     (concat (killed-string) string)
 				   (concat string (killed-string))))
@@ -628,7 +628,7 @@ kill storage."
      ((and (not no-hooks) (setq tem (call-hook 'pre-yank-hook nil 'or)))
       (setq yank-last-item nil)
       tem)
-     ((zerop (ring-size kill-ring))
+     ((zero? (ring-size kill-ring))
       (error "Nothing to yank"))
      (t
       (setq yank-last-item 0)
@@ -666,7 +666,7 @@ cursor position, then unmark the block."
   "If the last command was a yank, replace the yanked text with the COUNT'th
 next string in the kill ring."
   (interactive "p")
-  (if (and (or (eq last-command 'yank) (eq last-command 'yank-rectangle))
+  (if (and (or (eq? last-command 'yank) (eq? last-command 'yank-rectangle))
 	   (buffer-record-undo))
       (progn
 	(setq yank-last-item (if yank-last-item
@@ -683,7 +683,7 @@ next string in the kill ring."
 	;; work as you'd expect...
 	(set-buffer-undo-list nil)
 	(goto yank-last-start)
-	((if (eq last-command 'yank) insert insert-rectangle)
+	((if (eq? last-command 'yank) insert insert-rectangle)
 	 (killed-string yank-last-item))
 	(setq this-command last-command))
     (error "Can't yank (last command wasn't yank, or no undo info)")))
@@ -786,7 +786,7 @@ event as read. COUNT copies of the same character are inserted."
   (interactive "p")
   (let
       ((first (next-event t)))
-    (if (digit-char-p (aref first 0))
+    (if (char-numeric? (aref first 0))
 	;; Read two more digits
 	(let*
 	    ((second (next-event t))
@@ -830,12 +830,12 @@ end of the line simply move COUNT characters to the left."
     (let
 	((p (re-search-backward "[^\t ]|^")))
       (when p
-	(unless (zerop (pos-col p))
+	(unless (zero? (pos-col p))
 	  (setq p (forward-char 1 p)))
 	(when (and p (looking-at "[\t ]+" p))
 	  (delete-area (match-start) (match-end))
 	  (goto (match-start))))))
-  (unless (zerop count)
+  (unless (zero? count)
     (insert (make-string count ?\ ))))
 
 (defun no-spaces ()
@@ -867,7 +867,7 @@ deleted."
 		       (match-end))
 		  (start-of-buffer)))
        (end (or (re-search-forward "^[\t ]*\n.*[^\t\n ].*$") (end-of-buffer))))
-    (delete-area start (if (equal start end)
+    (delete-area start (if (equal? start end)
 			   (forward-line 1 end)
 			 end))))
 
@@ -893,10 +893,10 @@ the same."
 (defun blinking-insert (#!optional char)
   (interactive "E")
   (when char
-    (insert (if (integerp char)
+    (insert (if (integer? char)
 		(make-string 1 char)
 	      char)))
-  (when (and blink-matching-paren (or (not (listp blink-matching-paren))
+  (when (and blink-matching-paren (or (not (list? blink-matching-paren))
 				      (memq (get-char (forward-char -1))
 					    blink-matching-paren)))
     (condition-case nil
@@ -1007,7 +1007,7 @@ current view."
       ((raw-pos (raw-mouse-pos))
        (mouse-view (find-view-by-pos raw-pos)))
     (when mouse-view
-      (unless (eq (current-view) mouse-view)
+      (unless (eq? (current-view) mouse-view)
 	(set-current-view mouse-view))
       (setq raw-pos (translate-pos-to-view raw-pos))
       (if (posp raw-pos)
@@ -1018,7 +1018,7 @@ current view."
   (interactive)
   (let
       ((p (goto-mouse)))
-    (if (eq p t)
+    (if (eq? p t)
 	(setq mouse-select-pos 'status
 	      mouse-dragging 'view)
       (when p
@@ -1033,7 +1033,7 @@ current view."
     (setq mouse-dragging 'words)))
 
 (defun mouse-select-drag (drag-rectangle)
-  (if (eq mouse-dragging 'view)
+  (if (eq? mouse-dragging 'view)
       ;; Resize the current view
       (let
 	  ((new-height (- (pos-line (raw-mouse-pos))
@@ -1043,16 +1043,16 @@ current view."
     (let
 	((p (mouse-pos)))
       (when (posp p)
-	(when (eq mouse-dragging 'words)
+	(when (eq? mouse-dragging 'words)
 	  (setq p (forward-word (if (> p mouse-select-pos) 1 -1) p)))
 	(goto p)
-	(if (equal p mouse-select-pos)
+	(if (equal? p mouse-select-pos)
 	    (when (and (blockp) (>= p (block-start)) (< p (block-end)))
 	      (block-kill))
 	  (setq mouse-dragging (or mouse-dragging t))
 	  (block-kill)
 	  (set-rect-blocks nil drag-rectangle)
-	  (block-start (if (eq mouse-dragging 'words)
+	  (block-start (if (eq? mouse-dragging 'words)
 			   (if (>= p mouse-select-pos)
 			       (or (word-start mouse-select-pos)
 				   mouse-select-pos)

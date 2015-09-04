@@ -1216,10 +1216,16 @@ view_unbind (repv handle)
 void
 views_init(void)
 {
-    view_type = rep_register_new_type ("view", 0, view_prin, view_prin,
-				       view_sweep, view_mark, 0,
-				       0, 0, 0, 0,
-				       view_bind, view_unbind);
+    static rep_type view = {
+	.name = "view",
+	.print = view_prin,
+	.sweep = view_sweep,
+	.mark = view_mark,
+	.bind = view_bind,
+	.unbind = view_unbind,
+    };
+
+    view_type = rep_define_type(&view);
 
     mb_unused_buffer = VBUFFER(Fmake_buffer(rep_VAL(&unused_mb), Qnil, Qt));
 

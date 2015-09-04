@@ -97,10 +97,10 @@ in the status line."
     (mapcar symbol-name (apropos (concat ?^ (quote-regexp sexp))
 				 (if is-function
 				     (lambda (x)
-				       (and (boundp x)
-					    (functionp
+				       (and (bound? x)
+					    (function?
 					     (symbol-value x))))
-				   boundp)))))
+				   bound?)))))
 
 
 ;; Expressions
@@ -220,17 +220,17 @@ in the status line."
 	    (while (setq p (lisp-backward-sexp 1 p))
 	      (when (<= form-pos p)
 		(error "Infinite loop"))
-	      (when (zerop (pos-col p))
+	      (when (zero? (pos-col p))
 		(setq sexp-ind (pos 0 (pos-line sexp-ind)))
 		(throw 'return sexp-ind))
 	      (setq form-pos p
 		    index (1+ index))
-	      (when (or (null last-ind) (= (pos-line (car last-ind))
+	      (when (or (null? last-ind) (= (pos-line (car last-ind))
 					   (pos-line p)))
 		(setq last-ind (cons (char-to-glyph-pos p) last-ind))))
 	  (error))
 	;; If there weren't any previous sexps to indent against stop now
-	(unless (zerop index)
+	(unless (zero? index)
 	  (if last-ind
 	      (setq last-ind (if (and (= (pos-line p)
 					 (pos-line (car last-ind)))
@@ -244,11 +244,11 @@ in the status line."
 					    p)))
 			      (pos-line sexp-ind)))
 	  (setq form (read (cons (current-buffer) p)))
-	  (when (symbolp form)
+	  (when (symbol? form)
 	    (let
 		((type (get form 'lisp-indent)))
 	      (cond
-	       ((null type)
+	       ((null? type)
 		;; standard indentation
 		(if (and (= (- (pos-line line-pos) (pos-line p)) 1)
 			 (< index 2))
@@ -259,14 +259,14 @@ in the status line."
 		  ;; otherwise line up under the first argument
 		  (setq sexp-ind (pos (pos-col last-ind)
 				      (pos-line sexp-ind)))))
-	       ((eq type 'defun)
+	       ((eq? type 'defun)
 		;; defun type indentation
 		(if (or (= index 2)
 			(= (- (pos-line line-pos) (pos-line p)) 1))
 		    (setq sexp-ind (right-char lisp-body-indent sexp-ind))
 		  (setq sexp-ind (pos (pos-col last-ind)
 				      (pos-line sexp-ind)))))
-	       ((numberp type)
+	       ((number? type)
 		;; first TYPE sexps are indented double
 		(setq sexp-ind (right-char (if (<= index type)
 					       (* 2 lisp-body-indent)

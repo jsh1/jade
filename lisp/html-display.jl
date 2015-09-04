@@ -74,7 +74,7 @@
        (details (html-decode source output)))
     (when (assq 'title details)
       (set-buffer-name output (cdr (assq 'title details))))
-    (when (and (or (not url) (string= url "")) (buffer-file-name source))
+    (when (and (or (not url) (string=? url "")) (buffer-file-name source))
       (setq url (concat "file:/"
 			(canonical-file-name (buffer-file-name source)))))
     (when url
@@ -120,7 +120,7 @@
   (let
       ((html-buffers (filter (lambda (b)
 			       (with-buffer b
-				 (eq major-mode 'html-display-mode)))
+				 (eq? major-mode 'html-display-mode)))
 			     (buffer-list))))
     (mapc kill-buffer html-buffers)))
 
@@ -130,7 +130,7 @@
 	    (with-buffer b
 	      (when (and html-display-details
 			 (assq 'url html-display-details)
-			 (string=
+			 (string=?
 			  url (cdr (assq 'url html-display-details))))
 		(throw 'exit b)))) (all-buffers))
     nil))

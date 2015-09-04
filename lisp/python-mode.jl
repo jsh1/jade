@@ -102,7 +102,7 @@
 		  (setq start (match-end)))
 		(cond
 		 ((or 
-		   (null token-pos)
+		   (null? token-pos)
 		   (> token-pos p))
 		  context)
 		 (t
@@ -111,8 +111,8 @@
 			    ((iter
 			      (lambda (x)
 				(cond
-				 ((null x) 
-					(error "Unknown context found"))
+				 ((null? x)
+				  (error "Unknown context found"))
 				 ((looking-at (caar x) token-pos)
 				  (setq current-context (eval (cadar x)))
 				  ((eval (caddar x)) token-pos))
@@ -120,7 +120,7 @@
 				  (iter (cdr x)))))))
 			  (iter python-context-tokens)))
 		  (cond
-		   ((null end)
+		   ((null? end)
 		    (setq python-current-context-start start)
 		    (setq python-current-context-end nil)
 		    (iter start current-context))
@@ -159,7 +159,7 @@
       ((iter (lambda (x safe)
 	       (cond       
 		((or
-		  (null x)
+		  (null? x)
 		  (= x (start-of-buffer))
 		  (>= x safe))
 		 (start-of-buffer))

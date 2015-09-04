@@ -48,24 +48,24 @@ while auto-archiving.")
        ((bufferp dest)
 	;; DEST is a buffer. Append to that.
 	(with-buffer dest
-	  (when (eq major-mode 'read-mail-mode)
+	  (when (eq? major-mode 'read-mail-mode)
 	    ;; XXX re-enable this
 	    (error "Can't append to buffers in read-mail-mode!"))
 	  (save-restriction
 	    (unrestrict-buffer)
 	    (save-excursion
 	      (goto (end-of-buffer))
-	      (unless (zerop (1- (buffer-length)))
+	      (unless (zero? (1- (buffer-length)))
 		(insert "\n"))
 	      (let
 		  ;; Don't override read-only in normal buffers
-		  ((inhibit-read-only (eq major-mode 'read-mail-mode)))
+		  ((inhibit-read-only (eq? major-mode 'read-mail-mode)))
 		(insert text))))))
-       ((filep dest)
+       ((file? dest)
 	;; DEST is a file. Append to it. The flush is for when checking the
 	;; size of the file
 	(flush-file dest)
-	(unless (zerop (file-size (file-binding dest)))
+	(unless (zero? (file-size (file-binding dest)))
 	  ;; The file isn't empty, so ensure there's a blank
 	  ;; line separating messages
 	  (write dest ?\n))
@@ -92,7 +92,7 @@ folder's file."
       (unwind-protect
 	  (mapc (lambda (m)
 		  (rm-output-message m real-dest)) messages)
-	(when (filep real-dest)
+	(when (file? real-dest)
 	  (close-file real-dest))))
     (rm-redisplay-folder folder)))
 
@@ -110,7 +110,7 @@ folder's file."
 				 (open-file (cdr cell) 'append))))
 		   (unwind-protect
 		       (rm-output-message m dest)
-		     (when (filep dest)
+		     (when (file? dest)
 		       (close-file dest))))
 		 (throw 'saved t)))
 	     rm-auto-archive-alist)))
@@ -130,6 +130,6 @@ folder's file."
 			   (when (rm-apply-rule rule m)
 			     (rm-output-message m dest)))
 			 folder)
-      (when (filep dest)
+      (when (file? dest)
 	(close-file dest))))
   (rm-redisplay-folder folder))

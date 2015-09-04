@@ -192,7 +192,7 @@ external mmencode program, otherwise handle locally.")
 	   (setq buffer input)
 	   (setq start (start-of-buffer input))
 	   (setq end (end-of-buffer input)))
-	  ((and (consp input) (bufferp (car input)) (posp (cdr input)))
+	  ((and (pair? input) (bufferp (car input)) (posp (cdr input)))
 	   (setq buffer (car input))
 	   (setq start (cdr input))
 	   (setq end (end-of-buffer buffer))))
@@ -201,7 +201,7 @@ external mmencode program, otherwise handle locally.")
 		 (or (and buffer
 			  (> (- (pos-line end) (pos-line start))
 			     mmencode-threshold))
-		     (and (filep input)
+		     (and (file? input)
 			  (local-file-name (file-binding input)))))
 	;; Use mmencode
 	(let
@@ -209,7 +209,7 @@ external mmencode program, otherwise handle locally.")
 	     (args (append (if base64 '("-b") '("-q"))
 			   (if encode nil '("-u")))))
 	  (condition-case nil
-	      (when (zerop (if buffer
+	      (when (zero? (if buffer
 			       (with-buffer buffer
 				 (apply call-process-area process start end
 					nil mmencode-program args))
@@ -230,7 +230,7 @@ external mmencode program, otherwise handle locally.")
 (defun mime-decode-buffer (encoding src-buffer output)
   (let
       ((tem (assq encoding mime-xfer-encodings-alist)))
-    (if (null tem)
+    (if (null? tem)
 	;; Just copy verbatim
 	(write output (copy-area (start-of-buffer src-buffer)
 				 (end-of-buffer src-buffer)
@@ -241,7 +241,7 @@ external mmencode program, otherwise handle locally.")
 (defun mime-decode-string (encoding source output)
   (let
       ((tem (assq encoding mime-xfer-encodings-alist)))
-    (if (null tem)
+    (if (null? tem)
 	;; Just copy verbatim
 	(write output source)
       ;; apply the decoder
@@ -256,18 +256,18 @@ external mmencode program, otherwise handle locally.")
       (tem)
     ;; Switch on content types
     (cond
-     ((eq (car content-type) 'text)
+     ((eq? (car content-type) 'text)
       ;; Some sort of text
-      (when (or (and content-disp (eq (car content-disp) 'attachment))
+      (when (or (and content-disp (eq? (car content-disp) 'attachment))
 		(and in-multipart mime-decode-mark-inlines))
 	(mime-decode-insert-stub src-buffer
 				 (start-of-buffer src-buffer)
 				 (end-of-buffer src-buffer)
 				 content-type content-xfer-enc content-disp))
-      (when (or (null content-disp)
-		(eq (car content-disp) 'inline) mime-decode-force-inlining)
+      (when (or (null? content-disp)
+		(eq? (car content-disp) 'inline) mime-decode-force-inlining)
 	(cond
-	 ((eq (nth 1 content-type) 'html)
+	 ((eq? (nth 1 content-type) 'html)
 	  ;; HTML code, have to decode it
 	  (let
 	      ((tem (assq content-xfer-enc mime-xfer-encodings-alist))
@@ -288,28 +288,28 @@ external mmencode program, otherwise handle locally.")
 	  ;; Some other type of text, just display in raw form
 	  (mime-decode-buffer content-xfer-enc src-buffer (current-buffer))))
 	(insert "\n")))
-     ((eq (car content-type) 'message)
+     ((eq? (car content-type) 'message)
       ;; Mail/news message
-      (when (or (and content-disp (eq (car content-disp) 'attachment))
+      (when (or (and content-disp (eq? (car content-disp) 'attachment))
 		(and in-multipart mime-decode-mark-inlines))
 	(mime-decode-insert-stub src-buffer
 				 (start-of-buffer src-buffer)
 				 (end-of-buffer src-buffer)
 				 content-type content-xfer-enc content-disp))
-      (when (or (null content-disp)
-		(eq (car content-disp) 'inline) mime-decode-force-inlining)
-	(if (eq (nth 1 content-type) 'external-body)
+      (when (or (null? content-disp)
+		(eq? (car content-disp) 'inline) mime-decode-force-inlining)
+	(if (eq? (nth 1 content-type) 'external-body)
 	    ;; XXX: FIXME
 	    (error "message/external-body as yet unsupported")
 	  (mime-decode-buffer content-xfer-enc src-buffer (current-buffer))
 	  (insert "\n"))))
-     ((eq (car content-type) 'multipart)
+     ((eq? (car content-type) 'multipart)
       ;; Recursive embedded message
       (let
 	  ((boundary (cdr (assq 'boundary (nthcdr 2 content-type))))
 	   (actual-src src-buffer)
 	   parts start end final)
-	(unless (stringp boundary)
+	(unless (string? boundary)
 	  (error "No boundary parameter in multipart message"))
 	(setq boundary (concat "--" boundary))
 	(when (setq tem (assq content-xfer-enc mime-xfer-encodings-alist))
@@ -354,7 +354,7 @@ external mmencode program, otherwise handle locally.")
 	    (setq start (forward-line 1 end))))
 	;; PARTS is a list of (START END ENCODING TYPE DISP)
 	;; (in reverse order compared to the message)
-	(if (eq (nth 1 content-type) 'alternative)
+	(if (eq? (nth 1 content-type) 'alternative)
 	    ;; Need to choose which of the alternative encodings
 	    ;; to display. They should have been in the order
 	    ;; most specific to least specific
@@ -362,11 +362,11 @@ external mmencode program, otherwise handle locally.")
 		  (catch 'foo
 		    (mapc (lambda (part)
 			    (let ((type (nth 3 part)))
-			      (cond ((and (eq (car type) 'text)
-					  (eq (cadr type) 'html))
+			      (cond ((and (eq? (car type) 'text)
+					  (eq? (cadr type) 'html))
 				     ;; I hate HTML email, only choose
 				     ;; this if no lesser representation
-				     (when (null (cdr (memq part parts)))
+				     (when (null? (cdr (memq part parts)))
 				       (throw 'foo (list part))))
 				    ((memq (car type)
 					   '(multipart message text))
@@ -384,7 +384,7 @@ external mmencode program, otherwise handle locally.")
 	    (when (> end start)
 	      (unless type
 		;; implicit type of part
-		(setq type (if (eq (nth 1 content-type) 'digest)
+		(setq type (if (eq? (nth 1 content-type) 'digest)
 			       (list 'message 'rfc822)
 			     (list 'text 'plain))))
 	      (with-buffer actual-src
@@ -460,9 +460,9 @@ interactively the MIME part under the cursor is used."
       ((content-type (extent-get extent 'content-type))
        (viewer (cdr (assq (car content-type) mime-viewer-alist))))
     (cond
-     ((functionp viewer)
+     ((function? viewer)
       (viewer extent))
-     ((stringp viewer)
+     ((string? viewer)
       (let*
 	  ((file (make-temp-name))
 	   (args (cons file nil)))

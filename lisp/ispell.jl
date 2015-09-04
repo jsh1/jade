@@ -108,12 +108,12 @@ results have been received.")
 
 ;; Function to buffer output from Ispell
 (defun ispell-output-filter (output)
-  (when (integerp output)
+  (when (integer? output)
     (setq output (make-string 1 output)))
   (and ispell-echo-output
-       (stringp output)
+       (string? output)
        (let
-	   ((print-escape t))
+	   ((*print-escape* t))
 	 (format (stderr-file) "Ispell: %S\n" output)))
   (setq ispell-pending-output (concat ispell-pending-output output))
   (while (and ispell-line-callback
@@ -154,7 +154,7 @@ results have been received.")
   (accept-process-output 0)		;in case the process already died
   (when ispell-process
     (ispell-save-dictionary)
-    (if (eq (process-connection-type ispell-process) 'pty)
+    (if (eq? (process-connection-type ispell-process) 'pty)
 	(write ispell-process ?\^D)
       ;; Not so successful..
       (interrupt-process ispell-process))
@@ -182,12 +182,12 @@ results have been received.")
     (or ispell-read-line-out
 	(error "Ispell timed out waiting for output"))))
 
-;; put in the before-exit-hook
+;; put in the *before-exit-hook*
 (defun ispell-cleanup-before-exit ()
   (when ispell-process
     (ispell-kill-process)))
 
-(add-hook 'before-exit-hook ispell-cleanup-before-exit)
+(add-hook '*before-exit-hook* ispell-cleanup-before-exit)
 
 ;; Arbitrate access to the Ispell process, the mutex must be obtained
 ;; before sending a command that generates output. An error is signalled
@@ -209,12 +209,12 @@ results have been received.")
 	(progn
 	  (format ispell-process "%s\n" word)
 	  (setq response (ispell-read-line))
-	  (if (eq (aref response 0) ?\n)
+	  (if (eq? (aref response 0) ?\n)
 	      ;; This can happen when multi-language text is checked
 	      (setq response "*\n\n")
 	    ;; Gobble following blank line
 	    (setq tem (ispell-read-line))
-	    (unless (eq (aref tem 0) ?\n)
+	    (unless (eq? (aref tem 0) ?\n)
 	      (error "Non-null trailing line from Ispell"))))
       (ispell-mutex nil))
     response))
@@ -320,15 +320,15 @@ for. When called interactively, spell-check the current block."
 		  (setq command (catch 'ispell-exit
 				  (recursive-edit)))
 		  (cond
-		   ((eq (car command) 'accept)
+		   ((eq? (car command) 'accept)
 		    (when (cdr command)
 		      (write ispell-process (cdr command))
 		      (write ispell-process word)
 		      (write ispell-process ?\n))
 		    (setq done t))
-		   ((eq (car command) 'replace)
+		   ((eq? (car command) 'replace)
 		    (setq done t)
-		    (if (integerp (cdr command))
+		    (if (integer? (cdr command))
 			(with-buffer old-buffer
 			  (setq end (replace-string word
 						    (ispell-strip-word
@@ -340,7 +340,7 @@ for. When called interactively, spell-check the current block."
 			(if string
 			    (setq end (replace-string word string start))
 			  (setq done nil)))))
-		   ((eq (car command) 'quit)
+		   ((eq? (car command) 'quit)
 		    (setq done t)
 		    (setq end (end-of-buffer old-buffer)))
 		   (t
@@ -402,7 +402,7 @@ for. When called interactively, spell-check the current block."
 (defun ispell-replace (arg)
   (interactive "P")
   (throw 'ispell-exit (cons 'replace
-			    (if (consp arg)
+			    (if (pair? arg)
 				(prefix-numeric-argument arg)
 			      arg))))
 
@@ -444,7 +444,7 @@ for. When called interactively, spell-check the current block."
   (let
       (extents)
     (map-extents (lambda (e)
-		   (when (eq (extent-get e 'face) ispell-misspelt-face)
+		   (when (eq? (extent-get e 'face) ispell-misspelt-face)
 		     (setq extents (cons e extents)))) start end)
     (mapc delete-extent extents)))
 
@@ -490,14 +490,14 @@ whole of the buffer (if no block)."
 	    (throw 'abort start)))
 	end))))
 
-;; Called from the idle-hook
+;; Called from the *idle-hook*
 (defun ispell-idle-function ()
   (when ispell-minor-mode-last-scan
     (let
 	((start (display-to-char-pos '(0 . 0)))
 	 (end (view-dimensions)))
       (setq end (display-to-char-pos (pos (1- (car end)) (1- (cdr end)))))
-      (when (or (null end)
+      (when (or (null? end)
 		(> end (end-of-buffer)))
 	(setq end (end-of-buffer)))
       (if (> (buffer-changes) (aref ispell-minor-mode-last-scan 0))
@@ -543,10 +543,10 @@ the cursor is placed in a misspelt word; they are,
       (progn
 	(setq ispell-minor-mode-last-scan nil)
 	(ispell-delete-highlights (start-of-buffer) (end-of-buffer))
-	(remove-hook 'idle-hook 'ispell-idle-function))
+	(remove-hook '*idle-hook* 'ispell-idle-function))
     (setq ispell-minor-mode-last-scan (vector 0 nil nil))
-    (make-local-variable 'idle-hook)
-    (add-hook 'idle-hook ispell-idle-function)))
+    (make-local-variable '*idle-hook*)
+    (add-hook '*idle-hook* ispell-idle-function)))
 
 (defun ispell-invalidate-past-scans ()
   (mapc (lambda (b)
@@ -559,7 +559,7 @@ the cursor is placed in a misspelt word; they are,
 (defun ispell-get-misspelt-word ()
   (let
       ((e (get-extent)))
-    (while (and e (not (eq (buffer-symbol-value 'ispell-misspelt e nil t) t)))
+    (while (and e (not (eq? (buffer-symbol-value 'ispell-misspelt e nil t) t)))
       (setq e (extent-parent e)))
     (and e (copy-area (extent-start e) (extent-end e)))))
 
@@ -569,7 +569,7 @@ the cursor."
   (interactive)
   (let
       ((e (get-extent)))
-    (while (and e (not (eq (buffer-symbol-value 'ispell-misspelt e nil t) t)))
+    (while (and e (not (eq? (buffer-symbol-value 'ispell-misspelt e nil t) t)))
       (setq e (extent-parent e)))
     (or e (error "No misspelling here!"))
     (ispell-region (extent-start e) (extent-end e))))

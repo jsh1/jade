@@ -160,12 +160,12 @@
 	(setq point (match-end))
 	;; XXX ignore charset, just decode to 8-bit
 	(cond
-	 ((string-equal encoding "Q")
+	 ((string-ci=? encoding "Q")
 	  ;; quoted-printable
 	  (require 'mime-decode)
 	  (setq text (translate-string text mail-decode-header-map))
 	  (mime-decode-string 'quoted-printable text stream))
-	 ((string-equal encoding "B")
+	 ((string-ci=? encoding "B")
 	  ;; base64
 	  (require 'mime-decode)
 	  (mime-decode-string 'base64 text stream)))
@@ -288,9 +288,9 @@
   ;; Need to handle quoting full name a la RFC-822
   (if name
       (cond
-       ((eq mail-address-style 'angles)
+       ((eq? mail-address-style 'angles)
 	(concat (mail-quote-phrase name) " \<" addr "\>"))
-       ((eq mail-address-style 'parens)
+       ((eq? mail-address-style 'parens)
 	(concat addr " \(" (mail-quote-phrase name) "\)"))
        (t
 	addr))
@@ -314,8 +314,8 @@
 
 ;; Return t if ADDR1 and ADDR2 refer to the same mailbox.
 (defun mail-compare-addresses (addr1 addr2)
-  (equal (if (consp addr1) (car addr1) addr1)
-	 (if (consp addr2) (car addr2) addr2)))
+  (equal? (if (pair? addr1) (car addr1) addr1)
+	 (if (pair? addr2) (car addr2) addr2)))
 
 ;; Return a list of addresses uniqified from lists X and Y
 (defun mail-union-addresses (x y)

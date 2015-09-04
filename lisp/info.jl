@@ -183,7 +183,7 @@ is split.")
     (while path
       (let
 	  ((name (expand-file-name "dir" (car path))))
-	(when (file-exists-p name)
+	(when (file-exists? name)
 	  (if read-dir
 	      (let
 		  ((spos (cursor-pos)))
@@ -194,7 +194,7 @@ is split.")
 		  (delete-area spos (forward-line 1 (match-start)))))
 	    (insert-file name)
 	    (setq read-dir t))
-	  (unless (equal (cursor-pos) (start-of-line))
+	  (unless (equal? (cursor-pos) (start-of-line))
 	    (split-line))))
       (setq path (cdr path)))
     (unless read-dir
@@ -223,7 +223,7 @@ is split.")
 ;; is needed to load the file it will be loaded. The returned filename
 ;; is without the suffix, which is stored in info-file-suffix
 (defun info-locate-file (filename)
-  (if (and info-file-name (or (not filename) (equal filename "")))
+  (if (and info-file-name (or (not filename) (equal? filename "")))
       info-file-name
     (let*
 	((lcase-name (translate-string (copy-sequence filename)
@@ -241,7 +241,7 @@ is split.")
 	  (while files
 	    (setq suffixes info-suffixes)
 	    (while suffixes
-	      (when (file-exists-p (concat (car files) (car (car suffixes))))
+	      (when (file-exists? (concat (car files) (car (car suffixes))))
 		(setq info-file-suffix (car (car suffixes)))
 		(when (cdr (car suffixes))
 		  ;; Activate the uncompressor if necessary
@@ -266,18 +266,18 @@ is split.")
 	      nodename (expand-last-match "\\2"))
       (unless (setq filename info-file-name)
 	(error "File containing node `%s' isn't specified" nodename)))
-    (when (string= nodename "")
+    (when (string=? nodename "")
       (setq nodename "Top"))
     (if (string-match "^dir$" filename nil t)
 	(info-read-dir)
       (setq file-location (info-locate-file filename))
-      (when (not (string= info-file-name filename))
+      (when (not (string=? info-file-name filename))
 	(info-read-tags file-location info-file-suffix)
 	(setq info-file-name filename))
       (if (not info-has-tags-p)
 	  (progn
 	    ;; No tag list
-	    (unless (string= info-file-name filename)
+	    (unless (string=? info-file-name filename)
 	      (read-file-into-buffer (concat file-location info-file-suffix)))
 	    (when (re-search-forward (concat "^File:.* Node: *"
 					    (quote-regexp nodename))
@@ -291,7 +291,7 @@ is split.")
 		((lst info-indirect-list)
 		 (offset (read (cons info-tags-buffer (match-end))))
 		 subfile)
-	      (if (null lst)
+	      (if (null? lst)
 		  ;; No indirect list
 		  (setq offset (+ offset 2)
 			subfile file-location)
@@ -306,12 +306,12 @@ is split.")
 		    (setq subfile (car lst))))
 		;; Use some magic to calculate the physical position of the
 		;; node. This seems to work?
-		(if (eq subfile (car info-indirect-list))
+		(if (eq? subfile (car info-indirect-list))
 		    (setq offset (+ offset 2))
 		  (setq offset (+ (- offset (car subfile))
 				  (car (car info-indirect-list)) 2)))
 		(setq subfile (cdr subfile)))
-	      (unless (string= (buffer-file-name)
+	      (unless (string=? (buffer-file-name)
 			       (concat subfile info-file-suffix))
 		(read-file-into-buffer (concat subfile info-file-suffix)))
 	      (goto (offset-to-pos offset)))
@@ -388,7 +388,7 @@ is split.")
        ;;(prompt-word-regexps prompt-def-regexps)
        (prompt-list '())
        (res (prompt title start)))
-    (if (equal res "")
+    (if (equal? res "")
 	default
       res)))
 
@@ -415,7 +415,7 @@ time that `info' has been called)."
     (info-remember)
     (info-find-node start-node))
    ((and (buffer-file-name) info-node-name)
-    (when (time-later-p (file-modtime (buffer-file-name)) buffer-file-modtime)
+    (when (> (file-modtime (buffer-file-name)) buffer-file-modtime)
       (info-find-node (concat info-node-name))))
    (t
     (info-find-node "(dir)"))))
@@ -603,7 +603,7 @@ local bindings are:\n
 	    (while (> (pos-line end) (pos-line p))
 	      (let
 		  ((bit (copy-area p (re-search-forward "[\t ]*$" p))))
-		(unless (equal bit "")
+		(unless (equal? bit "")
 		  (setq ref-title (cons ?\  (cons bit ref-title)))))
 	      (setq p (re-search-forward "[^\n\t ]" (match-end)))
 	      (unless p
@@ -621,7 +621,7 @@ local bindings are:\n
 		      (let
 			  ((bit (copy-area p (re-search-forward "[\t ]*$"
 								 p))))
-			(unless (equal bit "")
+			(unless (equal? bit "")
 			  (setq ref-node (cons ?\  (cons bit ref-node))))
 			(setq p (re-search-forward "[^\n\t ]" (match-end))))
 		      (unless p
@@ -653,7 +653,7 @@ local bindings are:\n
     (info-menu menu-key)))
 
 (defun info-index (info-files index-node key)
-  (when (stringp info-files)
+  (when (string? info-files)
     (setq info-files (list info-files)))
   (catch 'out
     (mapc (lambda (f)

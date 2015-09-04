@@ -22,9 +22,9 @@
 
 ;; Returns t if FILE-NAME is under RCS control
 (defun rcs-file-p (file-name)
-  (and (not (file-directory-p file-name))
-       (or (file-exists-p (concat file-name ",v"))
-	   (file-exists-p (expand-file-name
+  (and (not (file-directory? file-name))
+       (or (file-exists? (concat file-name ",v"))
+	   (file-exists? (expand-file-name
 			   (concat (file-name-nondirectory file-name) ",v")
 			   (concat (file-name-directory file-name) "RCS"))))))
 

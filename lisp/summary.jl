@@ -201,7 +201,7 @@ isn't displayed in the summary."
 ;;(let
 ;;    ((items summary-items)
 ;;     (index 0))
-;;  (while (and items (not (equal (car items) item)))
+;;  (while (and items (not (equal? (car items) item)))
 ;;    (setq index (1+ index)
 ;;	    items (cdr items)))
 ;;  index))
@@ -339,7 +339,7 @@ highlight."
   "Move the cursor to the INDEX'th item (from zero) in the menu. Returns
 t when this item actually exists."
   (interactive "p")
-  (unless (or (null index)
+  (unless (or (null? index)
 	      (< index 0)
 	      (> index (- (pos-line (end-of-buffer))
 			(pos-line summary-first-line))))
@@ -389,11 +389,11 @@ non-nil it should be a list containing the operations which may be performed."
 	   (funcs (cdr (car ops)))
 	   (kept '()))
 	(while funcs
-	  (if (and (or (null types) (memq (car funcs) types))
-		   (not (eq (car funcs) 'mark)))
+	  (if (and (or (null? types) (memq (car funcs) types))
+		   (not (eq? (car funcs) 'mark)))
 	      (progn
 		(summary-dispatch (car funcs) item)
-		(when (eq (car funcs) 'delete)
+		(when (eq? (car funcs) 'delete)
 		  (setq kept nil)))	    
 	    (setq kept (cons (car funcs) kept)))
 	  (setq funcs (cdr funcs)))

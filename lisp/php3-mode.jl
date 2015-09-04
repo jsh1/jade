@@ -70,8 +70,8 @@ scan."
   (setq local-ctrl-c-keymap php3-mode-ctrl-c-map)
   (call-hook 'php3-mode-hook)
   (when php3-mode-scan-when-idle
-    (make-local-variable 'idle-hook)
-    (add-hook 'idle-hook php3-mode-idle-function))
+    (make-local-variable '*idle-hook*)
+    (add-hook '*idle-hook* php3-mode-idle-function))
   (php3-mode-make-minor))
 
 (defun php3-mode-kill ()
@@ -125,7 +125,7 @@ Give any such regions minor-major modes."
   (let
       (extents)
     (map-extents (lambda (e)
-		   (when (eq (extent-get e 'minor-major) php3-mode-minor)
+		   (when (eq? (extent-get e 'minor-major) php3-mode-minor)
 		     (setq extents (cons e extents))))
 		 (start-of-buffer) (end-of-buffer))
     (mapc delete-extent extents)))

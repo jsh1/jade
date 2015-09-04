@@ -67,7 +67,7 @@ the directory named as its single argument.")
 (defun dired (directory #!optional directory-function)
   (interactive "DDirectory:")
   (setq directory (directory-file-name (expand-file-name directory)))
-  (unless (file-directory-p directory)
+  (unless (file-directory? directory)
     (error "%S is not a directory" directory))
   (let
       ((buffer (or (get-file-buffer directory)
@@ -76,7 +76,7 @@ the directory named as its single argument.")
     (when directory-function
       (setq dired-directory-files directory-function))
     (set-buffer-file-name buffer directory)
-    (setq default-directory (file-name-as-directory directory))
+    (setq *default-directory* (file-name-as-directory directory))
     (dired-mode)))
 
 ;; Put the current buffer into Dired mode, its buffer-file-name should
@@ -91,7 +91,7 @@ bindings is:\n
 \\{dired-keymap}"
   (let
       ((inhibit-read-only t))
-    (if (eq major-mode 'dired-mode)
+    (if (eq? major-mode 'dired-mode)
 	(summary-update)
       (format (current-buffer) "[Dired] %s:\n\n" (buffer-file-name))
       (summary-mode "Dired" dired-functions dired-keymap)
@@ -99,19 +99,19 @@ bindings is:\n
       (setq major-mode 'dired-mode))))
 
 (defun dired-list ()
-  (sort (dired-directory-files default-directory)))
+  (sort (dired-directory-files *default-directory*)))
 
 (defun dired-print (item)
   (let*
-      ((symlink (and (file-symlink-p item)
-		     (or (file-exists-p item) 'broken))))
+      ((symlink (and (file-symlink? item)
+		     (or (file-exists? item) 'broken))))
     (format (current-buffer) "%c%c %s %2d %8d  "
 	    (if (memq 'delete (summary-get-pending-ops item)) ?D ? )
 	    (if (summary-item-marked-p item) ?* ? )
 	    (if symlink "lrwxrwxrwx" (file-modes-as-string item))
-	    (if (eq symlink 'broken) 1 (file-nlinks item))
-	    (if (eq symlink 'broken) 0 (file-size item)))
-    (if (eq symlink 'broken)
+	    (if (eq? symlink 'broken) 1 (file-nlinks item))
+	    (if (eq? symlink 'broken) 0 (file-size item)))
+    (if (eq? symlink 'broken)
 	(insert "[broken symlink]  ")
       (insert (current-time-string (file-modtime item) "%Y-%m-%d %R  ")))
     (indent-to dired-cursor-column)
@@ -125,7 +125,7 @@ bindings is:\n
 		(prog1 dired-delete-cache
 		  (setq dired-delete-cache nil))
 		(lambda (f)
-		  (if (file-directory-p f)
+		  (if (file-directory? f)
 		      (delete-directory f)
 		    (delete-file f)))))
 (defvar dired-functions
@@ -145,7 +145,7 @@ bindings is:\n
 
 (defun dired-mark-directories ()
   (interactive)
-  (summary-mark-if 'file-directory-p))
+  (summary-mark-if 'file-directory?))
 
 (defun dired-mark-by-regexp (regexp #!optional op)
   (interactive "sMark files matching regexp:")
@@ -171,17 +171,17 @@ bindings is:\n
 ;; Commands
 
 (defun dired-find-file (files root)
-  (interactive (list (summary-command-items) default-directory))
+  (interactive (list (summary-command-items) *default-directory*))
   (mapc (lambda (f)
 	  (find-file (expand-file-name f root))) files))
 
 (defun dired-find-file-other-view (files root)
-  (interactive (list (summary-command-items) default-directory))
+  (interactive (list (summary-command-items) *default-directory*))
   (goto-other-view)
   (dired-find-file files root))
 
 (defun dired-display-file (files root)
-  (interactive (list (summary-command-items) default-directory))
+  (interactive (list (summary-command-items) *default-directory*))
   (with-view (other-view)
     (dired-find-file files root)))
 
@@ -197,11 +197,11 @@ the location is the name of a file to copy to."
 	    ((dest (prompt-for-file "Destination file:"
 				    nil (car files) (car files))))
 	  (copy-file (car files) dest)
-	  (when (file-name= default-directory (file-name-directory dest))
+	  (when (file-name= *default-directory* (file-name-directory dest))
 	    (summary-update)))
       (let
 	  ((dest (prompt-for-directory "Destination directory:" t)))
-	(when (file-name= default-directory dest)
+	(when (file-name= *default-directory* dest)
 	  (error "Can't copy to source directory!"))
 	(mapc (lambda (f)
 		(copy-file f (expand-file-name f dest))) files)))))
@@ -225,8 +225,8 @@ the new name for the file."
 (defun dired-create-directory (dir)
   "Create a directory called DIR if one doesn't already exist."
   (interactive "DDirectory to create:")
-  (if (file-exists-p dir)
-      (or (file-directory-p dir)
+  (if (file-exists? dir)
+      (or (file-directory? dir)
 	  (error "File exists: %s" dir))
     (make-directory dir)
     (summary-update)))

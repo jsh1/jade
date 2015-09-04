@@ -267,15 +267,15 @@ the key."
 
 (defun numeric-arg (digit)
   "Add a digit to the prefix-arg."
-  (when (numberp digit)
+  (when (number? digit)
     ;; Set the `next-keymap-path' to ensure echoing
     ;; continues. `prefix-arg' *must* be set after
     ;; `next-keymap-path' for this all to work!
     (next-keymap-path 'global-keymap)
     (setq prefix-arg (cond
-		      ((numberp current-prefix-arg)
+		      ((number? current-prefix-arg)
 		       (+ (* current-prefix-arg 10) digit))
-		      ((eq current-prefix-arg '-)
+		      ((eq? current-prefix-arg '-)
 		       (- digit))
 		      (t
 		       digit))
@@ -286,9 +286,9 @@ the key."
   (interactive "P")
   (next-keymap-path 'global-keymap)
   (setq prefix-arg (cond
-		    ((numberp arg)
+		    ((number? arg)
 		     (* arg -1))
-		    ((eq arg '-)
+		    ((eq? arg '-)
 		     nil)
 		    (t
 		     '-))
@@ -298,7 +298,7 @@ the key."
   (interactive "P")
   (next-keymap-path 'global-keymap)
   (setq prefix-arg (cond
-		    ((consp arg)
+		    ((pair? arg)
 		     (rplaca arg (* 4 (car arg)))
 		     arg)
 		    (t

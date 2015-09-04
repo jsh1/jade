@@ -105,63 +105,18 @@ sys_beep (Lisp_Window *w)
     NSBeep ();
 }
 
-static void
-make_argv (repv list, int *argc, char ***argv)
-{
-    int c = rep_INT (Flength (list)), i, j;
-    char **v;
-    const char *arg;
-
-    v = (char **)rep_alloc ((c+1) * sizeof(char**));
-    for (i = j = 0; i < c; i++, list = rep_CDR (list))
-    {
-	if (!rep_STRINGP (rep_CAR (list)))
-	{
-	    rep_free ((char *)v);
-	    *argv = NULL; *argc = 0;
-	    return;
-	}
-	arg = rep_STR (rep_CAR (list));
-	if (strncmp (arg, "-psn_", 5) == 0)
-	    continue;
-	v[j++] = strdup (arg);
-    }
-    v[j] = NULL;
-  
-    *argv = v;
-    *argc = j;
-}
-
 DEFSTRING(tilde_dir, "~");
 
 /* Called from main(). */
 bool
 sys_init(char *program_name)
 {
-    int argc;
-    char **argv;
-    repv head, *last;
-
     if (!batch_mode_p ())
 	setpgid (0, 0);
 
     OBJC_BEGIN
     [[NSApplication sharedApplication] setDelegate:(id)[JadeAppDelegate class]];
     OBJC_END
-
-    make_argv (Fcons (Fsymbol_value (Qprogram_name, Qt),
-		      Fsymbol_value (Qcommand_line_args, Qt)), &argc, &argv);
-    argc--; argv++;
-    head = Qnil;
-    last = &head;
-    while(argc > 0)
-    {
-	*last = Fcons(rep_string_dup(*argv), Qnil);
-	last = &rep_CDR(*last);
-	argc--;
-	argv++;
-    }
-    Fset (Qcommand_line_args, head);
 
     if (!batch_mode_p ())
 	Fset_default (Qdefault_directory, rep_VAL (&tilde_dir));

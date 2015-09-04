@@ -135,7 +135,7 @@ Local bindings in this mode are:\n
 	  (while (re-search-backward "\\\\(end|begin)\{([^\}]+)" p)
 	    (if (= (get-char (match-start 1)) ?b)
 		;; no end
-		(if (zerop depth)
+		(if (zero? depth)
 		    (throw 'foo t)
 		  (setq depth (1- depth)))
 	      (setq depth (1+ depth)))
@@ -150,7 +150,7 @@ Local bindings in this mode are:\n
   (let
       ((count (and current-prefix-arg
 		   (prefix-numeric-argument current-prefix-arg))))
-    (if (null count)
+    (if (null? count)
 	(progn
 	  (insert (if command (concat ?\\ command "{}") "{}"))
 	  (goto (forward-char -1)))

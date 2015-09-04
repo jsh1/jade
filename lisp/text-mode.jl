@@ -74,7 +74,7 @@ previous line, then works as normal. Local bindings in this mode are:\n
 	local-keymap nil
 	major-mode nil
 	major-mode-kill nil)
-  (when (and (boundp 'fill-prefix) (functionp fill-prefix))
+  (when (and (bound? 'fill-prefix) (function? fill-prefix))
     (setq fill-prefix nil))
   t)
 
@@ -82,14 +82,14 @@ previous line, then works as normal. Local bindings in this mode are:\n
   (interactive)
   (let
       ((p (re-search-backward "^.+$" (forward-line -1))))
-    (if (or (null p) (> (pos-col (cursor-pos)) (line-length p)))
+    (if (or (null? p) (> (pos-col (cursor-pos)) (line-length p)))
 	(insert "\t")
       (let
           ((gcurs (char-to-glyph-pos (cursor-pos))))
         (setq gcurs (pos (pos-col gcurs) (pos-line p))
 	      p (glyph-to-char-pos gcurs))
 	(re-search-forward "[\t ]+|$" p)
-	(if (equal (match-end) (end-of-line p))
+	(if (equal? (match-end) (end-of-line p))
 	    (insert "\t")
 	  (setq p (pos (pos-col (char-to-glyph-pos (match-end)))
 		       (pos-line (cursor-pos))))
@@ -100,22 +100,22 @@ previous line, then works as normal. Local bindings in this mode are:\n
 (defun text-mode-fill-prefix (op p)
   (let
       ((get-indent (lambda ()
-		     (if (zerop (pos-line p))
+		     (if (zero? (pos-line p))
 			 0
 		       (setq p (forward-line -1 p))
-		       (while (and (not (zerop (pos-line p)))
+		       (while (and (not (zero? (pos-line p)))
 				   (not (looking-at "^[ \t\f]*[^ \t\f\n]+" p)))
 			 (setq p (forward-line -1 p)))
 		       (pos-col (indent-pos p))))))
     (cond
-     ((eq op 'insert)
+     ((eq? op 'insert)
       (save-excursion
 	(goto p)
 	(indent-to (get-indent p))))
-     ((eq op 'delete)
+     ((eq? op 'delete)
       (when (looking-at "^[\t ]+" p)
 	(delete-area (match-start) (match-end))))
-     ((eq op 'width)
+     ((eq? op 'width)
       (get-indent)))))
 
 

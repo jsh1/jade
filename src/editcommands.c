@@ -92,7 +92,7 @@ character after the end of the inserted text.
     return(Qnil);
 }
 
-DEFUN_INT("delete-area", Fdelete_area, Sdelete_area, (repv start, repv end, repv buff), rep_Subr3, "-m" rep_DS_NL "M") /*
+DEFUN_INT("delete-area", Fdelete_area, Sdelete_area, (repv start, repv end, repv buff), rep_Subr3, "-m\nM") /*
 ::doc:delete-area::
 delete-area START-POS END-POS [BUFFER]
 
@@ -126,7 +126,7 @@ Returns the string from START-POS up to END-POS.
     if(check_section(VBUFFER(buff), &start, &end))
     {
 	intptr_t tlen = section_length(VBUFFER(buff), start, end) + 1;
-	repv str = rep_make_string(tlen);
+	repv str = rep_allocate_string(tlen);
 	if(str)
 	{
 	    copy_section(VBUFFER(buff), start, end, rep_STR(str));

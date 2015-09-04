@@ -103,36 +103,36 @@ jade_symbols (void)
 
     rep_INTERN_SPECIAL(jade_directory);
     if(getenv("JADEDIR") != 0)
-	Fset (Qjade_directory, rep_string_dup(getenv("JADEDIR")));
+	Fset (Qjade_directory, rep_string_copy(getenv("JADEDIR")));
     else
-	Fset (Qjade_directory, rep_string_dup(JADE_DIR));
+	Fset (Qjade_directory, rep_string_copy(JADE_DIR));
 
     rep_INTERN_SPECIAL(jade_lisp_lib_directory);
     if(getenv("JADELISPDIR") != 0)
-	Fset (Qjade_lisp_lib_directory, rep_string_dup(getenv("JADELISPDIR")));
+	Fset (Qjade_lisp_lib_directory, rep_string_copy(getenv("JADELISPDIR")));
     else
-	Fset (Qjade_lisp_lib_directory, rep_string_dup(JADE_LISPDIR));
+	Fset (Qjade_lisp_lib_directory, rep_string_copy(JADE_LISPDIR));
 
     rep_INTERN_SPECIAL(jade_site_lisp_directory);
     if(getenv("JADESITELISPDIR") != 0)
 	Fset (Qjade_site_lisp_directory,
-	      rep_string_dup(getenv("JADESITELISPDIR")));
+	      rep_string_copy(getenv("JADESITELISPDIR")));
     else
 	Fset (Qjade_site_lisp_directory,
-	      rep_concat2(rep_STR(Fsymbol_value (Qjade_directory, Qt)),
+	      rep_string_concat2(rep_STR(Fsymbol_value (Qjade_directory, Qt)),
 			  "/site-lisp"));
 
     rep_INTERN_SPECIAL(jade_exec_directory);
     if(getenv("JADEEXECDIR") != 0)
-	Fset (Qjade_exec_directory, rep_string_dup(getenv("JADEEXECDIR")));
+	Fset (Qjade_exec_directory, rep_string_copy(getenv("JADEEXECDIR")));
     else
-	Fset (Qjade_exec_directory, rep_string_dup(JADE_EXECDIR));
+	Fset (Qjade_exec_directory, rep_string_copy(JADE_EXECDIR));
 
     if(getenv("JADEDOCFILE") != 0)
-	Fset (Qdocumentation_file, rep_string_dup(getenv("JADEDOCFILE")));
+	Fset (Qdocumentation_file, rep_string_copy(getenv("JADEDOCFILE")));
     else
 	Fset (Qdocumentation_file,
-	      rep_concat2(rep_STR(Fsymbol_value(Qjade_directory, Qt)),
+	      rep_string_concat2(rep_STR(Fsymbol_value(Qjade_directory, Qt)),
 			  "/" JADE_VERSION "/DOC"));
 
     Fset (Qdocumentation_files,
@@ -148,29 +148,22 @@ jade_symbols (void)
 	  Fcons(Fsymbol_value (Qjade_exec_directory, Qt),
 		Fsymbol_value (Qdl_load_path, Qt)));
 
-    rep_INTERN(invalid_area); rep_ERROR(invalid_area);
-    rep_INTERN(window_error); rep_ERROR(window_error);
-    rep_INTERN(invalid_pos); rep_ERROR(invalid_pos);
-    rep_INTERN(buffer_read_only); rep_ERROR(buffer_read_only);
-    rep_INTERN(bad_event_desc); rep_ERROR(bad_event_desc);
+    rep_INTERN(invalid_area);
+    rep_DEFINE_ERROR(invalid_area);
+    rep_INTERN(window_error);
+    rep_DEFINE_ERROR(window_error);
+    rep_INTERN(invalid_pos);
+    rep_DEFINE_ERROR(invalid_pos);
+    rep_INTERN(buffer_read_only);
+    rep_DEFINE_ERROR(buffer_read_only);
+    rep_INTERN(bad_event_desc);
+    rep_DEFINE_ERROR(bad_event_desc);
 
     rep_regsub_fun = jade_regsub;
     rep_regsublen_fun = jade_regsublen;
     rep_on_idle_fun = on_idle;
     rep_on_termination_fun = on_termination;
 }    
-
-static void
-usage (void)
-{
-    fputs ("\
-    --version    print version details\n\
-    --no-rc      don't load rc or site-init files\n\
-    -f FUNCTION  call the Lisp function FUNCTION\n\
-    -l FILE      load the file of Lisp forms called FILE\n\
-    -q           quit\n"
-          , stderr);
-}
 
 bool
 batch_mode_p (void)
@@ -187,7 +180,7 @@ batch_mode_p (void)
 static repv
 inner_main (repv arg)
 {
-    repv res = rep_load_environment (rep_string_dup ("jade"));
+    repv res = rep_load_environment (rep_string_copy ("jade"));
     if (res != 0)
     {
 	if(!batch_mode_p ())
@@ -202,7 +195,7 @@ main(int argc, char **argv)
     int rc = 5;
 
     prog_name = *argv++; argc--;
-    rep_init (prog_name, &argc, &argv, 0, usage);
+    rep_init (prog_name, &argc, &argv);
 
     if (rep_get_option ("--version", 0))
     {

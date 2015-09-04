@@ -155,7 +155,7 @@ local mode.")
 
 (defun popup-menu ()
   (interactive)
-  (or (boundp 'popup-menu-from-spec)
+  (or (bound? 'popup-menu-from-spec)
       (error "Popup menus not supported in this window system"))
   (setq popup-menus-pos (if (not popup-menus-from-kbd)
 			    (mouse-view-pos)
@@ -191,7 +191,7 @@ local mode.")
 (defun popup-menu-yank-spec ()
   (let
       ((i 1)
-       (print-escape 't)
+       (*print-escape* 't)
        out)
     (while (<= i (ring-size kill-ring))
       (let

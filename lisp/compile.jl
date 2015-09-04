@@ -86,11 +86,11 @@ variable `compile-push-directory-expand'.")
 
 (defun compile-setup-buffer (directory)
   (unless directory
-    (setq directory default-directory))
+    (setq directory *default-directory*))
   (let ((buffer (open-buffer "*compilation*")))
     (clear-buffer buffer)
     (with-buffer buffer
-      (setq default-directory directory))
+      (setq *default-directory* directory))
     (setq compile-errors nil
 	  compile-parsed-errors nil
 	  compile-errors-exist nil
@@ -99,14 +99,14 @@ variable `compile-push-directory-expand'.")
 
 (defun compile-last-directory ()
   (let ((buffer (get-buffer "*compilation*")))
-    (and buffer (with-buffer buffer default-directory))))
+    (and buffer (with-buffer buffer *default-directory*))))
 
 (defun compile-callback ()
   (when compile-proc
     (let ((stream (process-output-stream compile-proc)))
-      (cond ((process-stopped-p compile-proc)
+      (cond ((process-stopped? compile-proc)
 	     (write stream "Compilation suspended..."))
-	    ((process-running-p compile-proc)
+	    ((process-running? compile-proc)
 	     (write stream "restarted\n"))
 	    (t
 	     (beep)
@@ -149,12 +149,12 @@ for a compilation)."
 
 (defun stop-compilation ()
   (interactive)
-  (when (process-running-p compile-proc)
+  (when (process-running? compile-proc)
     (stop-process compile-proc t)))
 
 (defun continue-compilation ()
   (interactive)
-  (when (process-stopped-p compile-proc)
+  (when (process-stopped? compile-proc)
     (continue-process compile-proc t)))
 
 ;;;###autoload
@@ -162,7 +162,7 @@ for a compilation)."
   "Runs the COMMAND in the `*compilation*' buffer."
   (interactive (list (prompt-for-string "Compile command:" compile-command)))
   (setq compile-command command)
-  (start-compile-command command default-directory "errors"))
+  (start-compile-command command *default-directory* "errors"))
 
 ;;;###autoload
 (defun compile-directory (directory command)
@@ -186,7 +186,7 @@ when this function returns."
   (grep-directory arg))
 
 ;;;###autoload
-(defun grep-directory (arg #!optional (directory default-directory))
+(defun grep-directory (arg #!optional (directory *default-directory*))
   "Run M-x grep in a particular directory."
   (interactive (list (prompt-for-string "Run grep command:"
 					compile-last-grep)
@@ -210,7 +210,7 @@ buffer in a form that `goto-next-error' understands."
   (interactive "sRegular expression")
   (when regexp
     (setq grep-buffer-regexp regexp))
-  (let ((buffer (compile-setup-buffer default-directory)))
+  (let ((buffer (compile-setup-buffer *default-directory*)))
     (when (and grep-buffer-regexp buffer)
       (let* ((scanpos (start-of-buffer))
 	     (number 0)
@@ -237,7 +237,7 @@ buffer in a form that `goto-next-error' understands."
     (with-buffer (get-buffer "*compilation*")
       (let ((p compile-error-pos)
 	    (dir-stack nil)
-	    (current-dir default-directory)
+	    (current-dir *default-directory*)
 	    errors last-line last-file)
 	(while (/= (pos-line p) (buffer-length))
 	  (cond ((looking-at compile-error-regexp p)

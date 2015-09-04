@@ -58,7 +58,7 @@ the debugger are:\n
   (with-buffer debug-buffer
     (goto (start-of-line (end-of-buffer)))
     (let
-	((print-escape 'newlines))
+	((*print-escape* 'newlines))
       (format debug-buffer "%s%S\n" (make-string (* 2 debug-depth)) debug-obj))
     (goto-glyph (forward-line 1 (indent-pos (forward-line -1))))
     (catch 'debug
@@ -83,28 +83,28 @@ the debugger are:\n
 
 (defun debug-step ()
   (interactive)
-  (if (boundp 'debug-obj)
+  (if (bound? 'debug-obj)
       (throw 'debug (cons 1 debug-obj))
     (beep)))
 
 (defun debug-set-result (value)
   (interactive "XEval:")
-  (if (boundp 'debug-obj)
+  (if (bound? 'debug-obj)
       (throw 'debug (cons 4 value))
     (beep)))
 
 (defun debug-next ()
   (interactive)
-  (if (boundp 'debug-obj)
+  (if (bound? 'debug-obj)
       (throw 'debug (cons 2 debug-obj))
     (beep)))
 
 (defun debug-continue ()
   (interactive)
   (cond
-   ((boundp 'debug-obj)
+   ((bound? 'debug-obj)
     (throw 'debug (cons 3 debug-obj)))
-   ((boundp 'error-list)
+   ((bound? 'error-list)
     (throw 'debug))
    (t
     (beep))))
@@ -120,9 +120,9 @@ the debugger are:\n
 
 ;; initialization
 
-(setq debug-entry debug-entry-fun)
-(setq debug-exit debug-exit-fun)
-(setq debug-error-entry debug-error-entry-fun)
+(setq *debug-entry* debug-entry-fun)
+(setq *debug-exit* debug-exit-fun)
+(setq *debug-error-entry* debug-error-entry-fun)
 
-;;;###autoload (setq debug-entry (make-autoload 'debug-entry "debug"))
-;;;###autoload (setq debug-error-entry (make-autoload 'debug-error-entry "debug"))
+;;;###autoload (setq *debug-entry* (make-autoload '*debug-entry* "debug"))
+;;;###autoload (setq *debug-error-entry* (make-autoload '*debug-error-entry* "debug"))

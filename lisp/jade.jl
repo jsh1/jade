@@ -38,7 +38,7 @@
 (load "edit")
 
 ;; ignore file errors on stdio streams
-(when (boundp 'set-file-ignore-errors)
+(when (bound? 'set-file-ignore-errors)
   (set-file-ignore-errors (stdin-file) t)
   (set-file-ignore-errors (stdout-file) t)
   (set-file-ignore-errors (stderr-file) t))
@@ -50,7 +50,6 @@
 (jade-load-all "autoload")
 
 ;; Do and operating- and window-system initialisation
-(jade-load-all (concat "os-" (symbol-name operating-system)))
 (jade-load-all (concat "ws-" (symbol-name window-system)))
 
 ;; Load site specific initialisation. Errors here are trapped since
@@ -87,22 +86,22 @@
 ;; Use all arguments which are left.
 (let
     (arg)
-  (while (setq arg (car command-line-args))
-    (setq command-line-args (cdr command-line-args))
+  (while (setq arg (car *command-line-args*))
+    (setq *command-line-args* (cdr *command-line-args*))
     (cond
-      ((equal "-f" arg)
-       (setq arg (car command-line-args))
-       (setq command-line-args (cdr command-line-args))
+      ((equal? "-f" arg)
+       (setq arg (car *command-line-args*))
+       (setq *command-line-args* (cdr *command-line-args*))
        ((symbol-value (read-from-string arg))))
-      ((equal "-l" arg)
-       (setq arg (car command-line-args))
-       (setq command-line-args (cdr command-line-args))
-       (cond ((file-exists-p arg)
+      ((equal? "-l" arg)
+       (setq arg (car *command-line-args*))
+       (setq *command-line-args* (cdr *command-line-args*))
+       (cond ((file-exists? arg)
 	      (load arg nil t t))
 	     ((string-match "\\.jlc?$" arg)
 	      (load arg))
 	     (t (require (intern arg)))))
-      ((equal "-q" arg)
+      ((equal? "-q" arg)
        (throw 'quit 0))
       (t
        (find-file arg)))))

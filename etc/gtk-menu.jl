@@ -28,20 +28,20 @@
     (mapc #'(lambda (cell)
 	      (let
 		  (label item)
-		(when (and cell (symbolp (car cell)))
+		(when (and cell (symbol? (car cell)))
 		  (setq cell (symbol-value (car cell))))
-		(if (null cell)
+		(if (null? cell)
 		    (setq item (gtk-menu-item-new))
 		  (setq label (car cell))
-		  (cond ((functionp (cdr cell))
+		  (cond ((function? (cdr cell))
 			 (setq cell (funcall (cdr cell))))
-			((and (symbolp (cdr cell))
-			      (functionp (symbol-value (cdr cell))))
+			((and (symbol? (cdr cell))
+			      (function? (symbol-value (cdr cell))))
 			 (setq cell (funcall (symbol-value (cdr cell)))))
 			(t
 			 (setq cell (cdr cell))))
 		  (cond
-		   ((or (commandp (car cell)) (functionp (car cell)))
+		   ((or (commandp (car cell)) (function? (car cell)))
 		    (when popup-menus-show-shortcuts
 		      (let
 			  ((loc (where-is (car cell))))
@@ -52,12 +52,12 @@
 					#'(lambda ()
 					    (popup-menu-dispatch-command
 					     (car cell)))))
-		   ((consp (car cell))
+		   ((pair? (car cell))
 		    (let
 			((sub (gtk-jade-create-menu cell)))
 		      (setq item (gtk-menu-item-new-with-label label))
 		      (gtk-menu-item-set-submenu item sub)))
-		   ((eq (car cell) t)
+		   ((eq? (car cell) t)
 		    (setq item (gtk-menu-item-new-with-label label))
 		    (gtk-signal-connect item "activate" (nth 1 cell)))))
 		(when item

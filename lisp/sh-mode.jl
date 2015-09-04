@@ -58,7 +58,7 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
     (insert "# ")))
 
 (defun sh-get-basic-indent (p)
-  (if (zerop (pos-line p))
+  (if (zero? (pos-line p))
       0
     (setq p (forward-line -1 p))
     (while (and (> (pos-line p) 0)

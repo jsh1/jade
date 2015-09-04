@@ -299,7 +299,7 @@ Uniconifies the current window.
     return(Qnil);
 }
 
-DEFUN_INT("next-window", Fnext_window, Snext_window, (repv win, repv activ), rep_Subr2, "!" rep_DS_NL "p") /*
+DEFUN_INT("next-window", Fnext_window, Snext_window, (repv win, repv activ), rep_Subr2, "!\np") /*
 ::doc:next-window::
 next-window [WINDOW] [ACTIVATE]
 
@@ -796,10 +796,17 @@ window_unbind (repv handle)
 void
 windows_init(void)
 {
-    window_type = rep_register_new_type ("window", 0, window_prin, window_prin,
-					 window_sweep, window_mark,
-					 window_mark_active, 0, 0, 0, 0,
-					 window_bind, window_unbind);
+    static rep_type window = {
+	.name = "window",
+	.print = window_prin,
+	.sweep = window_sweep,
+	.mark = window_mark,
+	.mark_type = window_mark_active,
+	.bind = window_bind,
+	.unbind = window_unbind,
+    };
+
+    window_type = rep_define_type(&window);
 
     if(!batch_mode_p ())
 	rep_message_fun = jade_message;

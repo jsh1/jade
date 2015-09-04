@@ -97,7 +97,7 @@ pos_putc(Lisp_Buffer *tx, repv *pos, int c)
 }
 
 static intptr_t
-pos_puts(Lisp_Buffer *tx, repv *pos, char *buf, intptr_t bufLen)
+pos_puts(Lisp_Buffer *tx, repv *pos, const char *buf, intptr_t bufLen)
 {
     if(pad_pos(tx, *pos))
     {
@@ -149,7 +149,7 @@ Construct a unique buffer-name from NAME.
 	{
 	    if(suffix == 1)
 		return(rawName);
-	    return(rep_string_dup(buf));
+	    return(rep_string_copy(buf));
 	}
 	suffix++;
     }
@@ -188,7 +188,7 @@ Return a new buffer, it's name is the result of (make-buffer-name NAME).
 
 		tx->file_name = Qnil;
 		tx->canonical_file_name = Qnil;
-		tx->status_string = rep_concat2("Jade: ", rep_STR(tx->buffer_name));
+		tx->status_string = rep_string_concat2("Jade: ", rep_STR(tx->buffer_name));
 		tx->saved_block_state = -1;
 		tx->tab_size = 8;
 		tx->last_saved_time = rep_time();
@@ -322,9 +322,9 @@ buffer_putc (repv stream, int c)
 }
 
 static intptr_t
-buffer_puts (repv stream, void *data, intptr_t len, bool is_val)
+buffer_puts (repv stream, const void *data, intptr_t len, bool is_val)
 {
-    char *buf = is_val ? rep_STR(data) : data;
+    const char *buf = is_val ? rep_STR(data) : data;
     if (BUFFERP(stream))
     {
 	return pos_puts (VBUFFER(stream),
@@ -643,7 +643,7 @@ Set the name of BUFFER to NAME.
        || !strncmp("Jade: ", rep_STR(VBUFFER(tx)->status_string), 5))
     {
 	/* Reset the status-id */
-	VBUFFER(tx)->status_string = rep_concat2("Jade: ", rep_STR(name));
+	VBUFFER(tx)->status_string = rep_string_concat2("Jade: ", rep_STR(name));
     }
     return name;
 }
@@ -741,7 +741,7 @@ Returns t if ARG is a buffer.
     return(Qnil);
 }
 
-DEFUN_INT("restrict-buffer", Frestrict_buffer, Srestrict_buffer, (repv start, repv end, repv tx), rep_Subr3, "-m" rep_DS_NL "M") /*
+DEFUN_INT("restrict-buffer", Frestrict_buffer, Srestrict_buffer, (repv start, repv end, repv tx), rep_Subr3, "-m\nM") /*
 ::doc:restrict-buffer::
 restrict-buffer START END [BUFFER]
 
@@ -858,9 +858,9 @@ System time at last save of this buffer (could be from an auto-save).
 ::end:: */
 {
     intptr_t old = curr_vw->tx->last_saved_time;
-    if(rep_TIMEP(val))
-	curr_vw->tx->last_saved_time = rep_GET_TIME(val);
-    return rep_MAKE_TIME(old);
+    if(val != rep_nil)
+	curr_vw->tx->last_saved_time = rep_get_long_uint(val);
+    return rep_make_long_uint(old);
 }
 
 DEFUN("tab-size", Ftab_size, Stab_size, (repv val), rep_Subr1) /*
@@ -1150,9 +1150,9 @@ mark_putc (repv stream, int c)
 }
 
 static intptr_t
-mark_puts (repv stream, void *data, intptr_t len, bool is_val)
+mark_puts (repv stream, const void *data, intptr_t len, bool is_val)
 {
-    char *buf = is_val ? rep_STR(data) : data;
+    const char *buf = is_val ? rep_STR(data) : data;
     if(!MARK_RESIDENT_P(VMARK(stream)))
     {
 	Fsignal(Qinvalid_stream, rep_list_2(stream, rep_VAL(&non_resident)));
@@ -1349,17 +1349,32 @@ Return t if ARG is a mark.
 void
 buffers_init(void)
 {
-    buffer_type = rep_register_new_type ("buffer", 0, buffer_prin,
-					 buffer_prin, buffer_sweep,
-					 buffer_mark, 0,
-					 buffer_getc, buffer_ungetc,
-					 buffer_putc, buffer_puts,
-					 buffer_bind, buffer_unbind);
+    static rep_type buffer = {
+	.name = "buffer",
+	.print = buffer_prin,
+	.sweep = buffer_sweep,
+	.mark = buffer_mark,
+	.getc = buffer_getc,
+	.ungetc = buffer_ungetc,
+	.putc = buffer_putc,
+	.puts = buffer_puts,
+	.bind = buffer_bind,
+	.unbind = buffer_unbind,
+    };
 
-    mark_type = rep_register_new_type ("mark", mark_cmp, mark_prin,
-				       mark_prin, 0, mark_mark,
-				       0, mark_getc, mark_ungetc,
-				       mark_putc, mark_puts, 0, 0);
+    static rep_type mark = {
+	.name = "mark",
+	.compare = mark_cmp,
+	.print = mark_prin,
+	.mark = mark_mark,
+	.getc = mark_getc,
+	.ungetc = mark_ungetc,
+	.putc = mark_putc,
+	.puts = mark_puts,
+    };
+
+    buffer_type = rep_define_type(&buffer);
+    mark_type = rep_define_type(&mark);
 
     rep_mark_static((void *)&non_resident_mark_chain);
     rep_INTERN(auto_save_function);

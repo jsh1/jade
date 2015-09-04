@@ -217,7 +217,7 @@ If the selection currently has no value, nil is returned.
 		    long tlen = section_length(VBUFFER(selection_info[selno].data),
 					       selection_info[selno].start,
 					       selection_info[selno].end);
-		    res = rep_make_string(tlen + 1);
+		    res = rep_allocate_string(tlen + 1);
 		    if(res)
 		    {
 			copy_section(VBUFFER(selection_info[selno].data),
@@ -261,7 +261,7 @@ If the selection currently has no value, nil is returned.
 		    XFree(prop);
 		    if(actual_type == None || actual_format != 8)
 			return Qnil;
-		    res = rep_make_string(bytes_after + 1);
+		    res = rep_allocate_string(bytes_after + 1);
 		    if(!res)
 			return rep_mem_error();
 		    offset = 0;

@@ -140,9 +140,9 @@ command for more details."
 	      ((diff-output (diff-compare-files file1 file2)))
 	    (when diff-output
 	      (diff-display buffer1 buffer2 diff-output))))
-      (and (file-exists-p file1)
+      (and (file-exists? file1)
 	   (delete-file file1))
-      (and (file-exists-p file2)
+      (and (file-exists? file2)
 	   (delete-file file2)))))
 
 
@@ -157,7 +157,7 @@ command for more details."
 		  (local-file-name file1) (local-file-name file2))
     (setq exit-value (process-exit-value process))
     (cond
-     ((or (null exit-value) (= exit-value 2))
+     ((or (null? exit-value) (= exit-value 2))
       (error "Diff command failed"))
      ((= exit-value 0)
       (message "[No differences]")
@@ -247,7 +247,7 @@ command for more details."
       (error "Unknown command in diff output")))
     (with-buffer diff-src-buffer
       (setq diff-src-extent (make-extent
-			     (if (eq command 'add)
+			     (if (eq? command 'add)
 				 (if (>= (car left-range) 0)
 				     (end-of-line (forward-line
 						   (car left-range)
@@ -258,15 +258,15 @@ command for more details."
 			     (forward-line (1+ (cdr left-range))
 					   (start-of-buffer))
 			     (list 'face (cond
-					  ((eq command 'change)
+					  ((eq? command 'change)
 					   diff-changed-face)
-					  ((eq command 'delete)
+					  ((eq? command 'delete)
 					   diff-deleted-face)
-					  ((eq command 'add)
+					  ((eq? command 'add)
 					   diff-marker-face))))))
     (with-buffer diff-dest-buffer
       (setq diff-dest-extent (make-extent
-			      (if (eq command 'delete)
+			      (if (eq? command 'delete)
 				  (if (>= (car right-range) 0)
 				     (end-of-line (forward-line
 						   (car right-range)
@@ -277,11 +277,11 @@ command for more details."
 			      (forward-line (1+ (cdr right-range))
 					    (start-of-buffer))
 			      (list 'face (cond
-					   ((eq command 'add)
+					   ((eq? command 'add)
 					    diff-added-face)
-					   ((eq command 'change)
+					   ((eq? command 'change)
 					    diff-changed-face)
-					   ((eq command 'delete)
+					   ((eq? command 'delete)
 					    diff-marker-face))))))
     (diff-configure-views left-range right-range)))
 

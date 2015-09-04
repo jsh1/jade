@@ -124,7 +124,7 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
     (clear-buffer buffer)
     (when output
       (set-process-output-stream process output))
-    (unless (or (zerop (apply call-process process nil command arg-list))
+    (unless (or (zero? (apply call-process process nil command arg-list))
 		ignore-errors)
       (signal 'file-error (list "Can't run RCS command")))
     (format t "done")
@@ -162,7 +162,7 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
   (interactive)
   (goto (end-of-buffer))
   (when (and (re-search-backward "[^\n]\n+" (end-of-buffer))
-	     (equal (match-end) (end-of-buffer)))
+	     (equal? (match-end) (end-of-buffer)))
     ;; Trailing newlines, delete them
     (delete-area (forward-char 1 (match-start)) (end-of-buffer)))
   (let
@@ -224,7 +224,7 @@ description entered. COUNT may be negative."
   (with-buffer buffer
     ;; This file uses RCS. If the file doesn't actually exist, try to
     ;; check it out.
-    (when (not (file-exists-p (buffer-file-name)))
+    (when (not (file-exists? (buffer-file-name)))
       ;; Attempt to check out the current revision read-only,
       ;; ignoring errors
       (rcs-command "co" (buffer-file-name) '("-r") t t))
@@ -316,7 +316,7 @@ prompted for."
 		 (list (concat (if (and rcs-only-lock-seen-files
 					rcs-revision
 					revision
-					(not (string= rcs-revision revision)))
+					(not (string=? rcs-revision revision)))
 				   "-r" "-l")
 			       (or revision ""))) t)))
 
@@ -394,7 +394,7 @@ file with the working copy."
 	 (list first (prompt-for-string
 		      (concat "Newer revision: (older: " first ")")))))))
   (maybe-save-buffer (current-buffer))
-  (if (eq rcs-diff-options 'visual)
+  (if (eq? rcs-diff-options 'visual)
       (let*
 	  ((kill1 t)
 	   (kill2 t)
@@ -412,11 +412,11 @@ file with the working copy."
 	(when kill2
 	  (kill-buffer rev2-buffer)))
     (rcs-command "rcsdiff" (buffer-file-name)
-		 (append (when (and rev1 (not (string= rev1 "")))
-			   (if (and rev2 (not (string= rev2 "")))
+		 (append (when (and rev1 (not (string=? rev1 "")))
+			   (if (and rev2 (not (string=? rev2 "")))
 			       (list (concat "-r" rev1) (concat "-r" rev2))
 			     (list (concat "-r" rev1))))
-			 (and (listp rcs-diff-options) rcs-diff-options))
+			 (and (list? rcs-diff-options) rcs-diff-options))
 		 nil t nil t)))
 
 ;; Called by toggle-buffer-read-only for the current buffer

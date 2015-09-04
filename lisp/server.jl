@@ -36,9 +36,9 @@ into a new buffer and display it at line LINE-NUMBER."
     (if (not buf)
 	;; Can't find the file; return an error to the client
 	(server-reply file 10)
-      (with-view (cond ((eq server-open-window 'other)
+      (with-view (cond ((eq? server-open-window 'other)
 			(other-view))
-		       ((null server-open-window)
+		       ((null? server-open-window)
 			(current-view))
 		       (t
 			(current-view (make-window))))

@@ -386,7 +386,7 @@ mac-get-pasteboard
     string = [_pasteboard stringForType:NSStringPboardType];
 
     if (string != nil)
-	ret = rep_string_dup ([string UTF8String]);
+	ret = rep_string_copy ([string UTF8String]);
 
     OBJC_END
 

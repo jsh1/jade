@@ -29,20 +29,20 @@
     (mapc (lambda (cell)
 	    (let
 		(label item)
-	      (when (and cell (symbolp (car cell)))
+	      (when (and cell (symbol? (car cell)))
 		(setq cell (symbol-value (car cell))))
-	      (unless (null cell)
+	      (unless (null? cell)
 		(setq label (car cell))
-		(if (functionp (cdr cell))
+		(if (function? (cdr cell))
 		    (setq cell ((cdr cell)))
 		  (setq cell (cdr cell)))
 		(cond
-		 ((functionp (car cell))
+		 ((function? (car cell))
 		  (setq item (list* 'command label (car cell))))
-		 ((consp (car cell))
+		 ((pair? (car cell))
 		  (setq item (list* 'sub label
 				    (prompt-menu-create-menu cell))))
-		 ((eq (car cell) t)
+		 ((eq? (car cell) t)
 		  (setq item (list* 'function label (nth 1 cell))))))
 	      (when item
 		(setq menu (cons item menu)))))
@@ -64,7 +64,7 @@
     (while choice
       (setq choice (or (prompt-menu-find tree choice)
 		       (error "Can't find menu")))
-      (when (eq (car choice) 'sub)
+      (when (eq? (car choice) 'sub)
 	(setq choice (prompt-menu-prompt (nthcdr 2 choice)
 					 (concat title ?/ (nth 1 choice)))))
       (when choice
@@ -78,7 +78,7 @@
        (item (catch 'prompt-menu-top
 	       (prompt-menu-prompt prompt-menu-tree "Menu"))))
     (when item
-      (cond ((eq (car item) 'command)
+      (cond ((eq? (car item) 'command)
 	     (popup-menu-dispatch-command (nthcdr 2 item)))
-	    ((eq (car item) 'function)
+	    ((eq? (car item) 'function)
 	     ((nthcdr 2 item)))))))

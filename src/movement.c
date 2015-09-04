@@ -66,7 +66,7 @@ Set the cursor position in the current window to the glyph position POSITION.
 	return(Qnil);
 }
 
-DEFUN_INT("center-display", Fcenter_display, Scenter_display, (repv vw, repv arg), rep_Subr2, rep_DS_NL "P") /*
+DEFUN_INT("center-display", Fcenter_display, Scenter_display, (repv vw, repv arg), rep_Subr2, "\nP") /*
 ::doc:center-display::
 center-display [VIEW] [ARG]
 

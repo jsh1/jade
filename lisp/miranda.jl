@@ -43,18 +43,18 @@ mode `shell-mode'. ARG is a string to pass as a command line argument."
       ((buffer (get-buffer "*miranda*"))
        (dir (if arg
 		(file-name-directory arg)
-	      default-directory)))
+	      *default-directory*)))
     (goto-other-view)
     (if (or (not buffer) (with-buffer buffer shell-process))
 	(progn
 	  (goto-buffer (open-buffer "*miranda*" t))
-	  (setq default-directory dir
+	  (setq *default-directory* dir
 		shell-program miranda-program
 		shell-prompt-regexp miranda-prompt
 		shell-program-args (append miranda-program-args
 					   (and arg (list arg))))
 	  (shell-mode))
       (goto-buffer buffer)
-      (setq default-directory dir
+      (setq *default-directory* dir
 	    shell-program-args (and arg (list (local-file-name arg))))
       (shell-start-process))))

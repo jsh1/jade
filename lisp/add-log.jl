@@ -41,9 +41,9 @@ considered as referring to the same day.")
 ;;;###autoload
 (defun find-change-log-file (directory)
   (let loop ((dir directory))
-    (when (and dir (file-directory-p dir))
+    (when (and dir (file-directory? dir))
       (let ((file (expand-file-name change-log-file dir)))
-	(if (file-exists-p file)
+	(if (file-exists? file)
 	    ;; expand twice to make absolute
 	    (expand-file-name file)
 	  (let ((parent (expand-file-name ".." dir)))
@@ -57,17 +57,17 @@ considered as referring to the same day.")
    (let
        ((arg current-prefix-arg))
      (list (prompt-for-file "Log file:" nil
-			    (find-change-log-file default-directory))
-	   (list (or (buffer-file-name) default-directory))
+			    (find-change-log-file *default-directory*))
+	   (list (or (buffer-file-name) *default-directory*))
 	   (when (not arg)
 	     (let
 		 ((defun (defun-at-point)))
 	       (and defun (list defun)))))))
   (setq log-file (expand-file-name (or log-file "")))
   (cond
-   ((file-directory-p log-file)
+   ((file-directory? log-file)
     (setq log-file (concat log-file change-log-file)))
-   ((equal log-file "")
+   ((equal? log-file "")
     (setq log-file change-log-file)))
   (when (find-file log-file)
     (goto (start-of-buffer))

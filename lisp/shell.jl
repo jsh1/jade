@@ -131,7 +131,7 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
   (kill-all-local-variables))
 
 (defun shell-kill-buffer-hook ()
-  (when (and shell-process (process-in-use-p shell-process))
+  (when (and shell-process (process-in-use? shell-process))
     (unless (yes-or-no-p "Shell subprocess running; kill it?")
       (error "Can't kill shell without killing its subprocess"))
     ;; don't want the callback function to run or to output
@@ -143,7 +143,7 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 
 ;; If a shell subprocess isn't running create one
 (defun shell-start-process ()
-  (unless (and shell-process (process-in-use-p shell-process))
+  (unless (and shell-process (process-in-use? shell-process))
     (let ((buffer (current-buffer)))
       (setq shell-process (make-process
 			   (or shell-output-stream
@@ -164,9 +164,9 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 (defun shell-default-callback ()
   (when shell-process
     (insert (cond
-	     ((process-stopped-p shell-process)
+	     ((process-stopped? shell-process)
 	      "\nProcess suspended...")
-	     ((process-running-p shell-process)
+	     ((process-running? shell-process)
 	      "restarted\n")
 	     (t
 	      (setq shell-process nil)
@@ -177,7 +177,7 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 ;; Default output stream
 (defun shell-filter (output)
   (goto (end-of-buffer))
-  (unless (stringp output)
+  (unless (string? output)
     (setq output (make-string 1 output)))
   (when shell-output-filter
     (setq output (shell-output-filter output)))
@@ -203,7 +203,7 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
   "When at the very end of the buffer send the subprocess the EOF character,
 otherwise delete the first COUNT characters under the cursor."
   (interactive "p")
-  (if (equal (cursor-pos) (end-of-buffer))
+  (if (equal? (cursor-pos) (end-of-buffer))
       (shell-send-eof)
     (delete-char count)))
 
@@ -211,7 +211,7 @@ otherwise delete the first COUNT characters under the cursor."
   "Send the current line to the shell process. If the current line is not the
 last in the buffer the current command is copied to the end of the buffer."
   (interactive)
-  (if (null shell-process)
+  (if (null? shell-process)
       (insert "\n")
     (if (and shell-last-output (<= shell-last-output (cursor-pos)))
 	;; Send everything after the last output text
@@ -352,7 +352,7 @@ delete, i.e. replace the marked area with the output of the command."
       (setq error-output (open-buffer "*shell-errors*"))
       (clear-buffer error-output)
       (set-process-error-stream proc error-output))
-    (setq result (if (equal start end)
+    (setq result (if (equal? start end)
 		     (call-process proc)
 		   (call-process-area proc start end deletep)))
     (unless insertp
@@ -363,8 +363,8 @@ delete, i.e. replace the marked area with the output of the command."
 				(end-of-buffer output)
 				output))
 	    (setq used-message t))
-	(unless (equal (start-of-buffer output) (end-of-buffer output))
-	  (if (eq (current-buffer) output)
+	(unless (equal? (start-of-buffer output) (end-of-buffer output))
+	  (if (eq? (current-buffer) output)
 	      (progn
 		(goto (start-of-buffer))
 		(shrink-view-if-larger-than-buffer))
@@ -373,7 +373,7 @@ delete, i.e. replace the marked area with the output of the command."
 	      (goto (start-of-buffer))
 	      (shrink-view-if-larger-than-buffer))))))
     (when (and error-output
-	       (not (equal (start-of-buffer error-output)
+	       (not (equal? (start-of-buffer error-output)
 			   (end-of-buffer error-output))))
       (set-buffer-modified error-output nil)
       (if (and (= (buffer-length error-output) 2)

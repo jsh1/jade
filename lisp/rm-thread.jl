@@ -137,13 +137,13 @@ be shown before the second.")
 		      ;; Should really look for an intersection in
 		      ;; the References headers?
 		      (when (or (and rm-thread-using-subject
-				     (string= (rm-get-actual-subject
+				     (string=? (rm-get-actual-subject
 					       msg)
 					      (rm-get-actual-subject
 					       thread-message)))
 				(memq (rm-get-message-id
 				       thread-message) references)
-				(eq message-id (rm-get-in-reply-to
+				(eq? message-id (rm-get-in-reply-to
 						thread-message))
 				(memq message-id (rm-get-references
 						  thread-message)))
@@ -196,7 +196,7 @@ be shown before the second.")
   "Toggle threaded display of messages in the current folder."
   (let
       ((folder (rm-current-folder)))
-    (if (eq (rm-get-folder-field folder rm-folder-sort-key) 'thread)
+    (if (eq? (rm-get-folder-field folder rm-folder-sort-key) 'thread)
 	(rm-sort-folder folder 'location)
       (rm-thread-folder folder))))
 
@@ -238,7 +238,7 @@ the raw prefix argument."
     (when (< (car key) 0)
       (setq reversed (not reversed)))
     (setq key (cdr key)))
-  (if (eq key 'thread)
+  (if (eq? key 'thread)
       (rm-thread-folder folder no-redisplay)
     (when (rm-get-folder-field folder rm-folder-current-msg)
       (let

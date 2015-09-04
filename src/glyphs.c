@@ -1393,7 +1393,7 @@ GLYPH-TABLE.
 	rep_signal_arg_error(ch, 1);
 	return 0;
     }
-    return(rep_string_dupn((char *)&VGLYPHTAB(gt)->gt_Glyphs[rep_INT(ch)][0],
+    return(rep_string_copy_n((char *)&VGLYPHTAB(gt)->gt_Glyphs[rep_INT(ch)][0],
 		       VGLYPHTAB(gt)->gt_Widths[rep_INT(ch)]));
 }
 
@@ -1426,11 +1426,13 @@ glyphtable_prin(repv strm, repv obj)
 void
 glyphs_init(void)
 {
-    glyph_table_type = rep_register_new_type ("glyph-table", 0,
-					      glyphtable_prin,
-					      glyphtable_prin,
-					      glyphtable_sweep,
-					      0, 0, 0, 0, 0, 0, 0, 0);
+    static rep_type glyph_table = {
+	.name = "glyph-table",
+	.print = glyphtable_prin,
+	.sweep = glyphtable_sweep,
+    };
+
+    glyph_table_type = rep_define_type(&glyph_table);
 
     default_glyph_table.gt_Car |= glyph_table_type;
 

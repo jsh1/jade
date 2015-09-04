@@ -61,7 +61,7 @@ buffer.")
   (let
       ((command (concat print-command
 			print-standard-options
-			(and (numberp prefix)
+			(and (number? prefix)
 			     (cdr (assoc prefix print-num-alist)))
 			(and (with-buffer buffer major-mode)
 			     (cdr (assq (with-buffer buffer major-mode)
@@ -74,7 +74,7 @@ buffer.")
 			    (concat print-file-prefix local-output)))
 			(and printer
 			     (concat print-printer-prefix printer)))))
-    (if (and prefix (not (numberp prefix)))
+    (if (and prefix (not (number? prefix)))
 	(or (prompt-for-string "Print command:" command)
 	    (error "Null print command"))
       command)))

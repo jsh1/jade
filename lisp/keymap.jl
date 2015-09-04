@@ -52,7 +52,7 @@ keymaps, i.e. all prefix keys are ignored.")
       (when global-keymap
 	(setq maps (cons global-keymap maps)))
       (mapcar (lambda (km)
-		(if (symbolp km)
+		(if (symbol? km)
 		    ;; dereference the symbol in the correct buffer
 		    (symbol-value km)
 		  km))
@@ -79,15 +79,15 @@ binding, or nil if there was no prefix."
 	  ((keymap (car km-keymap-list))
 	   km-prefix-string)
 	(setq km-keymap-list (cdr km-keymap-list))
-	(when (and (not (keymapp keymap)) (consp keymap))
+	(when (and (not (keymapp keymap)) (pair? keymap))
 	  (setq km-prefix-string (cdr keymap)
 		keymap (car keymap)))
 	(unless (memq keymap done-list)
 	  (setq done-list (cons keymap done-list))
-	  (when (symbolp keymap)
+	  (when (symbol? keymap)
 	    (setq keymap (with-buffer buffer (symbol-value keymap))))
 	  (when (keymapp keymap)
-	    (if (vectorp keymap)
+	    (if (vector? keymap)
 		(let
 		    ((i (1- (length keymap))))
 		  (while (>= i 0)
@@ -99,18 +99,18 @@ binding, or nil if there was no prefix."
 (defun km-map-keylist (keylist fun buffer)
   (mapc (lambda (k)
 	  (cond
-	   ((eq k 'keymap))		;An inherited sparse keymap
-	    ((or (and (symbolp (car k))
+	   ((eq? k 'keymap))		;An inherited sparse keymap
+	    ((or (and (symbol? (car k))
 		      (keymapp (symbol-value (car k) t)))
-		 (eq (car (car k)) 'next-keymap-path))
+		 (eq? (car (car k)) 'next-keymap-path))
 	     ;; A prefix key
 	     (when map-keymap-recursively
-	       (let ((this-list (if (symbolp (car k))
+	       (let ((this-list (if (symbol? (car k))
 				    (list (with-buffer buffer
 					    (symbol-value (car k) t)))
 				  (with-buffer buffer (eval (nth 1 (car k))))))
 		     (event-str (event-name (cdr k))))
-		 (when (listp this-list)
+		 (when (list? this-list)
 		   ;; Another keymap-list, add it to the list of those waiting
 		   (let* ((new-str (concat km-prefix-string
 					   (if km-prefix-string ?\ )
@@ -136,7 +136,7 @@ in effect."
   (interactive "COld command:\nCReplacement command:")
   (map-keymap (lambda (k pfx)
 		(declare (unused pfx))
-		(when (eq (car k) olddef)
+		(when (eq? (car k) olddef)
 		  (rplaca k newdef))) keymap))
 
 
@@ -147,7 +147,7 @@ in effect."
   "Install the list of BINDINGS in KEYMAP, assuming that KEYMAP is available
 once FEATURE has been provided. If FEATURE has not yet been loaded, arrange
 for the bindings to be installed if and when it is."
-  `(if (featurep ',feature)
+  `(if (feature? ',feature)
        (bind-keys ,keymap ,@bindings)
      (eval-after-load ,(symbol-name feature) '(bind-keys ,keymap ,@bindings))))
 
@@ -182,7 +182,7 @@ for the bindings to be installed if and when it is."
   (let
       ((km-where-is-results nil))
     (map-keymap (lambda (k pfx)
-		  (when (eq (car k) command)
+		  (when (eq? (car k) command)
 		    (setq km-where-is-results
 			  (cons (concat pfx (and pfx " ")
 					(event-name (cdr k)))
@@ -247,18 +247,18 @@ would invoke."
       (next-keymap-path path)
       (setq command (lookup-event-binding event))
       (if command
-	  (cond ((and (symbolp command)
-		      (eq (symbol-value command t) 'keymap))
+	  (cond ((and (symbol? command)
+		      (eq? (symbol-value command t) 'keymap))
 		 ;; a prefix key
 		 (setq path (list command)))
-		((eq (car command) 'next-keymap-path)
+		((eq? (car command) 'next-keymap-path)
 		 ;; A link to another keymap
 		 (setq path (eval (nth 1 command))))
 		(t
 		 ;; End of the chain
 		 (help-wrapper
 		  (format (current-buffer) "\n%s -> %S\n" names command)
-		  (when (functionp command)
+		  (when (function? command)
 		    (format (current-buffer)
 			    "\n%s\n"
 			    (or (documentation command) ""))))

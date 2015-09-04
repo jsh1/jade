@@ -19,8 +19,8 @@
    the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "jade.h"
+#include <assert.h>
 #include <string.h>
-
 
 /* Maximum number of bytes that *each buffer* may devote to undo
    information.  */
@@ -42,9 +42,16 @@ DEFSYM(undo, "undo");
 
 /* If not in an undo, this will re-combine the waiting_undo and
    undo_list. */
+
 static void
 coalesce_undo(Lisp_Buffer *tx)
 {
+  /* We're calling functions that may abort if they think an error has
+     been thrown, so hide any exception until done. */
+
+  repv old_throw = rep_throw_value;
+  rep_throw_value = 0;
+
     if(!in_undo
        && (tx->pending_undo_list != 0))
     {
@@ -59,14 +66,19 @@ coalesce_undo(Lisp_Buffer *tx)
 		tx->pending_undo_list = Fcons (Qnil, tx->pending_undo_list);
 	    }
 
-	    tx->undo_list = Fnconc(rep_list_3(tx->undo_list,
-					       tmp,
-					       tx->pending_undo_list));
+	    repv lst = rep_list_3(tx->undo_list,
+				  tmp, tx->pending_undo_list);
+	    lst = rep_concat_lists(lst);
+	    if (lst) {
+		tx->undo_list = lst;
+	    }
 	}
 	tx->did_undo_list = Qnil;
 	tx->pending_undo_list = 0;
 	last_undid_tx = NULL;
     }
+
+  rep_throw_value = old_throw;
 }
 
 /* Called *after* recording an undo command, checks if this is the
@@ -141,15 +153,14 @@ undo_record_deletion(Lisp_Buffer *tx, repv start, repv end)
 	    }
 	    else
 	    {
-		string = rep_make_string(len + 1);
+		string = rep_allocate_string(len + 1);
 		copy_section(tx, start, end, rep_STR(string));
 		rep_STR(string)[len] = 0;
 	    }
 	}
 	coalesce_undo(tx);
 	check_first_mod(tx);
-	tx->undo_list = Fcons(Fcons(start, string),
-				   tx->undo_list);
+	tx->undo_list = Fcons(Fcons(start, string), tx->undo_list);
     }
     pending_deletion_string = 0;
 }
@@ -164,7 +175,7 @@ undo_push_deletion(Lisp_Buffer *tx, repv start, repv end)
     size_t len = section_length(tx, start, end);
     if(len > 0)
     {
-	repv string = rep_make_string(len + 1);
+	repv string = rep_allocate_string(len + 1);
 	copy_section(tx, start, end, rep_STR(string));
 	rep_STR(string)[len] = 0;
 	pending_deletion_string = string;
@@ -243,7 +254,7 @@ undo_end_of_command(void)
 
 DEFSTRING(nothing_to_undo, "Nothing to undo!");
 
-DEFUN_INT("undo", Fundo, Sundo, (repv tx, repv arg), rep_Subr2, rep_DS_NL "p") /*
+DEFUN_INT("undo", Fundo, Sundo, (repv tx, repv arg), rep_Subr2, "\np") /*
 ::doc:undo::
 undo [BUFFER] [ARG]
 
@@ -296,7 +307,7 @@ taken from the prefix argument.
 	    else if(rep_INTP(rep_CDR(item)))
 	    {
 		/* A deleted character */
-		repv tmp = rep_make_string(2);
+		repv tmp = rep_allocate_string(2);
 		uint8_t c = rep_INT(rep_CDR(item));
 		rep_STR(tmp)[0] = c;
 		rep_STR(tmp)[1] = 0;
@@ -382,9 +393,10 @@ set-buffer-undo-list VALUE
 This buffer's list of undo information.
 ::end:: */
 {
-    Lisp_Buffer *tx = curr_vw->tx;
-    tx->undo_list = val;
-    return val;
+  rep_DECLARE1(val, rep_LISTP);
+  Lisp_Buffer *tx = curr_vw->tx;
+  tx->undo_list = val;
+  return val;
 }
 
 /* Called by gc, this makes each undo-lists use less memory than

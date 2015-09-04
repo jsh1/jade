@@ -77,8 +77,8 @@ definitions will be added to any existing definitions."
 	      (while t
 		(setq form (read file-handle))
 		(cond
-		 ((null form))
-		 ((eq (car form) 'mail-dir)
+		 ((null? form))
+		 ((eq? (car form) 'mail-dir)
 		  ;; List of mail addresses
 		  (if dont-merge
 		      (setq mail-address-list (cdr form))
@@ -94,7 +94,7 @@ definitions will be added to any existing definitions."
 ;; Output a LIST of objects to STREAM. Each object printed will be indented
 ;; by two spaces.
 (defun mail-dir-output-list (stream lst)
-  (while (consp lst)
+  (while (pair? lst)
     (format stream "\n  %S" (car lst))
     (setq lst (cdr lst))))
 
@@ -139,7 +139,7 @@ definitions will be added to any existing definitions."
 
 (defun md-delete-field (record field)
   (mapc (lambda (cell)
-	  (when (eq (car cell) field)
+	  (when (eq? (car cell) field)
 	    ;; Not possible to delete the whole thing. So just
 	    ;; clear out the field's contents
 	    (rplacd cell nil))) record))
@@ -352,10 +352,10 @@ mail directory. Also see the variables `mail-dir-scan-messages' and
 ;; Initialisation
 
 (when (and mail-dir-load-on-init
-	   (file-readable-p mail-directory-file))
+	   (file-readable? mail-directory-file))
   (load-mail-directory mail-directory-file))
 
-(add-hook 'before-exit-hook
+(add-hook '*before-exit-hook*
 	  (lambda ()
 	    (when mail-directory-modified
 	      (save-mail-directory mail-directory-file))))
