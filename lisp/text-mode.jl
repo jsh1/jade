@@ -83,14 +83,14 @@ previous line, then works as normal. Local bindings in this mode are:\n
   (let
       ((p (re-search-backward "^.+$" (forward-line -1))))
     (if (or (null? p) (> (pos-col (cursor-pos)) (line-length p)))
-	(insert "\t")
+	(indent-to-next-tab)
       (let
           ((gcurs (char-to-glyph-pos (cursor-pos))))
         (set! gcurs (pos (pos-col gcurs) (pos-line p)))
 	(set! p (glyph-to-char-pos gcurs))
 	(re-search-forward "[\t ]+|$" p)
 	(if (equal? (match-end) (end-of-line p))
-	    (insert "\t")
+	    (indent-to-next-tab)
 	  (set! p (pos (pos-col (char-to-glyph-pos (match-end)))
 		       (pos-line (cursor-pos))))
 	  (if (empty-line-p p)

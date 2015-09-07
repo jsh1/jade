@@ -927,6 +927,13 @@ COLUMN. If `indent-tabs-mode' is nil only SPC characters are used. COLUMN
 counts from zero."
   (%indent-to column (not indent-tabs-mode)))
 
+(defun indent-to-next-tab ()
+  "Calls (indent-to COL) to move to the next TAB stop."
+  (interactive)
+  (let ((col (pos-col (char-to-glyph-pos (cursor-pos))))
+	(tab-width (tab-size)))
+    (indent-to (* (1+ (quotient col tab-width)) tab-width))))
+
 
 ;; Some macros
 

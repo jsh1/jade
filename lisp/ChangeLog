@@ -46,6 +46,10 @@
 
 2015-09-07  John Harper  <jsh@unfactored.org>
 
+	* text-mode.jl, edit.jl: added indent-to-next-tab command, use
+	it instead of inserting a hard TAB character in
+	text-mode-indent-tab, better when indent-tabs-mode is nil
+
 	* buffers.jl (hack-local-variables): fix the bug that `nil` in
 	local variables doesn't map to `()` as it's not evaluated (by
 	manually recognizing some symbols)
