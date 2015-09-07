@@ -44,6 +44,12 @@
 	compile.jl, c-mode.jl, buffers.jl, buffer-summary.jl,
 	bookmarks.jl: convert from old `?X` character syntax to `#\X`
 
+2015-09-07  John Harper  <jsh@unfactored.org>
+
+	* buffers.jl (hack-local-variables): fix the bug that `nil` in
+	local variables doesn't map to `()` as it's not evaluated (by
+	manually recognizing some symbols)
+
 2015-06-27  John Harper  <jsh@unfactored.org>
 
 	* lisp-mode.jl: set indentation style for define-macro

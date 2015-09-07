@@ -299,7 +299,12 @@ normal-mode, the hook after-read-file-hook is dispatched."
 				  (y-or-n-p (format nil "Set %s to %s?"
 						    var value)))
 			  (make-local-variable var)
-			  (set var (read-from-string value))))))
+			  (let ((value (read-from-string value)))
+			    ;; since we're not evaluating, inline
+			    ;; things that eval to ().
+			    (set var (case value
+				       ((nil #f) nil)
+				       (t value))))))))
 		  pieces)))))
     (let
 	((p (pos 0 (- (buffer-length) local-variable-lines))))
