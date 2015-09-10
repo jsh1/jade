@@ -1022,7 +1022,7 @@ is signalled.
     if(rep_NILP(no_err))
 	return Fsignal(Qvoid_value, rep_LIST_1(symbol));
     else
-	return rep_void_value;
+	return rep_void;
 }
 
 static repv
