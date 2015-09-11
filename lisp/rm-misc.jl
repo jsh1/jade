@@ -186,9 +186,9 @@ arg TO specifies who to send it to."
 
 ;; Message bursting
 
-(defvar rm-rfc1153-preamble-sep (concat ?^ (make-string 70 ?-) ?$))
-(defvar rm-rfc1153-message-sep (concat ?^ (make-string 30 ?-) ?$))
-(defvar rm-rfc1153-stuffed-re (concat "^ (" (make-string 30 ?-) ")$"))
+(defvar rm-rfc1153-preamble-sep (concat #\^ (make-string 70 #\-) #\$))
+(defvar rm-rfc1153-message-sep (concat #\^ (make-string 30 #\-) #\$))
+(defvar rm-rfc1153-stuffed-re (concat "^ (" (make-string 30 #\-) ")$"))
 
 (defvar rm-rfc934-preamble-sep "^-[^ ]")
 (defvar rm-rfc934-message-sep rm-rfc934-preamble-sep)
@@ -252,7 +252,7 @@ arg TO specifies who to send it to."
 	      (delete-area output-pos (forward-char 1 output-pos)))
 	    (unless (looking-at mail-message-start output-pos)
 	      ;; No ^From_ line, kludge one ourselves
-	      (insert (concat "From jade " (current-time-string) ?\n)
+	      (insert (concat "From jade " (current-time-string) #\newline)
 		      output-pos))
 	    (when (setq new-msg (rm-parse-message output-pos))
 	      (setq count (1+ count)

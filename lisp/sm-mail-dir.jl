@@ -55,7 +55,7 @@ message being composed."
   (save-restriction
     (unrestrict-buffer)
     (unless (re-search-forward
-	     (concat ?^ (quote-regexp mail-header-separator) ?$)
+	     (concat #\^ (quote-regexp mail-header-separator) #\$)
 	     (start-of-buffer))
       (error "Can't find message body separator"))
     ;; Only work on headers
@@ -83,7 +83,7 @@ message being composed."
 	     ((string-match "^[^@]+$" addr)
 	      ;; a local name, try to expand it
 	      (let
-		  ((full-name (concat addr ?@ mail-domain-name)))
+		  ((full-name (concat addr #\@ mail-domain-name)))
 		(if (md-field-exists-p ':net full-name ':name)
 		    (progn
 		      (delete-area (cursor-pos) (cdr item))

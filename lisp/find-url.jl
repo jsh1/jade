@@ -140,8 +140,8 @@ a buffer."
 	(require 'rep.io.file-handlers.remote.ftp)
 	(remote-ftp-add-passwd user host passwd))
       ;; XXX What if the method of retrieving files from HOST isn't FTP?
-      (find-file (concat ?/ (if (string=? user "") "anonymous" user)
-			 ?@ host ?: file))
+      (find-file (concat #\/ (if (string=? user "") "anonymous" user)
+			 #\@ host #\: file))
       (find-url-magic-buffer url))))
 
 (defun find-url-http-loaded (process url anchor view output errors)

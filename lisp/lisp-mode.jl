@@ -92,9 +92,9 @@ in the status line."
   (let
       ((is-function nil))
     (when (and (> beg (start-of-buffer))
-	       (= (get-char (forward-char -1 beg)) ?\())
+	       (= (get-char (forward-char -1 beg)) #\())
       (setq is-function t))
-    (mapcar symbol-name (apropos (concat ?^ (quote-regexp sexp))
+    (mapcar symbol-name (apropos (concat #\^ (quote-regexp sexp))
 				 (if is-function
 				     (lambda (x)
 				       (and (bound? x)
@@ -118,25 +118,25 @@ in the status line."
     ;; now any other whitespace
     (when (looking-at "[\t\f ]+" p)
       (setq p (match-end)))
-    (while (member (get-char p) '(?' ?# ?` ?, ?@))
+    (while (member (get-char p) '(#\' #\# #\` #\, #\@))
       (setq p (forward-char 1 p)))
     (let
         ((c (get-char p)))
       (cond
-       ((= c ?\")
+       ((= c #\")
 	;; move over string
-	(if (setq p (char-search-forward ?\" (forward-char 1 p)))
-	    (while (= (get-char (forward-char -1 p)) ?\\ )
-	      (unless (setq p (char-search-forward ?\" (forward-char 1 p)))
+	(if (setq p (char-search-forward #\" (forward-char 1 p)))
+	    (while (= (get-char (forward-char -1 p)) #\space)
+	      (unless (setq p (char-search-forward #\" (forward-char 1 p)))
 		(error "String doesn't end!")))
 	  (error "String doesn't end!"))
 	(setq p (forward-char 1 p)))
-       ((member c '(?\( ?\[ ?\<))
+       ((member c '(#\( #\[ #\<))
 	;; move over brackets
 	(unless (setq p (find-matching-bracket p))
 	  (error "Expression doesn't end!"))
 	(setq p (forward-char 1 p)))
-       ((member c '(?\) ?\]))
+       ((member c '(#\) #\]))
 	(error "End of containing sexp"))
        (t
 	;; a symbol
@@ -169,24 +169,24 @@ in the status line."
       (let
 	  ((c (get-char p)))
 	(cond
-	 ((member c '(?\) ?\] ?\>))
+	 ((member c '(#\) #\] #\>))
 	  (unless (setq p (find-matching-bracket p))
 	    (error "Brackets don't match"))
-	  (when (= c ?\>)
+	  (when (= c #\>)
 	    (forward-char -1 p)))
-	 ((= c ?\")
-	  (if (setq p (char-search-backward ?\" (forward-char -1 p)))
-	      (while (= (get-char (forward-char -1 p)) ?\\ )
-		(unless (setq p (char-search-backward ?\" (forward-char -1 p)))
+	 ((= c #\")
+	  (if (setq p (char-search-backward #\" (forward-char -1 p)))
+	      (while (= (get-char (forward-char -1 p)) #\space)
+		(unless (setq p (char-search-backward #\" (forward-char -1 p)))
 		  (error "String doesn't start!")))
 	    (error "String doesn't start!")))
-	 ((member c '(?\( ?\[))
+	 ((member c '(#\( #\[))
 	  (error "Start of containing sexp"))
 	 (t
 	  ;; a symbol?
 	 (unless (setq p (re-search-backward "[^][\f\t\n ()'\"]+|^" p))
 	   (error "Symbol doesn't start??"))))
-	(while (member (get-char (forward-char -1 p)) '(?' ?# ?` ?, ?@))
+	(while (member (get-char (forward-char -1 p)) '(#\' #\# #\` #\, #\@))
 	  (setq p (forward-char -1 p))))
       (setq number (1- number)))
     p))

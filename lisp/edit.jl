@@ -197,7 +197,7 @@ cursor)."
   (interactive "p")
   (insert (if (or (not count) (= count 1))
 	      "\n"
-	    (make-string count ?\n)) p))
+	    (make-string count #\newline)) p))
 
 (defun kill-line (#!optional arg)
   "If the cursor is not at the end of the line kill the text from the cursor
@@ -341,7 +341,7 @@ interactively, the cursor is set to this position."
   (unless p
     (setq p (cursor-pos)))
   (let
-      ((sep-or-start (concat ?\( paragraph-separate ?\| paragraph-start ?\) )))
+      ((sep-or-start (concat #\( paragraph-separate #\| paragraph-start #\) )))
     ;; Positive arguments
     (while (and (> count 0)
 		(< p (end-of-buffer)))
@@ -791,9 +791,9 @@ event as read. COUNT copies of the same character are inserted."
 	(let*
 	    ((second (next-event t))
 	     (third (next-event t)))
-	  (setq first (make-string count (+ (ash (- (aref first 0) ?0) 6)
-					    (ash (- (aref second 0) ?0) 3)
-					    (- (aref third 0) ?0))))
+	  (setq first (make-string count (+ (ash (- (aref first 0) #\0) 6)
+					    (ash (- (aref second 0) #\0) 3)
+					    (- (aref third 0) #\0))))
 	  (or (< (aref first 0) 256)
 	      (error "Character overflow")))
       (if (/= count 1)
@@ -826,7 +826,7 @@ end of the line simply move COUNT characters to the left."
 (defun just-spaces (count)
   "Ensure that there are only COUNT spaces around the cursor."
   (interactive "p")
-  (when (member (get-char) '(?\  ?\t))
+  (when (member (get-char) '(#\space #\tab))
     (let
 	((p (re-search-backward "[^\t ]|^")))
       (when p
@@ -836,7 +836,7 @@ end of the line simply move COUNT characters to the left."
 	  (delete-area (match-start) (match-end))
 	  (goto (match-start))))))
   (unless (zero? count)
-    (insert (make-string count ?\ ))))
+    (insert (make-string count #\space))))
 
 (defun no-spaces ()
   "Delete all space and tab characters surrounding the cursor."
@@ -849,7 +849,7 @@ its original position."
   (interactive "p")
   (let
       ((opos (cursor-pos)))
-    (insert (make-string count ?\n))
+    (insert (make-string count #\newline))
     (goto opos)))
 
 (defun delete-blank-lines ()

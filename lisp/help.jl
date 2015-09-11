@@ -220,14 +220,14 @@ strings of modes may contain any of these expansions."
 	   (arg (expand-last-match "\\3"))
 	   (type (aref string (1- point))))
 	(cond
-	 ((= type ?\])
+	 ((= type #\])
 	  ;; where-is SYMBOL
 	  (let
 	      ((result (where-is symbol whereis-rel)))
 	    (setq out (cons (or (car result)
 				(concat "Meta-x " (symbol-name symbol)))
 			    out))))
-	 ((= type ?\})
+	 ((= type #\})
 	  ;; print-keymap SYMBOL
 	  (map-keymap (lambda (k prefix)
 			(setq out (cons (format nil "%-24s %S\n"
@@ -241,7 +241,7 @@ strings of modes may contain any of these expansions."
 						(car k))
 					out)))
 		      (symbol-value symbol)))
-	 ((= type ?\>)
+	 ((= type #\>)
 	  ;; next where-is is relative to keymap SYMBOL
 	  (setq whereis-rel (symbol-value symbol))))))
     (setq out (cons (substring string point) out))

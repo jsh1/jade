@@ -1,3 +1,18 @@
+2015-09-11  John Harper  <jsh@unfactored.org>
+
+	* texinfo-mode.jl, tex-shell.jl, tex-mode.jl, telnet.jl,
+	tags.jl, sm-mail-dir.jl, shell.jl, sh-mode.jl, send-mail.jl,
+	rm-restrict.jl, rm-output.jl, rm-misc.jl, rectangle.jl,
+	read-mail.jl, rcs.jl, pwd-prompt.jl, prompt.jl, prompt-menu.jl,
+	perl-mode.jl, page-summary.jl, modes.jl,
+	mime-quoted-printable.jl, mime-encode.jl, mime-decode.jl,
+	mime-base64.jl, maildefs.jl, mail-headers.jl,
+	mail-dir-summary.jl, lisp-mode.jl, latin-1.jl, keymap.jl,
+	ispell.jl, info.jl, html-decode.jl, help.jl, find-url.jl,
+	fill.jl, edit.jl, dired.jl, diff.jl, dict.jl, cvs.jl,
+	compile.jl, c-mode.jl, buffers.jl, buffer-summary.jl,
+	bookmarks.jl: convert from old `?X` character syntax to `#\X`
+
 2015-06-27  John Harper  <jsh@unfactored.org>
 
 	* lisp-mode.jl: set indentation style for define-macro

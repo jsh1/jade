@@ -78,8 +78,8 @@ Local bindings for this mode are,\n
   (let
       ((pending-ops (summary-get-pending-ops item)))
     (format (current-buffer) "%c%c %s\t%s "
-	    (if (memq 'delete pending-ops) ?D ?\ )
-	    (if (memq 'save pending-ops) ?S ?\ )
+	    (if (memq 'delete pending-ops) #\D #\space)
+	    (if (memq 'save pending-ops) #\S #\space)
 	    (if (buffer-modified-p item)
 		(if (buffer-read-only-p item) "%*" "**")
 	      (if (buffer-read-only-p item) "%%" "  "))

@@ -307,11 +307,11 @@ normal-mode, the hook after-read-file-hook is dispatched."
 	(setq p (start-of-buffer)))
       (when (re-search-forward "^(.*)Local Variables:(.*)$" p nil t)
 	(let
-	    ((re (concat ?^ (quote-regexp (copy-area (match-start 1)
+	    ((re (concat #\^ (quote-regexp (copy-area (match-start 1)
 						     (match-end 1)))
 			 "([^:\n]+):[\t ]*(.*)"
 			 (quote-regexp (copy-area (match-start 2)
-						  (match-end 2))) ?$))
+						  (match-end 2))) #\$))
 	     name value finished)
 	  (setq p (match-end))
 	  (while (and (not finished) (re-search-forward re p))
@@ -355,7 +355,7 @@ killed and one editing NAME is found."
 
 (defun make-backup-file-name (file-name)
   "Returns the name of the file used to store the backup of FILE-NAME."
-  (concat file-name ?~))
+  (concat file-name #\~))
 
 (defun backup-file (name)
   "If necessary make a backup of NAME. The file called NAME may or
@@ -418,7 +418,7 @@ prefix-argument when the function is called interactively)."
 	  (last-save-time (current-time))
 	  (setq buffer-file-modtime (file-modtime name))
 	  (delete-auto-save-file)
-	  (message (concat "Wrote file `" name ?\') t))))))
+	  (message (concat "Wrote file `" name #\') t))))))
 
 (defun save-file-as (name #!optional buffer)
   "Saves the buffer BUFFER, or the current one, to the file NAME,
@@ -446,7 +446,7 @@ to reflect NAME. Also sets the modification count to zero."
       (setq buffer-file-modtime (file-modtime name)
 	    *default-directory* (file-name-directory name))
       (delete-auto-save-file)
-      (message (concat "Wrote file `" name ?\') t))))
+      (message (concat "Wrote file `" name #\') t))))
 
 (defun insert-file (name #!optional buffer)
   "Inserts the file NAME into the buffer BUFFER (or the current one) before
@@ -560,7 +560,7 @@ the buffer is (now) in sync with the copy on disk."
 (defun make-auto-save-name (name)
   "Returns a string naming the file used to hold the auto-save'd file for
 file NAME."
-  (concat (file-name-directory name) ?# (file-name-nondirectory name) ?#))
+  (concat (file-name-directory name) #\# (file-name-nondirectory name) #\#))
 
 (defun auto-save-function (buffer)
   "Automatically called when BUFFER is due to be automatically saved.

@@ -155,7 +155,7 @@ results have been received.")
   (when ispell-process
     (ispell-save-dictionary)
     (if (eq? (process-connection-type ispell-process) 'pty)
-	(write ispell-process ?\^D)
+	(write ispell-process #\EOT)
       ;; Not so successful..
       (interrupt-process ispell-process))
     (let
@@ -209,12 +209,12 @@ results have been received.")
 	(progn
 	  (format ispell-process "%s\n" word)
 	  (setq response (ispell-read-line))
-	  (if (eq? (aref response 0) ?\n)
+	  (if (eq? (aref response 0) #\newline)
 	      ;; This can happen when multi-language text is checked
 	      (setq response "*\n\n")
 	    ;; Gobble following blank line
 	    (setq tem (ispell-read-line))
-	    (unless (eq? (aref tem 0) ?\n)
+	    (unless (eq? (aref tem 0) #\newline)
 	      (error "Non-null trailing line from Ispell"))))
       (ispell-mutex nil))
     response))
@@ -324,7 +324,7 @@ for. When called interactively, spell-check the current block."
 		    (when (cdr command)
 		      (write ispell-process (cdr command))
 		      (write ispell-process word)
-		      (write ispell-process ?\n))
+		      (write ispell-process #\newline))
 		    (setq done t))
 		   ((eq? (car command) 'replace)
 		    (setq done t)
@@ -372,13 +372,13 @@ for. When called interactively, spell-check the current block."
 	   (quoted (quote-regexp phrase)))
 	(setq point (match-end))
 	(cond
-	 ((string-match (concat quoted ?$) out)
+	 ((string-match (concat quoted #\$) out)
 	  (setq out (substring out 0 (match-start))))
-	 ((string-match (concat ?^ quoted) out)
+	 ((string-match (concat #\^ quoted) out)
 	  (setq out (substring out (match-end))))
 	 (t
 	  ;; not a prefix or a suffix, just copy to the output
-	  (setq out (concat out ?- phrase))))))
+	  (setq out (concat out #\- phrase))))))
     (when (string-looking-at "\\+([^+-]+)" word point)
       (setq out (concat out (substring word (match-start 1) (match-end 1)))))
     out))
@@ -389,15 +389,15 @@ for. When called interactively, spell-check the current block."
 
 (defun ispell-accept-and-remember ()
   (interactive)
-  (throw 'ispell-exit '(accept . ?@)))
+  (throw 'ispell-exit '(accept . #\@)))
 
 (defun ispell-accept-and-always-remember ()
   (interactive)
-  (throw 'ispell-exit '(accept . ?*)))
+  (throw 'ispell-exit '(accept . #\*)))
 
 (defun ispell-accept-and-always-remember-uncap ()
   (interactive)
-  (throw 'ispell-exit '(accept . ?&)))
+  (throw 'ispell-exit '(accept . #\&)))
 
 (defun ispell-replace (arg)
   (interactive "P")

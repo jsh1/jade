@@ -113,7 +113,7 @@ binding, or nil if there was no prefix."
 		 (when (list? this-list)
 		   ;; Another keymap-list, add it to the list of those waiting
 		   (let* ((new-str (concat km-prefix-string
-					   (if km-prefix-string ?\ )
+					   (if km-prefix-string #\space)
 					   event-str))
 			  (new-list (mapcar (lambda (km)
 					      (cons km new-str)) this-list)))
@@ -243,7 +243,7 @@ would invoke."
        names event command done)
     (while (not done)
       (setq event (read-event (concat "Enter a key sequence: " names))
-	    names (concat names (if names ?\ ) (event-name event)))
+	    names (concat names (if names #\space) (event-name event)))
       (next-keymap-path path)
       (setq command (lookup-event-binding event))
       (if command

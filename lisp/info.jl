@@ -154,7 +154,7 @@ is split.")
       (when (and p (looking-at "Indirect:" p nil t))
 	;; Parse the indirect list
 	(setq p (forward-line 1 p))
-	(while (and (/= (get-char p) ?\^_)
+	(while (and (/= (get-char p) #\US)	;ASCII 037
 		    (looking-at "^(.*): ([0-9]+)$" p nil t))
 	  (setq info-indirect-list
 		(cons (cons (read (cons (current-buffer) (match-start 2)))
@@ -167,7 +167,7 @@ is split.")
       (when (setq p (re-search-forward "^Tag table: *$" p nil t))
 	;; Copy this into the tags buffer
 	(let
-	    ((end (char-search-forward ?\^_ p)))
+	    ((end (char-search-forward #\US p)))
 	  (unless end
 	    (setq end (end-of-buffer)))
 	  (clear-buffer info-tags-buffer)
@@ -206,7 +206,7 @@ is split.")
 	  info-file-name "dir"
 	  info-node-name "Top"
 	  info-has-tags-p nil)
-    (goto (or (char-search-forward ?\^_ (start-of-buffer))
+    (goto (or (char-search-forward #\US (start-of-buffer))
 		   (start-of-buffer)))
     t))
 
@@ -285,7 +285,7 @@ is split.")
 	      (goto (start-of-line (match-start)))))
 	(if (re-search-forward (concat "^Node: "
 				      (quote-regexp nodename)
-				      ?\^?)
+				      #\delete)
 			      (pos 0 0) info-tags-buffer t)
 	    (let
 		((lst info-indirect-list)
@@ -318,17 +318,17 @@ is split.")
 	  (signal 'info-error (list "Can't find node" nodename)))))
     ;; Now cursor should be at beginning of node text. Make sure
     (let
-	((p (char-search-backward ?\^_)))
+	((p (char-search-backward #\US)))
       (when (and p (looking-at (concat "^File:.*Node: "
 					 (quote-regexp nodename))
 				 (forward-line 1 p)))
 	(goto (match-start)))
-      (setq p (or (char-search-forward ?\^_ (forward-char))
+      (setq p (or (char-search-forward #\US (forward-char))
 		    (end-of-buffer nil t)))
       (restrict-buffer (cursor-pos) p)
       (info-highlight-buffer))
     (setq info-node-name nodename)
-    (buffer-status-id (concat "Info: " ?( info-file-name ?) info-node-name))
+    (buffer-status-id (concat "Info: " #\( info-file-name #\) info-node-name))
     t))
 
 ;; Make some extents
@@ -444,7 +444,7 @@ local bindings are:\n
 (defun info-visit-file (file)
   (interactive "fInfo file to display:")
   (info-remember)
-  (info-find-node (concat ?\( file ?\) "Top")))
+  (info-find-node (concat #\( file #\) "Top")))
 
 ;; Returns the node name of the menu item on the current line
 (defun info-parse-menu-line ()
@@ -474,7 +474,7 @@ local bindings are:\n
 
 ;; Goto the ITEM-INDEX'th menu item.
 (defun info-menu-nth (item-index)
-  (interactive (list (- (aref (current-event-string) 0) ?0)))
+  (interactive (list (- (aref (current-event-string) 0) #\0)))
   (unless (info-goto-menu-start)
     (signal 'info-error (list "Can't find menu")))
   (while (and (> item-index 0) (re-search-forward "^\\* .*:"))
@@ -502,7 +502,7 @@ local bindings are:\n
 	(setq menu-name (info-prompt info-list-menu-items
 				     "Menu item:" menu-name)))))
   (when menu-name
-    (if (re-search-forward (concat "^\\* " (quote-regexp menu-name) ?:)
+    (if (re-search-forward (concat "^\\* " (quote-regexp menu-name) #\:)
 			   nil nil t)
 	(progn
 	  (goto (match-start))
@@ -523,7 +523,7 @@ local bindings are:\n
 	(let
 	    ((hist (car info-history)))
 	  (setq info-history (cdr info-history))
-	  (when (info-find-node (concat ?( (car hist) ?) (nth 1 hist)))
+	  (when (info-find-node (concat #\( (car hist) #\) (nth 1 hist)))
 	    (goto (nth 2 hist))
 	    t)))
     (message "No more history")
@@ -604,14 +604,14 @@ local bindings are:\n
 	      (let
 		  ((bit (copy-area p (re-search-forward "[\t ]*$" p))))
 		(unless (equal? bit "")
-		  (setq ref-title (cons ?\  (cons bit ref-title)))))
+		  (setq ref-title (cons #\space (cons bit ref-title)))))
 	      (setq p (re-search-forward "[^\n\t ]" (match-end)))
 	      (unless p
 		(signal 'info-error '("Malformed reference"))))
 	    (setq ref-title (apply concat (nreverse (cons (copy-area p end)
 							  ref-title)))
 		  p (forward-char 1 end))
-	    (if (= (get-char p) ?:)
+	    (if (= (get-char p) #\:)
 		(setq ref-node ref-title)
 	      (when (looking-at " +" p)
 		(setq p (match-end)))
@@ -622,7 +622,7 @@ local bindings are:\n
 			  ((bit (copy-area p (re-search-forward "[\t ]*$"
 								 p))))
 			(unless (equal? bit "")
-			  (setq ref-node (cons ?\  (cons bit ref-node))))
+			  (setq ref-node (cons #\space (cons bit ref-node))))
 			(setq p (re-search-forward "[^\n\t ]" (match-end))))
 		      (unless p
 			(signal 'info-error '("Malformed reference"))))
@@ -648,7 +648,7 @@ local bindings are:\n
 
 ;;;###autoload
 (defun info-visit-node (info-file node-name #!optional menu-key)
-  (info (concat ?\( info-file ?\) node-name))
+  (info (concat #\( info-file #\) node-name))
   (when menu-key
     (info-menu menu-key)))
 
@@ -677,7 +677,7 @@ local bindings are:\n
 (defun info-describe-variable (variable)
   (interactive
    (list (prompt-for-string "Describe variable:" (symbol-at-point))))
-  (when function
+  (when variable
     (info-index info-documentation-files info-variable-index-node variable)
     (when (re-search-forward (format nil "^ - .* %s" (quote-regexp variable)))
       (goto (match-start)))))

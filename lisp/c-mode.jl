@@ -254,7 +254,7 @@ Commands defined by this mode are:\n
       (setq exp-ind (char-to-glyph-pos exp-pos))
 
       (unless (or (equal? (indent-pos exp-pos) exp-ind)
-		  (memq (get-char (forward-char -1 exp-pos)) '(?\( ?\{ ?\[)))
+		  (memq (get-char (forward-char -1 exp-pos)) '(#\( #\{ #\[)))
 	(when (and (looking-at "^[\t ]*([^][(){}\"'a-zA-Z0-9_\t ]+)"
 			       (start-of-line exp-pos))
 		   (< (match-start 1) exp-pos))
@@ -264,7 +264,7 @@ Commands defined by this mode are:\n
       ;; First look at previous line and see how it affects the one we're
       ;; trying to indent
       (cond
-       ((= (get-char exp-pos) ?\})
+       ((= (get-char exp-pos) #\})
 	;; A closing brace
 	(unless (zero? (pos-col exp-pos))
 	  (setq exp-ind (left-char (+ c-body-indent c-brace-indent) exp-ind))))
@@ -332,12 +332,12 @@ Commands defined by this mode are:\n
 	  (setq line-pos (match-end)))
 
 	(cond
-	 ((= (get-char line-pos) ?\{)
+	 ((= (get-char line-pos) #\{)
 	  ;; An opening brace at the start of the line, indent back by
 	  ;; c-brace-indent
 	  (setq exp-ind (pos (max 0 (+ (pos-col exp-ind) c-brace-indent)))))
 
-	 ((= (get-char line-pos) ?\})
+	 ((= (get-char line-pos) #\})
 	  ;; A closing brace, indent outwards by c-brace-indent
 	  (setq exp-ind (left-char c-body-indent exp-ind)))
 
@@ -384,23 +384,23 @@ Commands defined by this mode are:\n
       (let
 	  ((c (get-char p)))
 	(cond
-	 ((member c '(?\" ?\'))
+	 ((member c '(#\" #\'))
 	  ;; move over string/character
 	  (if (setq p (char-search-forward c (forward-char 1 p)))
-	      (while (= (get-char (forward-char -1 p)) ?\\ )
+	      (while (= (get-char (forward-char -1 p)) #\\)
 		(unless (setq p (char-search-forward c (forward-char 1 p)))
 		  (error "String doesn't end!")))
 	    (error "String doesn't end!"))
 	  (setq p (forward-char 1 p)))
-	 ((member c '(?\( ?\[ ?\{))
+	 ((member c '(#\( #\[ #\{))
 	  ;; move over brackets
 	  (unless (setq p (find-matching-bracket p))
 	    (error "Expression doesn't end!"))
 	  (setq p (forward-char 1 p)))
-	 ((member c '(?, ?\; ?:))
+	 ((member c '(#\, #\; #\:))
 	  (setq p (forward-char 1 p)
 		number (1+ number)))
-	 ((member c '(?\) ?\] ?\}))
+	 ((member c '(#\) #\] #\}))
 	  (error "End of containing expression"))
 	 (t
 	  ;; a symbol?
@@ -443,20 +443,20 @@ Commands defined by this mode are:\n
 	(let
 	    ((c (get-char p)))
 	  (cond
-	   ((member c '(?\) ?\] ?\}))
-	    (when (or (/= c ?\}) (not no-blocks))
+	   ((member c '(#\) #\] #\}))
+	    (when (or (/= c #\}) (not no-blocks))
 	      (unless (setq p (find-matching-bracket p))
 		(error "Brackets don't match"))))
-	   ((member c '(?\" ?\'))
+	   ((member c '(#\" #\'))
 	    (if (setq p (char-search-backward c (forward-char -1 p)))
-		(while (= (get-char (forward-char -1 p)) ?\\ )
+		(while (= (get-char (forward-char -1 p)) #\\)
 		  (unless (setq p (char-search-backward c (forward-char -1 p)))
 		    (error "String doesn't start!")))
 	      (error "String doesn't start!")))
-	   ((member c '(?\; ?: ?,))
+	   ((member c '(#\; #\: #\,))
 	    ;; loop again
 	    (setq number (1+ number)))
-	   ((member c '(?\( ?\[ ?\{))
+	   ((member c '(#\( #\[ #\{))
 	    (error "Start of containing expression"))
 	   (t
 	    ;; a symbol?
@@ -471,8 +471,8 @@ Commands defined by this mode are:\n
 	      (setq number (1+ number)))))
 	  (when (member (get-char (forward-char -1 p))
 			(if (not c-objective-c)
-			    '(?! ?~ ?* ?& ?+ ?-)
-			  '(?! ?~ ?* ?& ?+ ?- ?^ ?@)))
+			    '(#\! #\~ #\* #\& #\+ #\-)
+			  '(#\! #\~ #\* #\& #\+ #\- #\^ #\@)))
 	    ;; unary operator, skip over it
 	    (setq p (forward-char -1 p))))
 	(setq number (1- number))))

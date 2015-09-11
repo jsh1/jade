@@ -244,19 +244,19 @@ last in the buffer the current command is copied to the end of the buffer."
 
 (defun shell-send-intr ()
   (interactive)
-  (write shell-process ?\^C))
+  (write shell-process #\ETX))		;^C
 
 (defun shell-send-susp ()
   (interactive)
-  (write shell-process ?\^Z))
+  (write shell-process #\SUB))		;^Z
 
 (defun shell-send-eof ()
   (interactive)
-  (write shell-process ?\^D))
+  (write shell-process #\EOT))		;^D
 
 (defun shell-send-quit ()
   (interactive)
-  (write shell-process ?\^\ ))
+  (write shell-process #\FS))		;^SPC
 
 (defun shell-next-prompt ()
   (interactive)

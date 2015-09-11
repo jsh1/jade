@@ -129,7 +129,7 @@ for a compilation)."
     (goto-buffer (compile-setup-buffer directory))
     (setq compile-proc (make-process (cons (current-buffer) t)
 				     compile-callback))
-    (let ((shell-cmd (concat command ?\n)))
+    (let ((shell-cmd (concat command #\newline)))
       (insert shell-cmd)
       (when (start-process compile-proc compile-shell "-c" shell-cmd)
 	(setq compile-last-type type-str
@@ -215,7 +215,7 @@ buffer in a form that `goto-next-error' understands."
       (let* ((scanpos (start-of-buffer))
 	     (number 0)
 	     (stream (cons buffer t)))
-	(write stream ?\n)
+	(write stream #\newline)
 	(while (setq scanpos (re-search-forward grep-buffer-regexp scanpos))
 	  (format stream "%s:%d:%s\n" (or (buffer-file-name)
 					  (buffer-name)) (pos-line scanpos)

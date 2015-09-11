@@ -107,7 +107,7 @@ move back to the previously found tag."
       (while (setq start (search-forward name (or start (pos 0 0))
 					 tags-buffer tags-fold-case))
 	(if (or (zero? (pos-line start))
-		(= ?\f (get-char (forward-char -1 (start-of-line start)
+		(= #\FF (get-char (forward-char -1 (start-of-line start)
 					       tags-buffer) tags-buffer)))
 	    ;; We're looking at the filename, not a tag, continue searching
 	    (setq start (start-of-line (forward-line 1 start)))
@@ -193,7 +193,7 @@ move back to the previously found tag."
 	(progn
 	  ;; Try to make current file relative to tags table location
 	  (when (string-match
-		 (concat ?^ (quote-regexp
+		 (concat #\^ (quote-regexp
 			     (file-name-as-directory
 			      (canonical-file-name *default-directory*)))
 			 "(.*)$")

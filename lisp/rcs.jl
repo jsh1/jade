@@ -232,7 +232,7 @@ description entered. COUNT may be negative."
     ;; them into the minor mode name.
     (let
 	((inf (concat "RCS"
-		      (if (rcs-buffer-locked-p) ?: ?-)
+		      (if (rcs-buffer-locked-p) #\: #\-)
 		      (or (rcs-get-version) "?"))))
       (setq rcs-mode (concat " " inf)
 	    toggle-read-only-function rcs-toggle-read-only)
@@ -339,7 +339,7 @@ naming the revision, or nil, in which case it will be prompted for."
     (setq revision (prompt-for-string "Revision to view:")))
   (when revision
     (let*
-	((name (concat (buffer-name) ?~ revision ?~))
+	((name (concat (buffer-name) #\~ revision #\~))
 	 (new-buffer (open-buffer name)))
       (when (check-changes new-buffer)
 	(clear-buffer new-buffer)

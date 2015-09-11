@@ -35,7 +35,7 @@ first group of non-empty lines is displayed."
 		       (current-buffer))))
   (let
       ((output (open-buffer (concat "*summary-of-"
-				    (buffer-name buffer) ?*)))
+				    (buffer-name buffer) #\*)))
        (point (start-of-buffer buffer t)))
     (with-buffer buffer
       (save-restriction

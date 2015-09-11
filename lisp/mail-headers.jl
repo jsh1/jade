@@ -61,31 +61,31 @@
     (setq p (match-end)))
   (when (setq char (get-char p))
     (cond
-     ((member char '(?\  ?\t ?\n))
+     ((member char '(#\space #\tab #\newline))
       ;; Whitespace
       (looking-at "[\t\n ]+" p)
       (cons p (match-end)))
-     ((= char ?\")
+     ((= char #\")
       ;; A string
       (unless (re-search-forward "[^\\]\"" p)
 	(error "Unterminated string in list, %s" p))
       (cons p (match-end)))
-     ((= char ?\()
+     ((= char #\()
       ;; A comment
       (unless (re-search-forward "[^\\]\\)" p)
 	(error "Unterminated comment in list, %s" p))
       (cons p (match-end)))
-     ((= char ?\<)
+     ((= char #\<)
       ;; An address spec
       (unless (re-search-forward "[^\\]>" p)
 	(error "Unterminated address in list, %s" p))
       (cons p (match-end)))
-     ((= char ?,)
+     ((= char #\,)
       ;; A comma
       nil)
      (t
       ;; Some sort of atom
-      (and (looking-at (concat ?\( mail-atom-re "|[][.:;@]|[\t\n ]+\)+") p)
+      (and (looking-at (concat #\( mail-atom-re "|[][.:;@]|[\t\n ]+\)+") p)
 	   (cons p (match-end))))))))
 
 ;; Parse one list of atoms, ended by a comma or EOF. Returns (STRING . END),
@@ -128,22 +128,22 @@
 
 (defvar mail-decode-header-map
   (let
-      ((map (make-string (1+ ?_)))
+      ((map (make-string (1+ #\_)))
        (i 0))
-    (while (< i ?_)
+    (while (< i #\_)
       (aset map i i)
       (setq i (1+ i)))
-    (aset map ?_ ? )
+    (aset map #\_ #\space)
     map))
 
 (defvar mail-encode-header-map
   (let
-      ((map (make-string (1+ ? )))
+      ((map (make-string (1+ #\space)))
        (i 0))
-    (while (< i ? )
+    (while (< i #\space)
       (aset map i i)
       (setq i (1+ i)))
-    (aset map ?  ?_)
+    (aset map #\space #\_)
     map))
 
 (defun mail-decode-header (string)
@@ -279,7 +279,7 @@
     ;; Escape any internal doublequotes
     (while (string-match "^(.*[^\\])\"(.*)$" string)
       (setq string (expand-last-match "\\1\\\"\\2")))
-    (setq string (concat ?" string ?")))
+    (setq string (concat #\" string #\")))
   (mail-encode-header-string string))
 
 ;; Return a string constructed from address ADDR and name NAME, according

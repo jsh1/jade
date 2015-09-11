@@ -106,8 +106,8 @@ bindings is:\n
       ((symlink (and (file-symlink? item)
 		     (or (file-exists? item) 'broken))))
     (format (current-buffer) "%c%c %s %2d %8d  "
-	    (if (memq 'delete (summary-get-pending-ops item)) ?D ? )
-	    (if (summary-item-marked-p item) ?* ? )
+	    (if (memq 'delete (summary-get-pending-ops item)) #\D #\space)
+	    (if (summary-item-marked-p item) #\* #\space)
 	    (if symlink "lrwxrwxrwx" (file-modes-as-string item))
 	    (if (eq? symlink 'broken) 1 (file-nlinks item))
 	    (if (eq? symlink 'broken) 0 (file-size item)))

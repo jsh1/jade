@@ -73,7 +73,7 @@
       (insert command)
       (insert "\n")
       (write shell-process command)
-      (write shell-process ?\n))))
+      (write shell-process #\newline))))
 
 (defun tex-kill-job ()
   (interactive)

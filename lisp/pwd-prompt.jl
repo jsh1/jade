@@ -24,7 +24,7 @@
 (defvar pw-glyph-table (make-glyph-table)
   "Glyph table in which every single character is obscured.")
 
-(defvar pw-printed-char ?*
+(defvar pw-printed-char #\*
   "The character used in the pw-glyph-table.")
 
 ;; Initialise the glyph table

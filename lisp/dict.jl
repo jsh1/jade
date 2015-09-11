@@ -88,5 +88,5 @@ strategy."
 
 (defun dict-follow-xref ()
   (interactive)
-  (when (looking-at "{([a-zA-Z-]+)}" (char-search-backward ?\{))
+  (when (looking-at "{([a-zA-Z-]+)}" (char-search-backward #\{))
     (dict-lookup (expand-last-match "\\1"))))

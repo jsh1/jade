@@ -123,22 +123,22 @@ to strings in the mode line.")
 
 
 ;; Generic expression configuration
-(defvar generic-exp-single-delims '(?\")
+(defvar generic-exp-single-delims '(#\")
   "A list of characters that delimit compound expressions in generic
 expressions.")
 (make-variable-buffer-local 'generic-exp-single-delims)
 
-(defvar generic-exp-open-delims '(?\( ?\[ ?\{)
+(defvar generic-exp-open-delims '(#\( #\[ #\{)
   "A list of characters that open compound expressions in generic
 expressions. Can only be from the list `\(', `\[', `\{', `\<' and `\`'.")
 (make-variable-buffer-local 'generic-exp-open-delims)
 
-(defvar generic-exp-close-delims '(?\) ?\] ?\})
+(defvar generic-exp-close-delims '(#\) #\] #\})
   "A list of characters that close compound expressions in generic
 expressions. Can only be from the list `\)', `\]', `\}', `\>' and `\''.")
 (make-variable-buffer-local 'generic-exp-close-delims)
 
-(defvar generic-exp-escape-char '?\\
+(defvar generic-exp-escape-char '#\\
   "The character that escapes the next character in a generic expression.")
 (make-variable-buffer-local 'generic-exp-escape-char)
 

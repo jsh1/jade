@@ -155,7 +155,7 @@
 	      (insert "\n\t")
 	    (insert " "))
 	  (format (current-buffer) "%s=" (car param))
-	  (if (string-match (concat ?^ mime-token-re ?$) (cdr param))
+	  (if (string-match (concat #\^ mime-token-re #\$) (cdr param))
 	      (insert (cdr param))
 	    (format (current-buffer) "\"%s\"" (cdr param))))
 	params))
@@ -184,7 +184,7 @@
 (defun mime-encode-make-boundary ()
   (let
       ((i 10)
-       (chars (list ?_)))
+       (chars (list #\_)))
     (while (> i 0)
       (setq chars (cons (aref mime-encode-boundary-alphabet
 			      (random (length mime-encode-boundary-alphabet)))

@@ -46,7 +46,7 @@
 	    (write output (aref mime-base64-alphabet (logand reg #o77)))
 	    (setq col (+ col 4))
 	    (when (>= col 76)
-	      (write output ?\n)
+	      (write output #\newline)
 	      (setq col 0))))
 	 (reg2
 	  ;; 16 bits read, shift in 2 zeros
@@ -55,20 +55,20 @@
 	  (write output (aref mime-base64-alphabet
 			      (logand (lsh reg -6) #o77)))
 	  (write output (aref mime-base64-alphabet (logand reg #o77)))
-	  (write output ?=)
+	  (write output #\=)
 	  (throw 'done t))
 	 (reg1
 	  ;; eight bits read, shift in 4 zeros
 	  (setq reg (lsh reg1 4))
 	  (write output (aref mime-base64-alphabet (lsh reg -6)))
 	  (write output (aref mime-base64-alphabet (logand reg #o77)))
-	  (write output ?=)
-	  (write output ?=)
+	  (write output #\=)
+	  (write output #\=)
 	  (throw 'done t))
 	 (t
 	  ;; 0 bits read
 	  (throw 'done t)))))
-    (write output ?\n)))
+    (write output #\newline)))
 
 ;;;###autoload
 (defun mime-decode-base64 (input output)
@@ -78,15 +78,15 @@
        char)
     (while (setq char (read-char input))
       (cond
-       ((and (>= char ?A) (<= char ?Z))
-	(setq char (- char ?A)))
-       ((and (>= char ?a) (<= char ?z))
-	(setq char (+ 26 (- char ?a))))
-       ((and (>= char ?0) (<= char ?9))
-	(setq char (+ 52 (- char ?0))))
-       ((= char ?+)
+       ((and (>= char #\A) (<= char #\Z))
+	(setq char (- char #\A)))
+       ((and (>= char #\a) (<= char #\z))
+	(setq char (+ 26 (- char #\a))))
+       ((and (>= char #\0) (<= char #\9))
+	(setq char (+ 52 (- char #\0))))
+       ((= char #\+)
 	(setq char 62))
-       ((= char ?/)
+       ((= char #\/)
 	(setq char 63))
        (t
 	(setq char nil)))

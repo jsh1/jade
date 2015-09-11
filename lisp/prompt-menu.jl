@@ -53,23 +53,23 @@
   (catch 'return
     (mapc (lambda (x)
 	    (when (string-match
-		   (concat ?^ (quote-regexp (nth 1 x)) ?$) item nil t)
+		   (concat #\^ (quote-regexp (nth 1 x)) #\$) item nil t)
 	      (throw 'return x))) tree)
     nil))
 
 (defun prompt-menu-prompt (tree title)
   (let*
       ((lst (mapcar (lambda (x) (car (cdr x))) tree))
-       (choice (prompt-from-list lst (concat title ?:))))
+       (choice (prompt-from-list lst (concat title #\:))))
     (while choice
       (setq choice (or (prompt-menu-find tree choice)
 		       (error "Can't find menu")))
       (when (eq? (car choice) 'sub)
 	(setq choice (prompt-menu-prompt (nthcdr 2 choice)
-					 (concat title ?/ (nth 1 choice)))))
+					 (concat title #\/ (nth 1 choice)))))
       (when choice
 	(throw 'prompt-menu-top choice))
-      (setq choice (prompt-from-list lst (concat title ?:))))))
+      (setq choice (prompt-from-list lst (concat title #\:))))))
 
 (defun popup-menu-from-spec (spec)
   (let*

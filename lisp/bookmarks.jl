@@ -80,7 +80,7 @@
 			(cons 'print
 			      (lambda (x)
 				(format (current-buffer) "%c %s "
-					(if (memq 'delete (summary-get-pending-ops x)) ?D ? )
+					(if (memq 'delete (summary-get-pending-ops x)) #\D #\space)
 					(car x))
 				(indent-to 24)
 				(format (current-buffer) "Line %d of %s"

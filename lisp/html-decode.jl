@@ -168,7 +168,7 @@ of the document, currently only `title' and `base' keys are defined."
        (html-decode-source source)
        end tag)
     (while (< html-decode-point (end-of-buffer source))
-      (setq end (or (char-search-forward ?< html-decode-point source)
+      (setq end (or (char-search-forward #\< html-decode-point source)
 		    (end-of-buffer source)))
       (when (> end html-decode-point)
 	;; Found the next tag, output everything from POINT to END
@@ -195,10 +195,10 @@ of the document, currently only `title' and `base' keys are defined."
 
 ;; Low-level parsing
 
-(defvar html-decode-char-name-alist '(("lt" . ?<)
-				      ("gt" . ?>)
-				      ("amp" . ?&)
-				      ("quot" . ?\")))
+(defvar html-decode-char-name-alist '(("lt" . #\<)
+				      ("gt" . #\>)
+				      ("amp" . #\&)
+				      ("quot" . #\")))
 
 ;; Given some body text STRING, expand any quoted characters
 (defun html-decode-string (string)
@@ -210,9 +210,9 @@ of the document, currently only `title' and `base' keys are defined."
 	    end (match-end))
       (let
 	  (char)
-	(if (= (aref string (1+ start)) ?#)
+	(if (= (aref string (1+ start)) #\#)
 	    ;; Ascii code
-	    (if (= (aref string (+ start 2)) ?x)
+	    (if (= (aref string (+ start 2)) #\x)
 		;; hex
 		(setq char (string->number (expand-last-match "\\2") 16))
 	      ;; decimal
@@ -292,7 +292,7 @@ of the document, currently only `title' and `base' keys are defined."
   (and (looking-at "[ \t\n\f\r] +" start source)
        (setq start (min (match-end) end)))
   (set var (if (symbol-value var)
-	       (concat (symbol-value var) ?\  (copy-area start end source))
+	       (concat (symbol-value var) #\space (copy-area start end source))
 	     (copy-area start end source))))
 
 ;; Returns (END NAME ENTERINGP PARAMS...) or nil
@@ -315,8 +315,8 @@ of the document, currently only `title' and `base' keys are defined."
 	    (setq tem (intern (translate-string token downcase-table)))))
 	(setq point (match-end))
 	(unless (equal? (match-start 2) (match-end 2))
-	  (if (or (= (get-char point source) ?\")
-		  (= (get-char point source) ?\'))
+	  (if (or (= (get-char point source) #\")
+		  (= (get-char point source) #\'))
 	      (let
 		  ((end (or (char-search-forward (get-char point source)
 						 (forward-char 1 point source)
@@ -347,7 +347,7 @@ of the document, currently only `title' and `base' keys are defined."
       (setq point (forward-char -1 (match-end) source)))
      ((looking-at "<!" point source)
       ;; some other type of SGML declaration, just scan for '>'
-      (setq point (or (char-search-forward ?> point source)
+      (setq point (or (char-search-forward #\> point source)
 		      (error "Unterminated SGML decl: %s, %s" source point))))
      (t
       (error "Malformed tag: %s, %s" point source)))

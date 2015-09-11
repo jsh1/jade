@@ -85,12 +85,12 @@ Major mode for editing Perl source code. Local keybindings are:\n
       ;; Start of the containing expression
       (when (re-search-backward "[\{\(\[]" line-pos)
 	(setq exp-pos (match-start))))
-    (if (= (get-char exp-pos) ?\{)
+    (if (= (get-char exp-pos) #\{)
 	(setq exp-ind (indent-pos exp-pos))
       (setq exp-ind (char-to-glyph-pos exp-pos)))
 
     (unless (or (equal? (indent-pos exp-pos) exp-ind)
-		(memq (get-char (forward-char -1 exp-pos)) '(?\( ?\{ ?\[)))
+		(memq (get-char (forward-char -1 exp-pos)) '(#\( #\{ #\[)))
       (when (and (looking-at "^[\t ]*([^][(){}$@\"'a-zA-Z0-9_\t ]+)"
 			     (start-of-line exp-pos))
 		 (< (match-start 1) exp-pos))
@@ -100,7 +100,7 @@ Major mode for editing Perl source code. Local keybindings are:\n
     ;; First look at previous line and see how it affects the one we're
     ;; trying to indent
     (cond
-     ((= (get-char exp-pos) ?\})
+     ((= (get-char exp-pos) #\})
       ;; A closing brace
       (unless (zero? (pos-col exp-pos))
 	(setq exp-ind (left-char (+ perl-body-indent
@@ -134,12 +134,12 @@ Major mode for editing Perl source code. Local keybindings are:\n
 	(setq line-pos (match-end)))
 
       (cond
-       ((= (get-char line-pos) ?\{)
+       ((= (get-char line-pos) #\{)
 	;; An opening brace at the start of the line, indent back by
 	;; perl-brace-indent
 	(setq exp-ind (pos (max 0 (+ (pos-col exp-ind) perl-brace-indent)))))
 
-       ((= (get-char line-pos) ?\})
+       ((= (get-char line-pos) #\})
 	;; A closing brace, indent outwards by perl-brace-indent
 	(setq exp-ind (left-char perl-body-indent exp-ind)))
 

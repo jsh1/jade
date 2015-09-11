@@ -177,7 +177,7 @@ and POS. When called interactively, POS is bound to the cursor position."
 				      (glyph-to-char-pos
 				       (pos goal (pos-line line-start))))))
 	  (when (and pos (/= (pos-col p) 0))
-	    (when (= (get-char p) ?\ )
+	    (when (= (get-char p) #\space)
 	      (delete-area p (forward-char 1 p)))
 	    (insert "\n" p))
 	  ;; Move on to the next line (reinserting the fill prefix)
@@ -201,7 +201,7 @@ and POS. When called interactively, POS is bound to the cursor position."
 	      ;; fill some of the gap
 	      (progn
 		(when (and (< move-end (mark-pos end))
-			   (= (get-char move-end) ?\ ))
+			   (= (get-char move-end) #\space))
 		  (delete-area move-end (forward-char 1 move-end)))
 		(insert (cut-area move-start move-end) (insert " " line-end))
 		(when (empty-line-p move-start)
@@ -275,7 +275,7 @@ the next line is started."
 				   (pos (1- fill-column)
 					(pos-line (cursor-pos)))))))
       (when (and p (/= (pos-col p) 0))
-	(when (= (get-char p) ?\ )
+	(when (= (get-char p) #\space)
 	  (delete-area p (forward-char 1 p)))
 	(insert "\n" p)
 	(if mode-indent-line
@@ -325,7 +325,7 @@ prefix argument."
       ((start (paragraph-edges count))
        (end (make-mark (forward-char -1 (cdr start)))))
     (setq start (car start))
-    (while (and (setq start (char-search-forward ?\n start))
+    (while (and (setq start (char-search-forward #\newline start))
 		(< start (mark-pos end)))
       (delete-area start (forward-char 1 start))
       (insert " " start))))

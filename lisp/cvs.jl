@@ -47,12 +47,12 @@ instead of the standard `cvs update' single characters.")
 
 ;; Variables
 
-(defvar cvs-update-char-map '((?U . updated)
-			      (?A . added)
-			      (?R . removed)
-			      (?M . modified)
-			      (?C . conflict)
-			      (?? . unknown))
+(defvar cvs-update-char-map '((#\U . updated)
+			      (#\A . added)
+			      (#\R . removed)
+			      (#\M . modified)
+			      (#\C . conflict)
+			      (#\? . unknown))
   "Alist mapping `cvs update' status characters to cvs-mode status tags.")
 
 (defvar cvs-default-directory
@@ -344,7 +344,7 @@ buffer will be activated."
 (defun cvs-callback-with-message (title function)
   "Arrange for FUNCTION to be called with its sole argument a piece of text
 entered in a new buffer, under the heading TITLE."
-  (let ((buffer (open-buffer (concat "*cvs:" title ?*) t)))
+  (let ((buffer (open-buffer (concat "*cvs:" title #\*) t)))
     (goto-buffer buffer)
     (text-mode)
     (setq cvs-callback-function function
@@ -452,8 +452,8 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
 (defun cvs-summary-print (item)
   (let ((pending (summary-get-pending-ops item)))
     (format (current-buffer) "%c%c %12s -- %s"
-	    (if (get-file-buffer (cvs-file-get-fullname item)) ?B ? )
-	    (if (memq 'mark pending) ?* ? )
+	    (if (get-file-buffer (cvs-file-get-fullname item)) #\B #\space)
+	    (if (memq 'mark pending) #\* #\space)
 	    (if cvs-print-long-status
 		(symbol-name (cvs-file-get-status item))
 	      (make-string 1 (car (rassq (cvs-file-get-status item)
@@ -668,8 +668,9 @@ files in the corresponding working directories."
 	  (when (find-file (expand-file-name ".cvsignore" (car cell)))
 	    (goto (end-of-buffer))
 	    (mapc (lambda (f)
-		    (unless (re-search-forward (concat ?^ (quote-regexp f) ?$)
-					       (start-of-buffer))
+		    (unless (re-search-forward
+			     (concat #\^ (quote-regexp f) #\$)
+			     (start-of-buffer))
 		      (unless (zero? (pos-col (cursor-pos)))
 			(insert "\n"))
 		      (insert f)

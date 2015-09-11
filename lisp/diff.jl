@@ -103,7 +103,7 @@ While comparing files the following commands are available:\n
   (interactive (list (prompt-for-file "File to diff with its backup:"
 				      t (buffer-file-name))))
   (let
-      ((name (concat file ?~)))
+      ((name (concat file #\~)))
     (diff name file)
     (let
 	((buf (get-file-buffer name)))
@@ -237,11 +237,11 @@ command for more details."
     (setq command (get-char tem diff-diff-buffer))
     (diff-parse-range (forward-char 1 tem diff-diff-buffer) right-range)
     (cond
-     ((= command ?a)
+     ((= command #\a)
       (setq command 'add))
-     ((= command ?c)
+     ((= command #\c)
       (setq command 'change))
-     ((= command ?d)
+     ((= command #\d)
       (setq command 'delete))
      (t
       (error "Unknown command in diff output")))

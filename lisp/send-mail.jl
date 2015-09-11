@@ -150,11 +150,11 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 	major-mode-kill send-mail-mode-kill
 	paragraph-separate (concat "^([\t\f ]|"
 				   (quote-regexp mail-yank-prefix)
-				   ?| (quote-regexp mail-header-separator)
+				   #\| (quote-regexp mail-header-separator)
 				   ")*\n")
 	paragraph-start (concat "^([\t\f ]|"
 				(quote-regexp mail-yank-prefix)
-				?| (quote-regexp mail-header-separator) ")*$")
+				#\| (quote-regexp mail-header-separator) ")*$")
 	local-ctrl-c-keymap send-mail-c-keymap)
   ;; Need to turn on autosaving and associate the buffer with a
   ;; temporary file...
@@ -169,21 +169,21 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 (defun send-mail-go-text ()
   "Put the cursor at the start of the message body."
   (interactive)
-  (if (re-search-forward (concat ?^ (quote-regexp mail-header-separator) ?$)
+  (if (re-search-forward (concat #\^ (quote-regexp mail-header-separator) #\$)
 			(start-of-buffer))
       (goto (forward-line 1 (match-start)))
     (error "No mail-header-separator in message")))
 
 (defun send-mail-find-header (header)
-  (if (re-search-forward (concat ?^ header "[\t ]*:[\t ]*")
+  (if (re-search-forward (concat #\^ header "[\t ]*:[\t ]*")
 			(start-of-buffer) nil t)
       (goto (match-end))
     (unless (re-search-forward
-	     (concat ?^ (quote-regexp mail-header-separator) ?$)
+	     (concat #\^ (quote-regexp mail-header-separator) #\$)
 	     (start-of-buffer))
       (error "Can't find header separator"))
     (goto (forward-char -1 (match-start)))
-    (insert (concat ?\n header ": "))))
+    (insert (concat #\newline header ": "))))
     
 (defun send-mail-go-to ()
   "Move to the message's To: header."
@@ -232,9 +232,9 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 
 ;; returns the beginning of the separator line
 (defun send-mail-delete-separator ()
-    (unless (re-search-forward (concat ?^
-				      (quote-regexp mail-header-separator ?$)
-				      ?$)
+    (unless (re-search-forward (concat #\^
+				      (quote-regexp mail-header-separator #\$)
+				      #\$)
 			      (start-of-buffer))
       (error "Can't find header-separator string"))
     ;; Delete the header separator

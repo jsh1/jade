@@ -354,7 +354,7 @@ contain its definition as a function."
        strings)
     (while addresses
       (setq strings (cons (concat (quote-regexp (car addresses))
-				  (and (cdr addresses) ?|))
+				  (and (cdr addresses) #\|))
 			  strings)
 	    addresses (cdr addresses)))
     (list 'rm-rule:sender (apply concat (nreverse strings)))))
@@ -400,21 +400,21 @@ contain its definition as a function."
      ((string-match
        "^(an?|[0-9]+) *(seconds|minute|hour|day|week|fortnight|month|year)s?( +ago)?$"
        string nil t)
-      (setq seconds-ago (* (if (= (aref string 0) ?a)
+      (setq seconds-ago (* (if (= (aref string 0) #\a)
 			       1
 			     (string->number (expand-last-match "\\1")))
-			   (if (= (aref string (match-start 2)) ?m)
-			       (if (= (aref string (1+ (match-start 2))) ?i)
+			   (if (= (aref string (match-start 2)) #\m)
+			       (if (= (aref string (1+ (match-start 2))) #\i)
 				   60
 				 2419200)	;28*24*60*60
 			     (cdr (assq (aref string (match-start 2))
-					'((?s . 1) (?h . 3600) (?d . 86400)
-					  (?w . 604800) (?f . 1209600)
-					  (?m . 2419200) (?y . 31536000))))))))
+					'((#\s . 1) (#\h . 3600) (#\d . 86400)
+					  (#\w . 604800) (#\f . 1209600)
+					  (#\m . 2419200) (#\y . 31536000))))))))
      ((string-match "^last +(week|fortnight|month|year)$" string nil t)
       (setq seconds-ago (cdr (assq (aref string (match-start 1))
-				   '((?w . 604800) (?f . 1209600)
-				     (?m . 2419200) (?y . 31536000))))))
+				   '((#\w . 604800) (#\f . 1209600)
+				     (#\m . 2419200) (#\y . 31536000))))))
      ((string-match "^yesterday$" string nil t)
       (setq seconds-ago 86400))
      ((string-match "^today$" string nil t)

@@ -144,5 +144,5 @@ given. See the `telnet' function for more details."
 	((pass (pwd-prompt "Password: (Ctrl-g to ignore)")))
       (when pass
 	(write shell-process pass)
-	(write shell-process ?\n))))
+	(write shell-process #\newline))))
   output)

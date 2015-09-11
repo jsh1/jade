@@ -130,7 +130,7 @@ Local bindings in this mode are:\n
 
 (defun texinfo-move-over-braces ()
   (interactive)
-  (goto (forward-char 1 (char-search-forward ?}))))
+  (goto (forward-char 1 (char-search-forward #\}))))
 
 (defun texinfo-insert-menu-item ()
   (interactive)

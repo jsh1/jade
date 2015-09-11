@@ -68,7 +68,7 @@ while auto-archiving.")
 	(unless (zero? (file-size (file-binding dest)))
 	  ;; The file isn't empty, so ensure there's a blank
 	  ;; line separating messages
-	  (write dest ?\n))
+	  (write dest #\newline))
 	(write dest text)))
       (rm-message-put msg 'filed t)
       (when rm-delete-after-output

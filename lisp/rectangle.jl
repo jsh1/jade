@@ -31,7 +31,7 @@
     (while (and (< index (length text))
 		(string-match "[^\n]*" text index))
       (setq sub-string (substring text (match-start) (match-end))
-	    index (if (equal? (aref text (match-end)) ?\n)
+	    index (if (equal? (aref text (match-end)) #\newline)
 		      (1+ (match-end))
 		    (match-end)))
       (insert sub-string p)
@@ -58,7 +58,7 @@ and END (the characters at opposite corners)."
     (while (>= row (pos-line start))
       (setq strings (cons (copy-area (glyph-to-char-pos (pos start-col row))
 				     (glyph-to-char-pos (pos end-col row)))
-			  (cons ?\n strings))
+			  (cons #\newline strings))
 	    row (1- row)))
     (apply concat strings)))
 

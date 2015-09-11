@@ -75,7 +75,7 @@ Local bindings in this mode are:\n
 	page-start "^\\\\((sub)*(section|paragraph)|chapter){.*}"
 	local-keymap 'tex-keymap
 	mode-comment-header "%"
-	generic-exp-single-delims '(?\" ?\$)
+	generic-exp-single-delims '(#\" #\$)
 	generic-exp-escape-char 0
 	generic-exp-comment-string "%"
 	generic-exp-symbol-re "[a-zA-Z0-9:_@-]+"
@@ -133,7 +133,7 @@ Local bindings in this mode are:\n
        (depth 0))
     (if (catch 'foo
 	  (while (re-search-backward "\\\\(end|begin)\{([^\}]+)" p)
-	    (if (= (get-char (match-start 1)) ?b)
+	    (if (= (get-char (match-start 1)) #\b)
 		;; no end
 		(if (zero? depth)
 		    (throw 'foo t)
@@ -152,22 +152,22 @@ Local bindings in this mode are:\n
 		   (prefix-numeric-argument current-prefix-arg))))
     (if (null? count)
 	(progn
-	  (insert (if command (concat ?\\ command "{}") "{}"))
+	  (insert (if command (concat #\\ command "{}") "{}"))
 	  (goto (forward-char -1)))
       (if (> count 0)
 	  (progn
-	    (insert (if command (concat ?\\ command ?\{) "\{"))
+	    (insert (if command (concat #\\ command #\{) "\{"))
 	    (goto (forward-word count))
 	    (insert "\}"))
 	(goto (forward-word count))
-	(insert (if command (concat ?\\ command ?\{) "\{"))
+	(insert (if command (concat #\\ command #\{) "\{"))
 	(goto (forward-word (- count)))
 	(insert "\}")))))
 
 (defun tex-move-over-braces ()
   (interactive)
-  (goto (forward-char 1 (char-search-forward ?}))))
+  (goto (forward-char 1 (char-search-forward #\}))))
 
 (defun tex-ispell-ignore-word-hook (word start end)
   (declare (unused word end))
-  (= (get-char (forward-char -1 start)) ?\\ ))
+  (= (get-char (forward-char -1 start)) #\\))

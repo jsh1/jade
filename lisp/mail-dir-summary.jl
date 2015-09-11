@@ -187,7 +187,7 @@ Type \\[mds-edit-commit] to finalise the edits. The full list of local keybindin
        (tem (start-of-buffer)))
     (while (re-search-forward "^([^ \t\n:]+)[ \t]*:" tem)
       (let*
-	  ((field (intern (concat ?: (expand-last-match "\\1"))))
+	  ((field (intern (concat #\: (expand-last-match "\\1"))))
 	   (stream (cons (current-buffer) (match-end)))
 	   (body (read stream)))
 	(setq record (cons (cons field body) record))
@@ -205,7 +205,7 @@ Type \\[mds-edit-commit] to finalise the edits. The full list of local keybindin
 	     (summary-update))))))
 
 (defun mds-edit-field (field)
-  (if (re-search-forward (concat ?^ (quote-regexp field) "[\t ]*:[\t ]*\\(?")
+  (if (re-search-forward (concat #\^ (quote-regexp field) "[\t ]*:[\t ]*\\(?")
 			 (start-of-buffer))
       (goto (match-end))
     (goto (end-of-buffer))

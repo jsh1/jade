@@ -131,7 +131,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
     (unless (string? prompt-title)
       (setq prompt-title "Enter string:"))
     (unless (string-match " $" prompt-title)
-      (setq prompt-title (concat prompt-title ? )))
+      (setq prompt-title (concat prompt-title #\space)))
     (unwind-protect
 	(with-view (minibuffer-view)
 	  (setq prompt-original-size (cdr (view-dimensions)))
@@ -265,7 +265,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 ;; Various completion/validation functions
 
 (defun prompt-complete-symbol (word)
-  (mapcar symbol-name (apropos (concat ?^ (quote-regexp word))
+  (mapcar symbol-name (apropos (concat #\^ (quote-regexp word))
 			       prompt-symbol-predicate)))
 
 (defun prompt-validate-symbol (name)
@@ -293,7 +293,7 @@ is rejected.")
     (mapcar (lambda (x)
 	      (let ((y (concat path x)))
 		(when (file-directory? y)
-		  (setq y (concat y ?/)))
+		  (setq y (concat y #\/)))
 		y))
 	    (delete-if (lambda (f)
 			 (or (not (string-prefix? f file))
@@ -309,7 +309,7 @@ is rejected.")
 	(file (file-name-nondirectory word)))
     (delq nil (mapcar (lambda (x)
 			(when (file-directory? (concat path x))
-			  (concat path x ?/)))
+			  (concat path x #\/)))
 		      (delete-if (lambda (f)
 				   (not (string-prefix? f file)))
 				 (directory-files path))))))
@@ -329,7 +329,7 @@ is rejected.")
       ((src prompt-list)
        (dst ()))
     (while src
-      (when (string-match (concat ?^ (quote-regexp word))
+      (when (string-match (concat #\^ (quote-regexp word))
 			  (car src) nil prompt-list-fold-case)
 	(setq dst (cons (car src) dst)))
       (setq src (cdr src)))
@@ -343,7 +343,7 @@ is rejected.")
 	((lst prompt-list))
       (catch 'exit
 	(while lst
-	  (when (string-match (concat ?^ (quote-regexp name) ?$)
+	  (when (string-match (concat #\^ (quote-regexp name) #\$)
 			      (car lst) nil t)
 	    (throw 'exit t))
 	  (setq lst (cdr lst)))))))
@@ -529,7 +529,7 @@ string QUESTION, returns t for `y'."
       (with-buffer prompt-buffer
 	(setq unbound-key-hook '(beep)
 	      local-keymap (or keymap 'y-or-n-keymap))
-	(insert (concat question ?  (or help-string "(y or n)") ? )
+	(insert (concat question #\space (or help-string "(y or n)") #\space)
 		(start-of-buffer))
 	(unwind-protect
 	    (catch 'ask

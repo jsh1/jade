@@ -62,7 +62,7 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
       0
     (setq p (forward-line -1 p))
     (while (and (> (pos-line p) 0)
-		(or (= (get-char (forward-char -2 p)) ?\\ )
+		(or (= (get-char (forward-char -2 p)) #\space)
 		    (looking-at "^[\t\f ]*$" p)))
       (setq p (forward-line -1 p)))
     (pos-col (indent-pos p))))
@@ -72,7 +72,7 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
   (let
       ((indent (sh-get-basic-indent p)))
     ;; Look at the last token on the previous line
-    (if (= (get-char (forward-char -2 p)) ?\\ )
+    (if (= (get-char (forward-char -2 p)) #\space)
 	(setq indent (+ indent sh-continuation-indent))
       (when (looking-at
 	     "((.*[^a-zA-Z0-9\n])?(do|then|else|elif|in|\{)|.*\\))[ \t]*$"

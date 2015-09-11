@@ -157,7 +157,7 @@ as a single blank line or the start of the buffer, followed by this regexp.")
   "Regular expression defining a single atom in a mail header. May not
 include any parenthesised expressions!")
 
-(defvar mail-message-id-re (concat ?< mail-atom-re "(\\." mail-atom-re ")*@"
+(defvar mail-message-id-re (concat #\< mail-atom-re "(\\." mail-atom-re ")*@"
 				   mail-atom-re "(\\." mail-atom-re ")*>")
   "Regular expression matching a message id.")
 
