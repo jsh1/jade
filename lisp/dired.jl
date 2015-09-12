@@ -99,7 +99,7 @@ bindings is:\n
       (setq major-mode 'dired-mode))))
 
 (defun dired-list ()
-  (sort (dired-directory-files *default-directory*)))
+  (sort! (dired-directory-files *default-directory*)))
 
 (defun dired-print (item)
   (let*

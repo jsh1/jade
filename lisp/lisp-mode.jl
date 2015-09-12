@@ -235,7 +235,7 @@ in the status line."
 	      (setq last-ind (if (and (= (pos-line p)
 					 (pos-line (car last-ind)))
 				      (>= (length last-ind) 2))
-				 (nth 1 last-ind)
+				 (list-ref last-ind 1)
 			       (car last-ind)))
 	    (setq last-ind p))
 	  ;; pos now points to the first sexp in the containing sexp

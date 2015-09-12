@@ -218,7 +218,7 @@ strings of modes may contain any of these expansions."
       (let
 	  ((symbol (intern (expand-last-match "\\1")))
 	   (arg (expand-last-match "\\3"))
-	   (type (aref string (1- point))))
+	   (type (array-ref string (1- point))))
 	(cond
 	 ((= type #\])
 	  ;; where-is SYMBOL
@@ -245,4 +245,4 @@ strings of modes may contain any of these expansions."
 	  ;; next where-is is relative to keymap SYMBOL
 	  (setq whereis-rel (symbol-value symbol))))))
     (setq out (cons (substring string point) out))
-    (apply concat (nreverse out))))
+    (apply concat (reverse! out))))

@@ -133,11 +133,11 @@ results have been received.")
 	 (sentinel (lambda ()
 		     (setq ispell-process nil)
 		     (setq ispell-id-string nil))))
-      (set-process-function process sentinel)
+      (set-process-function! process sentinel)
       ;; Use a pty if possible. This allow EOF to be sent via ^D
-      (set-process-connection-type process 'pty)
+      (set-process-connection-type! process 'pty)
       (apply start-process process ispell-program "-a"
-	     (nconc (and ispell-dictionary
+	     (append! (and ispell-dictionary
 			 (list "-d" ispell-dictionary))
 		    ispell-options))
       (setq ispell-process process)
@@ -209,12 +209,12 @@ results have been received.")
 	(progn
 	  (format ispell-process "%s\n" word)
 	  (setq response (ispell-read-line))
-	  (if (eq? (aref response 0) #\newline)
+	  (if (eq? (array-ref response 0) #\newline)
 	      ;; This can happen when multi-language text is checked
 	      (setq response "*\n\n")
 	    ;; Gobble following blank line
 	    (setq tem (ispell-read-line))
-	    (unless (eq? (aref tem 0) #\newline)
+	    (unless (eq? (array-ref tem 0) #\newline)
 	      (error "Non-null trailing line from Ispell"))))
       (ispell-mutex nil))
     response))
@@ -273,7 +273,7 @@ for. When called interactively, spell-check the current block."
 					 (match-start 1) (match-end 1))
 			      options))
 	  (setq point (match-end)))
-	(setq options (nreverse options))))
+	(setq options (reverse! options))))
     (unless ispell-options-buffer
       (setq ispell-options-buffer (make-buffer "*Ispell-options*")))
     (with-buffer ispell-options-buffer
@@ -332,8 +332,8 @@ for. When called interactively, spell-check the current block."
 			(with-buffer old-buffer
 			  (setq end (replace-string word
 						    (ispell-strip-word
-						     (nth (cdr command)
-							  options))
+						     (list-ref
+						      options (cdr command)))
 						    start)))
 		      (let
 			  ((string (prompt-for-string "Replace with:" word)))
@@ -500,32 +500,32 @@ whole of the buffer (if no block)."
       (when (or (null? end)
 		(> end (end-of-buffer)))
 	(setq end (end-of-buffer)))
-      (if (> (buffer-changes) (aref ispell-minor-mode-last-scan 0))
+      (if (> (buffer-changes) (array-ref ispell-minor-mode-last-scan 0))
 	  ;; Rescan entirely
 	  (progn
 	    (ispell-delete-highlights (start-of-buffer) (end-of-buffer))
 	    (setq end (ispell-highlight-misspellings start end t))
-	    (aset ispell-minor-mode-last-scan 0 (buffer-changes))
-	    (aset ispell-minor-mode-last-scan 1 start)
-	    (aset ispell-minor-mode-last-scan 2 end))
+	    (array-set! ispell-minor-mode-last-scan 0 (buffer-changes))
+	    (array-set! ispell-minor-mode-last-scan 1 start)
+	    (array-set! ispell-minor-mode-last-scan 2 end))
 	;; No changes, so just rescan the bits of the current page
 	;; that aren't already scanned
 	(let
-	    ((old-start (aref ispell-minor-mode-last-scan 1))
-	     (old-end (aref ispell-minor-mode-last-scan 2)))
+	    ((old-start (array-ref ispell-minor-mode-last-scan 1))
+	     (old-end (array-ref ispell-minor-mode-last-scan 2)))
 	  (cond
 	   ((< start old-start)
 	    ;; Extend upwards to start
 	    (setq end (min end old-start))
 	    (setq end (ispell-highlight-misspellings start end t))
-	    (aset ispell-minor-mode-last-scan 1 start)
-	    (aset ispell-minor-mode-last-scan 2 end))
+	    (array-set! ispell-minor-mode-last-scan 1 start)
+	    (array-set! ispell-minor-mode-last-scan 2 end))
 	   ((> end old-end)
 	    ;; Extend downwards to end
 	    (setq start (max start old-end))
 	    (setq end (ispell-highlight-misspellings start end t))
-	    (aset ispell-minor-mode-last-scan 1 start)
-	    (aset ispell-minor-mode-last-scan 2 end))))))))
+	    (array-set! ispell-minor-mode-last-scan 1 start)
+	    (array-set! ispell-minor-mode-last-scan 2 end))))))))
 
 ;;;###autoload
 (defun ispell-minor-mode ()
@@ -552,7 +552,7 @@ the cursor is placed in a misspelt word; they are,
   (mapc (lambda (b)
 	  (with-buffer b
 	    (when ispell-minor-mode-last-scan
-	      (aset ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
+	      (array-set! ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
 	(buffer-list)))
 
 ;; Return the string of the misspelt word under point, or nil

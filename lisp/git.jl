@@ -140,25 +140,25 @@ been completed.")
   `(vector ,dir ,file ,fullname ,index-status ,work-status))
 
 (defmacro git-file-get-dirname (f)
-  `(aref ,f 0))
+  `(array-ref ,f 0))
 
 (defmacro git-file-get-filename (f)
-  `(aref ,f 1))
+  `(array-ref ,f 1))
 
 (defmacro git-file-get-fullname (f)
-  `(aref ,f 2))
+  `(array-ref ,f 2))
 
 (defmacro git-file-get-index-status (f)
-  `(aref ,f 3))
+  `(array-ref ,f 3))
 
 (defmacro git-file-set-index-status (f status)
-  `(aset ,f 3 ,status))
+  `(array-set! ,f 3 ,status))
 
 (defmacro git-file-get-work-status (f)
-  `(aref ,f 4))
+  `(array-ref ,f 4))
 
 (defmacro git-file-set-work-status (f status)
-  `(aset ,f 4 ,status))
+  `(array-set! ,f 4 ,status))
 
 (defun git-get-filenames-by-dir (files)
   "From the list of git file structures FILES, return a list of the files in
@@ -169,7 +169,7 @@ that each of the FILENAMES contains no directory specifiers."
     (setq files (cdr files))
     (while files
       (if (string=? (git-file-get-dirname (car files)) (car (car dir-files)))
-	  (setcdr (car dir-files) (cons (git-file-get-filename (car files))
+	  (set-cdr! (car dir-files) (cons (git-file-get-filename (car files))
 					(cdr (car dir-files))))
 	(setq dir-files (cons (list (git-file-get-dirname (car files))
 				    (git-file-get-filename (car files)))
@@ -194,9 +194,9 @@ that each of the FILENAMES contains no directory specifiers."
 					 (file-name-directory name))
 					(file-name-nondirectory name)
 					name
-					(cdr (assq (aref out point)
+					(cdr (assq (array-ref out point)
 						   git-status-char-map))
-					(cdr (assq (aref out (1+ point))
+					(cdr (assq (array-ref out (1+ point))
 						   git-status-char-map)))
 				       git-update-files)))
 	(setq point (match-end)))
@@ -225,7 +225,7 @@ that each of the FILENAMES contains no directory specifiers."
 	(inhibit-read-only t))
     (setq git-update-pending nil
 	  git-update-pending-stderr nil
-	  git-file-list (nreverse git-update-files)
+	  git-file-list (reverse! git-update-files)
 	  git-update-in-progress nil)
     (with-buffer buffer
       (if (and (git-buffer-p)
@@ -304,7 +304,7 @@ Finally, unless the git-command-dont-clear-output parameter is non-nil, the
 				 (or git-command-directory
 				     git-default-directory))))
       (when git-command-error-stream
-	(set-process-error-stream process git-command-error-stream))
+	(set-process-error-stream! process git-command-error-stream))
       (message (format nil "%sing git: %s..."
 		       (if git-command-async "Start" "Call") arg-list) t)
       (unless (or (if git-command-async
@@ -319,7 +319,7 @@ Finally, unless the git-command-dont-clear-output parameter is non-nil, the
 don't ask for confirmation and kill instead of interrupting."
   (interactive)
   (let ((processes (filter (lambda (p)
-			     (string=? (process-prog p) git-program))
+			     (string=? (process-program p) git-program))
 			   (active-processes))))
     (if processes
 	(if force
@@ -485,7 +485,7 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
 anything whose status is `unchanged' or `updated'."
   (interactive)
   (git-error-if-updating)
-  (setq git-file-list (delete-if (lambda (f)
+  (setq git-file-list (delete-if! (lambda (f)
 				   (and (memq (git-file-get-index-status f)
 					      '(unchanged updated))
 					(memq (git-file-get-work-status f)
@@ -593,7 +593,7 @@ do that."
   (let ((files (git-command-get-filenames)))
     (map-y-or-n-p "Really delete file `%s'?" files delete-file)
     ;; Remove any files that the user answered negatively to
-    (setq files (delete-if file-exists? files))
+    (setq files (delete-if! file-exists? files))
     (when files
       (git-command nil "rm" (if force
 				(list* "-f" "--" files)
@@ -751,7 +751,7 @@ files."
   (let ((git-command-ignore-errors t)
 	(git-command-async (lambda ()
 			     (git-show-output-buffer))))
-    (git-command nil "diff" (nconc (and rev1 (not (string=? "" rev1))
+    (git-command nil "diff" (append! (and rev1 (not (string=? "" rev1))
 					(list (concat "-r" rev1)))
 				   (and rev2 (not (string=? "" rev2))
 					(list (concat "-r" rev2)))

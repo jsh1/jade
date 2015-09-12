@@ -154,8 +154,8 @@ undo_record_deletion(Lisp_Buffer *tx, repv start, repv end)
 	    else
 	    {
 		string = rep_allocate_string(len + 1);
-		copy_section(tx, start, end, rep_STR(string));
-		rep_STR(string)[len] = 0;
+		copy_section(tx, start, end, rep_MUTABLE_STR(string));
+		rep_MUTABLE_STR(string)[len] = 0;
 	    }
 	}
 	coalesce_undo(tx);
@@ -176,8 +176,8 @@ undo_push_deletion(Lisp_Buffer *tx, repv start, repv end)
     if(len > 0)
     {
 	repv string = rep_allocate_string(len + 1);
-	copy_section(tx, start, end, rep_STR(string));
-	rep_STR(string)[len] = 0;
+	copy_section(tx, start, end, rep_MUTABLE_STR(string));
+	rep_MUTABLE_STR(string)[len] = 0;
 	pending_deletion_string = string;
 	pending_deletion_start = start;
 	pending_deletion_end = end;
@@ -309,8 +309,8 @@ taken from the prefix argument.
 		/* A deleted character */
 		repv tmp = rep_allocate_string(2);
 		uint8_t c = rep_INT(rep_CDR(item));
-		rep_STR(tmp)[0] = c;
-		rep_STR(tmp)[1] = 0;
+		rep_MUTABLE_STR(tmp)[0] = c;
+		rep_MUTABLE_STR(tmp)[1] = 0;
 		tmp = Finsert(tmp, rep_CAR(item), tx);
 		if(tmp && !rep_NILP(tmp))
 		    Fgoto(tmp);

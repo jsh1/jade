@@ -106,7 +106,7 @@ CC: field if the prefix arg is set)."
 (defun mds-sort-list ()
   "Sort the list of mail addresses or aliases."
   (interactive)
-  (setq mail-address-list (sort mail-address-list mds-sort-predicate))
+  (setq mail-address-list (sort! mail-address-list mds-sort-predicate))
   (setq mail-directory-modified t)
   (summary-update))
 

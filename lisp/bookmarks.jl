@@ -52,7 +52,7 @@
 				       "Bookmark to delete:")))
   (let
       ((mark (assoc name bookmark-alist)))
-    (setq bookmark-alist (delq mark bookmark-alist))))
+    (setq bookmark-alist (delq! mark bookmark-alist))))
 
 ;;;###autoload
 (defun kill-all-bookmarks ()

@@ -89,7 +89,7 @@
      (t
       (error "Don't know how to hook into %s" major-mode)))
     (format (current-buffer) "[[%s: %s/%s"
-	    (car content-disp) (car content-type) (nth 1 content-type))
+	    (car content-disp) (car content-type) (list-ref content-type 1))
     (when (assq 'filename (cdr content-disp))
       (format (current-buffer) " filename=%s"
 	      (cdr (assq 'filename (cdr content-disp)))))
@@ -162,8 +162,8 @@
 
 (defun mime-encode-content-type (content-type)
   (format (current-buffer) "Content-type: %s/%s"
-	  (car content-type) (nth 1 content-type))
-  (mime-encode-params (nthcdr 2 content-type))
+	  (car content-type) (list-ref content-type 1))
+  (mime-encode-params (list-tail content-type 2))
   (insert "\n"))
 
 (defun mime-encode-content-disp (content-disp)
@@ -179,14 +179,14 @@
     (if (null? cell)
 	;; No encoding method, copy verbatim
 	(copy-stream input output)
-      ((nth 1 cell) input output))))
+      ((list-ref cell 1) input output))))
 
 (defun mime-encode-make-boundary ()
   (let
       ((i 10)
        (chars (list #\_)))
     (while (> i 0)
-      (setq chars (cons (aref mime-encode-boundary-alphabet
+      (setq chars (cons (array-ref mime-encode-boundary-alphabet
 			      (random (length mime-encode-boundary-alphabet)))
 			chars))
       (setq i (1- i)))
@@ -275,7 +275,7 @@
 	      (mime-encode-stream
 	       content-xfer-enc
 	       (cons source (start-of-buffer source))))
-	     ((streamp source)
+	     ((stream? source)
 	      (mime-encode-stream content-xfer-enc source))
 	     (t
 	      (error "Don't know how to access source: %s" source)))

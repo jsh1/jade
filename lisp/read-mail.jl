@@ -237,7 +237,7 @@ RULE is the message restriction rule to apply."
   (let ((folder (rm-make-folder rule name)))
     ;; Clean up the rm-open-folders list in case it contains
     ;; folders that are no longer viewable
-    (setq rm-open-folders (delete-if (lambda (cell)
+    (setq rm-open-folders (delete-if! (lambda (cell)
 				       (when (not (viewp (car cell)))
 					 ;; Dead folder
 					 (mapc (lambda (box)
@@ -309,7 +309,7 @@ Major mode for viewing mail folders. Local bindings are:\n
 
 ;; Remove the major-mode of mailbox buffers
 (defun read-mail-mode-kill ()
-  (setq rm-open-mailboxes (delq (current-buffer) rm-open-mailboxes))
+  (setq rm-open-mailboxes (delq! (current-buffer) rm-open-mailboxes))
   (kill-all-local-variables))
 
 (defun rm-find-global-menus ()
@@ -364,10 +364,10 @@ key, the car the order to sort in, a positive or negative integer.")
 
 
 (defmacro rm-set-folder-field (folder field value)
-  (list 'aset folder field value))
+  (list 'array-set! folder field value))
 
 (defmacro rm-get-folder-field (folder field)
-  (list 'aref folder field))
+  (list 'array-ref folder field))
 
 ;; Create a new unused folder object
 (defun rm-make-folder (#!optional rule name)
@@ -382,7 +382,7 @@ key, the car the order to sort in, a positive or negative integer.")
 
 ;; Return t if OBJECT is a folder
 (defun rm-folder-p (object)
-  (and (vector? object) (eq? (aref object rm-folder-type) 'folder)))
+  (and (vector? object) (eq? (array-ref object rm-folder-type) 'folder)))
 
 (defun rm-rebuild-folder (folder)
   (rm-install-messages
@@ -401,7 +401,7 @@ key, the car the order to sort in, a positive or negative integer.")
     (rm-set-folder-field folder rm-folder-message-count (length all))
     (rm-set-folder-field folder rm-folder-cached-list 'invalid)
     (if (or (null? current) (not (memq current all)))
-	(setq before (nreverse all)
+	(setq before (reverse! all)
 	      current (car before)
 	      before (cdr before)
 	      after nil
@@ -409,7 +409,7 @@ key, the car the order to sort in, a positive or negative integer.")
       (while (not (eq? (car after) current))
 	(setq after (prog1
 			(cdr after)
-		      (rplacd after before)
+		      (set-cdr! after before)
 		      (setq before after))
 	      index (1+ index))))
     (rm-set-folder-field folder rm-folder-current-msg current)
@@ -439,7 +439,7 @@ key, the car the order to sort in, a positive or negative integer.")
 					 mailbox rm-auto-sort-key-alist))
 				   rm-default-sort-key)))
   (rm-set-folder-field folder rm-folder-boxes
-		       (nconc (rm-get-folder-field folder rm-folder-boxes)
+		       (append! (rm-get-folder-field folder rm-folder-boxes)
 			      (list mailbox)))
   (rm-open-mailbox mailbox)
   (let
@@ -464,7 +464,7 @@ key, the car the order to sort in, a positive or negative integer.")
   (unless mailbox
     (error "Null mailbox"))
   (rm-set-folder-field folder rm-folder-boxes
-		       (delete mailbox (rm-get-folder-field
+		       (delete! mailbox (rm-get-folder-field
 					folder rm-folder-boxes)))
   (rm-rebuild-folder folder)
   (rm-close-mailbox mailbox)
@@ -517,9 +517,9 @@ key, the car the order to sort in, a positive or negative integer.")
 		    (setq bits (cons (rm-filter-by-rule
 				      messages rule) bits)))
 		  message-lists)
-	    (setq msgs (apply nconc bits))))
+	    (setq msgs (apply append! bits))))
       ;; Can't use append to join lists since that doesn't clone the last one
-      (setq msgs (apply nconc (mapcar copy-sequence message-lists))))
+      (setq msgs (apply append! (mapcar copy-sequence message-lists))))
     (when rm-duplicate-rules
       (let ((lst msgs)
 	    id)
@@ -554,7 +554,7 @@ key, the car the order to sort in, a positive or negative integer.")
   (when msgs
     (with-buffer buffer
       (unless (eq? rm-buffer-messages 'invalid)
-	(setq rm-buffer-messages (nconc rm-buffer-messages msgs))))
+	(setq rm-buffer-messages (append! rm-buffer-messages msgs))))
     (mapc (lambda (cell)
 	    (when (memq buffer (rm-get-folder-field
 				(cdr cell) rm-folder-boxes))
@@ -582,10 +582,10 @@ key, the car the order to sort in, a positive or negative integer.")
 (defconst rm-msg-struct-size 5)
 
 (defmacro rm-set-msg-field (msg field value)
-  (list 'aset msg field value))
+  (list 'array-set! msg field value))
 
 (defmacro rm-get-msg-field (msg field)
-  (list 'aref msg field))
+  (list 'array-ref msg field))
 
 ;; Create an unused message structure
 (defmacro rm-make-msg ()
@@ -598,7 +598,7 @@ key, the car the order to sort in, a positive or negative integer.")
     (if cell
 	(if (eq? (cdr cell) value)
 	    (setq modified nil)
-	  (rplacd cell value))
+	  (set-cdr! cell value))
       (rm-set-msg-field msg rm-msg-plist
 			(cons (cons prop value)
 			      (rm-get-msg-field msg rm-msg-plist))))
@@ -650,7 +650,7 @@ key, the car the order to sort in, a positive or negative integer.")
       ((cell (rm-tag-cached-p msg tag)))
     (when cell
       (rm-set-msg-field msg rm-msg-cache
-			(delq cell (rm-get-msg-field msg rm-msg-cache))))))
+			(delq! cell (rm-get-msg-field msg rm-msg-cache))))))
 
 
 ;; Message structures and list manipulation
@@ -666,8 +666,8 @@ key, the car the order to sort in, a positive or negative integer.")
 		  (setq current
 			(prog1
 			    (car after)
-			  (rplacd after before)
-			  (rplaca after current)
+			  (set-cdr! after before)
+			  (set-car! after current)
 			  (setq before after)))))
     (rm-set-folder-field folder rm-folder-before-list before)
     (rm-set-folder-field folder rm-folder-current-msg current)
@@ -687,8 +687,8 @@ key, the car the order to sort in, a positive or negative integer.")
 		   (setq current
 			 (prog1
 			     (car before)
-			   (rplacd before after)
-			   (rplaca before current)
+			   (set-cdr! before after)
+			   (set-car! before current)
 			   (setq after before)))))
     (rm-set-folder-field folder rm-folder-before-list before)
     (rm-set-folder-field folder rm-folder-current-msg current)
@@ -740,7 +740,7 @@ key, the car the order to sort in, a positive or negative integer.")
 							rm-msg-total-lines)
 				      p)))
 	    ;; Okay, we now have all messages
-	    (setq rm-buffer-messages (nreverse msgs)))))
+	    (setq rm-buffer-messages (reverse! msgs)))))
       rm-buffer-messages)))
 
 ;; Parse one message in the current buffer at position START, and return a
@@ -879,7 +879,7 @@ key, the car the order to sort in, a positive or negative integer.")
 			(prin1 flags (cons buffer tem))))
 		    ;; Then selected cache items into X-Jade-Cache-v1 header
 		    (let ((cache-items
-			   (delete-if
+			   (delete-if!
 			    (lambda (x)
 			      (null? (memq (car x) rm-saved-cache-tags)))
 			    (copy-sequence
@@ -1160,7 +1160,7 @@ key, the car the order to sort in, a positive or negative integer.")
 		 (setq start (forward-line -1 start))))
 	     (delete-area start end)
 	     (unless (eq? rm-buffer-messages 'invalid)
-	       (setq rm-buffer-messages (delq msg rm-buffer-messages)))
+	       (setq rm-buffer-messages (delq! msg rm-buffer-messages)))
 	     ;; Delete this message from any folders containing it
 	     (rm-map-msg-folders
 	      (lambda (unused-message folder)
@@ -1184,11 +1184,11 @@ key, the car the order to sort in, a positive or negative integer.")
 			    after (cdr after))))
 		   ((memq msg before)
 		    ;; Deleting from before the current message
-		    (setq before (delq msg before)
+		    (setq before (delq! msg before)
 			  index (1- index)))
 		   (t
 		    ;; Deleting from after the current message
-		    (setq after (delq msg after))))
+		    (setq after (delq! msg after))))
 		  (rm-set-folder-field folder rm-folder-before-list before)
 		  (rm-set-folder-field folder rm-folder-current-msg current)
 		  (rm-set-folder-field folder rm-folder-after-list after)
@@ -1314,7 +1314,7 @@ key, the car the order to sort in, a positive or negative integer.")
 			    (rm-apply-rule r (car msgs)))
 			  rm-after-import-rules)))
 		(setq p (forward-line -1 p)))
-	      (setq rm-buffer-messages (nconc rm-buffer-messages msgs))))
+	      (setq rm-buffer-messages (append! rm-buffer-messages msgs))))
 	  (and keep-going count)))))))
 
 ;; Returns the number of messages read
@@ -1387,7 +1387,7 @@ key, the car the order to sort in, a positive or negative integer.")
 ;; also why the alist is built dynamically
 (progn
   (setq rm-format-alist
-	(nconc
+	(append!
 	 rm-format-alist
 	 (list
 	  (cons #\a (lambda (m)
@@ -1418,11 +1418,11 @@ key, the car the order to sort in, a positive or negative integer.")
 	  (cons #\D (lambda (m)
 		     (let ((date (rm-get-date-vector m)))
 		       (when date
-			 (format nil "%d" (aref date date-vec-day) "")))))
+			 (format nil "%d" (array-ref date date-vec-day) "")))))
 	  (cons #\w (lambda (m)
 		     (let ((date (rm-get-date-vector m)))
 		       (when date
-			 (aref date date-vec-day-abbrev)))))
+			 (array-ref date date-vec-day-abbrev)))))
 	  (cons #\f (lambda (m)
 		     (car (car (rm-get-senders m)))))
 	  (cons #\F (lambda (m)
@@ -1430,11 +1430,11 @@ key, the car the order to sort in, a positive or negative integer.")
 	  (cons #\M (lambda (m)
 		     (let ((date (rm-get-date-vector m)))
 		       (when date
-			 (format nil "%d" (aref date date-vec-month))))))
+			 (format nil "%d" (array-ref date date-vec-month))))))
 	  (cons #\m (lambda (m)
 		     (let ((date (rm-get-date-vector m)))
 		       (when date
-			 (aref date date-vec-month-abbrev)))))
+			 (array-ref date date-vec-month-abbrev)))))
 	  (cons #\n (lambda (m)
 		     (let ((folder (rm-current-folder)))
 		       (with-buffer (mark-file
@@ -1453,32 +1453,32 @@ key, the car the order to sort in, a positive or negative integer.")
 		     (let ((date (rm-get-date-vector m)))
 		       (when date
 			 (format nil "%02d:%02d"
-				 (aref date date-vec-hour)
-				 (aref date date-vec-minute))))))
+				 (array-ref date date-vec-hour)
+				 (array-ref date date-vec-minute))))))
 	  (cons #\T (lambda (m)
 		     (let ((date (rm-get-date-vector m)))
 		       (when date
 			 (format nil "%02d:%02d:%02d"
-				 (aref date date-vec-hour)
-				 (aref date date-vec-minute)
-				 (aref date date-vec-second))))))
+				 (array-ref date date-vec-hour)
+				 (array-ref date date-vec-minute)
+				 (array-ref date date-vec-second))))))
 	  (cons #\r (lambda (m)
 		     (rm-get-address-name (car (rm-get-recipients m)))))
 	  (cons #\Y (lambda (m)
 		     (let ((date (rm-get-date-vector m)))
 		       (when date
-			 (format nil "%d" (aref date date-vec-year))))))
+			 (format nil "%d" (array-ref date date-vec-year))))))
 	  (cons #\z (lambda (m)
 		     (let ((date (rm-get-date-vector m)))
 		       (when date
-			 (aref date date-vec-timezone)))))))))
+			 (array-ref date date-vec-timezone)))))))))
 
 ;; Format the string FORMAT for MESSAGE
 (defun rm-format (fmt msg)
   (let
       ((arg-list (cons msg nil))
        (*format-hooks-alist* rm-format-alist))
-    (rplacd arg-list arg-list)
+    (set-cdr! arg-list arg-list)
     (apply format nil fmt arg-list)))
 
 
@@ -1658,6 +1658,6 @@ buffer will not be deleted, so it may be saved later."
     (mapc (lambda (box)
 	    (rm-close-mailbox box (not really-save)))
 	  (rm-get-folder-field folder rm-folder-boxes))
-    (setq rm-open-folders (delete-if (lambda (cell)
+    (setq rm-open-folders (delete-if! (lambda (cell)
 				       (eq? (cdr cell) folder))
 				     rm-open-folders))))

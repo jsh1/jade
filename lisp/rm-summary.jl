@@ -227,12 +227,12 @@ for the list of formatting options available.")
       (let
 	  ((orig (window-view-list)))
 	(setq summary-view (car orig)
-	      mail-view (nth 1 orig))
+	      mail-view (list-ref orig 1))
 	(when (> (window-view-count) 3)
 	  (mapc (lambda (v)
 		  (unless (minibuffer-view-p v)
 		    (delete-view v)))
-		(nthcdr 2 orig)))))
+		(list-tail orig 2)))))
     (condition-case nil
 	(let*
 	    ((total-lines (cdr (window-dimensions)))
@@ -255,7 +255,7 @@ for the list of formatting options available.")
 	    (when (and (eq? (cdr cell) folder)
 		       (or (not (viewp (car cell)))
 			   (eq? (car cell) summary-view)))
-	      (setcar cell mail-view))) rm-open-folders)
+	      (set-car! cell mail-view))) rm-open-folders)
     mail-view))
 
 (defun rm-summary-list ()
@@ -264,7 +264,7 @@ for the list of formatting options available.")
       (rm-set-folder-field
        rm-summary-folder rm-folder-cached-list
        (if (rm-get-folder-field rm-summary-folder rm-folder-current-msg)
-	   (nconc (reverse (rm-get-folder-field
+	   (append! (reverse (rm-get-folder-field
 			    rm-summary-folder rm-folder-before-list))
 		  (cons (rm-get-folder-field
 			 rm-summary-folder rm-folder-current-msg)
@@ -293,7 +293,7 @@ for the list of formatting options available.")
 ;; Delete all cached summary lines for MSG
 (defun rm-invalidate-summary (msg)
   (rm-set-msg-field msg rm-msg-cache
-		    (delete-if (lambda (x)
+		    (delete-if! (lambda (x)
 				 (bufferp (car x)))
 			       (rm-get-msg-field msg rm-msg-cache))))
 

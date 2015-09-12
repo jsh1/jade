@@ -57,7 +57,7 @@
 			      (mime-decode-content-disp content-disp)))
       (unless (and (null? (assq content-xfer-enc mime-xfer-encodings-alist))
 		   (eq? (car content-type) 'text)
-		   (eq? (nth 1 content-type) 'plain))
+		   (eq? (list-ref content-type 1) 'plain))
 	;; Something nonstandard, decode it to a temporary buffer
 	;; On return from the hook read-mail will notice the new current
 	;; buffer and assume that it contains an updated version of the

@@ -71,7 +71,7 @@ match well-known suffixes."
     (let
 	((proc (make-process (current-buffer))))
       (message (concat "Uncompressing `" file-name "'") t)
-      (unless (zero? (apply call-process proc file-name (nth 1 rule)))
+      (unless (zero? (apply call-process proc file-name (list-ref rule 1)))
 	(signal 'file-error (list "Can't uncompress file" file-name))))))
     
 ;; In the read-file-hook
@@ -113,7 +113,8 @@ match well-known suffixes."
 	      (progn
 		(setq proc (make-process dst-file))
 		(message (concat "Compressing `" file-name "'... ") t)
-		(when (/= (apply call-process proc tmp-name (nth 2 rule)) 0)
+		(when (/= (apply call-process proc tmp-name
+				 (list-ref rule 2)) 0)
 		  (signal 'file-error
 			  (list "Can't compress file" tmp-name))))
 	    (close-file dst-file)

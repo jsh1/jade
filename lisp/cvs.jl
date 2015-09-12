@@ -139,19 +139,19 @@ been completed.")
   `(vector ,dir ,file ,fullname ,status))
 
 (defmacro cvs-file-get-dirname (f)
-  `(aref ,f 0))
+  `(array-ref ,f 0))
 
 (defmacro cvs-file-get-filename (f)
-  `(aref ,f 1))
+  `(array-ref ,f 1))
 
 (defmacro cvs-file-get-fullname (f)
-  `(aref ,f 2))
+  `(array-ref ,f 2))
 
 (defmacro cvs-file-get-status (f)
-  `(aref ,f 3))
+  `(array-ref ,f 3))
 
 (defmacro cvs-file-set-status (f status)
-  `(aset ,f 3 ,status))
+  `(array-set! ,f 3 ,status))
 
 (defun cvs-get-filenames-by-dir (files)
   "From the list of CVS file structures FILES, return a list of the files in
@@ -162,7 +162,7 @@ that each of the FILENAMES contains no directory specifiers."
     (setq files (cdr files))
     (while files
       (if (string=? (cvs-file-get-dirname (car files)) (car (car dir-files)))
-	  (setcdr (car dir-files) (cons (cvs-file-get-filename (car files))
+	  (set-cdr! (car dir-files) (cons (cvs-file-get-filename (car files))
 					(cdr (car dir-files))))
 	(setq dir-files (cons (list (cvs-file-get-dirname (car files))
 				    (cvs-file-get-filename (car files)))
@@ -187,7 +187,7 @@ that each of the FILENAMES contains no directory specifiers."
 					 (file-name-directory name))
 					(file-name-nondirectory name)
 					name
-					(cdr (assq (aref out point)
+					(cdr (assq (array-ref out point)
 						   cvs-update-char-map)))
 				       cvs-update-files)))
 	(setq point (match-end)))
@@ -216,7 +216,7 @@ that each of the FILENAMES contains no directory specifiers."
 	(inhibit-read-only t))
     (setq cvs-update-pending nil
 	  cvs-update-pending-stderr nil
-	  cvs-file-list (nreverse cvs-update-files)
+	  cvs-file-list (reverse! cvs-update-files)
 	  cvs-update-in-progress nil)
     (with-buffer buffer
       (if (and (cvs-buffer-p)
@@ -294,7 +294,7 @@ Finally, unless the cvs-command-dont-clear-output parameter is non-nil, the
 				 (or cvs-command-directory
 				     cvs-default-directory))))
       (when cvs-command-error-stream
-	(set-process-error-stream process cvs-command-error-stream))
+	(set-process-error-stream! process cvs-command-error-stream))
       (message (format nil "%sing CVS: %s..."
 		       (if cvs-command-async "Start" "Call") arg-list) t)
       (unless (or (if cvs-command-async
@@ -309,7 +309,7 @@ Finally, unless the cvs-command-dont-clear-output parameter is non-nil, the
 don't ask for confirmation and kill instead of interrupting."
   (interactive)
   (let ((processes (filter (lambda (p)
-			     (string=? (process-prog p) cvs-program))
+			     (string=? (process-program p) cvs-program))
 			   (active-processes))))
     (if processes
 	(if force
@@ -375,7 +375,7 @@ whose names are in the list FILENAMES (in the same order)."
 	    point output t)
       (setq revs (cons (expand-last-match "\\1") revs)
 	    point (match-end)))
-    (nreverse revs)))
+    (reverse! revs)))
 
 
 ;; Entry points
@@ -484,7 +484,7 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
 anything whose status is `unchanged' or `updated'."
   (interactive)
   (cvs-error-if-updating)
-  (setq cvs-file-list (delete-if (lambda (f)
+  (setq cvs-file-list (delete-if! (lambda (f)
 				   (memq (cvs-file-get-status f)
 					 '(unchanged updated)))
 				 cvs-file-list))
@@ -587,7 +587,7 @@ do that."
   (let ((files (cvs-command-get-filenames)))
     (map-y-or-n-p "Really delete file `%s'?" files delete-file)
     ;; Remove any files that the user answered negatively to
-    (setq files (delete-if file-exists? files))
+    (setq files (delete-if! file-exists? files))
     (when files
       (cvs-command nil "remove" (cvs-command-get-filenames))
       (cvs-show-output-buffer)
@@ -721,7 +721,7 @@ be entered."
   (let ((cvs-command-ignore-errors t)
 	(cvs-command-async (lambda ()
 			     (cvs-show-output-buffer))))
-    (cvs-command nil "diff" (nconc (and rev1 (not (string=? "" rev1))
+    (cvs-command nil "diff" (append! (and rev1 (not (string=? "" rev1))
 					(list (concat "-r" rev1)))
 				   (and rev2 (not (string=? "" rev2))
 					(list (concat "-r" rev2)))
@@ -763,7 +763,7 @@ works by deleting the local copy, before updating it from the repository."
   (let ((files (cvs-command-get-filenames)))
     (map-y-or-n-p "Really lose changes to `%s'?" files delete-file)
     ;; Remove any files that the user answered negatively to
-    (setq files (delete-if file-exists? files))
+    (setq files (delete-if! file-exists? files))
     (if (cvs-buffer-p)
 	;; Ensure that cvs-revert isn't called until the
 	;; update has completed

@@ -31,7 +31,7 @@
     (while (and (< index (length text))
 		(string-match "[^\n]*" text index))
       (setq sub-string (substring text (match-start) (match-end))
-	    index (if (equal? (aref text (match-end)) #\newline)
+	    index (if (equal? (array-ref text (match-end)) #\newline)
 		      (1+ (match-end))
 		    (match-end)))
       (insert sub-string p)

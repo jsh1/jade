@@ -187,10 +187,10 @@ of the document, currently only `title' and `base' keys are defined."
 	     html-decode-unknown-tag) tag dest)))
     (html-decode-add-pending 'line)
     (html-decode-output-pending dest)
-    (nconc (and html-decode-title (list (cons 'title html-decode-title)))
+    (append! (and html-decode-title (list (cons 'title html-decode-title)))
 	   (and html-decode-base (list (cons 'base html-decode-base)))
 	   (and html-decode-anchors
-		(list (cons 'anchors (nreverse html-decode-anchors)))))))
+		(list (cons 'anchors (reverse! html-decode-anchors)))))))
 
 
 ;; Low-level parsing
@@ -210,9 +210,9 @@ of the document, currently only `title' and `base' keys are defined."
 	    end (match-end))
       (let
 	  (char)
-	(if (= (aref string (1+ start)) #\#)
+	(if (= (array-ref string (1+ start)) #\#)
 	    ;; Ascii code
-	    (if (= (aref string (+ start 2)) #\x)
+	    (if (= (array-ref string (+ start 2)) #\x)
 		;; hex
 		(setq char (string->number (expand-last-match "\\2") 16))
 	      ;; decimal
@@ -225,7 +225,7 @@ of the document, currently only `title' and `base' keys are defined."
     (if (= point 0)
 	string
       (setq out (cons (substring string point) out))
-      (apply concat (nreverse out)))))
+      (apply concat (reverse! out)))))
 
 ;; Decode the run of text from START to END in buffer SOURCE to point in
 ;; buffer DEST, assuming that there are no tags in this section
@@ -303,7 +303,7 @@ of the document, currently only `title' and `base' keys are defined."
      ((looking-at "<[ \t\r\n\f]*(/?)[ \t\r\n\f]*([a-zA-Z0-9_-]+)[ \t\r\n\f]*"
 		  point source)
       (setq entering (equal? (match-end 1) (match-start 1)))
-      (setq name (intern (translate-string (expand-last-match "\\2")
+      (setq name (intern (translate-string! (expand-last-match "\\2")
 					   downcase-table)))
       (setq point (match-end))
       (while (or (looking-at "[ \t\r\n\f]*([a-zA-Z0-9_-]+)[ \t\r\n\f]*(=[ \t\r\n\f]*)?" point source)
@@ -312,7 +312,7 @@ of the document, currently only `title' and `base' keys are defined."
 	(let ((token (expand-last-match "\\1")))
 	  (if (string=? token "")
 	      (setq tem nil)
-	    (setq tem (intern (translate-string token downcase-table)))))
+	    (setq tem (intern (translate-string! token downcase-table)))))
 	(setq point (match-end))
 	(unless (equal? (match-start 2) (match-end 2))
 	  (if (or (= (get-char point source) #\")
@@ -362,7 +362,7 @@ of the document, currently only `title' and `base' keys are defined."
 	  (when (not (equal? (match-start 1) (match-end 1)))
 	    (html-decode-add-pending 'space)))
       (setq point (match-start 1)))
-    (list* point name entering (nreverse params))))
+    (list* point name entering (reverse! params))))
 
 
 ;; Helper functions
@@ -406,7 +406,7 @@ of the document, currently only `title' and `base' keys are defined."
       ((frame (car html-decode-stack)))
     (setq html-decode-stack (cdr html-decode-stack))
     (when (and html-decode-pending-fill
-	       (assq 'html-decode-fill (nth 1 frame))
+	       (assq 'html-decode-fill (list-ref frame 1))
 	       (memq tag-sym html-decode-block-tags))
       (with-buffer dest
 	(let
@@ -417,24 +417,24 @@ of the document, currently only `title' and `base' keys are defined."
 	  (setq html-decode-pending-fill nil))))
     ;; restore the environment
     (mapc (lambda (pair)
-	    (set (car pair) (cdr pair))) (nth 1 frame))
+	    (set (car pair) (cdr pair))) (list-ref frame 1))
     ;; then call the exit function
     (and (car frame)
-	 (apply (car frame) (nthcdr 2 frame)))))
+	 (apply (car frame) (list-tail frame 2)))))
 
 ;; Pop all environments back to the first tag of type TAG
 (defun html-decode-pop-env (tag dest)
   (when (and (not (memq (car tag) html-decode-optional-close-tags))
-	     (memq (nth 2 (car html-decode-stack))
+	     (memq (list-ref (car html-decode-stack) 2)
 		   html-decode-optional-close-tags))
     ;; Close the trailing optional tags
     (html-decode-pop-optional tag dest))
-  (if (not (eq? (car tag) (nth 2 (car html-decode-stack))))
+  (if (not (eq? (car tag) (list-ref (car html-decode-stack) 2)))
       (and html-decode-echo-warnings
 	   (format (stderr-file)
 		   "warning: badly nested HTML: %s, %s, %s, %s\n"
 		   html-decode-source html-decode-point
-		   (car tag) (nth 2 (car html-decode-stack))))
+		   (car tag) (list-ref (car html-decode-stack) 2)))
     (html-decode-close-frame (car tag) dest)))
 
 ;; Are we entering or leaving TAG
@@ -466,9 +466,9 @@ of the document, currently only `title' and `base' keys are defined."
     ;; type TAG
     (catch 'foo
       (while (and html-decode-stack
-		  (memq (nth 2 frame) html-decode-optional-close-tags))
+		  (memq (list-ref frame 2) html-decode-optional-close-tags))
 	(html-decode-close-frame (car tag) dest)
-	(when (eq? (nth 2 frame) (car tag))
+	(when (eq? (list-ref frame 2) (car tag))
 	  (throw 'foo t))
 	(setq frame (car html-decode-stack))))))
 
@@ -528,9 +528,9 @@ of the document, currently only `title' and `base' keys are defined."
   ;; XXX html-decode-push-env is the position in the output
   (catch 'foo
     (mapc (lambda (frame)
-	    (if (equal? old (nth (+ 4 1) frame))
+	    (if (equal? old (list-ref frame (+ 4 1)))
 		;; a match, so update it to the new position
-		(rplaca (nthcdr (+ 4 1) frame) new)
+		(set-car! (list-tail frame (+ 4 1)) new)
 	      ;; no others can have either, so abort
 	      (throw 'foo t))) stack)))
 
@@ -584,15 +584,15 @@ of the document, currently only `title' and `base' keys are defined."
 ;; Decode the ALIGN attribute from TAG, acting on its value
 (defun html-decode-tag:align (tag)
   (let
-      ((align (cdr (assq 'align (nthcdr 2 tag)))))
+      ((align (cdr (assq 'align (list-tail tag 2)))))
     (when align
-      (setq html-decode-fill (intern (translate-string
+      (setq html-decode-fill (intern (translate-string!
 				      align downcase-table))))))
 
 ;; Must be called before the html-decode-tag-with call
 (defun html-decode-pre-tag:align (tag)
   (when (and (html-decode-tag-entering-p tag)
-	     (assq 'align (nthcdr 2 tag)))
+	     (assq 'align (list-tail tag 2)))
     (html-decode-add-env 'html-decode-fill)))
 
 
@@ -655,7 +655,7 @@ of the document, currently only `title' and `base' keys are defined."
 (defun html-decode:base (tag)
   (when (html-decode-tag-entering-p tag)
     (let
-	((href (cdr (assq 'href (nthcdr 2 tag)))))
+	((href (cdr (assq 'href (list-tail tag 2)))))
       (when href
 	(setq html-decode-base href)))))
 (put 'base 'html-decode-fun html-decode:base)
@@ -693,7 +693,7 @@ of the document, currently only `title' and `base' keys are defined."
 		    html-decode-anchors)))
       (with-buffer dest
 	(make-extent start (cursor-pos)
-		     (nconc (and (assq 'href params)
+		     (append! (and (assq 'href params)
 				 (list 'face (html-decode-elt-face 'link)))
 			    (list 'html-anchor-params params)))))))
 (put 'a 'html-decode-fun html-decode:a)
@@ -917,8 +917,8 @@ of the document, currently only `title' and `base' keys are defined."
 (defun html-decode:frame (tag dest)
   (when (html-decode-tag-entering-p tag)
     (let*
-	((name (cdr (assq 'name (nthcdr 2 tag))))
-	 (url (cdr (assq 'src (nthcdr 2 tag)))))
+	((name (cdr (assq 'name (list-tail tag 2))))
+	 (url (cdr (assq 'src (list-tail tag 2)))))
       (html-decode-add-pending 'line)
       (html-decode-insert "  " dest)
       (with-buffer dest

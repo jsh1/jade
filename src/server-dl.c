@@ -74,10 +74,10 @@ server_handle_request(int fd)
 	   5. call server-find-file with FILE and LINE */
 	if(read(fd, &len, sizeof(len)) != sizeof(len)
 	   || (val = rep_allocate_string(len + 1)) == 0
-	   || read(fd, rep_STR(val), len) != len
+	   || read(fd, rep_MUTABLE_STR(val), len) != len
 	   || read(fd, &line, sizeof(line)) != sizeof(line))
 	    goto io_error;
-	rep_STR(val)[len] = 0;
+	rep_MUTABLE_STR(val)[len] = 0;
 	if (req != req_find_file_async)
 	    client_list = Fcons(Fcons(val, rep_MAKE_INT(fd)), client_list);
 	rep_call_lisp2(Fsymbol_value(Qserver_find_file, Qt),
@@ -99,9 +99,9 @@ server_handle_request(int fd)
 	   5. write LENGTH bytes of result string */
 	if(read(fd, &len, sizeof(len)) != sizeof(len)
 	   || (val = rep_allocate_string(len + 1)) == 0
-	   || read(fd, rep_STR(val), len) != len)
+	   || read(fd, rep_MUTABLE_STR(val), len) != len)
 	    goto io_error;
-	rep_STR(val)[len] = 0;
+	rep_MUTABLE_STR(val)[len] = 0;
 	val = Fread(Fcons(rep_MAKE_INT(0), val));
 	if(val != 0)
 	    val = Feval(val);

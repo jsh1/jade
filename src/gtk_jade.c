@@ -881,7 +881,7 @@ sys_set_win_pos(Lisp_Window *win, long x, long y, long w, long h)
 }
 
 void
-sys_set_win_name(Lisp_Window *win, char *name)
+sys_set_win_name(Lisp_Window *win, const char *name)
 {
     GtkWidget *toplevel = gtk_widget_get_toplevel (GTK_WIDGET (win->w_Window));
     if (toplevel != 0 && GTK_IS_WINDOW (toplevel))

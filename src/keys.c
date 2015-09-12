@@ -91,7 +91,7 @@ search_keymap(repv km, unsigned long code, unsigned long mods, bool (*callback)(
     /* Find the list of bindings to scan. */
     if(rep_VECTORP(km))
     {
-	if(rep_VECT_LEN(km) != KEYTAB_SIZE)
+	if(rep_VECTOR_LEN(km) != KEYTAB_SIZE)
 	    return 0;
 	km = rep_VECTI(km, KEYTAB_HASH_FUN(code, mods) % KEYTAB_SIZE);
     }
@@ -461,9 +461,9 @@ static struct key_def default_codes[] = {
 /* Puts the integers defining the event described in DESC into CODE
    and MODS. */
 bool
-lookup_event(unsigned long *code, unsigned long *mods, char *desc)
+lookup_event(unsigned long *code, unsigned long *mods, const char *desc)
 {
-    char *tem;
+    const char *tem;
     char buf[100];
     *code = *mods = 0;
 
@@ -473,7 +473,7 @@ lookup_event(unsigned long *code, unsigned long *mods, char *desc)
 	struct key_def *x = default_mods;
 
 	memcpy(buf, desc, tem - (char *)desc);
-	buf[tem - (char *)desc] = 0;
+	buf[tem - desc] = 0;
 
 	while(x->name != 0)
 	{
@@ -597,7 +597,7 @@ bindings are to be inherited by the new keymap.
     return Fcons(Qkeymap, base);
 }
 
-DEFUN("bind-keys", Fbind_keys, Sbind_keys, (repv args), rep_SubrN) /*
+DEFUN("bind-keys", Fbind_keys, Sbind_keys, (repv args), rep_SubrL) /*
 ::doc:bind-keys::
 bind-keys KEYMAP { EVENT-DESCRIPTION COMMAND }...
 
@@ -658,7 +658,7 @@ end:
     return res;
 }
 
-DEFUN("unbind-keys", Funbind_keys, Sunbind_keys, (repv args), rep_SubrN) /*
+DEFUN("unbind-keys", Funbind_keys, Sunbind_keys, (repv args), rep_SubrL) /*
 ::doc:unbind-keys::
 unbind-keys KEY-MAP EVENT-DESCRIPTION...
 ::end:: */
@@ -668,7 +668,7 @@ unbind-keys KEY-MAP EVENT-DESCRIPTION...
     if(!rep_CONSP(args))
 	return 0;
     km = rep_CAR(args);
-    if(!((rep_VECTORP(km) && rep_VECT_LEN(km) == KEYTAB_SIZE)
+    if(!((rep_VECTORP(km) && rep_VECTOR_LEN(km) == KEYTAB_SIZE)
        || rep_CONSP(km)))
 	return(rep_signal_arg_error(km, 1));
     args = rep_CDR(args);
@@ -886,7 +886,7 @@ keymapp ARG
 Returns t if ARG can be used as a keymap.
 ::end:: */
 {
-    if((rep_VECTORP(arg) && rep_VECT_LEN(arg) == KEYTAB_SIZE)
+    if((rep_VECTORP(arg) && rep_VECTOR_LEN(arg) == KEYTAB_SIZE)
        || (rep_CONSP(arg) && rep_CAR(arg) == Qkeymap))
 	return Qt;
     else

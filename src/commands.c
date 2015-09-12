@@ -71,7 +71,7 @@ again:
 	fun = cmd;
     if(!rep_VOIDP(fun) && !rep_NILP(fun))
     {
-	if((rep_TYPE(fun) >= rep_Subr0) && (rep_TYPE(fun) <= rep_SubrN))
+	if(rep_TYPE(fun) == rep_Subr)
 	    spec = rep_SUBR(fun)->int_spec;
 	else if(rep_BYTECODEP(fun))
 	    spec = rep_BYTECODE_INTERACTIVE(fun);
@@ -80,7 +80,7 @@ again:
 	    if(rep_CAR(fun) == Qlambda)
 	    {
 		/* A lambda expression, test its first proper form. */
-		fun = Fnthcdr(rep_MAKE_INT(2), fun);
+		fun = Flist_tail(fun, rep_MAKE_INT(2));
 		if(fun == 0)
 		    return 0;
 		if(rep_CONSP(fun)
@@ -171,7 +171,7 @@ any entered arg is given to the invoked COMMAND.
 	rep_PUSHGC(gc_cmd, cmd);
 	if(rep_STRINGP(int_spec))
 	{
-	    char *spec_str = rep_STR(int_spec);
+	    const char *spec_str = rep_STR(int_spec);
 	    char c;
 	    rep_GC_root gc_args;
 
@@ -220,7 +220,7 @@ any entered arg is given to the invoked COMMAND.
 		    else
 		    {
 			/* copy the prompt */
-			char *end = memchr(spec_str, '\n',
+			const char *end = memchr(spec_str, '\n',
 					     rep_STRING_LEN(int_spec) -
 					     (spec_str - rep_STR(int_spec)));
 			if(!end)
@@ -501,22 +501,21 @@ Returns t if COMMAND may be called interactively.
 	cmd = rep_CLOSURE(cmd)->fun;
     if(!rep_VOIDP(cmd) && !rep_NILP(cmd))
     {
-	if((((rep_TYPE(cmd) >= rep_Subr0) && (rep_TYPE(cmd) <= rep_SubrN))
-	    && (rep_SUBR(cmd)->int_spec != 0))
+	if(((rep_TYPE(cmd) == rep_Subr) && (rep_SUBR(cmd)->int_spec != 0))
 	   || (rep_BYTECODEP(cmd) && !rep_NILP(rep_BYTECODE_INTERACTIVE(cmd))))
 	    return(Qt);
 	else if(rep_CONSP(cmd))
 	{
 	    if(rep_CAR(cmd) == Qautoload)
 	    {
-		cmd = Fnth(rep_MAKE_INT(3), cmd);
+		cmd = Flist_ref(cmd, rep_MAKE_INT(3));
 		if(cmd != 0 && !rep_NILP(cmd))
 		    return(Qt);
 	    }
 	    else if(rep_CAR(cmd) == Qlambda)
 	    {
 		/* A lambda expression, test its first proper form. */
-		cmd = Fnthcdr(rep_MAKE_INT(2), cmd);
+		cmd = Flist_tail(cmd, rep_MAKE_INT(2));
 		if(cmd == 0)
 		    return 0;
 		if(rep_CONSP(cmd)

@@ -16,7 +16,7 @@
 	  ((i 0)
 	   (tab (make-string 256)))
 	(while (< i (length tab))
-	  (aset tab i (char-upcase i))
+	  (array-set! tab i (char-upcase i))
 	  (setq i (1+ i)))
 	tab))
 
@@ -25,7 +25,7 @@
 	  ((i 0)
 	   (tab (make-string 256)))
 	(while (< i (length tab))
-	  (aset tab i (char-downcase i))
+	  (array-set! tab i (char-downcase i))
 	  (setq i (1+ i)))
 	tab))
              
@@ -160,8 +160,8 @@
 
 (defun string-downcase (x)
   "Return a new string, a lower case copy of string X."
-  (translate-string (copy-sequence x) downcase-table))
+  (translate-string! (copy-sequence x) downcase-table))
 
 (defun string-upcase (x)
   "Return a new string, an upper case copy of string X."
-  (translate-string (copy-sequence x) upcase-table))
+  (translate-string! (copy-sequence x) upcase-table))

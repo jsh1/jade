@@ -183,7 +183,7 @@ items to be displayed and manipulated."
 
 (defmacro summary-get-item (index)
   "Return the item at position INDEX in the menu (from zero)."
-  (list 'nth index 'summary-items))
+  (list 'list-ref 'summary-items index))
 
 (defun summary-get-index (item)
   "Return the index in the menu at which ITEM is displayed, or nil if ITEM
@@ -247,12 +247,12 @@ isn't displayed in the summary."
       ((existing (summary-get-pending-ops item)))
     (if existing
 	(unless (memq op (cdr existing))
-	  (setcdr existing (cons op (cdr existing)))
+	  (set-cdr! existing (cons op (cdr existing)))
 	  ;; Make sure that if there's a delete op in the
 	  ;; list, that it's at the end, so that the item isn't
 	  ;; possibly deleted before all the ops have had their way
 	  (when (memq 'delete (cdr existing))
-	    (setcdr existing (nconc (delq 'delete (cdr existing))
+	    (set-cdr! existing (append! (delq! 'delete (cdr existing))
 				    (list 'delete))))
 	  (summary-maybe-dispatch 'after-marking item)
 	  (summary-update-item item))
@@ -267,7 +267,7 @@ isn't displayed in the summary."
   (let
       ((ops (summary-get-pending-ops item)))
     (when ops
-      (setq summary-pending-ops (delq ops summary-pending-ops)))
+      (setq summary-pending-ops (delq! ops summary-pending-ops)))
     (summary-maybe-dispatch 'after-marking item)
     (when ops
       (summary-update-item item))))
@@ -424,7 +424,7 @@ item."
 	    (setq count (- count)
 		  start (max (1+ (- start count)) 0)))
 	(setq count 1))
-      (setq item (nthcdr start summary-items))
+      (setq item (list-tail summary-items start))
       (while (and (> count 0) item)
 	(summary-add-pending-op (car item) op)
 	(setq item (cdr item)
@@ -452,7 +452,7 @@ PRESERVE-MARKS is t, all marks are unset. FUNCTION is called as
   (mapc (lambda (o)
 	  (when (memq 'mark (cdr o))
 	    (unless preserve-marks
-	      (rplacd o (delq 'mark (cdr o))))
+	      (set-cdr! o (delq! 'mark (cdr o))))
 	    (function (car o))))
 	summary-pending-ops))
 
@@ -474,13 +474,13 @@ items, or if no items are marked, the item under the cursor."
 	      (setq arg (+ arg current)
 		    current 0)))
 	  (let
-	      ((in (nthcdr current summary-items))
+	      ((in (list-tail summary-items current))
 	       (out nil))
 	    (while (and (> arg 0) in)
 	      (setq out (cons (car in) out)
 		    in (cdr in)
 		    arg (1- arg)))
-	    (nreverse out))))))
+	    (reverse! out))))))
 
 (defun summary-item-marked-p (item)
   "Returns t if ITEM is marked for future use."

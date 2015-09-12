@@ -82,7 +82,7 @@ matching strings.")
 ;; Display a list of completions in a *completions* buffer in the
 ;; current window
 (defun completion-list (completions)
-  (setq completions ((if completion-sorted-lists sort identity)
+  (setq completions ((if completion-sorted-lists sort! identity)
 		     (if completion-abbrev-function
 			 (mapcar completion-abbrev-function
 				 completions)
@@ -109,7 +109,7 @@ matching strings.")
 	(while completions
 	  (indent-to (* column column-width))
 	  (insert (car completions))
-	  (setq column (% (1+ column) columns))
+	  (setq column (remainder (1+ column) columns))
 	  (when (zero? column)
 	    (insert "\n"))
 	  (setq completions (cdr completions)))
@@ -157,7 +157,7 @@ matching strings.")
     completions))
 
 (setq-default completion-hooks
-	      (nconc completion-hooks (list complete-from-buffer)))
+	      (append! completion-hooks (list complete-from-buffer)))
 
 (defun complete-at-point (#!optional only-display)
   "Complete the word immediately before the cursor. If ONLY-DISPLAY is non-nil,
@@ -167,8 +167,8 @@ don't insert anything, just display the list of possible completions."
       ((w-start (forward-exp -1))
        (w-end (cursor-pos))
        (word (copy-area (forward-exp -1) (cursor-pos)))
-       (completions (sort
-		     (apply nconc (mapcar (lambda (h)
+       (completions (sort!
+		     (apply append! (mapcar (lambda (h)
 					    (h word w-start w-end))
 					  completion-hooks)))))
     ;; remove duplicates
@@ -181,7 +181,7 @@ don't insert anything, just display the list of possible completions."
 	    ((tem completions))
 	  (while (pair? (cdr tem))
 	    (if (equal? (car tem) (car (cdr tem)))
-		(rplacd tem (cdr (cdr tem)))
+		(set-cdr! tem (cdr (cdr tem)))
 	      (setq tem (cdr tem)))))))
     (completion-insert completions word only-display)))
 

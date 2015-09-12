@@ -111,7 +111,7 @@ is non-nil it defines the view to display the buffer in."
       (setq buffer (open-buffer buffer)))
     (unless (bufferp buffer)
       (signal 'bad-arg (list buffer 1)))
-    (set-buffer-list (cons buffer (delq buffer (buffer-list))))
+    (set-buffer-list (cons buffer (delq! buffer (buffer-list))))
     (set-current-buffer buffer)))
 
 (defun kill-buffer (buffer)
@@ -134,7 +134,7 @@ When called interactively, BUFFER is prompted for."
     (mapc (lambda (w)
 	    (mapc (lambda (v)
 		    (with-view v
-		      (set-buffer-list (delq buffer (buffer-list)))
+		      (set-buffer-list (delq! buffer (buffer-list)))
 		      (when (eq? (current-buffer) buffer)
 			(set-current-buffer (or (car (buffer-list))
 						default-buffer)))))
@@ -175,7 +175,7 @@ buried in each view though)."
 	    (mapc (lambda (v)
 		    (unless (minibuffer-view-p v)
 		      (with-view v
-			(set-buffer-list (nconc (delq buffer (buffer-list))
+			(set-buffer-list (append! (delq! buffer (buffer-list))
 						(cons buffer nil)))
 			(set-current-buffer (car (buffer-list))))))
 		  (if all-views
@@ -187,7 +187,7 @@ buried in each view though)."
   "Prompt the user for the name of a buffer, then display it."
   (interactive)
   (let*
-      ((default (or (nth 1 (buffer-list)) (current-buffer)))
+      ((default (or (list-ref (buffer-list) 1) (current-buffer)))
        (buffer (prompt-for-buffer (concat "Switch to buffer (default: "
 					  (buffer-name default)
 					  "):")
@@ -536,7 +536,7 @@ buffers exist on exit."
 Returns t if none of the files were left modified."
   (interactive)
   (let ((unsaved-buffers
-	 (delete-if (lambda (b)
+	 (delete-if! (lambda (b)
 		      (not (and b (buffer-modified-p b))))
 		    (mapcar get-file-buffer filenames))))
     (if unsaved-buffers

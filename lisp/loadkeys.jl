@@ -299,7 +299,7 @@ the key."
   (next-keymap-path 'global-keymap)
   (setq prefix-arg (cond
 		    ((pair? arg)
-		     (rplaca arg (* 4 (car arg)))
+		     (set-car! arg (* 4 (car arg)))
 		     arg)
 		    (t
 		     (cons 4 nil)))

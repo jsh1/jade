@@ -129,8 +129,8 @@ Returns the string from START-POS up to END-POS.
 	repv str = rep_allocate_string(tlen);
 	if(str)
 	{
-	    copy_section(VBUFFER(buff), start, end, rep_STR(str));
-	    rep_STR(str)[tlen - 1] = 0;
+	    copy_section(VBUFFER(buff), start, end, rep_MUTABLE_STR(str));
+	    rep_MUTABLE_STR(str)[tlen - 1] = 0;
 	    return(str);
 	}
     }
@@ -702,7 +702,7 @@ Returns the position which is OFFSET characters from the start of the buffer.
 }
 
 DEFUN("call-process-area", Fcall_process_area,
-      Scall_process_area, (repv arg_list), rep_SubrN) /*
+      Scall_process_area, (repv arg_list), rep_SubrL) /*
 ::doc:call-process-area::
 call-process-area [PROCESS] START END DELETEP [PROGRAM] [ARGS...]
 

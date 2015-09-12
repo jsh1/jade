@@ -83,7 +83,7 @@ definitions will be added to any existing definitions."
 		  (if dont-merge
 		      (setq mail-address-list (cdr form))
 		    ;; FIXME: remove duplicates
-		    (setq mail-address-list (nconc (cdr form)
+		    (setq mail-address-list (append! (cdr form)
 						   mail-address-list))))
 		 (t
 		  (message (format nil "Ignoring unknown item in mail dir: %s"
@@ -126,23 +126,23 @@ definitions will be added to any existing definitions."
       ((cell (assq field record)))
     (if cell
 	(unless (member value (cdr cell))
-	  (rplacd cell (nconc (cdr cell) (list value)))
+	  (set-cdr! cell (append! (cdr cell) (list value)))
 	  (setq mail-directory-modified t))
-      (setq record (nconc record (list (list field value))))
+      (setq record (append! record (list (list field value))))
       (setq mail-directory-modified t))))
 
 (defun md-delete-from-field (record field value)
   (let
       ((cell (assq field record)))
     (when cell
-      (rplacd cell (delete value (cdr cell))))))
+      (set-cdr! cell (delete! value (cdr cell))))))
 
 (defun md-delete-field (record field)
   (mapc (lambda (cell)
 	  (when (eq? (car cell) field)
 	    ;; Not possible to delete the whole thing. So just
 	    ;; clear out the field's contents
-	    (rplacd cell nil))) record))
+	    (set-cdr! cell nil))) record))
 
 (defun md-get-record (field key)
   (catch 'out
@@ -153,12 +153,12 @@ definitions will be added to any existing definitions."
 (defun md-add-record (field value)
   (let
       ((record (list (list field value))))
-    (setq mail-address-list (nconc mail-address-list (list record)))
+    (setq mail-address-list (append! mail-address-list (list record)))
     (setq mail-directory-modified t)
     record))
 
 (defun md-delete-record (record)
-  (setq mail-address-list (delq record mail-address-list))
+  (setq mail-address-list (delq! record mail-address-list))
   (setq mail-directory-modified t))
 
 ;; Return a flattened list of all fields matching FIELD
@@ -199,7 +199,7 @@ definitions will be added to any existing definitions."
 						      " (Ctrl-g to finish)")
 					      dont-validate))
       (setq lst (cons tem lst)))
-    (nreverse lst)))
+    (reverse! lst)))
 
 
 ;; Adding and removing entries

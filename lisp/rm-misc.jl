@@ -48,7 +48,7 @@ message formatting characters are available.")
 		    (let
 			((replyto (rm-get-msg-header msg "Reply-To" t)))
 		      (when (string? mail-ignored-reply-tos)
-			(setq replyto (delete-if
+			(setq replyto (delete-if!
 				       (lambda (m)
 					 (string-match
 					  mail-ignored-reply-tos m)) replyto)))

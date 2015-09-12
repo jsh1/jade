@@ -37,31 +37,31 @@
 	 ((and reg1 reg2 reg3)
 	  ;; Got our 24 bits, split into four 6 bit quantities
 	  (progn
-	    (setq reg (logior (lsh reg1 16) (lsh reg2 8) reg3))
-	    (write output (aref mime-base64-alphabet (lsh reg -18)))
-	    (write output (aref mime-base64-alphabet
-				(logand (lsh reg -12) #o77)))
-	    (write output (aref mime-base64-alphabet
-				(logand (lsh reg -6) #o77)))
-	    (write output (aref mime-base64-alphabet (logand reg #o77)))
+	    (setq reg (logior (ash reg1 16) (ash reg2 8) reg3))
+	    (write output (array-ref mime-base64-alphabet (ash reg -18)))
+	    (write output (array-ref mime-base64-alphabet
+				(logand (ash reg -12) #o77)))
+	    (write output (array-ref mime-base64-alphabet
+				(logand (ash reg -6) #o77)))
+	    (write output (array-ref mime-base64-alphabet (logand reg #o77)))
 	    (setq col (+ col 4))
 	    (when (>= col 76)
 	      (write output #\newline)
 	      (setq col 0))))
 	 (reg2
 	  ;; 16 bits read, shift in 2 zeros
-	  (setq reg (lsh (logior (lsh reg1 8) reg2) 2))
-	  (write output (aref mime-base64-alphabet (lsh reg -12)))
-	  (write output (aref mime-base64-alphabet
-			      (logand (lsh reg -6) #o77)))
-	  (write output (aref mime-base64-alphabet (logand reg #o77)))
+	  (setq reg (ash (logior (ash reg1 8) reg2) 2))
+	  (write output (array-ref mime-base64-alphabet (ash reg -12)))
+	  (write output (array-ref mime-base64-alphabet
+			      (logand (ash reg -6) #o77)))
+	  (write output (array-ref mime-base64-alphabet (logand reg #o77)))
 	  (write output #\=)
 	  (throw 'done t))
 	 (reg1
 	  ;; eight bits read, shift in 4 zeros
-	  (setq reg (lsh reg1 4))
-	  (write output (aref mime-base64-alphabet (lsh reg -6)))
-	  (write output (aref mime-base64-alphabet (logand reg #o77)))
+	  (setq reg (ash reg1 4))
+	  (write output (array-ref mime-base64-alphabet (ash reg -6)))
+	  (write output (array-ref mime-base64-alphabet (logand reg #o77)))
 	  (write output #\=)
 	  (write output #\=)
 	  (throw 'done t))
@@ -91,10 +91,10 @@
        (t
 	(setq char nil)))
       (when char
-	(setq reg (logior (lsh reg 6) char))
+	(setq reg (logior (ash reg 6) char))
 	(setq bits (+ bits 6)))
       (while (>= bits 8)
-	(setq char (lsh reg (- 8 bits)))
-	(setq reg (logxor reg (lsh char (- bits 8))))
+	(setq char (ash reg (- 8 bits)))
+	(setq reg (logxor reg (ash char (- bits 8))))
 	(setq bits (- bits 8))
 	(write output char)))))

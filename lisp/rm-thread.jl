@@ -71,8 +71,8 @@ threaded.")
 		     (dy (rm-get-date-vector y)))
 		  ;; Date-less messages earlier than dated messages
 		  (if (and dx dy)
-		      (< (aref dx date-vec-epoch-time)
-			 (aref dy date-vec-epoch-time))
+		      (< (array-ref dx date-vec-epoch-time)
+			 (array-ref dy date-vec-epoch-time))
 		    dy))))
 	(cons 'subject
 	      (lambda (x y)
@@ -157,11 +157,11 @@ be shown before the second.")
 		  ;; Link all of TIED-THREADS into one, and add MESSAGE
 		  (progn
 		    ;; Delete the threads being tied..
-		    (setq threads (delete-if (lambda (x)
+		    (setq threads (delete-if! (lambda (x)
 					       (memq x tied-threads))
 					     threads))
 		    ;; ..then cons them onto the head as one
-		    (setq threads (cons (apply nconc (list msg)
+		    (setq threads (cons (apply append! (list msg)
 					       tied-threads)
 					threads)))
 		;; No thread for MESSAGE, start a new one
@@ -173,18 +173,18 @@ be shown before the second.")
 	  ((rm-pred (cdr (assq rm-intra-thread-sort-key rm-sort-predicates))))
 	(setq threads (mapcar
 		       (lambda (thread)
-			 (sort thread rm-pred))
+			 (sort! thread rm-pred))
 		       threads)))
       ;; Then sort the threads themselves
       (let
 	  ((rm-pred (cdr (assq rm-inter-thread-sort-key rm-sort-predicates))))
-	(setq threads (sort threads (lambda (x y)
+	(setq threads (sort! threads (lambda (x y)
 				      (rm-pred (car x) (car y))))))
       ;; Ok, so we now have a list of THREADS, spit them out as the
       ;; list(s) of messages?
       ;; [no infinite regress]
       (rm-set-folder-field folder rm-folder-sort-key nil)
-      (rm-install-messages folder (apply nconc threads))))
+      (rm-install-messages folder (apply append! threads))))
   (rm-set-folder-field folder rm-folder-sort-key 'thread)
   (unless no-redisplay
     (rm-redisplay-folder folder))
@@ -234,7 +234,7 @@ the raw prefix argument."
 			      (symbol-name (car p))) rm-sort-predicates)
 		    "Sort key:"))
 	   arg)))
-  (unless (atom key)
+  (unless (atom? key)
     (when (< (car key) 0)
       (setq reversed (not reversed)))
     (setq key (cdr key)))
@@ -248,7 +248,7 @@ the raw prefix argument."
 	;; Prevent infinite regress
 	(rm-set-folder-field folder rm-folder-sort-key nil)
 	(rm-install-messages
-	 folder (sort (nconc (rm-get-folder-field
+	 folder (sort! (append! (rm-get-folder-field
 			      folder rm-folder-before-list)
 			     (list (rm-get-folder-field
 				    folder rm-folder-current-msg))

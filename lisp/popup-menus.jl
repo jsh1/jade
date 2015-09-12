@@ -183,7 +183,7 @@ local mode.")
     (popup-menu)))
 
 (defun popup-menu-buffers-spec ()
-  (nconc (mapcar (lambda (b)
+  (append! (mapcar (lambda (b)
 		   (list (buffer-name b) t (lambda () (goto-buffer b))))
 		 (buffer-list))
 	 (list nil '("List all buffers" buffer-summary))))
@@ -204,7 +204,7 @@ local mode.")
 				    (insert string))))
 			out))
 	(setq i (1+ i))))
-    (nreverse out)))
+    (reverse! out)))
 
 ;; This function should be invoked when COMMAND is selected from a menu
 (defun popup-menu-dispatch-command (command)

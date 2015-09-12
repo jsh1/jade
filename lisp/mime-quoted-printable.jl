@@ -65,4 +65,4 @@
 	  (if (and (>= tem #\0) (<= tem #\9))
 	      (setq tem (- tem #\0))
 	    (setq tem (+ (- tem #\A) 10)))
-	  (write output (logior (lsh char 4) tem)))))))
+	  (write output (logior (ash char 4) tem)))))))

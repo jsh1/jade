@@ -98,18 +98,18 @@ external mmencode program, otherwise handle locally.")
 				      ")[ \t\n]*=" "[ \t\n]*")
 			      text point)
       (let
-	  ((param-name (intern (translate-string (expand-last-match "\\1")
+	  ((param-name (intern (translate-string! (expand-last-match "\\1")
 						 downcase-table)))
 	   param-body)
 	(setq point (match-end))
-	(when (string-looking-at (if (= (aref text point) #\")
+	(when (string-looking-at (if (= (array-ref text point) #\")
 				     "\"([^\"]*)\"[ \t\n]*"
 				   (concat "(" mime-token-re ")"))
 				 text point)
 	  (setq param-body (expand-last-match "\\1"))
 	  (setq point (match-end)))
 	(setq params (cons (cons param-name param-body) params))))
-    (nreverse params)))
+    (reverse! params)))
 
 ;; Returns (TYPE SUBTYPE [(PARAM . VALUE-STRING) ... ])
 (defun mime-decode-content-type (text)
@@ -119,10 +119,10 @@ external mmencode program, otherwise handle locally.")
 				       ")[ \t\n]*(/[ \t\n]*(" mime-token-re
 				       ")[ \t\n]*)?") text)
       (error "Malformed Content-type header"))
-    (setq type (intern (translate-string (expand-last-match "\\1")
+    (setq type (intern (translate-string! (expand-last-match "\\1")
 					 downcase-table)))
     (when (match-start 2)
-      (setq subtype (intern (translate-string (expand-last-match "\\3")
+      (setq subtype (intern (translate-string! (expand-last-match "\\3")
 					      downcase-table))))
     (list* type subtype (mime-decode-params text (match-end)))))
 
@@ -130,7 +130,7 @@ external mmencode program, otherwise handle locally.")
 (defun mime-decode-content-xfer-enc (text)
   (unless (string-looking-at (concat "[ \t\n]*(" mime-token-re ")") text)
     (error "Malformed Content-transfer-encoding header"))
-  (intern (translate-string (expand-last-match "\\1") downcase-table)))
+  (intern (translate-string! (expand-last-match "\\1") downcase-table)))
 
 ;; Returns (inline PARAMS...) or (attachment PARAMS...) where the only
 ;; thing possible in the PARAMS alist is a filename
@@ -139,10 +139,10 @@ external mmencode program, otherwise handle locally.")
 				     ")[ \t\n]*") text)
     (error "Malformed Content-disposition header"))
   (let
-      ((type (intern (translate-string (expand-last-match "\\1")
+      ((type (intern (translate-string! (expand-last-match "\\1")
 				       downcase-table)))
        (params (when (and (> (length text) (match-end))
-			  (= (aref text (match-end)) #\;))
+			  (= (array-ref text (match-end)) #\;))
 		 (mime-decode-params text (match-end)))))
     (cons type params)))
 
@@ -159,15 +159,16 @@ external mmencode program, otherwise handle locally.")
       (filename (cdr (or (assq 'filename (cdr content-disp))
 			 ;; seems some mailers (sun dtmail) put the filename
 			 ;; in the content-type parameters!?
-			 (assq 'name (nthcdr 2 content-type))))))
+			 (assq 'name (list-tail content-type 2))))))
    (insert "[[")
    (when content-disp
      (format (current-buffer) "%s: " (car content-disp)))
    (when filename
      (format (current-buffer) "filename=%s " filename))
-   (format (current-buffer) "%s/%s " (car content-type) (nth 1 content-type))
-;  (when (nth 2 content-type)
-;    (format (current-buffer) "params: %S " (nth 2 content-type)))
+   (format (current-buffer) "%s/%s "
+	   (car content-type) (list-ref content-type 1))
+;  (when (list-ref content-type 2)
+;    (format (current-buffer) "params: %S " (list-ref content-type 2)))
    (format (current-buffer) "(%s encoding)" content-xfer-enc)
    (insert "]]\n")
    (make-extent out-start (end-of-line out-start)
@@ -236,7 +237,8 @@ external mmencode program, otherwise handle locally.")
 				 (end-of-buffer src-buffer)
 				 src-buffer))
       ;; apply the decoder
-      ((nth 2 tem) (cons src-buffer (start-of-buffer src-buffer)) output))))
+      ((list-ref tem 2)
+       (cons src-buffer (start-of-buffer src-buffer)) output))))
 
 (defun mime-decode-string (encoding source output)
   (let
@@ -245,7 +247,7 @@ external mmencode program, otherwise handle locally.")
 	;; Just copy verbatim
 	(write output source)
       ;; apply the decoder
-      ((nth 2 tem) (make-string-input-stream source) output))))
+      ((list-ref tem 2) (make-string-input-stream source) output))))
 
 ;; Decode from the start of SRC-BUFFER to the cursor in the current buffer.
 ;; CONTENT-TYPE is the parsed content type of the message. CONTENT-XFER-ENC
@@ -267,7 +269,7 @@ external mmencode program, otherwise handle locally.")
       (when (or (null? content-disp)
 		(eq? (car content-disp) 'inline) mime-decode-force-inlining)
 	(cond
-	 ((eq? (nth 1 content-type) 'html)
+	 ((eq? (list-ref content-type 1) 'html)
 	  ;; HTML code, have to decode it
 	  (let
 	      ((tem (assq content-xfer-enc mime-xfer-encodings-alist))
@@ -298,7 +300,7 @@ external mmencode program, otherwise handle locally.")
 				 content-type content-xfer-enc content-disp))
       (when (or (null? content-disp)
 		(eq? (car content-disp) 'inline) mime-decode-force-inlining)
-	(if (eq? (nth 1 content-type) 'external-body)
+	(if (eq? (list-ref content-type 1) 'external-body)
 	    ;; XXX: FIXME
 	    (error "message/external-body as yet unsupported")
 	  (mime-decode-buffer content-xfer-enc src-buffer (current-buffer))
@@ -306,7 +308,7 @@ external mmencode program, otherwise handle locally.")
      ((eq? (car content-type) 'multipart)
       ;; Recursive embedded message
       (let
-	  ((boundary (cdr (assq 'boundary (nthcdr 2 content-type))))
+	  ((boundary (cdr (assq 'boundary (list-tail content-type 2))))
 	   (actual-src src-buffer)
 	   parts start end final)
 	(unless (string? boundary)
@@ -354,14 +356,14 @@ external mmencode program, otherwise handle locally.")
 	    (setq start (forward-line 1 end))))
 	;; PARTS is a list of (START END ENCODING TYPE DISP)
 	;; (in reverse order compared to the message)
-	(if (eq? (nth 1 content-type) 'alternative)
+	(if (eq? (list-ref content-type 1) 'alternative)
 	    ;; Need to choose which of the alternative encodings
 	    ;; to display. They should have been in the order
 	    ;; most specific to least specific
 	    (setq parts
 		  (catch 'foo
 		    (mapc (lambda (part)
-			    (let ((type (nth 3 part)))
+			    (let ((type (list-ref part 3)))
 			      (cond ((and (eq? (car type) 'text)
 					  (eq? (cadr type) 'html))
 				     ;; I hate HTML email, only choose
@@ -372,19 +374,19 @@ external mmencode program, otherwise handle locally.")
 					   '(multipart message text))
 				     (throw 'foo (list part)))))) parts)
 		    nil))
-	  (setq parts (nreverse parts)))
+	  (setq parts (reverse! parts)))
 	(while parts
 	  (let
-	      ((start (nth 0 (car parts)))
-	       (end (nth 1 (car parts)))
-	       (enc (nth 2 (car parts)))
-	       (type (nth 3 (car parts)))
-	       (disp (nth 4 (car parts)))
+	      ((start (list-ref (car parts) 0))
+	       (end (list-ref (car parts) 1))
+	       (enc (list-ref (car parts) 2))
+	       (type (list-ref (car parts) 3))
+	       (disp (list-ref (car parts) 4))
 	       (dest (current-buffer)))
 	    (when (> end start)
 	      (unless type
 		;; implicit type of part
-		(setq type (if (eq? (nth 1 content-type) 'digest)
+		(setq type (if (eq? (list-ref content-type 1) 'digest)
 			       (list 'message 'rfc822)
 			     (list 'text 'plain))))
 	      (with-buffer actual-src
@@ -467,7 +469,7 @@ interactively the MIME part under the cursor is used."
 	  ((file (make-temp-name))
 	   (args (cons file nil)))
 	(mime-save-part extent file)
-	(rplacd args args)
+	(set-cdr! args args)
 	(message "Calling external viewer..." t)
 	(shell-command (apply format nil viewer args))))
      (t

@@ -266,7 +266,7 @@ buffer in a form that `goto-next-error' understands."
 		       dir-stack (cdr dir-stack))))
 	  (setq p (forward-line 1 p)))
 	(when errors
-	  (setq compile-errors (nconc (nreverse errors))
+	  (setq compile-errors (append! (reverse! errors))
 		compile-errors-exist t))
 	(if compile-proc
 	    (setq compile-error-pos p)

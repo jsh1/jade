@@ -115,5 +115,5 @@ in the current file, to VALUE."
   (let
       ((cell (assq var file-subst-vars)))
     (if cell
-	(rplacd cell value)
+	(set-cdr! cell value)
       (setq file-subst-vars (cons (cons var value) file-subst-vars)))))

@@ -162,7 +162,7 @@ is split.")
 						   (match-end 1))))
 		      info-indirect-list))
 	  (setq p (forward-line 1 p)))
-	(setq info-indirect-list (nreverse info-indirect-list)))
+	(setq info-indirect-list (reverse! info-indirect-list)))
       ;; Now look for the tag table
       (when (setq p (re-search-forward "^Tag table: *$" p nil t))
 	;; Copy this into the tags buffer
@@ -226,7 +226,7 @@ is split.")
   (if (and info-file-name (or (not filename) (equal? filename "")))
       info-file-name
     (let*
-	((lcase-name (translate-string (copy-sequence filename)
+	((lcase-name (translate-string! (copy-sequence filename)
 				       downcase-table))
 	 (path info-directory-list)
 	 suffixes files)
@@ -474,7 +474,7 @@ local bindings are:\n
 
 ;; Goto the ITEM-INDEX'th menu item.
 (defun info-menu-nth (item-index)
-  (interactive (list (- (aref (current-event-string) 0) #\0)))
+  (interactive (list (- (array-ref (current-event-string) 0) #\0)))
   (unless (info-goto-menu-start)
     (signal 'info-error (list "Can't find menu")))
   (while (and (> item-index 0) (re-search-forward "^\\* .*:"))
@@ -523,8 +523,8 @@ local bindings are:\n
 	(let
 	    ((hist (car info-history)))
 	  (setq info-history (cdr info-history))
-	  (when (info-find-node (concat #\( (car hist) #\) (nth 1 hist)))
-	    (goto (nth 2 hist))
+	  (when (info-find-node (concat #\( (car hist) #\) (list-ref hist 1)))
+	    (goto (list-ref hist 2))
 	    t)))
     (message "No more history")
     (beep)))
@@ -608,7 +608,7 @@ local bindings are:\n
 	      (setq p (re-search-forward "[^\n\t ]" (match-end)))
 	      (unless p
 		(signal 'info-error '("Malformed reference"))))
-	    (setq ref-title (apply concat (nreverse (cons (copy-area p end)
+	    (setq ref-title (apply concat (reverse! (cons (copy-area p end)
 							  ref-title)))
 		  p (forward-char 1 end))
 	    (if (= (get-char p) #\:)
@@ -626,7 +626,7 @@ local bindings are:\n
 			(setq p (re-search-forward "[^\n\t ]" (match-end))))
 		      (unless p
 			(signal 'info-error '("Malformed reference"))))
-		    (setq ref-node (apply concat (nreverse (cons (copy-area
+		    (setq ref-node (apply concat (reverse! (cons (copy-area
 								  p end)
 								 ref-node)))))
 		(signal 'info-error '("Malformed reference")))))

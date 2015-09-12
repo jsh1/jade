@@ -287,7 +287,7 @@ contain its definition as a function."
 ;; (sent-before DATE-STRING)
 (defun rm-compile-sent-x (form)
   (let
-      ((date (nth 1 form)))
+      ((date (list-ref form 1)))
     (when (string? date)
       (setq date (list 'quote (rm-parse-date date))))
     (list 'rm-rule-sent-date date (eq? (car form) 'sent-after))))
@@ -302,15 +302,15 @@ contain its definition as a function."
       (unless (pair? date)
 	;; this will be slooow!
 	(setq date (rm-parse-date date)))
-      (setq msg-date (aref msg-date date-vec-epoch-time))
+      (setq msg-date (array-ref msg-date date-vec-epoch-time))
       ((if after > <)
        msg-date
        (if (eq? (car date) 'absolute)
 	   (cdr date)
 	 (let
 	     ((current (current-time)))
-	   (rplaca current (- (car current) (nth 1 date)))
-	   (rplacd current (- (cdr current) (nthcdr 2 date)))
+	   (set-car! current (- (car current) (list-ref date 1)))
+	   (set-cdr! current (- (cdr current) (list-tail date 2)))
 	   (fix-time current)))))))
 
 ;; (mailbox FOLDER-REGEXP)
@@ -350,14 +350,14 @@ contain its definition as a function."
 ;; (sender-alias ALIAS-NAME)
 (defun rm-rule:compile-sender-alias (form)
   (let
-      ((addresses (get-mail-alias (nth 1 form)))
+      ((addresses (get-mail-alias (list-ref form 1)))
        strings)
     (while addresses
       (setq strings (cons (concat (quote-regexp (car addresses))
 				  (and (cdr addresses) #\|))
 			  strings)
 	    addresses (cdr addresses)))
-    (list 'rm-rule:sender (apply concat (nreverse strings)))))
+    (list 'rm-rule:sender (apply concat (reverse! strings)))))
 (put 'sender-alias 'rm-rule-compiler rm-rule:compile-sender-alias)
 
 ;; (lines NUMBER)
@@ -400,19 +400,19 @@ contain its definition as a function."
      ((string-match
        "^(an?|[0-9]+) *(seconds|minute|hour|day|week|fortnight|month|year)s?( +ago)?$"
        string nil t)
-      (setq seconds-ago (* (if (= (aref string 0) #\a)
+      (setq seconds-ago (* (if (= (array-ref string 0) #\a)
 			       1
 			     (string->number (expand-last-match "\\1")))
-			   (if (= (aref string (match-start 2)) #\m)
-			       (if (= (aref string (1+ (match-start 2))) #\i)
+			   (if (= (array-ref string (match-start 2)) #\m)
+			       (if (= (array-ref string (1+ (match-start 2))) #\i)
 				   60
 				 2419200)	;28*24*60*60
-			     (cdr (assq (aref string (match-start 2))
+			     (cdr (assq (array-ref string (match-start 2))
 					'((#\s . 1) (#\h . 3600) (#\d . 86400)
 					  (#\w . 604800) (#\f . 1209600)
 					  (#\m . 2419200) (#\y . 31536000))))))))
      ((string-match "^last +(week|fortnight|month|year)$" string nil t)
-      (setq seconds-ago (cdr (assq (aref string (match-start 1))
+      (setq seconds-ago (cdr (assq (array-ref string (match-start 1))
 				   '((#\w . 604800) (#\f . 1209600)
 				     (#\m . 2419200) (#\y . 31536000))))))
      ((string-match "^yesterday$" string nil t)
@@ -424,7 +424,7 @@ contain its definition as a function."
 	  ((date (parse-date string)))
 	(unless date
 	  (error "Invalid date specification: %s" string))
-	(setq abs-time (aref date date-vec-epoch-time)))))
+	(setq abs-time (array-ref date date-vec-epoch-time)))))
     (if seconds-ago
 	(list* 'relative (quotient seconds-ago 86400) (mod seconds-ago 86400))
       (cons 'absolute abs-time))))

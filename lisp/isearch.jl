@@ -156,8 +156,8 @@ direction."
       ((item (car isearch-trace)))
     (if (cdr item)
 	(progn
-	  (isearch-goto (nth 1 item))
-	  (rplaca isearch-trace (cons (car item) (nthcdr 2 item))))
+	  (isearch-goto (list-ref item 1))
+	  (set-car! isearch-trace (cons (car item) (list-tail item 2))))
       (isearch-goto isearch-initial-pos)))
   (setq isearch-failing nil))
 
@@ -171,7 +171,7 @@ direction."
 (defun isearch-push-match (p)
   (let
       ((item (car isearch-trace)))
-    (rplaca isearch-trace (cons (car item) (cons p (cdr item))))))
+    (set-car! isearch-trace (cons (car item) (cons p (cdr item))))))
 
 ;; Pushes the current position, pushes the STRING onto the top of the
 ;; stack, then searches for it

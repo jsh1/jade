@@ -56,7 +56,7 @@ keymaps, i.e. all prefix keys are ignored.")
 		    ;; dereference the symbol in the correct buffer
 		    (symbol-value km)
 		  km))
-	      (nreverse maps)))))
+	      (reverse! maps)))))
 
 ;;;###autoload
 (defun map-keymap (function #!optional keymap buffer)
@@ -91,7 +91,7 @@ binding, or nil if there was no prefix."
 		(let
 		    ((i (1- (length keymap))))
 		  (while (>= i 0)
-		    (km-map-keylist (aref keymap i) function buffer)
+		    (km-map-keylist (array-ref keymap i) function buffer)
 		    (setq i (1- i))))
 	      (km-map-keylist (cdr keymap) function buffer))))))))
 
@@ -108,7 +108,8 @@ binding, or nil if there was no prefix."
 	       (let ((this-list (if (symbol? (car k))
 				    (list (with-buffer buffer
 					    (symbol-value (car k) t)))
-				  (with-buffer buffer (eval (nth 1 (car k))))))
+				  (with-buffer buffer
+				    (eval (list-ref (car k) 1)))))
 		     (event-str (event-name (cdr k))))
 		 (when (list? this-list)
 		   ;; Another keymap-list, add it to the list of those waiting
@@ -137,7 +138,7 @@ in effect."
   (map-keymap (lambda (k pfx)
 		(declare (unused pfx))
 		(when (eq? (car k) olddef)
-		  (rplaca k newdef))) keymap))
+		  (set-car! k newdef))) keymap))
 
 
 ;; Adding bindings to a feature that may not yet be loaded
@@ -253,7 +254,7 @@ would invoke."
 		 (setq path (list command)))
 		((eq? (car command) 'next-keymap-path)
 		 ;; A link to another keymap
-		 (setq path (eval (nth 1 command))))
+		 (setq path (eval (list-ref command 1))))
 		(t
 		 ;; End of the chain
 		 (help-wrapper

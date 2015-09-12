@@ -43,17 +43,17 @@
 		  (setq item (list* 'sub label
 				    (prompt-menu-create-menu cell))))
 		 ((eq? (car cell) t)
-		  (setq item (list* 'function label (nth 1 cell))))))
+		  (setq item (list* 'function label (list-ref cell 1))))))
 	      (when item
 		(setq menu (cons item menu)))))
 	  spec)
-    (nreverse menu)))
+    (reverse! menu)))
 
 (defun prompt-menu-find (tree item)
   (catch 'return
     (mapc (lambda (x)
 	    (when (string-match
-		   (concat #\^ (quote-regexp (nth 1 x)) #\$) item nil t)
+		   (concat #\^ (quote-regexp (list-ref x 1)) #\$) item nil t)
 	      (throw 'return x))) tree)
     nil))
 
@@ -65,8 +65,8 @@
       (setq choice (or (prompt-menu-find tree choice)
 		       (error "Can't find menu")))
       (when (eq? (car choice) 'sub)
-	(setq choice (prompt-menu-prompt (nthcdr 2 choice)
-					 (concat title #\/ (nth 1 choice)))))
+	(setq choice (prompt-menu-prompt (list-tail choice 2)
+					 (concat title #\/ (list-ref choice 1)))))
       (when choice
 	(throw 'prompt-menu-top choice))
       (setq choice (prompt-from-list lst (concat title #\:))))))
@@ -79,6 +79,6 @@
 	       (prompt-menu-prompt prompt-menu-tree "Menu"))))
     (when item
       (cond ((eq? (car item) 'command)
-	     (popup-menu-dispatch-command (nthcdr 2 item)))
+	     (popup-menu-dispatch-command (list-tail item 2)))
 	    ((eq? (car item) 'function)
-	     ((nthcdr 2 item)))))))
+	     ((list-tail item 2)))))))

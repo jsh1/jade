@@ -742,7 +742,7 @@ sys_set_win_pos(Lisp_Window *win, long x, long y, long w, long h)
 }
 
 void
-sys_set_win_name(Lisp_Window *win, char *name)
+sys_set_win_name(Lisp_Window *win, const char *name)
 {
     NSWindow *w;
     CFStringRef str;

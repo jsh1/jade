@@ -86,7 +86,7 @@
 					    "(autoload%s '%s %S)")
 				      (if (eq? (car form) 'defmacro)
 					  "-macro" "")
-				      (nth 1 form) short-file-name)))
+				      (list-ref form 1) short-file-name)))
 		  ((and local-finder
 			(setq form (local-finder p buf short-file-name module))))
 		  ((looking-at "^[ \t]*\\(define-(\\S+) '(\\S+)" p buf)

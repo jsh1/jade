@@ -99,7 +99,7 @@
       (setq lst (cons (copy-area (car tem) (cdr tem)) lst))
       (setq p (cdr tem)))
     (when lst
-      (cons (nreverse lst) p))))
+      (cons (reverse! lst) p))))
 
 ;; Parse a list of comma-separated mail addresses, returns a list of
 ;; strings. Stops parsing at the end of the header starting at POS.
@@ -121,7 +121,7 @@
 		p (if (looking-at "[\t\n ]*,[\t\n ]*" (cdr tem))
 			(match-end)
 		      (cdr tem))))
-	(nreverse lst)))))
+	(reverse! lst)))))
 
 
 ;; decoding of RFC-2047 encoded phrases in headers
@@ -131,9 +131,9 @@
       ((map (make-string (1+ #\_)))
        (i 0))
     (while (< i #\_)
-      (aset map i i)
+      (array-set! map i i)
       (setq i (1+ i)))
-    (aset map #\_ #\space)
+    (array-set! map #\_ #\space)
     map))
 
 (defvar mail-encode-header-map
@@ -141,9 +141,9 @@
       ((map (make-string (1+ #\space)))
        (i 0))
     (while (< i #\space)
-      (aset map i i)
+      (array-set! map i i)
       (setq i (1+ i)))
-    (aset map #\space #\_)
+    (array-set! map #\space #\_)
     map))
 
 (defun mail-decode-header (string)
@@ -163,7 +163,7 @@
 	 ((string-ci=? encoding "Q")
 	  ;; quoted-printable
 	  (require 'mime-decode)
-	  (setq text (translate-string text mail-decode-header-map))
+	  (setq text (translate-string! text mail-decode-header-map))
 	  (mime-decode-string 'quoted-printable text stream))
 	 ((string-ci=? encoding "B")
 	  ;; base64
@@ -171,7 +171,7 @@
 	  (mime-decode-string 'base64 text stream)))
 	(setq out (cons (get-output-stream-string stream) out))))
     (if out
-	(apply concat (nreverse (cons (substring string point) out)))
+	(apply concat (reverse! (cons (substring string point) out)))
       string)))
 
 ;; encode non ASCII characters in STRING
@@ -182,7 +182,7 @@
 	(require 'mime-encode)
 	(let
 	    ((stream (make-string-output-stream)))
-	  (setq string (translate-string (copy-sequence string)
+	  (setq string (translate-string! (copy-sequence string)
 					 mail-encode-header-map))
 	  (mime-encode-stream 'quoted-printable
 			      (make-string-input-stream string) stream)
@@ -221,10 +221,10 @@
 	  (progn
 	    (setq out (mail-parse-list p not-comma-separated))
 	    (while (setq p (mail-find-header header (mail-unfold-header p)))
-	      (setq out (nconc out (mail-parse-list p not-comma-separated))))
+	      (setq out (append! out (mail-parse-list p not-comma-separated))))
 	    (when decode
 	      (setq out (mapcar mail-decode-header out))))
-	(setq out (translate-string (copy-area p (or (mail-unfold-header p)
+	(setq out (translate-string! (copy-area p (or (mail-unfold-header p)
 						     (end-of-buffer)))
 				    flatten-table))
 	(when decode
@@ -323,7 +323,7 @@
     (setq x (copy-sequence x))
     (mapc (lambda (a)
 	    (unless (assoc (car a) x)
-	      (setq x (nconc x (list a))))) y))
+	      (setq x (append! x (list a))))) y))
   x)
 
 (defun make-message-id ()

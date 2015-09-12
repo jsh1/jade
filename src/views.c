@@ -443,7 +443,7 @@ update_views_dimensions(Lisp_Window *w)
 
 /* Expand format characters */
 static intptr_t
-format_mode_string(char *fmt, Lisp_View *vw, char *buf, intptr_t buf_len)
+format_mode_string(const char *fmt, Lisp_View *vw, char *buf, intptr_t buf_len)
 {
     Lisp_Buffer *tx = vw->tx;
     while(*fmt && buf_len > 0)

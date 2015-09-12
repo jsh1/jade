@@ -92,8 +92,8 @@ in the status line."
 	     ;; remove #:spec keys
 	       (let ((tem (memq #:spec keys)))
 		 (when tem
-		   (rplacd tem (cddr tem))
-		   (setq keys (delq (car tem) keys))))
+		   (set-cdr! tem (cddr tem))
+		   (setq keys (delq! (car tem) keys))))
 	     (prin1-to-string `(autoload-command ,name ',module ,@keys)))))))
 
 ;;;###autoload
@@ -104,7 +104,7 @@ in the status line."
 	(setq smm-active nil)
 	(setq autoload-finder nil)
 	(setq info-documentation-files
-	      (delete "sawmill" info-documentation-files)))
+	      (delete! "sawmill" info-documentation-files)))
     (setq smm-active t)
     (make-local-variable 'autoload-finder)
     (setq autoload-finder sawmill-autoload-finder)

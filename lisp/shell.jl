@@ -135,9 +135,9 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
     (unless (yes-or-no-p "Shell subprocess running; kill it?")
       (error "Can't kill shell without killing its subprocess"))
     ;; don't want the callback function to run or to output
-    (set-process-function shell-process nil)
-    (set-process-output-stream shell-process nil)
-    (set-process-error-stream shell-process nil)
+    (set-process-function! shell-process nil)
+    (set-process-output-stream! shell-process nil)
+    (set-process-error-stream! shell-process nil)
     (kill-process shell-process nil)))
 
 
@@ -157,7 +157,7 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 			     (with-buffer buffer
 			       (shell-callback-function)))
 			   nil shell-program shell-program-args))
-      (set-process-connection-type shell-process 'pty)
+      (set-process-connection-type! shell-process 'pty)
       (start-process shell-process))))
 
 ;; The default value of shell-callback-function
@@ -351,7 +351,7 @@ delete, i.e. replace the marked area with the output of the command."
     (when insertp
       (setq error-output (open-buffer "*shell-errors*"))
       (clear-buffer error-output)
-      (set-process-error-stream proc error-output))
+      (set-process-error-stream! proc error-output))
     (setq result (if (equal? start end)
 		     (call-process proc)
 		   (call-process-area proc start end deletep)))

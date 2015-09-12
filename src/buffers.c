@@ -126,7 +126,7 @@ Construct a unique buffer-name from NAME.
     while(true)
     {
 	char buf[256];
-	char *thistry;
+	const char *thistry;
 	Lisp_Buffer *tx = buffer_chain;
 	if(suffix != 1)
 	{

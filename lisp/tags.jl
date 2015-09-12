@@ -63,9 +63,9 @@
       (error "No tags table selected")))
 
 (defun tags-trim-history ()
-  (let ((marks-end (nthcdr tags-history-length tags-marks)))
+  (let ((marks-end (list-tail tags-marks tags-history-length)))
     (when marks-end
-      (rplacd marks-end nil))))
+      (set-cdr! marks-end nil))))
 
 ;;;###autoload
 (defun visit-tag-table (name)
@@ -182,7 +182,7 @@ move back to the previously found tag."
 		    (looking-at "\f\n([^,]+)" point))
 	  (setq point (match-end))
 	  (setq files (cons (expand-last-match "\\1") files)))
-	(setq tags-cached-file-list (sort (uniquify files)))))
+	(setq tags-cached-file-list (sort! (uniquify files)))))
     tags-cached-file-list))
 
 ;; Returns the next file in tag table (after CURRENT-FILE if defined), or nil

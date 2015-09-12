@@ -83,7 +83,7 @@ to view URL."
   (let
       ((args (cons url nil)))
     ;; An inifinite list of URLS to pass to format
-    (rplacd args args)
+    (set-cdr! args args)
     (message "Calling external browser..." t)
     (system (apply format nil find-url-external-command args))))
 
@@ -147,7 +147,7 @@ a buffer."
 (defun find-url-http-loaded (process url anchor view output errors)
   (require 'mail-headers)
   (unless (process-in-use? process)
-    (setq find-url-processes (delete (cons url process) find-url-processes))
+    (setq find-url-processes (delete! (cons url process) find-url-processes))
     (if (zero? (process-exit-value process))
 	;; Success
 	(let
@@ -206,13 +206,13 @@ a buffer."
 	   (process (make-process (cons buffer t)))
 	   args)
 	(setq args (list wget-program "-s" "-O" "-" load-url))
-	(set-process-error-stream process (cons errors t))
+	(set-process-error-stream! process (cons errors t))
 	(clear-buffer buffer)
 	(clear-buffer errors)
 	(message (format nil "wget %s..." url) t)
 	(if find-url-asynchronously
 	    (progn
-	      (set-process-function
+	      (set-process-function!
 	       process
 	       (let ((view (current-view)))
 		 (lambda (p)
@@ -236,11 +236,11 @@ a buffer."
       ((cell (assoc url find-url-processes)))
     (if cell
 	(progn
-	  (set-process-function
+	  (set-process-function!
 	   (cdr cell)
 	   (lambda (p)
 	     (declare (unused p))
-	     (setq find-url-processes (delq cell find-url-processes))
+	     (setq find-url-processes (delq! cell find-url-processes))
 	     (message "[wget exited]")))
 	  ((if kill kill-process interrupt-process) (cdr cell)))
       (message "[No wget for that URL]"))))

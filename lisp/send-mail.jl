@@ -309,7 +309,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
 	(addresses '()))
     (while (and point (re-search-forward header-re point nil t))
       (setq point (match-end))
-      (setq addresses (nconc addresses (mail-parse-list (match-start)))))
+      (setq addresses (append! addresses (mail-parse-list (match-start)))))
     addresses))
 
 (defun sendmail-send-message ()
@@ -423,7 +423,7 @@ Major mode for composing and sending mail messages. Local bindings are:\n
   (let ((proc (make-process temp-buffer)))
     (or (zero? (apply call-process-area proc
 		      (start-of-buffer) (end-of-buffer) nil
-		      (nconc (list (or sendmail-program "/usr/lib/sendmail")
+		      (append! (list (or sendmail-program "/usr/lib/sendmail")
 				   ;; Dot doesn't specify end-of-message
 				   "-oi"
 				   ;; From the user
