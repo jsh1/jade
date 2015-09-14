@@ -755,7 +755,7 @@ over the COUNT following items."
   "Non-nil when overwrite-mode is enabled.")
 (make-variable-buffer-local 'overwrite-mode-enabled)
 
-(setq minor-mode-alist (cons '(overwrite-mode " Overwrite") minor-mode-alist))
+(setq minor-mode-alist (cons '(overwrite-mode-enabled " Overwrite") minor-mode-alist))
 
 (defun overwrite-mode ()
   "Minor mode to toggle overwrite/insert."
