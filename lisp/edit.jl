@@ -751,20 +751,20 @@ over the COUNT following items."
 
 ;; Overwrite mode
 
-(defvar overwrite-mode nil
+(defvar overwrite-mode-enabled nil
   "Non-nil when overwrite-mode is enabled.")
-(make-variable-buffer-local 'overwrite-mode)
+(make-variable-buffer-local 'overwrite-mode-enabled)
 
 (setq minor-mode-alist (cons '(overwrite-mode " Overwrite") minor-mode-alist))
 
 (defun overwrite-mode ()
   "Minor mode to toggle overwrite/insert."
   (interactive)
-  (if overwrite-mode
+  (if overwrite-mode-enabled
       (progn
-	(setq overwrite-mode nil)
+	(setq overwrite-mode-enabled nil)
 	(remove-hook 'unbound-key-hook overwrite-insert))
-    (setq overwrite-mode t)
+    (setq overwrite-mode-enabled t)
     (add-hook 'unbound-key-hook overwrite-insert)))
 
 (defun overwrite-insert (#!optional str)

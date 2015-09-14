@@ -126,7 +126,7 @@ in the status line."
        ((= c #\")
 	;; move over string
 	(if (setq p (char-search-forward #\" (forward-char 1 p)))
-	    (while (= (get-char (forward-char -1 p)) #\space)
+	    (while (= (get-char (forward-char -1 p)) #\\)
 	      (unless (setq p (char-search-forward #\" (forward-char 1 p)))
 		(error "String doesn't end!")))
 	  (error "String doesn't end!"))
@@ -176,7 +176,7 @@ in the status line."
 	    (forward-char -1 p)))
 	 ((= c #\")
 	  (if (setq p (char-search-backward #\" (forward-char -1 p)))
-	      (while (= (get-char (forward-char -1 p)) #\space)
+	      (while (= (get-char (forward-char -1 p)) #\\)
 		(unless (setq p (char-search-backward #\" (forward-char -1 p)))
 		  (error "String doesn't start!")))
 	    (error "String doesn't start!")))
