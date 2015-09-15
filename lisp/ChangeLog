@@ -1,3 +1,25 @@
+2015-09-15  John Harper  <jsh@unfactored.org>
+
+	* autoload.jl, thesaurus.jl, sm-mail-dir.jl, send-mail.jl,
+	send-mail-smtp.jl, rm-urls.jl, rm-thread.jl, rm-summary.jl,
+	rm-restrict.jl, rm-output.jl, rm-msg-links.jl, rm-misc.jl,
+	rm-mime.jl, rm-mail-dir.jl, read-mail.jl, print.jl,
+	page-summary.jl, mime-quoted-printable.jl, mime-encode.jl,
+	mime-decode.jl, mime-base64.jl, mail-headers.jl, mail-dir.jl,
+	mail-dir-summary.jl, html-style.jl, html-display.jl,
+	html-decode.jl, find-url.jl, file-subst.jl, dict.jl: deleted
+	unused modules
+
+	* edit.jl (dnd-drop-uri-list): deleted
+
+	* maildefs.jl: removed unused definitions, define
+	user-mail-address
+
+	* popup-menus.jl: removed deleted mail commands
+
+	* ws-x11.jl, ws-mac.jl, ws-gtk.jl: declare system-specific
+	functions to hide compiler warnings
+
 2015-09-11  John Harper  <jsh@unfactored.org>
 
 	* texinfo-mode.jl, tex-shell.jl, tex-mode.jl, telnet.jl,

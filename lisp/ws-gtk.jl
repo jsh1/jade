@@ -18,6 +18,9 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(declare (bound gtk-jade-set-selection gtk-jade-lose-selection
+		gtk-jade-selection-active-p gtk-jade-get-selection))
+
 ;; Called when the block changes
 (defun gtk-jade-block-status-function ()
   (if (blockp)

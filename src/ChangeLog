@@ -1,3 +1,8 @@
+2015-09-15  John Harper  <jsh@unfactored.org>
+
+	* gtk_jade.c: comment out call to dnd-drop-uri-list, which has
+	been deleted
+
 2015-08-14  John Harper  <jsh@unfactored.org>
 
 	* x11_main.c, main.c, mac_windows.m, mac_runloop.m, keys.c,

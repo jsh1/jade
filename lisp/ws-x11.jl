@@ -18,6 +18,9 @@
 ;;; along with Jade; see the file COPYING.  If not, write to
 ;;; the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+(declare (bound x11-set-selection x11-lose-selection
+		x11-selection-active-p x11-get-selection))
+
 ;; Called when the block changes
 (defun x11-block-status-function ()
   (if (blockp)

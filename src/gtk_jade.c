@@ -554,10 +554,14 @@ gtk_jade_drag_data_received (GtkWidget *widget, GdkDragContext *context,
 	data = end + strspn (end, "\r\n");
     }
 
+    /* FIXME: this function was removed. */
+
+#if 0
     Ffuncall(Fcons (Fsymbol_value (Qdnd_drop_uri_list, Qnil),
 		    Fcons (Freverse (list),
 			   Fcons (rep_VAL (jade->win),
 				  Fcons (pos, Qnil)))));
+#endif
 
     GTK_JADE_CALLBACK_POSTFIX;
 }

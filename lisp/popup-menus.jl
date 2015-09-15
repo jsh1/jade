@@ -106,8 +106,6 @@ local mode.")
       ("Save dictionary now" ispell-save-dictionary)
       ()
       ("Kill spell subprocesses" ispell-kill-process))
-     ("Read mail" read-mail)
-     ("Send mail" mail-setup)
      ("Telnet..." telnet)
      ("Rlogin..." rlogin)
      ("Display URL..." find-url)
@@ -174,6 +172,7 @@ local mode.")
 		   popup-menus))))
     (when spec
       ;; This function should be defined by the window system
+      (declare (bound popup-menu-from-spec))
       (popup-menu-from-spec spec))))
 
 (defun popup-menu-from-kbd ()
