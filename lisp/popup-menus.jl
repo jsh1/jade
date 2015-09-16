@@ -195,7 +195,7 @@ local mode.")
     (while (<= i (ring-size kill-ring))
       (let
 	  ((string (get-from-ring kill-ring i)))
-	(when (> (length string) 32)
+	(when (> (string-length string) 32)
 	  (setq string (concat (substring string 0 32) "...")))
 	(setq out (cons (list (format nil "%S" string)
 			      t (let ((string (get-from-ring kill-ring i)))

@@ -140,25 +140,25 @@ been completed.")
   `(vector ,dir ,file ,fullname ,index-status ,work-status))
 
 (defmacro git-file-get-dirname (f)
-  `(array-ref ,f 0))
+  `(vector-ref ,f 0))
 
 (defmacro git-file-get-filename (f)
-  `(array-ref ,f 1))
+  `(vector-ref ,f 1))
 
 (defmacro git-file-get-fullname (f)
-  `(array-ref ,f 2))
+  `(vector-ref ,f 2))
 
 (defmacro git-file-get-index-status (f)
-  `(array-ref ,f 3))
+  `(vector-ref ,f 3))
 
 (defmacro git-file-set-index-status (f status)
-  `(array-set! ,f 3 ,status))
+  `(vector-set! ,f 3 ,status))
 
 (defmacro git-file-get-work-status (f)
-  `(array-ref ,f 4))
+  `(vector-ref ,f 4))
 
 (defmacro git-file-set-work-status (f status)
-  `(array-set! ,f 4 ,status))
+  `(vector-set! ,f 4 ,status))
 
 (defun git-get-filenames-by-dir (files)
   "From the list of git file structures FILES, return a list of the files in
@@ -194,9 +194,9 @@ that each of the FILENAMES contains no directory specifiers."
 					 (file-name-directory name))
 					(file-name-nondirectory name)
 					name
-					(cdr (assq (array-ref out point)
+					(cdr (assq (string-ref out point)
 						   git-status-char-map))
-					(cdr (assq (array-ref out (1+ point))
+					(cdr (assq (string-ref out (1+ point))
 						   git-status-char-map)))
 				       git-update-files)))
 	(setq point (match-end)))
@@ -207,7 +207,7 @@ that each of the FILENAMES contains no directory specifiers."
        (t
 	;; An unfinished line
 	(setq not-done nil)
-	(unless (= point (length out))
+	(unless (= point (string-length out))
 	  (setq git-update-pending (substring out point))))))))
 
 (defun git-update-stderr-filter (o)

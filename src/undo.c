@@ -148,7 +148,7 @@ undo_record_deletion(Lisp_Buffer *tx, repv start, repv end)
 	    {
 		/* A deletion of 1 character is recorded as a character. */
 		string = Fget_char(start, rep_VAL(tx));
-		if(!string || !rep_INTP(string))
+		if(!string || !rep_CHARP(string))
 		    return;
 	    }
 	    else
@@ -304,14 +304,10 @@ taken from the prefix argument.
 		if(new && !rep_NILP(new))
 		    Fgoto(new);
 	    }
-	    else if(rep_INTP(rep_CDR(item)))
+	    else if(rep_CHARP(rep_CDR(item)))
 	    {
 		/* A deleted character */
-		repv tmp = rep_allocate_string(2);
-		uint8_t c = rep_INT(rep_CDR(item));
-		rep_MUTABLE_STR(tmp)[0] = c;
-		rep_MUTABLE_STR(tmp)[1] = 0;
-		tmp = Finsert(tmp, rep_CAR(item), tx);
+		repv tmp = Finsert(rep_CDR(item), rep_CAR(item), tx);
 		if(tmp && !rep_NILP(tmp))
 		    Fgoto(tmp);
 	    }

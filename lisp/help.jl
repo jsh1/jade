@@ -218,7 +218,7 @@ strings of modes may contain any of these expansions."
       (let
 	  ((symbol (intern (expand-last-match "\\1")))
 	   (arg (expand-last-match "\\3"))
-	   (type (array-ref string (1- point))))
+	   (type (string-ref string (1- point))))
 	(cond
 	 ((= type #\])
 	  ;; where-is SYMBOL

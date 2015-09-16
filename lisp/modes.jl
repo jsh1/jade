@@ -212,7 +212,7 @@ of the defun is assumed instead.")
     (let ((text (and (looking-at
 		      ".*-\\*-\\s*([^: \t]+).*-\\*-" (start-of-buffer))
 		     (expand-last-match "\\1"))))
-      (when (and text (> (length text) 0))
+      (when (and text (> (string-length text) 0))
 	(let ((pieces (string-split "\\s*;\\s*" text)))
 	  (when pieces
 	    (setq major-mode (cdr (assoc-regexp (car pieces)

@@ -72,20 +72,32 @@ Returns a new position object with coordinates (COLUMN , ROW).
 
 DEFUN_INT("insert", Finsert, Sinsert, (repv string, repv pos, repv buff), rep_Subr3, "sString to insert:") /*
 ::doc:insert::
-insert STRING [POS] [BUFFER]
+insert STRING-OR-CHARACTER [POS] [BUFFER]
 
-Inserts STRING into BUFFER at POS. Returns the first position of the first
-character after the end of the inserted text.
+Inserts STRING-OR-CHARACTER into BUFFER at POS. Returns the first
+position of the first character after the end of the inserted text.
 ::end:: */
 {
-    rep_DECLARE1(string, rep_STRINGP);
+    rep_DECLARE(1,string, rep_STRINGP(string) || rep_CHAR_8BIT_P(string));
     if(!BUFFERP(buff))
 	buff = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
 	pos = get_buffer_cursor(VBUFFER(buff));
     if(pad_pos(VBUFFER(buff), pos))
     {
-	pos = insert_string(VBUFFER(buff), rep_STR(string), rep_STRING_LEN(string), pos);
+	const char *str;
+	char tem[2];
+	size_t len;
+	if (rep_STRINGP(string)) {
+	    str = rep_STR(string);
+	    len = rep_STRING_LEN(string);
+	} else {
+	    tem[0] = rep_CHAR_VALUE(string);
+	    tem[1] = 0;
+	    str = tem;
+	    len = 1;
+	}
+	pos = insert_string(VBUFFER(buff), str, len, pos);
 	if(pos != 0)
 	    return pos;
     }
@@ -357,8 +369,8 @@ DEFUN("get-char", Fget_char, Sget_char, (repv pos, repv tx), rep_Subr2) /*
 ::doc:get-char::
 get-char [POS] [BUFFER]
 
-Returns the numerical value of the character at position POS in BUFFER. If no
-character exists at that position, nil is returned.
+Returns the character at position POS in BUFFER. If no character exists
+at that position, nil is returned.
 ::end:: */
 {
     if(!BUFFERP(tx))
@@ -374,10 +386,10 @@ character exists at that position, nil is returned.
 	if(VROW(pos) == VBUFFER(tx)->logical_end - 1)
 	    return(Qnil);
 	else
-	    return(rep_MAKE_INT('\n'));
+	    return(rep_intern_char('\n'));
     }
     else
-	return(rep_MAKE_INT(VBUFFER(tx)->lines[VROW(pos)].ln_Line[VCOL(pos)]));
+	return(rep_intern_char(VBUFFER(tx)->lines[VROW(pos)].ln_Line[VCOL(pos)]));
 }
 
 DEFUN_INT("set-char", Fset_char, Sset_char, (repv ch, repv pos, repv tx), rep_Subr3, "cCharacter:") /*
@@ -389,7 +401,7 @@ Sets the character at position POS in BUFFER to CHARACTER.
 {
     /* FIXME: make this handle insertion of newlines */
     repv end;
-    rep_DECLARE1(ch, rep_INTP);
+    rep_DECLARE1(ch, rep_CHAR_8BIT_P);
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);
     if(!POSP(pos))
@@ -400,7 +412,7 @@ Sets the character at position POS in BUFFER to CHARACTER.
     if(pad_pos(VBUFFER(tx), end))
     {
 	undo_record_modification(VBUFFER(tx), pos, end);
-	VBUFFER(tx)->lines[VROW(pos)].ln_Line[VCOL(pos)] = rep_INT(ch);
+	VBUFFER(tx)->lines[VROW(pos)].ln_Line[VCOL(pos)] = rep_CHAR_VALUE(ch);
 	flag_modification(VBUFFER(tx), pos, end);
 	return(ch);
     }

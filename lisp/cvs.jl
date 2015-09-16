@@ -139,19 +139,19 @@ been completed.")
   `(vector ,dir ,file ,fullname ,status))
 
 (defmacro cvs-file-get-dirname (f)
-  `(array-ref ,f 0))
+  `(vector-ref ,f 0))
 
 (defmacro cvs-file-get-filename (f)
-  `(array-ref ,f 1))
+  `(vector-ref ,f 1))
 
 (defmacro cvs-file-get-fullname (f)
-  `(array-ref ,f 2))
+  `(vector-ref ,f 2))
 
 (defmacro cvs-file-get-status (f)
-  `(array-ref ,f 3))
+  `(vector-ref ,f 3))
 
 (defmacro cvs-file-set-status (f status)
-  `(array-set! ,f 3 ,status))
+  `(vector-set! ,f 3 ,status))
 
 (defun cvs-get-filenames-by-dir (files)
   "From the list of CVS file structures FILES, return a list of the files in
@@ -187,7 +187,7 @@ that each of the FILENAMES contains no directory specifiers."
 					 (file-name-directory name))
 					(file-name-nondirectory name)
 					name
-					(cdr (assq (array-ref out point)
+					(cdr (assq (string-ref out point)
 						   cvs-update-char-map)))
 				       cvs-update-files)))
 	(setq point (match-end)))
@@ -198,7 +198,7 @@ that each of the FILENAMES contains no directory specifiers."
        (t
 	;; An unfinished line
 	(setq not-done nil)
-	(unless (= point (length out))
+	(unless (= point (string-length out))
 	  (setq cvs-update-pending (substring out point))))))))
 
 (defun cvs-update-stderr-filter (o)

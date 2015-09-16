@@ -1352,28 +1352,25 @@ for each character CHARACTER in any buffers which use the GLYPH-TABLE.
 ::end:: */
 {
     int glyphlen;
+    uint32_t c;
     rep_DECLARE1(gt, GLYPHTABP);
-    rep_DECLARE2(ch, rep_INTP);
+    rep_DECLARE2(ch, rep_CHAR_8BIT_P);
     rep_DECLARE3(glyph, rep_STRINGP);
-    if((rep_INT(ch) < 0) || (rep_INT(ch) >= 256))
-    {
-	rep_signal_arg_error(ch, 1);
-	return 0;
-    }
     glyphlen = rep_STRING_LEN(glyph);
     if(glyphlen > 4)
     {
 	rep_signal_arg_error(glyph, 2);
 	return 0;
     }
-    VGLYPHTAB(gt)->gt_Widths[rep_INT(ch)] = glyphlen;
+    c = rep_CHAR_VALUE(ch);
+    VGLYPHTAB(gt)->gt_Widths[c] = glyphlen;
     if(glyphlen == 0)
     {
 	/* put a space in the first character */
-	VGLYPHTAB(gt)->gt_Glyphs[rep_INT(ch)][0] = ' ';
+	VGLYPHTAB(gt)->gt_Glyphs[c][0] = ' ';
     }
     else
-	memcpy(&VGLYPHTAB(gt)->gt_Glyphs[rep_INT(ch)][0], rep_STR(glyph), glyphlen);
+	memcpy(&VGLYPHTAB(gt)->gt_Glyphs[c][0], rep_STR(glyph), glyphlen);
 
     return(Qt);
 }
@@ -1386,15 +1383,12 @@ Return the string which is the rendered representation of CHARACTER in
 GLYPH-TABLE.
 ::end:: */
 {
+    uint32_t c;
     rep_DECLARE1(gt, GLYPHTABP);
-    rep_DECLARE2(ch, rep_INTP);
-    if((rep_INT(ch) < 0) || (rep_INT(ch) >= 256))
-    {
-	rep_signal_arg_error(ch, 1);
-	return 0;
-    }
-    return(rep_string_copy_n((char *)&VGLYPHTAB(gt)->gt_Glyphs[rep_INT(ch)][0],
-		       VGLYPHTAB(gt)->gt_Widths[rep_INT(ch)]));
+    rep_DECLARE2(ch, rep_CHAR_8BIT_P);
+    c = rep_CHAR_VALUE(ch);
+    return(rep_string_copy_n((char *)&VGLYPHTAB(gt)->gt_Glyphs[c][0],
+		       VGLYPHTAB(gt)->gt_Widths[c]));
 }
 
 static void

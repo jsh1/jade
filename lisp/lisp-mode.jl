@@ -234,7 +234,7 @@ in the status line."
 	  (if last-ind
 	      (setq last-ind (if (and (= (pos-line p)
 					 (pos-line (car last-ind)))
-				      (>= (length last-ind) 2))
+				      (>= (list-length last-ind) 2))
 				 (list-ref last-ind 1)
 			       (car last-ind)))
 	    (setq last-ind p))

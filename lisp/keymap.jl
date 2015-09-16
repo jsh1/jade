@@ -89,9 +89,9 @@ binding, or nil if there was no prefix."
 	  (when (keymapp keymap)
 	    (if (vector? keymap)
 		(let
-		    ((i (1- (length keymap))))
+		    ((i (1- (vector-length keymap))))
 		  (while (>= i 0)
-		    (km-map-keylist (array-ref keymap i) function buffer)
+		    (km-map-keylist (vector-ref keymap i) function buffer)
 		    (setq i (1- i))))
 	      (km-map-keylist (cdr keymap) function buffer))))))))
 

@@ -93,8 +93,8 @@ matching strings.")
        (view (completion-setup-view))
        (view-width (car (view-dimensions view))))
     (mapc (lambda (c)
-	    (and (> (length c) max-width)
-		 (setq max-width (length c)))) completions)
+	    (and (> (string-length c) max-width)
+		 (setq max-width (string-length c)))) completions)
     (if (= max-width view-width)
 	(setq columns 1
 	      column-width view-width)
@@ -119,8 +119,8 @@ matching strings.")
 
 (defun completion-insert (completions word #!optional only-display)
   (let
-      ((count (length completions))
-       (w-start (forward-char (- (length word)))))
+      ((count (list-length completions))
+       (w-start (forward-char (- (string-length word)))))
     (if (zero? count)
 	(progn
 	  (completion-remove-view)

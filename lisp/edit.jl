@@ -772,7 +772,7 @@ over the COUNT following items."
     (setq str (current-event-string)))
   (when str
     (let
-	((len (length str)))
+	((len (string-length str)))
       (delete-area (cursor-pos) (forward-char len))
       (insert str))))
 
@@ -786,18 +786,18 @@ event as read. COUNT copies of the same character are inserted."
   (interactive "p")
   (let
       ((first (next-event t)))
-    (if (char-numeric? (array-ref first 0))
+    (if (char-numeric? (string-ref first 0))
 	;; Read two more digits
 	(let*
 	    ((second (next-event t))
 	     (third (next-event t)))
-	  (setq first (make-string count (+ (ash (- (array-ref first 0) #\0) 6)
-					    (ash (- (array-ref second 0) #\0) 3)
-					    (- (array-ref third 0) #\0))))
-	  (or (< (array-ref first 0) 256)
+	  (setq first (make-string count (+ (ash (- (string-ref first 0) #\0) 6)
+					    (ash (- (string-ref second 0) #\0) 3)
+					    (- (string-ref third 0) #\0))))
+	  (or (< (string-ref first 0) 256)
 	      (error "Character overflow")))
       (if (/= count 1)
-	  (setq first (make-string count (array-ref first 0)))))
+	  (setq first (make-string count (string-ref first 0)))))
     (insert first)))
 
 (defun backspace-char (count)

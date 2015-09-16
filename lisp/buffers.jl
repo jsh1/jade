@@ -288,7 +288,7 @@ normal-mode, the hook after-read-file-hook is dispatched."
     (let ((text (and (looking-at
 		      ".*-\\*-\\s*(.+?)\\s*-\\*-" (start-of-buffer))
 		     (expand-last-match "\\1"))))
-      (when (and text (> (length text) 0))
+      (when (and text (> (string-length text) 0))
 	(let ((pieces (string-split "\\s*;\\s*" text)))
 	  (when pieces
 	    (mapc (lambda (x)

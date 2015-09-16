@@ -15,8 +15,8 @@
       (let    
 	  ((i 0)
 	   (tab (make-string 256)))
-	(while (< i (length tab))
-	  (array-set! tab i (char-upcase i))
+	(while (< i (string-length tab))
+	  (string-set! tab i (char-upcase (integer->char i)))
 	  (setq i (1+ i)))
 	tab))
 
@@ -24,8 +24,8 @@
       (let    
 	  ((i 0)
 	   (tab (make-string 256)))
-	(while (< i (length tab))
-	  (array-set! tab i (char-downcase i))
+	(while (< i (string-length tab))
+	  (string-set! tab i (char-downcase (integer->char i)))
 	  (setq i (1+ i)))
 	tab))
              

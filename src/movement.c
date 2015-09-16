@@ -484,7 +484,7 @@ each other are,  { }, ( ), [ ], ` ', < >. POS is altered.
 Brackets preceded by ESCAPE-CHAR (`\' by default) are not counted.
 ::end:: */
 {
-    char esc_char = rep_INTP(esc) ? rep_INT(esc) : '\\';
+    char esc_char = rep_CHAR_8BIT_P(esc) ? rep_CHAR_VALUE(esc) : '\\';
     Pos tem;
     if(!BUFFERP(tx))
 	tx = rep_VAL(curr_vw->tx);

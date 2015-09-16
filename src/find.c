@@ -481,7 +481,7 @@ Scans forwards from POS (or the cursor), in BUFFER, looking for a match
 with CHAR. Returns the position of the next match or nil.
 ::end:: */
 {
-    rep_DECLARE1(ch, rep_INTP);
+    rep_DECLARE1(ch, rep_CHAR_8BIT_P);
     if(!POSP(pos))
 	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
@@ -490,7 +490,7 @@ with CHAR. Returns the position of the next match or nil.
     {
 	Pos tem;
 	COPY_VPOS(&tem, pos);
-	if(buffer_strchr(VBUFFER(tx), &tem, rep_INT(ch)))
+	if(buffer_strchr(VBUFFER(tx), &tem, rep_CHAR_VALUE(ch)))
 	    return make_pos(PCOL(&tem), PROW(&tem));
 	return(Qnil);
     }
@@ -505,7 +505,7 @@ Scans backwards from POS (or the cursor), in BUFFER, looking for a match
 with CHAR. Returns the position of the next match or nil.
 ::end:: */
 {
-    rep_DECLARE1(ch, rep_INTP);
+    rep_DECLARE1(ch, rep_CHAR_8BIT_P);
     if(!POSP(pos))
 	pos = curr_vw->cursor_pos;
     if(!BUFFERP(tx))
@@ -514,7 +514,7 @@ with CHAR. Returns the position of the next match or nil.
     {
 	Pos tem;
 	COPY_VPOS(&tem, pos);
-	if(buffer_reverse_strchr(VBUFFER(tx), &tem, rep_INT(ch)))
+	if(buffer_reverse_strchr(VBUFFER(tx), &tem, rep_CHAR_VALUE(ch)))
 	    return make_pos(PCOL(&tem), PROW(&tem));
 	return(Qnil);
     }

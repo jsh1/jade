@@ -191,7 +191,7 @@ isn't displayed in the summary."
   (let
       ((tail (memq item summary-items)))
     (if tail
-	(- (length summary-items) (length tail))
+	(- (list-length summary-items) (list-length tail))
       nil)))
 
 ;;The following works as well. I'm not sure which will be fastest; I think

@@ -286,7 +286,7 @@ direction."
 (defun isearch-unbound-key-fun ()
   (let
       ((str (current-event-string)))
-    (if (/= (length str) 1)
+    (if (/= (string-length str) 1)
         (isearch-accept)
       (isearch-push-string (concat (car (car isearch-trace)) str))))
   (isearch-title))

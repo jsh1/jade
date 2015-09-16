@@ -148,7 +148,7 @@ argument."
   (let*
       ((views (window-view-list))
        (view-count (window-view-count))
-       (view-index (- view-count (1- (length (memq (current-view) views)))))
+       (view-index (- view-count (1- (list-length (memq (current-view) views)))))
        view)
     (cond
      ((> view-index (- view-count 2))

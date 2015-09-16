@@ -474,7 +474,7 @@ local bindings are:\n
 
 ;; Goto the ITEM-INDEX'th menu item.
 (defun info-menu-nth (item-index)
-  (interactive (list (- (array-ref (current-event-string) 0) #\0)))
+  (interactive (list (- (string-ref (current-event-string) 0) #\0)))
   (unless (info-goto-menu-start)
     (signal 'info-error (list "Can't find menu")))
   (while (and (> item-index 0) (re-search-forward "^\\* .*:"))

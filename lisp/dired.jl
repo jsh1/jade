@@ -192,7 +192,7 @@ the location is the name of a file to copy to."
   (interactive)
   (let
       ((files (summary-command-items)))
-    (if (= (length files) 1)
+    (if (= (list-length files) 1)
 	(let
 	    ((dest (prompt-for-file "Destination file:"
 				    nil (car files) (car files))))
@@ -213,7 +213,7 @@ the new name for the file."
   (interactive)
   (let
       ((files (summary-command-items)))
-    (if (= (length files) 1)
+    (if (= (list-length files) 1)
 	(rename-file (car files) (prompt-for-file "New name of file:"
 						  nil nil (car files)))
       (let

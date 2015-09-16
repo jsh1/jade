@@ -1,3 +1,12 @@
+2015-09-16  John Harper  <jsh@unfactored.org>
+
+	* windows.jl, summary.jl, rectangle.jl, pwd-prompt.jl,
+	popup-menus.jl, modes.jl, lisp-mode.jl, keymap.jl, ispell.jl,
+	isearch.jl, info.jl, help.jl, git.jl, edit.jl, dired.jl,
+	cyrillic.jl, cvs.jl, completion.jl, buffers.jl, add-log.jl:
+	updated for distinct character type; converted some
+	{array-{ref,set!},length} calls to vector/string functions
+
 2015-09-15  John Harper  <jsh@unfactored.org>
 
 	* autoload.jl, thesaurus.jl, sm-mail-dir.jl, send-mail.jl,

@@ -48,7 +48,7 @@ considered as referring to the same day.")
 	    (expand-file-name file)
 	  (let ((parent (expand-file-name ".." dir)))
 	    ;; XXX hack to avoid growing ~/../../.. ad infinitum
-	    (when (< (length parent) (length dir))
+	    (when (< (string-length parent) (string-length dir))
 	      (loop parent))))))))
 
 ;;;###autoload

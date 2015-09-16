@@ -209,12 +209,12 @@ results have been received.")
 	(progn
 	  (format ispell-process "%s\n" word)
 	  (setq response (ispell-read-line))
-	  (if (eq? (array-ref response 0) #\newline)
+	  (if (eq? (string-ref response 0) #\newline)
 	      ;; This can happen when multi-language text is checked
 	      (setq response "*\n\n")
 	    ;; Gobble following blank line
 	    (setq tem (ispell-read-line))
-	    (unless (eq? (array-ref tem 0) #\newline)
+	    (unless (eq? (string-ref tem 0) #\newline)
 	      (error "Non-null trailing line from Ispell"))))
       (ispell-mutex nil))
     response))
@@ -500,32 +500,32 @@ whole of the buffer (if no block)."
       (when (or (null? end)
 		(> end (end-of-buffer)))
 	(setq end (end-of-buffer)))
-      (if (> (buffer-changes) (array-ref ispell-minor-mode-last-scan 0))
+      (if (> (buffer-changes) (vector-ref ispell-minor-mode-last-scan 0))
 	  ;; Rescan entirely
 	  (progn
 	    (ispell-delete-highlights (start-of-buffer) (end-of-buffer))
 	    (setq end (ispell-highlight-misspellings start end t))
-	    (array-set! ispell-minor-mode-last-scan 0 (buffer-changes))
-	    (array-set! ispell-minor-mode-last-scan 1 start)
-	    (array-set! ispell-minor-mode-last-scan 2 end))
+	    (vector-set! ispell-minor-mode-last-scan 0 (buffer-changes))
+	    (vector-set! ispell-minor-mode-last-scan 1 start)
+	    (vector-set! ispell-minor-mode-last-scan 2 end))
 	;; No changes, so just rescan the bits of the current page
 	;; that aren't already scanned
 	(let
-	    ((old-start (array-ref ispell-minor-mode-last-scan 1))
-	     (old-end (array-ref ispell-minor-mode-last-scan 2)))
+	    ((old-start (vector-ref ispell-minor-mode-last-scan 1))
+	     (old-end (vector-ref ispell-minor-mode-last-scan 2)))
 	  (cond
 	   ((< start old-start)
 	    ;; Extend upwards to start
 	    (setq end (min end old-start))
 	    (setq end (ispell-highlight-misspellings start end t))
-	    (array-set! ispell-minor-mode-last-scan 1 start)
-	    (array-set! ispell-minor-mode-last-scan 2 end))
+	    (vector-set! ispell-minor-mode-last-scan 1 start)
+	    (vector-set! ispell-minor-mode-last-scan 2 end))
 	   ((> end old-end)
 	    ;; Extend downwards to end
 	    (setq start (max start old-end))
 	    (setq end (ispell-highlight-misspellings start end t))
-	    (array-set! ispell-minor-mode-last-scan 1 start)
-	    (array-set! ispell-minor-mode-last-scan 2 end))))))))
+	    (vector-set! ispell-minor-mode-last-scan 1 start)
+	    (vector-set! ispell-minor-mode-last-scan 2 end))))))))
 
 ;;;###autoload
 (defun ispell-minor-mode ()
@@ -552,7 +552,7 @@ the cursor is placed in a misspelt word; they are,
   (mapc (lambda (b)
 	  (with-buffer b
 	    (when ispell-minor-mode-last-scan
-	      (array-set! ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
+	      (vector-set! ispell-minor-mode-last-scan 0 (1- (buffer-changes))))))
 	(buffer-list)))
 
 ;; Return the string of the misspelt word under point, or nil
