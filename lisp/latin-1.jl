@@ -72,12 +72,12 @@ are displayed as octal escape sequences or in the Latin-1 character set."
   (interactive)
   (let
       ((i 160))
-    (setq use-latin-1 (not use-latin-1))
+    (set! use-latin-1 (not use-latin-1))
     (while (< i 256)
       (set-glyph (default-glyph-table) i (if use-latin-1
 					     (make-string 1 i)
 					   (format nil "\\%o" i)))
-      (setq i (1+ i))))
+      (set! i (1+ i))))
   use-latin-1)
 
 ;;;###autoload

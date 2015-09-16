@@ -33,7 +33,7 @@
      (c 0))
   (while (< c 256)
     (set-glyph pw-glyph-table (integer->char c) string)
-    (setq c (1+ c))))
+    (set! c (1+ c))))
 
 ;;;###autoload
 (defun pwd-prompt (title)

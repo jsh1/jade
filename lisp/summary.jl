@@ -140,14 +140,14 @@ This major mode provides a generic menu capability. It allows lists of
 items to be displayed and manipulated."
   (when major-mode-kill
     (major-mode-kill))
-  (setq summary-functions (copy-sequence functions)
-	summary-pending-ops nil
-	summary-first-line (start-of-line (end-of-buffer))
-	summary-actual-keymap (or keymap summary-keymap)
-	major-mode 'summary-mode
-	major-mode-kill summary-mode-kill
-	mode-name name
-	local-keymap summary-actual-keymap)
+  (set! summary-functions (copy-sequence functions))
+  (set! summary-pending-ops nil)
+  (set! summary-first-line (start-of-line (end-of-buffer)))
+  (set! summary-actual-keymap (or keymap summary-keymap))
+  (set! major-mode 'summary-mode)
+  (set! major-mode-kill summary-mode-kill)
+  (set! mode-name name)
+  (set! local-keymap summary-actual-keymap)
   (set-buffer-undo-list nil)
   (set-buffer-record-undo nil)
   (truncate-lines t)
@@ -157,10 +157,10 @@ items to be displayed and manipulated."
   (summary-update))
 
 (defun summary-mode-kill ()
-  (setq major-mode nil
-	major-mode-kill nil
-	mode-name nil
-	local-keymap nil)
+  (set! major-mode nil)
+  (set! major-mode-kill nil)
+  (set! mode-name nil)
+  (set! local-keymap nil)
   (remove-hook 'unbound-key-hook 'nop))
 
 
@@ -202,8 +202,8 @@ isn't displayed in the summary."
 ;;    ((items summary-items)
 ;;     (index 0))
 ;;  (while (and items (not (equal? (car items) item)))
-;;    (setq index (1+ index)
-;;	    items (cdr items)))
+;;    (set! index (1+ index))
+;;    (set! items (cdr items)))
 ;;  index))
 
 (defun summary-current-index ()
@@ -231,7 +231,7 @@ isn't displayed in the summary."
        extents)
     (map-extents (lambda (e)
 		   (when (extent-get e 'summary-highlight)
-		     (setq extents (cons e extents))))
+		     (set! extents (cons e extents))))
 		 (start-of-buffer) (extent-end (extent-root)))
     (mapc delete-extent extents)
     (make-extent start end
@@ -256,7 +256,7 @@ isn't displayed in the summary."
 				    (list 'delete))))
 	  (summary-maybe-dispatch 'after-marking item)
 	  (summary-update-item item))
-      (setq summary-pending-ops (cons (cons item (cons op nil))
+      (set! summary-pending-ops (cons (cons item (cons op nil))
 				      summary-pending-ops))
       (summary-maybe-dispatch 'after-marking item)
       (summary-update-item item))))
@@ -267,7 +267,7 @@ isn't displayed in the summary."
   (let
       ((ops (summary-get-pending-ops item)))
     (when ops
-      (setq summary-pending-ops (delq! ops summary-pending-ops)))
+      (set! summary-pending-ops (delq! ops summary-pending-ops)))
     (summary-maybe-dispatch 'after-marking item)
     (when ops
       (summary-update-item item))))
@@ -277,7 +277,7 @@ isn't displayed in the summary."
   (interactive)
   (let
       ((old-ops summary-pending-ops))
-    (setq summary-pending-ops nil)
+    (set! summary-pending-ops nil)
     (when (summary-function-exists-p 'after-marking)
       (mapc (lambda (cell)
 	      (summary-dispatch 'after-marking (car cell))) old-ops))
@@ -292,18 +292,18 @@ highlight."
     (block-kill)
     (delete-area summary-first-line (end-of-buffer))
     (delete-all-extents)
-    (setq summary-items (summary-dispatch 'list))
+    (set! summary-items (summary-dispatch 'list))
     (goto summary-first-line)
     (let
 	((items summary-items)
 	 extent)
       (while items
 	(summary-dispatch 'print (car items))
-	(setq extent (make-extent (start-of-line) (cursor-pos)
+	(set! extent (make-extent (start-of-line) (cursor-pos)
 				  (list 'mouse-face active-face
 					'mouse-keymap summary-mouse-map)))
 	(summary-maybe-dispatch 'with-extent extent)
-	(setq items (cdr items))
+	(set! items (cdr items))
 	(when items
 	  (insert "\n")))
       (summary-goto-item (or (summary-maybe-dispatch 'current) 0))
@@ -378,7 +378,7 @@ non-nil it should be a list containing the operations which may be performed."
   (interactive)
   (let
       ((ops summary-pending-ops))
-    (setq summary-pending-ops nil)
+    (set! summary-pending-ops nil)
     ;; Send a `execute-start' command when it's defined. This
     ;; lets the underlying system start caching if it wants to.
     (summary-maybe-dispatch 'execute-start ops)
@@ -394,13 +394,13 @@ non-nil it should be a list containing the operations which may be performed."
 	      (progn
 		(summary-dispatch (car funcs) item)
 		(when (eq? (car funcs) 'delete)
-		  (setq kept nil)))	    
-	    (setq kept (cons (car funcs) kept)))
-	  (setq funcs (cdr funcs)))
+		  (set! kept nil)))	    
+	    (set! kept (cons (car funcs) kept)))
+	  (set! funcs (cdr funcs)))
 	(when kept
-	  (setq summary-pending-ops (cons (cons item kept)
+	  (set! summary-pending-ops (cons (cons item kept)
 					  summary-pending-ops))))
-      (setq ops (cdr ops)))
+      (set! ops (cdr ops)))
     ;; Send a `execute-end' command when it's defined. This
     ;; lets the underlying system end caching and perform the
     ;; operations if necessary.
@@ -421,14 +421,14 @@ item."
 	((start (summary-current-index)))
       (if count
 	  (when (< count 0)
-	    (setq count (- count)
-		  start (max (1+ (- start count)) 0)))
-	(setq count 1))
-      (setq item (list-tail summary-items start))
+	    (set! count (- count))
+	    (set! start (max (1+ (- start count)) 0)))
+	(set! count 1))
+      (set! item (list-tail summary-items start))
       (while (and (> count 0) item)
 	(summary-add-pending-op (car item) op)
-	(setq item (cdr item)
-	      count (1- count))))))
+	(set! item (cdr item))
+	(set! count (1- count))))))
 
 (defun summary-mark-if (pred #!optional op)
   "Mark all items that satisfy the predicate function PRED, optionally
@@ -468,18 +468,18 @@ items, or if no items are marked, the item under the cursor."
 	(if (= arg 1)
 	    (list (summary-get-item current))
 	  (when (< arg 0)
-	    (setq current (+ current arg 1)
-		  arg (- arg))
+	    (set! current (+ current arg 1))
+	    (set! arg (- arg))
 	    (when (< current 0)
-	      (setq arg (+ arg current)
-		    current 0)))
+	      (set! arg (+ arg current))
+	      (set! current 0)))
 	  (let
 	      ((in (list-tail summary-items current))
 	       (out nil))
 	    (while (and (> arg 0) in)
-	      (setq out (cons (car in) out)
-		    in (cdr in)
-		    arg (1- arg)))
+	      (set! out (cons (car in) out))
+	      (set! in (cdr in))
+	      (set! arg (1- arg)))
 	    (reverse! out))))))
 
 (defun summary-item-marked-p (item)

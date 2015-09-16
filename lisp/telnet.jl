@@ -61,17 +61,17 @@ sent to it.")
 ;; Initialise a telnet buffer. ARGS is the process arg list, DIR the
 ;; new value of *default-directory*
 (defun telnet-init (host arg dir use-rlogin)
-  (setq *default-directory* dir
-	shell-program (if use-rlogin rlogin-program telnet-program)
-	telnet-using-rlogin use-rlogin
-	shell-prompt-regexp telnet-prompt-regexp
-	shell-program-args (if arg
+  (set! *default-directory* dir)
+  (set! shell-program (if use-rlogin rlogin-program telnet-program))
+  (set! telnet-using-rlogin use-rlogin)
+  (set! shell-prompt-regexp telnet-prompt-regexp)
+  (set! shell-program-args (if arg
 			       (if use-rlogin
 				   (list "-l" arg host)
 				 (list host (format nil "%d" arg)))
-			     (list host))
-	shell-echos telnet-echos
-	shell-output-filter telnet-filter)
+			     (list host)))
+  (set! shell-echos telnet-echos)
+  (set! shell-output-filter telnet-filter)
   (call-hook 'telnet-mode-hook))
 
 ;;;###autoload
@@ -104,8 +104,8 @@ prompted for if a prefix argument is given."
 	  (goto-buffer (open-buffer name t))
 	  (telnet-init host arg dir use-rlogin)
 	  (shell-mode)
-	  (setq major-mode 'telnet-mode
-		mode-name (if use-rlogin "rlogin" "Telnet")))
+	  (set! major-mode 'telnet-mode)
+	  (set! mode-name (if use-rlogin "rlogin" "Telnet")))
       (goto-buffer buffer)
       (clear-buffer)
       (telnet-init host arg dir use-rlogin)
@@ -130,7 +130,7 @@ given. See the `telnet' function for more details."
 (defun telnet-filter (output)
   ;; Delete any carriage returns
   (while (string-match "\r" output)
-    (setq output (concat (substring output 0 (match-start))
+    (set! output (concat (substring output 0 (match-start))
 			 (substring output (match-end)))))
   ;; Look for password prompts
   (when (and (or (eq? telnet-grab-passwords t)
@@ -139,7 +139,7 @@ given. See the `telnet' function for more details."
     ;; Found a password, cancelling the prompt will _not_ send anything,
     ;; in case this isn't actually a password prompt..
     (insert output)
-    (setq output nil)
+    (set! output nil)
     (let
 	((pass (pwd-prompt "Password: (Ctrl-g to ignore)")))
       (when pass

@@ -39,9 +39,9 @@
 The major mode controlling the Lisp debugger. Commands available within
 the debugger are:\n
 \\{debug-ctrl-c-keymap,Ctrl-c}"
-  (setq local-ctrl-c-keymap debug-ctrl-c-keymap
-	major-mode 'debug-mode
-	mode-name "Debug")
+  (set! local-ctrl-c-keymap debug-ctrl-c-keymap)
+  (set! major-mode 'debug-mode)
+  (set! mode-name "Debug")
   (truncate-lines t))
 
 (with-buffer debug-buffer
@@ -120,9 +120,9 @@ the debugger are:\n
 
 ;; initialization
 
-(setq *debug-entry* debug-entry-fun)
-(setq *debug-exit* debug-exit-fun)
-(setq *debug-error-entry* debug-error-entry-fun)
+(set! *debug-entry* debug-entry-fun)
+(set! *debug-exit* debug-exit-fun)
+(set! *debug-error-entry* debug-error-entry-fun)
 
-;;;###autoload (setq *debug-entry* (make-autoload '*debug-entry* "debug"))
-;;;###autoload (setq *debug-error-entry* (make-autoload '*debug-error-entry* "debug"))
+;;;###autoload (set! *debug-entry* (make-autoload '*debug-entry* "debug"))
+;;;###autoload (set! *debug-error-entry* (make-autoload '*debug-error-entry* "debug"))

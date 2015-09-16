@@ -272,35 +272,35 @@ the key."
     ;; continues. `prefix-arg' *must* be set after
     ;; `next-keymap-path' for this all to work!
     (next-keymap-path 'global-keymap)
-    (setq prefix-arg (cond
+    (set! prefix-arg (cond
 		      ((number? current-prefix-arg)
 		       (+ (* current-prefix-arg 10) digit))
 		      ((eq? current-prefix-arg '-)
 		       (- digit))
 		      (t
-		       digit))
-	  this-command last-command)))
+		       digit)))
+    (set! this-command last-command)))
 
 (defun negative-arg (arg)
   "Negate the prefix-arg. Bound to `M--'. "
   (interactive "P")
   (next-keymap-path 'global-keymap)
-  (setq prefix-arg (cond
+  (set! prefix-arg (cond
 		    ((number? arg)
 		     (* arg -1))
 		    ((eq? arg '-)
 		     nil)
 		    (t
-		     '-))
-	this-command last-command))
+		     '-)))
+  (set! this-command last-command))
 
 (defun universal-arg (arg)
   (interactive "P")
   (next-keymap-path 'global-keymap)
-  (setq prefix-arg (cond
+  (set! prefix-arg (cond
 		    ((pair? arg)
 		     (set-car! arg (* 4 (car arg)))
 		     arg)
 		    (t
-		     (cons 4 nil)))
-	this-command last-command))
+		     (cons 4 nil))))
+  (set! this-command last-command))

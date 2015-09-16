@@ -66,20 +66,20 @@ Local bindings in this mode are:\n
   (interactive)
   (when major-mode-kill
     (major-mode-kill (current-buffer)))
-  (setq mode-name "TeX"
-	major-mode 'tex-mode
-	major-mode-kill tex-mode-kill
-	local-ctrl-c-keymap tex-ctrl-c-keymap
-	paragraph-separate "^(([\t\f\n ]|(\\$\\$))*|\\\\(begin|end|noindent).*)\n"
-	paragraph-start "^( +|\\\\item)"
-	page-start "^\\\\((sub)*(section|paragraph)|chapter){.*}"
-	local-keymap 'tex-keymap
-	mode-comment-header "%"
-	generic-exp-single-delims '(#\" #\$)
-	generic-exp-escape-char 0
-	generic-exp-comment-string "%"
-	generic-exp-symbol-re "[a-zA-Z0-9:_@-]+"
-	generic-exp-special-re "[][(){}\"\$a-zA-Z0-9]")
+  (set! mode-name "TeX")
+  (set! major-mode 'tex-mode)
+  (set! major-mode-kill tex-mode-kill)
+  (set! local-ctrl-c-keymap tex-ctrl-c-keymap)
+  (set! paragraph-separate "^(([\t\f\n ]|(\\$\\$))*|\\\\(begin|end|noindent).*)\n")
+  (set! paragraph-start "^( +|\\\\item)")
+  (set! page-start "^\\\\((sub)*(section|paragraph)|chapter){.*}")
+  (set! local-keymap 'tex-keymap)
+  (set! mode-comment-header "%")
+  (set! generic-exp-single-delims '(#\" #\$))
+  (set! generic-exp-escape-char 0)
+  (set! generic-exp-comment-string "%")
+  (set! generic-exp-symbol-re "[a-zA-Z0-9:_@-]+")
+  (set! generic-exp-special-re "[][(){}\"\$a-zA-Z0-9]")
   (make-local-variable 'ispell-ignore-word-hook)
   (add-hook 'ispell-ignore-word-hook tex-ispell-ignore-word-hook)
   (cond (from-sub-mode)
@@ -91,10 +91,10 @@ Local bindings in this mode are:\n
 	 (plain-tex-mode t))))
 
 (defun tex-mode-kill ()
-  (setq mode-name nil
-	major-mode nil
-	major-mode-kill nil
-	local-keymap nil))
+  (set! mode-name nil)
+  (set! major-mode nil)
+  (set! major-mode-kill nil)
+  (set! local-keymap nil))
 
 ;;;###autoload
 (defun latex-mode (#!optional from-super-mode)
@@ -105,10 +105,10 @@ Local bindings in this mode are:\n
   (interactive)
   (unless from-super-mode
     (tex-mode t))
-  (setq major-mode 'latex-mode
-	mode-name "LaTeX")
+  (set! major-mode 'latex-mode)
+  (set! mode-name "LaTeX")
   (unless (assq 'tex-run-command (buffer-variables))
-    (setq tex-run-command latex-run-command))
+    (set! tex-run-command latex-run-command))
   (call-hook 'text-mode-hook)
   (call-hook 'tex-mode-hook)
   (call-hook 'latex-mode-hook))  
@@ -137,9 +137,9 @@ Local bindings in this mode are:\n
 		;; no end
 		(if (zero? depth)
 		    (throw 'foo t)
-		  (setq depth (1- depth)))
-	      (setq depth (1+ depth)))
-	    (setq p (forward-char -1 (match-start)))))
+		  (set! depth (1- depth)))
+	      (set! depth (1+ depth)))
+	    (set! p (forward-char -1 (match-start)))))
 	(format (current-buffer) "\\end{%s}\n" (copy-area (match-start 2)
 							  (match-end 2)))
       (tex-insert-braces "end")

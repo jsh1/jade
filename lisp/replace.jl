@@ -40,9 +40,9 @@ character following the insertion."
        (new (expand-last-match template)))
     (when replace-preserve-case
       (cond ((string-upper-case? old)
-	     (setq new (string-upcase new)))
+	     (set! new (string-upcase new)))
 	    ((string-capitalized? old)
-	     (setq new (capitalize-string new)))))
+	     (set! new (capitalize-string new)))))
     (delete-area (match-start) (match-end))
     (insert new (match-start))))
 
@@ -115,7 +115,7 @@ last change."
 
 (defun query-replace-exit ()
   (interactive)
-  (setq query-replace-alive nil)
+  (set! query-replace-alive nil)
   (throw 'query-replace))
 
 (defun query-replace-once-only ()
@@ -130,7 +130,7 @@ last change."
        (goto (replace-last-match query-replace-to)))
   (while (re-search-forward query-replace-from nil nil case-fold-search)
     (goto (replace-last-match query-replace-to)))
-  (setq query-replace-alive 'rest)
+  (set! query-replace-alive 'rest)
   (throw 'query-replace))
 
 (defun query-replace-edit ()
@@ -156,7 +156,7 @@ last change."
   (interactive)
   (if (cdr query-replace-trace)
       (progn
-	(setq query-replace-trace (cdr query-replace-trace))
+	(set! query-replace-trace (cdr query-replace-trace))
 	(goto (car query-replace-trace)))
     (beep))
   (message query-replace-title))
@@ -200,7 +200,7 @@ type one of the following special commands,\n
 		    (setq match (re-search-forward
 				 query-replace-from nil nil case-fold-search)))
 	  (goto match)
-	  (setq query-replace-trace (cons match query-replace-trace))
+	  (set! query-replace-trace (cons match query-replace-trace))
 	  (catch 'query-replace
 	    (message query-replace-title)
 	    (recursive-edit)))

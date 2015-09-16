@@ -55,22 +55,22 @@ Local bindings in this mode are:\n
   (interactive)
   (when major-mode-kill
     (major-mode-kill (current-buffer)))
-  (setq mode-name "Texinfo"
-	major-mode 'texinfo-mode
-	major-mode-kill texinfo-mode-kill
-	local-ctrl-c-keymap texinfo-ctrl-c-keymap
-	;paragraph-separate "^@node.*\n"
-	;paragraph-start "^ +"
-	mode-comment-header "@c"
-	local-keymap 'texinfo-keymap)
+  (set! mode-name "Texinfo")
+  (set! major-mode 'texinfo-mode)
+  (set! major-mode-kill texinfo-mode-kill)
+  (set! local-ctrl-c-keymap texinfo-ctrl-c-keymap)
+;  (set! paragraph-separate "^@node.*\n")
+;  (set! paragraph-start "^ +")
+  (set! mode-comment-header "@c")
+  (set! local-keymap 'texinfo-keymap)
   (call-hook 'text-mode-hook)
   (call-hook 'texinfo-mode-hook))
 
 (defun texinfo-mode-kill ()
-  (setq mode-name nil
-	major-mode nil
-	major-mode-kill nil
-	local-keymap nil))
+  (set! mode-name nil)
+  (set! major-mode nil)
+  (set! major-mode-kill nil)
+  (set! local-keymap nil))
 
 (defun texinfo-insert-@end ()
   (interactive)
@@ -87,9 +87,9 @@ Local bindings in this mode are:\n
 		;; no end
 		(if (zero? depth)
 		    (throw 'foo t)
-		  (setq depth (1- depth)))
-	      (setq depth (1+ depth)))
-	    (setq p (forward-char -1 (match-start)))))
+		  (set! depth (1- depth)))
+	      (set! depth (1+ depth)))
+	    (set! p (forward-char -1 (match-start)))))
 	(format (current-buffer) "@end %s\n" (copy-area (match-start 2)
 							(match-end 2)))
       (insert "@end ")

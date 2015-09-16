@@ -22,7 +22,7 @@
 
 (message "Initialising; wait..." t)
 
-(setq *user-structure* 'jade)
+(set! *user-structure* 'jade)
 
 (require 'rep.regexp)
 (require 'rep.system)
@@ -87,15 +87,15 @@
 (let
     (arg)
   (while (setq arg (car *command-line-args*))
-    (setq *command-line-args* (cdr *command-line-args*))
+    (set! *command-line-args* (cdr *command-line-args*))
     (cond
       ((equal? "-f" arg)
-       (setq arg (car *command-line-args*))
-       (setq *command-line-args* (cdr *command-line-args*))
+       (set! arg (car *command-line-args*))
+       (set! *command-line-args* (cdr *command-line-args*))
        ((symbol-value (read-from-string arg))))
       ((equal? "-l" arg)
-       (setq arg (car *command-line-args*))
-       (setq *command-line-args* (cdr *command-line-args*))
+       (set! arg (car *command-line-args*))
+       (set! *command-line-args* (cdr *command-line-args*))
        (cond ((file-exists? arg)
 	      (load arg nil t t))
 	     ((string-match "\\.jlc?$" arg)

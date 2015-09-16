@@ -21,9 +21,9 @@
 (defun dired-read-file-hook (filename buffer)
   (when (file-directory? filename)
     (with-buffer buffer
-      (setq *default-directory* (file-name-as-directory filename))
+      (set! *default-directory* (file-name-as-directory filename))
       (set-buffer-file-name buffer (directory-file-name filename))
-      (setq buffer-file-modtime (file-modtime filename))
+      (set! buffer-file-modtime (file-modtime filename))
       (dired-mode)
       t)))
 

@@ -30,22 +30,22 @@
 	    (let
 		(label item)
 	      (when (and cell (symbol? (car cell)))
-		(setq cell (symbol-value (car cell))))
+		(set! cell (symbol-value (car cell))))
 	      (unless (null? cell)
-		(setq label (car cell))
+		(set! label (car cell))
 		(if (function? (cdr cell))
-		    (setq cell ((cdr cell)))
-		  (setq cell (cdr cell)))
+		    (set! cell ((cdr cell)))
+		  (set! cell (cdr cell)))
 		(cond
 		 ((function? (car cell))
-		  (setq item (list* 'command label (car cell))))
+		  (set! item (list* 'command label (car cell))))
 		 ((pair? (car cell))
-		  (setq item (list* 'sub label
+		  (set! item (list* 'sub label
 				    (prompt-menu-create-menu cell))))
 		 ((eq? (car cell) t)
-		  (setq item (list* 'function label (list-ref cell 1))))))
+		  (set! item (list* 'function label (list-ref cell 1))))))
 	      (when item
-		(setq menu (cons item menu)))))
+		(set! menu (cons item menu)))))
 	  spec)
     (reverse! menu)))
 
@@ -62,14 +62,14 @@
       ((lst (mapcar (lambda (x) (car (cdr x))) tree))
        (choice (prompt-from-list lst (concat title #\:))))
     (while choice
-      (setq choice (or (prompt-menu-find tree choice)
+      (set! choice (or (prompt-menu-find tree choice)
 		       (error "Can't find menu")))
       (when (eq? (car choice) 'sub)
-	(setq choice (prompt-menu-prompt (list-tail choice 2)
+	(set! choice (prompt-menu-prompt (list-tail choice 2)
 					 (concat title #\/ (list-ref choice 1)))))
       (when choice
 	(throw 'prompt-menu-top choice))
-      (setq choice (prompt-from-list lst (concat title #\:))))))
+      (set! choice (prompt-from-list lst (concat title #\:))))))
 
 (defun popup-menu-from-spec (spec)
   (let*

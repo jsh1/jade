@@ -155,7 +155,7 @@ command for more details."
        exit-value)
     (call-process process nil diff-program
 		  (local-file-name file1) (local-file-name file2))
-    (setq exit-value (process-exit-value process))
+    (set! exit-value (process-exit-value process))
     (cond
      ((or (null? exit-value) (= exit-value 2))
       (error "Diff command failed"))
@@ -196,11 +196,11 @@ command for more details."
        (esc-means-meta nil))
     (with-view (minibuffer-view)
       (with-buffer minibuf
-	(setq local-keymap diff-keymap)
+	(set! local-keymap diff-keymap)
 	(make-extent (start-of-buffer)
 		     (insert "Visual diff: (n, p, q) ")
 		     (list 'face prompt-title-face))
-	(setq read-only t)
+	(set! read-only t)
 	(diff-display-hunk)
 	(unwind-protect
 	    (catch 'diff-exit
@@ -215,10 +215,10 @@ command for more details."
       (start end)
     (unless (looking-at "([0-9]+)(,([0-9]+))?" p diff-diff-buffer)
       (error "Malformed diff output!"))
-    (setq start (1- (string->number (expand-last-match "\\1"))))
+    (set! start (1- (string->number (expand-last-match "\\1"))))
     (if (match-start 2)
-	(setq end (1- (string->number (expand-last-match "\\3"))))
-      (setq end start))
+	(set! end (1- (string->number (expand-last-match "\\3"))))
+      (set! end start))
     (set-car! cell start)
     (set-cdr! cell end)
     (match-end)))
@@ -233,20 +233,20 @@ command for more details."
        (right-range (cons))
        (tem diff-hunk-pos)
        command)
-    (setq tem (diff-parse-range diff-hunk-pos left-range))
-    (setq command (get-char tem diff-diff-buffer))
+    (set! tem (diff-parse-range diff-hunk-pos left-range))
+    (set! command (get-char tem diff-diff-buffer))
     (diff-parse-range (forward-char 1 tem diff-diff-buffer) right-range)
     (cond
      ((= command #\a)
-      (setq command 'add))
+      (set! command 'add))
      ((= command #\c)
-      (setq command 'change))
+      (set! command 'change))
      ((= command #\d)
-      (setq command 'delete))
+      (set! command 'delete))
      (t
       (error "Unknown command in diff output")))
     (with-buffer diff-src-buffer
-      (setq diff-src-extent (make-extent
+      (set! diff-src-extent (make-extent
 			     (if (eq? command 'add)
 				 (if (>= (car left-range) 0)
 				     (end-of-line (forward-line
@@ -265,7 +265,7 @@ command for more details."
 					  ((eq? command 'add)
 					   diff-marker-face))))))
     (with-buffer diff-dest-buffer
-      (setq diff-dest-extent (make-extent
+      (set! diff-dest-extent (make-extent
 			      (if (eq? command 'delete)
 				  (if (>= (car right-range) 0)
 				     (end-of-line (forward-line
@@ -297,14 +297,14 @@ command for more details."
     (or (re-search-forward
 	 "^[0-9]+" (forward-line 1 diff-hunk-pos) diff-diff-buffer)
 	(error "End of diff output"))
-    (setq diff-hunk-pos (match-start))
-    (setq count (1- count)))
+    (set! diff-hunk-pos (match-start))
+    (set! count (1- count)))
   (while (< count 0)
     (or (re-search-backward
 	 "^[0-9]+" (forward-line -1 diff-hunk-pos) diff-diff-buffer)
 	(error "Start of diff output"))
-    (setq diff-hunk-pos (match-start))
-    (setq count (1+ count)))
+    (set! diff-hunk-pos (match-start))
+    (set! count (1+ count)))
   (diff-display-hunk))
 
 (defun diff-previous (count)

@@ -113,33 +113,33 @@ direction."
 ;;; Wrappers for some regexp functions to trap errors
 
 (defun isearch-find-next-regexp (p)
-  (setq isearch-re-error nil)
+  (set! isearch-re-error nil)
   (condition-case nil
       (re-search-forward (car (car isearch-trace)) p
 			 (current-buffer isearch-view)
 			 case-fold-search)
     (regexp-error
-      (setq isearch-re-error t)
+      (set! isearch-re-error t)
       'regexp-error)))
 
 (defun isearch-find-prev-regexp (p)
-  (setq isearch-re-error nil)
+  (set! isearch-re-error nil)
   (condition-case nil
       (re-search-backward (car (car isearch-trace)) p
 			  (current-buffer isearch-view)
 			  case-fold-search)
     (regexp-error
-      (setq isearch-re-error t)
+      (set! isearch-re-error t)
       'regexp-error)))
 
 (defun isearch-looking-at ()
-  (setq isearch-re-error nil)
+  (set! isearch-re-error nil)
   (condition-case nil
       (looking-at (car (car isearch-trace))
 		  (with-view isearch-view (cursor-pos))
 		  (current-buffer isearch-view) case-fold-search)
     (regexp-error
-      (setq isearch-re-error t)
+      (set! isearch-re-error t)
       'regexp-error)))
 
 
@@ -159,12 +159,12 @@ direction."
 	  (isearch-goto (list-ref item 1))
 	  (set-car! isearch-trace (cons (car item) (list-tail item 2))))
       (isearch-goto isearch-initial-pos)))
-  (setq isearch-failing nil))
+  (set! isearch-failing nil))
 
 ;; Pops the top string, then moves to the top match of the next string.
 (defun isearch-pop-string ()
   (when (cdr isearch-trace)
-    (setq isearch-trace (cdr isearch-trace))
+    (set! isearch-trace (cdr isearch-trace))
     (isearch-pop-match)))
 
 ;; Pushes a match at POS onto the top string
@@ -177,7 +177,7 @@ direction."
 ;; stack, then searches for it
 (defun isearch-push-string (string)
   (isearch-push-match (with-view isearch-view (cursor-pos)))
-  (setq isearch-trace (cons (cons string nil) isearch-trace))
+  (set! isearch-trace (cons (cons string nil) isearch-trace))
   (if (isearch-looking-at)
       (isearch-goto (with-view isearch-view (cursor-pos)))
     (let
@@ -189,9 +189,9 @@ direction."
       (cond
 	((posp next)
 	 (isearch-goto next)
-	 (setq isearch-failing nil))
+	 (set! isearch-failing nil))
 	((null? next)
-	 (setq isearch-failing t)
+	 (set! isearch-failing t)
 	 (beep))))))
 
 ;; Goto the current isearch position
@@ -206,9 +206,9 @@ direction."
 	(goto (match-start))
 	(if extent
 	    (move-extent extent (match-start) (match-end))
-	  (setq extent (make-extent (match-start) (match-end)
+	  (set! extent (make-extent (match-start) (match-end)
 				    (list 'face highlight-face)))))
-      (setq isearch-extent extent))))
+      (set! isearch-extent extent))))
 
 
 ;; Misc functions
@@ -231,7 +231,7 @@ direction."
 ;; Accept our current position
 (defun isearch-accept ()
   (interactive)
-  (setq isearch-last-match (car (car isearch-trace)))
+  (set! isearch-last-match (car (car isearch-trace)))
   (let
       ((p isearch-initial-pos))
     (with-view isearch-view
@@ -298,15 +298,15 @@ direction."
        ;; FIXME
        (esc-means-meta nil))
     (with-buffer prompt-buffer
-      (setq isearch-trace (cons (cons "" nil) nil)
-	    isearch-initial-pos (with-buffer old-buffer (cursor-pos))
-	    isearch-failing nil
-	    isearch-wrapped nil
-	    isearch-re-error nil
-	    isearch-forwards forwards
-	    isearch-view (current-view)
-	    isearch-original-buffer (current-buffer (minibuffer-view)))
-      (setq local-keymap 'isearch-keymap)
+      (set! isearch-trace (cons (cons "" nil) nil))
+      (set! isearch-initial-pos (with-buffer old-buffer (cursor-pos)))
+      (set! isearch-failing nil)
+      (set! isearch-wrapped nil)
+      (set! isearch-re-error nil)
+      (set! isearch-forwards forwards)
+      (set! isearch-view (current-view))
+      (set! isearch-original-buffer (current-buffer (minibuffer-view)))
+      (set! local-keymap 'isearch-keymap)
       (make-local-variable 'unbound-key-hook)
       (add-hook 'unbound-key-hook isearch-unbound-key-fun))
     (set-current-view (minibuffer-view))
@@ -338,21 +338,21 @@ direction."
     (let
 	((next (if (and isearch-failing isearch-forwards)
 	           (progn
-		     (setq isearch-wrapped t)
+		     (set! isearch-wrapped t)
 		     (with-view isearch-view
 		       (start-of-buffer)))
 		 (with-view isearch-view
 		   (forward-char)))))
-      (setq next (isearch-find-next-regexp next))
+      (set! next (isearch-find-next-regexp next))
       (cond
         ((posp next)
 	  (isearch-push-match (with-view isearch-view (cursor-pos)))
-	  (setq isearch-failing nil)
+	  (set! isearch-failing nil)
 	  (isearch-goto next))
 	((null? next)
-	  (setq isearch-failing t)
+	  (set! isearch-failing t)
 	  (beep)))
-      (setq isearch-forwards t)
+      (set! isearch-forwards t)
       (isearch-title))))
 
 (defun isearch-next-backward ()
@@ -364,19 +364,19 @@ direction."
     (let
 	((next (if (and isearch-failing (not isearch-forwards))
 		   (progn
-		     (setq isearch-wrapped t)
+		     (set! isearch-wrapped t)
 		     (with-view isearch-view
 		       (end-of-buffer)))
 		 (with-view isearch-view
 		   (forward-char -1)))))
-      (setq next (isearch-find-prev-regexp next))
+      (set! next (isearch-find-prev-regexp next))
       (cond
        ((posp next)
 	(isearch-push-match (with-view isearch-view (cursor-pos)))
-	(setq isearch-failing nil)
+	(set! isearch-failing nil)
 	(isearch-goto next))
        ((null? next)
-	(setq isearch-failing t)
+	(set! isearch-failing t)
 	(beep)))
-      (setq isearch-forwards nil)
+      (set! isearch-forwards nil)
       (isearch-title))))

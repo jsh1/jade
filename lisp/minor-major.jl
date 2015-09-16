@@ -40,7 +40,7 @@ Returns the extent containing the region. This extent always has its
      (goto start)
      (save-restriction
        (restrict-buffer start end)
-       (setq major-mode-kill nil)
+       (set! major-mode-kill nil)
        ((symbol-value mode))
        extent))))
 
@@ -51,7 +51,7 @@ position when called interactively)."
   (let
       ((extent (get-extent position)))
     (while (and extent (not (extent-get extent 'minor-major)))
-      (setq extent (extent-parent extent)))
+      (set! extent (extent-parent extent)))
     (if extent
 	(delete-extent extent)
       (error "No minor-major mode here: %s" position))))

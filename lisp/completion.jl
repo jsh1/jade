@@ -64,7 +64,7 @@ matching strings.")
 				    (previous-view)
 				  (next-view)))
 	  (goto-buffer (make-buffer "*completions*"))
-	  (setq completion-deletable-view new-view)
+	  (set! completion-deletable-view new-view)
 	  (current-view)))))
 
 ;; Try to remove any completion buffer, and if a view was created specially
@@ -82,7 +82,7 @@ matching strings.")
 ;; Display a list of completions in a *completions* buffer in the
 ;; current window
 (defun completion-list (completions)
-  (setq completions ((if completion-sorted-lists sort! identity)
+  (set! completions ((if completion-sorted-lists sort! identity)
 		     (if completion-abbrev-function
 			 (mapcar completion-abbrev-function
 				 completions)
@@ -96,11 +96,12 @@ matching strings.")
 	    (and (> (string-length c) max-width)
 		 (setq max-width (string-length c)))) completions)
     (if (= max-width view-width)
-	(setq columns 1
-	      column-width view-width)
-      (setq columns (max 1 (quotient view-width
-				     (+ max-width completion-column-extra)))
-	    column-width (quotient view-width columns)))
+	(progn
+	  (set! columns 1)
+	  (set! column-width view-width))
+      (set! columns (max 1 (quotient view-width
+				     (+ max-width completion-column-extra))))
+      (set! column-width (quotient view-width columns)))
     (with-view view
       (let
 	  ((column 0))
@@ -109,10 +110,10 @@ matching strings.")
 	(while completions
 	  (indent-to (* column column-width))
 	  (insert (car completions))
-	  (setq column (remainder (1+ column) columns))
+	  (set! column (remainder (1+ column) columns))
 	  (when (zero? column)
 	    (insert "\n"))
-	  (setq completions (cdr completions)))
+	  (set! completions (cdr completions)))
 	(goto (start-of-buffer))
 	(when completion-deletable-view
 	  (shrink-view-if-larger-than-buffer))))))
@@ -146,17 +147,17 @@ matching strings.")
       ((point (start-of-buffer))
        completions tem)
     (while (search-forward word point nil completion-fold-case)
-      (setq point (match-end))
+      (set! point (match-end))
       (unless (equal? point (cursor-pos))
 	(let ((start (match-start))
 	      (end (forward-exp 1 (forward-char -1 point))))
 	  (unless (/= (pos-line start) (pos-line end))
-	    (setq tem (copy-area start end))
+	    (set! tem (copy-area start end))
 	    (unless (member tem completions)
-	      (setq completions (cons tem completions)))))))
+	      (set! completions (cons tem completions)))))))
     completions))
 
-(setq-default completion-hooks
+(set-default 'completion-hooks
 	      (append! completion-hooks (list complete-from-buffer)))
 
 (defun complete-at-point (#!optional only-display)
@@ -175,14 +176,14 @@ don't insert anything, just display the list of possible completions."
     (when completions
       (while (and (cdr completions)
 		  (equal? (car completions) (car (cdr completions))))
-	(setq completions (cdr completions)))
+	(set! completions (cdr completions)))
       (when completions
 	(let
 	    ((tem completions))
 	  (while (pair? (cdr tem))
 	    (if (equal? (car tem) (car (cdr tem)))
 		(set-cdr! tem (cdr (cdr tem)))
-	      (setq tem (cdr tem)))))))
+	      (set! tem (cdr tem)))))))
     (completion-insert completions word only-display)))
 
 (defun show-completions ()

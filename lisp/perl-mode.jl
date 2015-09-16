@@ -60,18 +60,18 @@ Major mode for editing Perl source code. Local keybindings are:\n
 \\{perl-mode-keymap}"
   (interactive)
   (and major-mode-kill (major-mode-kill))
-  (setq mode-name "Perl"
-	major-mode 'perl-mode
-	major-mode-kill kill-all-local-variables
-	mode-comment-header "#"
-	mode-indent-line perl-indent-line
-	mode-forward-exp c-forward-exp
-	mode-backward-exp c-backward-exp
-	mode-defun-header "^sub ([a-zA-Z0-9_]+)[\t ]*{"
-	mode-defun-footer "^}"
-	paragraph-separate "^[\n\t\f ]*\n"
-	paragraph-start paragraph-separate
-	local-keymap perl-mode-keymap)
+  (set! mode-name "Perl")
+  (set! major-mode 'perl-mode)
+  (set! major-mode-kill kill-all-local-variables)
+  (set! mode-comment-header "#")
+  (set! mode-indent-line perl-indent-line)
+  (set! mode-forward-exp c-forward-exp)
+  (set! mode-backward-exp c-backward-exp)
+  (set! mode-defun-header "^sub ([a-zA-Z0-9_]+)[\t ]*{")
+  (set! mode-defun-footer "^}")
+  (set! paragraph-separate "^[\n\t\f ]*\n")
+  (set! paragraph-start paragraph-separate)
+  (set! local-keymap perl-mode-keymap)
   (call-hook 'perl-mode-hook))
 
 (defun perl-indent-line (#!optional p)
@@ -84,10 +84,10 @@ Major mode for editing Perl source code. Local keybindings are:\n
     (unless exp-pos
       ;; Start of the containing expression
       (when (re-search-backward "[\{\(\[]" line-pos)
-	(setq exp-pos (match-start))))
+	(set! exp-pos (match-start))))
     (if (= (get-char exp-pos) #\{)
-	(setq exp-ind (indent-pos exp-pos))
-      (setq exp-ind (char-to-glyph-pos exp-pos)))
+	(set! exp-ind (indent-pos exp-pos))
+      (set! exp-ind (char-to-glyph-pos exp-pos)))
 
     (unless (or (equal? (indent-pos exp-pos) exp-ind)
 		(memq (get-char (forward-char -1 exp-pos)) '(#\( #\{ #\[)))
@@ -95,7 +95,7 @@ Major mode for editing Perl source code. Local keybindings are:\n
 			     (start-of-line exp-pos))
 		 (< (match-start 1) exp-pos))
 	;; Back up over the bits of punctuation
-	(setq exp-ind (char-to-glyph-pos (match-start 1)))))
+	(set! exp-ind (char-to-glyph-pos (match-start 1)))))
 
     ;; First look at previous line and see how it affects the one we're
     ;; trying to indent
@@ -103,12 +103,12 @@ Major mode for editing Perl source code. Local keybindings are:\n
      ((= (get-char exp-pos) #\})
       ;; A closing brace
       (unless (zero? (pos-col exp-pos))
-	(setq exp-ind (left-char (+ perl-body-indent
+	(set! exp-ind (left-char (+ perl-body-indent
 				    perl-brace-indent) exp-ind))))
 
      ((looking-at ".*{[ \t\n]" exp-pos)
       ;; An opening brace
-      (setq exp-ind (right-char perl-body-indent (indent-pos exp-pos))))
+      (set! exp-ind (right-char perl-body-indent (indent-pos exp-pos))))
 
      ((looking-at ".*\;" exp-pos)
       ;; A full expression, indent to the level of the first
@@ -118,12 +118,12 @@ Major mode for editing Perl source code. Local keybindings are:\n
 	;; *Need to loop here searching back to the correct level*
 	(when (and prev (/= (pos-col prev) (pos-col exp-pos))
 		   (not (looking-at "[a-zA-Z_][a-zA-Z0-9_]+:|.*;" prev)))
-	  (setq exp-ind (pos (pos-col (char-to-glyph-pos prev))
+	  (set! exp-ind (pos (pos-col (char-to-glyph-pos prev))
 			     (pos-line exp-ind))))))
      
      ((looking-at "[a-zA-Z_][a-zA-Z0-9_]+:([\t ]|$)" exp-pos)
       ;; A goto label, indented back by perl-label-indent
-      (setq exp-ind (or (left-char perl-label-indent exp-ind)
+      (set! exp-ind (or (left-char perl-label-indent exp-ind)
 			(pos 0 (pos-line exp-pos))))))
 
     ;; Next, look at the contents of this line and see if it needs any
@@ -131,21 +131,21 @@ Major mode for editing Perl source code. Local keybindings are:\n
     (unless (empty-line-p line-pos)
       ;; Skip leading whitespace
       (when (looking-at "^[\t\f ]+" line-pos)
-	(setq line-pos (match-end)))
+	(set! line-pos (match-end)))
 
       (cond
        ((= (get-char line-pos) #\{)
 	;; An opening brace at the start of the line, indent back by
 	;; perl-brace-indent
-	(setq exp-ind (pos (max 0 (+ (pos-col exp-ind) perl-brace-indent)))))
+	(set! exp-ind (pos (max 0 (+ (pos-col exp-ind) perl-brace-indent)))))
 
        ((= (get-char line-pos) #\})
 	;; A closing brace, indent outwards by perl-brace-indent
-	(setq exp-ind (left-char perl-body-indent exp-ind)))
+	(set! exp-ind (left-char perl-body-indent exp-ind)))
 
        ((looking-at "[a-zA-Z_]+[a-zA-Z0-9_]*:([\t ]|$)" line-pos)
 	;; A goto label
-	(setq exp-ind (right-char perl-label-indent exp-ind)))))
+	(set! exp-ind (right-char perl-label-indent exp-ind)))))
 
     ;; Finished
     (set-indent-pos (pos (pos-col exp-ind) (pos-line line-pos)))))

@@ -39,18 +39,18 @@ keymaps, i.e. all prefix keys are ignored.")
 	 (minor minor-mode-keymap-alist)
 	 tem)
       (while e
-	(setq tem (extent-get e 'keymap))
+	(set! tem (extent-get e 'keymap))
 	(when tem
-	  (setq maps (cons tem maps)))
-	(setq e (extent-parent e)))
+	  (set! maps (cons tem maps)))
+	(set! e (extent-parent e)))
       (while minor
 	(when (symbol-value (car (car minor)))
-	  (setq maps (cons (cdr (car minor)) maps)))
-	(setq minor (cdr minor)))
+	  (set! maps (cons (cdr (car minor)) maps)))
+	(set! minor (cdr minor)))
       (when local-keymap
-	(setq maps (cons local-keymap maps)))
+	(set! maps (cons local-keymap maps)))
       (when global-keymap
-	(setq maps (cons global-keymap maps)))
+	(set! maps (cons global-keymap maps)))
       (mapcar (lambda (km)
 		(if (symbol? km)
 		    ;; dereference the symbol in the correct buffer
@@ -68,9 +68,9 @@ FUNCTION is called as (FUNCTION KEY PREFIX), where KEY is a cons cell
 (COMMAND . EVENT), and PREFIX a string describing the prefix keys of this
 binding, or nil if there was no prefix."
   (unless buffer
-    (setq buffer (current-buffer)))
+    (set! buffer (current-buffer)))
   (when (keymapp keymap)
-    (setq keymap (list keymap)))
+    (set! keymap (list keymap)))
   (let
       ((km-keymap-list (or keymap (active-keymaps buffer)))
        (done-list nil))
@@ -78,21 +78,21 @@ binding, or nil if there was no prefix."
       (let
 	  ((keymap (car km-keymap-list))
 	   km-prefix-string)
-	(setq km-keymap-list (cdr km-keymap-list))
+	(set! km-keymap-list (cdr km-keymap-list))
 	(when (and (not (keymapp keymap)) (pair? keymap))
-	  (setq km-prefix-string (cdr keymap)
-		keymap (car keymap)))
+	  (set! km-prefix-string (cdr keymap))
+	  (set! keymap (car keymap)))
 	(unless (memq keymap done-list)
-	  (setq done-list (cons keymap done-list))
+	  (set! done-list (cons keymap done-list))
 	  (when (symbol? keymap)
-	    (setq keymap (with-buffer buffer (symbol-value keymap))))
+	    (set! keymap (with-buffer buffer (symbol-value keymap))))
 	  (when (keymapp keymap)
 	    (if (vector? keymap)
 		(let
 		    ((i (1- (vector-length keymap))))
 		  (while (>= i 0)
 		    (km-map-keylist (vector-ref keymap i) function buffer)
-		    (setq i (1- i))))
+		    (set! i (1- i))))
 	      (km-map-keylist (cdr keymap) function buffer))))))))
 
 ;; Map over a single list of keybindings
@@ -118,7 +118,7 @@ binding, or nil if there was no prefix."
 					   event-str))
 			  (new-list (mapcar (lambda (km)
 					      (cons km new-str)) this-list)))
-		     (setq km-keymap-list (append km-keymap-list
+		     (set! km-keymap-list (append km-keymap-list
 						  new-list)))))))
 	    (t
 	     ;; A normal binding
@@ -184,7 +184,7 @@ for the bindings to be installed if and when it is."
       ((km-where-is-results nil))
     (map-keymap (lambda (k pfx)
 		  (when (eq? (car k) command)
-		    (setq km-where-is-results
+		    (set! km-where-is-results
 			  (cons (concat pfx (and pfx " ")
 					(event-name (cdr k)))
 				km-where-is-results))))
@@ -232,7 +232,7 @@ the string that the operating system would normally insert for that event."
     (unwind-protect
 	(catch 'read-event
 	  (recursive-edit))
-      (setq unbound-key-hook old-ukh))))
+      (set! unbound-key-hook old-ukh))))
 
 ;;;###autoload
 (defun describe-key ()
@@ -243,18 +243,18 @@ would invoke."
       ((path 'global-keymap)
        names event command done)
     (while (not done)
-      (setq event (read-event (concat "Enter a key sequence: " names))
-	    names (concat names (if names #\space) (event-name event)))
+      (set! event (read-event (concat "Enter a key sequence: " names)))
+      (set! names (concat names (if names #\space) (event-name event)))
       (next-keymap-path path)
-      (setq command (lookup-event-binding event))
+      (set! command (lookup-event-binding event))
       (if command
 	  (cond ((and (symbol? command)
 		      (eq? (symbol-value command t) 'keymap))
 		 ;; a prefix key
-		 (setq path (list command)))
+		 (set! path (list command)))
 		((eq? (car command) 'next-keymap-path)
 		 ;; A link to another keymap
-		 (setq path (eval (list-ref command 1))))
+		 (set! path (eval (list-ref command 1))))
 		(t
 		 ;; End of the chain
 		 (help-wrapper
@@ -263,6 +263,6 @@ would invoke."
 		    (format (current-buffer)
 			    "\n%s\n"
 			    (or (documentation command) ""))))
-		 (setq done t)))
+		 (set! done t)))
 	(message (concat names " is unbound. "))
-	(setq done t)))))
+	(set! done t)))))

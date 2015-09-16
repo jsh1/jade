@@ -35,9 +35,9 @@
     "TAB" 'text-mode-indent-tab))
 
 (defun text-mode-init ()
-  (setq major-mode-kill text-mode-kill
-	word-regexp "[a-zA-Z0-9]"
-	word-not-regexp "[^a-zA-Z0-9]|$"))
+  (set! major-mode-kill text-mode-kill)
+  (set! word-regexp "[a-zA-Z0-9]")
+  (set! word-not-regexp "[^a-zA-Z0-9]|$"))
 
 ;;;###autoload
 (defun text-mode ()
@@ -46,9 +46,9 @@
   (interactive)
   (when major-mode-kill
     (major-mode-kill (current-buffer)))
-  (setq mode-name "Text"
-	major-mode 'text-mode
-	local-keymap 'text-mode-keymap)
+  (set! mode-name "Text")
+  (set! major-mode 'text-mode)
+  (set! local-keymap 'text-mode-keymap)
   (text-mode-init)
   (call-hook 'text-mode-hook))
 
@@ -60,22 +60,22 @@ previous line, then works as normal. Local bindings in this mode are:\n
   (interactive)
   (when major-mode-kill
     (major-mode-kill (current-buffer)))
-  (setq mode-name "Indented Text"
-	major-mode 'indented-text-mode
-	local-keymap 'text-mode-indent-keymap)
+  (set! mode-name "Indented Text")
+  (set! major-mode 'indented-text-mode)
+  (set! local-keymap 'text-mode-indent-keymap)
   (make-local-variable 'fill-prefix)
-  (setq fill-prefix text-mode-fill-prefix)
+  (set! fill-prefix text-mode-fill-prefix)
   (text-mode-init)
   (call-hook 'text-mode-hook)
   (call-hook 'indented-text-mode-hook))
 
 (defun text-mode-kill ()
-  (setq mode-name nil
-	local-keymap nil
-	major-mode nil
-	major-mode-kill nil)
+  (set! mode-name nil)
+  (set! local-keymap nil)
+  (set! major-mode nil)
+  (set! major-mode-kill nil)
   (when (and (bound? 'fill-prefix) (function? fill-prefix))
-    (setq fill-prefix nil))
+    (set! fill-prefix nil))
   t)
 
 (defun text-mode-indent-tab ()
@@ -86,12 +86,12 @@ previous line, then works as normal. Local bindings in this mode are:\n
 	(insert "\t")
       (let
           ((gcurs (char-to-glyph-pos (cursor-pos))))
-        (setq gcurs (pos (pos-col gcurs) (pos-line p))
-	      p (glyph-to-char-pos gcurs))
+        (set! gcurs (pos (pos-col gcurs) (pos-line p)))
+	(set! p (glyph-to-char-pos gcurs))
 	(re-search-forward "[\t ]+|$" p)
 	(if (equal? (match-end) (end-of-line p))
 	    (insert "\t")
-	  (setq p (pos (pos-col (char-to-glyph-pos (match-end)))
+	  (set! p (pos (pos-col (char-to-glyph-pos (match-end)))
 		       (pos-line (cursor-pos))))
 	  (if (empty-line-p p)
 	      (set-indent-pos p)
@@ -102,10 +102,10 @@ previous line, then works as normal. Local bindings in this mode are:\n
       ((get-indent (lambda ()
 		     (if (zero? (pos-line p))
 			 0
-		       (setq p (forward-line -1 p))
+		       (set! p (forward-line -1 p))
 		       (while (and (not (zero? (pos-line p)))
 				   (not (looking-at "^[ \t\f]*[^ \t\f\n]+" p)))
-			 (setq p (forward-line -1 p)))
+			 (set! p (forward-line -1 p)))
 		       (pos-col (indent-pos p))))))
     (cond
      ((eq? op 'insert)
@@ -133,8 +133,8 @@ status line."
     ;; Catch the end-of-buffer error
     (condition-case nil
 	(while (<= tmp end)
-	  (setq count (1+ count)
-		tmp (forward-word 1 tmp)))
+	  (set! count (1+ count))
+	  (set! tmp (forward-word 1 tmp)))
       (error))
     (when do-print
       (prin1 count t))

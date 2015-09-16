@@ -63,16 +63,16 @@ scan."
   (interactive)
   (when major-mode-kill
     (major-mode-kill))
-  (setq mode-name "Yacc"
-	major-mode 'yacc-mode
-	major-mode-kill yacc-mode-kill
-	mode-comment-fun c-insert-comment
-	mode-forward-exp c-forward-exp
-	mode-backward-exp c-backward-exp
-	paragraph-separate "^[\n\t\f ]*\n"
-	paragraph-start "^([\n\t\f ]*\n|[a-zA-z0-9_]+:)"
-	local-ctrl-c-keymap yacc-mode-ctrl-c-keymap
-	local-keymap 'yacc-mode-keymap)
+  (set! mode-name "Yacc")
+  (set! major-mode 'yacc-mode)
+  (set! major-mode-kill yacc-mode-kill)
+  (set! mode-comment-fun c-insert-comment)
+  (set! mode-forward-exp c-forward-exp)
+  (set! mode-backward-exp c-backward-exp)
+  (set! paragraph-separate "^[\n\t\f ]*\n")
+  (set! paragraph-start "^([\n\t\f ]*\n|[a-zA-z0-9_]+:)")
+  (set! local-ctrl-c-keymap yacc-mode-ctrl-c-keymap)
+  (set! local-keymap 'yacc-mode-keymap)
   (call-hook 'yacc-mode-hook)
   (when yacc-mode-scan-when-idle
     (make-local-variable '*idle-hook*)
@@ -117,14 +117,14 @@ Give any such regions minor-major c-modes."
 	      (let
 		  ((start (match-start 1))
 		   end)
-		(setq tem (match-end))
+		(set! tem (match-end))
 		(when (and (not (eq? (buffer-get 'minor-major tem) 'c-mode))
 			   (setq end (condition-case nil
 					 (c-forward-exp 1 start)
 				       (error))))
 		  (extent-put (minor-major-mode 'c-mode start end)
 			      'rear-sticky nil)
-		  (setq tem end))))))))))
+		  (set! tem end))))))))))
 
 (defun yacc-mode-idle-function ()
   (when (or (not yacc-mode-last-scan) (> (buffer-changes) yacc-mode-last-scan))
@@ -141,6 +141,6 @@ mode."
       (extents)
     (map-extents (lambda (e)
 		   (when (eq? (extent-get e 'minor-major) 'c-mode)
-		     (setq extents (cons e extents))))
+		     (set! extents (cons e extents))))
 		 (start-of-buffer) (end-of-buffer))
     (mapc delete-extent extents)))

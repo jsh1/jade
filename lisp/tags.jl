@@ -57,8 +57,8 @@
   (or tags-file-name
       (let
 	  ((default (expand-file-name "TAGS")))
-	(setq tags-last-found-pos nil)
-	(setq tags-file-name (prompt-for-file "Tags table to load:" t
+	(set! tags-last-found-pos nil)
+	(set! tags-file-name (prompt-for-file "Tags table to load:" t
 					      default default)))
       (error "No tags table selected")))
 
@@ -71,8 +71,8 @@
 (defun visit-tag-table (name)
   "Signal that all tags searches should be carried out in tags table NAME."
   (interactive "fTags table:")
-  (setq tags-last-found-pos nil
-	tags-file-name name))
+  (set! tags-last-found-pos nil)
+  (set! tags-file-name name))
 
 ;;;###autoload
 (defun find-tag (name)
@@ -102,15 +102,15 @@ move back to the previously found tag."
 	(pop-tag-mark)
 	(throw 'return (cursor-pos)))
        ((eq? name 'push)
-	(setq name tags-last-found
-	      start tags-last-found-pos)))
+	(set! name tags-last-found)
+	(set! start tags-last-found-pos)))
       (while (setq start (search-forward name (or start (pos 0 0))
 					 tags-buffer tags-fold-case))
 	(if (or (zero? (pos-line start))
 		(= #\FF (get-char (forward-char -1 (start-of-line start)
 					       tags-buffer) tags-buffer)))
 	    ;; We're looking at the filename, not a tag, continue searching
-	    (setq start (start-of-line (forward-line 1 start)))
+	    (set! start (start-of-line (forward-line 1 start)))
 	  ;; Move to the tag's position. First find the file name
 	  (let*
 	      ((file (and (or (re-search-backward "^\f\n([^,\n]+)"
@@ -126,12 +126,12 @@ move back to the previously found tag."
 	    (unless (looking-at "^(.+)\177((.+)\001|)([0-9]+)"
 				(start-of-line start) tags-buffer)
 	      (error "Malformed tag line at %S" start))
-	    (setq tag-pos (pos 0 (1- (string->number
+	    (set! tag-pos (pos 0 (1- (string->number
 				      (copy-area (match-start 4)
-						 (match-end 4) tags-buffer))))
-		  tag-line (copy-area (match-start 1)
-				      (match-end 1) tags-buffer)
-		  tag-name (if (null? (match-start 3))
+						 (match-end 4) tags-buffer)))))
+	    (set! tag-line (copy-area (match-start 1)
+				      (match-end 1) tags-buffer))
+	    (set! tag-name (if (null? (match-start 3))
 			       ;; No definitive name
 			       tag-line
 			     (copy-area (match-start 3) (match-end 3)
@@ -149,9 +149,9 @@ move back to the previously found tag."
 		(error "Tag %S has been deleted; rerun etags")))
 	    (message tag-name)
 	    ;; break out of the loop
-	    (setq tags-last-found name
-		  tags-last-found-pos (end-of-line start tags-buffer)
-		  tags-marks (cons original-mark tags-marks))
+	    (set! tags-last-found name)
+	    (set! tags-last-found-pos (end-of-line start tags-buffer))
+	    (set! tags-marks (cons original-mark tags-marks))
 	    (throw 'return (cursor-pos)))))
       (error "Tag %S not found" name))))
 
@@ -161,7 +161,7 @@ move back to the previously found tag."
   (if (null? tags-marks)
       (message "[No more tag marks]")
     (goto-mark (car tags-marks))
-    (setq tags-marks (cdr tags-marks))))
+    (set! tags-marks (cdr tags-marks))))
 
 
 ;; Tags searching
@@ -171,7 +171,7 @@ move back to the previously found tag."
     (let (out)
       (mapc (lambda (x)
 	      (unless (member x out)
-		(setq out (cons x out)))) lst)
+		(set! out (cons x out)))) lst)
       out))
   (tags-find-table)
   (with-buffer (find-file tags-file-name t)
@@ -180,9 +180,9 @@ move back to the previously found tag."
 	    (files '()))
 	(while (and (setq point (char-search-forward #\page point))
 		    (looking-at "\f\n([^,]+)" point))
-	  (setq point (match-end))
-	  (setq files (cons (expand-last-match "\\1") files)))
-	(setq tags-cached-file-list (sort! (uniquify files)))))
+	  (set! point (match-end))
+	  (set! files (cons (expand-last-match "\\1") files)))
+	(set! tags-cached-file-list (sort! (uniquify files)))))
     tags-cached-file-list))
 
 ;; Returns the next file in tag table (after CURRENT-FILE if defined), or nil
@@ -198,7 +198,7 @@ move back to the previously found tag."
 			      (canonical-file-name *default-directory*)))
 			 "(.*)$")
 		 (canonical-file-name current-file))
-	    (setq current-file (expand-last-match "\\1")))
+	    (set! current-file (expand-last-match "\\1")))
 	  (cadr (member current-file (tags-file-list))))
       (car (tags-file-list)))))
 
@@ -210,29 +210,29 @@ move back to the previously found tag."
     (when mark
       (if (mark-resident-p mark)
 	  (progn
-	    (setq buffer (mark-file mark))
-	    (setq file (buffer-file-name buffer)))
-	(setq file (mark-file mark)))
-      (setq point (mark-pos mark)))
+	    (set! buffer (mark-file mark))
+	    (set! file (buffer-file-name buffer)))
+	(set! file (mark-file mark)))
+      (set! point (mark-pos mark)))
     (unless file
-      (setq file (tags-next-file)))
+      (set! file (tags-next-file)))
     (while file
       (let ((real-file (expand-file-name
 			file (file-name-directory tags-file-name))))
 	(unless buffer
-	  (setq buffer (get-file-buffer real-file))
+	  (set! buffer (get-file-buffer real-file))
 	  (if buffer
-	      (setq kill-this-buffer nil)
-	    (setq buffer (find-file real-file t))
-	    (setq kill-this-buffer t)))
+	      (set! kill-this-buffer nil)
+	    (set! buffer (find-file real-file t))
+	    (set! kill-this-buffer t)))
 	(unless point
-	  (setq point (start-of-buffer buffer)))
+	  (set! point (start-of-buffer buffer)))
 	(function buffer point)
 	(when (and kill-this-buffer (not (buffer-modified-p buffer)))
 	  (kill-buffer buffer))
-	(setq buffer nil)
-	(setq point nil)
-	(setq file (tags-next-file file))))))
+	(set! buffer nil)
+	(set! point nil)
+	(set! file (tags-next-file file))))))
 
 ;;;###autoload
 (defun tags-search (regexp #!optional mark)
@@ -241,7 +241,7 @@ regular expression REGEXP. Further matches may be found though the use of the
 `tags-loop-continue' function."
   (interactive "sRegexp:")
   (require 'isearch)			;for case-fold-search
-  (setq tags-continue-command nil)
+  (set! tags-continue-command nil)
   (catch 'out
     (tags-map-buffers
      (lambda (buffer point)
@@ -249,7 +249,7 @@ regular expression REGEXP. Further matches may be found though the use of the
        (when (re-search-forward regexp point buffer case-fold-search)
 	 (goto-buffer buffer)
 	 (goto (match-start))
-	 (setq tags-continue-command
+	 (set! tags-continue-command
 	       `(,tags-search ,regexp ,(make-mark (match-end))))
 	 (throw 'out t)))
      mark)
@@ -262,7 +262,7 @@ of the regular expression FROM, possibly replacing it with TO. Further matches
 may be found though the use of the `tags-loop-continue' function."
   (interactive "sQuery replace regexp: \nsQuery replace `%s' with: ")
   (require 'replace)
-  (setq tags-continue-command nil)
+  (set! tags-continue-command nil)
   (catch 'out
     (let
 	((do-all nil))
@@ -276,11 +276,11 @@ may be found though the use of the `tags-loop-continue' function."
 	     (if do-all
 		 (while (re-search-forward from nil nil case-fold-search)
 		   (goto (replace-last-match to)))
-	       (setq point (query-replace from to))
+	       (set! point (query-replace from to))
 	       (cond ((eq? point 'rest)
-		      (setq do-all t))
+		      (set! do-all t))
 		     ((null? point)
-		      (setq tags-continue-command
+		      (set! tags-continue-command
 			    `(,tags-query-replace ,from ,to ,(make-mark)))
 		      (throw 'out t)))))))
        mark))))

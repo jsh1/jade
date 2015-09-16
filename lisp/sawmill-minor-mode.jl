@@ -24,8 +24,8 @@
 (defvar smm-active nil)
 (make-variable-buffer-local 'smm-active)
 
-(setq minor-mode-alist (cons '(smm-active " Sawmill") minor-mode-alist))
-(setq minor-mode-keymap-alist (cons '(smm-active . smm-keymap)
+(set! minor-mode-alist (cons '(smm-active " Sawmill") minor-mode-alist))
+(set! minor-mode-keymap-alist (cons '(smm-active . smm-keymap)
 				    minor-mode-keymap-alist))
 
 (defvar smm-keymap (bind-keys (make-sparse-keymap)
@@ -93,7 +93,7 @@ in the status line."
 	       (let ((tem (memq #:spec keys)))
 		 (when tem
 		   (set-cdr! tem (cddr tem))
-		   (setq keys (delq! (car tem) keys))))
+		   (set! keys (delq! (car tem) keys))))
 	     (prin1-to-string `(autoload-command ,name ',module ,@keys)))))))
 
 ;;;###autoload
@@ -101,15 +101,15 @@ in the status line."
   (interactive)
   (if smm-active
       (progn
-	(setq smm-active nil)
-	(setq autoload-finder nil)
-	(setq info-documentation-files
+	(set! smm-active nil)
+	(set! autoload-finder nil)
+	(set! info-documentation-files
 	      (delete! "sawmill" info-documentation-files)))
-    (setq smm-active t)
+    (set! smm-active t)
     (make-local-variable 'autoload-finder)
-    (setq autoload-finder sawmill-autoload-finder)
+    (set! autoload-finder sawmill-autoload-finder)
     (make-local-variable 'info-documentation-file)
-    (setq info-documentation-files
+    (set! info-documentation-files
 	  (if (bound? 'info-documentation-files)
 	      (cons "sawmill" info-documentation-files) (list "sawmill")))))
 

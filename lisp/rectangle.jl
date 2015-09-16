@@ -22,7 +22,7 @@
 (defun insert-rectangle (text #!optional p)
   "Insert TEXT rectangularly at position POS in the current buffer."
   (unless p
-    (setq p (cursor-pos)))
+    (set! p (cursor-pos)))
   (let
       ((index 0)
        (column (pos-col (char-to-glyph-pos p)))
@@ -30,15 +30,15 @@
        sub-string)
     (while (and (< index (string-length text))
 		(string-match "[^\n]*" text index))
-      (setq sub-string (substring text (match-start) (match-end))
-	    index (if (equal? (string-ref text (match-end)) #\newline)
+      (set! sub-string (substring text (match-start) (match-end)))
+      (set! index (if (equal? (string-ref text (match-end)) #\newline)
 		      (1+ (match-end))
 		    (match-end)))
       (insert sub-string p)
-      (setq row (1+ row))
+      (set! row (1+ row))
       (when (> row (pos-line (end-of-buffer)))
 	(insert "\n" (end-of-buffer)))
-      (setq p (glyph-to-char-pos (pos column row))))))
+      (set! p (glyph-to-char-pos (pos column row))))))
 
 ;;;###autoload
 (defun copy-rectangle (start end)
@@ -46,7 +46,7 @@
 and END (the characters at opposite corners)."
   (when (> start end)
     ;; Swap start and end
-    (setq start (prog1 end (setq end start))))
+    (set! start (prog1 end (setq end start))))
   (let
       ((start-col (pos-col (char-to-glyph-pos start)))
        (end-col (pos-col (char-to-glyph-pos end)))
@@ -54,12 +54,12 @@ and END (the characters at opposite corners)."
        strings)
     (when (> start-col end-col)
       ;; Swap start-col and end-col
-      (setq start-col (prog1 end-col (setq end-col start-col))))
+      (set! start-col (prog1 end-col (setq end-col start-col))))
     (while (>= row (pos-line start))
-      (setq strings (cons (copy-area (glyph-to-char-pos (pos start-col row))
+      (set! strings (cons (copy-area (glyph-to-char-pos (pos start-col row))
 				     (glyph-to-char-pos (pos end-col row)))
-			  (cons #\newline strings))
-	    row (1- row)))
+			  (cons #\newline strings)))
+      (set! row (1- row)))
     (apply concat strings)))
 
 ;;;###autoload
@@ -68,18 +68,18 @@ and END (the characters at opposite corners)."
 at opposite corners)."
   (when (> start end)
     ;; Swap start and end
-    (setq start (prog1 end (setq end start))))
+    (set! start (prog1 end (setq end start))))
   (let
       ((start-col (pos-col (char-to-glyph-pos start)))
        (end-col (pos-col (char-to-glyph-pos end)))
        (row (pos-line end)))
     (when (> start-col end-col)
       ;; Swap start-col and end-col
-      (setq start-col (prog1 end-col (setq end-col start-col))))
+      (set! start-col (prog1 end-col (setq end-col start-col))))
     (while (>= row (pos-line start))
       (delete-area (glyph-to-char-pos (pos start-col row))
 		   (glyph-to-char-pos (pos end-col row)))
-      (setq row (1- row)))))
+      (set! row (1- row)))))
 
 ;;;###autoload
 (defun cut-rectangle (start end)

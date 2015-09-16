@@ -34,21 +34,21 @@
 ;;; setting at least the `mode-name' and `major-mode-kill' variables
 ;;; and installing a local keymap. For example `lisp-mode' does this:
 ;;;
-;;;   (setq mode-name "Lisp"
-;;;	    major-mode 'lisp-mode
-;;;	    major-mode-kill lisp-mode-kill
-;;;	    mode-comment-fun lisp-mode-insert-comment
-;;;	    local-keymap lisp-mode-keymap)
+;;;   (set! mode-name "Lisp")
+;;;   (set! major-mode 'lisp-mode)
+;;;   (set! major-mode-kill lisp-mode-kill)
+;;;   (set! mode-comment-fun lisp-mode-insert-comment)
+;;;   (set! local-keymap lisp-mode-keymap)
 ;;;   (call-hook 'lisp-mode-hook)
 ;;;
 ;;; The function to be called when the mode is removed should remove the
 ;;; effects of the above, for example:
 ;;;
-;;;   (setq local-keymap nil
-;;;	    major-mode nil
-;;;	    major-mode-kill nil
-;;;	    mode-comment-fun nil
-;;;	    mode-name nil)
+;;;   (set! local-keymap nil)
+;;;   (set! major-mode nil)
+;;;   (set! major-mode-kill nil)
+;;;   (set! mode-comment-fun nil)
+;;;   (set! mode-name nil)
 
 ;;; Minor Modes:
 ;;;
@@ -215,10 +215,10 @@ of the defun is assumed instead.")
       (when (and text (> (string-length text) 0))
 	(let ((pieces (string-split "\\s*;\\s*" text)))
 	  (when pieces
-	    (setq major-mode (cdr (assoc-regexp (car pieces)
+	    (set! major-mode (cdr (assoc-regexp (car pieces)
 						auto-mode-alist t))))))
       (unless major-mode
-	(setq major-mode (or (and (looking-at interpreter-mode-regexp
+	(set! major-mode (or (and (looking-at interpreter-mode-regexp
 					      (start-of-buffer))
 				  (cdr (assoc-regexp
 					(copy-area (start-of-buffer)
@@ -229,7 +229,7 @@ of the defun is assumed instead.")
 				   (buffer-file-name) auto-mode-alist t)))))))
   (let ((fun (or major-mode default-major-mode)))
     (when (symbol? fun)
-      (setq fun (symbol-value fun)))
+      (set! fun (symbol-value fun)))
     (fun)))
 
 (defun fundamental-mode ()
@@ -273,13 +273,13 @@ comment should be written. This may or not be defined by each major mode."
   "Use the `mode-indent-line' function to indent each line between START and
 END."
   (interactive "-m\nM")
-  (setq start (start-of-line start)
-	end (start-of-line end))
+  (set! start (start-of-line start))
+  (set! end (start-of-line end))
   (unless mode-indent-line
     (error "No method for indenting lines in this buffer"))
   (while (< start end)
     (mode-indent-line start)
-    (setq start (forward-line 1 start))))
+    (set! start (forward-line 1 start))))
 
 (defun newline-and-indent ()
   "Insert a newline then either call this buffer's `mode-indent-line' function
@@ -349,13 +349,14 @@ or insert a tab."
 	;; Find this symbol's beginning
 	(if (and (re-search-backward mode-symbol-regexp)
 		 (> (match-end) (cursor-pos)))
-	    (setq start (match-start)
-		  end (match-end))
+	    (progn
+	      (set! start (match-start))
+	      (set! end (match-end)))
 	  (looking-at mode-symbol-regexp)
-	  (setq start (cursor-pos)
-		end (match-end)))
-      (setq start (re-search-backward mode-symbol-regexp)
-	    end (match-end)))
+	  (set! start (cursor-pos))
+	  (set! end (match-end)))
+      (set! start (re-search-backward mode-symbol-regexp))
+      (set! end (match-end)))
     (when (and start end)
       (copy-area start end))))
 
@@ -405,9 +406,9 @@ or insert a tab."
 (defun generic-forward-exp (#!optional number p)
   "Return the position of the NUMBER'th next expression from POS."
   (unless number
-    (setq number 1))
+    (set! number 1))
   (unless p
-    (setq p (cursor-pos)))
+    (set! p (cursor-pos)))
   (let
       ((ws-re (if (null? generic-exp-comment-string)
 		  "[\t\f\n ]+"
@@ -417,7 +418,7 @@ or insert a tab."
     (while (> number 0)
       ;; first, skip white space and comments
       (when (looking-at ws-re p)
-	(setq p (match-end)))
+	(set! p (match-end)))
       (when (> p (end-of-buffer))
 	(error "End of buffer"))
       (let
@@ -431,40 +432,40 @@ or insert a tab."
 		(unless (setq p (char-search-forward c (forward-char 1 p)))
 		  (error "String doesn't end!")))
 	    (error "String doesn't end!"))
-	  (setq p (forward-char 1 p)))
+	  (set! p (forward-char 1 p)))
 	 ((member c generic-exp-open-delims)
 	  ;; move over brackets
 	  (unless (setq p (find-matching-bracket p nil generic-exp-escape-char))
 	    (error "Expression doesn't end!"))
-	  (setq p (forward-char 1 p)))
+	  (set! p (forward-char 1 p)))
 	 ((member c generic-exp-close-delims)
 	  (error "End of containing expression"))
 	 (t
 	  ;; a symbol of some sort
 	  (if (looking-at generic-exp-symbol-re p)
-	      (setq p (match-end))
+	      (set! p (match-end))
 	    (unless (setq p (re-search-forward generic-exp-special-re p))
 	      (error "Can't find end of symbol"))
-	    (setq number (1+ number))))))
-      (setq number (1- number))))
+	    (set! number (1+ number))))))
+      (set! number (1- number))))
   p)
 
 (defun generic-backward-exp (#!optional number orig-pos)
   "Return the position of the NUMBER'th previous s-expression from ORIG-POS."
   (unless number
-    (setq number 1))
+    (set! number 1))
   (unless orig-pos 
-    (setq orig-pos (cursor-pos)))
+    (set! orig-pos (cursor-pos)))
   (let
       ((p orig-pos)
        comment-skip-some-re
        comment-skip-line-re)
     (when generic-exp-comment-string
-      (setq comment-skip-some-re (concat
+      (set! comment-skip-some-re (concat
 				  ".*([\t\f ]*"
 				  (quote-regexp generic-exp-comment-string)
-				  "|[\f\t ]*)$")
-	    comment-skip-line-re (concat
+				  "|[\f\t ]*)$"))
+      (set! comment-skip-line-re (concat
 				  "^[\t\f ]*"
 				  (quote-regexp generic-exp-comment-string)
 				  "|^[\f\t ]*$")))
@@ -476,10 +477,10 @@ or insert a tab."
 	(while (looking-at comment-skip-line-re (start-of-line p))
 	  (unless (setq p (forward-line -1 p))
 	    (error "Beginning of buffer"))
-	  (setq p (end-of-line p)))
+	  (set! p (end-of-line p)))
 	(when (and (looking-at comment-skip-some-re (start-of-line p))
 		   (< (match-start 1) p))
-	  (setq p (forward-char -1 (match-start)))))
+	  (set! p (forward-char -1 (match-start)))))
       (let
 	  ((c (get-char p)))
 	(cond
@@ -500,9 +501,9 @@ or insert a tab."
 	  (if (looking-at generic-exp-symbol-re p)
 	      (unless (setq p (re-search-backward generic-exp-symbol-re p))
 		(error "Can't classify expression"))
-	    (setq number (1+ number))))))
-      (setq number (1- number)))
+	    (set! number (1+ number))))))
+      (set! number (1- number)))
     p))
 
-(setq-default mode-forward-exp generic-forward-exp)
-(setq-default mode-backward-exp generic-backward-exp)
+(set-default 'mode-forward-exp generic-forward-exp)
+(set-default 'mode-backward-exp generic-backward-exp)

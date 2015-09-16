@@ -110,20 +110,20 @@ centred each time it changes.")
     (while (string-match "\032\032([^:\n]+):([0-9]+):.*\n" data)
       ;; A whole marker to process
       (insert (substring data 0 (match-start 0)))
-      (setq gdb-last-frame (cons (substring data (match-start 1) (match-end 1))
+      (set! gdb-last-frame (cons (substring data (match-start 1) (match-end 1))
 				 (1- (read (cons 0 (substring
 						    data
 						    (match-start 2)
 						    (match-end 2)))))))
-      (setq new-frame t)
-      (setq data (substring data (match-end 0))))
+      (set! new-frame t)
+      (set! data (substring data (match-end 0))))
     (if (string-match "\032" data)
 	;; Start of an incomplete marker; save it for later
 	(progn
 	  (insert (substring data 0 (match-start 0)))
-	  (setq gdb-spare-output (substring data (match-start 0))))
+	  (set! gdb-spare-output (substring data (match-start 0))))
       (insert data)
-      (setq gdb-spare-output nil))
+      (set! gdb-spare-output nil))
     new-frame))
 
 ;;;###autoload
@@ -137,27 +137,27 @@ There is no limit to the number of gdb processes you may run at once."
       ((buffer (get-buffer "*gdb*"))
        (directory *default-directory*))
     (if (or (not buffer) (with-buffer buffer shell-process))
-	(setq buffer (open-buffer "*gdb*" t))
+	(set! buffer (open-buffer "*gdb*" t))
       (clear-buffer buffer))
     (goto-buffer buffer)
     (kill-all-local-variables)
-    (setq *default-directory* directory
-	  shell-program-args (list "-c" (concat gdb-program
-						" -fullname " args))
-	  shell-prompt-regexp "^(\\(gdb\\) *|.*\\(.+\\) *|.+---)"
-	  shell-output-stream (let ((buffer (current-buffer)))
+    (set! *default-directory* directory)
+    (set! shell-program-args (list "-c" (concat gdb-program
+						" -fullname " args)))
+    (set! shell-prompt-regexp "^(\\(gdb\\) *|.*\\(.+\\) *|.+---)")
+    (set! shell-output-stream (let ((buffer (current-buffer)))
 				(lambda (x)
-				  (gdb-output-filter buffer x)))
-	  shell-callback-function (lambda () (gdb-callback)))
+				  (gdb-output-filter buffer x))))
+    (set! shell-callback-function (lambda () (gdb-callback)))
     (shell-mode)
     (buffer-status-id (concat "GDB: " args))
-    (setq major-mode 'gdb-mode
-	  mode-name "GDB"
-	  local-ctrl-c-keymap gdb-ctrl-c-keymap
-	  gdb-last-buffer buffer
-	  gdb-buffer-p t
-	  gdb-actions gdb-gdb-actions
-	  gdb-input-filter gdb-gdb-input-filter)
+    (set! major-mode 'gdb-mode)
+    (set! mode-name "GDB")
+    (set! local-ctrl-c-keymap gdb-ctrl-c-keymap)
+    (set! gdb-last-buffer buffer)
+    (set! gdb-buffer-p t)
+    (set! gdb-actions gdb-gdb-actions)
+    (set! gdb-input-filter gdb-gdb-input-filter)
     (call-hook 'gdb-hook)))
 
 (defun gdb-mode ()
@@ -188,7 +188,7 @@ with `Ctrl-x Ctrl-a'.")
     (while (string-match "\032\032([^:\n]+):([0-9]+):.*\n" data)
       ;; A whole marker to process
       (insert (substring data 0 (match-start 0)))
-      (setq gdb-last-frame (cons (expand-file-name
+      (set! gdb-last-frame (cons (expand-file-name
 				  (substring data (match-start 1)
 					     (match-end 1))
 				  *default-directory*)
@@ -196,15 +196,15 @@ with `Ctrl-x Ctrl-a'.")
 						    data
 						    (match-start 2)
 						    (match-end 2)))))))
-      (setq new-frame t)
-      (setq data (substring data (match-end 0))))
+      (set! new-frame t)
+      (set! data (substring data (match-end 0))))
     (if (string-match "\032" data)
 	;; Start of an incomplete marker; save it for later
 	(progn
 	  (insert (substring data 0 (match-start 0)))
-	  (setq gdb-spare-output (substring data (match-start 0))))
+	  (set! gdb-spare-output (substring data (match-start 0))))
       (insert data)
-      (setq gdb-spare-output nil))
+      (set! gdb-spare-output nil))
     new-frame))
 
 ;;;###autoload
@@ -218,27 +218,27 @@ commands. There is no limit to the number of processes you may run at once."
       ((buffer (get-buffer "*perldb*"))
        (directory *default-directory*))
     (if (or (not buffer) (with-buffer buffer shell-process))
-	(setq buffer (open-buffer "*perldb*" t))
+	(set! buffer (open-buffer "*perldb*" t))
       (clear-buffer buffer))
     (goto-buffer buffer)
     (kill-all-local-variables)
-    (setq *default-directory* directory
-	  shell-program-args (list "-c" (concat perl-program " -d "
-						args " -emacs"))
-	  shell-prompt-regexp "^ *DB<+[0-9]+>+ *"
-	  shell-output-stream (let ((buffer (current-buffer)))
+    (set! *default-directory* directory)
+    (set! shell-program-args (list "-c" (concat perl-program " -d "
+						args " -emacs")))
+    (set! shell-prompt-regexp "^ *DB<+[0-9]+>+ *")
+    (set! shell-output-stream (let ((buffer (current-buffer)))
 				(lambda (x)
-				  (gdb-output-filter buffer x)))
-	  shell-callback-function (lambda () (gdb-callback)))
+				  (gdb-output-filter buffer x))))
+    (set! shell-callback-function (lambda () (gdb-callback)))
     (shell-mode)
     (buffer-status-id (concat "PerlDB: " args))
-    (setq major-mode 'perldb-mode
-	  mode-name "PerlDB"
-	  local-ctrl-c-keymap gdb-ctrl-c-keymap
-	  gdb-last-buffer buffer
-	  gdb-buffer-p t
-	  gdb-actions gdb-perldb-actions
-	  gdb-input-filter gdb-perldb-input-filter)
+    (set! major-mode 'perldb-mode)
+    (set! mode-name "PerlDB")
+    (set! local-ctrl-c-keymap gdb-ctrl-c-keymap)
+    (set! gdb-last-buffer buffer)
+    (set! gdb-buffer-p t)
+    (set! gdb-actions gdb-perldb-actions)
+    (set! gdb-input-filter gdb-perldb-input-filter)
     (call-hook 'gdb-hook)))
 
 (defun perldb-mode ()
@@ -273,29 +273,29 @@ commands. There is no limit to the number of processes you may run at once."
       ((buffer (get-buffer "*rep-db*"))
        (directory *default-directory*))
     (if (or (not buffer) (with-buffer buffer shell-process))
-	(setq buffer (open-buffer "*rep-db*" t))
+	(set! buffer (open-buffer "*rep-db*" t))
       (clear-buffer buffer))
     (goto-buffer buffer)
     (kill-all-local-variables)
-    (setq *default-directory* directory
-	  shell-program-args (list "-c" (concat rep-program
+    (set! *default-directory* directory)
+    (set! shell-program-args (list "-c" (concat rep-program
 						" --debug --emacs-debug "
-						args))
-	  shell-prompt-regexp "^rep-db> "
-	  shell-output-stream (let ((buffer (current-buffer)))
+						args)))
+    (set! shell-prompt-regexp "^rep-db> ")
+    (set! shell-output-stream (let ((buffer (current-buffer)))
 				(lambda (x)
-				  (gdb-output-filter buffer x)))
-	  shell-callback-function (lambda () (gdb-callback)))
+				  (gdb-output-filter buffer x))))
+    (set! shell-callback-function (lambda () (gdb-callback)))
     (lisp-mode)
     (shell-mode)
     (buffer-status-id (concat "RepDB: " args))
-    (setq major-mode 'lisp-mode
-	  mode-name "RepDB"
-	  local-ctrl-c-keymap gdb-ctrl-c-keymap
-	  gdb-last-buffer buffer
-	  gdb-buffer-p t
-	  gdb-actions gdb-rep-actions
-	  gdb-input-filter gdb-rep-input-filter)
+    (set! major-mode 'lisp-mode)
+    (set! mode-name "RepDB")
+    (set! local-ctrl-c-keymap gdb-ctrl-c-keymap)
+    (set! gdb-last-buffer buffer)
+    (set! gdb-buffer-p t)
+    (set! gdb-actions gdb-rep-actions)
+    (set! gdb-input-filter gdb-rep-input-filter)
     (call-hook 'gdb-hook)))
 
 
@@ -304,7 +304,7 @@ commands. There is no limit to the number of processes you may run at once."
   (list 'with-buffer 'gdb-last-buffer var))
 
 (defmacro gdb-set-buffer-var (var value)
-  (list 'with-buffer 'gdb-last-buffer (list 'setq var value)))
+  (list 'with-buffer 'gdb-last-buffer (list 'set! var value)))
 
 ;; Gets the name of the current file
 (defun gdb-current-file ()
@@ -321,13 +321,13 @@ commands. There is no limit to the number of processes you may run at once."
 ;; Send a command to the correct gdb process
 (defun gdb-command (format-spec #!rest format-args)
   (when gdb-buffer-p
-    (setq gdb-last-buffer (current-buffer)))
+    (set! gdb-last-buffer (current-buffer)))
   (apply format
 	 (gdb-get-buffer-var shell-process)
 	 format-spec format-args)
   (with-buffer gdb-last-buffer
     (when (looking-at shell-prompt-regexp (start-of-line (end-of-buffer)))
-      (setq gdb-delete-prompt t))))
+      (set! gdb-delete-prompt t))))
 
 ;; Receives all output from the gdb subprocess, it acts upon and removes
 ;; any frame markers
@@ -336,15 +336,15 @@ commands. There is no limit to the number of processes you may run at once."
       (new-frame)
     (with-buffer buffer
       (when gdb-spare-output
-	(setq data (concat gdb-spare-output data)))
+	(set! data (concat gdb-spare-output data)))
       (goto (end-of-buffer))
       (when (and gdb-delete-prompt
 		 (looking-at shell-prompt-regexp (start-of-line)))
 	(delete-area (match-start) (match-end))
-	(setq gdb-delete-prompt nil))
-      (setq new-frame (gdb-input-filter data)))
+	(set! gdb-delete-prompt nil))
+      (set! new-frame (gdb-input-filter data)))
     (when new-frame
-      (setq gdb-last-buffer buffer)
+      (set! gdb-last-buffer buffer)
       ;; Now redisplay the frame and its highlight
       (let*
 	  ((frame (with-buffer buffer gdb-last-frame))
@@ -352,7 +352,7 @@ commands. There is no limit to the number of processes you may run at once."
 	   (line-pos (pos 0 (cdr frame)))
 	   old-buf)
 	(with-view view
-	  (setq old-buf (current-buffer))
+	  (set! old-buf (current-buffer))
 	  (find-file (car frame))
 	  (gdb-highlight-line line-pos)
 	  (goto (glyph-to-char-pos (indent-pos line-pos)))
@@ -363,7 +363,7 @@ commands. There is no limit to the number of processes you may run at once."
   (interactive)
   (with-view (if gdb-buffer-p (other-view) (current-view))
     (when gdb-buffer-p
-      (setq gdb-last-buffer (current-buffer)))
+      (set! gdb-last-buffer (current-buffer)))
     (let*
 	((frame (gdb-get-buffer-var gdb-last-frame))
 	 (line-pos (pos 0 (cdr frame))))
@@ -390,7 +390,7 @@ commands. There is no limit to the number of processes you may run at once."
       (delete-extent gdb-frame-extent))
     (when (eq? gdb-last-buffer (current-buffer))
       ;; Ensure the buffer can be gc'd in the future
-      (setq gdb-last-buffer nil))))
+      (set! gdb-last-buffer nil))))
 
 
 ;; User commands
@@ -441,7 +441,7 @@ commands. There is no limit to the number of processes you may run at once."
 
 (defun gdb-do-command (command)
   (when gdb-buffer-p
-    (setq gdb-last-buffer (current-buffer)))
+    (set! gdb-last-buffer (current-buffer)))
   (let
       ((action (cdr (assq command (gdb-get-buffer-var gdb-actions)))))
     (if action

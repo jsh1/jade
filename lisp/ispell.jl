@@ -109,19 +109,19 @@ results have been received.")
 ;; Function to buffer output from Ispell
 (defun ispell-output-filter (output)
   (when (integer? output)
-    (setq output (make-string 1 output)))
+    (set! output (make-string 1 output)))
   (and ispell-echo-output
        (string? output)
        (let
 	   ((*print-escape* t))
 	 (format (stderr-file) "Ispell: %S\n" output)))
-  (setq ispell-pending-output (concat ispell-pending-output output))
+  (set! ispell-pending-output (concat ispell-pending-output output))
   (while (and ispell-line-callback
 	      ispell-pending-output
 	      (string-match "\n" ispell-pending-output))
     (let
 	((line (substring ispell-pending-output 0 (match-end))))
-      (setq ispell-pending-output (substring ispell-pending-output
+      (set! ispell-pending-output (substring ispell-pending-output
 					     (match-end)))
       (ispell-line-callback line))))
 
@@ -131,8 +131,8 @@ results have been received.")
     (let
 	((process (make-process ispell-output-filter))
 	 (sentinel (lambda ()
-		     (setq ispell-process nil)
-		     (setq ispell-id-string nil))))
+		     (set! ispell-process nil)
+		     (set! ispell-id-string nil))))
       (set-process-function! process sentinel)
       ;; Use a pty if possible. This allow EOF to be sent via ^D
       (set-process-connection-type! process 'pty)
@@ -140,10 +140,10 @@ results have been received.")
 	     (append! (and ispell-dictionary
 			 (list "-d" ispell-dictionary))
 		    ispell-options))
-      (setq ispell-process process)
-      (setq ispell-pending-output nil)
-      (setq ispell-line-callback nil)
-      (setq ispell-id-string (ispell-read-line))
+      (set! ispell-process process)
+      (set! ispell-pending-output nil)
+      (set! ispell-line-callback nil)
+      (set! ispell-id-string (ispell-read-line))
       (unless (string-match "ispell version" ispell-id-string 0 t)
 	(ispell-kill-process)
 	(error "Ispell: %s" ispell-id-string)))))
@@ -164,16 +164,16 @@ results have been received.")
 	(if (< counter 2)
 	    (interrupt-process ispell-process)
 	  (kill-process ispell-process))
-	(setq counter (1+ counter))))))
+	(set! counter (1+ counter))))))
 
 ;; Read one whole line from the ispell-process (including newline)
 (defun ispell-read-line ()
   (let*
       ((ispell-read-line-out nil)
        (ispell-line-callback (lambda (l)
-			       (setq ispell-read-line-out l)
+			       (set! ispell-read-line-out l)
 			       ;; Only want the first line
-			       (setq ispell-line-callback nil))))
+			       (set! ispell-line-callback nil))))
     ;; Flush any pending output
     (ispell-output-filter nil)
     (while (and (not ispell-read-line-out)
@@ -197,8 +197,8 @@ results have been received.")
       (if ispell-process-busy
 	  (error "Ispell process is busy!")
 	(ispell-start-process)
-	(setq ispell-process-busy t))
-    (setq ispell-process-busy nil)))
+	(set! ispell-process-busy t))
+    (set! ispell-process-busy nil)))
 
 ;; Check a word with Ispell. Returns the raw (single-line) output
 (defun ispell-check-word (word)
@@ -208,12 +208,12 @@ results have been received.")
     (unwind-protect
 	(progn
 	  (format ispell-process "%s\n" word)
-	  (setq response (ispell-read-line))
+	  (set! response (ispell-read-line))
 	  (if (eq? (string-ref response 0) #\newline)
 	      ;; This can happen when multi-language text is checked
-	      (setq response "*\n\n")
+	      (set! response "*\n\n")
 	    ;; Gobble following blank line
-	    (setq tem (ispell-read-line))
+	    (set! tem (ispell-read-line))
 	    (unless (eq? (string-ref tem 0) #\newline)
 	      (error "Non-null trailing line from Ispell"))))
       (ispell-mutex nil))
@@ -226,21 +226,21 @@ results have been received.")
   (while (< start end)
     (let
 	(w-start w-end word response)
-      (setq w-start (re-search-forward ispell-word-re start))
+      (set! w-start (re-search-forward ispell-word-re start))
       (if (and w-start (<= (setq w-end (match-end)) end))
 	  (if (and ispell-ignore-word-hook
 		   (call-hook ispell-ignore-word-hook
 			      (list word w-start w-end) 'or))
-	      (setq start w-end)
-	    (setq word (copy-area w-start w-end))
-	    (setq response (ispell-check-word word))
+	      (set! start w-end)
+	    (set! word (copy-area w-start w-end))
+	    (set! response (ispell-check-word word))
 	    (if (string-looking-at "^[*+-]" response)
 		;; Word spelt ok
-		(setq start w-end)
+		(set! start w-end)
 	      ;; Not ok
-	      (setq start (function word response w-start w-end))))
+	      (set! start (function word response w-start w-end))))
 	;; Can't find word
-	(setq start end)))))
+	(set! start end)))))
 
 ;;;###autoload
 (defun ispell-region (start end)
@@ -269,13 +269,13 @@ for. When called interactively, spell-check the current block."
       (let
 	  ((point (match-end)))
 	(while (string-looking-at " *([^,\n]+),?" response point)
-	  (setq options (cons (substring response
+	  (set! options (cons (substring response
 					 (match-start 1) (match-end 1))
 			      options))
-	  (setq point (match-end)))
-	(setq options (reverse! options))))
+	  (set! point (match-end)))
+	(set! options (reverse! options))))
     (unless ispell-options-buffer
-      (setq ispell-options-buffer (make-buffer "*Ispell-options*")))
+      (set! ispell-options-buffer (make-buffer "*Ispell-options*")))
     (with-buffer ispell-options-buffer
       (let
 	  ((inhibit-read-only t))
@@ -294,18 +294,18 @@ for. When called interactively, spell-check the current block."
 		 (tem options))
 	      (while tem
 		(format (current-buffer) "%2d: %s\n" i (car tem))
-		(setq i (1+ i))
-		(setq tem (cdr tem))))
+		(set! i (1+ i))
+		(set! tem (cdr tem))))
 	  (insert "[No options]\n"))
-	(setq read-only t)))
+	(set! read-only t)))
     (unless ispell-prompt-buffer
-      (setq ispell-prompt-buffer (make-buffer "*Ispell-prompt*"))
+      (set! ispell-prompt-buffer (make-buffer "*Ispell-prompt*"))
       (with-buffer ispell-prompt-buffer
 	(insert "[SP] <number> R\)epl A\)ccept I\)nsert L\)ookup U\)ncap Q\)uit e\(X\)it or ? for help")
-	(setq local-keymap 'ispell-keymap)
-	(setq read-only t)))
+	(set! local-keymap 'ispell-keymap)
+	(set! read-only t)))
     (goto start)
-    (setq word-extent (make-extent start end (list 'face highlight-face)))
+    (set! word-extent (make-extent start end (list 'face highlight-face)))
     (unwind-protect
 	(progn
 	  (with-view (other-view)
@@ -317,7 +317,7 @@ for. When called interactively, spell-check the current block."
 		  ((done nil)
 		   command)
 		(while (not done)
-		  (setq command (catch 'ispell-exit
+		  (set! command (catch 'ispell-exit
 				  (recursive-edit)))
 		  (cond
 		   ((eq? (car command) 'accept)
@@ -325,12 +325,12 @@ for. When called interactively, spell-check the current block."
 		      (write ispell-process (cdr command))
 		      (write ispell-process word)
 		      (write ispell-process #\newline))
-		    (setq done t))
+		    (set! done t))
 		   ((eq? (car command) 'replace)
-		    (setq done t)
+		    (set! done t)
 		    (if (integer? (cdr command))
 			(with-buffer old-buffer
-			  (setq end (replace-string word
+			  (set! end (replace-string word
 						    (ispell-strip-word
 						     (list-ref
 						      options (cdr command)))
@@ -338,11 +338,11 @@ for. When called interactively, spell-check the current block."
 		      (let
 			  ((string (prompt-for-string "Replace with:" word)))
 			(if string
-			    (setq end (replace-string word string start))
-			  (setq done nil)))))
+			    (set! end (replace-string word string start))
+			  (set! done nil)))))
 		   ((eq? (car command) 'quit)
-		    (setq done t)
-		    (setq end (end-of-buffer old-buffer)))
+		    (set! done t)
+		    (set! end (end-of-buffer old-buffer)))
 		   (t
 		    (error "Unknown ispell command, %S" command))))))))
       (when word-extent
@@ -359,28 +359,28 @@ for. When called interactively, spell-check the current block."
        (point 0))
     (when (string-looking-at "([^+-]+)\\+" word point)
       ;; [prefix+]
-      (setq out (substring word (match-start 1) (match-end 1)))
-      (setq point (match-end)))
+      (set! out (substring word (match-start 1) (match-end 1)))
+      (set! point (match-end)))
     (when (string-looking-at "([^+-]+)([+-]|$)" word point)
       ;; root
-      (setq out (concat out (substring word (match-start 1) (match-end 1))))
-      (setq point (match-end 1)))
+      (set! out (concat out (substring word (match-start 1) (match-end 1))))
+      (set! point (match-end 1)))
     (while (string-looking-at "-([^+-]+)" word point)
       ;; [-prefix] | [-suffix]
       (let*
 	  ((phrase (substring word (match-start 1) (match-end 1)))
 	   (quoted (quote-regexp phrase)))
-	(setq point (match-end))
+	(set! point (match-end))
 	(cond
 	 ((string-match (concat quoted #\$) out)
-	  (setq out (substring out 0 (match-start))))
+	  (set! out (substring out 0 (match-start))))
 	 ((string-match (concat #\^ quoted) out)
-	  (setq out (substring out (match-end))))
+	  (set! out (substring out (match-end))))
 	 (t
 	  ;; not a prefix or a suffix, just copy to the output
-	  (setq out (concat out #\- phrase))))))
+	  (set! out (concat out #\- phrase))))))
     (when (string-looking-at "\\+([^+-]+)" word point)
-      (setq out (concat out (substring word (match-start 1) (match-end 1)))))
+      (set! out (concat out (substring word (match-start 1) (match-end 1)))))
     out))
 
 (defun ispell-accept ()
@@ -417,11 +417,11 @@ for. When called interactively, spell-check the current block."
   "Set to t in extents marking misspelt words.")
 
 ;; Add the minor mode name..
-(setq minor-mode-alist (cons (list 'ispell-minor-mode-last-scan " Ispell")
+(set! minor-mode-alist (cons (list 'ispell-minor-mode-last-scan " Ispell")
 			     minor-mode-alist))
 
 ;; ..and keymap.
-(setq minor-mode-keymap-alist (cons '(ispell-misspelt . ispell-minor-keymap)
+(set! minor-mode-keymap-alist (cons '(ispell-misspelt . ispell-minor-keymap)
 				    minor-mode-keymap-alist))
 
 (defvar ispell-minor-keymap (bind-keys (make-sparse-keymap)
@@ -445,7 +445,7 @@ for. When called interactively, spell-check the current block."
       (extents)
     (map-extents (lambda (e)
 		   (when (eq? (extent-get e 'face) ispell-misspelt-face)
-		     (setq extents (cons e extents)))) start end)
+		     (set! extents (cons e extents)))) start end)
     (mapc delete-extent extents)))
 
 ;; Returns the end of the checked region
@@ -483,7 +483,7 @@ whole of the buffer (if no block)."
 	      ((this-end (end-of-line start)))
 	    (ispell-delete-highlights start this-end)
 	    (ispell-region-1 failure-fun start this-end)
-	    (setq start (forward-char 1 this-end)))
+	    (set! start (forward-char 1 this-end)))
 	  (unless (sit-for 0)
 	    ;; Returns nil when the timeout didn't complete, i.e. if
 	    ;; any input arrived
@@ -496,15 +496,15 @@ whole of the buffer (if no block)."
     (let
 	((start (display-to-char-pos '(0 . 0)))
 	 (end (view-dimensions)))
-      (setq end (display-to-char-pos (pos (1- (car end)) (1- (cdr end)))))
+      (set! end (display-to-char-pos (pos (1- (car end)) (1- (cdr end)))))
       (when (or (null? end)
 		(> end (end-of-buffer)))
-	(setq end (end-of-buffer)))
+	(set! end (end-of-buffer)))
       (if (> (buffer-changes) (vector-ref ispell-minor-mode-last-scan 0))
 	  ;; Rescan entirely
 	  (progn
 	    (ispell-delete-highlights (start-of-buffer) (end-of-buffer))
-	    (setq end (ispell-highlight-misspellings start end t))
+	    (set! end (ispell-highlight-misspellings start end t))
 	    (vector-set! ispell-minor-mode-last-scan 0 (buffer-changes))
 	    (vector-set! ispell-minor-mode-last-scan 1 start)
 	    (vector-set! ispell-minor-mode-last-scan 2 end))
@@ -516,14 +516,14 @@ whole of the buffer (if no block)."
 	  (cond
 	   ((< start old-start)
 	    ;; Extend upwards to start
-	    (setq end (min end old-start))
-	    (setq end (ispell-highlight-misspellings start end t))
+	    (set! end (min end old-start))
+	    (set! end (ispell-highlight-misspellings start end t))
 	    (vector-set! ispell-minor-mode-last-scan 1 start)
 	    (vector-set! ispell-minor-mode-last-scan 2 end))
 	   ((> end old-end)
 	    ;; Extend downwards to end
-	    (setq start (max start old-end))
-	    (setq end (ispell-highlight-misspellings start end t))
+	    (set! start (max start old-end))
+	    (set! end (ispell-highlight-misspellings start end t))
 	    (vector-set! ispell-minor-mode-last-scan 1 start)
 	    (vector-set! ispell-minor-mode-last-scan 2 end))))))))
 
@@ -541,10 +541,10 @@ the cursor is placed in a misspelt word; they are,
   (interactive)
   (if ispell-minor-mode-last-scan
       (progn
-	(setq ispell-minor-mode-last-scan nil)
+	(set! ispell-minor-mode-last-scan nil)
 	(ispell-delete-highlights (start-of-buffer) (end-of-buffer))
 	(remove-hook '*idle-hook* 'ispell-idle-function))
-    (setq ispell-minor-mode-last-scan (vector 0 nil nil))
+    (set! ispell-minor-mode-last-scan (vector 0 nil nil))
     (make-local-variable '*idle-hook*)
     (add-hook '*idle-hook* ispell-idle-function)))
 
@@ -560,7 +560,7 @@ the cursor is placed in a misspelt word; they are,
   (let
       ((e (get-extent)))
     (while (and e (not (eq? (buffer-symbol-value 'ispell-misspelt e nil t) t)))
-      (setq e (extent-parent e)))
+      (set! e (extent-parent e)))
     (and e (copy-area (extent-start e) (extent-end e)))))
 
 (defun ispell-misspelt-word ()
@@ -570,7 +570,7 @@ the cursor."
   (let
       ((e (get-extent)))
     (while (and e (not (eq? (buffer-symbol-value 'ispell-misspelt e nil t) t)))
-      (setq e (extent-parent e)))
+      (set! e (extent-parent e)))
     (or e (error "No misspelling here!"))
     (ispell-region (extent-start e) (extent-end e))))
 
@@ -581,7 +581,7 @@ the cursor."
 (defun ispell-set-dictionary (dict-name)
   "Set the name of the dictionary used by Ispell to DICT-NAME."
   (interactive "sName of dictionary:")
-  (setq ispell-dictionary dict-name)
+  (set! ispell-dictionary dict-name)
   (when ispell-process
     (ispell-kill-process)
     (ispell-start-process))

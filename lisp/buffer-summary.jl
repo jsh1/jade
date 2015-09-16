@@ -60,7 +60,7 @@
       (summary-update)
     (insert "Buffer Summary:\n\n\tName\t\tMode\t\tFile\n\t----\t\t----\t\t----\n")
     (summary-mode "Buffer-Summary" bs-functions bs-keymap)
-    (setq major-mode 'buffer-summary-mode)))
+    (set! major-mode 'buffer-summary-mode)))
 
 (defun buffer-summary-mode ()
   "Buffer Summary Mode:\n
@@ -91,7 +91,7 @@ Local bindings for this mode are,\n
 ;	((minor-names (with-buffer item minor-mode-names)))
 ;      (while minor-names
 ;	(format (current-buffer) " %s" (car minor-names))
-;	(setq minor-names (cdr minor-names))))
+;	(set! minor-names (cdr minor-names))))
     (insert " ")
     (indent-to 40)
     (format (current-buffer) "%s" (or (buffer-file-name item) ""))))
@@ -116,8 +116,8 @@ Local bindings for this mode are,\n
 	(set-current-view (split-view))
       (while (> (window-view-count) 3)
 	(delete-view)))
-    (setq first-view (window-first-view)
-	  second-view (next-view first-view))
+    (set! first-view (window-first-view))
+    (set! second-view (next-view first-view))
     (with-view first-view
       (goto-buffer old-buf))
     (set-current-view second-view)
@@ -154,7 +154,7 @@ Local bindings for this mode are,\n
 
 ;; init
 
-(setq bs-functions (list (cons 'select bs-select-item)
+(set! bs-functions (list (cons 'select bs-select-item)
 			 (cons 'delete kill-buffer)
 			 (cons 'print bs-print-item)
 			 (cons 'list (lambda ()

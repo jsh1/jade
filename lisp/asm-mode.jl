@@ -40,11 +40,11 @@ Major mode for editing generic assembler source. Special commands are:\n
   (interactive)
   (when major-mode-kill
     (major-mode-kill (current-buffer)))
-  (setq mode-name "Assembler"
-	major-mode 'asm-mode
-	major-mode-kill asm-mode-kill
-	mode-comment-header asm-comment
-	local-keymap 'asm-keymap)
+  (set! mode-name "Assembler")
+  (set! major-mode 'asm-mode)
+  (set! major-mode-kill asm-mode-kill)
+  (set! mode-comment-header asm-comment)
+  (set! local-keymap 'asm-keymap)
   (call-hook 'asm-mode-hook))
 
 ;;;###autoload
@@ -57,20 +57,20 @@ it inserts."
   (when major-mode-kill
     (major-mode-kill (current-buffer)))
   (require 'c-mode)
-  (setq mode-name "Assembler-CPP"
-	major-mode 'asm-cpp-mode
-	major-mode-kill asm-mode-kill
-	mode-comment-fun c-insert-comment
-	local-keymap 'asm-keymap)
+  (set! mode-name "Assembler-CPP")
+  (set! major-mode 'asm-cpp-mode)
+  (set! major-mode-kill asm-mode-kill)
+  (set! mode-comment-fun c-insert-comment)
+  (set! local-keymap 'asm-keymap)
   (call-hook 'asm-mode-hook)
   (call-hook 'asm-cpp-mode-hook))
 
 (defun asm-mode-kill ()
-  (setq mode-name nil
-	major-mode nil
-	major-mode-kill nil
-	mode-comment-fun nil
-	local-keymap nil))
+  (set! mode-name nil)
+  (set! major-mode nil)
+  (set! major-mode-kill nil)
+  (set! mode-comment-fun nil)
+  (set! local-keymap nil))
 
 (defun asm-ret ()
   (interactive)

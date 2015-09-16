@@ -91,7 +91,7 @@ to display it, assuming that it's inserted at column zero.")
   "Sets the column number for filling to (the variable `fill-column') to
 COLUMN or the current column."
   (interactive)
-  (setq fill-column (if (number? column)
+  (set! fill-column (if (number? column)
 			column 
 		      (1+ (pos-col (char-to-glyph-pos (cursor-pos))))))
   (format t "Fill column set to %d." fill-column))
@@ -103,8 +103,8 @@ and POS. When called interactively, POS is bound to the cursor position."
   (interactive "d")
   (if (function? fill-prefix)
       (error "Fill prefix is defined by a function in this buffer")
-    (setq fill-prefix (copy-area (start-of-line p) p)
-	  fill-prefix-width (pos-col (char-to-glyph-pos p)))
+    (set! fill-prefix (copy-area (start-of-line p) p))
+    (set! fill-prefix-width (pos-col (char-to-glyph-pos p)))
     (format t "Set fill prefix to %S" fill-prefix)))
 
 
@@ -121,8 +121,8 @@ and POS. When called interactively, POS is bound to the cursor position."
   '(progn
      (when has-prefix
        (fill-insert-prefix line-start))
-     (setq line-start (forward-line 1 line-start)
-	   goal (1- (if has-prefix
+     (set! line-start (forward-line 1 line-start))
+     (set! goal (1- (if has-prefix
 			(- fill-column
 			   (fill-get-prefix-width line-start))
 		      fill-column)))))
@@ -137,7 +137,7 @@ and POS. When called interactively, POS is bound to the cursor position."
        goal line-end g-line-end)
 
     ;; Make end into a mark so that it preserves its logical position
-    (setq end (make-mark end))
+    (set! end (make-mark end))
 
     ;; Delete all existing fill prefixes and other leading white space,
     ;; except on the first non-blank line
@@ -152,12 +152,12 @@ and POS. When called interactively, POS is bound to the cursor position."
 	(when (> (match-end) (match-start))
 	  (delete-area (match-start) (match-end))))
        (t
-	(setq seen-non-blank t)))
-      (setq line-start (forward-line 1 line-start)))
+	(set! seen-non-blank t)))
+      (set! line-start (forward-line 1 line-start)))
 
     ;; Find the column we're aiming at in the first line
-    (setq line-start (start-of-line start)
-	  goal (1- (if has-prefix
+    (set! line-start (start-of-line start))
+    (set! goal (1- (if has-prefix
 		       (- fill-column
 			  (fill-get-prefix-width line-start))
 		     fill-column)))
@@ -165,8 +165,8 @@ and POS. When called interactively, POS is bound to the cursor position."
     ;; Loop over all lines in the area
     (while (< line-start (mark-pos end))
       ;; Find the end of the line in characters and glyphs
-      (setq line-end (end-of-line line-start)
-	    g-line-end (char-to-glyph-pos line-end))
+      (set! line-end (end-of-line line-start))
+      (set! g-line-end (char-to-glyph-pos line-end))
 
       ;; Check the current length against the goal column
       (cond
@@ -194,8 +194,8 @@ and POS. When called interactively, POS is bound to the cursor position."
 						    (pos-line move-start)))
 			    (end-of-line move-start))))
 	  (if (>= move-end (mark-pos end))
-	      (setq move-end (mark-pos end))
-	    (setq move-end (re-search-backward fill-break-re move-end)))
+	      (set! move-end (mark-pos end))
+	    (set! move-end (re-search-backward fill-break-re move-end)))
 	  (if (and move-end (> move-end move-start))
 	      ;; We can move some words from the next line to
 	      ;; fill some of the gap
@@ -226,9 +226,9 @@ and POS. When called interactively, POS is bound to the cursor position."
 (make-variable-buffer-local 'fill-mode-active)
 
 (unless (assq 'fill-mode-active minor-mode-alist)
-  (setq minor-mode-alist (cons '(fill-mode-active " Fill")
+  (set! minor-mode-alist (cons '(fill-mode-active " Fill")
 			       minor-mode-alist))
-  (setq minor-mode-keymap-alist (cons '(fill-mode-active . fill-mode-keymap)
+  (set! minor-mode-keymap-alist (cons '(fill-mode-active . fill-mode-keymap)
 				      minor-mode-keymap-alist)))
 
 (defvar fill-mode-keymap
@@ -244,8 +244,8 @@ the SPC and RET keys check if the cursor is past the fill-column. If so,
 the next line is started."
   (interactive)
   (if fill-mode-active
-      (setq fill-mode-active nil)
-    (setq fill-mode-active t)))
+      (set! fill-mode-active nil)
+    (set! fill-mode-active t)))
 
 ;;;###autoload
 (defun fill-mode-on ()
@@ -298,7 +298,7 @@ the next line is started."
       ((> len fill-column)
 	(set-indent-pos (start-of-line p)))
       (t
-	(setq spos (pos (quotient (- fill-column len) 2) (pos-line spos)))
+	(set! spos (pos (quotient (- fill-column len) 2) (pos-line spos)))
 	(set-indent-pos spos)))))
 
 ;;;###autoload
@@ -324,7 +324,7 @@ prefix argument."
   (let*
       ((start (paragraph-edges count))
        (end (make-mark (forward-char -1 (cdr start)))))
-    (setq start (car start))
+    (set! start (car start))
     (while (and (setq start (char-search-forward #\newline start))
 		(< start (mark-pos end)))
       (delete-area start (forward-char 1 start))

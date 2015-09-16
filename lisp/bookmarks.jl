@@ -34,7 +34,7 @@
 	(progn
 	  (set-mark-pos (cdr mark) (cursor-pos))
 	  (set-mark-file (cdr mark) (current-buffer)))
-      (setq bookmark-alist (cons (cons name (make-mark)) bookmark-alist)))))
+      (set! bookmark-alist (cons (cons name (make-mark)) bookmark-alist)))))
 
 ;;;###autoload
 (defun goto-bookmark (name)
@@ -52,13 +52,13 @@
 				       "Bookmark to delete:")))
   (let
       ((mark (assoc name bookmark-alist)))
-    (setq bookmark-alist (delq! mark bookmark-alist))))
+    (set! bookmark-alist (delq! mark bookmark-alist))))
 
 ;;;###autoload
 (defun kill-all-bookmarks ()
   "Delete all named bookmarks."
   (interactive)
-  (setq bookmark-alist nil))
+  (set! bookmark-alist nil))
 
 ;;;###autoload
 (defun list-bookmarks ()

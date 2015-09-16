@@ -78,15 +78,15 @@ reinstall the original window as the current one."
   "Close all views in the current window except for VIEW, or the current one."
   (interactive)
   (unless view
-    (setq view (current-view)))
+    (set! view (current-view)))
   (let
       ((doomed (window-first-view))
        next)
     (while (> (window-view-count) 2)
-      (setq next (next-view doomed))
+      (set! next (next-view doomed))
       (unless (or (eq? doomed view) (minibuffer-view-p doomed))
 	(delete-view doomed))
-      (setq doomed next))))
+      (set! doomed next))))
 
 (defun in-other-view (command)
   "Switches to the `other' view in this window then calls the command
@@ -110,11 +110,11 @@ or if it is the symbol t the size of the other view won't be changed."
 	((view (next-view))
 	 total desired)
       (when (minibuffer-view-p view)
-	(setq view (previous-view)))
+	(set! view (previous-view)))
       (unless (eq? lines t)
-	(setq total (+ (cdr (view-dimensions))
-		       (cdr (view-dimensions view)))
-	      desired (or lines (quotient total 2)))
+	(set! total (+ (cdr (view-dimensions))
+		       (cdr (view-dimensions view))))
+	(set! desired (or lines (quotient total 2)))
 	;; Only enlarge if the other-view is currently _smaller_
 	;; than it's desired size
 	(unless (> (cdr (view-dimensions view)) desired)
@@ -128,7 +128,7 @@ windows other than the current window are used when needed."
   (let
       ((view (next-view nil all-windows-p)))
     (when (and (minibuffer-view-p view) (not (minibuffer-active-p view)))
-      (setq view (next-view view all-windows-p)))
+      (set! view (next-view view all-windows-p)))
     (set-current-view view all-windows-p)))
 
 (defun scroll-next-view (#!optional count)
@@ -144,7 +144,7 @@ Negative arguments scroll backwards."
 by COUNT lines. When called interactively, COUNT is taken from the prefix
 argument."
   (interactive "p")
-  (unless count (setq count 1))
+  (unless count (set! count 1))
   (let*
       ((views (window-view-list))
        (view-count (window-view-count))
@@ -153,12 +153,12 @@ argument."
     (cond
      ((> view-index (- view-count 2))
       ;; Last view in window or minibuffer, expand the previous view negatively
-      (setq view (previous-view)
-	    count (- count)))
+      (set! view (previous-view))
+      (set! count (- count)))
      ((= view-count 2)
       (error "Can't resize a single view"))
      (t
-      (setq view (current-view))))
+      (set! view (current-view))))
     (set-view-dimensions view nil (+ (cdr (view-dimensions view)) count))))
 
 (defun shrink-view (#!optional count)

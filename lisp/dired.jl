@@ -66,7 +66,7 @@ the directory named as its single argument.")
 ;;;###autoload
 (defun dired (directory #!optional directory-function)
   (interactive "DDirectory:")
-  (setq directory (directory-file-name (expand-file-name directory)))
+  (set! directory (directory-file-name (expand-file-name directory)))
   (unless (file-directory? directory)
     (error "%S is not a directory" directory))
   (let
@@ -74,9 +74,9 @@ the directory named as its single argument.")
 		   (open-buffer (file-name-nondirectory directory) t))))
     (goto-buffer buffer)
     (when directory-function
-      (setq dired-directory-files directory-function))
+      (set! dired-directory-files directory-function))
     (set-buffer-file-name buffer directory)
-    (setq *default-directory* (file-name-as-directory directory))
+    (set! *default-directory* (file-name-as-directory directory))
     (dired-mode)))
 
 ;; Put the current buffer into Dired mode, its buffer-file-name should
@@ -95,8 +95,8 @@ bindings is:\n
 	(summary-update)
       (format (current-buffer) "[Dired] %s:\n\n" (buffer-file-name))
       (summary-mode "Dired" dired-functions dired-keymap)
-      (setq summary-assoc-item-function assoc)
-      (setq major-mode 'dired-mode))))
+      (set! summary-assoc-item-function assoc)
+      (set! major-mode 'dired-mode))))
 
 (defun dired-list ()
   (sort! (dired-directory-files *default-directory*)))
@@ -118,12 +118,12 @@ bindings is:\n
     (insert item)))
 
 (defun dired-delete (item)
-  (setq dired-delete-cache (cons item dired-delete-cache)))
+  (set! dired-delete-cache (cons item dired-delete-cache)))
 
 (defun dired-execute-end ()
   (map-y-or-n-p "Really delete file `%s'?"
 		(prog1 dired-delete-cache
-		  (setq dired-delete-cache nil))
+		  (set! dired-delete-cache nil))
 		(lambda (f)
 		  (if (file-directory? f)
 		      (delete-directory f)

@@ -86,15 +86,15 @@ variable `compile-push-directory-expand'.")
 
 (defun compile-setup-buffer (directory)
   (unless directory
-    (setq directory *default-directory*))
+    (set! directory *default-directory*))
   (let ((buffer (open-buffer "*compilation*")))
     (clear-buffer buffer)
     (with-buffer buffer
-      (setq *default-directory* directory))
-    (setq compile-errors nil
-	  compile-parsed-errors nil
-	  compile-errors-exist nil
-	  compile-error-pos (start-of-buffer))
+      (set! *default-directory* directory))
+    (set! compile-errors nil)
+    (set! compile-parsed-errors nil)
+    (set! compile-errors-exist nil)
+    (set! compile-error-pos (start-of-buffer))
     buffer))
 
 (defun compile-last-directory ()
@@ -115,7 +115,7 @@ variable `compile-push-directory-expand'.")
 			 (process-exit-value compile-proc))
 	       (format stream "\nCompilation exited abnormally: status 0x%x\n"
 		       (process-exit-status compile-proc)))
-	     (setq compile-proc nil))))))
+	     (set! compile-proc nil))))))
 
 ;;;###autoload
 (defun start-compile-command (command directory type-str)
@@ -127,13 +127,13 @@ for a compilation)."
       (error "Compilation process already running")
     (save-some-buffers)
     (goto-buffer (compile-setup-buffer directory))
-    (setq compile-proc (make-process (cons (current-buffer) t)
+    (set! compile-proc (make-process (cons (current-buffer) t)
 				     compile-callback))
     (let ((shell-cmd (concat command #\newline)))
       (insert shell-cmd)
       (when (start-process compile-proc compile-shell "-c" shell-cmd)
-	(setq compile-last-type type-str
-	      compile-last-command command)
+	(set! compile-last-type type-str)
+	(set! compile-last-command command)
 	compile-proc))))
 
 (defun restart-compile-command ()
@@ -161,7 +161,7 @@ for a compilation)."
 (defun compile (command)
   "Runs the COMMAND in the `*compilation*' buffer."
   (interactive (list (prompt-for-string "Compile command:" compile-command)))
-  (setq compile-command command)
+  (set! compile-command command)
   (start-compile-command command *default-directory* "errors"))
 
 ;;;###autoload
@@ -170,7 +170,7 @@ for a compilation)."
   (interactive (list (prompt-for-directory
 		      "Compile directory:" t (compile-last-directory))
 		     (prompt-for-string "Compile command:" compile-command)))
-  (setq compile-command command)
+  (set! compile-command command)
   (start-compile-command command directory "errors"))
 
 
@@ -193,7 +193,7 @@ when this function returns."
 		     (prompt-for-directory
 		      "In directory:" t (compile-last-directory))))
   (when arg
-    (setq compile-last-grep arg)
+    (set! compile-last-grep arg)
     ;; Concat "/dev/null /dev/null" To stop a null command (i.e. "grep")
     ;; hanging on standard input
     (start-compile-command
@@ -209,7 +209,7 @@ variable `grep-buffer-regexp'). All hits are displayed in the `*compilation*'
 buffer in a form that `goto-next-error' understands."
   (interactive "sRegular expression")
   (when regexp
-    (setq grep-buffer-regexp regexp))
+    (set! grep-buffer-regexp regexp))
   (let ((buffer (compile-setup-buffer *default-directory*)))
     (when (and grep-buffer-regexp buffer)
       (let* ((scanpos (start-of-buffer))
@@ -220,8 +220,8 @@ buffer in a form that `goto-next-error' understands."
 	  (format stream "%s:%d:%s\n" (or (buffer-file-name)
 					  (buffer-name)) (pos-line scanpos)
 		  (copy-area (start-of-line scanpos) (end-of-line scanpos)))
-	  (setq number (+ number 1)
-		scanpos (end-of-line scanpos)))
+	  (set! number (+ number 1))
+	  (set! scanpos (end-of-line scanpos)))
 	(goto-buffer buffer)
 	(goto (start-of-buffer))
 	number))))
@@ -249,28 +249,28 @@ buffer in a form that `goto-next-error' understands."
 			      current-dir)))
 		   (unless (and last-line (= line last-line)
 				(file-name= file last-file))
-		     (setq errors (cons (cons (make-mark
+		     (set! errors (cons (cons (make-mark
 					       (pos 0 (1- line)) file)
 					      (pos-line p))
-					errors)
-			   last-line line
-			   last-file file))))
+					errors))
+		     (set! last-line line)
+		     (set! last-file file))))
 		((looking-at compile-push-directory-regexp p)
-		 (setq dir-stack (cons current-dir dir-stack)
-		       current-dir (expand-file-name
+		 (set! dir-stack (cons current-dir dir-stack))
+		 (set! current-dir (expand-file-name
 				    (expand-last-match
 				     compile-push-directory-expand)
 				    current-dir)))
 		((and (looking-at compile-pop-directory-regexp p) dir-stack)
-		 (setq current-dir (car dir-stack)
-		       dir-stack (cdr dir-stack))))
-	  (setq p (forward-line 1 p)))
+		 (set! current-dir (car dir-stack))
+		 (set! dir-stack (cdr dir-stack))))
+	  (set! p (forward-line 1 p)))
 	(when errors
-	  (setq compile-errors (append! (reverse! errors))
-		compile-errors-exist t))
+	  (set! compile-errors (append! (reverse! errors)))
+	  (set! compile-errors-exist t))
 	(if compile-proc
-	    (setq compile-error-pos p)
-	  (setq compile-parsed-errors t))))))
+	    (set! compile-error-pos p)
+	  (set! compile-parsed-errors t))))))
 
 ;;;###autoload
 (defun next-error ()
@@ -285,7 +285,7 @@ buffer in a form that `goto-next-error' understands."
 		   (looking-at compile-error-regexp (pos 0 (cdr err))
 			       (get-buffer "*compilation*")))
 	  (message (expand-last-match compile-error-expand)))
-	(setq compile-errors (cdr compile-errors)))
+	(set! compile-errors (cdr compile-errors)))
     (error "No %s%s%s"
 	   (if compile-errors-exist "more " "")
 	   (or compile-last-type "")

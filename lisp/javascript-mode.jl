@@ -43,21 +43,21 @@ Major mode for editing Javascript source code. Local keybindings are:\n
 \\{c-mode-keymap}"
   (interactive)
   (and major-mode-kill (major-mode-kill))
-  (setq mode-name "Javascript"
-	major-mode 'javascript-mode
-	major-mode-kill kill-all-local-variables
-	mode-comment-fun c-insert-comment
-	mode-indent-line c-indent-line
-	mode-forward-exp c-forward-exp
-	mode-backward-exp c-backward-exp
-	mode-defun-header "^\\s+function\\s+"
-	mode-defun-footer "^\\s+}"
-	paragraph-separate "^[\n\t\f ]*\n"
-	paragraph-start paragraph-separate
-	local-ctrl-c-keymap c-mode-ctrl-c-keymap
-	local-keymap c-mode-keymap
-	c-body-indent js-body-indent
-	c-brace-indent js-brace-indent
-	c-case-indent js-brace-indent
-	c-label-indent 0)
+  (set! mode-name "Javascript")
+  (set! major-mode 'javascript-mode)
+  (set! major-mode-kill kill-all-local-variables)
+  (set! mode-comment-fun c-insert-comment)
+  (set! mode-indent-line c-indent-line)
+  (set! mode-forward-exp c-forward-exp)
+  (set! mode-backward-exp c-backward-exp)
+  (set! mode-defun-header "^\\s+function\\s+")
+  (set! mode-defun-footer "^\\s+}")
+  (set! paragraph-separate "^[\n\t\f ]*\n")
+  (set! paragraph-start paragraph-separate)
+  (set! local-ctrl-c-keymap c-mode-ctrl-c-keymap)
+  (set! local-keymap c-mode-keymap)
+  (set! c-body-indent js-body-indent)
+  (set! c-brace-indent js-brace-indent)
+  (set! c-case-indent js-brace-indent)
+  (set! c-label-indent 0)
   (call-hook 'javascript-mode-hook))

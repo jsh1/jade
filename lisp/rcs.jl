@@ -88,7 +88,7 @@ is controlled by RCS, nil otherwise.")
 (make-variable-buffer-local 'rcs-mode)
 (put 'rcs-mode 'permanent-local t)
 
-(setq minor-mode-alist (cons '(rcs-mode rcs-mode) minor-mode-alist))
+(set! minor-mode-alist (cons '(rcs-mode rcs-mode) minor-mode-alist))
 
 (defvar rcs-revision nil
   "Local variable storing the revision number of buffer's controlled by RCS,
@@ -148,14 +148,14 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
        (buffer (get-buffer buf-name)))
     (if buffer
 	(goto-buffer buffer)
-      (setq buffer (open-buffer buf-name))
+      (set! buffer (open-buffer buf-name))
       (goto-buffer buffer))
     (text-mode)
-    (setq rcs-callback-args (list file buffer command options
-				  text-prefix reread-p)
-	  local-keymap 'rcs-callback-keymap
-	  local-ctrl-c-keymap rcs-callback-ctrl-c-keymap
-	  rcs-history-level nil)))
+    (set! rcs-callback-args (list file buffer command options
+				  text-prefix reread-p))
+    (set! local-keymap 'rcs-callback-keymap)
+    (set! local-ctrl-c-keymap rcs-callback-ctrl-c-keymap)
+    (set! rcs-history-level nil)))
 
 ;; Called when Ctrl-C Ctrl-C is typed in a callback buffer.
 (defun rcs-call-callback ()
@@ -191,7 +191,7 @@ description entered. COUNT may be negative."
 	(error "No more history" level)
       (clear-buffer)
       (insert (get-from-ring rcs-descr-ring level))
-      (setq rcs-history-level level))))
+      (set! rcs-history-level level))))
 
 (defun rcs-up-history (#!optional count)
   "Replace the buffer contents with the COUNT'th next RCS change
@@ -213,10 +213,10 @@ description entered. COUNT may be negative."
 		      "\\$((Header|Id): .*,v |Revision: )([0-9.]+) "
 		      (start-of-buffer))))
     (if revision-pos
-	(setq rcs-revision (copy-area (match-start 3) (match-end 3)))
+	(set! rcs-revision (copy-area (match-start 3) (match-end 3)))
       ;; Could run rlog -h FILE or something and look through
       ;; the output.. but how to deal with branches..
-      (setq rcs-revision nil))))
+      (set! rcs-revision nil))))
 
 ;; Called from the find-file-hook in rcs-hooks.jl
 ;;;###autoload
@@ -234,12 +234,12 @@ description entered. COUNT may be negative."
 	((inf (concat "RCS"
 		      (if (rcs-buffer-locked-p) #\: #\-)
 		      (or (rcs-get-version) "?"))))
-      (setq rcs-mode (concat " " inf)
-	    toggle-read-only-function rcs-toggle-read-only)
+      (set! rcs-mode (concat " " inf))
+      (set! toggle-read-only-function rcs-toggle-read-only)
       (unless rcs-make-backup-files
 	;; Ensure no backup files are made for this buffer
 	(make-local-variable 'make-backup-files)
-	(setq make-backup-files nil)))))
+	(set! make-backup-files nil)))))
 
 ;; Signals an error if the current buffer is not under RCS control
 (defun rcs-verify-buffer ()
@@ -279,7 +279,7 @@ be prompted for."
   ;; Can't use the interactive spec since this is called from
   ;; toggle-buffer-read-only, via rcs-toggle-read-only
   (when (and (not revision) current-prefix-arg)
-    (setq revision (or (prompt-for-string
+    (set! revision (or (prompt-for-string
 			(apply concat "Check in as revision:"
 			       (and rcs-revision
 				    (list " (currently " rcs-revision ")"))))
@@ -301,7 +301,7 @@ prompted for."
   ;; Can't use the interactive spec since this is called from
   ;; toggle-buffer-read-only, via rcs-toggle-read-only
   (unless revision
-    (setq revision (if current-prefix-arg
+    (set! revision (if current-prefix-arg
 		       (or (prompt-for-string
 			    (apply concat "Revision to lock:"
 				   (and rcs-revision
@@ -336,7 +336,7 @@ reset to the (dynamically) highest branch on the trunk."
 naming the revision, or nil, in which case it will be prompted for."
   (interactive)
   (unless revision
-    (setq revision (prompt-for-string "Revision to view:")))
+    (set! revision (prompt-for-string "Revision to view:")))
   (when revision
     (let*
 	((name (concat (buffer-name) #\~ revision #\~))
@@ -402,7 +402,7 @@ file with the working copy."
 			    (save-excursion
 			      (and (rcs-view-revision rev2)
 				   (current-buffer)))
-			  (setq kill2 nil)
+			  (set! kill2 nil)
 			  (current-buffer)))
 	   (rev1-buffer (and (rcs-view-revision rev1)
 			     (current-buffer))))

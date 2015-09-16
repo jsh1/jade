@@ -99,14 +99,14 @@
 		    (re-search-forward python-context-open-re upper))
 		   start end current-context)
 		(when token-pos
-		  (setq start (match-end)))
+		  (set! start (match-end)))
 		(cond
 		 ((or 
 		   (null? token-pos)
 		   (> token-pos p))
 		  context)
 		 (t
-		  (setq end 
+		  (set! end 
 			(letrec
 			    ((iter
 			      (lambda (x)
@@ -114,29 +114,29 @@
 				 ((null? x)
 				  (error "Unknown context found"))
 				 ((looking-at (caar x) token-pos)
-				  (setq current-context (eval (cadar x)))
+				  (set! current-context (eval (cadar x)))
 				  ((eval (caddar x)) token-pos))
 				 (t 
 				  (iter (cdr x)))))))
 			  (iter python-context-tokens)))
 		  (cond
 		   ((null? end)
-		    (setq python-current-context-start start)
-		    (setq python-current-context-end nil)
+		    (set! python-current-context-start start)
+		    (set! python-current-context-end nil)
 		    (iter start current-context))
 		   ((< end p)
 		    (iter end context))
-		   (t (setq python-current-context-start start)
-		      (setq python-current-context-end end)
+		   (t (set! python-current-context-start start)
+		      (set! python-current-context-end end)
 		      (iter start current-context))))))
 	    context))))
-    (setq python-current-syntactic-context (iter (start-of-buffer) nil))))
+    (set! python-current-syntactic-context (iter (start-of-buffer) nil))))
 
 (defun python-indent-line (#!optional p)
   "Indent line at position `p' or at cursor position."
   (interactive)
   (unless p
-    (setq p (cursor-pos)))
+    (set! p (cursor-pos)))
   (if
       (python-syntactic-context (start-of-line p))
     (cond
@@ -152,9 +152,9 @@
 (defun python-backward-stmt (#!optional number p)
   "Return buffer position of NUMBER's previous Python statement"
   (unless number
-    (setq number 1))
+    (set! number 1))
   (unless p
-    (setq p (cursor-pos)))
+    (set! p (cursor-pos)))
   (letrec 
       ((iter (lambda (x safe)
 	       (cond       
@@ -167,7 +167,7 @@
 		  (looking-at python-blank-or-comment-re (start-of-line x)))
 		 (if (python-syntactic-context (start-of-line x))
 		     (iter python-current-context-start x)
-		   (setq number (1- number))
+		   (set! number (1- number))
 		   (if (> number 0)
 		       (iter (backward-line 1 x) x)
 		     (start-of-line x))))
@@ -196,7 +196,7 @@
 	  
 (defun python-modify-indent (p delta)
   (unless p
-    (setq p (cursor-pos)))
+    (set! p (cursor-pos)))
   (set-indent-pos (let
 		      ((old-indent (indent-pos p)))
 		    (pos
@@ -248,20 +248,20 @@ Commands defined by this mode are:\n
   (interactive)
   (when major-mode-kill
     (major-mode-kill (current-buffer)))
-  (setq mode-name "Python"
-	major-mode 'python-mode
-	major-mode-kill kill-all-local-variables
-;;	mode-comment-fun c-insert-comment
-	mode-indent-line python-indent-line
-;;	mode-forward-exp c-forward-exp
-;;	mode-backward-exp c-backward-exp
-	mode-defun-header "^[ \t]*def\ +([a-zA-Z_])\ ?(\(.*\))?:[ \t]*"
-;;	mode-defun-footer "^}"
-	paragraph-separate "^[\n\t\f ]*\n"
-	paragraph-start paragraph-separate
-	local-ctrl-c-keymap python-mode-ctrl-c-keymap
-	local-keymap python-mode-keymap
-	indent-tabs-mode nil)
+  (set! mode-name "Python")
+  (set! major-mode 'python-mode)
+  (set! major-mode-kill kill-all-local-variables)
+;;  (set! mode-comment-fun c-insert-comment)
+  (set! mode-indent-line python-indent-line)
+;;  (set! mode-forward-exp c-forward-exp)
+;;  (set! mode-backward-exp c-backward-exp)
+  (set! mode-defun-header "^[ \t]*def\ +([a-zA-Z_])\ ?(\(.*\))?:[ \t]*")
+;;  (set! mode-defun-footer "^}")
+  (set! paragraph-separate "^[\n\t\f ]*\n")
+  (set! paragraph-start paragraph-separate)
+  (set! local-ctrl-c-keymap python-mode-ctrl-c-keymap)
+  (set! local-keymap python-mode-keymap)
+  (set! indent-tabs-mode nil)
   (make-local-variable 'info-documentation-files)
-  (setq info-documentation-files '("python"))
+  (set! info-documentation-files '("python"))
   (call-hook 'python-mode-hook))

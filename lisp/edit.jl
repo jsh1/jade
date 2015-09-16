@@ -115,7 +115,7 @@ the auto-mark of the current buffer will be updated before the move."
       (progn
 	(set-mark-pos auto-mark (or p (cursor-pos)))
 	(set-mark-file auto-mark (current-buffer)))
-    (setq auto-mark (make-mark p)))
+    (set! auto-mark (make-mark p)))
   (message "Set auto-mark."))
 
 (defun swap-cursor-and-auto-mark ()
@@ -180,9 +180,9 @@ the column position to preserve the original position."
   (unless (and (eq? last-command 'next-line)
 	       (eq? goal-view (current-view)))
     ;; Set new goal
-    (setq goal-column (pos-col (char-to-glyph-pos (cursor-pos)))
-	  goal-view (current-view)))
-  (setq this-command 'next-line)
+    (set! goal-column (pos-col (char-to-glyph-pos (cursor-pos))))
+    (set! goal-view (current-view)))
+  (set! this-command 'next-line)
   (glyph-to-char-pos (pos goal-column (+ (pos-line (cursor-pos)) count))))
 
 (defun previous-line (count)
@@ -210,14 +210,14 @@ the next line."
        end)
     (cond
      ((null? arg)
-      (setq end (if (>= start (end-of-line))
+      (set! end (if (>= start (end-of-line))
 		    (start-of-line (forward-line))
 		  (end-of-line))))
      ((> count 0)
-      (setq end (start-of-line (forward-line count))))
+      (set! end (start-of-line (forward-line count))))
      (t
-      (setq end start
-	    start (start-of-line (forward-line count)))))
+      (set! end start)
+      (set! start (start-of-line (forward-line count)))))
     (kill-area start end)))
 
 (defun kill-whole-line (count)
@@ -263,33 +263,32 @@ NUMBER is the number of words to move, negative values mean go backwards.
 If MOVE is t then the cursor is moved to the result."
   (interactive "@p")
   (unless number
-    (setq number 1))
+    (set! number 1))
   (unless p (setq p (cursor-pos)))
   (cond
     ((< number 0)
       ;; go backwards
       (while (/= number 0)
-	(setq p (forward-char -1 p))
+	(set! p (forward-char -1 p))
 	(when (looking-at word-not-regexp p)
 	  ;; not in word
 	  (unless (setq p (re-search-backward word-regexp p))
-	    (setq p (start-of-buffer))))
+	    (set! p (start-of-buffer))))
 	;; in middle of word
 	(unless (setq p (re-search-backward word-not-regexp p))
-	  (setq p (start-of-buffer)))
-	(setq
-	  p (re-search-forward word-regexp p)
-	  number (1+ number))))
+	  (set! p (start-of-buffer)))
+	(setq p (re-search-forward word-regexp p)
+	      number (1+ number))))
     (t
       ;; forwards
       (while (/= number 0)
 	(when (looking-at word-not-regexp p)
 	  ;; already at end of a word
 	  (unless (setq p (re-search-forward word-regexp p))
-	    (setq p (end-of-buffer))))
+	    (set! p (end-of-buffer))))
 	(unless (setq p (re-search-forward word-not-regexp p))
-	  (setq p (end-of-buffer)))
-	(setq number (1- number)))))
+	  (set! p (end-of-buffer)))
+	(set! number (1- number)))))
   p)
 
 (defun backward-word (#!optional number p)
@@ -339,7 +338,7 @@ If MOVE is t then the cursor is moved to the result."
 interactively, the cursor is set to this position."
   (interactive "@p")
   (unless p
-    (setq p (cursor-pos)))
+    (set! p (cursor-pos)))
   (let
       ((sep-or-start (concat #\( paragraph-separate #\| paragraph-start #\) )))
     ;; Positive arguments
@@ -348,30 +347,31 @@ interactively, the cursor is set to this position."
       ;; Skip any lines at POS matching the separator
       (while (and (< (pos-line p) (buffer-length))
 		  (looking-at paragraph-separate p))
-	(setq p (forward-line 1 p)))
+	(set! p (forward-line 1 p)))
       ;; Search for the next separator or start
       (if (re-search-forward sep-or-start (forward-char 1 p))
-	  (setq count (1- count)
-		p (if (zero? count) (match-start) (match-end)))
-	(setq p (end-of-buffer)
-	      count 0)))
+	  (progn
+	    (set! count (1- count))
+	    (set! p (if (zero? count) (match-start) (match-end))))
+	(set! p (end-of-buffer))
+	(set! count 0)))
     ;; Negative arguments
     (while (and (< count 0)
 		(> p (start-of-buffer)))
       ;; Skip any lines before POS matching the separator
       (while (and (< (pos-line p) (buffer-length))
 		  (looking-at paragraph-separate (forward-line -1 p)))
-	(setq p (forward-line -1 p)))
+	(set! p (forward-line -1 p)))
       ;; Search for the previous paragraph
       (if (re-search-backward sep-or-start (backward-char 1 p))
 	  (let*
 	      ((start (match-start))
 	       (end (match-end))
 	       (separator-match (looking-at paragraph-separate start)))
-	    (setq count (1+ count))
-	    (setq p (if separator-match end start)))
-	(setq p (start-of-buffer)
-	      count 0))))
+	    (set! count (1+ count))
+	    (set! p (if separator-match end start)))
+	(set! p (start-of-buffer))
+	(set! count 0))))
   p)
 
 (defun backward-paragraph (count #!optional p)
@@ -387,16 +387,17 @@ negative to search backwards.
 When MARK is t, the block marks are set to START and END."
   (interactive "p\n\nt")
   (unless p
-    (setq p (cursor-pos)))
+    (set! p (cursor-pos)))
   (let
       (start end)
     (if (> count 0)
-	(setq start (forward-paragraph -1 (min (forward-char 1 p)
-					       (end-of-buffer)))
-	      end (forward-paragraph count start))
-      (setq end (forward-paragraph 1 (max (forward-char -1 p)
-					  (start-of-buffer)))
-	    start (forward-paragraph count end)))
+	(progn
+	  (set! start (forward-paragraph -1 (min (forward-char 1 p)
+						 (end-of-buffer))))
+	  (set! end (forward-paragraph count start)))
+      (set! end (forward-paragraph 1 (max (forward-char -1 p)
+					  (start-of-buffer))))
+      (set! start (forward-paragraph count end)))
     (when mark
       (set-rect-blocks nil nil)
       (mark-block start end))
@@ -415,27 +416,27 @@ When MARK is t, the block marks are set to START and END."
 backwards. When called interactively the cursor is set to the position."
   (interactive "@p")
   (unless count
-    (setq count 1))
+    (set! count 1))
   (if (> count 0)
       (progn
 	(when (looking-at page-start p)
-	  (setq p (match-end)))
+	  (set! p (match-end)))
 	(while (and (> count 0) (re-search-forward page-start p))
-	  (setq p (match-end)
-		count (1- count)))
+	  (set! p (match-end))
+	  (set! count (1- count)))
 	(when (= count 1)
-	  (setq p (end-of-buffer)
-		count 0)))
+	  (set! p (end-of-buffer))
+	  (set! count 0)))
     (when (looking-at page-start (start-of-line p))
-      (setq p (forward-line -1 p)))
+      (set! p (forward-line -1 p)))
     (while (and (< count 0) (re-search-backward page-start p))
-      (setq p (if (= count -1)
+      (set! p (if (= count -1)
 		    (match-end)
-		  (forward-char -1 (match-start)))
-	    count (1+ count)))
+		  (forward-char -1 (match-start))))
+      (set! count (1+ count)))
     (when (= count -1)
-      (setq p (start-of-buffer)
-	    count 0)))
+      (set! p (start-of-buffer))
+      (set! count 0)))
   p)
 
 (defun backward-page (#!optional count p)
@@ -590,8 +591,8 @@ the string is added to."
       (add-to-ring kill-ring string))
     (call-hook 'after-kill-hook))
   ;; this command did some killing
-  (setq this-command 'kill
-	kill-last-cursor (cursor-pos))
+  (set! this-command 'kill)
+  (set! kill-last-cursor (cursor-pos))
   string)
 
 (defun killed-string (#!optional depth)
@@ -626,41 +627,41 @@ kill storage."
      ;; First call the pre-yank-hook. This is typically used by
      ;; the window system to return the current selection
      ((and (not no-hooks) (setq tem (call-hook 'pre-yank-hook nil 'or)))
-      (setq yank-last-item nil)
+      (set! yank-last-item nil)
       tem)
      ((zero? (ring-size kill-ring))
       (error "Nothing to yank"))
      (t
-      (setq yank-last-item 0)
+      (set! yank-last-item 0)
       (killed-string)))))
 
 (defun yank (#!optional no-pre-yank-hooks)
   "Inserts text before the cursor. If running under X11, and a selection is
 active, paste that; else yank the most recent entry in the kill-ring."
   (interactive "P")
-  (setq yank-last-start (cursor-pos))
+  (set! yank-last-start (cursor-pos))
   (insert (yank-get-string no-pre-yank-hooks))
-  (setq this-command 'yank))
+  (set! this-command 'yank))
 
 (defun yank-block ()
   "If a block is marked in the current window, insert it before the current
 cursor position, then unmark the block."
   (interactive)
   (when (blockp)
-    (setq yank-last-start (cursor-pos))
+    (set! yank-last-start (cursor-pos))
     (if (rect-blocks-p)
 	(insert-rectangle (copy-rectangle (block-start) (block-end)))
       (insert (copy-area (block-start) (block-end))))
-    (setq yank-last-item nil
-	  this-command (if (rect-blocks-p) 'yank-rectangle 'yank))
+    (set! yank-last-item nil)
+    (set! this-command (if (rect-blocks-p) 'yank-rectangle 'yank))
     (block-kill)))
 
 (defun yank-rectangle (no-pre-yank-hooks)
   "Similar to `yank' except that the inserted text is treated as a rectangle."
   (interactive "P")
-  (setq yank-last-start (cursor-pos))
+  (set! yank-last-start (cursor-pos))
   (insert-rectangle (yank-get-string no-pre-yank-hooks))
-  (setq this-command 'yank-rectangle))
+  (set! this-command 'yank-rectangle))
 
 (defun yank-next (count)
   "If the last command was a yank, replace the yanked text with the COUNT'th
@@ -669,7 +670,7 @@ next string in the kill ring."
   (if (and (or (eq? last-command 'yank) (eq? last-command 'yank-rectangle))
 	   (buffer-record-undo))
       (progn
-	(setq yank-last-item (if yank-last-item
+	(set! yank-last-item (if yank-last-item
 				 (+ yank-last-item count)
 			       (1- count)))
 	(when (>= yank-last-item (ring-size kill-ring))
@@ -685,7 +686,7 @@ next string in the kill ring."
 	(goto yank-last-start)
 	((if (eq? last-command 'yank) insert insert-rectangle)
 	 (killed-string yank-last-item))
-	(setq this-command last-command))
+	(set! this-command last-command))
     (error "Can't yank (last command wasn't yank, or no undo info)")))
 
 
@@ -701,33 +702,33 @@ over the COUNT following items."
       (start1 start2 end1 end2)
     (while (> count 0)
       ;; go forwards
-      (setq start1 (backward-item 1)
-	    end1 (forward-item 1 start1)
-	    end2 (forward-item 1 end1)
-	    start2 (backward-item 1 end2))
+      (set! start1 (backward-item 1))
+      (set! end1 (forward-item 1 start1))
+      (set! end2 (forward-item 1 end1))
+      (set! start2 (backward-item 1 end2))
       (transpose-1 start1 end1 start2 end2)
-      (setq count (1- count)))
+      (set! count (1- count)))
     (while (< count 0)
       ;; go backwards
-      (setq start1 (backward-item 1)
-	    end1 (forward-item 1 start1)
-	    start2 (backward-item 1 start1)
-	    end2 (forward-item 1 start2))
+      (set! start1 (backward-item 1))
+      (set! end1 (forward-item 1 start1))
+      (set! start2 (backward-item 1 start1))
+      (set! end2 (forward-item 1 start2))
       (transpose-1 start1 end1 start2 end2)
-      (setq count (1+ count)))))
+      (set! count (1+ count)))))
 
 (defun transpose-1 (start1 end1 start2 end2)
   (let
       (text1 text2)
     (if (< start2 start1)
 	(progn
-	  (setq text1 (cut-area start1 end1)
-		text2 (copy-area start2 end2))
+	  (set! text1 (cut-area start1 end1))
+	  (set! text2 (copy-area start2 end2))
 	  (insert text2 start1)
 	  (delete-area start2 end2)
 	  (goto (insert text1 start2)))
-      (setq text1 (copy-area start1 end1)
-	    text2 (cut-area start2 end2))
+      (set! text1 (copy-area start1 end1))
+      (set! text2 (cut-area start2 end2))
       (goto (insert text1 start2))
       (delete-area start1 end1)
       (insert text2 start1))))
@@ -755,21 +756,21 @@ over the COUNT following items."
   "Non-nil when overwrite-mode is enabled.")
 (make-variable-buffer-local 'overwrite-mode-enabled)
 
-(setq minor-mode-alist (cons '(overwrite-mode-enabled " Overwrite") minor-mode-alist))
+(set! minor-mode-alist (cons '(overwrite-mode-enabled " Overwrite") minor-mode-alist))
 
 (defun overwrite-mode ()
   "Minor mode to toggle overwrite/insert."
   (interactive)
   (if overwrite-mode-enabled
       (progn
-	(setq overwrite-mode-enabled nil)
+	(set! overwrite-mode-enabled nil)
 	(remove-hook 'unbound-key-hook overwrite-insert))
-    (setq overwrite-mode-enabled t)
+    (set! overwrite-mode-enabled t)
     (add-hook 'unbound-key-hook overwrite-insert)))
 
 (defun overwrite-insert (#!optional str)
   (unless str
-    (setq str (current-event-string)))
+    (set! str (current-event-string)))
   (when str
     (let
 	((len (string-length str)))
@@ -791,13 +792,13 @@ event as read. COUNT copies of the same character are inserted."
 	(let*
 	    ((second (next-event t))
 	     (third (next-event t)))
-	  (setq first (make-string count (+ (ash (- (string-ref first 0) #\0) 6)
+	  (set! first (make-string count (+ (ash (- (string-ref first 0) #\0) 6)
 					    (ash (- (string-ref second 0) #\0) 3)
 					    (- (string-ref third 0) #\0))))
 	  (or (< (string-ref first 0) 256)
 	      (error "Character overflow")))
       (if (/= count 1)
-	  (setq first (make-string count (string-ref first 0)))))
+	  (set! first (make-string count (string-ref first 0)))))
     (insert first)))
 
 (defun backspace-char (count)
@@ -831,7 +832,7 @@ end of the line simply move COUNT characters to the left."
 	((p (re-search-backward "[^\t ]|^")))
       (when p
 	(unless (zero? (pos-col p))
-	  (setq p (forward-char 1 p)))
+	  (set! p (forward-char 1 p)))
 	(when (and p (looking-at "[\t ]+" p))
 	  (delete-area (match-start) (match-end))
 	  (goto (match-start))))))
@@ -938,8 +939,8 @@ finish (as long as the original buffer still exists)."
     `(let
 	 (,start ,end)
        (when (buffer-restricted-p)
-	 (setq ,start (make-mark (restriction-start))
-	       ,end (make-mark (restriction-end))))
+	 (set! ,start (make-mark (restriction-start)))
+	 (set! ,end (make-mark (restriction-end))))
        (unwind-protect
 	   (progn ,@forms)
 	 (if (and ,start (mark-resident-p ,start))
@@ -971,7 +972,7 @@ from the innermost outwards."
 	 ((,e (get-extent ,position ,buffer)))
        (while ,e
 	 (,function ,e)
-	 (setq ,e (extent-parent ,e))))))
+	 (set! ,e (extent-parent ,e))))))
 
 
 ;; Mouse dragging etc
@@ -994,7 +995,7 @@ the current view. Returns nil if no such character can be found."
       ((p (raw-mouse-pos))
        (mouse-view (find-view-by-pos p)))
     (when mouse-view
-      (setq p (translate-pos-to-view p mouse-view))
+      (set! p (translate-pos-to-view p mouse-view))
       (when (posp p)
 	(cons mouse-view (display-to-char-pos p mouse-view))))))
 
@@ -1009,7 +1010,7 @@ current view."
     (when mouse-view
       (unless (eq? (current-view) mouse-view)
 	(set-current-view mouse-view))
-      (setq raw-pos (translate-pos-to-view raw-pos))
+      (set! raw-pos (translate-pos-to-view raw-pos))
       (if (posp raw-pos)
 	  (goto (display-to-char-pos raw-pos))
 	raw-pos))))
@@ -1019,18 +1020,19 @@ current view."
   (let
       ((p (goto-mouse)))
     (if (eq? p t)
-	(setq mouse-select-pos 'status
-	      mouse-dragging 'view)
+	(progn
+	  (set! mouse-select-pos 'status)
+	  (set! mouse-dragging 'view))
       (when p
-	(setq mouse-select-pos p
-	      mouse-dragging nil)
+	(set! mouse-select-pos p)
+	(set! mouse-dragging nil)
 	(when (and (blockp) (>= p (block-start)) (< p (block-end)))
 	  (block-kill))))))
 
 (defun mouse-double-select ()
   (interactive)
   (unless mouse-dragging
-    (setq mouse-dragging 'words)))
+    (set! mouse-dragging 'words)))
 
 (defun mouse-select-drag (drag-rectangle)
   (if (eq? mouse-dragging 'view)
@@ -1044,12 +1046,12 @@ current view."
 	((p (mouse-pos)))
       (when (posp p)
 	(when (eq? mouse-dragging 'words)
-	  (setq p (forward-word (if (> p mouse-select-pos) 1 -1) p)))
+	  (set! p (forward-word (if (> p mouse-select-pos) 1 -1) p)))
 	(goto p)
 	(if (equal? p mouse-select-pos)
 	    (when (and (blockp) (>= p (block-start)) (< p (block-end)))
 	      (block-kill))
-	  (setq mouse-dragging (or mouse-dragging t))
+	  (set! mouse-dragging (or mouse-dragging t))
 	  (block-kill)
 	  (set-rect-blocks nil drag-rectangle)
 	  (block-start (if (eq? mouse-dragging 'words)

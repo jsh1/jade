@@ -41,8 +41,8 @@ effect.")
 (defvar default-buffer (current-buffer)
   "The `*jade*' buffer.")
 
-(setq *standard-output* default-buffer)
-(setq *standard-input* default-buffer)
+(set! *standard-output* default-buffer)
+(set! *standard-input* default-buffer)
 
 (defvar buffer-file-modtime (cons 0 0)
   "Holds the modification time of the file this buffer was loaded from")
@@ -92,7 +92,7 @@ inherited from the current buffer."
     (unless buf
       (when (setq buf (make-buffer name))
 	(with-buffer buf
-	  (setq *default-directory* old-def-dir))))
+	  (set! *default-directory* old-def-dir))))
     (when buf
       (add-buffer buf))
     buf))
@@ -105,10 +105,10 @@ an existing buffer a new one will be created with that name. When VIEW
 is non-nil it defines the view to display the buffer in."
   (interactive "BSwitch to buffer:")
   (unless view
-    (setq view (current-view)))
+    (set! view (current-view)))
   (with-view view
     (when (string? buffer)
-      (setq buffer (open-buffer buffer)))
+      (set! buffer (open-buffer buffer)))
     (unless (bufferp buffer)
       (signal 'bad-arg (list buffer 1)))
     (set-buffer-list (cons buffer (delq! buffer (buffer-list))))
@@ -127,7 +127,7 @@ When called interactively, BUFFER is prompted for."
   (cond
    ((bufferp buffer))
    ((string? buffer)
-    (setq buffer (get-buffer buffer))))
+    (set! buffer (get-buffer buffer))))
   (when (and buffer (check-changes buffer))
     (with-buffer buffer
       (call-hook 'kill-buffer-hook (list buffer)))
@@ -166,7 +166,7 @@ If ALL-VIEWS is non-nil this is done in all views (the same buffer will be
 buried in each view though)."
   (interactive "\nP")
   (unless buffer
-    (setq buffer (current-buffer)))
+    (set! buffer (current-buffer)))
   (let
       ((lst (if all-views
 		 (window-list)
@@ -224,9 +224,9 @@ function is called to initialise the correct editing mode for the file.
 find-file always returns the buffer holding file NAME, or nil if no
 such buffer could be made."
   (interactive "FFind file:")
-  (setq name (expand-file-name name))
+  (set! name (expand-file-name name))
   (when (file-directory? name)
-    (setq name (directory-file-name name)))
+    (set! name (directory-file-name name)))
   (let
       ((buf (get-file-buffer name)))
     (if buf
@@ -243,8 +243,8 @@ such buffer could be made."
 	(let
 	    ((b-name (file-name-nondirectory name)))
 	  (when (string=? b-name "")
-	    (setq b-name (file-name-nondirectory (directory-file-name name))))
-	  (setq buf (open-buffer (file-name-nondirectory b-name) t)))
+	    (set! b-name (file-name-nondirectory (directory-file-name name))))
+	  (set! buf (open-buffer (file-name-nondirectory b-name) t)))
 	(with-buffer buf
 	  (read-file-into-buffer name))))
     (unless dont-activate
@@ -258,14 +258,14 @@ normal-mode, the hook after-read-file-hook is dispatched."
   (interactive "fFile to read into buffer:")
   (let ((buf (current-buffer)))
     (clear-buffer)
-    (setq file-name (expand-file-name file-name))
+    (set! file-name (expand-file-name file-name))
     (unless (call-hook 'read-file-hook (list file-name buf) 'or)
-      (setq *default-directory* (file-name-directory file-name))
+      (set! *default-directory* (file-name-directory file-name))
       (set-buffer-file-name buf file-name)
       (if (file-exists? file-name)
 	  (progn
 	    (read-file-contents file-name)
-	    (setq buffer-file-modtime (file-modtime file-name)))
+	    (set! buffer-file-modtime (file-modtime file-name)))
 	(message "New file")))
     (hack-local-variables)
     (set-buffer-modified buf nil)
@@ -304,7 +304,7 @@ normal-mode, the hook after-read-file-hook is dispatched."
     (let
 	((p (pos 0 (- (buffer-length) local-variable-lines))))
       (when (< (pos-line p) 0)
-	(setq p (start-of-buffer)))
+	(set! p (start-of-buffer)))
       (when (re-search-forward "^(.*)Local Variables:(.*)$" p nil t)
 	(let
 	    ((re (concat #\^ (quote-regexp (copy-area (match-start 1)
@@ -313,18 +313,18 @@ normal-mode, the hook after-read-file-hook is dispatched."
 			 (quote-regexp (copy-area (match-start 2)
 						  (match-end 2))) #\$))
 	     name value finished)
-	  (setq p (match-end))
+	  (set! p (match-end))
 	  (while (and (not finished) (re-search-forward re p))
-	    (setq p (match-end)
-		  name (copy-area (match-start 1) (match-end 1))
-		  value (copy-area (match-start 2) (match-end 2)))
+	    (set! p (match-end))
+	    (set! name (copy-area (match-start 1) (match-end 1)))
+	    (set! value (copy-area (match-start 2) (match-end 2)))
 	    (cond
 	     ((and (equal? name "End") (equal? value ""))
-	      (setq finished t))
+	      (set! finished t))
 	     ((equal? name "mode")
 	      (when (or (eq? enable-local-variables t)
 			(y-or-n-p (format nil "Use major mode %s?" value)))
-		(setq mode-name value)))
+		(set! mode-name value)))
 	     ((equal? name "eval")
 	      (when (and enable-local-eval
 			 (or (eq? enable-local-eval t)
@@ -333,7 +333,7 @@ normal-mode, the hook after-read-file-hook is dispatched."
 	     (t
 	      (when (or (eq? enable-local-variables t)
 			(y-or-n-p (format nil "Set %s to %s?" name value)))
-		(setq name (intern name))
+		(set! name (intern name))
 		(make-local-variable name)
 		(set name (read-from-string value)))))))))))
 
@@ -378,7 +378,7 @@ may not exist after this function returns."
   "Writes the contents of BUFFER to the file NAME, or to the one
 that it is associated with."
   (or (string? name)
-      (setq name (buffer-file-name buffer))
+      (set! name (buffer-file-name buffer))
       (error "No file is associated with buffer: %s" buffer))
   (unless (call-hook 'write-file-hook (list name buffer) 'or)
     (let
@@ -399,7 +399,7 @@ to zero. If no changes have been made to the buffer, it won't be saved
 prefix-argument when the function is called interactively)."
   (interactive "\nP")
   (unless (bufferp buffer)
-    (setq buffer (current-buffer)))
+    (set! buffer (current-buffer)))
   (with-buffer buffer
     (if (and (not force) (not (buffer-modified-p)))
 	(message "No changes need to be saved!")
@@ -416,7 +416,7 @@ prefix-argument when the function is called interactively)."
 	  (last-save-changes (buffer-changes))
 	  (last-user-save-changes (buffer-changes))
 	  (last-save-time (current-time))
-	  (setq buffer-file-modtime (file-modtime name))
+	  (set! buffer-file-modtime (file-modtime name))
 	  (delete-auto-save-file)
 	  (message (concat "Wrote file `" name #\') t))))))
 
@@ -426,7 +426,7 @@ resetting the name of the buffer and the file that it is associated with
 to reflect NAME. Also sets the modification count to zero."
   (interactive "FWrite file:")
   (unless (bufferp buffer)
-    (setq buffer (current-buffer)))
+    (set! buffer (current-buffer)))
   (let
       ((tem (get-file-buffer (expand-file-name name))))
     (when (and tem (not (eq? tem buffer)))
@@ -443,8 +443,8 @@ to reflect NAME. Also sets the modification count to zero."
       (last-save-changes (buffer-changes))
       (last-user-save-changes (buffer-changes))
       (last-save-time (current-time))
-      (setq buffer-file-modtime (file-modtime name)
-	    *default-directory* (file-name-directory name))
+      (set! buffer-file-modtime (file-modtime name))
+      (set! *default-directory* (file-name-directory name))
       (delete-auto-save-file)
       (message (concat "Wrote file `" name #\') t))))
 
@@ -453,7 +453,7 @@ to reflect NAME. Also sets the modification count to zero."
 the cursor position."
   (interactive "FInsert file:")
   (unless (bufferp buffer)
-    (setq buffer (current-buffer)))
+    (set! buffer (current-buffer)))
   (with-buffer buffer
     (unless (call-hook 'insert-file-hook (list name) 'or)
       (insert-file-contents name))))
@@ -473,7 +473,7 @@ file it was loaded from. Unless FORCE is t, unsaved modifications will only
 be lost after confirmation from the user."
   (interactive)
   (unless buffer
-    (setq buffer (current-buffer)))
+    (set! buffer (current-buffer)))
   (unless (buffer-file-name buffer)
     (error "No file is associated with buffer: %s" buffer))
   (when (or force (check-changes buffer))
@@ -612,7 +612,7 @@ will have to agree to this)."
   (let
       ((recover-name (make-auto-save-name (buffer-file-name buffer))))
     (unless buffer
-      (setq buffer (current-buffer)))
+      (set! buffer (current-buffer)))
     (when (and (file-exists? recover-name) (check-changes buffer))
       (with-buffer buffer
 	(read-file-contents recover-name)
@@ -638,7 +638,7 @@ numeric it's used as the exit status of the editor process."
     (condition-case nil
 	(call-hook '*before-exit-hook*)
       (error))
-    (setq *before-exit-hook* nil)
+    (set! *before-exit-hook* nil)
     (throw 'quit (if (number? no-query) no-query 0))))
 
 (defun buffer-read-only-p (#!optional buffer)
@@ -648,4 +648,4 @@ numeric it's used as the exit status of the editor process."
 
 (defun set-buffer-read-only (buffer status)
   (with-buffer (or buffer (current-buffer))
-    (setq read-only status)))
+    (set! read-only status)))

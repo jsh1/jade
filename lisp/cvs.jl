@@ -69,7 +69,7 @@ and hence hasn't been processed yet; or nil.")
 (defvar cvs-update-in-progress nil
   "Non-nil when a `cvs update' process is running asynchronously.")
 
-(setq minor-mode-alist (cons '(cvs-update-in-progress " CVS-update")
+(set! minor-mode-alist (cons '(cvs-update-in-progress " CVS-update")
 			     minor-mode-alist))
 
 (defvar cvs-update-files nil
@@ -159,15 +159,15 @@ each level of the directory hierarchy, i.e. ((DIR FILENAMES...) ...), such
 that each of the FILENAMES contains no directory specifiers."
   (let* ((dir-files (cons (list (cvs-file-get-dirname (car files))
 				(cvs-file-get-filename (car files))) nil)))
-    (setq files (cdr files))
+    (set! files (cdr files))
     (while files
       (if (string=? (cvs-file-get-dirname (car files)) (car (car dir-files)))
 	  (set-cdr! (car dir-files) (cons (cvs-file-get-filename (car files))
 					(cdr (car dir-files))))
-	(setq dir-files (cons (list (cvs-file-get-dirname (car files))
+	(set! dir-files (cons (list (cvs-file-get-dirname (car files))
 				    (cvs-file-get-filename (car files)))
 			      dir-files)))
-      (setq files (cdr files)))
+      (set! files (cdr files)))
     ;; Now dir-files is a list of ((DIR . FILES...) ...)
     dir-files))
 
@@ -176,13 +176,13 @@ that each of the FILENAMES contains no directory specifiers."
   (let ((out (concat cvs-update-pending o))
 	(point 0)
 	(not-done t))
-    (setq cvs-update-pending nil)
+    (set! cvs-update-pending nil)
     (while not-done
       (cond
        ((string-looking-at ". ([^\n]+)\n" out point)
 	;; Found a status line
 	(let ((name (expand-last-match "\\1")))
-	  (setq cvs-update-files (cons (cvs-make-file-struct
+	  (set! cvs-update-files (cons (cvs-make-file-struct
 					(directory-file-name
 					 (file-name-directory name))
 					(file-name-nondirectory name)
@@ -190,34 +190,34 @@ that each of the FILENAMES contains no directory specifiers."
 					(cdr (assq (string-ref out point)
 						   cvs-update-char-map)))
 				       cvs-update-files)))
-	(setq point (match-end)))
+	(set! point (match-end)))
        ((string-match "\n" out point)
 	;; Something else. Display it
 	(message (substring out point (match-start)) t)
-	(setq point (match-end)))
+	(set! point (match-end)))
        (t
 	;; An unfinished line
-	(setq not-done nil)
+	(set! not-done nil)
 	(unless (= point (string-length out))
-	  (setq cvs-update-pending (substring out point))))))))
+	  (set! cvs-update-pending (substring out point))))))))
 
 (defun cvs-update-stderr-filter (o)
   (let ((out (concat cvs-update-pending-stderr o))
 	(point 0))
-    (setq cvs-update-pending-stderr nil)
+    (set! cvs-update-pending-stderr nil)
     (while (string-looking-at "([^\n]+)\n" out point)
       (message (expand-last-match "\\1") t)
-      (setq point (match-end)))
-    (setq cvs-update-pending-stderr (substring out point))))
+      (set! point (match-end)))
+    (set! cvs-update-pending-stderr (substring out point))))
 
 ;; Function called after `cvs update' has completed
 (defun cvs-update-finished (hook)
   (let ((buffer (open-buffer "*cvs*"))
 	(inhibit-read-only t))
-    (setq cvs-update-pending nil
-	  cvs-update-pending-stderr nil
-	  cvs-file-list (reverse! cvs-update-files)
-	  cvs-update-in-progress nil)
+    (set! cvs-update-pending nil)
+    (set! cvs-update-pending-stderr nil)
+    (set! cvs-file-list (reverse! cvs-update-files))
+    (set! cvs-update-in-progress nil)
     (with-buffer buffer
       (if (and (cvs-buffer-p)
 	       (file-name= *default-directory* cvs-default-directory))
@@ -225,9 +225,9 @@ that each of the FILENAMES contains no directory specifiers."
 	  (summary-update)
 	(clear-buffer)
 	(format (current-buffer) "[CVS] %s:\n\n" cvs-default-directory)
-	(setq *default-directory* cvs-default-directory)
+	(set! *default-directory* cvs-default-directory)
 	(summary-mode "CVS" cvs-summary-functions cvs-keymap)
-	(setq major-mode 'cvs-summary-mode)))
+	(set! major-mode 'cvs-summary-mode)))
     (unless (cvs-buffer-p)
       (with-view (other-view)
 	(goto-buffer buffer)
@@ -245,7 +245,7 @@ that each of the FILENAMES contains no directory specifiers."
   "Rebuild the `cvs-file-list' by calling `cvs update' and parsing its output."
   (cvs-error-if-updating)
   (save-some-buffers)
-  (setq cvs-update-files nil)
+  (set! cvs-update-files nil)
   (let ((cvs-command-ignore-errors t)
 	(cvs-command-output-stream cvs-update-filter)
 	(cvs-command-error-stream cvs-update-stderr-filter)
@@ -255,7 +255,7 @@ that each of the FILENAMES contains no directory specifiers."
 	 ;; cvs-after-update-hook (in case it's bound dynamically)
 	 (let ((hook cvs-after-update-hook))
 	   (lambda () (cvs-update-finished hook)))))
-    (setq cvs-update-in-progress (cvs-command '() "update" '()))))
+    (set! cvs-update-in-progress (cvs-command '() "update" '()))))
 
 ;; Return the buffer used for output from CVS commands. If CLEAR is
 ;; t delete all of its current contents
@@ -347,8 +347,8 @@ entered in a new buffer, under the heading TITLE."
   (let ((buffer (open-buffer (concat "*cvs:" title #\*) t)))
     (goto-buffer buffer)
     (text-mode)
-    (setq cvs-callback-function function
-	  local-ctrl-c-keymap cvs-callback-ctrl-c-keymap)))
+    (set! cvs-callback-function function)
+    (set! local-ctrl-c-keymap cvs-callback-ctrl-c-keymap)))
 
 (defun cvs-callback-finished ()
   "Signal that the message in current buffer is complete, and therefore
@@ -373,8 +373,8 @@ whose names are in the list FILENAMES (in the same order)."
     (while (re-search-forward
 	    "^[ \t]*Working revision:[ \t]*([0-9]+(\\.[0-9]+)*)"
 	    point output t)
-      (setq revs (cons (expand-last-match "\\1") revs)
-	    point (match-end)))
+      (set! revs (cons (expand-last-match "\\1") revs))
+      (set! point (match-end)))
     (reverse! revs)))
 
 
@@ -390,9 +390,9 @@ When called interactively, DIRECTORY is prompted for."
   (interactive "DWorking directory:")
   (unless (file-directory? directory)
     (error "%S is not a directory" directory))
-  (setq directory (directory-file-name (expand-file-name directory)))
-  (setq cvs-default-directory directory
-	cvs-file-list nil)
+  (set! directory (directory-file-name (expand-file-name directory)))
+  (set! cvs-default-directory directory)
+  (set! cvs-file-list nil)
   ;; Now build the list of interesting files
   (cvs-update-file-list))
 
@@ -484,7 +484,7 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
 anything whose status is `unchanged' or `updated'."
   (interactive)
   (cvs-error-if-updating)
-  (setq cvs-file-list (delete-if! (lambda (f)
+  (set! cvs-file-list (delete-if! (lambda (f)
 				   (memq (cvs-file-get-status f)
 					 '(unchanged updated)))
 				 cvs-file-list))
@@ -587,7 +587,7 @@ do that."
   (let ((files (cvs-command-get-filenames)))
     (map-y-or-n-p "Really delete file `%s'?" files delete-file)
     ;; Remove any files that the user answered negatively to
-    (setq files (delete-if! file-exists? files))
+    (set! files (delete-if! file-exists? files))
     (when files
       (cvs-command nil "remove" (cvs-command-get-filenames))
       (cvs-show-output-buffer)
@@ -739,7 +739,7 @@ backup file (created by a merge with conflicts.)"
       (message "[Ignoring all but the first file!]" t)
       ;; Give them time to read the message..
       (sleep-for 1))
-    (setq working-file (car working-file))
+    (set! working-file (car working-file))
     ;; I wanted to use cvs-get-working-revisions to find the revision
     ;; number appended to the backup file; but it gets the merged rev.
     ;; So do it the rude way..
@@ -750,7 +750,7 @@ backup file (created by a merge with conflicts.)"
 				   (file-name-directory working-file)))))
       (unless possibilities
 	(error "Can't find backup file"))
-      (setq back-file (concat (file-name-directory working-file)
+      (set! back-file (concat (file-name-directory working-file)
 			      (car possibilities))))
     ;; Need a diff interface
     (shell-command (format nil cvs-diff-command back-file working-file))))
@@ -763,7 +763,7 @@ works by deleting the local copy, before updating it from the repository."
   (let ((files (cvs-command-get-filenames)))
     (map-y-or-n-p "Really lose changes to `%s'?" files delete-file)
     ;; Remove any files that the user answered negatively to
-    (setq files (delete-if! file-exists? files))
+    (set! files (delete-if! file-exists? files))
     (if (cvs-buffer-p)
 	;; Ensure that cvs-revert isn't called until the
 	;; update has completed

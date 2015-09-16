@@ -63,12 +63,12 @@ considered as referring to the same day.")
 	     (let
 		 ((defun (defun-at-point)))
 	       (and defun (list defun)))))))
-  (setq log-file (expand-file-name (or log-file "")))
+  (set! log-file (expand-file-name (or log-file "")))
   (cond
    ((file-directory? log-file)
-    (setq log-file (concat log-file change-log-file)))
+    (set! log-file (concat log-file change-log-file)))
    ((equal? log-file "")
-    (setq log-file change-log-file)))
+    (set! log-file change-log-file)))
   (when (find-file log-file)
     (goto (start-of-buffer))
     (unless (log-in-same-day-p (copy-area (start-of-buffer)
@@ -113,20 +113,20 @@ considered as referring to the same day.")
   (when major-mode-kill
     (major-mode-kill (current-buffer)))
   (require 'text-mode)
-  (setq mode-name "ChangeLog"
-	major-mode 'changelog-mode
-	major-mode-kill changelog-mode-kill
-	local-keymap 'text-mode-indent-keymap)
+  (set! mode-name "ChangeLog")
+  (set! major-mode 'changelog-mode)
+  (set! major-mode-kill changelog-mode-kill)
+  (set! local-keymap 'text-mode-indent-keymap)
   ;; In case fill.jl hasn't been loaded yet.
   (make-local-variable 'fill-prefix)
   (make-local-variable 'fill-prefix-width)
-  (setq fill-prefix "\t"
-	fill-prefix-width (tab-size))
+  (set! fill-prefix "\t")
+  (set! fill-prefix-width (tab-size))
   (call-hook 'text-mode-hook)
   (call-hook 'changelog-mode-hook))
 
 (defun changelog-mode-kill ()
-  (setq mode-name nil
-	local-keymap nil
-	major-mode nil
-	major-mode-kill nil))
+  (set! mode-name nil)
+  (set! local-keymap nil)
+  (set! major-mode nil)
+  (set! major-mode-kill nil))

@@ -38,14 +38,14 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
   (interactive)
   (when major-mode-kill
     (major-mode-kill (current-buffer)))
-  (setq mode-name "sh"
-	major-mode 'sh-mode
-	major-mode-kill kill-all-local-variables
-	mode-comment-fun sh-insert-comment
-	mode-indent-line sh-indent-line
-	paragraph-separate "^[\n\t\f ]*\n"
-	paragraph-start paragraph-separate
-	local-keymap sh-keymap)
+  (set! mode-name "sh")
+  (set! major-mode 'sh-mode)
+  (set! major-mode-kill kill-all-local-variables)
+  (set! mode-comment-fun sh-insert-comment)
+  (set! mode-indent-line sh-indent-line)
+  (set! paragraph-separate "^[\n\t\f ]*\n")
+  (set! paragraph-start paragraph-separate)
+  (set! local-keymap sh-keymap)
   (call-hook 'sh-mode-hook))
 
 (defun sh-insert-comment ()
@@ -60,27 +60,27 @@ Major mode for editing bourne-shell style scripts. Local bindings are:\n
 (defun sh-get-basic-indent (p)
   (if (zero? (pos-line p))
       0
-    (setq p (forward-line -1 p))
+    (set! p (forward-line -1 p))
     (while (and (> (pos-line p) 0)
 		(or (= (get-char (forward-char -2 p)) #\space)
 		    (looking-at "^[\t\f ]*$" p)))
-      (setq p (forward-line -1 p)))
+      (set! p (forward-line -1 p)))
     (pos-col (indent-pos p))))
 
 (defun sh-indent-line (#!optional p)
-  (setq p (start-of-line p))
+  (set! p (start-of-line p))
   (let
       ((indent (sh-get-basic-indent p)))
     ;; Look at the last token on the previous line
     (if (= (get-char (forward-char -2 p)) #\space)
-	(setq indent (+ indent sh-continuation-indent))
+	(set! indent (+ indent sh-continuation-indent))
       (when (looking-at
 	     "((.*[^a-zA-Z0-9\n])?(do|then|else|elif|in|\{)|.*\\))[ \t]*$"
 	     (forward-line -1 p))
-	(setq indent (+ indent sh-basic-indent)))
+	(set! indent (+ indent sh-basic-indent)))
       (when (looking-at ".*;;[\t ]*$" (forward-line -1 p))
-	(setq indent (- indent sh-basic-indent)))
+	(set! indent (- indent sh-basic-indent)))
       ;; Look at the contents of this line
       (when (looking-at "[ \t]*(\\bdone\\b|\\belse\\b|\\belif\\b|\\bfi\\b|\\besac\\b|\})" p)
-	(setq indent (- indent sh-basic-indent))))
+	(set! indent (- indent sh-basic-indent))))
     (set-indent-pos (pos indent (pos-line p)))))

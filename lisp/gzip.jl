@@ -48,7 +48,7 @@ automatically uncompressed when loaded, and recompressed when saved.")
   "Toggle automatic decompression and compression of files whose suffixes
 match well-known suffixes."
   (interactive "P")
-  (setq auto-compression-mode-enabled
+  (set! auto-compression-mode-enabled
 	(or force-active (not auto-compression-mode-enabled)))
   (unless force-active
     (message (if auto-compression-mode-enabled
@@ -84,9 +84,9 @@ match well-known suffixes."
 	(with-buffer buffer
 	  (gzip-uncompress file-name rule)
 	  (goto old-pos)
-	  (setq buffer-file-modtime (file-modtime file-name))
+	  (set! buffer-file-modtime (file-modtime file-name))
 	  (set-buffer-file-name buffer file-name)
-	  (setq *default-directory* (file-name-directory file-name)))
+	  (set! *default-directory* (file-name-directory file-name)))
 	t))))
 
 ;; In insert-file-hook
@@ -111,7 +111,7 @@ match well-known suffixes."
 		   (setq dst-file (open-file file-name 'write)))
 	  (unwind-protect
 	      (progn
-		(setq proc (make-process dst-file))
+		(set! proc (make-process dst-file))
 		(message (concat "Compressing `" file-name "'... ") t)
 		(when (/= (apply call-process proc tmp-name
 				 (list-ref rule 2)) 0)

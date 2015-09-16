@@ -143,8 +143,8 @@ is split.")
   (let
       ((dir (file-name-directory filename)))
     (clear-buffer)
-    (setq info-indirect-list nil
-	  info-has-tags-p nil)
+    (set! info-indirect-list nil)
+    (set! info-has-tags-p nil)
     ;; Get the file into the Info buffer
     (read-file-into-buffer (concat filename suffix))
     ;; Scan for tag table or indirect list
@@ -153,26 +153,26 @@ is split.")
 				 (pos 0 0) nil t)))
       (when (and p (looking-at "Indirect:" p nil t))
 	;; Parse the indirect list
-	(setq p (forward-line 1 p))
+	(set! p (forward-line 1 p))
 	(while (and (/= (get-char p) #\US)	;ASCII 037
 		    (looking-at "^(.*): ([0-9]+)$" p nil t))
-	  (setq info-indirect-list
+	  (set! info-indirect-list
 		(cons (cons (read (cons (current-buffer) (match-start 2)))
 			    (concat dir (copy-area (match-start 1)
 						   (match-end 1))))
 		      info-indirect-list))
-	  (setq p (forward-line 1 p)))
-	(setq info-indirect-list (reverse! info-indirect-list)))
+	  (set! p (forward-line 1 p)))
+	(set! info-indirect-list (reverse! info-indirect-list)))
       ;; Now look for the tag table
       (when (setq p (re-search-forward "^Tag table: *$" p nil t))
 	;; Copy this into the tags buffer
 	(let
 	    ((end (char-search-forward #\US p)))
 	  (unless end
-	    (setq end (end-of-buffer)))
+	    (set! end (end-of-buffer)))
 	  (clear-buffer info-tags-buffer)
 	  (insert (copy-area p end) nil info-tags-buffer)
-	  (setq info-has-tags-p t))))))
+	  (set! info-has-tags-p t))))))
 
 ;; Read the `dir' file, if multiple `dir' files exist concatenate them
 (defun info-read-dir ()
@@ -193,19 +193,19 @@ is split.")
 		(when (re-search-forward "^\\* Menu:" spos nil t)
 		  (delete-area spos (forward-line 1 (match-start)))))
 	    (insert-file name)
-	    (setq read-dir t))
+	    (set! read-dir t))
 	  (unless (equal? (cursor-pos) (start-of-line))
 	    (split-line))))
-      (setq path (cdr path)))
+      (set! path (cdr path)))
     (unless read-dir
       (signal 'info-error '("Can't find `dir' file")))
     ;; Don't associate a file name with DIR since it's probably an amalgam
     (set-buffer-file-name nil nil)
     (set-buffer-modified nil nil)
-    (setq buffer-file-modtime (cons 0 0)
-	  info-file-name "dir"
-	  info-node-name "Top"
-	  info-has-tags-p nil)
+    (set! buffer-file-modtime (cons 0 0))
+    (set! info-file-name "dir")
+    (set! info-node-name "Top")
+    (set! info-has-tags-p nil)
     (goto (or (char-search-forward #\US (start-of-buffer))
 		   (start-of-buffer)))
     t))
@@ -214,7 +214,7 @@ is split.")
 ;; for the `info-last' command.
 (defun info-remember ()
   (when (and info-file-name info-node-name)
-    (setq info-history (cons (list info-file-name
+    (set! info-history (cons (list info-file-name
 				   info-node-name
 				   (cursor-pos))
 			     info-history))))
@@ -232,24 +232,24 @@ is split.")
 	 suffixes files)
       (catch 'foo
 	(while path
-	  (setq files (list (expand-file-name filename (car path))
+	  (set! files (list (expand-file-name filename (car path))
 			    (expand-file-name (concat filename ".info")
 					      (car path))
 			    (expand-file-name lcase-name (car path))
 			    (expand-file-name (concat lcase-name ".info")
 					      (car path))))
 	  (while files
-	    (setq suffixes info-suffixes)
+	    (set! suffixes info-suffixes)
 	    (while suffixes
 	      (when (file-exists? (concat (car files) (car (car suffixes))))
-		(setq info-file-suffix (car (car suffixes)))
+		(set! info-file-suffix (car (car suffixes)))
 		(when (cdr (car suffixes))
 		  ;; Activate the uncompressor if necessary
 		  (eval (cdr (car suffixes))))
 		(throw 'foo (car files)))
-	      (setq suffixes (cdr suffixes)))
-	    (setq files (cdr files)))
-	  (setq path (cdr path)))
+	      (set! suffixes (cdr suffixes)))
+	    (set! files (cdr files)))
+	  (set! path (cdr path)))
 	(signal 'info-error (list "Can't find Info document" filename))))))
 
 ;; Display the node NODENAME. NODENAME can contain a file name. If no node
@@ -262,18 +262,19 @@ is split.")
        filename file-location)
     (unrestrict-buffer)
     (if (string-match "^\\((.*)\\)(.*)$" nodename)
-	(setq filename (expand-last-match "\\1")
-	      nodename (expand-last-match "\\2"))
+	(progn
+	  (set! filename (expand-last-match "\\1"))
+	  (set! nodename (expand-last-match "\\2")))
       (unless (setq filename info-file-name)
 	(error "File containing node `%s' isn't specified" nodename)))
     (when (string=? nodename "")
-      (setq nodename "Top"))
+      (set! nodename "Top"))
     (if (string-match "^dir$" filename nil t)
 	(info-read-dir)
-      (setq file-location (info-locate-file filename))
+      (set! file-location (info-locate-file filename))
       (when (not (string=? info-file-name filename))
 	(info-read-tags file-location info-file-suffix)
-	(setq info-file-name filename))
+	(set! info-file-name filename))
       (if (not info-has-tags-p)
 	  (progn
 	    ;; No tag list
@@ -293,24 +294,25 @@ is split.")
 		 subfile)
 	      (if (null? lst)
 		  ;; No indirect list
-		  (setq offset (+ offset 2)
-			subfile file-location)
+		  (progn
+		    (set! offset (+ offset 2))
+		    (set! subfile file-location))
 		;; Indirect list, chase down the list for the
 		;; correct file to use
 		(catch 'info
 		  (while (cdr lst)
 		    (when (< offset (car (car (cdr lst))))
-		      (setq subfile (car lst))
+		      (set! subfile (car lst))
 		      (throw 'info))
-		    (setq lst (cdr lst))
-		    (setq subfile (car lst))))
+		    (set! lst (cdr lst))
+		    (set! subfile (car lst))))
 		;; Use some magic to calculate the physical position of the
 		;; node. This seems to work?
 		(if (eq? subfile (car info-indirect-list))
-		    (setq offset (+ offset 2))
-		  (setq offset (+ (- offset (car subfile))
+		    (set! offset (+ offset 2))
+		  (set! offset (+ (- offset (car subfile))
 				  (car (car info-indirect-list)) 2)))
-		(setq subfile (cdr subfile)))
+		(set! subfile (cdr subfile)))
 	      (unless (string=? (buffer-file-name)
 			       (concat subfile info-file-suffix))
 		(read-file-into-buffer (concat subfile info-file-suffix)))
@@ -323,11 +325,11 @@ is split.")
 					 (quote-regexp nodename))
 				 (forward-line 1 p)))
 	(goto (match-start)))
-      (setq p (or (char-search-forward #\US (forward-char))
+      (set! p (or (char-search-forward #\US (forward-char))
 		    (end-of-buffer nil t)))
       (restrict-buffer (cursor-pos) p)
       (info-highlight-buffer))
-    (setq info-node-name nodename)
+    (set! info-node-name nodename)
     (buffer-status-id (concat "Info: " #\( info-file-name #\) info-node-name))
     t))
 
@@ -337,13 +339,13 @@ is split.")
   (let
       ((tem (start-of-buffer)))
     (while (re-search-forward "\\*[\t\n ]*note[\t\n ]+([^:]+)" tem nil t)
-      (setq tem (match-end 1))
+      (set! tem (match-end 1))
       (make-extent (match-start 1) tem (list 'face info-xref-face
 					     'mouse-face active-face)))
     (when (re-search-forward "^\\* menu:" (start-of-buffer) nil t)
-      (setq tem (match-end))
+      (set! tem (match-end))
       (while (re-search-forward "^\\*[\t ]+([^:\n]+)" tem)
-	(setq tem (match-end 1))
+	(set! tem (match-end 1))
 	(make-extent (match-start 1) tem (list 'face info-menu-face
 					       'mouse-face active-face))))))
 
@@ -355,7 +357,7 @@ is split.")
     (with-buffer info-tags-buffer
       (goto (start-of-buffer))
       (while (re-search-forward regexp nil nil t)
-	(setq lst (cons (expand-last-match "\\1") lst))
+	(set! lst (cons (expand-last-match "\\1") lst))
 	(goto (match-end))))
     lst))
 
@@ -363,25 +365,25 @@ is split.")
 ;; of possible completions is required.
 (defun info-prompt (list-fun #!optional title default start)
   (unless title
-    (setq title "Select node"))
+    (set! title "Select node"))
   (when default
-    (setq title (concat title " (default: " default ")")))
+    (set! title (concat title " (default: " default ")")))
   (unless start
-    (setq start ""))
+    (set! start ""))
   (let*
       ((prompt-completion-function
 	(let ((buffer (current-buffer)))
 	  (lambda (w)
 	    (or prompt-list
 		(with-buffer buffer
-		  (setq prompt-list (list-fun))))
+		  (set! prompt-list (list-fun))))
 	    (prompt-complete-from-list w))))
        (prompt-validate-function
 	(let ((buffer (current-buffer)))
 	  (lambda (w)
 	    (or prompt-list
 		(with-buffer buffer
-		  (setq prompt-list (list-fun))))
+		  (set! prompt-list (list-fun))))
 	    (prompt-validate-from-list w))))
        (prompt-list-fold-case t)
        (completion-fold-case t)
@@ -399,15 +401,15 @@ show, otherwise the current node is used (or `(dir)' if this is the first
 time that `info' has been called)."
   (interactive "\nP")
   (goto-buffer (open-buffer "*Info*" new-buffer))
-  (setq local-keymap 'info-keymap
-	major-mode 'info-mode
-	mode-name "Info"
-	popup-local-menus info-popup-menus
-	auto-save-p nil)
+  (set! local-keymap 'info-keymap)
+  (set! major-mode 'info-mode)
+  (set! mode-name "Info")
+  (set! popup-local-menus info-popup-menus)
+  (set! auto-save-p nil)
   (set-buffer-record-undo nil)
   (set-buffer-read-only nil t)
   (unless info-tags-buffer
-    (setq info-tags-buffer (make-buffer "*Info-tags*"))
+    (set! info-tags-buffer (make-buffer "*Info-tags*"))
     (with-buffer info-tags-buffer
       (set-buffer-record-undo nil)))
   (cond
@@ -460,10 +462,10 @@ local bindings are:\n
        (opos (restriction-start))
        name)
     (while (re-search-forward "^\\* ([a-zA-Z0-9]+[^:.]*)" opos)
-      (setq name (expand-last-match "\\1"))
-      (setq opos (match-end))
+      (set! name (expand-last-match "\\1"))
+      (set! opos (match-end))
       (unless (string-match "^menu$" name nil t)
-	(setq lst (cons name lst))))
+	(set! lst (cons name lst))))
     lst))
 
 ;; Position the cursor at the start of the menu.
@@ -479,7 +481,7 @@ local bindings are:\n
     (signal 'info-error (list "Can't find menu")))
   (while (and (> item-index 0) (re-search-forward "^\\* .*:"))
     (goto (match-end))
-    (setq item-index (1- item-index)))
+    (set! item-index (1- item-index)))
   (when (/= item-index 0)
     (signal 'info-error (list "Can't find menu node")))
   (goto (start-of-line))
@@ -496,10 +498,10 @@ local bindings are:\n
   (interactive)
   (when (info-goto-menu-start)
     (unless menu-name
-      (setq menu-name (and (looking-at "^\\* ([^:.]+)" (start-of-line))
+      (set! menu-name (and (looking-at "^\\* ([^:.]+)" (start-of-line))
 			   (expand-last-match "\\1")))
       (save-excursion
-	(setq menu-name (info-prompt info-list-menu-items
+	(set! menu-name (info-prompt info-list-menu-items
 				     "Menu item:" menu-name)))))
   (when menu-name
     (if (re-search-forward (concat "^\\* " (quote-regexp menu-name) #\:)
@@ -522,7 +524,7 @@ local bindings are:\n
       (progn
 	(let
 	    ((hist (car info-history)))
-	  (setq info-history (cdr info-history))
+	  (set! info-history (cdr info-history))
 	  (when (info-find-node (concat #\( (car hist) #\) (list-ref hist 1)))
 	    (goto (list-ref hist 2))
 	    t)))
@@ -546,7 +548,7 @@ local bindings are:\n
       ((regexp (concat ".*" link-type ": ([^,\n]*)(,|[\t ]*$)"))
        new-node)
     (when (looking-at regexp (start-of-buffer) nil t)
-      (setq new-node (expand-last-match "\\1")))
+      (set! new-node (expand-last-match "\\1")))
     (if new-node
 	(progn
 	  (info-remember)
@@ -563,7 +565,7 @@ local bindings are:\n
       (if (re-search-backward "\\*Note" nil nil t)
 	  (progn
 	    (goto (match-start))
-	    (setq node (cdr (info-parse-ref))))
+	    (set! node (cdr (info-parse-ref))))
 	(signal 'info-error '("Nothing on this line to go to"))))
     (info-remember)
     (info-find-node node)))
@@ -574,7 +576,7 @@ local bindings are:\n
   (let
       ((p (re-search-forward "(^\\* |\\*Note)" (forward-char) nil t)))
     (while (and p (looking-at "\\* Menu:" p nil t))
-      (setq p (re-search-forward "(^\\* |\\*Note)"
+      (set! p (re-search-forward "(^\\* |\\*Note)"
 				  (forward-char 1 p) nil t)))
     (when p
       (goto p))))
@@ -585,7 +587,7 @@ local bindings are:\n
   (let
       ((p (re-search-backward "(^\\* |\\*Note)" (forward-char -1) nil t)))
     (while (and p (looking-at "\\* Menu:" p nil t))
-      (setq p (re-search-backward "(^\\* |\\*Note)"
+      (set! p (re-search-backward "(^\\* |\\*Note)"
 				  (forward-char -1 p) nil t)))
     (when p
       (goto p))))
@@ -604,17 +606,17 @@ local bindings are:\n
 	      (let
 		  ((bit (copy-area p (re-search-forward "[\t ]*$" p))))
 		(unless (equal? bit "")
-		  (setq ref-title (cons #\space (cons bit ref-title)))))
-	      (setq p (re-search-forward "[^\n\t ]" (match-end)))
+		  (set! ref-title (cons #\space (cons bit ref-title)))))
+	      (set! p (re-search-forward "[^\n\t ]" (match-end)))
 	      (unless p
 		(signal 'info-error '("Malformed reference"))))
-	    (setq ref-title (apply concat (reverse! (cons (copy-area p end)
-							  ref-title)))
-		  p (forward-char 1 end))
+	    (set! ref-title (apply concat (reverse! (cons (copy-area p end)
+							  ref-title))))
+	    (set! p (forward-char 1 end))
 	    (if (= (get-char p) #\:)
-		(setq ref-node ref-title)
+		(set! ref-node ref-title)
 	      (when (looking-at " +" p)
-		(setq p (match-end)))
+		(set! p (match-end)))
 	      (if (setq end (re-search-forward "[\t ]*[:,.]" p))
 		  (progn
 		    (while (> (pos-line end) (pos-line p))
@@ -622,11 +624,11 @@ local bindings are:\n
 			  ((bit (copy-area p (re-search-forward "[\t ]*$"
 								 p))))
 			(unless (equal? bit "")
-			  (setq ref-node (cons #\space (cons bit ref-node))))
-			(setq p (re-search-forward "[^\n\t ]" (match-end))))
+			  (set! ref-node (cons #\space (cons bit ref-node))))
+			(set! p (re-search-forward "[^\n\t ]" (match-end))))
 		      (unless p
 			(signal 'info-error '("Malformed reference"))))
-		    (setq ref-node (apply concat (reverse! (cons (copy-area
+		    (set! ref-node (apply concat (reverse! (cons (copy-area
 								  p end)
 								 ref-node)))))
 		(signal 'info-error '("Malformed reference")))))
@@ -654,7 +656,7 @@ local bindings are:\n
 
 (defun info-index (info-files index-node key)
   (when (string? info-files)
-    (setq info-files (list info-files)))
+    (set! info-files (list info-files)))
   (catch 'out
     (mapc (lambda (f)
 	    (condition-case nil

@@ -61,9 +61,9 @@ Major mode for displaying online help. Local bindings are:\n
       ((buffer (open-buffer "*Help*")))
     (with-buffer buffer
       (unless (eq? major-mode 'help-setup)
-	(setq local-keymap 'help-keymap
-	      mode-name "Help"
-	      major-mode 'help-setup)
+	(set! local-keymap 'help-keymap)
+	(set! mode-name "Help")
+	(set! major-mode 'help-setup)
 	(set-buffer-record-undo nil)
 	(set-buffer-read-only nil t)))
     buffer))
@@ -184,7 +184,7 @@ it leads to)."
       ((mode major-mode)
        (doc (documentation mode)))
     (when doc
-      (setq doc (substitute-command-keys doc)))
+      (set! doc (substitute-command-keys doc)))
     (help-wrapper
      (when (string? doc)
        (format *standard-output* "\n%s\n" doc)))))
@@ -213,8 +213,8 @@ strings of modes may contain any of these expansions."
        (whereis-rel nil)
        (*print-escape* t))
     (while (string-match "\\\\[[{<]([^]}>,]+)(,([^]}>]+))?[]}>]" string point)
-      (setq out (cons (substring string point (match-start)) out)
-	    point (match-end))
+      (set! out (cons (substring string point (match-start)) out))
+      (set! point (match-end))
       (let
 	  ((symbol (intern (expand-last-match "\\1")))
 	   (arg (expand-last-match "\\3"))
@@ -224,13 +224,13 @@ strings of modes may contain any of these expansions."
 	  ;; where-is SYMBOL
 	  (let
 	      ((result (where-is symbol whereis-rel)))
-	    (setq out (cons (or (car result)
+	    (set! out (cons (or (car result)
 				(concat "Meta-x " (symbol-name symbol)))
 			    out))))
 	 ((= type #\})
 	  ;; print-keymap SYMBOL
 	  (map-keymap (lambda (k prefix)
-			(setq out (cons (format nil "%-24s %S\n"
+			(set! out (cons (format nil "%-24s %S\n"
 						(concat "  "
 							arg
 							(if (string=? arg "")
@@ -243,6 +243,6 @@ strings of modes may contain any of these expansions."
 		      (symbol-value symbol)))
 	 ((= type #\>)
 	  ;; next where-is is relative to keymap SYMBOL
-	  (setq whereis-rel (symbol-value symbol))))))
-    (setq out (cons (substring string point) out))
+	  (set! whereis-rel (symbol-value symbol))))))
+    (set! out (cons (substring string point) out))
     (apply concat (reverse! out))))

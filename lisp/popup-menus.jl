@@ -40,7 +40,7 @@ local mode.")
 
 (defvar popup-menus-from-kbd nil)
 
-(setq-default popup-menus
+(set-default 'popup-menus
   '(("Files"
      ("Open file..." find-file)
      ("Open directory..." dired)
@@ -155,7 +155,7 @@ local mode.")
   (interactive)
   (or (bound? 'popup-menu-from-spec)
       (error "Popup menus not supported in this window system"))
-  (setq popup-menus-pos (if (not popup-menus-from-kbd)
+  (set! popup-menus-pos (if (not popup-menus-from-kbd)
 			    (mouse-view-pos)
 			  (cons (current-view) (cursor-pos))))
   (let
@@ -168,7 +168,7 @@ local mode.")
 		 (progn
 		   ;; when using the usual menus, don't warp the cursor
 		   ;; to the mouse position when dispatching a command
-		   (setq popup-menus-pos nil)
+		   (set! popup-menus-pos nil)
 		   popup-menus))))
     (when spec
       ;; This function should be defined by the window system
@@ -196,13 +196,13 @@ local mode.")
       (let
 	  ((string (get-from-ring kill-ring i)))
 	(when (> (string-length string) 32)
-	  (setq string (concat (substring string 0 32) "...")))
-	(setq out (cons (list (format nil "%S" string)
+	  (set! string (concat (substring string 0 32) "...")))
+	(set! out (cons (list (format nil "%S" string)
 			      t (let ((string (get-from-ring kill-ring i)))
 				  (lambda ()
 				    (insert string))))
 			out))
-	(setq i (1+ i))))
+	(set! i (1+ i))))
     (reverse! out)))
 
 ;; This function should be invoked when COMMAND is selected from a menu
@@ -220,7 +220,7 @@ local mode.")
 	(set-current-view (car popup-menus-pos)))
       (when (posp (cdr popup-menus-pos))
 	(goto (cdr popup-menus-pos))))
-    (setq popup-menus-pos nil)
+    (set! popup-menus-pos nil)
     (if (commandp command)
 	(call-command command)
       (command))))

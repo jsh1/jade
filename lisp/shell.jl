@@ -117,11 +117,11 @@ from the buffer before being sent (since the shell will echo them anyway)")
   "Shell Mode:\n
 Major mode for running a subprocess in a buffer. Local bindings are:\n
 \\{shell-keymap}\\{shell-ctrl-c-keymap,Ctrl-c}"
-  (setq local-keymap 'shell-keymap
-	local-ctrl-c-keymap shell-ctrl-c-keymap
-	mode-name "Shell"
-	major-mode 'shell-mode
-	major-mode-kill shell-mode-kill)
+  (set! local-keymap 'shell-keymap)
+  (set! local-ctrl-c-keymap shell-ctrl-c-keymap)
+  (set! mode-name "Shell")
+  (set! major-mode 'shell-mode)
+  (set! major-mode-kill shell-mode-kill)
   (add-hook 'kill-buffer-hook shell-kill-buffer-hook)
   (shell-start-process)
   (call-hook 'shell-mode-hook))
@@ -145,7 +145,7 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 (defun shell-start-process ()
   (unless (and shell-process (process-in-use? shell-process))
     (let ((buffer (current-buffer)))
-      (setq shell-process (make-process
+      (set! shell-process (make-process
 			   (or shell-output-stream
 			       (lambda (o)
 				 (with-buffer buffer
@@ -169,25 +169,25 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 	     ((process-running? shell-process)
 	      "restarted\n")
 	     (t
-	      (setq shell-process nil)
+	      (set! shell-process nil)
 	      "\nProcess terminated\n")))))
 
-(setq-default shell-callback-function shell-default-callback)
+(set-default 'shell-callback-function shell-default-callback)
 
 ;; Default output stream
 (defun shell-filter (output)
   (goto (end-of-buffer))
   (unless (string? output)
-    (setq output (make-string 1 output)))
+    (set! output (make-string 1 output)))
   (when shell-output-filter
-    (setq output (shell-output-filter output)))
+    (set! output (shell-output-filter output)))
   (when output
     (insert output)
     (when (and shell-output-limit (> (buffer-length) shell-output-limit))
       (delete-area (start-of-buffer) (forward-line (- (buffer-length)
 						      shell-output-limit)
 						   (start-of-buffer))))
-    (setq shell-last-output (end-of-buffer))))
+    (set! shell-last-output (end-of-buffer))))
 
 
 ;; Commands
@@ -232,10 +232,10 @@ last in the buffer the current command is copied to the end of the buffer."
 	      (when shell-whole-line
 		(goto (end-of-line)))
 	      (insert "\n")
-	      (setq cmdstr ((if shell-echos cut-area copy-area)
+	      (set! cmdstr ((if shell-echos cut-area copy-area)
 			    start (cursor-pos))))
 	  ;; copy the command at this line to the end of the buffer
-	  (setq cmdstr (copy-area start (forward-line 1 (start-of-line))))
+	  (set! cmdstr (copy-area start (forward-line 1 (start-of-line))))
 	  (set-auto-mark)
 	  (goto (end-of-buffer))
 	  (unless shell-echos
@@ -349,10 +349,10 @@ delete, i.e. replace the marked area with the output of the command."
     (unless insertp
       (clear-buffer output))
     (when insertp
-      (setq error-output (open-buffer "*shell-errors*"))
+      (set! error-output (open-buffer "*shell-errors*"))
       (clear-buffer error-output)
       (set-process-error-stream! proc error-output))
-    (setq result (if (equal? start end)
+    (set! result (if (equal? start end)
 		     (call-process proc)
 		   (call-process-area proc start end deletep)))
     (unless insertp
@@ -362,7 +362,7 @@ delete, i.e. replace the marked area with the output of the command."
 	    (message (copy-area (start-of-buffer output)
 				(end-of-buffer output)
 				output))
-	    (setq used-message t))
+	    (set! used-message t))
 	(unless (equal? (start-of-buffer output) (end-of-buffer output))
 	  (if (eq? (current-buffer) output)
 	      (progn
@@ -382,7 +382,7 @@ delete, i.e. replace the marked area with the output of the command."
 	    (message (copy-area (start-of-buffer error-output)
 				(end-of-buffer error-output)
 				error-output))
-	    (setq used-message t))
+	    (set! used-message t))
 	(unless insertp
 	  (goto-buffer output))
 	(with-view (other-view)

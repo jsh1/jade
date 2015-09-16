@@ -52,13 +52,13 @@
   (let
       ((buffer (get-buffer "*tex-shell*")))
     (unless buffer
-      (setq buffer (open-buffer "*tex-shell*")))
+      (set! buffer (open-buffer "*tex-shell*")))
     (with-buffer buffer
       (unless shell-process
 	(clear-buffer)
 	(kill-all-local-variables)
-	(setq shell-program tex-shell-program)
-	(setq shell-program-args tex-shell-program-args)
+	(set! shell-program tex-shell-program)
+	(set! shell-program-args tex-shell-program-args)
 	(shell-mode)
 	(call-hook 'tex-shell-hook)))
     (with-view (other-view)
@@ -113,14 +113,14 @@
     (tex-shell-command buffer "cd %s" dir)
     (tex-shell-command buffer tex-run-command local-file)
     (when (string-match "^(.*)\\.tex$" local-file nil t)
-      (setq tex-last-dvi-file (expand-last-match "\\1.dvi")))))
+      (set! tex-last-dvi-file (expand-last-match "\\1.dvi")))))
 
 ;;;###autoload
 (defun bibtex-file (file-name)
   (interactive (list (buffer-file-name)))
   (save-some-buffers)
   (when (string-match "^(.*)\\.tex$" file-name)
-    (setq file-name (expand-last-match "\\1")))
+    (set! file-name (expand-last-match "\\1")))
   (let
       ((buffer (tex-init-shell))
        (local-file (or (local-file-name file-name)

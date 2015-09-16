@@ -129,18 +129,18 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
        (prompt-history-top nil)
        prompt-title-extent prompt-original-size result)
     (unless (string? prompt-title)
-      (setq prompt-title "Enter string:"))
+      (set! prompt-title "Enter string:"))
     (unless (string-match " $" prompt-title)
-      (setq prompt-title (concat prompt-title #\space)))
+      (set! prompt-title (concat prompt-title #\space)))
     (unwind-protect
 	(with-view (minibuffer-view)
-	  (setq prompt-original-size (cdr (view-dimensions)))
+	  (set! prompt-original-size (cdr (view-dimensions)))
 	  (when (= prompt-original-size 1)
 	    (condition-case nil
 		(enlarge-view 1)
 	      (error)))
 	  (with-buffer prompt-buffer
-	    (setq prompt-title-extent
+	    (set! prompt-title-extent
 		  (make-extent (start-of-buffer) (insert prompt-title)
 			       (list 'face prompt-title-face)))
 	    (extent-set prompt-title-extent 'read-only t)
@@ -148,15 +148,15 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	    (extent-put prompt-title-extent 'front-sticky t)
 	    (set-buffer-undo-list nil)
 	    (when prompt-glyph-table
-	      (setq glyph-table prompt-glyph-table))
+	      (set! glyph-table prompt-glyph-table))
 	    (when (string? start)
 	      (insert start)
 	      ;; Make this a separate undo operation
 	      (set-buffer-undo-list (cons nil (buffer-undo-list))))
 	    (make-local-variable 'pre-command-hook)
-	    (setq local-keymap prompt-keymap)
+	    (set! local-keymap prompt-keymap)
 	    (call-hook 'before-prompt-hook)
-	    (setq result (catch 'prompt (recursive-edit)))
+	    (set! result (catch 'prompt (recursive-edit)))
 	    (when (and result prompt-history
 		       (string? result)
 		       (not (string=? result ""))
@@ -182,7 +182,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	    (let
 		((res (prompt-validate-function line)))
 	      (when (and res (not (eq? res t)))
-		(setq line res))
+		(set! line res))
 	      res))
 	(throw 'prompt line)
       (beep))))
@@ -225,7 +225,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
 	(and (= prompt-history-index 0) (null? prompt-default-value)))
     (error "No next item"))
    ((= prompt-history-index 0)
-    (setq prompt-history-top (copy-area (extent-end prompt-title-extent)
+    (set! prompt-history-top (copy-area (extent-end prompt-title-extent)
 					(end-of-buffer)))
     (delete-area (extent-end prompt-title-extent) (end-of-buffer))
     (insert prompt-default-value))
@@ -234,7 +234,7 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
     (insert (if (= prompt-history-index 1)
 		prompt-history-top
 	      (get-from-ring prompt-history (1- prompt-history-index))))))
-  (setq prompt-history-index (1- prompt-history-index)))
+  (set! prompt-history-index (1- prompt-history-index)))
 
 (defun prompt-previous-history ()
   (interactive)
@@ -247,13 +247,13 @@ The string entered is returned, or nil if the prompt is cancelled (by Ctrl-g)."
    ((and (>= prompt-history-index 0)
 	 (> (ring-size prompt-history) prompt-history-index))
     (when (zero? prompt-history-index)
-      (setq prompt-history-top (copy-area (extent-end prompt-title-extent)
+      (set! prompt-history-top (copy-area (extent-end prompt-title-extent)
 					  (end-of-buffer))))
     (delete-area (extent-end prompt-title-extent) (end-of-buffer))
     (insert (get-from-ring prompt-history (1+ prompt-history-index))))
    (t
     (error "No previous item")))
-  (setq prompt-history-index (1+ prompt-history-index)))
+  (set! prompt-history-index (1+ prompt-history-index)))
 
 (defun prompt-start-of-line ()
   (interactive "@")
@@ -293,7 +293,7 @@ is rejected.")
     (mapcar (lambda (x)
 	      (let ((y (concat path x)))
 		(when (file-directory? y)
-		  (setq y (concat y #\/)))
+		  (set! y (concat y #\/)))
 		y))
 	    (delete-if! (lambda (f)
 			 (or (not (string-prefix? f file))
@@ -304,7 +304,7 @@ is rejected.")
   (and (file-exists? name) t))
 
 (defun prompt-complete-directory (word)
-  (setq word (expand-file-name word))
+  (set! word (expand-file-name word))
   (let ((path (file-name-directory word))
 	(file (file-name-nondirectory word)))
     (delq! nil (mapcar (lambda (x)
@@ -331,8 +331,8 @@ is rejected.")
     (while src
       (when (string-match (concat #\^ (quote-regexp word))
 			  (car src) nil prompt-list-fold-case)
-	(setq dst (cons (car src) dst)))
-      (setq src (cdr src)))
+	(set! dst (cons (car src) dst)))
+      (set! src (cdr src)))
     dst))
 
 (defun prompt-validate-from-list (name)
@@ -346,7 +346,7 @@ is rejected.")
 	  (when (string-match (concat #\^ (quote-regexp name) #\$)
 			      (car lst) nil t)
 	    (throw 'exit t))
-	  (setq lst (cdr lst)))))))
+	  (set! lst (cdr lst)))))))
 
 
 ;; High-level entrypoints; prompt for a specific type of object
@@ -356,8 +356,8 @@ is rejected.")
   "Prompt for a file, if EXISTING is t only files which exist are
 allowed to be entered."
   (unless (string? title)
-    (setq title "Enter filename:"))
-  (setq start (if (string? start)
+    (set! title "Enter filename:"))
+  (set! start (if (string? start)
 		  (expand-file-name start)
 		(file-name-as-directory *default-directory*)))
   (let*
@@ -370,7 +370,7 @@ allowed to be entered."
        (completion-abbrev-function prompt-abbreviate-filename)
        (str (prompt title start)))
     (when (and (string=? str "") default)
-      (setq str default))
+      (set! str default))
     str))
 
 ;;;###autoload
@@ -378,9 +378,9 @@ allowed to be entered."
   "Prompt for a directory, if EXISTING is t only files which exist are
 allowed to be entered."
   (unless (string? title)
-    (setq title "Enter filename:"))
+    (set! title "Enter filename:"))
   (unless (string? start)
-    (setq start (file-name-as-directory *default-directory*)))
+    (set! start (file-name-as-directory *default-directory*)))
   (let*
       ((prompt-completion-function prompt-complete-directory)
        (prompt-validate-function (if existing
@@ -391,7 +391,7 @@ allowed to be entered."
        (completion-abbrev-function prompt-abbreviate-filename)
        (str (prompt title start)))
     (when (and (string=? str "") default)
-      (setq str default))
+      (set! str default))
     str))
 
 ;;;###autoload
@@ -401,7 +401,7 @@ otherwise if EXISTING is nil the buffer will be created if it doesn't
 exist already. DEFAULT is the value to return if the user enters the null
 string, if nil the current buffer is returned."
   (unless (string? title)
-    (setq title "Enter buffer name:"))
+    (set! title "Enter buffer name:"))
   (let*
       ((prompt-completion-function prompt-complete-buffer)
        (prompt-validate-function (if existing
@@ -420,7 +420,7 @@ string, if nil the current buffer is returned."
   "Prompt for an existing symbol. If PRED is given the symbol must agree
 with it."
   (unless (string? title)
-    (setq title "Enter name of symbol:"))
+    (set! title "Enter name of symbol:"))
   (let
       ((prompt-symbol-predicate pred)
        (prompt-completion-function prompt-complete-symbol)
@@ -432,7 +432,7 @@ with it."
 (defun prompt-for-lisp (#!optional title start)
   "Prompt for a lisp object."
   (unless (string? title)
-    (setq title "Enter a Lisp object:"))
+    (set! title "Enter a Lisp object:"))
   (let ((prompt-completion-function t)
 	(prompt-validate-function nil)
 	(prompt-symbol-predicate nil)
@@ -440,7 +440,7 @@ with it."
 	 (cons (lambda ()
 		 (lisp-mode)
 		 ;; This is something of a kludge
-		 (setq local-keymap 'prompt-keymap))
+		 (set! local-keymap 'prompt-keymap))
 	       before-prompt-hook)))
     (read-from-string (prompt title start))))
 
@@ -494,7 +494,7 @@ Unless DONT-VALIDATE is t, only a member of PROMPT-LIST will be returned."
   (let
       (num)
     (while (not (number? num))
-      (setq num (read-from-string (prompt (or title "Enter number: ")))))
+      (set! num (read-from-string (prompt (or title "Enter number: ")))))
     num))
 
 ;; Compatibility
@@ -527,8 +527,8 @@ string QUESTION, returns t for `y'."
       ((prompt-buffer (make-buffer "*y-or-n*")))
     (with-view (minibuffer-view)
       (with-buffer prompt-buffer
-	(setq unbound-key-hook '(beep)
-	      local-keymap (or keymap 'y-or-n-keymap))
+	(set! unbound-key-hook '(beep))
+	(set! local-keymap (or keymap 'y-or-n-keymap))
 	(insert (concat question #\space (or help-string "(y or n)") #\space)
 		(start-of-buffer))
 	(unwind-protect
@@ -567,10 +567,10 @@ The function returns t only if _all_ of the inputs were answered with yes."
 					   "(y, n, !, q)")))
 			   (if a
 			       (callback (car inputs))
-			     (setq all-t nil))
-			   (setq inputs (cdr inputs))))))
+			     (set! all-t nil))
+			   (set! inputs (cdr inputs))))))
       ;; User answered with "!", so loop over all remaining inputs
       (while inputs
 	(callback (car inputs))
-	(setq inputs (cdr inputs))))
+	(set! inputs (cdr inputs))))
     all-t))

@@ -70,7 +70,7 @@ and hence hasn't been processed yet; or nil.")
 (defvar git-update-in-progress nil
   "Non-nil when a `git status' process is running asynchronously.")
 
-(setq minor-mode-alist (cons '(git-update-in-progress " git-update")
+(set! minor-mode-alist (cons '(git-update-in-progress " git-update")
 			     minor-mode-alist))
 
 (defvar git-update-files nil
@@ -166,15 +166,15 @@ each level of the directory hierarchy, i.e. ((DIR FILENAMES...) ...), such
 that each of the FILENAMES contains no directory specifiers."
   (let* ((dir-files (cons (list (git-file-get-dirname (car files))
 				(git-file-get-filename (car files))) nil)))
-    (setq files (cdr files))
+    (set! files (cdr files))
     (while files
       (if (string=? (git-file-get-dirname (car files)) (car (car dir-files)))
 	  (set-cdr! (car dir-files) (cons (git-file-get-filename (car files))
 					(cdr (car dir-files))))
-	(setq dir-files (cons (list (git-file-get-dirname (car files))
+	(set! dir-files (cons (list (git-file-get-dirname (car files))
 				    (git-file-get-filename (car files)))
 			      dir-files)))
-      (setq files (cdr files)))
+      (set! files (cdr files)))
     ;; Now dir-files is a list of ((DIR . FILES...) ...)
     dir-files))
 
@@ -183,13 +183,13 @@ that each of the FILENAMES contains no directory specifiers."
   (let ((out (concat git-update-pending o))
 	(point 0)
 	(not-done t))
-    (setq git-update-pending nil)
+    (set! git-update-pending nil)
     (while not-done
       (cond
        ((string-looking-at ".. (.* -> )?([^\n]+)\n" out point)
 	;; Found a status line
 	(let ((name (expand-last-match "\\2")))
-	  (setq git-update-files (cons (git-make-file-struct
+	  (set! git-update-files (cons (git-make-file-struct
 					(directory-file-name
 					 (file-name-directory name))
 					(file-name-nondirectory name)
@@ -199,34 +199,34 @@ that each of the FILENAMES contains no directory specifiers."
 					(cdr (assq (string-ref out (1+ point))
 						   git-status-char-map)))
 				       git-update-files)))
-	(setq point (match-end)))
+	(set! point (match-end)))
        ((string-match "\n" out point)
 	;; Something else. Display it
 	(message (substring out point (match-start)) t)
-	(setq point (match-end)))
+	(set! point (match-end)))
        (t
 	;; An unfinished line
-	(setq not-done nil)
+	(set! not-done nil)
 	(unless (= point (string-length out))
-	  (setq git-update-pending (substring out point))))))))
+	  (set! git-update-pending (substring out point))))))))
 
 (defun git-update-stderr-filter (o)
   (let ((out (concat git-update-pending-stderr o))
 	(point 0))
-    (setq git-update-pending-stderr nil)
+    (set! git-update-pending-stderr nil)
     (while (string-looking-at "([^\n]+)\n" out point)
       (message (expand-last-match "\\1") t)
-      (setq point (match-end)))
-    (setq git-update-pending-stderr (substring out point))))
+      (set! point (match-end)))
+    (set! git-update-pending-stderr (substring out point))))
 
 ;; Function called after `git update' has completed
 (defun git-update-finished (hook)
   (let ((buffer (open-buffer "*git*"))
 	(inhibit-read-only t))
-    (setq git-update-pending nil
-	  git-update-pending-stderr nil
-	  git-file-list (reverse! git-update-files)
-	  git-update-in-progress nil)
+    (set! git-update-pending nil)
+    (set! git-update-pending-stderr nil)
+    (set! git-file-list (reverse! git-update-files))
+    (set! git-update-in-progress nil)
     (with-buffer buffer
       (if (and (git-buffer-p)
 	       (file-name= *default-directory* git-default-directory))
@@ -235,9 +235,9 @@ that each of the FILENAMES contains no directory specifiers."
 	(clear-buffer)
 	(format (current-buffer) "[GIT] %s:\n\n   %12s %12s\n"
 		git-default-directory "index" "tree")
-	(setq *default-directory* git-default-directory)
+	(set! *default-directory* git-default-directory)
 	(summary-mode "git" git-summary-functions git-keymap)
-	(setq major-mode 'git-summary-mode)))
+	(set! major-mode 'git-summary-mode)))
     (unless (git-buffer-p)
       (with-view (other-view)
 	(goto-buffer buffer)
@@ -255,7 +255,7 @@ that each of the FILENAMES contains no directory specifiers."
   "Rebuild the `git-file-list' by calling `git status' and parsing its output."
   (git-error-if-updating)
   (save-some-buffers)
-  (setq git-update-files nil)
+  (set! git-update-files nil)
   (let ((git-command-ignore-errors t)
 	(git-command-output-stream git-update-filter)
 	(git-command-error-stream git-update-stderr-filter)
@@ -265,7 +265,7 @@ that each of the FILENAMES contains no directory specifiers."
 	 ;; git-after-update-hook (in case it's bound dynamically)
 	 (let ((hook git-after-update-hook))
 	   (lambda () (git-update-finished hook)))))
-    (setq git-update-in-progress (git-command '() "status" '("--porcelain")))))
+    (set! git-update-in-progress (git-command '() "status" '("--porcelain")))))
 
 ;; Return the buffer used for output from git commands. If CLEAR is
 ;; t delete all of its current contents
@@ -357,8 +357,8 @@ entered in a new buffer, under the heading TITLE."
   (let ((buffer (open-buffer (concat "*git:" title #\*) t)))
     (goto-buffer buffer)
     (text-mode)
-    (setq git-callback-function function
-	  local-ctrl-c-keymap git-callback-ctrl-c-keymap)
+    (set! git-callback-function function)
+    (set! local-ctrl-c-keymap git-callback-ctrl-c-keymap)
     (when setup-thunk
       (setup-thunk))))
 
@@ -387,9 +387,9 @@ When called interactively, DIRECTORY is prompted for."
   (interactive "DWorking directory:")
   (unless (file-directory? directory)
     (error "%S is not a directory" directory))
-  (setq directory (directory-file-name (expand-file-name directory)))
-  (setq git-default-directory directory
-	git-file-list nil)
+  (set! directory (directory-file-name (expand-file-name directory)))
+  (set! git-default-directory directory)
+  (set! git-file-list nil)
   ;; Now build the list of interesting files
   (git-update-file-list))
 
@@ -485,7 +485,7 @@ prefixing them with the `Ctrl-x c' key sequence. For example, type
 anything whose status is `unchanged' or `updated'."
   (interactive)
   (git-error-if-updating)
-  (setq git-file-list (delete-if! (lambda (f)
+  (set! git-file-list (delete-if! (lambda (f)
 				   (and (memq (git-file-get-index-status f)
 					      '(unchanged updated))
 					(memq (git-file-get-work-status f)
@@ -593,7 +593,7 @@ do that."
   (let ((files (git-command-get-filenames)))
     (map-y-or-n-p "Really delete file `%s'?" files delete-file)
     ;; Remove any files that the user answered negatively to
-    (setq files (delete-if! file-exists? files))
+    (set! files (delete-if! file-exists? files))
     (when files
       (git-command nil "rm" (if force
 				(list* "-f" "--" files)
@@ -769,7 +769,7 @@ backup file (created by a merge with conflicts.)"
       (message "[Ignoring all but the first file!]" t)
       ;; Give them time to read the message..
       (sleep-for 1))
-    (setq working-file (car working-file))
+    (set! working-file (car working-file))
     ;; I wanted to use git-get-working-revisions to find the revision
     ;; number appended to the backup file; but it gets the merged rev.
     ;; So do it the rude way..
@@ -780,7 +780,7 @@ backup file (created by a merge with conflicts.)"
 				   (file-name-directory working-file)))))
       (unless possibilities
 	(error "Can't find backup file"))
-      (setq back-file (concat (file-name-directory working-file)
+      (set! back-file (concat (file-name-directory working-file)
 			      (car possibilities))))
     ;; Need a diff interface
     (shell-command (format nil git-diff-format-string
