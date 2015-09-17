@@ -1,3 +1,10 @@
+2015-09-17  John Harper  <jsh@unfactored.org>
+
+	* tex-mode.jl, shell.jl, sh-mode.jl, python-mode.jl,
+	perl-mode.jl, modes.jl, loadkeys.jl, lisp-mode.jl, ispell.jl,
+	info.jl, help.jl, edit.jl, compile.jl, c-mode.jl, add-log.jl:
+	updated for rep unicode changes
+
 2015-09-16  John Harper  <jsh@unfactored.org>
 
 	* windows.jl, summary.jl, rectangle.jl, pwd-prompt.jl,

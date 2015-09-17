@@ -177,7 +177,7 @@ of SYMBOL is non-nil, KEYMAP is used to search for bindings.")
   "M-;"		'insert-comment
   "M-~"		'(set-buffer-modified nil nil)
   "M-\\"	'no-spaces
-  "\)"		'blinking-insert
+  ")"		'blinking-insert
   "}"		'blinking-insert
   "]"		'blinking-insert
   "C-\\"	'indent-area

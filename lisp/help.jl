@@ -56,7 +56,7 @@
 (defun help-setup ()
   "Help mode:\n
 Major mode for displaying online help. Local bindings are:\n
-\{help-keymap}"
+\\{help-keymap}"
   (let
       ((buffer (open-buffer "*Help*")))
     (with-buffer buffer

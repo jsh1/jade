@@ -45,7 +45,7 @@ Major mode for editing Lisp source. Local bindings in this mode are:\n
   (set! mode-forward-exp lisp-forward-sexp)
   (set! mode-backward-exp lisp-backward-sexp)
   (set! mode-symbol-regexp "[^][()?'`,@\"#; \t\f\n]+")
-  (set! mode-defun-header "^\\s*\\(def[a-z]+\\s+\\(?([^ \t\f\n\)]+)")
+  (set! mode-defun-header "^\\s*\\(def[a-z]+\\s+\\(?([^ \t\f\n)]+)")
   (set! mode-defun-footer nil)
   (set! paragraph-separate "^[\n\t\f ]*\n")
   (set! paragraph-start paragraph-separate)
@@ -240,7 +240,7 @@ in the status line."
 	    (set! last-ind p))
 	  ;; pos now points to the first sexp in the containing sexp
 	  (set! sexp-ind (pos (pos-col (char-to-glyph-pos
-					(or (re-search-backward "[\(\[]" p)
+					(or (re-search-backward "[([]" p)
 					    p)))
 			      (pos-line sexp-ind)))
 	  (set! form (read (cons (current-buffer) p)))

@@ -21,19 +21,19 @@
   "Regular expression matching a blank or comment line.")
 
 (defvar python-dedent-stmt-re
-      "[ \t]*(else:|except(\ +.*)?:|finally:|elif\ +.*:)"
+      "[ \t]*(else:|except( +.*)?:|finally:|elif +.*:)"
       "Regular expression matching statements to be dedented one level.")
 
 (defvar python-indent-stmt-re
       (concat
-       "[ \t]*(if\ +.*:|def\ +.*:$|try:|for\ +.*:|class\ +.*(\(.*\))?:)"
+       "[ \t]*(if +.*:|def +.*:$|try:|for +.*:|class +.*((.*))?:)"
        "|"
        python-dedent-stmt-re)
       "Regular expression matching statements that start indented block")
 
 (defvar python-context-tokens
 ;; standard arithmetical expressions
-  '(("[\[\{\(]" 'expression (lambda (token-pos)
+  '(("[[{(]" 'expression (lambda (token-pos)
 			      (let ((pos (condition-case nil
 				  (find-matching-bracket token-pos)
 				  (error))))
@@ -88,8 +88,8 @@
 (make-variable-buffer-local 'python-current-syntactic-context)
 
 (defun python-syntactic-context (p)
-  "1\) scan current buffer to determine syntactic context of position `p'\n\
-   2\) store context info in appropriate cache variables"
+  "1) scan current buffer to determine syntactic context of position `p'
+2) store context info in appropriate cache variables"
   (letrec
       ((iter
 	(lambda (upper context)
@@ -255,7 +255,7 @@ Commands defined by this mode are:\n
   (set! mode-indent-line python-indent-line)
 ;;  (set! mode-forward-exp c-forward-exp)
 ;;  (set! mode-backward-exp c-backward-exp)
-  (set! mode-defun-header "^[ \t]*def\ +([a-zA-Z_])\ ?(\(.*\))?:[ \t]*")
+  (set! mode-defun-header "^[ \t]*def +([a-zA-Z_]) ?((.*))?:[ \t]*")
 ;;  (set! mode-defun-footer "^}")
   (set! paragraph-separate "^[\n\t\f ]*\n")
   (set! paragraph-start paragraph-separate)

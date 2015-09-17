@@ -1,3 +1,7 @@
+2015-09-17  John Harper  <jsh@unfactored.org>
+
+	* buffers.c: updated for rep unicode changes
+
 2015-09-16  John Harper  <jsh@unfactored.org>
 
 	* undo.c, movement.c, glyphs.c, find.c, editcommands.c: convert

@@ -53,7 +53,7 @@ line.")
   "The arguments to give to the program when it's started.")
 (make-variable-buffer-local 'shell-program-args)
 
-(defvar shell-prompt-regexp "^[^\]#$%>\)]*[\]#$%>\)] *"
+(defvar shell-prompt-regexp "^[^]#$%>)]*[]#$%>)] *"
   "A regexp matching the prompt of the shell.")
 (make-variable-buffer-local 'shell-prompt-regexp)
 

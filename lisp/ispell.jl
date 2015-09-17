@@ -301,7 +301,7 @@ for. When called interactively, spell-check the current block."
     (unless ispell-prompt-buffer
       (set! ispell-prompt-buffer (make-buffer "*Ispell-prompt*"))
       (with-buffer ispell-prompt-buffer
-	(insert "[SP] <number> R\)epl A\)ccept I\)nsert L\)ookup U\)ncap Q\)uit e\(X\)it or ? for help")
+	(insert "[SP] <number> R)epl A)ccept I)nsert L)ookup U)ncap Q)uit e(X)it or ? for help")
 	(set! local-keymap 'ispell-keymap)
 	(set! read-only t)))
     (goto start)

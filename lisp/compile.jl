@@ -39,14 +39,14 @@
 `compile-error-regexp'.")
 
 (defvar compile-push-directory-regexp
-  "^make(\[[0-9]+\])?: Entering directory `(.*)'"
+  "^make(\\[[0-9]+\\])?: Entering directory `(.*)'"
   "Regexp matching output when a new directory is entered. See also the
 variable `compile-push-directory-expand'.")
 
 (defvar compile-push-directory-expand "\\2"
   "Regexp expansion string for `compile-push-directory-regexp'.")
 
-(defvar compile-pop-directory-regexp "^make(\[[0-9]+\])?: Leaving directory "
+(defvar compile-pop-directory-regexp "^make(\\[[0-9]+\\])?: Leaving directory "
   "Regexp matching output when leaving a directory.")
 
 (defvar compile-command "make -w"

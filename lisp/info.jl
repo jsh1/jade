@@ -226,10 +226,10 @@ is split.")
   (if (and info-file-name (or (not filename) (equal? filename "")))
       info-file-name
     (let*
-	((lcase-name (translate-string! (copy-sequence filename)
-				       downcase-table))
+	((lcase-name (copy-sequence filename))
 	 (path info-directory-list)
 	 suffixes files)
+      (translate-byte-string! lcase-name downcase-table)
       (catch 'foo
 	(while path
 	  (set! files (list (expand-file-name filename (car path))
@@ -352,7 +352,7 @@ is split.")
 ;; Return a list of all node names matching START in the current tag table
 (defun info-list-nodes (start)
   (let
-      ((regexp (concat "^Node: (" (quote-regexp start) ".*)\^?"))
+      ((regexp (concat "^Node: (" (quote-regexp start) ".*)^?"))
        (lst ()))
     (with-buffer info-tags-buffer
       (goto (start-of-buffer))

@@ -66,8 +66,8 @@ will insert at the current cursor position, _without_ first moving the
 cursor to the position of the mouse pointer.")
 
 (defvar blink-matching-paren t
-  "Defines whether or not characters with matching open delimiters (i.e. `\)',
-`\}', and `\]') blink the opening delimiter when the closing delimiter is
+  "Defines whether or not characters with matching open delimiters (i.e. #\\),
+#\\}, and #\\]) blink the opening delimiter when the closing delimiter is
 entered. Blinking consists of temporarily moving the cursor to the opening
 delimiter, or if this would require moving the cursor off the viewable area,
 displaying the line containing the opening delimiter in the message area.

@@ -249,7 +249,7 @@ Commands defined by this mode are:\n
       ;; Find the beginning of the expression to indent relative to
       (unless exp-pos
 	;; Start of the containing expression
-	(when (re-search-backward "[\{\(\[]" p)
+	(when (re-search-backward "[{([]" p)
 	  (set! exp-pos (match-start))))
       (set! exp-ind (char-to-glyph-pos exp-pos))
 
@@ -293,7 +293,7 @@ Commands defined by this mode are:\n
 	;; indented one level
 	(set! exp-ind (right-char c-body-indent exp-ind)))
 
-       ((looking-at ".*\;[\t ]*(\n|/\\*)" exp-pos)
+       ((looking-at ".*;[\t ]*(\n|/\\*)" exp-pos)
 	;; A full expression, indent to the level of the first
 	;; line in the expression
 	(let

@@ -130,12 +130,12 @@ expressions.")
 
 (defvar generic-exp-open-delims '(#\( #\[ #\{)
   "A list of characters that open compound expressions in generic
-expressions. Can only be from the list `\(', `\[', `\{', `\<' and `\`'.")
+expressions. Can only be from the list #\\(, #\\[, #\\{, #\\< and #\\`.")
 (make-variable-buffer-local 'generic-exp-open-delims)
 
 (defvar generic-exp-close-delims '(#\) #\] #\})
   "A list of characters that close compound expressions in generic
-expressions. Can only be from the list `\)', `\]', `\}', `\>' and `\''.")
+expressions. Can only be from the list #\\), #\\], #\\}, #\\> and #\\'.")
 (make-variable-buffer-local 'generic-exp-close-delims)
 
 (defvar generic-exp-escape-char '#\\

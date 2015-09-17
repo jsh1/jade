@@ -324,7 +324,7 @@ buffer_putc (repv stream, int c)
 static intptr_t
 buffer_puts (repv stream, const void *data, intptr_t len, bool is_val)
 {
-    const char *buf = is_val ? rep_STR(data) : data;
+    const char *buf = is_val ? rep_STR((repv)data) : data;
     if (BUFFERP(stream))
     {
 	return pos_puts (VBUFFER(stream),
@@ -1152,7 +1152,7 @@ mark_putc (repv stream, int c)
 static intptr_t
 mark_puts (repv stream, const void *data, intptr_t len, bool is_val)
 {
-    const char *buf = is_val ? rep_STR(data) : data;
+    const char *buf = is_val ? rep_STR((repv)data) : data;
     if(!MARK_RESIDENT_P(VMARK(stream)))
     {
 	Fsignal(Qinvalid_stream, rep_list_2(stream, rep_VAL(&non_resident)));

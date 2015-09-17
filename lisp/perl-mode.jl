@@ -83,7 +83,7 @@ Major mode for editing Perl source code. Local keybindings are:\n
     ;; Find the beginning of the expression to indent relative to
     (unless exp-pos
       ;; Start of the containing expression
-      (when (re-search-backward "[\{\(\[]" line-pos)
+      (when (re-search-backward "[{([]" line-pos)
 	(set! exp-pos (match-start))))
     (if (= (get-char exp-pos) #\{)
 	(set! exp-ind (indent-pos exp-pos))
@@ -110,7 +110,7 @@ Major mode for editing Perl source code. Local keybindings are:\n
       ;; An opening brace
       (set! exp-ind (right-char perl-body-indent (indent-pos exp-pos))))
 
-     ((looking-at ".*\;" exp-pos)
+     ((looking-at ".*;" exp-pos)
       ;; A full expression, indent to the level of the first
       ;; line in the expression
       (let

@@ -79,7 +79,7 @@ Local bindings in this mode are:\n
   (set! generic-exp-escape-char 0)
   (set! generic-exp-comment-string "%")
   (set! generic-exp-symbol-re "[a-zA-Z0-9:_@-]+")
-  (set! generic-exp-special-re "[][(){}\"\$a-zA-Z0-9]")
+  (set! generic-exp-special-re "[][(){}\"$a-zA-Z0-9]")
   (make-local-variable 'ispell-ignore-word-hook)
   (add-hook 'ispell-ignore-word-hook tex-ispell-ignore-word-hook)
   (cond (from-sub-mode)
@@ -132,7 +132,7 @@ Local bindings in this mode are:\n
       ((p (forward-char -1))
        (depth 0))
     (if (catch 'foo
-	  (while (re-search-backward "\\\\(end|begin)\{([^\}]+)" p)
+	  (while (re-search-backward "\\\\(end|begin){([^}]+)" p)
 	    (if (= (get-char (match-start 1)) #\b)
 		;; no end
 		(if (zero? depth)
@@ -152,17 +152,17 @@ Local bindings in this mode are:\n
 		   (prefix-numeric-argument current-prefix-arg))))
     (if (null? count)
 	(progn
-	  (insert (if command (concat #\\ command "{}") "{}"))
+	  (insert (concat #\\ command "{}"))
 	  (goto (forward-char -1)))
       (if (> count 0)
 	  (progn
-	    (insert (if command (concat #\\ command #\{) "\{"))
+	    (insert (concat #\\ command #\{))
 	    (goto (forward-word count))
-	    (insert "\}"))
+	    (insert "}"))
 	(goto (forward-word count))
-	(insert (if command (concat #\\ command #\{) "\{"))
+	(insert (concat #\\ command #\{))
 	(goto (forward-word (- count)))
-	(insert "\}")))))
+	(insert "}")))))
 
 (defun tex-move-over-braces ()
   (interactive)
