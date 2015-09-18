@@ -85,32 +85,35 @@ scan."
 Give any such regions minor-major modes."
   (interactive)
   (when php3-mode-minor
-    (let
-	((point (end-of-buffer))
-	 start end)
-      (while (setq point (re-search-backward
-			  "\\s\\?>|\\s%>|</script>" point nil t))
-	(set! end point)
-	(set! start nil)
-	(cond ((looking-at "\\s\\?>" end)
-	       (and (re-search-backward "<\\?\\s" end)
-		    (setq start (match-end))))
-	      ((looking-at "\\s%>" end)
-	       (and (re-search-backward "<%\\s" end)
-		    (setq start (match-end))))
-	      (t
-	       (and (re-search-backward "<script" end nil t)
-		    (looking-at "\\s+language=\"?php\"?>" (match-end) nil t)
-		    (setq start (match-end)))))
-	(when (and start
-		   (catch 'foo
-		     (map-extents (lambda (e)
-				    (when (extent-get e 'minor-major)
-				      (throw 'foo nil))) start end)
-		     t))
-	  (extent-put (minor-major-mode php3-mode-minor start end)
-		      'rear-sticky nil))
-	(set! point (or start (forward-char -1 end)))))))
+    (let ((point (end-of-buffer))
+	  start end)
+      (let loop ()
+	(set! point (re-search-backward
+		     "\\s\\?>|\\s%>|</script>" point nil t))
+	(when point 
+	  (set! end point)
+	  (set! start nil)
+	  (cond ((looking-at "\\s\\?>" end)
+		 (when (re-search-backward "<\\?\\s" end)
+		   (set! start (match-end))))
+		((looking-at "\\s%>" end)
+		 (when (re-search-backward "<%\\s" end)
+		   (set! start (match-end))))
+		(t
+		 (when (and (re-search-backward "<script" end nil t)
+			    (looking-at "\\s+language=\"?php\"?>"
+					(match-end) nil t))
+		   (set! start (match-end)))))
+	  (when (and start
+		     (catch 'foo
+		       (map-extents (lambda (e)
+				      (when (extent-get e 'minor-major)
+					(throw 'foo nil))) start end)
+		       t))
+	    (extent-put (minor-major-mode php3-mode-minor start end)
+			'rear-sticky nil))
+	  (set! point (or start (forward-char -1 end)))
+	  (loop))))))
 
 (defun php3-mode-idle-function ()
   (when (or (not php3-mode-last-scan) (> (buffer-changes) php3-mode-last-scan))

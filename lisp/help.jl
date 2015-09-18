@@ -119,7 +119,7 @@ w   `where-is'
 
 (defun apropos-output (symbols)
   (mapc (lambda (sym)
-	  (describe-value (symbol-value sym t) sym)) symbols))
+	  (describe-value (variable-ref sym t) sym)) symbols))
 
 (defun apropos-function (regexp #!optional all-functions)
   (interactive "sRegular expression:\nP")
@@ -128,15 +128,15 @@ w   `where-is'
 	   (if all-functions "function" "command") regexp)
    (apropos-output (apropos regexp (if all-functions
 				       (lambda (s)
-					 (and (bound? s)
-					      (function? (symbol-value s))))
+					 (and (variable-bound? s)
+					      (function? (variable-ref s))))
 				     commandp)))))
 
 (defun apropos-variable (regexp)
   (interactive "sRegular expression:")
   (help-wrapper
    (format *standard-output* "Apropos variable `%s':\n" regexp)
-   (apropos-output (apropos regexp 'bound?))))
+   (apropos-output (apropos regexp 'variable-bound?))))
 
 (defun describe-keymap ()
   "Print the full contents of the current keymap (and the keymaps that
@@ -155,7 +155,7 @@ it leads to)."
       ((doc (documentation fun)))
     (help-wrapper
      (insert "\n")
-     (describe-value (symbol-value fun) fun)
+     (describe-value (variable-ref fun) fun)
      (insert "\n")
      (insert (if doc (substitute-command-keys doc) "Undocumented."))
      (insert "\n"))))
@@ -164,7 +164,7 @@ it leads to)."
   (format *standard-output*
 	  "\nVariable: %s\nCurrent value: %S\n\n"
 	  (symbol-name var)
-	  (with-buffer (or in-buffer (current-buffer)) (symbol-value var t))))
+	  (with-buffer (or in-buffer (current-buffer)) (variable-ref var t))))
 
 (defun describe-variable (var)
   (interactive
@@ -240,9 +240,9 @@ strings of modes may contain any of these expansions."
 							(event-name (cdr k)))
 						(car k))
 					out)))
-		      (symbol-value symbol)))
+		      (variable-ref symbol)))
 	 ((= type #\>)
 	  ;; next where-is is relative to keymap SYMBOL
-	  (set! whereis-rel (symbol-value symbol))))))
+	  (set! whereis-rel (variable-ref symbol))))))
     (set! out (cons (substring string point) out))
     (apply concat (reverse! out))))

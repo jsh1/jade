@@ -104,55 +104,57 @@ move back to the previously found tag."
        ((eq? name 'push)
 	(set! name tags-last-found)
 	(set! start tags-last-found-pos)))
-      (while (setq start (search-forward name (or start (pos 0 0))
-					 tags-buffer tags-fold-case))
-	(if (or (zero? (pos-line start))
-		(= #\FF (get-char (forward-char -1 (start-of-line start)
-					       tags-buffer) tags-buffer)))
-	    ;; We're looking at the filename, not a tag, continue searching
-	    (set! start (start-of-line (forward-line 1 start)))
-	  ;; Move to the tag's position. First find the file name
-	  (let*
-	      ((file (and (or (re-search-backward "^\f\n([^,\n]+)"
-						  start tags-buffer)
-			      (error "Can't find start of tags section"))
-			  (expand-file-name
-			   (expand-last-match "\\1")
-			   (with-buffer tags-buffer *default-directory*))))
-	       tag-pos tag-line tag-name)
-	    ;; This switches to the new file's buffer
-	    (or (find-file file)
-		(error "Can't open file %S" file))
-	    (unless (looking-at "^(.+)\177((.+)\001|)([0-9]+)"
-				(start-of-line start) tags-buffer)
-	      (error "Malformed tag line at %S" start))
-	    (set! tag-pos (pos 0 (1- (string->number
-				      (copy-area (match-start 4)
-						 (match-end 4) tags-buffer)))))
-	    (set! tag-line (copy-area (match-start 1)
-				      (match-end 1) tags-buffer))
-	    (set! tag-name (if (null? (match-start 3))
-			       ;; No definitive name
-			       tag-line
-			     (copy-area (match-start 3) (match-end 3)
-					tags-buffer)))
-	    ;; Check that the tag _does_actually_ occur at the position
-	    ;; it's supposed to.
-	    (if (buffer-compare-string tag-line tag-pos tags-fold-case)
-		;; Yep, easy
-		(goto tag-pos)
-	      ;; No, search for it
-	      (if (or (search-forward tag-line tag-pos)
-		      (search-backward tag-line tag-pos))
-		  (goto (match-start))
-		;; Can't find it. Signal an error
-		(error "Tag %S has been deleted; rerun etags")))
-	    (message tag-name)
-	    ;; break out of the loop
-	    (set! tags-last-found name)
-	    (set! tags-last-found-pos (end-of-line start tags-buffer))
-	    (set! tags-marks (cons original-mark tags-marks))
-	    (throw 'return (cursor-pos)))))
+      (let loop ()
+	(set! start (search-forward name (or start (pos 0 0))
+				    tags-buffer tags-fold-case))
+	(when start 
+	  (if (or (zero? (pos-line start))
+		  (= #\FF (get-char (forward-char -1 (start-of-line start)
+						  tags-buffer) tags-buffer)))
+	      ;; We're looking at the filename, not a tag, continue searching
+	      (set! start (start-of-line (forward-line 1 start)))
+	    ;; Move to the tag's position. First find the file name
+	    (let* ((file (and (or (re-search-backward "^\f\n([^,\n]+)"
+						      start tags-buffer)
+				  (error "Can't find start of tags section"))
+			      (expand-file-name
+			       (expand-last-match "\\1")
+			       (with-buffer tags-buffer *default-directory*))))
+		   tag-pos tag-line tag-name)
+	      ;; This switches to the new file's buffer
+	      (or (find-file file) (error "Can't open file %S" file))
+	      (or (looking-at "^(.+)\177((.+)\001|)([0-9]+)"
+			      (start-of-line start) tags-buffer)
+		  (error "Malformed tag line at %S" start))
+	      (set! tag-pos (pos 0 (1- (string->number
+					(copy-area (match-start 4)
+						   (match-end 4)
+						   tags-buffer)))))
+	      (set! tag-line (copy-area (match-start 1)
+					(match-end 1) tags-buffer))
+	      (set! tag-name (if (null? (match-start 3))
+				 ;; No definitive name
+				 tag-line
+			       (copy-area (match-start 3) (match-end 3)
+					  tags-buffer)))
+	      ;; Check that the tag _does_actually_ occur at the position
+	      ;; it's supposed to.
+	      (if (buffer-compare-string tag-line tag-pos tags-fold-case)
+		  ;; Yep, easy
+		  (goto tag-pos)
+		;; No, search for it
+		(if (or (search-forward tag-line tag-pos)
+			(search-backward tag-line tag-pos))
+		    (goto (match-start))
+		  ;; Can't find it. Signal an error
+		  (error "Tag %S has been deleted; rerun etags")))
+	      (message tag-name)
+	      ;; break out of the loop
+	      (set! tags-last-found name)
+	      (set! tags-last-found-pos (end-of-line start tags-buffer))
+	      (set! tags-marks (cons original-mark tags-marks))
+	      (throw 'return (cursor-pos))))
+	  (loop)))
       (error "Tag %S not found" name))))
 
 (defun pop-tag-mark ()
@@ -178,10 +180,12 @@ move back to the previously found tag."
     (unless tags-cached-file-list
       (let ((point (start-of-buffer))
 	    (files '()))
-	(while (and (setq point (char-search-forward #\page point))
-		    (looking-at "\f\n([^,]+)" point))
-	  (set! point (match-end))
-	  (set! files (cons (expand-last-match "\\1") files)))
+	(let loop ()
+	  (set! point (char-search-forward #\page point))
+	  (when (and point (looking-at "\f\n([^,]+)" point))
+	    (set! point (match-end))
+	    (set! files (cons (expand-last-match "\\1") files))
+	    (loop)))
 	(set! tags-cached-file-list (sort! (uniquify files)))))
     tags-cached-file-list))
 

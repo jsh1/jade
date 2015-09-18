@@ -164,7 +164,8 @@ is split.")
 	  (set! p (forward-line 1 p)))
 	(set! info-indirect-list (reverse! info-indirect-list)))
       ;; Now look for the tag table
-      (when (setq p (re-search-forward "^Tag table: *$" p nil t))
+      (set! p (re-search-forward "^Tag table: *$" p nil t))
+      (when p
 	;; Copy this into the tags buffer
 	(let
 	    ((end (char-search-forward #\US p)))
@@ -265,8 +266,8 @@ is split.")
 	(progn
 	  (set! filename (expand-last-match "\\1"))
 	  (set! nodename (expand-last-match "\\2")))
-      (unless (setq filename info-file-name)
-	(error "File containing node `%s' isn't specified" nodename)))
+      (set! filename info-file-name)
+      (or filename (error "File with node `%s' isn't specified" nodename)))
     (when (string=? nodename "")
       (set! nodename "Top"))
     (if (string-match "^dir$" filename nil t)
@@ -559,9 +560,8 @@ local bindings are:\n
 ;; Check this line for a menuitem of an xref, if one exists find its node
 (defun info-goto-link ()
   (interactive)
-  (let
-      (node)
-    (unless (setq node (info-parse-menu-line))
+  (let ((node (info-parse-menu-line)))
+    (unless node
       (if (re-search-backward "\\*Note" nil nil t)
 	  (progn
 	    (goto (match-start))
@@ -597,42 +597,34 @@ local bindings are:\n
 ;; crossing line boundarys.
 (defun info-parse-ref ()
   (when (looking-at "\\*Note *" nil nil t)
-    (let
-	((p (match-end))
-	 end ref-title ref-node)
-      (if (setq end (re-search-forward "[\t ]*:"))
-	  (progn
-	    (while (> (pos-line end) (pos-line p))
-	      (let
-		  ((bit (copy-area p (re-search-forward "[\t ]*$" p))))
-		(unless (equal? bit "")
-		  (set! ref-title (cons #\space (cons bit ref-title)))))
-	      (set! p (re-search-forward "[^\n\t ]" (match-end)))
-	      (unless p
-		(signal 'info-error '("Malformed reference"))))
-	    (set! ref-title (apply concat (reverse! (cons (copy-area p end)
-							  ref-title))))
-	    (set! p (forward-char 1 end))
-	    (if (= (get-char p) #\:)
-		(set! ref-node ref-title)
-	      (when (looking-at " +" p)
-		(set! p (match-end)))
-	      (if (setq end (re-search-forward "[\t ]*[:,.]" p))
-		  (progn
-		    (while (> (pos-line end) (pos-line p))
-		      (let
-			  ((bit (copy-area p (re-search-forward "[\t ]*$"
-								 p))))
-			(unless (equal? bit "")
-			  (set! ref-node (cons #\space (cons bit ref-node))))
-			(set! p (re-search-forward "[^\n\t ]" (match-end))))
-		      (unless p
-			(signal 'info-error '("Malformed reference"))))
-		    (set! ref-node (apply concat (reverse! (cons (copy-area
-								  p end)
-								 ref-node)))))
-		(signal 'info-error '("Malformed reference")))))
-	(signal 'info-error '("Malformed reference")))
+    (let ((p (match-end))
+	  (end (re-search-forward "[\t ]*:"))
+	  ref-title ref-node)
+      (or end (signal 'info-error '("Malformed reference")))
+      (while (> (pos-line end) (pos-line p))
+	(let ((bit (copy-area p (re-search-forward "[\t ]*$" p))))
+	  (unless (equal? bit "")
+	    (set! ref-title (cons #\space (cons bit ref-title)))))
+	(set! p (re-search-forward "[^\n\t ]" (match-end)))
+	(unless p
+	  (signal 'info-error '("Malformed reference"))))
+      (set! ref-title (apply concat (reverse! (cons (copy-area p end)
+						    ref-title))))
+      (set! p (forward-char 1 end))
+      (if (= (get-char p) #\:)
+	  (set! ref-node ref-title)
+	(when (looking-at " +" p)
+	  (set! p (match-end)))
+	(set! end (re-search-forward "[\t ]*[:,.]" p))
+	(or end (signal 'info-error '("Malformed reference")))
+	(while (> (pos-line end) (pos-line p))
+	  (let ((bit (copy-area p (re-search-forward "[\t ]*$" p))))
+	    (unless (equal? bit "")
+	      (set! ref-node (cons #\space (cons bit ref-node))))
+	    (set! p (re-search-forward "[^\n\t ]" (match-end))))
+	  (or p (signal 'info-error '("Malformed reference"))))
+	(set! ref-node (apply concat (reverse! (cons (copy-area p end)
+						     ref-node)))))
       (when (and ref-title ref-node)
 	(cons ref-title ref-node)))))
 

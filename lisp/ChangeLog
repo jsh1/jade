@@ -1,3 +1,14 @@
+2015-09-18  John Harper  <jsh@unfactored.org>
+
+	* yacc-mode.jl, windows.jl, text-mode.jl, texinfo-mode.jl,
+	tags.jl, shell.jl, sawmill-minor-mode.jl, replace.jl,
+	rectangle.jl, rcs.jl, prompt.jl, prompt-menu.jl,
+	popup-menus.jl, php3-mode.jl, modes.jl, minor-major.jl,
+	lisp-mode.jl, keymap.jl, jade.jl, ispell.jl, info.jl, help.jl,
+	gzip.jl, find-autoloads.jl, fill.jl, edit.jl, debug.jl, cvs.jl,
+	completion.jl, compile.jl, c-mode.jl, buffers.jl: updated
+	variable accessors and removed final setq calls
+
 2015-09-17  John Harper  <jsh@unfactored.org>
 
 	* tex-mode.jl, shell.jl, sh-mode.jl, python-mode.jl,

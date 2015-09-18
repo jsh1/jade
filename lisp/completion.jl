@@ -46,11 +46,11 @@ matching strings.")
 
 (defun completion-find-view ()
   (catch 'return
-    (mapc (lambda (v)
-	    (and (string-match "^\\*completions\\*"
-			       (buffer-name (current-buffer v)))
-		 (throw 'return v)))
-	  (window-view-list))
+    (for-each (lambda (v)
+		(and (string-match "^\\*completions\\*"
+				   (buffer-name (current-buffer v)))
+		     (throw 'return v)))
+	      (window-view-list))
     nil))
 
 ;; Return a view visible in the current window that is used to display
@@ -92,9 +92,10 @@ matching strings.")
        column-width columns
        (view (completion-setup-view))
        (view-width (car (view-dimensions view))))
-    (mapc (lambda (c)
-	    (and (> (string-length c) max-width)
-		 (setq max-width (string-length c)))) completions)
+    (for-each (lambda (c)
+		(when (> (string-length c) max-width)
+		  (set! max-width (string-length c))))
+	      completions)
     (if (= max-width view-width)
 	(progn
 	  (set! columns 1)
@@ -157,7 +158,7 @@ matching strings.")
 	      (set! completions (cons tem completions)))))))
     completions))
 
-(set-default 'completion-hooks
+(variable-set-default! 'completion-hooks
 	      (append! completion-hooks (list complete-from-buffer)))
 
 (defun complete-at-point (#!optional only-display)
@@ -169,9 +170,9 @@ don't insert anything, just display the list of possible completions."
        (w-end (cursor-pos))
        (word (copy-area (forward-exp -1) (cursor-pos)))
        (completions (sort!
-		     (apply append! (mapcar (lambda (h)
-					    (h word w-start w-end))
-					  completion-hooks)))))
+		     (apply append! (map (lambda (h)
+					   (h word w-start w-end))
+					 completion-hooks)))))
     ;; remove duplicates
     (when completions
       (while (and (cdr completions)

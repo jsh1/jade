@@ -114,8 +114,8 @@ A list, (FILE CALLBACK-BUFFER COMMAND OPTIONS TEXT-PREFIX REREAD).")
 ;; If DISPLAY-OUTPUT is non-nil, display output in a separate view
 (defun rcs-command (command file-name options #!optional
 		    reread-buffer ignore-errors output display-output)
-  (unless (setq file-name (local-file-name file-name))
-    (error "Can only use RCS on local files"))
+  (set! file-name (local-file-name file-name))
+  (or file-name (error "Can only use RCS on local files"))
   (format t "Running RCS command: %s %s %s..." command file-name options)
   (let*
       ((buffer (open-buffer "*rcs-output*"))

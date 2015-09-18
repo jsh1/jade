@@ -789,8 +789,8 @@ works by deleting the local copy, before updating it from the repository."
   (interactive "DDirectory:\nsTag:")
   (let ((cvs-command-async (lambda ()
 			     (cvs-show-output-buffer))))
-    (unless (setq directory (local-file-name directory))
-      (error "Can only work on local directories"))
+    (set! directory (local-file-name directory))
+    (or directory (error "Can only work on local directories"))
     (cvs-command nil "tag" (list tag-name directory))))
 
 ;;;###autoload

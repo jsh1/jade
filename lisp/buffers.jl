@@ -90,7 +90,8 @@ inherited from the current buffer."
       ((buf (if always-create nil (get-buffer name)))
        (old-def-dir *default-directory*))
     (unless buf
-      (when (setq buf (make-buffer name))
+      (set! buf (make-buffer name))
+      (when buf
 	(with-buffer buf
 	  (set! *default-directory* old-def-dir))))
     (when buf
@@ -238,10 +239,10 @@ such buffer could be made."
 	    ;; it's not, so reread it
 	    (revert-buffer)))
       ;; No buffer exists
-      (unless (setq buf (call-hook 'find-file-hook (list name) 'or))
+      (set! buf (call-hook 'find-file-hook (list name) 'or))
+      (unless buf
 	;; find-file-hook didn't; do keep going
-	(let
-	    ((b-name (file-name-nondirectory name)))
+	(let ((b-name (file-name-nondirectory name)))
 	  (when (string=? b-name "")
 	    (set! b-name (file-name-nondirectory (directory-file-name name))))
 	  (set! buf (open-buffer (file-name-nondirectory b-name) t)))
@@ -302,7 +303,7 @@ normal-mode, the hook after-read-file-hook is dispatched."
 			  (let ((value (read-from-string value)))
 			    ;; since we're not evaluating, inline
 			    ;; things that eval to ().
-			    (set var (case value
+			    (variable-set! var (case value
 				       ((nil #f) nil)
 				       (t value))))))))
 		  pieces)))))
@@ -340,7 +341,7 @@ normal-mode, the hook after-read-file-hook is dispatched."
 			(y-or-n-p (format nil "Set %s to %s?" name value)))
 		(set! name (intern name))
 		(make-local-variable name)
-		(set name (read-from-string value)))))))))))
+		(variable-set! name (read-from-string value)))))))))))
 
 (defun find-file-read-only (name #!optional dont-activate)
   "Similar to `find-file' except that the buffer is edited in read-only mode."
@@ -648,7 +649,7 @@ numeric it's used as the exit status of the editor process."
 
 (defun buffer-read-only-p (#!optional buffer)
   (condition-case nil
-      (buffer-symbol-value 'read-only (extent-root buffer) nil)
+      (buffer-variable-ref 'read-only (extent-root buffer) nil)
     (error)))
 
 (defun set-buffer-read-only (buffer status)

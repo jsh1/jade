@@ -83,28 +83,28 @@ the debugger are:\n
 
 (defun debug-step ()
   (interactive)
-  (if (bound? 'debug-obj)
+  (if (variable-bound? 'debug-obj)
       (throw 'debug (cons 1 debug-obj))
     (beep)))
 
 (defun debug-set-result (value)
   (interactive "XEval:")
-  (if (bound? 'debug-obj)
+  (if (variable-bound? 'debug-obj)
       (throw 'debug (cons 4 value))
     (beep)))
 
 (defun debug-next ()
   (interactive)
-  (if (bound? 'debug-obj)
+  (if (variable-bound? 'debug-obj)
       (throw 'debug (cons 2 debug-obj))
     (beep)))
 
 (defun debug-continue ()
   (interactive)
   (cond
-   ((bound? 'debug-obj)
+   ((variable-bound? 'debug-obj)
     (throw 'debug (cons 3 debug-obj)))
-   ((bound? 'error-list)
+   ((variable-bound? 'error-list)
     (throw 'debug))
    (t
     (beep))))

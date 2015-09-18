@@ -449,9 +449,9 @@ with it."
   "Prompt for a function."
   (prompt-for-symbol (or title "Enter name of function:")
 		     (lambda (x)
-		       (and (bound? x)
+		       (and (variable-bound? x)
 			    (let
-				((value (symbol-value x)))
+				((value (variable-ref x)))
 			      (or (function? value)
 				  (macro? value)
 				  (special-form? value)))))
@@ -460,7 +460,7 @@ with it."
 ;;;###autoload
 (defun prompt-for-variable (#!optional title start)
   "Prompt for a variable."
-  (prompt-for-symbol (or title "Enter name of variable:") bound? start))
+  (prompt-for-symbol (or title "Enter name of variable:") variable-bound? start))
 
 ;;;###autoload
 (defun prompt-for-command (#!optional title start)

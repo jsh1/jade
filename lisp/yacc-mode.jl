@@ -87,8 +87,7 @@ scan."
   "Rescan the current buffer for C regions embedded in the yacc grammar.
 Give any such regions minor-major c-modes."
   (interactive)
-  (let
-      (rules-start rules-end)
+  (let (rules-start rules-end)
     (save-excursion
       (when yacc-mode-c-minor
 	;; Look for `%{ C DECLS %}' and section after second `%%' marker
@@ -99,32 +98,34 @@ Give any such regions minor-major c-modes."
 	      (unless (eq? (buffer-get 'minor-major start) 'c-mode)
 		(extent-put (minor-major-mode 'c-mode start (match-start))
 			    'front-sticky t)))))
-	(when (and (re-search-forward "^%%" (start-of-buffer))
-		   (setq rules-start (match-end))
-		   (setq rules-end (re-search-forward "^%%" (match-end))))
-	  (unless (eq? (buffer-get 'minor-major (match-end)) 'c-mode)
-	    (extent-put (minor-major-mode 'c-mode (match-end) (end-of-buffer))
-			'front-sticky t))))
+	(when (re-search-forward "^%%" (start-of-buffer))
+	  (set! rules-start (match-end))
+	  (when rules-start
+	    (set! rules-end (re-search-forward "^%%" (match-end)))
+	    (when rules-end
+	      (unless (eq? (buffer-get 'minor-major (match-end)) 'c-mode)
+		(extent-put (minor-major-mode 'c-mode (match-end)
+					      (end-of-buffer))
+			    'front-sticky t))))))
       (when (eq? yacc-mode-c-minor t)
 	;; Scan all rules for C actions
 	(save-restriction
 	  (restrict-buffer (or rules-start (start-of-buffer))
 			   (or rules-end (end-of-buffer)))
 	  (goto (restriction-start))
-	  (let
-	      ((tem (restriction-start)))
+	  (let ((tem (restriction-start)))
 	    (while (re-search-forward "[\t\n ]({)" tem)
-	      (let
-		  ((start (match-start 1))
-		   end)
+	      (let ((start (match-start 1))
+		    end)
 		(set! tem (match-end))
-		(when (and (not (eq? (buffer-get 'minor-major tem) 'c-mode))
-			   (setq end (condition-case nil
-					 (c-forward-exp 1 start)
-				       (error))))
-		  (extent-put (minor-major-mode 'c-mode start end)
-			      'rear-sticky nil)
-		  (set! tem end))))))))))
+		(when (not (eq? (buffer-get 'minor-major tem) 'c-mode))
+		  (set! end (condition-case nil
+				(c-forward-exp 1 start)
+			      (error)))
+		  (when end
+		    (extent-put (minor-major-mode 'c-mode start end)
+				'rear-sticky nil)
+		    (set! tem end)))))))))))
 
 (defun yacc-mode-idle-function ()
   (when (or (not yacc-mode-last-scan) (> (buffer-changes) yacc-mode-last-scan))

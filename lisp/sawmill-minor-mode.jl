@@ -110,7 +110,7 @@ in the status line."
     (set! autoload-finder sawmill-autoload-finder)
     (make-local-variable 'info-documentation-file)
     (set! info-documentation-files
-	  (if (bound? 'info-documentation-files)
+	  (if (variable-bound? 'info-documentation-files)
 	      (cons "sawmill" info-documentation-files) (list "sawmill")))))
 
 ;;;###autoload

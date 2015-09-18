@@ -172,7 +172,7 @@ Major mode for running a subprocess in a buffer. Local bindings are:\n
 	      (set! shell-process nil)
 	      "\nProcess terminated\n")))))
 
-(set-default 'shell-callback-function shell-default-callback)
+(variable-set-default! 'shell-callback-function shell-default-callback)
 
 ;; Default output stream
 (defun shell-filter (output)

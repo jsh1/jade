@@ -65,43 +65,50 @@
 	 (module (or (autoload-identify-module buf)
 		     (buffer-file-name buf)))
 	 (count 0))
-      (while (setq p (re-search-forward
-			"^[; \t]*###autoload[\t ]*(.*)$" p buf))
-	(set! form (expand-last-match "\\1"))
-	(when (and form (not (equal? "" form)))
-	  (line-fun form)
-	  (set! count (1+ count))
-	  (message form t))
-	(set! p (forward-line 1 p))
-	(catch 'next
-	  (while (and p (looking-at "^[ \t]*\\(" p buf))
-	    (set! form nil)
-	    (cond ((and (looking-at "^[ \t]*\\(def(un|macro|subst|var) " p buf)
-			(setq form (read (cons buf p)))
-			(memq (car form) '(defun defmacro defsubst
-					    defvar defconst)))
-		   (set! form (format nil (if (assq 'interactive form)
-					      ;; Can be called as a command
-					      "(autoload%s '%s %S t)"
-					    "(autoload%s '%s %S)")
-				      (if (eq? (car form) 'defmacro)
-					  "-macro" "")
-				      (list-ref form 1) short-file-name)))
-		  ((and local-finder
-			(setq form (local-finder p buf short-file-name module))))
-		  ((looking-at "^[ \t]*\\(define-(\\S+) '(\\S+)" p buf)
-		   (set! form (format nil "(autoload-%s '%s '%s)"
-				      (expand-last-match "\\1")
-				      (expand-last-match "\\2") module)))
-		  (t (throw 'next)))
-	    (when (and form (line-fun form))
-	      (set! count (1+ count))
-	      (message form t))
-	    (with-buffer buf
-	      (let ((end (lisp-forward-sexp 1 p)))
-		(if end
-		    (set! p (re-search-forward "^" end))
-		  (set! p nil)))))))
+      (let loop ()
+	(set! p (re-search-forward "^[; \t]*###autoload[\t ]*(.*)$" p buf))
+	(when p 
+	  (set! form (expand-last-match "\\1"))
+	  (when (and form (not (equal? "" form)))
+	    (line-fun form)
+	    (set! count (1+ count))
+	    (message form t))
+	  (set! p (forward-line 1 p))
+	  (catch 'next
+	    (while (and p (looking-at "^[ \t]*\\(" p buf))
+	      (set! form nil)
+	      (cond ((and (looking-at "^[ \t]*\\(def(un|macro|subst|var) " p buf)
+			  (let ((tem (read (cons buf p))))
+			    (set! form tem)
+			    form)
+			  (memq (car form) '(defun defmacro defsubst
+					      defvar defconst)))
+		     (set! form (format nil (if (assq 'interactive form)
+						;; Can be called as a command
+						"(autoload%s '%s %S t)"
+					      "(autoload%s '%s %S)")
+					(if (eq? (car form) 'defmacro)
+					    "-macro" "")
+					(list-ref form 1) short-file-name)))
+		    ((and local-finder
+			  (let ((tem (local-finder
+				      p buf short-file-name module)))
+			    (set! form tem)
+			    t)))
+		    ((looking-at "^[ \t]*\\(define-(\\S+) '(\\S+)" p buf)
+		     (set! form (format nil "(autoload-%s '%s '%s)"
+					(expand-last-match "\\1")
+					(expand-last-match "\\2") module)))
+		    (t (throw 'next)))
+	      (when (and form (line-fun form))
+		(set! count (1+ count))
+		(message form t))
+	      (with-buffer buf
+		(let ((end (lisp-forward-sexp 1 p)))
+		  (if end
+		      (set! p (re-search-forward "^" end))
+		    (set! p nil))))))
+	  (loop)))
       count)))
 
 ;;;###autoload

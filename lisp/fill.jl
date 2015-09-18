@@ -107,7 +107,6 @@ and POS. When called interactively, POS is bound to the cursor position."
     (set! fill-prefix-width (pos-col (char-to-glyph-pos p)))
     (format t "Set fill prefix to %S" fill-prefix)))
 
-
 ;;;###autoload
 (defun fill-paragraph ()
   "Fills the current paragraph so that no lines are wider than fill-column."
@@ -130,11 +129,10 @@ and POS. When called interactively, POS is bound to the cursor position."
 (defun fill-area (start end)
   "Fills from START to END."
   (interactive "-m\nM")
-  (let
-      ((has-prefix (fill-has-prefix-p))
-       (line-start (start-of-line start))
-       (seen-non-blank nil)
-       goal line-end g-line-end)
+  (let ((has-prefix (fill-has-prefix-p))
+	(line-start (start-of-line start))
+	(seen-non-blank nil)
+	goal line-end g-line-end)
 
     ;; Make end into a mark so that it preserves its logical position
     (set! end (make-mark end))
@@ -172,10 +170,9 @@ and POS. When called interactively, POS is bound to the cursor position."
       (cond
        ((> (pos-col g-line-end) goal)
 	;; The current line is too long
-	(let
-	    ((p (re-search-backward fill-break-re
-				      (glyph-to-char-pos
-				       (pos goal (pos-line line-start))))))
+	(let ((p (re-search-backward fill-break-re
+				     (glyph-to-char-pos
+				      (pos goal (pos-line line-start))))))
 	  (when (and pos (/= (pos-col p) 0))
 	    (when (= (get-char p) #\space)
 	      (delete-area p (forward-char 1 p)))
@@ -187,12 +184,11 @@ and POS. When called interactively, POS is bound to the cursor position."
 	     (< (pos-col g-line-end) goal)
 	     (< (pos-line line-start) (pos-line (mark-pos end))))
 	;; The current line may be too short
-	(let*
-	    ((space (- goal (pos-col g-line-end) 1))
-	     (move-start (forward-line 1 line-start))
-	     (move-end (min (glyph-to-char-pos (pos space
-						    (pos-line move-start)))
-			    (end-of-line move-start))))
+	(let* ((space (- goal (pos-col g-line-end) 1))
+	       (move-start (forward-line 1 line-start))
+	       (move-end (min (glyph-to-char-pos (pos space
+						      (pos-line move-start)))
+			      (end-of-line move-start))))
 	  (if (>= move-end (mark-pos end))
 	      (set! move-end (mark-pos end))
 	    (set! move-end (re-search-backward fill-break-re move-end)))
@@ -269,11 +265,10 @@ the next line is started."
 ;; prefix
 (defun fill-check-line ()
   (when (>= (pos-col (char-to-glyph-pos (cursor-pos))) fill-column)
-    (let
-	((p (re-search-backward fill-break-re
-				  (glyph-to-char-pos
-				   (pos (1- fill-column)
-					(pos-line (cursor-pos)))))))
+    (let ((p (re-search-backward
+	      fill-break-re
+	      (glyph-to-char-pos (pos (1- fill-column)
+				      (pos-line (cursor-pos)))))))
       (when (and p (/= (pos-col p) 0))
 	(when (= (get-char p) #\space)
 	  (delete-area p (forward-char 1 p)))
@@ -289,25 +284,22 @@ the next line is started."
 (defun center-line (#!optional p)
   "Centre the line at POS."
   (interactive)
-  (let*
-      ((spos (indent-pos p))
-       (epos (char-to-glyph-pos (re-search-forward " *$" (start-of-line p))))
-       (len (- (pos-col epos) (pos-col spos))))
-    (cond
-      ((<= len 0))
-      ((> len fill-column)
-	(set-indent-pos (start-of-line p)))
-      (t
-	(set! spos (pos (quotient (- fill-column len) 2) (pos-line spos)))
-	(set-indent-pos spos)))))
+  (let* ((spos (indent-pos p))
+	 (epos (char-to-glyph-pos (re-search-forward " *$" (start-of-line p))))
+	 (len (- (pos-col epos) (pos-col spos))))
+    (cond ((<= len 0))
+	  ((> len fill-column)
+	   (set-indent-pos (start-of-line p)))
+	  (t
+	   (set! spos (pos (quotient (- fill-column len) 2) (pos-line spos)))
+	   (set-indent-pos spos)))))
 
 ;;;###autoload
 (defun center-paragraph (#!optional p)
   "Centre the paragraph surrounding POS."
   (interactive)
-  (let*
-      ((epos (forward-paragraph 1 p))
-       (spos (forward-paragraph -1 epos)))
+  (let* ((epos (forward-paragraph 1 p))
+	 (spos (forward-paragraph -1 epos)))
     (while (< spos epos)
       (center-line spos)
       (forward-line 1 spos))))
@@ -321,11 +313,12 @@ the next line is started."
 surrounding the cursor. When called interactively COUNT is taken from the
 prefix argument."
   (interactive "p")
-  (let*
-      ((start (paragraph-edges count))
-       (end (make-mark (forward-char -1 (cdr start)))))
+  (let* ((start (paragraph-edges count))
+	 (end (make-mark (forward-char -1 (cdr start)))))
     (set! start (car start))
-    (while (and (setq start (char-search-forward #\newline start))
-		(< start (mark-pos end)))
-      (delete-area start (forward-char 1 start))
-      (insert " " start))))
+    (let loop ()
+      (set! start (char-search-forward #\newline start))
+      (when (and start (< start (mark-pos end)))
+	(delete-area start (forward-char 1 start))
+	(insert " " start)
+	(loop)))))

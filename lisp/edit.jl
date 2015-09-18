@@ -264,7 +264,7 @@ If MOVE is t then the cursor is moved to the result."
   (interactive "@p")
   (unless number
     (set! number 1))
-  (unless p (setq p (cursor-pos)))
+  (unless p (set! p (cursor-pos)))
   (cond
     ((< number 0)
       ;; go backwards
@@ -272,22 +272,22 @@ If MOVE is t then the cursor is moved to the result."
 	(set! p (forward-char -1 p))
 	(when (looking-at word-not-regexp p)
 	  ;; not in word
-	  (unless (setq p (re-search-backward word-regexp p))
-	    (set! p (start-of-buffer))))
+	  (set! p (or (re-search-backward word-regexp p)
+		      (start-of-buffer))))
 	;; in middle of word
-	(unless (setq p (re-search-backward word-not-regexp p))
-	  (set! p (start-of-buffer)))
-	(setq p (re-search-forward word-regexp p)
-	      number (1+ number))))
+	(set! p (or (re-search-backward word-not-regexp p)
+		    (start-of-buffer)))
+	(set! p (re-search-forward word-regexp p))
+	(set! number (1+ number))))
     (t
       ;; forwards
       (while (/= number 0)
 	(when (looking-at word-not-regexp p)
 	  ;; already at end of a word
-	  (unless (setq p (re-search-forward word-regexp p))
-	    (set! p (end-of-buffer))))
-	(unless (setq p (re-search-forward word-not-regexp p))
-	  (set! p (end-of-buffer)))
+	  (set! p (or (re-search-forward word-regexp p)
+		      (end-of-buffer))))
+	(set! p (or (re-search-forward word-not-regexp p)
+		    (end-of-buffer)))
 	(set! number (1- number)))))
   p)
 
@@ -621,19 +621,18 @@ kill storage."
 (defvar yank-last-end nil)
 
 (defun yank-get-string (#!optional no-hooks)
-  (let
-      (tem)
-    (cond
-     ;; First call the pre-yank-hook. This is typically used by
-     ;; the window system to return the current selection
-     ((and (not no-hooks) (setq tem (call-hook 'pre-yank-hook nil 'or)))
-      (set! yank-last-item nil)
-      tem)
-     ((zero? (ring-size kill-ring))
-      (error "Nothing to yank"))
-     (t
+  ;; First call the pre-yank-hook. This is typically used by the window
+  ;; system to return the current selection
+  (let ((str (and (not no-hooks)
+		  (call-hook 'pre-yank-hook nil 'or))))
+    (if str
+	(progn
+	  (set! yank-last-item nil)
+	  str)
+      (if (zero? (ring-size kill-ring))
+	  (error "Nothing to yank"))
       (set! yank-last-item 0)
-      (killed-string)))))
+      (killed-string))))
 
 (defun yank (#!optional no-pre-yank-hooks)
   "Inserts text before the cursor. If running under X11, and a selection is
@@ -991,16 +990,15 @@ from the innermost outwards."
   "Return the position of the character underneath the mouse pointer in
 the current view. Returns nil if no such character can be found."
   (interactive "@")
-  (let
-      ((p (raw-mouse-pos)))
-    (when (and p (setq p (translate-pos-to-view p)) (posp p))
-      (display-to-char-pos p))))
+  (let ((p (raw-mouse-pos)))
+    (when p
+      (set! p (translate-pos-to-view p)))
+    (and (posp p) (display-to-char-pos p))))
 
 (defun mouse-view-pos ()
   "Return (VIEW . POS) defining the character position of the mouse, or nil."
-  (let*
-      ((p (raw-mouse-pos))
-       (mouse-view (find-view-by-pos p)))
+  (let* ((p (raw-mouse-pos))
+	 (mouse-view (find-view-by-pos p)))
     (when mouse-view
       (set! p (translate-pos-to-view p mouse-view))
       (when (posp p)
@@ -1011,9 +1009,8 @@ the current view. Returns nil if no such character can be found."
 the position, or nil if no position, or t if in the status line of the
 current view."
   (interactive)
-  (let*
-      ((raw-pos (raw-mouse-pos))
-       (mouse-view (find-view-by-pos raw-pos)))
+  (let* ((raw-pos (raw-mouse-pos))
+	 (mouse-view (find-view-by-pos raw-pos)))
     (when mouse-view
       (unless (eq? (current-view) mouse-view)
 	(set-current-view mouse-view))

@@ -196,14 +196,17 @@ type one of the following special commands,\n
        match)
     (add-hook 'unbound-key-hook query-replace-unbound-key-fun)
     (unwind-protect
-	(while (and (eq? query-replace-alive t)
-		    (setq match (re-search-forward
-				 query-replace-from nil nil case-fold-search)))
-	  (goto match)
-	  (set! query-replace-trace (cons match query-replace-trace))
-	  (catch 'query-replace
-	    (message query-replace-title)
-	    (recursive-edit)))
+	(let loop ()
+	  (when (eq? query-replace-alive t)
+	    (set! match (re-search-forward query-replace-from
+					   nil nil case-fold-search))
+	    (when match
+	      (goto match)
+	      (set! query-replace-trace (cons match query-replace-trace))
+	      (catch 'query-replace
+		(message query-replace-title)
+		(recursive-edit))
+	      (loop))))
       (with-buffer buf
 	(remove-hook 'unbound-key-hook query-replace-unbound-key-fun)))
     (message "Done.")

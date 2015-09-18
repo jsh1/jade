@@ -40,7 +40,7 @@ local mode.")
 
 (defvar popup-menus-from-kbd nil)
 
-(set-default 'popup-menus
+(variable-set-default! 'popup-menus
   '(("Files"
      ("Open file..." find-file)
      ("Open directory..." dired)
@@ -153,7 +153,7 @@ local mode.")
 
 (defun popup-menu ()
   (interactive)
-  (or (bound? 'popup-menu-from-spec)
+  (or (variable-bound? 'popup-menu-from-spec)
       (error "Popup menus not supported in this window system"))
   (set! popup-menus-pos (if (not popup-menus-from-kbd)
 			    (mouse-view-pos)

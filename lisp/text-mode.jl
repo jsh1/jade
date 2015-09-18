@@ -74,7 +74,7 @@ previous line, then works as normal. Local bindings in this mode are:\n
   (set! local-keymap nil)
   (set! major-mode nil)
   (set! major-mode-kill nil)
-  (when (and (bound? 'fill-prefix) (function? fill-prefix))
+  (when (and (variable-bound? 'fill-prefix) (function? fill-prefix))
     (set! fill-prefix nil))
   t)
 

@@ -97,10 +97,10 @@ in the status line."
     (mapcar symbol-name (apropos (concat #\^ (quote-regexp sexp))
 				 (if is-function
 				     (lambda (x)
-				       (and (bound? x)
+				       (and (variable-bound? x)
 					    (function?
-					     (symbol-value x))))
-				   bound?)))))
+					     (variable-ref x))))
+				   variable-bound?)))))
 
 
 ;; Expressions
@@ -125,16 +125,16 @@ in the status line."
       (cond
        ((= c #\")
 	;; move over string
-	(if (setq p (char-search-forward #\" (forward-char 1 p)))
-	    (while (= (get-char (forward-char -1 p)) #\\)
-	      (unless (setq p (char-search-forward #\" (forward-char 1 p)))
-		(error "String doesn't end!")))
-	  (error "String doesn't end!"))
+	(set! p (char-search-forward #\" (forward-char 1 p)))
+	(or p (error "String doesn't end!"))
+	(while (= (get-char (forward-char -1 p)) #\\)
+	  (set! p (char-search-forward #\" (forward-char 1 p)))
+	  (or p (error "String doesn't end!")))
 	(set! p (forward-char 1 p)))
        ((member c '(#\( #\[ #\<))
 	;; move over brackets
-	(unless (setq p (find-matching-bracket p))
-	  (error "Expression doesn't end!"))
+	(set! p (find-matching-bracket p))
+	(or p (error "Expression doesn't end!"))
 	(set! p (forward-char 1 p)))
        ((member c '(#\) #\]))
 	(error "End of containing sexp"))
@@ -156,11 +156,11 @@ in the status line."
       ((p orig-pos))
     (while (> number 0)
       ;; skip preceding white space
-      (unless (setq p (re-search-backward "[^\t\f\n ]" (forward-char -1 p)))
-	(error "No expression!"))
+      (set! p (re-search-backward "[^\t\f\n ]" (forward-char -1 p)))
+      (or p (error "No expression!"))
       (while (looking-at "^[\f\t ]*;|^[\f\t ]*$" (start-of-line p))
-	(unless (setq p (forward-line -1 p))
-	  (error "Beginning of buffer"))
+	(set! p (forward-line -1 p))
+	(or p (error "Beginning of buffer"))
 	(set! p (end-of-line p)))
       (when (if (/= (pos-line orig-pos) (pos-line p))
 		(looking-at ".*([\f\t ]+;|[\f\t ]*$)" (start-of-line p))
@@ -170,22 +170,22 @@ in the status line."
 	  ((c (get-char p)))
 	(cond
 	 ((member c '(#\) #\] #\>))
-	  (unless (setq p (find-matching-bracket p))
-	    (error "Brackets don't match"))
+	  (set! p (find-matching-bracket p))
+	  (or p (error "Brackets don't match"))
 	  (when (= c #\>)
 	    (forward-char -1 p)))
 	 ((= c #\")
-	  (if (setq p (char-search-backward #\" (forward-char -1 p)))
-	      (while (= (get-char (forward-char -1 p)) #\\)
-		(unless (setq p (char-search-backward #\" (forward-char -1 p)))
-		  (error "String doesn't start!")))
-	    (error "String doesn't start!")))
+	  (set! p (char-search-backward #\" (forward-char -1 p)))
+	  (or p (error "String doesn't start!"))
+	  (while (= (get-char (forward-char -1 p)) #\\)
+	    (set! p (char-search-backward #\" (forward-char -1 p)))
+	    (or p (error "String doesn't start!"))))
 	 ((member c '(#\( #\[))
 	  (error "Start of containing sexp"))
 	 (t
 	  ;; a symbol?
-	 (unless (setq p (re-search-backward "[^][\f\t\n ()'\"]+|^" p))
-	   (error "Symbol doesn't start??"))))
+	  (set! p (re-search-backward "[^][\f\t\n ()'\"]+|^" p))
+	  (or p (error "Symbol doesn't start??"))))
 	(while (member (get-char (forward-char -1 p)) '(#\' #\# #\` #\, #\@))
 	  (set! p (forward-char -1 p))))
       (set! number (1- number)))
@@ -217,17 +217,20 @@ in the status line."
 	;; Work back to the beginning of the containing sexp. The error-handler
 	;; catches the error that's signalled when the start is reached.
 	(condition-case nil
-	    (while (setq p (lisp-backward-sexp 1 p))
-	      (when (<= form-pos p)
-		(error "Infinite loop"))
-	      (when (zero? (pos-col p))
-		(set! sexp-ind (pos 0 (pos-line sexp-ind)))
-		(throw 'return sexp-ind))
-	      (set! form-pos p)
-	      (set! index (1+ index))
-	      (when (or (null? last-ind) (= (pos-line (car last-ind))
-					   (pos-line p)))
-		(set! last-ind (cons (char-to-glyph-pos p) last-ind))))
+	    (let loop ()
+	      (set! p (lisp-backward-sexp 1 p))
+	      (when p
+		(when (<= form-pos p)
+		  (error "Infinite loop"))
+		(when (zero? (pos-col p))
+		  (set! sexp-ind (pos 0 (pos-line sexp-ind)))
+		  (throw 'return sexp-ind))
+		(set! form-pos p)
+		(set! index (1+ index))
+		(when (or (null? last-ind) (= (pos-line (car last-ind))
+					      (pos-line p)))
+		  (set! last-ind (cons (char-to-glyph-pos p) last-ind)))
+		(loop)))
 	  (error))
 	;; If there weren't any previous sexps to indent against stop now
 	(unless (zero? index)

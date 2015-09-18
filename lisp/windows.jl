@@ -24,7 +24,7 @@
 (defmacro defface (name #!optional doc #!rest forms)
   "Create a face called NAME, the Lisp FORMS are evaluated to initialise it.
 If the symbol NAME is already bound, only the documentation property is set."
-  `(or (prog1 (bound? ',name)
+  `(or (prog1 (variable-bound? ',name)
 	 (defvar ,name (make-face ,(symbol-name name)) ,doc))
        (progn ,@forms)))
 

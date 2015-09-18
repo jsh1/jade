@@ -105,13 +105,16 @@ Local bindings in this mode are:\n
       ((tmp (prompt "Node name: ")))
     (when tmp
       (insert tmp)
-      (when (setq tmp (prompt "Next node: "))
+      (set! tmp (prompt "Next node: "))
+      (when tmp
 	(insert ", ")
 	(insert tmp)
-	(when (setq tmp (prompt "Previous node: "))
+	(set! tmp (prompt "Previous node: "))
+	(when tmp
 	  (insert ", ")
 	  (insert tmp)
-	  (when (setq tmp (prompt "Up node: "))
+	  (set! tmp (prompt "Up node: "))
+	  (when tmp
 	    (insert ", ")
 	    (insert tmp)))))))
 

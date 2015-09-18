@@ -224,10 +224,10 @@ results have been received.")
 
 (defun ispell-region-1 (function start end)
   (while (< start end)
-    (let
-	(w-start w-end word response)
-      (set! w-start (re-search-forward ispell-word-re start))
-      (if (and w-start (<= (setq w-end (match-end)) end))
+    (let ((w-start (re-search-forward ispell-word-re start))
+	  (w-end (match-end))
+	  word response)
+      (if (and w-start (<= w-end end))
 	  (if (and ispell-ignore-word-hook
 		   (call-hook ispell-ignore-word-hook
 			      (list word w-start w-end) 'or))
@@ -559,7 +559,7 @@ the cursor is placed in a misspelt word; they are,
 (defun ispell-get-misspelt-word ()
   (let
       ((e (get-extent)))
-    (while (and e (not (eq? (buffer-symbol-value 'ispell-misspelt e nil t) t)))
+    (while (and e (not (eq? (buffer-variable-ref 'ispell-misspelt e nil t) t)))
       (set! e (extent-parent e)))
     (and e (copy-area (extent-start e) (extent-end e)))))
 
@@ -569,7 +569,7 @@ the cursor."
   (interactive)
   (let
       ((e (get-extent)))
-    (while (and e (not (eq? (buffer-symbol-value 'ispell-misspelt e nil t) t)))
+    (while (and e (not (eq? (buffer-variable-ref 'ispell-misspelt e nil t) t)))
       (set! e (extent-parent e)))
     (or e (error "No misspelling here!"))
     (ispell-region (extent-start e) (extent-end e))))

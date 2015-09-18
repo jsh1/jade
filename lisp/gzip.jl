@@ -98,25 +98,24 @@ match well-known suffixes."
 
 ;; In write-file-hook
 (defun gzip-write-file (file-name buffer)
-  (let
-      ((rule (gzip-file-rule file-name)))
+  (let ((rule (gzip-file-rule file-name)))
     (when rule
-      (let
-	  ((modes (when (file-exists? file-name) (file-modes file-name)))
-	   (tmp-name (make-temp-name))
-	   dst-file proc)
+      (let ((modes (when (file-exists? file-name) (file-modes file-name)))
+	    (tmp-name (make-temp-name))
+	    dst-file proc)
 	(backup-file file-name)
-	(when (and (with-buffer buffer
-		     (write-buffer-contents tmp-name))
-		   (setq dst-file (open-file file-name 'write)))
-	  (unwind-protect
-	      (progn
-		(set! proc (make-process dst-file))
-		(message (concat "Compressing `" file-name "'... ") t)
-		(when (/= (apply call-process proc tmp-name
-				 (list-ref rule 2)) 0)
-		  (signal 'file-error
-			  (list "Can't compress file" tmp-name))))
+	(when (with-buffer buffer
+		(write-buffer-contents tmp-name))
+	  (set! dst-file (open-file file-name 'write))
+	  (when dst-file
+	    (unwind-protect
+		(progn
+		  (set! proc (make-process dst-file))
+		  (message (concat "Compressing `" file-name "'... ") t)
+		  (when (/= (apply call-process proc tmp-name
+				   (list-ref rule 2)) 0)
+		    (signal 'file-error
+			    (list "Can't compress file" tmp-name)))))
 	    (close-file dst-file)
 	    (delete-file tmp-name))
 	  (when modes

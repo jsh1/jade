@@ -46,15 +46,18 @@
 and END (the characters at opposite corners)."
   (when (> start end)
     ;; Swap start and end
-    (set! start (prog1 end (setq end start))))
-  (let
-      ((start-col (pos-col (char-to-glyph-pos start)))
-       (end-col (pos-col (char-to-glyph-pos end)))
-       (row (pos-line end))
-       strings)
+    (let ((tem end))
+      (set! end start)
+      (set! start tem)))
+  (let ((start-col (pos-col (char-to-glyph-pos start)))
+	(end-col (pos-col (char-to-glyph-pos end)))
+	(row (pos-line end))
+	strings)
     (when (> start-col end-col)
       ;; Swap start-col and end-col
-      (set! start-col (prog1 end-col (setq end-col start-col))))
+      (let ((tem end-col))
+	(set! end-col start-col)
+	(set! start-col tem)))
     (while (>= row (pos-line start))
       (set! strings (cons (copy-area (glyph-to-char-pos (pos start-col row))
 				     (glyph-to-char-pos (pos end-col row)))
@@ -68,14 +71,17 @@ and END (the characters at opposite corners)."
 at opposite corners)."
   (when (> start end)
     ;; Swap start and end
-    (set! start (prog1 end (setq end start))))
-  (let
-      ((start-col (pos-col (char-to-glyph-pos start)))
-       (end-col (pos-col (char-to-glyph-pos end)))
-       (row (pos-line end)))
+    (let ((tem end))
+      (set! end start)
+      (set! start tem)))
+  (let ((start-col (pos-col (char-to-glyph-pos start)))
+	(end-col (pos-col (char-to-glyph-pos end)))
+	(row (pos-line end)))
     (when (> start-col end-col)
       ;; Swap start-col and end-col
-      (set! start-col (prog1 end-col (setq end-col start-col))))
+      (let ((tem end-col))
+	(set! end-col start-col)
+	(set! start-col tem)))
     (while (>= row (pos-line start))
       (delete-area (glyph-to-char-pos (pos start-col row))
 		   (glyph-to-char-pos (pos end-col row)))

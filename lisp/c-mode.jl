@@ -132,7 +132,7 @@ contain.")
   (set! c-style name)
   (let ((style (cdr (assoc c-style c-styles))))
     (when style
-      (mapc (lambda (x) (set (car x) (cdr x))) style))))
+      (mapc (lambda (x) (variable-set! (car x) (cdr x))) style))))
 
 ;;;###autoload
 (defun c-mode ()
@@ -147,7 +147,7 @@ Commands defined by this mode are:\n
   (when c-style
     (let ((style (cdr (assoc c-style c-styles))))
       (when style
-	(mapc (lambda (x) (set (car x) (cdr x))) style))))
+	(mapc (lambda (x) (variable-set! (car x) (cdr x))) style))))
   (set! mode-name "C")
   (set! major-mode 'c-mode)
   (set! major-mode-kill kill-all-local-variables)
@@ -204,18 +204,20 @@ Commands defined by this mode are:\n
 
 ;; Attempt to find the previous statement. perl-mode also uses this
 (defun c-backward-stmt (p #!optional skip-blocks)
-  (let
-      (stmt-pos back-1-pos)
+  (let (stmt-pos back-1-pos)
     (condition-case nil
-	(while (setq p (c-backward-exp 1 p (not skip-blocks)))
-	  (cond
-	   ((null? back-1-pos)
-	    (unless (= (get-char p) #\{)
-	      (set! back-1-pos p)))
-	   ((/= (pos-line back-1-pos) (pos-line p))
-	    ;; Gone past the start of this line, break the loop
-	    (error "Ignored")))
-	  (set! stmt-pos p))
+	(let loop ()
+	  (set! p (c-backward-exp 1 p (not skip-blocks)))
+	  (when p 
+	    (cond
+	     ((null? back-1-pos)
+	      (unless (= (get-char p) #\{)
+		(set! back-1-pos p)))
+	     ((/= (pos-line back-1-pos) (pos-line p))
+	      ;; Gone past the start of this line, break the loop
+	      (error "Ignored")))
+	    (set! stmt-pos p)
+	    (loop)))
       (error))
     stmt-pos))
 
@@ -224,13 +226,17 @@ Commands defined by this mode are:\n
 (defun c-balance-ifs (p #!optional depth)
   (unless depth
     (set! depth 1))
-  (while (and (/= depth 0) (setq p (c-backward-stmt p t)))
-    (cond
-     ((and (looking-at "else[\t ]*" p)
-	   (not (looking-at "[\t ]*if[\t ]*\\(" (match-end))))
-      (set! depth (1+ depth)))
-     ((looking-at "if" p)
-      (set! depth (1- depth)))))
+  (let loop ()
+    (when (/= depth 0)
+      (set! p (c-backward-stmt p t))
+      (when p
+	(cond
+	 ((and (looking-at "else[\t ]*" p)
+	       (not (looking-at "[\t ]*if[\t ]*\\(" (match-end))))
+	  (set! depth (1+ depth)))
+	 ((looking-at "if" p)
+	  (set! depth (1- depth))))
+	(loop))))
   (when (zero? depth)
     p))
 
@@ -304,14 +310,14 @@ Commands defined by this mode are:\n
 	    ;; A continuation?
 	    (when (and (looking-at "else[\t ]*" prev)
 		       (not (looking-at "[\t ]*if[\t ]*\\(" (match-end))))
-	      (unless (setq prev (c-balance-ifs prev))
-		(error "Beginning of buffer"))
+	      (set! prev (c-balance-ifs prev))
+	      (or prev (error "Beginning of buffer"))
 	      (let
 		  ((tmp (c-backward-stmt prev)))
 		(while (and tmp (looking-at "if[\t ]*\\(" tmp))
 		  (set! prev tmp)
-		  (unless (setq tmp (c-backward-stmt tmp))
-		    (error "Beginning of buffer")))))
+		  (set! tmp (c-backward-stmt tmp))
+		  (or tmp (error "Beginning of buffer")))))
 	    (set! exp-ind (pos (pos-col (char-to-glyph-pos prev))
 			       (pos-line exp-ind))))))
 
@@ -386,16 +392,16 @@ Commands defined by this mode are:\n
 	(cond
 	 ((member c '(#\" #\'))
 	  ;; move over string/character
-	  (if (setq p (char-search-forward c (forward-char 1 p)))
-	      (while (= (get-char (forward-char -1 p)) #\\)
-		(unless (setq p (char-search-forward c (forward-char 1 p)))
-		  (error "String doesn't end!")))
-	    (error "String doesn't end!"))
+	  (set! p (char-search-forward c (forward-char 1 p)))
+	  (or p (error "String doesn't end!"))
+	  (while (= (get-char (forward-char -1 p)) #\\)
+	    (set! p (char-search-forward c (forward-char 1 p)))
+	    (or p (error "String doesn't end!")))
 	  (set! p (forward-char 1 p)))
 	 ((member c '(#\( #\[ #\{))
 	  ;; move over brackets
-	  (unless (setq p (find-matching-bracket p))
-	    (error "Expression doesn't end!"))
+	  (set! p (find-matching-bracket p))
+	  (or p (error "Expression doesn't end!"))
 	  (set! p (forward-char 1 p)))
 	 ((member c '(#\, #\; #\:))
 	  (set! p (forward-char 1 p))
@@ -406,9 +412,8 @@ Commands defined by this mode are:\n
 	  ;; a symbol?
 	  (if (looking-at "[a-zA-Z0-9_$@]+" p)
 	      (set! p (match-end))
-	    (unless (setq p (re-search-forward "[][$@a-zA-Z0-9_ \t\f(){}'\"]"
-						p))
-	      (error "Can't classify expression"))
+	    (set! p (re-search-forward "[][$@a-zA-Z0-9_ \t\f(){}'\"]" p))
+	    (or p (error "Can't classify expression"))
 	    (set! number (1+ number))))))
       (set! number (1- number))))
   p)
@@ -423,19 +428,17 @@ Commands defined by this mode are:\n
        tmp)
     (while (> number 0)
       ;; skip preceding white space
-      (when (or (equal? p (start-of-buffer))
-		(not (setq p (re-search-backward "[^\t\f\n ]"
-						 (forward-char -1 p)))))
-	(error "No expression!"))
+      (and (equal? p (start-of-buffer)) (error "No expression!"))
+      (set! p (re-search-backward "[^\t\f\n ]" (forward-char -1 p)))
+      (or p (error "No expression!"))
       (set! tmp (forward-char -1 p))
       (while (looking-at "\\*/" tmp)
 	;; comment to skip
-	(unless (setq tmp (re-search-backward "/\\*" tmp))
-	  (error "Comment doesn't start!"))
-	(when (or (equal? tmp (start-of-buffer))
-		  (not (setq tmp (re-search-backward "[^\t\f\n ]"
-						   (forward-char -1 tmp)))))
-	  (error "Beginning of buffer"))
+	(set! tmp (re-search-backward "/\\*" tmp))
+	(or tmp (error "Comment doesn't start!"))
+	(and (equal? tmp (start-of-buffer)) (error "Beginning of buffer"))
+	(set! tmp (re-search-backward "[^\t\f\n ]" (forward-char -1 tmp)))
+	(or tmp (error "Beginning of buffer"))
 	(set! p tmp))
       ;; Check for a cpp line
       (if (looking-at "^[\t ]*#" (start-of-line p))
@@ -445,14 +448,14 @@ Commands defined by this mode are:\n
 	  (cond
 	   ((member c '(#\) #\] #\}))
 	    (when (or (/= c #\}) (not no-blocks))
-	      (unless (setq p (find-matching-bracket p))
-		(error "Brackets don't match"))))
+	      (set! p (find-matching-bracket p))
+	      (or p (error "Brackets don't match"))))
 	   ((member c '(#\" #\'))
-	    (if (setq p (char-search-backward c (forward-char -1 p)))
-		(while (= (get-char (forward-char -1 p)) #\\)
-		  (unless (setq p (char-search-backward c (forward-char -1 p)))
-		    (error "String doesn't start!")))
-	      (error "String doesn't start!")))
+	    (set! p (char-search-backward c (forward-char -1 p)))
+	    (or p (error "String doesn't start!"))
+	    (while (= (get-char (forward-char -1 p)) #\\)
+	      (set! p (char-search-backward c (forward-char -1 p)))
+	      (or p (error "String doesn't start!"))))
 	   ((member c '(#\; #\: #\,))
 	    ;; loop again
 	    (set! number (1+ number)))
@@ -461,13 +464,10 @@ Commands defined by this mode are:\n
 	   (t
 	    ;; a symbol?
 	    (if (looking-at "[$@a-zA-Z0-9_]" p)
-		(unless (setq p (re-search-backward
-				   "(^#[\t ]*|)[$@a-zA-Z0-9_]+" p))
-		  (error "Can't classify expression"))
+		(progn
+		  (set! p (re-search-backward "(^#[\t ]*|)[$@a-zA-Z0-9_]+" p))
+		  (or p (error "Can't classify expression")))
 	      ;; Assume that it's some extraneous piece of punctuation..
-;	      (unless (setq p (re-search-backward
-;				 "[][$@a-zA-Z0-9_ \t\f(){}'\"]" p))
-;		(error "Can't classify expression"))
 	      (set! number (1+ number)))))
 	  (when (member (get-char (forward-char -1 p))
 			(if (not c-objective-c)

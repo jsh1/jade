@@ -30,7 +30,7 @@
 	    (let
 		(label item)
 	      (when (and cell (symbol? (car cell)))
-		(set! cell (symbol-value (car cell))))
+		(set! cell (variable-ref (car cell))))
 	      (unless (null? cell)
 		(set! label (car cell))
 		(if (function? (cdr cell))

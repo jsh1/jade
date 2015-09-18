@@ -29,15 +29,15 @@
 	      (let
 		  (label item)
 		(when (and cell (symbol? (car cell)))
-		  (setq cell (symbol-value (car cell))))
+		  (setq cell (variable-ref (car cell))))
 		(if (null? cell)
 		    (setq item (gtk-menu-item-new))
 		  (setq label (car cell))
 		  (cond ((function? (cdr cell))
 			 (setq cell (funcall (cdr cell))))
 			((and (symbol? (cdr cell))
-			      (function? (symbol-value (cdr cell))))
-			 (setq cell (funcall (symbol-value (cdr cell)))))
+			      (function? (variable-ref (cdr cell))))
+			 (setq cell (funcall (variable-ref (cdr cell)))))
 			(t
 			 (setq cell (cdr cell))))
 		  (cond

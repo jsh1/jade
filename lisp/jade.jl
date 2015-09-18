@@ -38,7 +38,7 @@
 (load "edit")
 
 ;; ignore file errors on stdio streams
-(when (bound? 'set-file-ignore-errors)
+(when (variable-bound? 'set-file-ignore-errors)
   (set-file-ignore-errors (stdin-file) t)
   (set-file-ignore-errors (stdout-file) t)
   (set-file-ignore-errors (stderr-file) t))
@@ -84,24 +84,22 @@
 (set-buffer-modified default-buffer nil)
 
 ;; Use all arguments which are left.
-(let
-    (arg)
-  (while (setq arg (car *command-line-args*))
+(do () ((null? *command-line-args*))
+  (let ((arg (car *command-line-args*)))
     (set! *command-line-args* (cdr *command-line-args*))
-    (cond
-      ((equal? "-f" arg)
-       (set! arg (car *command-line-args*))
-       (set! *command-line-args* (cdr *command-line-args*))
-       ((symbol-value (read-from-string arg))))
-      ((equal? "-l" arg)
-       (set! arg (car *command-line-args*))
-       (set! *command-line-args* (cdr *command-line-args*))
-       (cond ((file-exists? arg)
-	      (load arg nil t t))
-	     ((string-match "\\.jlc?$" arg)
-	      (load arg))
-	     (t (require (intern arg)))))
-      ((equal? "-q" arg)
-       (throw 'quit 0))
-      (t
-       (find-file arg)))))
+    (cond ((equal? "-f" arg)
+	   (set! arg (car *command-line-args*))
+	   (set! *command-line-args* (cdr *command-line-args*))
+	   ((variable-ref (read-from-string arg))))
+	  ((equal? "-l" arg)
+	   (set! arg (car *command-line-args*))
+	   (set! *command-line-args* (cdr *command-line-args*))
+	   (cond ((file-exists? arg)
+		  (load arg nil t t))
+		 ((string-match "\\.jlc?$" arg)
+		  (load arg))
+		 (t (require (intern arg)))))
+	  ((equal? "-q" arg)
+	   (throw 'quit 0))
+	  (t
+	   (find-file arg)))))

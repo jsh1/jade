@@ -910,7 +910,7 @@ nil).
 
 The special property `local-variables' is an alist of (SYMBOL . repv) pairs,
 each defining the value of the variable named SYMBOL in the extent. See
-the `extent-set' and `buffer-symbol-value' functions.
+the `extent-set' and `buffer-variable-ref' functions.
 
 If the special property `catch-variables' is non-nil, any buffer-local
 variables (that don't have a permanent-local property) set from a
@@ -985,10 +985,10 @@ Get the value of PROPERTY (a symbol) at POSITION in BUFFER.
     return Fextent_get(e, prop);
 }
 
-DEFUN("buffer-symbol-value", Fbuffer_symbol_value, Sbuffer_symbol_value,
+DEFUN("buffer-variable-ref", Fbuffer_symbol_value, Sbuffer_symbol_value,
       (repv symbol, repv pos, repv tx, repv no_err), rep_Subr4) /*
-::doc:buffer-symbol-value::
-buffer-symbol-value SYMBOL [POSITION | EXTENT] [BUFFER] [NO-ERROR-IF-VOID]
+::doc:buffer-variable-ref::
+buffer-variable-ref SYMBOL [POSITION | EXTENT] [BUFFER] [NO-ERROR-IF-VOID]
 
 Return the local value of the variable named by SYMBOL at POSITION in
 BUFFER. Alternatively, if an extent is given as the second argument

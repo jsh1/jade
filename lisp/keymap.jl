@@ -44,7 +44,7 @@ keymaps, i.e. all prefix keys are ignored.")
 	  (set! maps (cons tem maps)))
 	(set! e (extent-parent e)))
       (while minor
-	(when (symbol-value (car (car minor)))
+	(when (variable-ref (car (car minor)))
 	  (set! maps (cons (cdr (car minor)) maps)))
 	(set! minor (cdr minor)))
       (when local-keymap
@@ -54,7 +54,7 @@ keymaps, i.e. all prefix keys are ignored.")
       (mapcar (lambda (km)
 		(if (symbol? km)
 		    ;; dereference the symbol in the correct buffer
-		    (symbol-value km)
+		    (variable-ref km)
 		  km))
 	      (reverse! maps)))))
 
@@ -85,7 +85,7 @@ binding, or nil if there was no prefix."
 	(unless (memq keymap done-list)
 	  (set! done-list (cons keymap done-list))
 	  (when (symbol? keymap)
-	    (set! keymap (with-buffer buffer (symbol-value keymap))))
+	    (set! keymap (with-buffer buffer (variable-ref keymap))))
 	  (when (keymapp keymap)
 	    (if (vector? keymap)
 		(let
@@ -101,13 +101,13 @@ binding, or nil if there was no prefix."
 	  (cond
 	   ((eq? k 'keymap))		;An inherited sparse keymap
 	    ((or (and (symbol? (car k))
-		      (keymapp (symbol-value (car k) t)))
+		      (keymapp (variable-ref (car k) t)))
 		 (eq? (car (car k)) 'next-keymap-path))
 	     ;; A prefix key
 	     (when map-keymap-recursively
 	       (let ((this-list (if (symbol? (car k))
 				    (list (with-buffer buffer
-					    (symbol-value (car k) t)))
+					    (variable-ref (car k) t)))
 				  (with-buffer buffer
 				    (eval (list-ref (car k) 1)))))
 		     (event-str (event-name (cdr k))))
@@ -249,7 +249,7 @@ would invoke."
       (set! command (lookup-event-binding event))
       (if command
 	  (cond ((and (symbol? command)
-		      (eq? (symbol-value command t) 'keymap))
+		      (eq? (variable-ref command t) 'keymap))
 		 ;; a prefix key
 		 (set! path (list command)))
 		((eq? (car command) 'next-keymap-path)
