@@ -33,7 +33,7 @@ SRCS :=	buffers.c commands.c edit.c editcommands.c extent.c faces.c files.c \
 
 X11_SRCS := x11_keys.c x11_main.c x11_misc.c x11_windows.c
 GTK_SRCS := gtk_jade.c gtk_keys.c gtk_main.c gtk_select.c
-MAC_SRCS := mac_keys.m mac_main.m mac_runloop.m mac_windows.m
+MAC_SRCS := mac_keys.m mac_main.m mac_windows.m
 
 SRCS :=	$(SRCS) $($(windowsys)_SRCS)
 OBJS := $(patsubst %.c,%.o,$(filter %.c,$(SRCS))) \

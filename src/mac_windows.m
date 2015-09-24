@@ -31,6 +31,11 @@ static bool new_window_no_show = FALSE;
 
 static int window_count;
 
+DEFSYM(mac_runloop, "mac.runloop");
+
+static void (*set_needs_redisplay)(void);
+static bool (*defer_event)(NSView *view, NSEvent *e);
+
 
 @implementation JadeView
 
@@ -144,7 +149,7 @@ flip_y (JadeView *view, int y)
     curr_win = _win;
     curr_vw = _win->current_view;
     Fdelete_window(Qnil);
-    mac_needs_redisplay = true;
+    (*set_needs_redisplay)();
     return NO;
 }
 
@@ -156,13 +161,13 @@ flip_y (JadeView *view, int y)
 - (void)windowDidBecomeKey:(NSNotification *)n
 {
     _has_focus = TRUE;
-    mac_needs_redisplay = true;
+    (*set_needs_redisplay)();
 }
 
 - (void)windowDidResignKey:(NSNotification *)n
 {
     _has_focus = FALSE;
-    mac_needs_redisplay = true;
+    (*set_needs_redisplay)();
 }
 
 - (void)drawRect:(NSRect)r
@@ -180,7 +185,7 @@ flip_y (JadeView *view, int y)
 
     garbage_glyphs(_win, x, y, width, height);
 
-    mac_needs_redisplay = true;
+    (*set_needs_redisplay)();
 }
 
 - (void)handleEvent:(NSEvent *)e
@@ -190,7 +195,7 @@ flip_y (JadeView *view, int y)
 
     /* May need to defer this event until later. */
 
-    if (mac_defer_event (self, e))
+    if ((*defer_event)(self, e))
 	return;
 
     curr_win = _win;
@@ -217,7 +222,7 @@ flip_y (JadeView *view, int y)
 	undo_end_of_command();
     }
 
-    mac_needs_redisplay = true;
+    (*set_needs_redisplay)();
 }
 
 - (void)mouseMoved:(NSEvent *)e {[self handleEvent:e];}
@@ -244,7 +249,7 @@ flip_y (JadeView *view, int y)
     _tracking_tag = [self addTrackingRect:[self bounds]
 		     owner:self userData:nil assumeInside:NO];
 
-    mac_needs_redisplay = true;
+    (*set_needs_redisplay)();
 }
 
 - (void)mouseEntered:(NSEvent *)e
@@ -852,5 +857,15 @@ sys_windows_init(void)
     rep_mark_static (&_pasteboard_data);
     rep_mark_static (&_pasteboard_start);
     rep_mark_static (&_pasteboard_end);
-    mac_runloop_init ();
+
+    rep_INTERN(mac_runloop);
+    Frequire(Qmac_runloop);
+    set_needs_redisplay =
+      rep_find_dl_symbol(Qmac_runloop, "mac_set_needs_display");
+    defer_event = rep_find_dl_symbol(Qmac_runloop, "mac_defer_event");
+
+    if (!set_needs_redisplay || !defer_event) {
+      fprintf(stderr, "error: librep does not support mac.runloop module\n");
+      exit(1);
+    }
 }

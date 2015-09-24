@@ -1,5 +1,8 @@
 2015-09-24  John Harper  <jsh@unfactored.org>
 
+	* mac_windows.m, Makefile.in: deleted mac runloop code, moved
+	into librep
+
 	* extent.c (deref_local_symbol): don't crash if no current view
 	yet
 
