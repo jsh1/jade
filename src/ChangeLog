@@ -1,3 +1,8 @@
+2015-09-24  John Harper  <jsh@unfactored.org>
+
+	* extent.c (deref_local_symbol): don't crash if no current view
+	yet
+
 2015-09-18  John Harper  <jsh@unfactored.org>
 
 	* extent.c: rename buffer-symbol-value -> buffer-variable-ref

@@ -1028,7 +1028,10 @@ is signalled.
 static repv
 deref_local_symbol (repv sym)
 {
-    return Fbuffer_symbol_value (sym, Qnil, Qnil, Qt);
+    if (curr_vw)
+	return Fbuffer_symbol_value (sym, Qnil, Qnil, Qt);
+    else
+	return rep_void;
 }
 
 DEFUN("extent-set", Fextent_set, Sextent_set,
