@@ -1,3 +1,7 @@
+2015-09-24  John Harper  <jsh@unfactored.org>
+
+	* lisp-mode.jl: added let-escape indentation details
+
 2015-09-18  John Harper  <jsh@unfactored.org>
 
 	* yacc-mode.jl, windows.jl, text-mode.jl, texinfo-mode.jl,
