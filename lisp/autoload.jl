@@ -129,9 +129,6 @@
 (autoload 'dired-mode "dired")
 (load "dired-hooks")
 (autoload 'pwd-prompt "pwd-prompt")
-(structure () (open rep rep.structures)
-  (structure-define (get-structure 'rep.system) 'pwd-prompt
-		    (%structure-ref (get-structure 'jade) 'pwd-prompt)))
 (autoload 'telnet "telnet" t)
 (autoload 'rlogin "telnet" t)
 (autoload 'cvs-update "cvs" t)

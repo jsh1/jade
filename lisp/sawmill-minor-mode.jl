@@ -43,11 +43,11 @@
 (defun smm-identify-module (#!optional point buf)
   "Return the name of the Lisp module that the cursor is in."
   (if (or (re-search-backward
-	   "\\(define-structure[ \t\n]+(.+?)[ \t\n]" point buf)
+	   "\\(define-module[ \t\n]+(.+?)[ \t\n]" point buf)
 	  (re-search-backward
 	   "\\(declare \\(in-module[ \t\n]+(.+?)[ \t\n]*\\)" point buf)
 	  (re-search-forward
-	   "\\(define-structure[ \t\n]+(.+?)[ \t\n]" point buf)
+	   "\\(define-module[ \t\n]+(.+?)[ \t\n]" point buf)
 	  (re-search-forward
 	   "\\(declare \\(in-module[ \t\n]+(.+?)[ \t\n]" point buf))
       (intern (expand-last-match "\\1"))

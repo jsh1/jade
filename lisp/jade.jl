@@ -22,7 +22,7 @@
 
 (message "Initialising; wait..." t)
 
-(set! *user-structure* 'jade)
+(set! *user-module* 'jade)
 
 (require 'rep.regexp)
 (require 'rep.system)

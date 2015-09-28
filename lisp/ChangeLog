@@ -1,3 +1,8 @@
+2015-09-28  John Harper  <jsh@unfactored.org>
+
+	* sawmill-minor-mode.jl, pwd-prompt.jl, lisp-mode.jl, jade.jl,
+	autoload.jl: updated for librep changes
+
 2015-09-24  John Harper  <jsh@unfactored.org>
 
 	* lisp-mode.jl: added let-escape indentation details

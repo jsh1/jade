@@ -316,9 +316,9 @@ in the status line."
 (put 'define 'lisp-indent 1)
 (put 'do 'lisp-indent 2)
 
-(put 'define-structure 'lisp-indent '3)
+(put 'define-module 'lisp-indent '3)
 (put 'define-interface 'lisp-indent '1)
-(put 'structure 'lisp-indent '2)
+(put 'module 'lisp-indent '2)
 (put 'define-record-type 'lisp-indent 'defun)
 (put 'define-record-discloser 'lisp-indent 'defun)
 (put 'define-self-test 'lisp-indent 'defun)

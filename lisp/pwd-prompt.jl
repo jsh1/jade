@@ -46,6 +46,6 @@ contents of the prompt will be masked out whilst being entered."
     (prompt title)))
 
 ;; replace rep.system#pwd-prompt with Jade's implementation
-(structure () (open rep rep.structures)
-  (structure-define (get-structure 'rep.system) 'pwd-prompt
-		    (%structure-ref (get-structure 'jade) 'pwd-prompt)))
+(module () (open rep rep.structures)
+  (structure-define (find-structure 'rep.system) 'pwd-prompt
+		    (structure-ref (find-structure 'jade) 'pwd-prompt)))
