@@ -1,3 +1,8 @@
+2015-10-20  John Harper  <jsh@unfactored.org>
+
+	* swift-mode.jl, modes.jl, c-mode.jl, autoload.jl: added simple
+	Swift mode; extended C functions to skip single-line comments
+
 2015-09-28  John Harper  <jsh@unfactored.org>
 
 	* sawmill-minor-mode.jl, pwd-prompt.jl, lisp-mode.jl, jade.jl,

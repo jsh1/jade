@@ -83,6 +83,7 @@
     ("\\.sh$|^sh(ell)?$" . sh-mode)
     ("\\.p[lm]$|^perl$" . perl-mode)
     ("\\.js$" . javascript-mode)
+    ("\\.swift$" . swift-mode)
     ("\\.y$|^yacc$" . yacc-mode)
     ("\\.(m|mm)$|^objective-c$" . objective-c-mode))
   "List of all major modes which can be enabled by loading a file into
@@ -375,10 +376,11 @@ or insert a tab."
   "Find the end of the current function definition."
   (interactive "@")
   (or mode-defun-header (error "Functions undefined in this mode"))
-  (if mode-defun-footer
-      (and (re-search-forward mode-defun-footer)
-	   (match-end))
-    (forward-exp 1 (start-of-defun))))
+  (if (string? mode-defun-footer)
+      (and (re-search-forward mode-defun-footer) (match-end))
+    (if (function? mode-defun-footer)
+	(mode-defun-footer (start-of-defun))
+      (forward-exp 1 (start-of-defun)))))
 
 (defun mark-defun ()
   "Mark the current function definition as a block."

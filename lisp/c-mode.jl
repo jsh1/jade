@@ -156,7 +156,7 @@ Commands defined by this mode are:\n
   (set! mode-forward-exp c-forward-exp)
   (set! mode-backward-exp c-backward-exp)
   (set! mode-defun-header "^([a-zA-Z0-9:_]+)[\t ]*\\([^}]+\n{")
-  (set! mode-defun-footer "^}")
+  (set! mode-defun-footer c-end-of-defun)
   (set! paragraph-separate "^[\n\t\f ]*\n")
   (set! paragraph-start paragraph-separate)
   (set! local-ctrl-c-keymap c-mode-ctrl-c-keymap)
@@ -202,7 +202,8 @@ Commands defined by this mode are:\n
   "Indent the line at POS (or the cursor) assuming that it's C source code."
   (set-indent-pos (c-indent-pos p)))
 
-;; Attempt to find the previous statement. perl-mode also uses this
+;; Attempt to find the previous statement. Also used by perl/swift modes
+
 (defun c-backward-stmt (p #!optional skip-blocks)
   (let (stmt-pos back-1-pos)
     (condition-case nil
@@ -359,7 +360,7 @@ Commands defined by this mode are:\n
       (pos (pos-col exp-ind) (pos-line line-pos)))))
 
 
-;; Movement over C expressions. perl-mode also uses these functions
+;; Movement over C expressions. Also used by perl/swift modes.
 ;; (that's why they allow $ and @ characters in symbols)
 
 (defun c-forward-exp (#!optional number p)
@@ -367,15 +368,7 @@ Commands defined by this mode are:\n
     (set! number 1))
   (while (> number 0)
     ;; first, skip empty lines & comments
-    (while (looking-at "[\t\f ]*$|[\t\f ]*/\\*.*$" p)
-      (if (looking-at "[\t\f ]*/\\*" p)
-	  (progn
-	    (unless (re-search-forward "\\*/" p)
-	      (error "Comment doesn't end!"))
-	    (set! p (match-end)))
-	(set! p (forward-line 1 (start-of-line p)))
-	(when (> p (end-of-buffer))
-	  (error "End of buffer"))))
+    (set! p (c-skip-forward-whitespace-comment p))
     ;; Check for a cpp line
     (if (looking-at "^[\t ]*#" (start-of-line p))
 	(set! p (end-of-line p))
@@ -424,22 +417,11 @@ Commands defined by this mode are:\n
   (unless orig-pos 
     (set! orig-pos (cursor-pos)))
   (let
-      ((p orig-pos)
-       tmp)
+      ((p orig-pos))
     (while (> number 0)
-      ;; skip preceding white space
-      (and (equal? p (start-of-buffer)) (error "No expression!"))
-      (set! p (re-search-backward "[^\t\f\n ]" (forward-char -1 p)))
-      (or p (error "No expression!"))
-      (set! tmp (forward-char -1 p))
-      (while (looking-at "\\*/" tmp)
-	;; comment to skip
-	(set! tmp (re-search-backward "/\\*" tmp))
-	(or tmp (error "Comment doesn't start!"))
-	(and (equal? tmp (start-of-buffer)) (error "Beginning of buffer"))
-	(set! tmp (re-search-backward "[^\t\f\n ]" (forward-char -1 tmp)))
-	(or tmp (error "Beginning of buffer"))
-	(set! p tmp))
+      ;; skip preceding white space and comments
+      (set! p (or (c-skip-backward-whitespace-comment p)
+		  (error "No expression!")))
       ;; Check for a cpp line
       (if (looking-at "^[\t ]*#" (start-of-line p))
 	  (set! p (start-of-line p))
@@ -477,6 +459,42 @@ Commands defined by this mode are:\n
 	    (set! p (forward-char -1 p))))
 	(set! number (1- number))))
     p))
+
+(defun c-end-of-defun (p)
+  (and (search-forward "{" p)
+       (c-forward-exp 1 (match-start))))
+
+(defun c-skip-forward-whitespace-comment (p)
+  (while (looking-at "[\t\f ]*$|[\t\f ]*/\\*.*$|[\t\f ]*//" p)
+    (cond ((looking-at "[\t\f ]*/\\*" p)
+	   (unless (re-search-forward "\\*/" p)
+	     (error "Comment doesn't end!"))
+	   (set! p (match-end)))
+	  ((looking-at "[\t\f ]*//" p)
+	   (set! p (forward-char (end-of-line p))))
+	  (t (set! p (forward-line 1 (start-of-line p)))
+	     (when (> p (end-of-buffer))
+	       (error "End of buffer")))))
+  p)
+
+(defun c-skip-backward-whitespace-comment (p)
+  (let-escape return
+    (while t
+      (when (or (not p) (equal? p (start-of-buffer)))
+	(return nil))
+      (set! p (or (re-search-backward "[^\t\f\n ]" (forward-char -1 p))
+		  (return nil)))
+      (cond ((looking-at "\\*/" (forward-char -1 p))
+	     ;; "/* .. */" comment to skip
+	     (set! p (or (re-search-backward "/\\*" p)
+			 (return nil)))
+	     (when (equal? p (start-of-buffer))
+	       (return nil)))
+	    ;; "// .." comment to skip
+	    ((and (looking-at ".*(//)" (start-of-line p))
+		  (< (match-start 1) p))
+	     (set! p (match-start 1)))
+	    (t (return p))))))
 
 
 ;; Miscellaneous functions
@@ -517,3 +535,4 @@ START and END except for the last line."
     (find-comment-pos)
     (insert "/*  */")
     (goto (forward-char -3))))
+ "^\\s+}"
