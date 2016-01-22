@@ -1,3 +1,9 @@
+2016-01-22  John Harper  <jsh@unfactored.org>
+
+	* swift-mode.jl: replace the three indent-level variables by
+	one: swift-indent-width, coding style is standardized, and it
+	makes it easier to change the indent level
+
 2015-10-20  John Harper  <jsh@unfactored.org>
 
 	* swift-mode.jl, modes.jl, c-mode.jl, autoload.jl: added simple

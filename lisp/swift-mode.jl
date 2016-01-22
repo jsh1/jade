@@ -22,19 +22,10 @@
 (require 'c-mode)
 (provide 'swift-mode)
 
-(defvar swift-body-indent 4
+(defvar swift-indent-width 4
   "Indentation of code with respect to its containing block.")
 
-(defvar swift-brace-indent -4
-  "Extra indentation of braces in relative to the body of the code they
-contain.")
-
-(defvar swift-case-indent -4
-  "Extra indentation for case statements.")
-
-(make-variable-buffer-local 'swift-body-indent)
-(make-variable-buffer-local 'swift-brace-indent)
-(make-variable-buffer-local 'swift-case-indent)
+(make-variable-buffer-local 'swift-indent-width)
 
 ;;;###autoload
 (defun swift-mode ()
@@ -127,28 +118,22 @@ Major mode for editing Swift source code. Local keybindings are:\n
 	(set! exp-ind (char-to-glyph-pos (match-start 1)))))
 
     (when inside-stmt
-      (set! exp-ind (right-char swift-body-indent exp-ind)))
+      (set! exp-ind (right-char swift-indent-width exp-ind)))
 
     ;; First look at previous line and see how it affects the one we're
     ;; trying to indent
     (cond
-     ((memq (get-char exp-pos) swift-close-body-chars)
-      ;; A closing brace
-      (unless (zero? (pos-col exp-pos))
-	(set! exp-ind (left-char (+ swift-body-indent swift-brace-indent)
-				 exp-ind))))
-
      ((and (not inside-stmt) (looking-at ".*{" exp-pos))
       ;; An opening brace. FIXME: still needed?
-      (set! exp-ind (right-char swift-body-indent (indent-pos exp-pos))))
+      (set! exp-ind (right-char swift-indent-width (indent-pos exp-pos))))
 
      ((and (not inside-stmt) (looking-at swift-indenting-stmt-re exp-pos))
       ;; Something that causes the next statement to be indented
-      (set! exp-ind (right-char swift-body-indent exp-ind)))
+      (set! exp-ind (right-char swift-indent-width exp-ind)))
 
      ((looking-at swift-case-stmt-re exp-pos)
       ;; A switch-statement label
-      (set! exp-ind (left-char swift-case-indent exp-ind))))
+      (set! exp-ind (right-char swift-indent-width exp-ind))))
 
     ;; Next, look at the contents of this line and see if it needs any
     ;; special treatment
@@ -160,16 +145,16 @@ Major mode for editing Swift source code. Local keybindings are:\n
       (cond
        ((memq (get-char line-pos) swift-open-body-chars)
 	;; An opening brace at the start of the line, indent back by
-	;; swift-brace-indent
-	(set! exp-ind (pos (max 0 (+ (pos-col exp-ind) swift-brace-indent)))))
+	;; -swift-indent-width
+	(set! exp-ind (pos (max 0 (- (pos-col exp-ind) swift-indent-width)))))
 
        ((memq (get-char line-pos) swift-close-body-chars)
-	;; A closing brace, indent outwards by swift-brace-indent
-	(set! exp-ind (left-char swift-body-indent exp-ind)))
+	;; A closing brace, indent inwards by swift-indent-width
+	(set! exp-ind (left-char swift-indent-width exp-ind)))
 
        ((looking-at swift-case-stmt-re line-pos)
 	;; A switch label
-	(set! exp-ind (right-char swift-case-indent exp-ind)))))
+	(set! exp-ind (left-char swift-indent-width exp-ind)))))
 
     ;; Finished
     (pos (pos-col exp-ind) (pos-line line-pos))))
