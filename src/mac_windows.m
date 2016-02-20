@@ -24,6 +24,8 @@
 
 #import <CoreText/CoreText.h>
 
+double mac_font_size = 10;
+
 static NSCursor *ibeam_cursor = 0;
 
 /* When true, sys_new_window _won't_ show the window. */
@@ -47,7 +49,7 @@ flip_y (JadeView *view, int y)
 
 - (id)initWithFrame:(NSRect)r
 {
-    _font_size = 10;
+    _font_size = mac_font_size;
     return [super initWithFrame:r];
 }
 

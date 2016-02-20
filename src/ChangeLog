@@ -1,3 +1,8 @@
+2016-02-20  John Harper  <jsh@unfactored.org>
+
+	* mac_windows.m, mac_main.m, mac_internal.h: pull options from
+	the user defaults on startup
+
 2015-09-24  John Harper  <jsh@unfactored.org>
 
 	* mac_windows.m, Makefile.in: deleted mac runloop code, moved

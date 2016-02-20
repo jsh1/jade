@@ -70,4 +70,8 @@
     } \
     [pool drain]; }
 
+/* Default font size. */
+
+extern double mac_font_size;
+
 #endif /* JADE_MAC_INTERNAL_H */

@@ -30,7 +30,8 @@
 #endif
 
 /* Command line options, and their default values. */
-static char *geom_str = "80x24";
+
+static int opt_width = 80, opt_height = 60;
 
 unsigned long mac_meta_mod;
 
@@ -51,13 +52,72 @@ DEFSTRING(def_font_str_data, DEFAULT_FONT);
 
 /* Resource/option management */
 
+static void
+get_resources(void)
+{
+  OBJC_BEGIN
+
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  NSString *str;
+  double value;
+
+  value = [defaults doubleForKey:@"windowWidth"];
+  if (value != 0) {
+    opt_width = (int)value;
+  }
+
+  value = [defaults doubleForKey:@"windowHeight"];
+  if (value != 0) {
+    opt_height = (int)value;
+  }
+
+  str = [defaults stringForKey:@"backgroundColor"];
+  if (str != nil) {
+    default_bg_color = strdup(str.UTF8String);
+  }
+
+  str = [defaults stringForKey:@"foregroundColor"];
+  if (str != nil) {
+    default_fg_color = strdup(str.UTF8String);
+  }
+
+  str = [defaults stringForKey:@"selectionColor"];
+  if (str != nil) {
+    default_block_color = strdup(str.UTF8String);
+  }
+
+  str = [defaults stringForKey:@"highlightColor"];
+  if (str != nil) {
+    default_hl_color = strdup(str.UTF8String);
+  }
+
+  str = [defaults stringForKey:@"modelineColor"];
+  if (str != nil) {
+    default_ml_color = strdup(str.UTF8String);
+  }
+
+  str = [defaults stringForKey:@"fontName"];
+  if (str != nil) {
+    def_font_str = rep_string_copy(str.UTF8String);
+  }
+
+  value = [defaults doubleForKey:@"fontSize"];
+  if (value != 0) {
+    mac_font_size = value;
+  }
+
+  OBJC_END
+}
+
 /* Scan the command line for options. */
 static void
 get_options(void)
 {
     repv opt;
-    if (rep_get_option("--geometry", &opt))
-	geom_str = strdup (rep_STR(opt));
+    if (rep_get_option("--width", &opt))
+	opt_width = atoi(rep_STR(opt));
+    if (rep_get_option("--height", &opt))
+	opt_height = atoi(rep_STR(opt));
     if (rep_get_option("--fg", &opt))
 	default_fg_color = strdup (rep_STR(opt));
     if (rep_get_option("--bg", &opt))
@@ -70,6 +130,8 @@ get_options(void)
 	default_ml_color = strdup (rep_STR(opt));
     if (rep_get_option("--font", &opt))
 	def_font_str = opt;
+    if (rep_get_option("--font-size", &opt))
+	mac_font_size = atof(rep_STR(opt));
 }
 
 /* After parsing the command line and the resource database, use the
@@ -77,25 +139,7 @@ get_options(void)
 static bool
 use_options(void)
 {
-    int x, y, w, h;
-#if FIXME
-    int gflgs = XParseGeometry(geom_str, &x, &y, &w, &h);
-
-    if(!(gflgs & WidthValue))
-	w = -1;
-    if(!(gflgs & HeightValue))
-	h = -1;
-    /* TODO: need to use -ve values properly */
-    if(!(gflgs & XValue))
-	x = -1;
-    if(!(gflgs & YValue))
-	y = -1;
-#else
-    x = y = 0;
-    w = 80; h = 60;
-#endif
-    set_default_geometry (x, y, w, h);
-
+    set_default_geometry (0, 0, opt_width, opt_height);
     return TRUE;
 }
 
@@ -122,6 +166,7 @@ sys_init(char *program_name)
 	Fset_default (Qdefault_directory, rep_VAL (&tilde_dir));
 
     def_font_str = rep_VAL (&def_font_str_data);
+    get_resources();
     get_options ();
     use_options ();
 
