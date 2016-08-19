@@ -1,3 +1,8 @@
+2016-08-19  John Harper  <jsh@unfactored.org>
+
+	* buffers.c (Ftruncate_lines): give this an interactive
+	declaration
+
 2016-02-20  John Harper  <jsh@unfactored.org>
 
 	* mac_windows.m, mac_main.m, mac_internal.h: pull options from

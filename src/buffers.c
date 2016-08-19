@@ -873,7 +873,7 @@ Sets the size of tab-stops.
     return(rep_handle_var_int(val, &curr_vw->tx->tab_size));
 }
 
-DEFUN("truncate-lines", Ftruncate_lines, Struncate_lines, (repv val), rep_Subr1) /*
+DEFUN_INT("truncate-lines", Ftruncate_lines, Struncate_lines, (repv val), rep_Subr1, "P") /*
 ::doc:truncate-lines::
 truncate-lines VALUE
 
