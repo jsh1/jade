@@ -1,5 +1,7 @@
 2016-08-19  John Harper  <jsh@unfactored.org>
 
+	* mac_windows.m, mac_keys.m: fix deprecated warnings in 10.12
+
 	* buffers.c (Ftruncate_lines): give this an interactive
 	declaration
 

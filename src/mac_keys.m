@@ -27,15 +27,15 @@ unsigned long esc_code = 8+53, esc_mods = EV_TYPE_KEYBD;
 static unsigned long
 translate_mods(unsigned long mods, unsigned int state, bool subst_meta)
 {
-    if(state & NSShiftKeyMask)
+    if(state & NSEventModifierFlagShift)
 	mods |= EV_MOD_SHIFT;
-    if(state & NSAlphaShiftKeyMask)
+    if(state & NSEventModifierFlagCapsLock)
 	mods ^= EV_MOD_SHIFT;
-    if(state & NSControlKeyMask)
+    if(state & NSEventModifierFlagControl)
 	mods |= EV_MOD_CTRL;
-    if(state & NSAlternateKeyMask)
+    if(state & NSEventModifierFlagOption)
 	mods |= EV_MOD_MOD1;
-    if(state & NSCommandKeyMask)
+    if(state & NSEventModifierFlagCommand)
 	mods |= EV_MOD_MOD2;
 
     if(subst_meta && (mods & WINDOW_META(curr_win)) != 0)
@@ -67,25 +67,25 @@ sys_translate_event(unsigned long *code, unsigned long *mods, void *ev_)
 
     switch((int) [ev type])
     {
-    case NSKeyDown:
+    case NSEventTypeKeyDown:
 	*mods = translate_mods(*mods, [ev modifierFlags], TRUE);
 	*code = 8 + [ev keyCode];
 	if(*code != 0)
 	    *mods |= EV_TYPE_KEYBD;
 	break;
 
-    case NSLeftMouseDown:
-    case NSRightMouseDown:
-    case NSOtherMouseDown:
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeOtherMouseDown:
 	if ([ev clickCount] == 1)
 	    *code = EV_CODE_MOUSE_CLICK1;
 	else
 	    *code = EV_CODE_MOUSE_CLICK2;
 	goto button;
 
-    case NSLeftMouseUp:
-    case NSRightMouseUp:
-    case NSOtherMouseUp:
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeOtherMouseUp:
 	*code = EV_CODE_MOUSE_UP;
     button:
 	*mods = EV_TYPE_MOUSE;
@@ -93,10 +93,10 @@ sys_translate_event(unsigned long *code, unsigned long *mods, void *ev_)
 	*mods |= button_mods ([ev buttonNumber]);
 	break;
 
-    case NSMouseMoved:
-    case NSLeftMouseDragged:
-    case NSRightMouseDragged:
-    case NSOtherMouseDragged:
+    case NSEventTypeMouseMoved:
+    case NSEventTypeLeftMouseDragged:
+    case NSEventTypeRightMouseDragged:
+    case NSEventTypeOtherMouseDragged:
 	*code = EV_CODE_MOUSE_MOVE;
 	*mods = EV_TYPE_MOUSE;
 	*mods |= translate_mods(*mods, [ev modifierFlags], TRUE);
@@ -113,7 +113,7 @@ sys_cook_key(void *event, char *buf, size_t buflen)
     const char *str;
     size_t actual_length;
 
-    if ([ev type] != NSKeyDown)
+    if ([ev type] != NSEventTypeKeyDown)
 	return 0;
 
     pool = [[NSAutoreleasePool alloc] init];

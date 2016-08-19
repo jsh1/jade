@@ -641,8 +641,8 @@ sys_new_window(Lisp_Window *oldW, Lisp_Window *w, int *dims)
 
     window = [[NSWindow alloc] initWithContentRect:
 	      NSMakeRect (x, y, width * w->font_width, height * w->font_height)
-	      styleMask:NSTitledWindowMask | NSClosableWindowMask
-	      | NSMiniaturizableWindowMask | NSResizableWindowMask
+	      styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
+	      | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
 	      backing:NSBackingStoreBuffered defer:YES];
     [view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
     [window setContentView:view];
